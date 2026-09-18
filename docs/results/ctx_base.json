@@ -1,0 +1,35 @@
+{
+  "model_dir": "/root/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/7c76b622dfc5cac71b2dc1c29873efe2ce509a05",
+  "results": [
+    {
+      "max_len": 512,
+      "accuracy": 0.5312,
+      "ece": 0.3484
+    },
+    {
+      "max_len": 1024,
+      "accuracy": 0.5417,
+      "ece": 0.3338
+    },
+    {
+      "max_len": 2048,
+      "accuracy": 0.4792,
+      "ece": 0.4101
+    },
+    {
+      "max_len": 4096,
+      "accuracy": 0.5521,
+      "ece": 0.3566
+    },
+    {
+      "max_len": 8192,
+      "accuracy": 0.6458,
+      "ece": 0.2956
+    },
+    {
+      "max_len": 16384,
+      "accuracy": 0.4792,
+      "ece": 0.3775
+    }
+  ]
+}

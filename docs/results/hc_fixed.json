@@ -1,0 +1,65 @@
+{
+  "cases": 96,
+  "results": [
+    {
+      "n_options": 50,
+      "n_cases": 96,
+      "single": {
+        "accuracy": 0.6771,
+        "ece": 0.3055,
+        "mean_confidence": 0.9826,
+        "seconds": 2.71
+      },
+      "two_stage": {
+        "accuracy": 0.3229,
+        "ece": 0.2511,
+        "mean_confidence": 0.1276,
+        "seconds": 3.8
+      }
+    },
+    {
+      "n_options": 100,
+      "n_cases": 96,
+      "single": {
+        "accuracy": 0.75,
+        "ece": 0.2499,
+        "mean_confidence": 0.9999,
+        "seconds": 2.24
+      },
+      "two_stage": {
+        "accuracy": 0.2292,
+        "ece": 0.1349,
+        "mean_confidence": 0.2264,
+        "seconds": 3.79
+      }
+    },
+    {
+      "n_options": 255,
+      "n_cases": 96,
+      "single": {
+        "fits": false,
+        "reason": "OptionsTooLongError"
+      },
+      "two_stage": {
+        "accuracy": 0.0729,
+        "ece": 0.8587,
+        "mean_confidence": 0.9317,
+        "seconds": 3.82
+      }
+    },
+    {
+      "n_options": 400,
+      "n_cases": 96,
+      "single": {
+        "fits": false,
+        "reason": "OptionsTooLongError"
+      },
+      "two_stage": {
+        "accuracy": 0.0,
+        "ece": 0.0021,
+        "mean_confidence": 0.0021,
+        "seconds": 5.61
+      }
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "cases": 96,
+  "results": [
+    {
+      "n_options": 16,
+      "n_cases": 96,
+      "single": {
+        "accuracy": 1.0,
+        "ece": 0.0031,
+        "mean_confidence": 0.9969,
+        "seconds": 2.81
+      },
+      "two_stage": {
+        "accuracy": 1.0,
+        "ece": 0.0031,
+        "mean_confidence": 0.9969,
+        "seconds": 2.13
+      }
+    },
+    {
+      "n_options": 50,
+      "n_cases": 96,
+      "single": {
+        "accuracy": 0.5417,
+        "ece": 0.4349,
+        "mean_confidence": 0.9765,
+        "seconds": 2.2
+      },
+      "two_stage": {
+        "accuracy": 0.1042,
+        "ece": 0.137,
+        "mean_confidence": 0.1502,
+        "seconds": 4.09
+      }
+    },
+    {
+      "n_options": 100,
+      "n_cases": 96,
+      "single": {
+        "accuracy": 0.75,
+        "ece": 0.2497,
+        "mean_confidence": 0.9997,
+        "seconds": 2.43
+      },
+      "two_stage": {
+        "accuracy": 0.3958,
+        "ece": 0.2941,
+        "mean_confidence": 0.1744,
+        "seconds": 4.17
+      }
+    },
+    {
+      "n_options": 255,
+      "n_cases": 96,
+      "single": {
+        "fits": false,
+        "reason": "OptionsTooLongError"
+      },
+      "two_stage": {
+        "accuracy": 0.1458,
+        "ece": 0.6654,
+        "mean_confidence": 0.8113,
+        "seconds": 4.38
+      }
+    },
+    {
+      "n_options": 400,
+      "n_cases": 96,
+      "single": {
+        "fits": false,
+        "reason": "OptionsTooLongError"
+      },
+      "two_stage": {
+        "accuracy": 0.0,
+        "ece": 0.9416,
+        "mean_confidence": 0.9416,
+        "seconds": 4.53
+      }
+    }
+  ]
+}

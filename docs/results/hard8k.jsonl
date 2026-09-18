@@ -1,0 +1,13 @@
+{"step": 0, "eval_acc": 0.5938, "eval_ece": 0.3499, "phase": "before"}
+{"step": 1, "loss": 1.0548, "lr": 4.7e-07, "elapsed_s": 3.1, "gpu_mem_gb": 8.45}
+{"step": 10, "loss": 0.6924, "lr": 5.6e-06, "elapsed_s": 28.7, "gpu_mem_gb": 8.65}
+{"step": 20, "loss": 0.6788, "lr": 1e-05, "elapsed_s": 57.3, "gpu_mem_gb": 8.65}
+{"step": 30, "loss": 0.4557, "lr": 9.91e-06, "elapsed_s": 86.3, "gpu_mem_gb": 8.65}
+{"step": 40, "loss": 0.0, "lr": 9.67e-06, "elapsed_s": 115.1, "gpu_mem_gb": 8.65}
+{"step": 50, "loss": 0.0, "lr": 9.29e-06, "elapsed_s": 144.1, "gpu_mem_gb": 8.65}
+{"step": 50, "eval_acc": 1.0, "eval_ece": 0.0}
+{"step": 60, "loss": 0.0, "lr": 8.77e-06, "elapsed_s": 181.0, "gpu_mem_gb": 9.65}
+{"step": 70, "loss": 0.0, "lr": 8.15e-06, "elapsed_s": 209.7, "gpu_mem_gb": 9.65}
+{"step": 80, "loss": 0.0, "lr": 7.42e-06, "elapsed_s": 238.6, "gpu_mem_gb": 9.65}
+{"step": 90, "loss": 0.0, "lr": 6.63e-06, "elapsed_s": 267.5, "gpu_mem_gb": 9.65}
+{"step": 100, "loss": 0.0, "lr": 5.78e-06, "elapsed_s": 296.3, "gpu_mem_gb": 9.65}

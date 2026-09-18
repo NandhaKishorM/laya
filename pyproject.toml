@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.1.6"
+version = "0.2.0"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -32,6 +32,9 @@ dependencies = [
     "huggingface_hub>=0.20.0",
     "numpy>=1.20.0",
 ]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
 
 [project.urls]
 Homepage = "https://huggingface.co/convaiinnovations/laya"

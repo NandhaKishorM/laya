@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="laya",
-    version="0.1.6",
+    version="0.2.0",
     description="Fast, non-autoregressive System 1 decision engine with calibrated probabilities",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

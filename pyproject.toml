@@ -31,7 +31,19 @@ dependencies = [
     "safetensors>=0.4.0",
     "huggingface_hub>=0.20.0",
     "numpy>=1.20.0",
+    "httpx>=0.24.0",
 ]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "click>=8.0.0",
+    "pydantic>=2.0.0",
+]
+
+[project.scripts]
+laya = "laya.cli:main"
 
 [project.urls]
 Homepage = "https://huggingface.co/convaiinnovations/laya"

@@ -140,6 +140,91 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 
 ---
 
+## Drop-in TypeSafe Wire Server (`laya serve`)
+
+Need a drop-in, zero-cloud replacement for TypeSafe's paid Jev API? Start the local server:
+
+```bash
+pip install "laya[server]"
+laya serve --port 8000
+```
+
+### Compatible with `curl` & TypeSafe SDKs:
+
+```bash
+curl -X POST http://localhost:8000/v1/systemone \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "laya-latest",
+    "state": { "ticket": "Export button crashes settings page in Safari" },
+    "questions": {
+      "category": {
+        "type": "choice",
+        "instructions": "What kind of issue is `ticket`?",
+        "criteria": {
+          "bug": "Software bug or error",
+          "billing": "Invoice or payment issue"
+        }
+      }
+    }
+  }'
+```
+
+---
+
+## CLI Tools
+
+Run decisions directly from your terminal:
+
+```bash
+# Discrete Classification (Choice)
+laya decide "Server disk space is at 99%" -c "storage_alert,network_alert,auth_alert"
+
+# Yes/No Judgment (Noul probability)
+laya judge "Payment declined on checkout" -i "Is this a payment failure?"
+
+# Ordinal Rating (Score)
+laya rate "Server is dead and throwing 500 across all nodes" \
+  -l "Cosmetic issue, Minor slowdown, Catastrophic outage" \
+  -i "Rate outage severity:"
+
+# Evaluate full JSON payload
+laya eval request.json
+```
+
+---
+
+## Async Client (`AsyncLayaClient`)
+
+For high-throughput Python async services:
+
+```python
+import asyncio
+from laya import AsyncLayaClient
+
+async def main():
+    client = AsyncLayaClient(local=True)
+    res = await client.system_one(
+        state="Customer requested cancellation of their monthly plan.",
+        questions={
+            "action": {
+                "type": "choice",
+                "instructions": "What does customer want?",
+                "criteria": {"cancel": "Cancel", "upgrade": "Upgrade"}
+            },
+            "is_cancel": {
+                "type": "noul",
+                "instructions": "Does the user want to cancel?"
+            },
+        },
+    )
+    print(res["answers"])
+
+asyncio.run(main())
+```
+
+---
+
 ## Benchmark: Laya vs. TypeSafe Jev
 
 <div align="center">

@@ -24,3 +24,6 @@ wheels/
 .DS_Store
 .env
 .pypirc
+uv.lock
+.pytest_cache/
+

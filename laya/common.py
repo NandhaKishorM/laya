@@ -18,17 +18,29 @@ def serialize_state(state: Union[str, dict, list]) -> str:
     return json.dumps(state, ensure_ascii=False)
 
 
+def render_criterion(value) -> str:
+    """Render a single criterion value as text.
+
+    Strings pass through untouched; structured values (dicts, lists) are rendered as
+    compact JSON so rubric-style criteria read as JSON rather than Python reprs.
+    """
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, ensure_ascii=False, separators=(", ", ": "), default=str)
+
+
 def render_options(q: Dict) -> List[str]:
     """Render option texts in label-index order. Noul is always [false, true]."""
     t, crit = q["t"], q.get("crit")
     if t == "choice":
-        return [k if not v else "%s: %s" % (k, v) for k, v in crit.items()]
+        return [k if v is None or v == "" else "%s: %s" % (k, render_criterion(v)) for k, v in crit.items()]
     if t == "score":
-        return ["level %d: %s" % (i, c) for i, c in enumerate(crit)]
+        return ["level %d: %s" % (i, render_criterion(c)) for i, c in enumerate(crit)]
     crit = crit or {}
+    false_crit, true_crit = crit.get("false"), crit.get("true")
     return [
-        "false: " + (crit.get("false") or "no, the statement does not hold"),
-        "true: " + (crit.get("true") or "yes, the statement holds"),
+        "false: " + (render_criterion(false_crit) if false_crit else "no, the statement does not hold"),
+        "true: " + (render_criterion(true_crit) if true_crit else "yes, the statement holds"),
     ]
 
 
@@ -40,8 +52,14 @@ def build_sequence(
     head_max_len: int = 192,
     option_order: Optional[List[int]] = None,
     truncate_left: bool = False,
+    on_truncate=None,
 ):
-    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP]."""
+    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP].
+
+    If the serialized state does not fit in the remaining budget it is truncated: from the
+    left (keeping the tail) when ``truncate_left`` is set, otherwise from the right. When
+    truncation occurs ``on_truncate(kept, total)`` is called with the token counts.
+    """
     mask_tok = tok.mask_token
     opts = render_options(q)
     order = option_order if option_order is not None else list(range(len(opts)))
@@ -67,7 +85,10 @@ def build_sequence(
     ids.append(tok.sep_token_id)
     room = max(0, max_len - len(ids) - 1)
     st = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
-    st = st[-room:] if truncate_left else st[:room]
+    if len(st) > room:
+        if on_truncate is not None:
+            on_truncate(room, len(st))
+        st = st[-room:] if truncate_left else st[:room]
     ids = ids + st + [tok.sep_token_id]
     return ids[:max_len], [m for m in markers if m < max_len]
 

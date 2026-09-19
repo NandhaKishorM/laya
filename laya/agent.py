@@ -169,12 +169,26 @@ class Agent:
             self.model.to(self.device).eval()
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
             if self.device.type != "cpu":
-                print(f"Warning: Could not place model on {self.device} ({e}). Falling back to CPU.")
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
                 self.model.to(self.device).eval()
             else:
                 raise e
+
+        # 3. Warn on CPU fallback if CUDA was expected or available (fixes Issue #6)
+        actual_device = next(self.model.parameters()).device
+        if actual_device.type == "cpu" and (
+            torch.cuda.is_available() or getattr(torch.version, "cuda", None) is not None
+        ):
+            print(
+                "\n[laya] ⚠️ Warning: Model loaded on CPU despite CUDA being present in the environment.\n"
+                "  Inference will be ~10-15x slower (~200-500 ms vs ~35 ms on GPU).\n"
+                "  If you have a newer NVIDIA GPU (e.g. Blackwell/RTX 50-series), your current\n"
+                "  PyTorch build may not support your CUDA architecture.\n"
+                "  Fix: pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128\n"
+                "  See: https://pytorch.org/get-started/locally/\n",
+                flush=True,
+            )
 
     @staticmethod
     def _to_internal(qdef: Dict) -> Dict:

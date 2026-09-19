@@ -99,6 +99,23 @@ parsed = json.loads(render_options(
     {"t": "noul", "ins": "x", "crit": {"true": {"a": 1}, "false": {"b": 2}}})[1].split("true: ", 1)[1])
 check("emitted json round-trips", parsed, {"a": 1})
 
+
+# --------------------------------------------------------------- CPU-fallback warning (#9 follow-up)
+# The warning must fire only when a fallback actually happened -- not merely because the machine
+# has CUDA. `laya.load(path, device="cpu")` on a GPU box is a deliberate choice, not a problem.
+import inspect  # noqa: E402
+
+from laya import agent as _agent  # noqa: E402
+
+_src = inspect.getsource(_agent.Agent.__init__)
+check_true("fallback/flag is initialised", "fell_back_from = fell_back_why = None" in _src)
+check_true("fallback/warns only on a real fallback", "if fell_back_from is not None:" in _src)
+check_true("fallback/reports the underlying reason", "Reason: %s" in _src)
+check_true("fallback/keeps the actionable advice", "download.pytorch.org/whl/nightly" in _src)
+check_true("fallback/no bare cuda probe for the warning",
+           "torch.cuda.is_available() or getattr(torch.version" not in _src)
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

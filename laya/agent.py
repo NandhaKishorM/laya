@@ -201,30 +201,30 @@ class Agent:
             self.dtype = torch.float32
 
         # 2. Place on device with graceful fallback to CPU on memory error
+        fell_back_from = fell_back_why = None
         try:
             self.model.to(self.device).eval()
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
             if self.device.type != "cpu":
+                # Record what actually went wrong: the reason matters more than the symptom,
+                # and it is the only place the underlying exception is ever surfaced.
+                fell_back_from, fell_back_why = self.device, e
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
                 self.model.to(self.device).eval()
             else:
                 raise e
 
-        # 3. Warn on CPU fallback if CUDA was expected or available (fixes Issue #6)
-        actual_device = next(self.model.parameters()).device
-        if actual_device.type == "cpu" and (
-            torch.cuda.is_available() or getattr(torch.version, "cuda", None) is not None
-        ):
+        if fell_back_from is not None:
             print(
-                "\n[laya] ⚠️ Warning: Model loaded on CPU despite CUDA being present in the environment.\n"
-                "  Inference will be ~10-15x slower (~200-500 ms vs ~35 ms on GPU).\n"
-                "  If you have a newer NVIDIA GPU (e.g. Blackwell/RTX 50-series), your current\n"
-                "  PyTorch build may not support your CUDA architecture.\n"
-                "  Fix: pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128\n"
-                "  See: https://pytorch.org/get-started/locally/\n",
-                flush=True,
-            )
+                "\n[laya] Warning: could not place the model on %s, so it is running on CPU.\n"
+                "  Reason: %s\n"
+                "  Inference will be roughly 10-15x slower (~200-500 ms rather than ~35 ms).\n"
+                "  If this is a newer NVIDIA GPU (Blackwell / RTX 50-series), your PyTorch build\n"
+                "  may not support its CUDA architecture:\n"
+                "    pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128\n"
+                "  See https://pytorch.org/get-started/locally/\n"
+                % (fell_back_from, fell_back_why), flush=True)
 
     @staticmethod
     def _to_internal(qdef: Dict) -> Dict:

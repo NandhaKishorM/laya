@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0          # gitleaks needs history to scan every commit in the PR
       - name: gitleaks (diff)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ github.token }}
 

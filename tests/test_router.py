@@ -255,6 +255,21 @@ _load_stub(rp2, "english")
 check("preload/touch does not evict", sorted(rp2.loaded), ["english", "multilingual"])
 
 
+# --------------------------------------------------------------------- attach
+ra = stubbed_router(1)
+sentinel = _Stub("already-built")
+ra.attach("english", sentinel)
+check("attach/registers under the name", ra._agents["english"], sentinel)
+check("attach/counts as resident", "english" in ra.loaded, True)
+check("attach/raises max_loaded to hold it", ra.max_loaded >= 1, True)
+# attaching then loading another must not evict the attached one
+ra.max_loaded = max(ra.max_loaded, 2)
+_load_stub(ra, "multilingual")
+check("attach/survives a later load", sorted(ra.loaded), ["english", "multilingual"])
+check("attach/still the same object", ra._agents["english"] is sentinel, True)
+check("attach/accepts aliases", stubbed_router(1).attach("en", _Stub("x")) is not None, True)
+
+
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

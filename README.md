@@ -230,6 +230,14 @@ router.preload(["english", "multilingual"])    # or just the two you serve
 
 `preload` raises `max_loaded` to fit what it built, so the LRU cannot evict it immediately.
 
+If the process already has a checkpoint loaded for other reasons, hand it over instead of
+loading a second copy:
+
+```python
+router.attach("english", existing_agent)   # no duplicate 421M parameters
+router.preload()                           # builds only what is still missing
+```
+
 Measured on CPU with the demo Space's own workload:
 
 | | per request | model loads |

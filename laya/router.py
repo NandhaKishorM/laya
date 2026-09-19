@@ -194,6 +194,19 @@ class Router:
                 if k not in self._order:
                     self._agents.pop(k, None)
 
+    def attach(self, name: str, agent: Any):
+        """Register an already-built Agent under `name` instead of loading a second copy.
+
+        Useful when the process has a checkpoint loaded for other reasons: a demo that already
+        built `convaiinnovations/laya` can hand it to the router rather than pay for -- and hold
+        in memory -- a duplicate 421M parameters.
+        """
+        key = normalise_name(name)
+        self._agents[key] = agent
+        self._touch(key)
+        self.max_loaded = max(self.max_loaded, len(self._agents))
+        return agent
+
     def preload(self, names: Optional[List[str]] = None):
         """Download and build checkpoints up front so no request ever pays a model load.
 
@@ -203,9 +216,10 @@ class Router:
         the LRU would immediately evict what this just built.
         """
         names = [normalise_name(n) for n in (names or list(self.models))]
-        self.max_loaded = max(self.max_loaded, len(names))
+        self.max_loaded = max(self.max_loaded, len(names), len(self._agents))
         for n in names:
-            self.load(n)
+            if n not in self._agents:      # an attached agent is already built
+                self.load(n)
         return self
 
     def unload(self, name: Optional[str] = None):

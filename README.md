@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
 <p align="center">
-  <img src="assets/laya_vs_jev.png" alt="Laya with routing versus TypeSafe Jev: accuracy on shared public datasets, language coverage, speed and calibration" width="100%" />
+  <img src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/laya_vs_jev.png" alt="Laya with routing versus TypeSafe Jev: accuracy on shared public datasets, language coverage, speed and calibration" width="100%" />
 </p>
 
 Laya evaluates typed questions (`choice`, `score`, `noul`) over any state (text, email, ticket or JSON document) in **a single forward pass** — 33 ms for one question, 7.2 ms/question batched, measured on a T4. No text generation, so nothing to parse and nothing to hallucinate.
@@ -244,7 +244,7 @@ router.loaded              # ['multilingual']
 **Full report: [`BENCHMARKS.md`](BENCHMARKS.md)** — every run consolidated, languages and themes, with per-language detail for all 51 languages.
 
 <p align="center">
-  <img src="assets/laya_benchmark.png" alt="Per-language accuracy for both checkpoints across 51 languages" width="100%" />
+  <img src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/laya_benchmark.png" alt="Per-language accuracy for both checkpoints across 51 languages" width="100%" />
 </p>
 
 All Laya numbers below are measured. Every model answered byte-identical questions

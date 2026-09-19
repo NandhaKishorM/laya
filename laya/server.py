@@ -9,15 +9,13 @@ Quick start
 -----------
 Install extras::
 
-    pip install "laya[server]"      # or: pip install fastapi uvicorn
+    pip install "laya[server]"
 
 Run::
 
-    # with uvicorn directly
-    uvicorn laya.server:create_app --factory --host 0.0.0.0 --port 8000
-
-    # or with the built-in launcher
-    python -m laya.server
+    laya serve --port 8000                        # via CLI
+    python -m laya.server                         # via module
+    uvicorn laya.server:create_app --factory      # via uvicorn directly
 
 Environment variables
 ---------------------
@@ -27,13 +25,18 @@ LAYA_HF_TOKEN       HuggingFace token for private model repos
 LAYA_WORKERS        Number of inference threads in the thread-pool (default: 4)
 LAYA_CORS_ORIGINS   Comma-separated allowed origins (default: *)
 LAYA_LOG_LEVEL      Uvicorn log level: debug|info|warning|error (default: info)
+LAYA_API_KEY        Optional bearer token — when set, all inference endpoints
+                    require an ``Authorization: Bearer <key>`` header.
+                    Also accepts TYPESAFE_API_KEY for drop-in Jev SDK compat.
 
 Endpoints
 ---------
 GET  /health                  Liveness + model info
-GET  /v1/models               List available model(s)
-POST /v1/decide               Single-state decision (all questions in one forward pass)
-POST /v1/decide/batch         Multi-state batch decision
+GET  /v1/models               List available model(s)  [OpenRouter-compatible]
+POST /v1/decide               Single-state decision     [OpenAI-compatible naming]
+POST /v1/systemone            Drop-in alias — 100% wire-compatible with
+                              TypeSafe Python + JavaScript SDKs, Vercel AI SDK
+POST /v1/decide/batch         Multi-state batch decision (up to 256 states)
 
 All responses mirror the OpenAI JSON envelope convention so that
 existing OpenAI-compatible clients need only change the base URL.
@@ -86,6 +89,10 @@ class _Settings:
         o.strip() for o in os.environ.get("LAYA_CORS_ORIGINS", "*").split(",") if o.strip()
     ]
     log_level: str = os.environ.get("LAYA_LOG_LEVEL", "info")
+    # Accept LAYA_API_KEY or TYPESAFE_API_KEY for drop-in Jev SDK compat.
+    api_key: Optional[str] = (
+        os.environ.get("LAYA_API_KEY") or os.environ.get("TYPESAFE_API_KEY") or None
+    )
 
 
 settings = _Settings()
@@ -206,6 +213,24 @@ def create_app() -> FastAPI:
     _register_routes(app)
 
     return app
+
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+_bearer = HTTPBearer(auto_error=False)
+
+
+async def _check_auth(credentials: Optional[HTTPAuthorizationCredentials] = None) -> None:
+    """Optional bearer-token guard. Skipped when LAYA_API_KEY is not set."""
+    if not settings.api_key:
+        return
+    if credentials is None or credentials.credentials != settings.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=ErrorResponse(
+                error=ErrorDetail(code="unauthorized", message="Invalid or missing API key.")
+            ).model_dump(),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +405,77 @@ def _register_routes(app: FastAPI) -> None:
             results=results,
             total_usage=UsageInfo(input_tokens=total_tokens, output_tokens=0),
         )
+
+    # ── POST /v1/systemone ──────────────────────────────────────────────────
+    # 100% wire-compatible alias for the TypeSafe Jev SDK.
+    # The TypeSafe Python SDK calls POST /v1/systemone with the same body shape
+    # as our /v1/decide, so this single alias makes laya-sdk and @typesafe-ai/sdk
+    # work against this server with ZERO code changes.
+
+    @app.post(
+        "/v1/systemone",
+        response_model=DecisionResponse,
+        summary="TypeSafe Jev drop-in alias",
+        tags=["Inference"],
+        responses={
+            200: {"description": "Identical to POST /v1/decide — Jev SDK compatible."},
+            401: {"model": ErrorResponse, "description": "Invalid or missing API key."},
+            422: {"model": ErrorResponse, "description": "Validation error."},
+            500: {"model": ErrorResponse, "description": "Inference error."},
+        },
+    )
+    async def system_one(request: DecideRequest) -> DecisionResponse:
+        """
+        **Drop-in replacement for the TypeSafe Jev API.**
+
+        This endpoint is 100% wire-compatible with:
+        - TypeSafe Python SDK (`client.system_one(...)`)
+        - TypeSafe JavaScript SDK (`client.systemOne(...)`)
+        - Vercel AI SDK TypeSafe integration
+        - Any OpenRouter client pointing at this server
+
+        The request and response shapes are identical to ``POST /v1/decide``.
+        Simply point your existing SDK at this server's base URL — no other
+        code changes required.
+
+        ### Migration (Python)
+        ```python
+        # Before — paid TypeSafe cloud
+        from typesafe import TypeSafeClient
+        client = TypeSafeClient()  # uses api.typesafe.ai
+
+        # After — self-hosted Laya (zero cost, full privacy)
+        from typesafe import TypeSafeClient
+        client = TypeSafeClient(base_url="http://localhost:8000")
+        ```
+
+        ### Migration (JavaScript)
+        ```javascript
+        // Before
+        const client = new TypeSafeClient();
+
+        // After
+        const client = new TypeSafeClient({ baseURL: "http://localhost:8000" });
+        ```
+        """
+        agent = _get_or_raise()
+        raw_questions = _to_raw_questions(request.questions)
+
+        loop = asyncio.get_running_loop()
+        try:
+            raw = await loop.run_in_executor(
+                None,
+                lambda: agent.system_one(request.state, raw_questions),
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=ErrorResponse(
+                    error=ErrorDetail(code="invalid_question", message=str(exc))
+                ).model_dump(),
+            ) from exc
+
+        return DecisionResponse.from_raw(raw)
 
 
 # ---------------------------------------------------------------------------

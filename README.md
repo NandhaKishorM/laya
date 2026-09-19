@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/laya_vs_jev.png" alt="Laya with routing versus TypeSafe Jev: accuracy on shared public datasets, language coverage, speed and calibration" width="100%" />
+  <img src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/laya_vs_jev_full.png" alt="Laya versus TypeSafe Jev: accuracy on shared public datasets, every application workflow, all 51 languages, speed, calibration, and the cost of not preloading" width="100%" />
 </p>
 
 Laya evaluates typed questions (`choice`, `score`, `noul`) over any state (text, email, ticket or JSON document) in **a single forward pass** — 33 ms for one question, 7.2 ms/question batched, measured on a T4. No text generation, so nothing to parse and nothing to hallucinate.

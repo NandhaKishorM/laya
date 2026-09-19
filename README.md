@@ -216,10 +216,31 @@ Precedence, highest first:
 5. Detected script (exact) and, for Latin text, a stopword/diacritic language guess (best effort).
 6. `default=` (`"english"` unless you change it).
 
+### Preload — make routing free
+
+A cold checkpoint build costs **seconds**; language detection costs **microseconds**. At the
+default `max_loaded=1`, traffic that alternates languages rebuilds a model on *every* request.
+For a server or a demo, preload:
+
+```python
+router = Router(preload=True)                  # every checkpoint resident, routing is free
+router = Router(preload=True, device="cuda")
+router.preload(["english", "multilingual"])    # or just the two you serve
+```
+
+`preload` raises `max_loaded` to fit what it built, so the LRU cannot evict it immediately.
+
+Measured on CPU with the demo Space's own workload:
+
+| | per request | model loads |
+|---|---|---|
+| `Router()` — lazy, `max_loaded=1` | 4–6 s on every language switch | 1 per switch |
+| `Router(preload=True)` | **193–464 ms** | **none** |
+
 ### Memory
 
-All three together are ~1.16B parameters, so `Router` keeps **one** resident by default and
-evicts least-recently-used:
+All three together are ~1.16B parameters (~4.6 GB fp32), so `Router` keeps **one** resident by
+default and evicts least-recently-used. Raise it when you have the RAM:
 
 ```python
 Router(max_loaded=2)       # keep two hot

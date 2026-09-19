@@ -1,4 +1,4 @@
-"""Laya: Fast, non-autoregressive System 1 decision engine with calibrated probabilities."""
+﻿"""Laya: Fast, non-autoregressive System 1 decision engine with calibrated probabilities."""
 
 from .agent import Agent, RLAgent, load
 from .common import (
@@ -21,9 +21,27 @@ from .presets import (
     triage_questions,
 )
 from .router import DEFAULT_MODELS, RouteDecision, Router
+from .schemas import (
+    AnyAnswer,
+    AnyQuestion,
+    BatchDecideRequest,
+    BatchDecisionResponse,
+    ChoiceAnswer,
+    ChoiceQuestion,
+    DecideRequest,
+    DecisionResponse,
+    ErrorDetail,
+    ErrorResponse,
+    NoulAnswer,
+    NoulQuestion,
+    ScoreAnswer,
+    ScoreQuestion,
+    UsageInfo,
+)
 
 __version__ = "0.3.4"
 __all__ = [
+    # Core agent
     "Agent",
     "RLAgent",
     "load",
@@ -33,13 +51,16 @@ __all__ = [
     "detect_language",
     "detect_script",
     "is_english",
+    # Email helpers
     "clean_email_body",
     "email_questions",
     "email_state",
+    # Presets
     "guard_questions",
     "moderation_questions",
     "router_questions",
     "triage_questions",
+    # Training utilities
     "proper_reward",
     "td_lambda_targets",
     "ece_score",
@@ -47,5 +68,24 @@ __all__ = [
     "render_options",
     "QTYPES",
     "QTYPE_NAMES",
+    # Pydantic schemas (request)
+    "DecideRequest",
+    "BatchDecideRequest",
+    "ChoiceQuestion",
+    "ScoreQuestion",
+    "NoulQuestion",
+    "AnyQuestion",
+    # Pydantic schemas (response)
+    "DecisionResponse",
+    "BatchDecisionResponse",
+    "ChoiceAnswer",
+    "ScoreAnswer",
+    "NoulAnswer",
+    "AnyAnswer",
+    "UsageInfo",
+    # Error models
+    "ErrorDetail",
+    "ErrorResponse",
+    # Version
     "__version__",
 ]

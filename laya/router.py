@@ -32,11 +32,34 @@ from typing import Any, Dict, List, Optional, Union
 
 from .lang import analyse
 
+# The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
+BUNDLE_REPO = "convaiinnovations/laya"
 DEFAULT_MODELS = {
+    "english": (BUNDLE_REPO, None),
+    "multilingual": (BUNDLE_REPO, "multilingual"),
+    "typed-decisions": (BUNDLE_REPO, "typed-decisions"),
+}
+
+# The same checkpoints also live in their own repos, for anyone who prefers them.
+STANDALONE_MODELS = {
     "english": "convaiinnovations/laya",
     "multilingual": "convaiinnovations/laya-multilingual",
     "typed-decisions": "convaiinnovations/laya-typed-decisions",
 }
+
+
+def _repo_str(spec):
+    """Human-readable id for a model spec: 'repo' or 'repo/subfolder'."""
+    repo, sub = _split(spec)
+    return "%s/%s" % (repo, sub) if sub else repo
+
+
+def _split(spec):
+    """Normalise a model spec to (repo_or_path, subfolder)."""
+    if isinstance(spec, (tuple, list)):
+        repo, sub = (list(spec) + [None])[:2]
+        return repo, sub
+    return spec, None
 
 # Aliases people are likely to type.
 _ALIASES = {
@@ -118,8 +141,9 @@ class Router:
         max_loaded: int = 1,
         default: str = "english",
         auto_task_detection: bool = False,
+        standalone_repos: bool = False,
     ):
-        self.models = dict(DEFAULT_MODELS)
+        self.models = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
         if models:
             self.models.update({normalise_name(k): v for k, v in models.items()})
         self.device = device
@@ -138,7 +162,8 @@ class Router:
             self._touch(key)
             return self._agents[key]
         from .agent import Agent
-        agent = Agent(self.models[key], device=self.device, token=self.token)
+        repo, sub = _split(self.models[key])
+        agent = Agent(repo, device=self.device, token=self.token, subfolder=sub)
         self._agents[key] = agent
         self._order.append(key)
         self._evict()
@@ -189,12 +214,12 @@ class Router:
         """
         if model is not None:
             key = normalise_name(model)
-            return RouteDecision(model=key, repo=self.models[key], reason="explicit model=%r" % model,
+            return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit model=%r" % model,
                                  detection=None, workflow=None)
 
         if task is not None:
             key = normalise_name("typed-decisions" if str(task).lower().replace("-", "_") == "typed_decisions" else task)
-            return RouteDecision(model=key, repo=self.models[key], reason="explicit task=%r" % task,
+            return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit task=%r" % task,
                                  detection=None, workflow=None)
 
         workflow = match_typed_decisions_workflow(questions or {})
@@ -205,7 +230,7 @@ class Router:
 
         if lang is not None:
             key = "english" if str(lang).lower().split("-")[0] in ("en", "eng", "english") else "multilingual"
-            return RouteDecision(model=key, repo=self.models[key], reason="explicit lang=%r" % lang,
+            return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
                                  detection=None, workflow=workflow)
 
         det = analyse(state)
@@ -222,7 +247,7 @@ class Router:
         else:
             key = "english"
             reason = "English Latin text"
-        return RouteDecision(model=key, repo=self.models[key], reason=reason,
+        return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason=reason,
                              detection=det, workflow=workflow)
 
     # ------------------------------------------------------------------ running

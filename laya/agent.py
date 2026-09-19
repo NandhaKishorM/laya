@@ -101,7 +101,14 @@ class Agent:
         model_id_or_path: str = "convaiinnovations/laya",
         device: Optional[str] = None,
         token: Optional[str] = None,
+        subfolder: Optional[str] = None,
     ):
+        """Load a Laya checkpoint.
+
+        `subfolder` selects one checkpoint from a repo that bundles several, e.g.
+        `Agent("convaiinnovations/laya", subfolder="multilingual")`. Only that subfolder is
+        downloaded, so bundling does not cost every user the whole family.
+        """
         from safetensors.torch import load_file
         from transformers import AutoTokenizer
 
@@ -114,7 +121,18 @@ class Agent:
                 )
             from huggingface_hub import snapshot_download
 
-            model_dir = snapshot_download(model_id_or_path, token=token or os.environ.get("HF_TOKEN"))
+            kw = {"token": token or os.environ.get("HF_TOKEN")}
+            if subfolder:
+                # fetch only the requested checkpoint, not every checkpoint in the repo
+                kw["allow_patterns"] = [f"{subfolder}/*"]
+            model_dir = snapshot_download(model_id_or_path, **kw)
+
+        if subfolder:
+            model_dir = os.path.join(model_dir, subfolder)
+            if not os.path.isdir(model_dir):
+                raise FileNotFoundError(
+                    f"Subfolder {subfolder!r} not found in {model_id_or_path!r}."
+                )
 
         _fix_tokenizer_config(model_dir)
 
@@ -316,6 +334,13 @@ class Agent:
 RLAgent = Agent
 
 
-def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None, token: Optional[str] = None) -> Agent:
-    """Helper function to load a Laya agent model."""
-    return Agent(model_id_or_path, device=device, token=token)
+def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,
+         token: Optional[str] = None, subfolder: Optional[str] = None) -> Agent:
+    """Load a Laya agent.
+
+    `subfolder` picks one checkpoint out of a repo that bundles several:
+
+        laya.load("convaiinnovations/laya")                           # English (repo root)
+        laya.load("convaiinnovations/laya", subfolder="multilingual")
+    """
+    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder)

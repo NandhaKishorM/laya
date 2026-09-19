@@ -6,7 +6,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from laya.lang import analyse, detect_script, guess_latin_language, is_english, state_text  # noqa: E402
 from laya.router import (  # noqa: E402
+    BUNDLE_REPO,
     DEFAULT_MODELS,
+    STANDALONE_MODELS,
+    _repo_str,
     Router,
     match_typed_decisions_workflow,
     normalise_name,
@@ -149,7 +152,7 @@ check("route/explicit beats workflow",
 
 # decision payload shape
 d = r.route({"body": "मुझसे दो बार शुल्क लिया गया"}, Q_GENERIC)
-check("decision/has repo", d["repo"], DEFAULT_MODELS["multilingual"])
+check("decision/has repo", d["repo"], "convaiinnovations/laya/multilingual")
 check("decision/has reason", isinstance(d["reason"], str) and len(d["reason"]) > 0, True)
 check("decision/detection script", d["detection"]["script"], "devanagari")
 check("decision/.model property", d.model, "multilingual")
@@ -204,6 +207,28 @@ rr.unload("english")
 check("lru/unload one", "english" in rr.loaded, False)
 rr.unload()
 check("lru/unload all", rr.loaded, [])
+
+
+# --------------------------------------------------------------------- bundle vs standalone
+check("bundle/english is repo root", DEFAULT_MODELS["english"], (BUNDLE_REPO, None))
+check("bundle/multilingual subfolder", DEFAULT_MODELS["multilingual"], (BUNDLE_REPO, "multilingual"))
+check("bundle/typed subfolder", DEFAULT_MODELS["typed-decisions"], (BUNDLE_REPO, "typed-decisions"))
+check("repo_str/root", _repo_str((BUNDLE_REPO, None)), "convaiinnovations/laya")
+check("repo_str/sub", _repo_str((BUNDLE_REPO, "multilingual")), "convaiinnovations/laya/multilingual")
+check("repo_str/plain string", _repo_str("some/repo"), "some/repo")
+
+r_bundle = Router()
+r_alone = Router(standalone_repos=True)
+check("bundle/default router uses bundle",
+      r_bundle.route({"m": "मुझसे दो बार"}, Q_GENERIC)["repo"], "convaiinnovations/laya/multilingual")
+check("standalone/opt-in uses own repo",
+      r_alone.route({"m": "मुझसे दो बार"}, Q_GENERIC)["repo"], "convaiinnovations/laya-multilingual")
+check("standalone/english unchanged",
+      r_alone.route({"m": "I was charged twice"}, Q_GENERIC)["repo"], "convaiinnovations/laya")
+check("standalone map complete", sorted(STANDALONE_MODELS), sorted(DEFAULT_MODELS))
+# a local-path override must still work (the Space and tests rely on it)
+r_local = Router(models={"english": "/tmp/en", "multilingual": "/tmp/ml"})
+check("override/local path kept", r_local.route({"m": "मुझसे दो बार"}, Q_GENERIC)["repo"], "/tmp/ml")
 
 
 # --------------------------------------------------------------------- report

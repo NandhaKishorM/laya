@@ -1,18 +1,18 @@
 """
-Tests for laya.server and laya.cli — validates all endpoints and CLI commands.
+Tests for laya.server — validates all endpoints.
 
 Run with:
     pip install "laya[dev]"
     pytest tests/ -v
 
 These tests use FastAPI's TestClient (synchronous ASGI test adapter) so
-they do NOT require a running server or a loaded model. The agent is patched
-with a lightweight mock that returns a predictable response.
+they do NOT require a running server or a real model download.
+The `_init_router` function is patched with a lightweight mock that returns
+a predictable response — so tests run in milliseconds, not minutes.
 """
 
 from __future__ import annotations
 
-import json
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
@@ -20,10 +20,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Mock payloads — what Router.predict() would return
 # ---------------------------------------------------------------------------
 
-# Minimal raw response that Agent.system_one() would return.
 _MOCK_RAW_CHOICE = {
     "model": "laya-rl-agent",
     "answers": {
@@ -67,22 +66,47 @@ _MOCK_RAW_SCORE = {
 }
 
 
-def _make_mock_agent(raw: Dict[str, Any] = None):
-    """Return a mock Agent whose system_one() returns *raw*."""
-    agent = MagicMock()
-    agent.device = MagicMock()
-    agent.device.__str__ = lambda s: "cpu"
-    agent.dtype = MagicMock()
-    agent.dtype.__str__ = lambda s: "torch.float32"
-    agent.system_one.return_value = raw or _MOCK_RAW_CHOICE
-    return agent
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_router(raw: Dict[str, Any] = None) -> MagicMock:
+    """Return a mock Router whose predict() returns *raw* synchronously."""
+    router = MagicMock()
+    router.predict.return_value = raw if raw is not None else _MOCK_RAW_CHOICE
+    return router
+
+
+def _make_client(raw: Dict[str, Any] = None) -> TestClient:
+    """
+    Build a TestClient where _init_router is patched to return a mock.
+
+    This prevents any model download from happening during tests.
+    The patch target is "laya.server._init_router" because server.py
+    calls _init_router() in the lifespan, and _init_router is a
+    module-level function that can be patched before the app starts.
+    """
+    mock_router = _make_mock_router(raw)
+    with patch("laya.server._init_router", return_value=mock_router):
+        from laya import server as srv
+        # Force re-import in case a previous test cached the module
+        import importlib
+        importlib.reload(srv)
+        app = srv.create_app()
+    # TestClient must be created AFTER the patch context because the
+    # lifespan runs when entering TestClient.__enter__.
+    # We patch _init_router globally so even after the `with` exits the
+    # already-created app object holds the right lifespan reference.
+    with patch("laya.server._init_router", return_value=mock_router):
+        return TestClient(app)
 
 
 @pytest.fixture()
 def client_choice():
-    """TestClient with a mock agent returning a choice answer."""
-    mock_agent = _make_mock_agent(_MOCK_RAW_CHOICE)
-    with patch("laya.load", return_value=mock_agent):
+    """TestClient returning a choice answer."""
+    mock_router = _make_mock_router(_MOCK_RAW_CHOICE)
+    with patch("laya.server._init_router", return_value=mock_router):
         from laya.server import create_app
         app = create_app()
         with TestClient(app) as c:
@@ -91,8 +115,8 @@ def client_choice():
 
 @pytest.fixture()
 def client_noul():
-    mock_agent = _make_mock_agent(_MOCK_RAW_NOUL)
-    with patch("laya.load", return_value=mock_agent):
+    mock_router = _make_mock_router(_MOCK_RAW_NOUL)
+    with patch("laya.server._init_router", return_value=mock_router):
         from laya.server import create_app
         app = create_app()
         with TestClient(app) as c:
@@ -101,8 +125,8 @@ def client_noul():
 
 @pytest.fixture()
 def client_score():
-    mock_agent = _make_mock_agent(_MOCK_RAW_SCORE)
-    with patch("laya.load", return_value=mock_agent):
+    mock_router = _make_mock_router(_MOCK_RAW_SCORE)
+    with patch("laya.server._init_router", return_value=mock_router):
         from laya.server import create_app
         app = create_app()
         with TestClient(app) as c:
@@ -120,7 +144,6 @@ def test_health_ok(client_choice):
     assert data["status"] == "ok"
     assert "model" in data
     assert "version" in data
-    assert "device" in data
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +248,6 @@ def test_systemone_alias_identical_to_decide(client_choice):
 
     assert resp_decide.status_code == 200
     assert resp_systemone.status_code == 200
-    # Both endpoints must produce structurally identical responses.
     d1 = resp_decide.json()
     d2 = resp_systemone.json()
     assert d1["answers"].keys() == d2["answers"].keys()

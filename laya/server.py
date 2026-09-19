@@ -1,7 +1,7 @@
 """
 Laya REST API server — OpenAI-compatible decision inference endpoint.
 
-Wraps ``laya.Agent`` behind a FastAPI application so that Laya can be
+Wraps ``laya.Router`` behind a FastAPI application so that Laya can be
 called from any language (JavaScript, Go, Rust, cURL, …) and submitted
 to OpenRouter as a drop-in replacement for TypeSafe Jev.
 
@@ -49,13 +49,13 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 import laya
 from laya.schemas import (
@@ -98,18 +98,33 @@ class _Settings:
 settings = _Settings()
 
 # ---------------------------------------------------------------------------
-# Global agent holder
+# Global router holder
 # ---------------------------------------------------------------------------
 
-_agent: Optional[laya.Agent] = None
-_agent_lock = asyncio.Lock()
-_thread_pool: Optional[asyncio.AbstractEventLoop] = None
+_router: Optional[laya.Router] = None
 
 
-def _get_or_raise() -> laya.Agent:
-    if _agent is None:
-        raise RuntimeError("Agent is not loaded yet — the server is still starting.")
-    return _agent
+def _init_router() -> laya.Router:
+    """
+    Build and preload the Laya Router.
+
+    This is a module-level function so tests can patch it easily:
+
+        with patch("laya.server._init_router", return_value=mock_router):
+            ...
+
+    In tests, the mock bypasses model download entirely.
+    """
+    r = laya.Router(max_loaded=1, device=settings.device, token=settings.hf_token)
+    r.preload([settings.model])
+    return r
+
+
+def _get_or_raise() -> laya.Router:
+    """Return the loaded Router, or raise 503 if startup hasn't finished."""
+    if _router is None:
+        raise RuntimeError("Router is not loaded yet — the server is still starting.")
+    return _router
 
 
 # ---------------------------------------------------------------------------
@@ -119,33 +134,28 @@ def _get_or_raise() -> laya.Agent:
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    global _agent
+    global _router
 
-    logger.info("Loading Laya model '%s' on device '%s' …", settings.model, settings.device or "auto")
+    logger.info(
+        "Loading Laya model '%s' on device '%s' …",
+        settings.model,
+        settings.device or "auto",
+    )
     t0 = time.perf_counter()
 
+    # Run the blocking model load in a thread-pool executor so the event loop stays free.
     loop = asyncio.get_running_loop()
-    _agent = await loop.run_in_executor(
-        None,
-        lambda: laya.load(
-            settings.model,
-            device=settings.device,
-            token=settings.hf_token,
-        ),
-    )
+    _router = await loop.run_in_executor(None, _init_router)
 
     elapsed = time.perf_counter() - t0
-    logger.info(
-        "Model ready in %.2fs  |  device=%s  |  dtype=%s",
-        elapsed,
-        _agent.device,
-        _agent.dtype,
-    )
+    logger.info("Model ready in %.2fs", elapsed)
 
-    yield  # ← server runs here
+    yield  # ⌛ server handles requests here
 
     logger.info("Shutting down — releasing model.")
-    _agent = None
+    if _router is not None:
+        _router.unload()
+    _router = None
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +186,7 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
     )
 
-    # ── CORS ────────────────────────────────────────────────────────────────
+    # ── CORS ──────────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -185,7 +195,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── Request timing middleware ────────────────────────────────────────────
+    # ── Request timing middleware ─────────────────────────────────────────────
     @app.middleware("http")
     async def _add_timing_header(request: Request, call_next):
         t0 = time.perf_counter()
@@ -194,7 +204,7 @@ def create_app() -> FastAPI:
         response.headers["X-Response-Time-Ms"] = f"{ms:.2f}"
         return response
 
-    # ── Global exception handler ─────────────────────────────────────────────
+    # ── Global exception handler ──────────────────────────────────────────────
     @app.exception_handler(Exception)
     async def _global_exception_handler(request: Request, exc: Exception):
         logger.exception("Unhandled error on %s %s", request.method, request.url.path)
@@ -209,12 +219,15 @@ def create_app() -> FastAPI:
             content=body.model_dump(),
         )
 
-    # ── Routes ──────────────────────────────────────────────────────────────
+    # ── Routes ────────────────────────────────────────────────────────────────
     _register_routes(app)
 
     return app
 
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+# ---------------------------------------------------------------------------
+# Auth helper
+# ---------------------------------------------------------------------------
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -240,7 +253,7 @@ async def _check_auth(credentials: Optional[HTTPAuthorizationCredentials] = None
 
 def _register_routes(app: FastAPI) -> None:
 
-    # ── /health ─────────────────────────────────────────────────────────────
+    # ── /health ───────────────────────────────────────────────────────────────
 
     @app.get(
         "/health",
@@ -253,16 +266,14 @@ def _register_routes(app: FastAPI) -> None:
         Returns ``200 OK`` when the model is loaded and ready.
         Use this as the liveness/readiness probe in Kubernetes / Docker.
         """
-        agent = _get_or_raise()
+        _get_or_raise()  # raises 500 if not loaded yet
         return {
             "status": "ok",
             "model": settings.model,
             "version": laya.__version__,
-            "device": str(agent.device),
-            "dtype": str(agent.dtype),
         }
 
-    # ── /v1/models ──────────────────────────────────────────────────────────
+    # ── /v1/models ────────────────────────────────────────────────────────────
 
     @app.get(
         "/v1/models",
@@ -291,7 +302,7 @@ def _register_routes(app: FastAPI) -> None:
             ],
         }
 
-    # ── POST /v1/decide ─────────────────────────────────────────────────────
+    # ── POST /v1/decide ───────────────────────────────────────────────────────
 
     @app.post(
         "/v1/decide",
@@ -334,14 +345,14 @@ def _register_routes(app: FastAPI) -> None:
           }'
         ```
         """
-        agent = _get_or_raise()
+        router = _get_or_raise()
         raw_questions = _to_raw_questions(request.questions)
 
         loop = asyncio.get_running_loop()
         try:
             raw = await loop.run_in_executor(
                 None,
-                lambda: agent.system_one(request.state, raw_questions),
+                lambda: router.predict(request.state, raw_questions, model=settings.model),
             )
         except ValueError as exc:
             raise HTTPException(
@@ -353,7 +364,7 @@ def _register_routes(app: FastAPI) -> None:
 
         return DecisionResponse.from_raw(raw)
 
-    # ── POST /v1/decide/batch ────────────────────────────────────────────────
+    # ── POST /v1/decide/batch ─────────────────────────────────────────────────
 
     @app.post(
         "/v1/decide/batch",
@@ -376,7 +387,7 @@ def _register_routes(app: FastAPI) -> None:
         This is the fastest way to process a queue of tickets, emails, or log lines
         in bulk — all states run in the thread-pool concurrently.
         """
-        agent = _get_or_raise()
+        router = _get_or_raise()
         raw_questions = _to_raw_questions(request.questions)
 
         loop = asyncio.get_running_loop()
@@ -384,7 +395,7 @@ def _register_routes(app: FastAPI) -> None:
         async def _infer_one(state) -> Dict[str, Any]:
             return await loop.run_in_executor(
                 None,
-                lambda: agent.system_one(state, raw_questions),
+                lambda: router.predict(state, raw_questions, model=settings.model),
             )
 
         try:
@@ -406,7 +417,7 @@ def _register_routes(app: FastAPI) -> None:
             total_usage=UsageInfo(input_tokens=total_tokens, output_tokens=0),
         )
 
-    # ── POST /v1/systemone ──────────────────────────────────────────────────
+    # ── POST /v1/systemone ────────────────────────────────────────────────────
     # 100% wire-compatible alias for the TypeSafe Jev SDK.
     # The TypeSafe Python SDK calls POST /v1/systemone with the same body shape
     # as our /v1/decide, so this single alias makes laya-sdk and @typesafe-ai/sdk
@@ -458,14 +469,14 @@ def _register_routes(app: FastAPI) -> None:
         const client = new TypeSafeClient({ baseURL: "http://localhost:8000" });
         ```
         """
-        agent = _get_or_raise()
+        router = _get_or_raise()
         raw_questions = _to_raw_questions(request.questions)
 
         loop = asyncio.get_running_loop()
         try:
             raw = await loop.run_in_executor(
                 None,
-                lambda: agent.system_one(request.state, raw_questions),
+                lambda: router.predict(request.state, raw_questions, model=settings.model),
             )
         except ValueError as exc:
             raise HTTPException(
@@ -486,7 +497,7 @@ def _register_routes(app: FastAPI) -> None:
 def _to_raw_questions(questions: Dict[str, AnyQuestion]) -> Dict[str, Dict]:
     """
     Convert validated Pydantic question models back to the raw dict format
-    expected by ``Agent.system_one()``.
+    expected by ``Router.predict()`` → ``Agent.system_one()``.
     """
     out: Dict[str, Dict] = {}
     for qid, q in questions.items():

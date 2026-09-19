@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
 <p align="center">
-  <img src="assets/laya_benchmark_common.png" alt="Laya consolidated benchmark: application workflows, English vs other languages, speed on a T4, batching, and typed-decisions against Jev" width="100%" />
+  <img src="assets/laya_vs_jev.png" alt="Laya with routing versus TypeSafe Jev: accuracy on shared public datasets, language coverage, speed and calibration" width="100%" />
 </p>
 
 Laya evaluates typed questions (`choice`, `score`, `noul`) over any state (text, email, ticket or JSON document) in **a single forward pass** — 33 ms for one question, 7.2 ms/question batched, measured on a T4. No text generation, so nothing to parse and nothing to hallucinate.
@@ -266,21 +266,27 @@ has been independently measured at 236-276 ms p50
 [nibzard](https://github.com/nibzard/decision-model-benchmark)) -- Laya answers a single
 question roughly **6-7x faster**.
 
-### Against Jev, on identical public datasets
+### Laya (with routing) vs Jev
 
-Jev figures are **published by third parties, not measured here** (no TypeSafe API access).
-Sample sizes and prompts differ, so read these as indicative rather than a controlled
-head-to-head.
+Every Laya figure is what `Router().predict(...)` actually returns — the checkpoint the router
+selects for that input, not a hand-picked best of three. Jev figures are **third-party
+published, never measured here** (no TypeSafe API access), so sample sizes and prompts differ.
 
-| dataset | Jev | Laya | |
+| | Jev 1.13.0 | Laya (routed) | |
 |---|---|---|---|
-| **typed-decisions** (2,000 decisions) | 0.727 | **0.766** | `laya-typed-decisions` |
-| AG News (4 labels) | 0.910 | **0.950** | `laya` |
-| DAIR Emotion (6 labels) | 0.480 · Brier 0.846 · NLL 5.588 | **0.595** | `laya`, held out |
-| calibration (ECE) | 0.246 | **0.081** | after temperature fitting |
+| typed-decisions, 2,000 decisions | 0.727 | **0.766** | +0.039 |
+| AG News, 4 labels | 0.910 | **0.950** | +0.040 |
+| DAIR Emotion, 6 labels | 0.480 | **0.595** | +0.115 |
+| ECE *(lower better)* | 0.246 | **0.081** | 3× better |
+| p50 latency, 1 question | 236–276 ms | **32.8 ms** | 7.8× faster |
+| Languages usable | *no published benchmark* | **45 of 51** | — |
+| Weights | closed API | **Apache 2.0** | — |
+| Cost | $0.042 / 1M tokens | **$0 self-hosted** | — |
 
-On DAIR Emotion, Jev assigned **zero probability to the true label on 16% of examples** — a
-hard failure for anything branching on confidence.
+On DAIR Emotion, Jev assigned **zero probability to the true label on 16% of examples** — a hard
+failure for anything branching on confidence.
+
+Full detail, including every workflow and all 51 languages: **[`BENCHMARKS.md`](BENCHMARKS.md)**.
 
 ### typed-decisions, measured on all three checkpoints
 

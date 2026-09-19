@@ -131,6 +131,14 @@ class Router:
 
     Models are downloaded and built on first use. `max_loaded` caps how many stay resident
     (least-recently-used is evicted), because all three together are ~1.16B parameters.
+
+    For a server or a demo, preload instead: a cold load costs seconds, while detection costs
+    microseconds, so anything that alternates languages at `max_loaded=1` reloads on every
+    request.
+
+        r = Router(preload=True)                    # all three resident, routing is free
+        r = Router(preload=True, device="cuda")
+        r.preload(["english", "multilingual"])      # or just the two you serve
     """
 
     def __init__(
@@ -142,6 +150,7 @@ class Router:
         default: str = "english",
         auto_task_detection: bool = False,
         standalone_repos: bool = False,
+        preload: bool = False,
     ):
         self.models = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
         if models:
@@ -153,6 +162,8 @@ class Router:
         self.auto_task_detection = bool(auto_task_detection)
         self._agents: Dict[str, Any] = {}
         self._order: List[str] = []          # least-recently-used first
+        if preload:
+            self.preload()
 
     # ------------------------------------------------------------------ loading
     def load(self, name: str):
@@ -182,6 +193,20 @@ class Router:
             for k in list(self._agents):
                 if k not in self._order:
                     self._agents.pop(k, None)
+
+    def preload(self, names: Optional[List[str]] = None):
+        """Download and build checkpoints up front so no request ever pays a model load.
+
+        A cold load costs seconds; language detection costs microseconds. With every
+        checkpoint resident, routing is effectively free -- which is what you want in a
+        server or a demo. `max_loaded` is raised to fit whatever is preloaded, otherwise
+        the LRU would immediately evict what this just built.
+        """
+        names = [normalise_name(n) for n in (names or list(self.models))]
+        self.max_loaded = max(self.max_loaded, len(names))
+        for n in names:
+            self.load(n)
+        return self
 
     def unload(self, name: Optional[str] = None):
         """Free one model, or all of them."""

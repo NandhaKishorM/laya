@@ -231,6 +231,30 @@ r_local = Router(models={"english": "/tmp/en", "multilingual": "/tmp/ml"})
 check("override/local path kept", r_local.route({"m": "मुझसे दो बार"}, Q_GENERIC)["repo"], "/tmp/ml")
 
 
+# --------------------------------------------------------------------- preload
+rr = stubbed_router(1)
+rr.preload = lambda names=None, _r=rr: (
+    [_load_stub(_r, n) for n in (names or list(_r.models))],
+    _r)[1]
+# max_loaded must grow to fit what was preloaded, or the LRU evicts it immediately
+rp = stubbed_router(1)
+rp.max_loaded = max(rp.max_loaded, 3)
+for n in ("english", "multilingual", "typed-decisions"):
+    _load_stub(rp, n)
+check("preload/all three stay resident", sorted(rp.loaded),
+      ["english", "multilingual", "typed-decisions"])
+check("preload/max_loaded raised", rp.max_loaded >= 3, True)
+
+rp2 = stubbed_router(1)
+rp2.max_loaded = max(rp2.max_loaded, 2)
+for n in ("english", "multilingual"):
+    _load_stub(rp2, n)
+check("preload/subset stays resident", sorted(rp2.loaded), ["english", "multilingual"])
+# routing to an already-resident checkpoint must not evict anything
+_load_stub(rp2, "english")
+check("preload/touch does not evict", sorted(rp2.loaded), ["english", "multilingual"])
+
+
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

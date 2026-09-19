@@ -1,6 +1,8 @@
-# Laya
-
-Fast, non-autoregressive System 1 decision engine with mathematically calibrated probabilities.
+<div align="center">
+  <img src="assets/logo-banner.png" alt="Laya: System 1 Decision Engine" width="600">
+  <br><br>
+  <p><b>Fast, non-autoregressive System 1 decision engine with mathematically calibrated probabilities.</b></p>
+</div>
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/15d4Yv__KHeHjshVb-6PRTfqVllxih2S3?usp=sharing)
 [![PyPI version](https://img.shields.io/pypi/v/laya.svg)](https://pypi.org/project/laya/)

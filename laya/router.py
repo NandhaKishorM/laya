@@ -225,12 +225,12 @@ class Router:
 
         A cold load costs seconds; language detection costs microseconds. With every
         checkpoint resident, routing is effectively free -- which is what you want in a
-        server or a demo. `max_loaded` is raised to fit whatever is preloaded, otherwise
-        the LRU would immediately evict what this just built.
+        server or a demo. `max_loaded` is raised to fit both the requested checkpoints and
+        all already-resident agents, so incremental preloading does not evict either.
         """
         names = [normalise_name(n) for n in (names or list(self.models))]
         with self._lock:
-            self.max_loaded = max(self.max_loaded, len(names), len(self._agents))
+            self.max_loaded = max(self.max_loaded, len(set(names) | set(self._agents)))
             for n in names:
                 if n not in self._agents:      # an attached agent is already built
                     self.load(n)

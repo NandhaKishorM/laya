@@ -3,6 +3,7 @@ import sys
 import os
 import threading
 import time as _time
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -313,27 +314,57 @@ check("override/local path kept", r_local.route({"m": "मुझसे दो �
 
 
 # --------------------------------------------------------------------- preload
-rr = stubbed_router(1)
-rr.preload = lambda names=None, _r=rr: (
-    [_load_stub(_r, n) for n in (names or list(_r.models))],
-    _r)[1]
-# max_loaded must grow to fit what was preloaded, or the LRU evicts it immediately
-rp = stubbed_router(1)
-rp.max_loaded = max(rp.max_loaded, 3)
-for n in ("english", "multilingual", "typed-decisions"):
-    _load_stub(rp, n)
-check("preload/all three stay resident", sorted(rp.loaded),
-      ["english", "multilingual", "typed-decisions"])
-check("preload/max_loaded raised", rp.max_loaded >= 3, True)
+# Exercise the real preload/load/LRU paths; only checkpoint construction is stubbed.
+with patch("laya.agent.Agent", side_effect=lambda repo, **kw: _Stub(repo)) as build:
+    rp = Router(preload=True)
+    check("preload/all three stay resident", sorted(rp.loaded),
+          ["english", "multilingual", "typed-decisions"])
+    check("preload/max_loaded raised", rp.max_loaded, 3)
+    check("preload/builds each model once", build.call_count, 3)
+    check("preload/returns router", rp.preload() is rp, True)
+    check("preload/repeated call reuses models", build.call_count, 3)
 
-rp2 = stubbed_router(1)
-rp2.max_loaded = max(rp2.max_loaded, 2)
-for n in ("english", "multilingual"):
-    _load_stub(rp2, n)
-check("preload/subset stays resident", sorted(rp2.loaded), ["english", "multilingual"])
-# routing to an already-resident checkpoint must not evict anything
-_load_stub(rp2, "english")
-check("preload/touch does not evict", sorted(rp2.loaded), ["english", "multilingual"])
+    rp2 = Router()
+    rp2.preload(["english", "multilingual"])
+    check("preload/subset stays resident", sorted(rp2.loaded), ["english", "multilingual"])
+    check("preload/subset capacity", rp2.max_loaded, 2)
+    rp2.load("english")
+    check("preload/touch does not evict", sorted(rp2.loaded), ["english", "multilingual"])
+    check("preload/touch does not rebuild", build.call_count, 5)
+
+    incremental = Router()
+    incremental.preload(["english"])
+    english = incremental.load("english")
+    incremental.preload(["multilingual"])
+    check("preload/incremental keeps both models", incremental.loaded, ["english", "multilingual"])
+    check("preload/incremental capacity", incremental.max_loaded, 2)
+    check("preload/incremental reuses original", incremental.load("english") is english, True)
+    check("preload/incremental avoids rebuilds", build.call_count, 7)
+
+    incremental.preload(["en", "english", "multi", "ml"])
+    check("preload/aliases do not inflate capacity", incremental.max_loaded, 2)
+    check("preload/aliases reuse models", build.call_count, 7)
+    incremental.preload(["english", "typed-decisions"])
+    check("preload/overlap preserves unrequested models", sorted(incremental.loaded),
+          ["english", "multilingual", "typed-decisions"])
+    check("preload/overlap capacity", incremental.max_loaded, 3)
+    for name in DEFAULT_MODELS:
+        incremental.predict("hello", Q_GENERIC, model=name)
+    check("preload/predictions never rebuild", build.call_count, 8)
+
+    attached = Router()
+    original = _Stub("already-built")
+    attached.attach("english", original)
+    attached.preload(["multilingual"])
+    check("preload/keeps attached model", attached.load("english") is original, True)
+    check("preload/attached and new stay resident", sorted(attached.loaded), ["english", "multilingual"])
+    check("preload/attached capacity", attached.max_loaded, 2)
+    check("preload/attached model not rebuilt", build.call_count, 9)
+
+    roomy = Router(max_loaded=5)
+    roomy.preload(["en", "english", "multi"])
+    check("preload/larger capacity is preserved", roomy.max_loaded, 5)
+    check("preload/duplicates build once", build.call_count, 11)
 
 
 # --------------------------------------------------------------------- attach

@@ -8,7 +8,7 @@ import pytest
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-from laya.serve import _env_bool, _resolve_model, create_app  # noqa: E402
+from laya.serve import _apply_thread_limit, _env_bool, _resolve_model, create_app  # noqa: E402
 
 
 class FakeRouter:
@@ -94,3 +94,15 @@ def test_helpers():
     import os
     os.environ.pop("X_FLAG", None)
     assert _env_bool("X_FLAG", True) is True
+
+
+def test_thread_limit(monkeypatch):
+    monkeypatch.delenv("LAYA_THREADS", raising=False)
+    assert _apply_thread_limit() is None  # unset -> no-op, no torch import
+    for bad in ("0", "-4", "abc", ""):
+        monkeypatch.setenv("LAYA_THREADS", bad)
+        assert _apply_thread_limit() is None
+    monkeypatch.setenv("LAYA_THREADS", "8")
+    assert _apply_thread_limit() == 8
+    import torch
+    assert torch.get_num_threads() == 8

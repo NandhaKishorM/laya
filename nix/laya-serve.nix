@@ -67,6 +67,20 @@ in
       description = "Build the checkpoints at startup rather than lazily on first request.";
     };
 
+    threads = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.positive;
+      default = null;
+      example = 16;
+      description = ''
+        Cap torch intra-op threads for CPU inference (sets LAYA_THREADS and
+        OMP_NUM_THREADS). Ignored in practice on CUDA. Keep this at or below the
+        host's *physical* core count — oversubscribing the logical/hyperthread
+        count is a large latency regression. For single-request latency, a value
+        below the core count (e.g. 8-16) is often fastest; for batched
+        throughput, the physical core count is best. null leaves torch's default.
+      '';
+    };
+
     autoTaskDetection = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -111,6 +125,10 @@ in
         LAYA_PRELOAD = if cfg.preload then "1" else "0";
         LAYA_MODELS = lib.concatStringsSep "," cfg.models;
         LAYA_AUTO_TASK = if cfg.autoTaskDetection then "1" else "0";
+      } // lib.optionalAttrs (cfg.threads != null) {
+        LAYA_THREADS = toString cfg.threads;
+        OMP_NUM_THREADS = toString cfg.threads;
+      } // {
         HF_HOME = "/var/lib/${cfg.stateDirectory}/huggingface";
         # torch-bin bundles its own CUDA runtime but still needs the host
         # driver's libcuda.so.1 / libnvidia-ml.so, which NixOS exposes here.

@@ -20,6 +20,9 @@ env var                 meaning                                        default
 ``LAYA_PRELOAD``        build the checkpoints at startup, not lazily   1
 ``LAYA_MODELS``         comma list to preload (english,multilingual,   (all)
                         typed-decisions); empty = every checkpoint
+``LAYA_THREADS``        cap torch intra-op threads (CPU inference).    (torch
+                        Keep <= physical cores; oversubscribing the     default)
+                        logical/hyperthread count is a large regression.
 ``LAYA_AUTO_TASK``      auto-route to the typed-decisions checkpoint   0
 ``LAYA_API_KEY``        if set, require ``Authorization: Bearer <it>``  (none)
 ``LAYA_LOG_LEVEL``      uvicorn log level                              info
@@ -61,10 +64,30 @@ def _resolve_model(model: Optional[str]) -> Optional[str]:
     return key if key in _KNOWN_MODELS else None
 
 
+def _apply_thread_limit():
+    """Honour LAYA_THREADS by capping torch's intra-op thread count for CPU
+    inference. Returns the value applied, or None if unset/invalid. torch is
+    imported only when a limit is actually requested."""
+    raw = os.environ.get("LAYA_THREADS")
+    if not raw:
+        return None
+    try:
+        n = int(raw)
+    except ValueError:
+        return None
+    if n <= 0:
+        return None
+    import torch
+
+    torch.set_num_threads(n)
+    return n
+
+
 def build_router():
     """Build a Router from the environment, preloading unless told otherwise."""
     from .router import Router
 
+    _apply_thread_limit()
     device = os.environ.get("LAYA_DEVICE") or None
     models_env = os.environ.get("LAYA_MODELS", "").strip()
     preload_names = [m.strip() for m in models_env.split(",") if m.strip()] or None

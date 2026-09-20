@@ -28,6 +28,9 @@ def check(name, got, want):
 # --------------------------------------------------------------------- script detection
 SCRIPTS = [
     ("english", "The customer was charged twice and wants a refund.", "latin"),
+    ("armenian", "Հայերեն", "armenian"),
+    ("armenian uppercase", "ՀԱՅԵՐԵՆ", "armenian"),
+    ("armenian punctuation only", "։֊", "unknown"),
     ("french", "Le client a été facturé deux fois et demande un remboursement.", "latin"),
     ("hindi", "ग्राहक से दो बार शुल्क लिया गया और वह धनवापसी चाहता है।", "devanagari"),
     ("japanese", "お客様は二重に請求されたため返金を希望しています。", "kana"),
@@ -49,6 +52,7 @@ for label, text, want in SCRIPTS:
 # --------------------------------------------------------------------- english vs not
 for label, text, want in [
     ("plain english", "Please refund the duplicate charge on invoice 4411 today.", True),
+    ("armenian", "Հայերեն", False),
     ("english short", "refund me", True),
     ("hindi", "ग्राहक से दो बार शुल्क लिया गया", False),
     ("japanese", "お客様は二重に請求されました", False),
@@ -87,6 +91,9 @@ check("state_text/keys ignored",
 
 
 # --------------------------------------------------------------------- workflow signatures
+check("profile/armenian", analyse("Հայերեն")["script_profile"], {"armenian": 1.0})
+check("profile/armenian mixed with Latin", analyse("Հայերեն abc")["non_latin_fraction"], 0.7)
+
 TD = {
     "agent_trace_observability": ["action", "needs_review", "outcome", "risk", "urgency"],
     "customer_service": ["action", "category", "churn_risk", "needs_human", "urgency"],
@@ -121,6 +128,8 @@ Q_TD = {i: {"type": "noul", "instructions": "x"} for i in TD["customer_service"]
 
 cases = [
     ("english text", {"body": "I was charged twice, please refund."}, Q_GENERIC, {}, "english"),
+    ("armenian text", {"body": "Հայերեն"}, Q_GENERIC, {}, "multilingual"),
+    ("armenian explicit override", {"body": "Հայերեն"}, Q_GENERIC, {"model": "english"}, "english"),
     ("hindi text", {"body": "मुझसे दो बार शुल्क लिया गया"}, Q_GENERIC, {}, "multilingual"),
     ("japanese text", {"body": "二重に請求されました"}, Q_GENERIC, {}, "multilingual"),
     ("korean text", {"body": "두 번 청구되었습니다"}, Q_GENERIC, {}, "multilingual"),

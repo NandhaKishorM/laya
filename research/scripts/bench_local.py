@@ -112,8 +112,8 @@ def ece_score(conf, corr, bins=15):
     if not len(conf):
         return float("nan")
     e, edges = 0.0, np.linspace(0, 1, bins + 1)
-    for lo, hi in zip(edges[:-1], edges[1:]):
-        s = (conf > lo) & (conf <= hi)
+    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+        s = (conf >= lo if i == 0 else conf > lo) & (conf <= hi)
         if s.any():
             e += s.mean() * abs(conf[s].mean() - corr[s].mean())
     return float(e)

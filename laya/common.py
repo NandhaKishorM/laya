@@ -211,6 +211,25 @@ def temp_bucket(qtype: int, k: int) -> str:
     return "%s:%s" % (QTYPE_NAMES[int(qtype)], size)
 
 
+# A fitted temperature below 1 sharpens the logits instead of softening them. The shipped
+# `choice:11+` bucket is 0.1006, which multiplies them ~10x: a 0.24 top probability is published as
+# 0.99, so a caller gating on confidence is told a coin flip is a certainty. No honest calibration
+# needs to sharpen this hard, so refuse to apply one that does.
+TEMP_MIN = 0.5
+TEMP_MAX = 5.0
+
+
+def clamp_temperature(t, lo: float = TEMP_MIN, hi: float = TEMP_MAX) -> float:
+    """A usable temperature: `t` confined to [lo, hi], falling back to 1.0 if it is not a number."""
+    try:
+        t = float(t)
+    except (TypeError, ValueError):
+        return 1.0
+    if t != t or t in (float("inf"), float("-inf")):    # NaN / inf
+        return 1.0
+    return min(hi, max(lo, t))
+
+
 def amp_dtype(name: Optional[str]) -> torch.dtype:
     return torch.bfloat16 if name == "bf16" else torch.float16
 

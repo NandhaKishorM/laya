@@ -1,6 +1,7 @@
 """High-level inference runtime for laya System 1 decision models."""
 import json
 import os
+import warnings
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -8,9 +9,12 @@ import torch
 
 from .common import (
     QTYPES,
+    TEMP_MAX,
+    TEMP_MIN,
     amp_dtype,
     build_model,
     build_sequence,
+    clamp_temperature,
     collate_items,
     confidence_from_probs,
     render_options,
@@ -191,8 +195,23 @@ class Agent:
         except Exception:
             pass
 
-        self.temperature = self.cfg.get("temperature", [1.0, 1.0, 1.0])
-        self.temperature_by_options = self.cfg.get("temperature_by_options", {})
+        # Keep what the checkpoint shipped for inspection, but only ever apply clamped values:
+        # some buckets are fitted to sharpen rather than soften (see clamp_temperature).
+        self.temperature_raw = self.cfg.get("temperature", [1.0, 1.0, 1.0])
+        self.temperature_by_options_raw = self.cfg.get("temperature_by_options", {})
+        self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
+        self.temperature_by_options = {k: clamp_temperature(v)
+                                       for k, v in self.temperature_by_options_raw.items()}
+        rejected = ["%s=%.4g" % (k, float(v)) for k, v in self.temperature_by_options_raw.items()
+                    if clamp_temperature(v) != float(v)]
+        rejected += ["temperature[%d]=%.4g" % (i, float(t)) for i, t in enumerate(self.temperature_raw)
+                     if clamp_temperature(t) != float(t)]
+        if rejected:
+            warnings.warn(
+                "laya: this checkpoint ships temperatures outside [%g, %g] which would distort "
+                "confidence; clamping %s. Treat confidence from the affected buckets as uncalibrated."
+                % (TEMP_MIN, TEMP_MAX, ", ".join(rejected)),
+                RuntimeWarning, stacklevel=2)
         self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
 
         if self.device.type == "cuda" and torch.cuda.get_device_capability(self.device)[0] < 8:
@@ -302,7 +321,7 @@ class Agent:
             k = len(items[r]["markers"])
             qt = QTYPES[q["t"]]
             t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])
-            z = logits[r, :k] / max(1e-3, float(t_scale))
+            z = logits[r, :k] / t_scale
             p = np.exp(z - z.max())
             p = p / p.sum()
 

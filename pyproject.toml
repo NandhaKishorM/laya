@@ -42,6 +42,8 @@ serve = [
     "fastapi>=0.110.0",
     "uvicorn>=0.27.0",
 ]
+# `pip install laya[fast]` adds the TileLang GPU fast path (laya/fast.py); everything else works without it.
+fast = ["tilelang>=0.1.14"]
 
 [project.scripts]
 laya-serve = "laya.serve:main"

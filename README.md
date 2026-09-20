@@ -389,6 +389,26 @@ and no model forward pass runs.
 
 ---
 
+## GPU Fast Path (TileLang)
+
+`pip install laya[fast]` adds an optional forward built from fused [TileLang](https://github.com/tile-ai/tilelang)
+kernels: GEMM + bias/activation epilogues, GEMM + GEGLU, residual + LayerNorm, in-place RoPE, and a
+sliding-window flash attention that reads the packed QKV buffer directly. Weights stay resident in bf16
+and every (batch, length) bucket is captured as a CUDA graph, so a one-question call no longer pays
+~200 kernel launches from Python.
+
+```python
+agent = laya.load("convaiinnovations/laya", fast=True)   # or: agent.accelerate()
+agent.predict(state, questions)                            # same API, same answers
+```
+
+Numerics match the stock bf16 autocast path (max probability delta vs fp32 is the same, dataset
+accuracy/ECE identical within noise) — see `benchmarks/bench_fast.py` and [BENCHMARKS.md](BENCHMARKS.md#gpu-fast-path).
+Falls back to the stock forward on CPU/MPS or when `tilelang` is not installed; `agent.deaccelerate()`
+restores it. Kernels compile once per shape bucket on first use (a few seconds, cached on disk).
+
+---
+
 ## Automated Confidence Gating
 
 Because Laya's probabilities are trained with strictly proper scoring rules (RLCD), confidence scores are statistically meaningful:

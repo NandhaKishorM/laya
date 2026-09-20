@@ -268,7 +268,8 @@ class Router:
                                  detection=None, workflow=workflow)
 
         if lang is not None:
-            key = "english" if str(lang).lower().split("-")[0] in ("en", "eng", "english") else "multilingual"
+            language = str(lang).strip().lower().replace("_", "-").split("-", 1)[0]
+            key = "english" if language in ("en", "eng", "english") else "multilingual"
             return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
                                  detection=None, workflow=workflow)
 

@@ -168,6 +168,67 @@ router.unload()                     # free memory
 
 ---
 
+## Self-Hosting: HTTP Server (Jev-compatible)
+
+`laya.serve` exposes the `Router` over HTTP on the same `POST /v1/systemone`
+wire protocol as TypeSafe's hosted Jev API. Laya's answer payload is already
+schema-identical to what Jev returns (`choice`/`score`/`noul` answers and a
+`{input_tokens, output_tokens}` usage block), so an existing Jev client — e.g.
+the [`hs-jev`](https://github.com/getmissionctrl/hs-jev) Haskell client — just
+needs its `baseUrl` repointed; nothing else changes.
+
+```bash
+pip install "laya[serve]"          # adds fastapi + uvicorn
+LAYA_DEVICE=cuda LAYA_PRELOAD=1 laya-serve   # binds 0.0.0.0:8000, preloads all 3 checkpoints
+```
+
+```bash
+curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
+  "state": {"body": "billed twice, refund please or we cancel"},
+  "questions": {"dept": {"type": "choice", "instructions": "which team?",
+                "criteria": {"billing": "refunds", "tech": "bugs"}}}
+}'
+```
+
+Configuration is by environment variable: `LAYA_HOST`, `LAYA_PORT`,
+`LAYA_DEVICE`, `LAYA_PRELOAD`, `LAYA_MODELS` (comma list to preload),
+`LAYA_AUTO_TASK`, and `LAYA_API_KEY` (when set, clients must send
+`Authorization: Bearer <key>`). A client's `model` field is honoured when it
+names a Laya checkpoint (`english`/`multilingual`/`typed-decisions`), otherwise
+the router auto-selects by script/language.
+
+### Nix / NixOS
+
+This repo is a flake. On a machine with an NVIDIA GPU:
+
+```bash
+nix run .#laya-serve          # build (prebuilt CUDA torch, no compile) and serve
+nix develop                   # dev shell: torch-bin, transformers, fastapi, pytest
+```
+
+For a NixOS host, import the module and enable the service:
+
+```nix
+# flake inputs:  laya.url = "github:<you>/laya";  # or path:/… on the same host
+{
+  imports = [ laya.nixosModules.default ];
+  services.laya-serve = {
+    enable = true;
+    host = "0.0.0.0";           # or bind to the Tailscale/LAN address
+    openFirewall = true;
+    device = "cuda";
+    models = [ "english" "multilingual" "typed-decisions" ];
+    # apiKeyFile = config.age.secrets.laya-api-key.path;  # optional bearer auth
+  };
+}
+```
+
+The module runs a hardened `DynamicUser` systemd unit with CUDA device access,
+caches weights under `/var/lib/laya-serve`, and reads the bearer token (if any)
+via `LoadCredential` so it never enters the store.
+
+---
+
 ## Single-Model Mode (Direct SDK)
 
 If you only need a single checkpoint for a dedicated pipeline, you can load models directly:

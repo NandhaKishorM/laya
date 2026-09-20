@@ -3,6 +3,11 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+
+# Nix / direnv
+result
+result-*
+.direnv/
 env/
 venv/
 .venv/

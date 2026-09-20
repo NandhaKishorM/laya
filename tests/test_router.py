@@ -151,8 +151,10 @@ for label, state, qs, kw, want in cases:
 
 # auto task detection is opt-in
 r_auto = Router(auto_task_detection=True)
-check("route/td workflow, auto ON",
-      r_auto.route({"body": "I was charged twice"}, Q_TD)["model"], "typed-decisions")
+auto_td = r_auto.route({"body": "I was charged twice"}, Q_TD)
+check("route/td workflow, auto ON", auto_td["model"], "typed-decisions")
+check("route/td workflow repo is string", auto_td["repo"],
+      "convaiinnovations/laya/typed-decisions")
 check("route/auto ON but generic questions",
       r_auto.route({"body": "I was charged twice"}, Q_GENERIC)["model"], "english")
 # explicit model still beats auto-detected workflow

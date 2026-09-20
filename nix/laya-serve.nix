@@ -1,10 +1,10 @@
 # NixOS module: run laya-serve (Laya's Jev-compatible /v1/systemone HTTP API)
 # as a hardened systemd service with CUDA access.
 #
-# The package comes from this flake's overlay (`pkgs.laya-serve`). The flake's
-# `nixosModules.default` applies that overlay for you; if you import this file
-# directly, either apply `overlays.default` yourself or set
-# `services.laya-serve.package` explicitly.
+# The package is built from the host's own `pkgs` via ./package.nix (which pulls
+# the prebuilt CUDA torch, so the host needs `allowUnfree`). This deliberately
+# avoids an overlay, so the module also works on hosts that inject `pkgs` via
+# specialArgs and ignore module-level `nixpkgs.overlays`.
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.laya-serve;
@@ -23,9 +23,13 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.laya-serve;
-      defaultText = lib.literalExpression "pkgs.laya-serve";
-      description = "The laya-serve package to run.";
+      default = (pkgs.callPackage ./package.nix { }).laya-serve;
+      defaultText = lib.literalExpression "(pkgs.callPackage ./package.nix { }).laya-serve";
+      description = ''
+        The laya-serve package to run. Built from the host's own `pkgs` (needs
+        `allowUnfree` for the prebuilt CUDA torch), so it works regardless of how
+        the host provides `pkgs`.
+      '';
     };
 
     host = lib.mkOption {

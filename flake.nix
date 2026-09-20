@@ -10,49 +10,20 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      # Overlay: the `laya` python package + a `laya-serve` runner. Portable to
-      # any nixpkgs (e.g. missionctrl-infra's system pkgs).
+      # Overlay exposing `laya` + `laya-serve`, built from ./nix/package.nix.
       overlay = final: prev:
-        let
-          py = final.python3Packages;
-          laya = py.buildPythonPackage {
-            pname = "laya";
-            version = "0.3.4";
-            src = ./.;
-            format = "setuptools";
-            propagatedBuildInputs = [
-              py.torch-bin # prebuilt CUDA wheel — no source build
-              py.transformers
-              py.safetensors
-              py.huggingface-hub
-              py.numpy
-            ];
-            # Every test loads a checkpoint from the Hub -> needs network + a GPU.
-            doCheck = false;
-            # serve.py defers its fastapi/uvicorn imports, so this stays honest
-            # without dragging the web stack into the base library.
-            pythonImportsCheck = [ "laya" "laya.serve" ];
-          };
-          # The runner bundles the server deps so the unit needs nothing else.
-          pyEnv = final.python3.withPackages (ps: [ laya ps.fastapi ps.uvicorn ]);
-        in
-        {
-          inherit laya;
-          laya-serve = final.writeShellScriptBin "laya-serve" ''
-            exec ${pyEnv}/bin/python -m laya.serve "$@"
-          '';
-        };
+        let p = final.callPackage ./nix/package.nix { };
+        in { inherit (p) laya laya-serve; };
     in
     {
       overlays.default = overlay;
 
-      # Import into a NixOS host; this also applies the overlay so
-      # `pkgs.laya-serve` resolves.
-      nixosModules.default = { ... }: {
-        imports = [ ./nix/laya-serve.nix ];
-        nixpkgs.overlays = [ self.overlays.default ];
-      };
-      nixosModules.laya-serve = self.nixosModules.default;
+      # The module builds its package from the host's own `pkgs` (see
+      # nix/laya-serve.nix), so it works even on hosts that inject `pkgs` via
+      # specialArgs and ignore module-level `nixpkgs.overlays` — no overlay
+      # required here.
+      nixosModules.default = ./nix/laya-serve.nix;
+      nixosModules.laya-serve = ./nix/laya-serve.nix;
     }
     // flake-utils.lib.eachDefaultSystem (system:
       let

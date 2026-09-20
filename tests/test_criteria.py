@@ -8,9 +8,11 @@ import json
 import os
 import sys
 
+import numpy as np
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from laya.common import render_criterion, render_options  # noqa: E402
+from laya.common import ece_score, render_criterion, render_options  # noqa: E402
 
 PASS, FAIL = [], []
 
@@ -70,6 +72,13 @@ out = render_options({"t": "score", "ins": "x", "crit": [{"d": "low"}, "high", 2
 check("score/dict level -> json", out[0], 'level 0: {"d": "low"}')
 check("score/str level unchanged", out[1], "level 1: high")
 check("score/int level -> json", out[2], "level 2: 2")
+
+
+# --------------------------------------------------------------- calibration boundaries
+check("ece/zero confidence is included",
+      ece_score(np.array([0.0]), np.array([1.0])), 1.0)
+check("ece/zero confidence has its proper weight",
+      ece_score(np.array([0.0, 1.0]), np.array([1.0, 1.0])), 0.5)
 
 
 # --------------------------------------------------------------- unchanged behaviour

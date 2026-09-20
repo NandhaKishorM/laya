@@ -190,8 +190,8 @@ def ece_score(conf: np.ndarray, correct: np.ndarray, bins: int = 15) -> float:
         return float("nan")
     edges = np.linspace(0, 1, bins + 1)
     e = 0.0
-    for lo, hi in zip(edges[:-1], edges[1:]):
-        sel = (conf > lo) & (conf <= hi)
+    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+        sel = (conf >= lo if i == 0 else conf > lo) & (conf <= hi)
         if sel.any():
             e += sel.mean() * abs(conf[sel].mean() - correct[sel].mean())
     return float(e)

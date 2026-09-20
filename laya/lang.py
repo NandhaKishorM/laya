@@ -7,8 +7,10 @@ Tamil 0.113 at 20 options, where random is 0.050), while holding up far better o
 languages (French 0.487, Spanish 0.480). So the signal that matters most is *script*, and the
 secondary signal is whether Latin text is English.
 
-Script detection is exact. The Latin-script language guess is a stopword/diacritic heuristic and
-is explicitly best-effort: pass an explicit model or `lang=` when you already know the language.
+Known scripts are identified exactly; any unlisted alphabetic script is reported as `other` so it
+still reaches the multilingual checkpoint. The Latin-script language guess is a stopword/diacritic
+heuristic and is explicitly best-effort: pass an explicit model or `lang=` when you already know
+the language.
 """
 import re
 from typing import Dict, List, Optional, Union
@@ -38,8 +40,18 @@ _SCRIPT_RANGES = [
     ("ethiopic", ((0x1200, 0x137F),)),
     ("khmer", ((0x1780, 0x17FF),)),
     ("hangul", ((0x1100, 0x11FF), (0x3130, 0x318F), (0xAC00, 0xD7AF))),
-    ("kana", ((0x3040, 0x309F), (0x30A0, 0x30FF), (0x31F0, 0x31FF))),
+    ("kana", ((0x3040, 0x309F), (0x30A0, 0x30FF), (0x31F0, 0x31FF), (0xFF66, 0xFF9D))),
     ("han", ((0x3400, 0x4DBF), (0x4E00, 0x9FFF), (0xF900, 0xFAFF))),
+    ("syriac", ((0x0700, 0x074F), (0x0860, 0x086F))),
+    ("thaana", ((0x0780, 0x07BF),)),
+    ("nko", ((0x07C0, 0x07FF),)),
+    ("cherokee", ((0x13A0, 0x13FF), (0xAB70, 0xABBF))),
+    ("canadian_aboriginal", ((0x1400, 0x167F), (0x18B0, 0x18FF), (0x11AB0, 0x11ABF))),
+    ("mongolian", ((0x1800, 0x18AF),)),
+    ("tifinagh", ((0x2D30, 0x2D7F),)),
+    ("bopomofo", ((0x3100, 0x312F), (0x31A0, 0x31BF))),
+    ("yi", ((0xA000, 0xA4CF),)),
+    ("javanese", ((0xA980, 0xA9DF),)),
 ]
 
 # Function words. Latin-script languages overlap heavily (de/la/le/un/e/que), so each hit is
@@ -90,7 +102,7 @@ def state_text(state: Union[str, dict, list, None], max_chars: int = 4000) -> st
 
 
 def detect_script(text: str) -> str:
-    """Dominant script of `text`: 'latin', 'han', 'devanagari', ... or 'unknown' if there are no letters."""
+    """Dominant script of `text`, `other` for an unlisted script, or `unknown` with no letters."""
     counts: Dict[str, int] = {}
     latin = 0
     for ch in text:
@@ -104,6 +116,9 @@ def detect_script(text: str) -> str:
             if any(lo <= cp <= hi for lo, hi in ranges):
                 counts[name] = counts.get(name, 0) + 1
                 break
+        else:
+            # Never treat an alphabetic script omitted from the table as an absence of language.
+            counts["other"] = counts.get("other", 0) + 1
     counts["latin"] = latin
     total = sum(counts.values())
     if total == 0:
@@ -125,6 +140,8 @@ def script_profile(text: str) -> Dict[str, float]:
             if any(lo <= cp <= hi for lo, hi in ranges):
                 counts[name] = counts.get(name, 0) + 1
                 break
+        else:
+            counts["other"] = counts.get("other", 0) + 1
     total = sum(counts.values())
     if not total:
         return {}

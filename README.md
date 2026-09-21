@@ -17,6 +17,7 @@
 [![Dev.to Article](https://img.shields.io/badge/dev.to-Read%20Article-0A0A0A?logo=devdotto&logoColor=white)](https://dev.to/nandakishor_m_6cc0adfde9f/i-built-non-autoregressive-decision-models-a-year-ago-then-a-frontier-lab-called-it-a-18me)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-nandakishorm-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/nandakishorm)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Hosted API](https://img.shields.io/badge/Hosted%20API-impossibl-111111)](https://impossibl.com/convaiinnovations/laya)
 
 </div>
 
@@ -41,6 +42,38 @@ Three checkpoints, and a `Router` that picks between them per request:
 ```bash
 pip install laya
 ```
+
+---
+
+## Hosted API
+
+If you would rather not run a GPU, [impossibl](https://impossibl.com) serves Laya on a hosted
+endpoint, **free**, wire-compatible with TypeSafe's System One API — so a client written
+against Jev moves over by changing the base URL and the model id, and nothing else.
+
+```bash
+curl https://api.impossibl.com/v1/systemone \
+  -H "Authorization: Bearer $IMPOSSIBL_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "convaiinnovations/laya",
+    "state": "Hi, we were billed twice for March. Refund the duplicate today or we cancel.",
+    "questions": {
+      "churn_risk": { "type": "noul", "instructions": "Is this customer likely to churn?" }
+    }
+  }'
+```
+
+| model id | checkpoint |
+|---|---|
+| `convaiinnovations/laya` | whichever the `Router` picks, same as `Router(preload=True)` |
+| `convaiinnovations/laya-multilingual` | pins `laya-multilingual`, whatever the script |
+
+The second id exists because routing is by script: Latin-script text is answered by the
+English checkpoint, so Spanish or Portuguese never reaches the multilingual weights on its
+own. Both ids run the checkpoints published here, unmodified, at `max_len` 8192.
+
+[Docs](https://impossibl.com/docs/evaluation) · [Model page](https://impossibl.com/convaiinnovations/laya)
 
 ---
 

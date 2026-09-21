@@ -12,8 +12,8 @@ docker compose run --build --rm laya
 
 This builds the checkout, runs the [sample request](../examples/docker/request.json)
 on CPU and prints JSON covering `choice`, `score` and `noul`. The first request
-downloads public Hugging Face checkpoints; no account is needed. Allow several
-minutes: the current English loader downloads the entire bundled repository.
+downloads the selected public Hugging Face checkpoint; no account is needed.
+Allow several minutes for its first download.
 Weights stay in a named volume. Subsequent runs use `docker compose run --rm laya`.
 
 Predictions and confidence still need evaluation on your workload. See the

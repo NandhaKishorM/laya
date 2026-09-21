@@ -18,6 +18,20 @@ _DISCLAIMER = re.compile(
     r"if you (have )?received this (e-?mail|message) in error)",
     re.I,
 )
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _strip_disclaimer(paragraph: str) -> str:
+    """Drop boilerplate disclaimer text from one paragraph.
+
+    A paragraph is dropped whole only when *every* sentence in it is boilerplate; otherwise only
+    the boilerplate sentences go. A footer that runs on without a blank line used to take the
+    sender's actual request with it, which is worse than leaving one boilerplate line behind.
+    """
+    if not _DISCLAIMER.search(paragraph):
+        return paragraph                     # nothing to do: keep the original line structure
+    parts = [p.strip() for p in _SENTENCE.split(paragraph) if p.strip()]
+    return " ".join(p for p in parts if not _DISCLAIMER.search(p))
 
 
 def clean_email_body(body: str, max_chars: int = 3000) -> str:
@@ -36,7 +50,7 @@ def clean_email_body(body: str, max_chars: int = 3000) -> str:
             cut = i
             break
     lines = lines[:cut]
-    paragraphs = [p for p in re.split(r"\n\s*\n", "\n".join(lines)) if not _DISCLAIMER.search(p)]
+    paragraphs = [_strip_disclaimer(p) for p in re.split(r"\n\s*\n", "\n".join(lines))]
     text = re.sub(r"[ \t]+", " ", "\n\n".join(p.strip() for p in paragraphs if p.strip()))
     return text[:max_chars]
 

@@ -306,3 +306,37 @@ def test_decide_unknown_type_returns_422(client_choice):
 def test_response_time_header_present(client_choice):
     resp = client_choice.get("/health")
     assert "x-response-time-ms" in resp.headers
+
+# ---------------------------------------------------------------------------
+# Jev / TypeSafe Wire Compatibility
+# ---------------------------------------------------------------------------
+
+def test_jev_typesafe_wire_compatibility(client_choice):
+    """
+    Ensures that the strict Pydantic schemas allow extra fields and accept
+    list-based criteria for choice/noul questions, matching the JS Jev SDK payload.
+    """
+    payload = {
+        "model": "english",
+        "state": "I need some help",
+        "some_extra_metadata": "123",  # Extra top-level field (should be ignored)
+        "questions": {
+            "department": {
+                "type": "choice",
+                "instructions": "Which department?",
+                "criteria": ["technical", "billing"],  # List instead of dict
+                "extra_question_field": True           # Extra question field
+            },
+            "urgent": {
+                "type": "noul",
+                "instructions": "Is it urgent?",
+                "criteria": ["No", "Yes"],             # List instead of dict
+                "context": "Customer email"            # Extra question field
+            }
+        }
+    }
+    
+    resp = client_choice.post("/v1/systemone", json=payload)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert "department" in data["answers"]

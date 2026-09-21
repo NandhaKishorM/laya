@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Question-definition models (request side)
@@ -47,9 +47,14 @@ class ChoiceQuestion(BaseModel):
             "Example: {'billing': 'invoices and refunds', 'technical': 'bugs and outages'}"
         ),
     )
+    model_config = {"extra": "ignore"}
 
-    model_config = {"extra": "forbid"}
-
+    @field_validator("criteria", mode="before")
+    @classmethod
+    def _normalize_criteria_list(cls, v: Any) -> Any:
+        if isinstance(v, list):
+            return {str(item): None for item in v}
+        return v
 
 class ScoreQuestion(BaseModel):
     """Ordinal scoring question — returns an expected value on a rubric scale."""
@@ -65,7 +70,7 @@ class ScoreQuestion(BaseModel):
         ),
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}
 
 
 class NoulCriteria(BaseModel):
@@ -84,9 +89,14 @@ class NoulQuestion(BaseModel):
         None,
         description="Optional custom pole labels. Defaults to 'no, the statement does not hold' / 'yes, the statement holds'.",
     )
+    model_config = {"extra": "ignore"}
 
-    model_config = {"extra": "forbid"}
-
+    @field_validator("criteria", mode="before")
+    @classmethod
+    def _normalize_criteria_list(cls, v: Any) -> Any:
+        if isinstance(v, list) and len(v) == 2:
+            return {"false": str(v[0]), "true": str(v[1])}
+        return v
 
 # Discriminated union — Pydantic uses the `type` field to pick the right model.
 AnyQuestion = Annotated[
@@ -125,7 +135,7 @@ class ChoiceAnswer(BaseModel):
     )
     action: ActionResult
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}
 
 
 class ScoreAnswer(BaseModel):
@@ -138,7 +148,7 @@ class ScoreAnswer(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Normalized entropy confidence.")
     action: ActionResult
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}
 
 
 class NoulAnswer(BaseModel):
@@ -154,7 +164,7 @@ class NoulAnswer(BaseModel):
     )
     action: ActionResult
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}
 
 
 # Discriminated union for answers.
@@ -219,7 +229,7 @@ class DecideRequest(BaseModel):
         description="Named questions to evaluate in a single parallel forward pass.",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}
 
     @model_validator(mode="after")
     def _check_questions_not_empty(self) -> "DecideRequest":
@@ -244,7 +254,7 @@ class DecisionResponse(BaseModel):
     answers: Dict[str, AnyAnswer] = Field(..., description="Per-question typed answers.")
     usage: UsageInfo
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}
 
     @classmethod
     def from_raw(cls, raw: Dict[str, Any]) -> "DecisionResponse":
@@ -277,7 +287,7 @@ class ErrorResponse(BaseModel):
 
     error: ErrorDetail
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}
 
 
 # ---------------------------------------------------------------------------
@@ -302,7 +312,7 @@ class BatchDecideRequest(BaseModel):
     )
     questions: Dict[str, AnyQuestion] = Field(..., min_length=1)
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}
 
 
 class BatchDecisionResponse(BaseModel):
@@ -312,4 +322,4 @@ class BatchDecisionResponse(BaseModel):
     results: List[DecisionResponse] = Field(..., description="One DecisionResponse per input state, in order.")
     total_usage: UsageInfo = Field(..., description="Aggregated token usage across all states.")
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "ignore"}

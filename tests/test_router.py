@@ -1,6 +1,8 @@
 """Routing and language-detection tests. No model weights are loaded: `Router.route` is pure."""
 import sys
 import os
+import threading
+import time as _time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -278,6 +280,81 @@ check("attach/survives a later load", sorted(ra.loaded), ["english", "multilingu
 check("attach/still the same object", ra._agents["english"] is sentinel, True)
 check("attach/accepts aliases", stubbed_router(1).attach("en", _Stub("x")) is not None, True)
 
+
+# --------------------------------------------------------------------- thread safety (issue #95)
+
+def _concurrent_load_dedup():
+    """Concurrent load() of the same checkpoint must build one Agent, shared by all callers."""
+    import laya.agent as _agent_mod
+    constructions = []
+    cl = threading.Lock()
+
+    class _SlowAgent:
+        def __init__(self, *args, **kwargs):
+            _time.sleep(0.05)  # widen the check-then-build window
+            with cl:
+                constructions.append(1)
+
+        def system_one(self, state, questions):
+            return {"model": "fake", "answers": {}, "usage": {}}
+
+    old = _agent_mod.Agent
+    _agent_mod.Agent = _SlowAgent
+    try:
+        r = Router()
+        got = []
+
+        def _worker():
+            got.append(r.load("english"))
+
+        threads = [threading.Thread(target=_worker) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        return len({id(x) for x in got}), len(constructions), len(r._order), sorted(r._agents)
+    finally:
+        _agent_mod.Agent = old
+
+unique, built, order_len, agents = _concurrent_load_dedup()
+check("threads/8 concurrent loads share one Agent", unique, 1)
+check("threads/Agent constructed exactly once", built, 1)
+check("threads/LRU views stay consistent", (order_len == 1 and agents == ["english"]), True)
+
+
+def _concurrent_hotpath():
+    """Concurrent hot-path loads of an already-cached model must keep _order/_agents consistent."""
+    import laya.agent as _agent_mod
+
+    class _Agent:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def system_one(self, state, questions):
+            return {"model": "fake", "answers": {}, "usage": {}}
+
+    old = _agent_mod.Agent
+    _agent_mod.Agent = _Agent
+    try:
+        r = Router(max_loaded=3)
+        r.load("english")  # warm the cache
+
+        def _worker():
+            r.load("english")
+
+        threads = [threading.Thread(target=_worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        return len(r._order), len(r._agents), r._order
+    finally:
+        _agent_mod.Agent = old
+
+order_len, agents_len, order = _concurrent_hotpath()
+check("threads/hot-path loads keep one entry", order_len, 1)
+check("threads/hot-path loads keep agents consistent", agents_len, 1)
+check("threads/hot-path order intact", order, ["english"])
 
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

@@ -11,6 +11,7 @@ Script detection is exact. The Latin-script language guess is a stopword/diacrit
 is explicitly best-effort: pass an explicit model or `lang=` when you already know the language.
 """
 import re
+import unicodedata
 from typing import Dict, List, Optional, Union
 
 # Unicode blocks that the English (ModernBERT-large, 50k English BPE) checkpoint cannot read.
@@ -71,6 +72,164 @@ _STOP = {
 # language we hold no stopwords for at all (Romanian, Polish, Czech, Turkish, Baltic, ...),
 # which is the difference between routing it to the multilingual checkpoint and silently
 # handing it to the English one.
+# Latin script languages beyond the seven above. Every one of them is a language
+# research/results/cpu_51_language_sweep.json already scores higher on the multilingual
+# checkpoint than on the English one: Polish +0.27, Turkish +0.23, Latvian +0.22, Hungarian,
+# Norwegian, Vietnamese and Azerbaijani +0.20. #42 made undecided Latin text prefer the
+# multilingual checkpoint when it carries non-English letters, which covers the accented
+# languages. It cannot cover a language written in plain ASCII: Indonesian, Malay, Javanese,
+# Swahili and Tagalog have no diacritics to rate, so they still read as English. Naming them
+# is what closes that half.
+#
+# The word lists come from the MASSIVE *train* split: frequent, present in at least eight
+# distinct intents so domain specific words drop out, absent from the English top 120, then
+# merged with function words written by hand. The test split was never read while building
+# them.
+_STOP.update({
+    "af": {"aan", "af", "asseblief", "dat", "die", "dit", "ek", "en", "enige", "gaan", "het",
+           "hierdie", "hoe", "in", "is", "jy", "kan", "lys", "maak", "met", "na", "nie", "nuwe", "om",
+           "oor", "op", "pos", "se", "speel", "te", "tyd", "van", "vandag", "vir", "volgende", "waar",
+           "wat", "watter", "wil"},
+    "az": {"amma", "aç", "bilərsən", "bir", "biz", "bu", "daha", "de", "deyil", "et", "göstər", "gün",
+           "günü", "hansı", "haqqında", "harada", "hava", "hər", "ilə", "istəyirəm", "mən", "mənim",
+           "mənə", "necə", "növbəti", "nə", "nədir", "olan", "olmasa", "onlar", "oxut", "saat", "siz",
+           "son", "səhər", "sən", "var", "və", "yeni", "yox", "zəhmət", "çox", "üçün", "əlavə", "ən"},
+    "ca": {"al", "als", "amb", "aquest", "aquesta", "avui", "com", "correu", "de", "del", "el", "els",
+           "en", "ha", "hi", "hora", "la", "les", "llista", "meu", "meva", "molt", "més", "no", "per",
+           "plau", "posa", "pots", "que", "quin", "quina", "què", "si", "tinc", "un", "una", "us", "és"},
+    "cy": {"ac", "am", "angen", "ar", "beth", "ble", "bod", "bore", "chwarae", "dda", "di", "diolch",
+           "dydd", "ebost", "ei", "faint", "fi", "fy", "gloch", "gyda", "gyfer", "heddiw", "hefyd",
+           "mae", "mi", "nesaf", "newydd", "newyddion", "oes", "os", "pa", "rhestr", "sut", "sy",
+           "sydd", "unrhyw", "wedi", "yma", "yn", "yr", "yw"},
+    "da": {"af", "at", "blev", "dag", "den", "denne", "der", "det", "du", "eller", "en", "er", "et",
+           "for", "fortæl", "fra", "har", "have", "her", "hvad", "hvor", "hvordan", "hvornår", "ikke",
+           "jeg", "kan", "klokken", "kunne", "liste", "med", "meget", "men", "mig", "min", "morgen",
+           "møde", "noget", "nu", "næste", "og", "også", "om", "på", "sang", "skal", "som", "spil",
+           "tak", "til", "ved", "vil", "været"},
+    "fi": {"aseta", "ei", "etsi", "että", "haluan", "hyvä", "ja", "jos", "kaikki", "kanssa", "kello",
+           "kerro", "kiitos", "kuin", "kuinka", "kun", "laita", "lista", "lisää", "lähetä", "mikä",
+           "minua", "minulla", "minulle", "minun", "minä", "mitä", "muistuta", "mutta", "niin", "nyt",
+           "näytä", "ole", "olen", "on", "onko", "ovat", "poista", "se", "soita", "tai", "tämä",
+           "tämän", "tänään", "voi", "voit", "voitko", "yhtään"},
+    "hu": {"az", "csak", "de", "egy", "el", "emailt", "ezt", "fel", "hogy", "hozzá", "hány", "idő",
+           "is", "játszd", "kapcsold", "kell", "ki", "kérem", "kérlek", "következő", "küldj", "le",
+           "lehet", "lesz", "listát", "ma", "meg", "mennyi", "mi", "mikor", "milyen", "mondd", "most",
+           "mutasd", "már", "még", "nekem", "nem", "reggel", "van", "és", "új"},
+    "id": {"acara", "ada", "adalah", "akan", "aku", "apa", "apakah", "bagaimana", "baru", "berapa",
+           "beri", "berita", "bisa", "bisakah", "buat", "daftar", "dan", "dari", "dengan", "di", "dua",
+           "hari", "ingin", "ini", "itu", "jam", "kamu", "ke", "lagu", "lampu", "pada", "pagi",
+           "putar", "saya", "tahu", "tentang", "tidak", "tolong", "untuk", "yang"},
+    "is": {"af", "að", "dag", "eftir", "ekki", "er", "eru", "frá", "fyrir", "get", "geturðu", "hvar",
+           "hvað", "hvaða", "hvenær", "hver", "hvernig", "hversu", "klukkan", "með", "mig", "minn",
+           "morgun", "mér", "mínum", "núna", "og", "segðu", "sem", "spila", "takk", "til", "tölvupóst",
+           "um", "vinsamlegast", "við", "á", "ég", "í", "þarf", "það"},
+    "jv": {"acara", "aku", "ana", "anyar", "apa", "bisa", "dhaptar", "dina", "gawe", "iki", "iku",
+           "ing", "jam", "kabeh", "kang", "kanggo", "karo", "kowe", "ku", "lagu", "lampu", "lan",
+           "menyang", "minggu", "nang", "ning", "opo", "ora", "paling", "pira", "rapat", "saiki",
+           "saka", "sepur", "setel", "sing", "tembang", "tulung", "wis"},
+    "lv": {"ar", "atskaņo", "atskaņot", "bet", "cik", "dziesmu", "epastu", "es", "ir", "ka", "kad",
+           "kas", "ko", "kur", "kā", "kāda", "kādi", "kāds", "lai", "lūdzu", "man", "manu", "manā",
+           "no", "par", "parādi", "pasaki", "rīta", "sarakstu", "tas", "tu", "un", "uz", "vai", "var",
+           "vari", "ziņas", "šo", "šodien"},
+    "ms": {"acara", "ada", "adakah", "adalah", "akan", "apa", "apakah", "baru", "berapa", "beritahu",
+           "boleh", "dalam", "dan", "dari", "dengan", "di", "emel", "hari", "ini", "itu", "ke",
+           "kepada", "lagu", "lampu", "mainkan", "mana", "mesyuarat", "nak", "pada", "penggera",
+           "pukul", "saya", "senarai", "sila", "tentang", "tidak", "tolong", "untuk", "yang"},
+    "nb": {"av", "ble", "dag", "den", "denne", "der", "det", "du", "eller", "en", "epost", "er", "for",
+           "fortell", "fra", "gi", "har", "her", "hva", "hvor", "hvordan", "ikke", "jeg", "kan",
+           "klokken", "kunne", "legg", "med", "meg", "men", "min", "mye", "neste", "noe", "noen", "nå",
+           "når", "og", "også", "om", "på", "siste", "skal", "som", "spill", "takk", "til", "ved",
+           "vennligst", "vil", "vært"},
+    "pl": {"ale", "bardzo", "chcę", "co", "czy", "dla", "do", "dodaj", "dzisiaj", "ile", "jak", "jaka",
+           "jaki", "jakie", "jakieś", "jest", "jestem", "jutro", "już", "która", "który", "mam", "mi",
+           "mnie", "moje", "mojej", "może", "możesz", "na", "nie", "od", "po", "podaj", "pokaż",
+           "powiedz", "proszę", "przez", "rano", "się", "spotkanie", "są", "tak", "teraz", "to",
+           "tylko", "wiadomości", "wydarzenie", "włącz", "że"},
+    "ro": {"această", "acest", "acum", "am", "azi", "care", "ce", "cu", "cum", "dar", "de", "despre",
+           "din", "este", "la", "lista", "lui", "mai", "mea", "meu", "mi", "nu", "ora", "pe", "pentru",
+           "pune", "redă", "rog", "sa", "si", "spune", "sunt", "să", "te", "trimite", "un", "vreau",
+           "în", "și"},
+    "sl": {"ali", "bilo", "biti", "bo", "da", "dan", "danes", "dodaj", "dogodek", "imam", "in", "iz",
+           "je", "kaj", "kako", "kateri", "kdaj", "ki", "kje", "koliko", "lahko", "mi", "moj", "na",
+           "nastavi", "ne", "ob", "od", "pa", "povej", "pošlji", "predvajaj", "prosim", "se", "sem",
+           "sestanek", "seznam", "so", "sporočilo", "ta", "tudi", "za", "zdaj", "zelo"},
+    "sq": {"dhe", "dua", "duhet", "faleminderit", "fundit", "janë", "ka", "kam", "ku", "kur", "këngë",
+           "këtë", "listën", "luaj", "lutem", "me", "mund", "më", "ndonjë", "nga", "një", "nuk", "në",
+           "pasdite", "po", "për", "që", "sa", "si", "sot", "tani", "tim", "trego", "të", "unë",
+           "vendos", "çfarë", "është"},
+    "sv": {"att", "av", "berätta", "den", "det", "du", "en", "ett", "från", "för", "har", "hur", "här",
+           "idag", "inte", "jag", "kan", "klockan", "med", "mig", "min", "mitt", "när", "några", "och",
+           "om", "på", "senaste", "som", "spela", "ta", "tack", "till", "vad", "vill", "är"},
+    "sw": {"barua", "cha", "cheza", "gani", "habari", "hali", "hii", "huo", "je", "kama", "katika",
+           "kengele", "kuhusu", "kutoka", "kuwa", "kwa", "kwenye", "la", "leo", "lini", "mimi",
+           "mkutano", "na", "ngapi", "ni", "niambie", "nini", "orodha", "pepe", "saa", "sasa", "siku",
+           "tafadhali", "unaweza", "wa", "wapi", "weka", "ya", "yangu", "za"},
+    "tl": {"akin", "aking", "ako", "alas", "ang", "ano", "anong", "araw", "ay", "ba", "bang", "gusto",
+           "hindi", "isang", "ito", "kaganapan", "kailan", "kay", "ko", "kong", "kung", "listahan",
+           "may", "mga", "mo", "mula", "na", "ng", "ngayon", "ngayong", "ni", "oras", "paki", "para",
+           "po", "sa", "saan", "sabihin", "susunod", "tungkol"},
+    "tr": {"ama", "aç", "bana", "ben", "beni", "benim", "bir", "biz", "bu", "bugün", "daha", "değil",
+           "ekle", "en", "et", "gibi", "gönder", "günü", "hangi", "her", "ile", "istiyorum", "için",
+           "kadar", "kaç", "lütfen", "misin", "mı", "nasıl", "ne", "nedir", "nerede", "olarak",
+           "onlar", "saat", "sabah", "sen", "siz", "son", "sonra", "söyle", "tüm", "var", "ve", "ver",
+           "veya", "yeni", "yok", "zaman", "çal", "çok", "önce", "şu"},
+    "vi": {"ba", "bao", "biết", "báo", "bạn", "cho", "các", "có", "của", "danh", "giờ", "gì", "hôm",
+           "khi", "không", "là", "lòng", "lịch", "một", "mới", "nay", "ng", "ngày", "những", "nào",
+           "này", "phát", "sách", "sự", "thể", "trong", "tôi", "vui", "và", "vào", "về", "với", "được",
+           "đến"},
+})
+
+# Letters that belong to essentially one Latin script language. Function words need four words
+# before they say anything and a typed question is often two, so one exclusive letter settles
+# the short cases that the word tables and the diacritic rate both miss.
+_UNIQUE = {
+    "tr": "ığ",          # az shares these; the schwa below separates the two
+    "az": "ə",
+    "pl": "łążźńś",
+    "ro": "ășț",         # comma below forms; the cedilla forms are ambiguous with Turkish
+    "hu": "őű",
+    "is": "þð",
+    "cy": "ŵŷ",
+    "lv": "āēīūķļņģ",
+    "vi": "ơư",
+    "sq": "ë",
+    "de": "ß",
+}
+
+# Turkish, Polish, Romanian and Vietnamese are routinely typed without their diacritics, and
+# clinical or ticket free text especially so. "icin" and "degil" are the same words as "için"
+# and "değil" but score zero against an accented table, and stripping the accents also removes
+# the diacritic rate that #42 leans on, so those inputs have no signal left at all. Matching a
+# folded copy of every table restores it for all of them at once instead of duplicating each
+# list by hand.
+_FOLD_EXTRA = {"ı": "i", "ł": "l", "đ": "d", "ø": "o", "þ": "th", "ð": "d",
+               "ß": "ss", "æ": "ae", "œ": "oe", "ə": "e", "ŋ": "n"}
+
+
+def _fold(word: str) -> str:
+    """Lowercase word with its diacritics removed, the way people type it on an ASCII keyboard."""
+    out = []
+    for ch in word:
+        if ch in _FOLD_EXTRA:
+            out.append(_FOLD_EXTRA[ch])
+            continue
+        stripped = "".join(c for c in unicodedata.normalize("NFD", ch)
+                           if not unicodedata.combining(c))
+        out.append(stripped or ch)
+    return "".join(out)
+
+
+_STOP_FOLDED = {lg: {_fold(w) for w in words} for lg, words in _STOP.items()}
+
+# A function word English shares with the rival language ("to", "in", "have", "me", "am", "om")
+# is evidence for neither side of that comparison, so it is taken off both scores. Counting it
+# for English made a Danish sentence look English; counting it for the rival instead made
+# "tell me about my alarms" look Albanian, because Albanian "me" means "with". The discount is
+# per rival, so English is never penalised for colliding with a language that nothing else in
+# the text points to.
+_EN_SHARED = {lg: (_STOP["en"] | _STOP_FOLDED["en"]) & (words | _STOP_FOLDED[lg])
+              for lg, words in _STOP.items() if lg != "en"}
+
 _NON_EN_DIACRITICS = set(
     "àâäãáåçéèêëíìîïñóòôöõøúùûüýÿßæœ"          # Western European
     "ăâîșțşţ"                                   # Romanian
@@ -164,18 +323,47 @@ def latin_profile(text: str) -> Dict[str, object]:
     English checkpoint.
     """
     words = [w.lower() for w in _WORD.findall(text)]
+    folded = [_fold(w) for w in words]
     lowered = text.lower()
     diac = sum(1 for ch in lowered if ch in _NON_EN_DIACRITICS)
     diac_rate = diac / max(1, len(lowered))
     non_english = diac_rate >= NON_EN_DIACRITIC_RATE
+
+    # An exclusive letter is enough on its own and does not need four words.
+    uniq = {lg: sum(lowered.count(ch) for ch in chars) for lg, chars in _UNIQUE.items()}
+    uniq_lg, uniq_hits = max(uniq.items(), key=lambda kv: kv[1], default=(None, 0))
+    if uniq_hits:
+        return {"language": uniq_lg, "english_hits": 0, "diacritic_rate": diac_rate,
+                "looks_non_english": True}
+
     if len(words) < 4:
         return {"language": None, "english_hits": 0, "diacritic_rate": diac_rate,
                 "looks_non_english": non_english}
 
-    scores = {lg: sum(1 for w in words if w in sw) for lg, sw in _STOP.items()}
-    en = scores.get("en", 0)
-    best_lg, best = max(((lg, s) for lg, s in scores.items() if lg != "en"),
-                        key=lambda kv: kv[1], default=(None, 0))
+    def hits(lg):
+        """Word positions matching the table, accented or folded to plain ASCII."""
+        table, table_folded = _STOP[lg], _STOP_FOLDED[lg]
+        return sum(1 for w, f in zip(words, folded) if w in table or f in table_folded)
+
+    scores = {lg: hits(lg) for lg in _STOP}
+    en_raw = scores.get("en", 0)
+
+    def shared(lg):
+        table = _EN_SHARED.get(lg, frozenset())
+        return sum(1 for w, f in zip(words, folded) if w in table or f in table)
+
+    # Words English and the rival both claim are taken off both sides.
+    net = {lg: scores[lg] - shared(lg) for lg in scores if lg != "en"}
+    best_lg, best = max(net.items(), key=lambda kv: kv[1], default=(None, 0))
+    en = en_raw - (shared(best_lg) if best_lg else 0)
+
+    # Function words for some language other than English, and nothing for English, is
+    # evidence the text is not English even when it is too thin to say which language it is.
+    # "Musteriden iki kez ucret alindi ve para iadesi istiyor" gives seven languages one hit
+    # each: naming a winner there would be a coin toss, but the text is plainly not English.
+    # Feeding that into looks_non_english lets #42's routing use it without inventing a name.
+    if best >= 1 and en <= 0:
+        non_english = True
     # No stopword hit for any non-English language is no evidence for a *particular* one. Naming
     # the winner of a 0-0 tie invented a language (Romanian text was reported as French), so stay
     # undecided and let the diacritic rate speak.

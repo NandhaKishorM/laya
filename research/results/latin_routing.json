@@ -1,0 +1,583 @@
+{
+ "n_options": 20,
+ "seed": 0,
+ "part_a": [
+  {
+   "locale": "af-ZA",
+   "n": 400,
+   "to_english_checkpoint": 0.175,
+   "multilingual_minus_english": 0.06,
+   "top_detected": [
+    [
+     "af",
+     250
+    ],
+    [
+     "None",
+     128
+    ],
+    [
+     "en",
+     14
+    ]
+   ]
+  },
+  {
+   "locale": "az-AZ",
+   "n": 400,
+   "to_english_checkpoint": 0.02,
+   "multilingual_minus_english": 0.2,
+   "top_detected": [
+    [
+     "az",
+     218
+    ],
+    [
+     "tr",
+     169
+    ],
+    [
+     "None",
+     13
+    ]
+   ]
+  },
+  {
+   "locale": "ca-ES",
+   "n": 400,
+   "to_english_checkpoint": 0.1275,
+   "multilingual_minus_english": null,
+   "top_detected": [
+    [
+     "ca",
+     228
+    ],
+    [
+     "None",
+     151
+    ],
+    [
+     "ro",
+     9
+    ]
+   ]
+  },
+  {
+   "locale": "cy-GB",
+   "n": 400,
+   "to_english_checkpoint": 0.325,
+   "multilingual_minus_english": 0.04,
+   "top_detected": [
+    [
+     "cy",
+     192
+    ],
+    [
+     "None",
+     159
+    ],
+    [
+     "en",
+     48
+    ]
+   ]
+  },
+  {
+   "locale": "da-DK",
+   "n": 400,
+   "to_english_checkpoint": 0.18,
+   "multilingual_minus_english": 0.15,
+   "top_detected": [
+    [
+     "da",
+     228
+    ],
+    [
+     "None",
+     143
+    ],
+    [
+     "en",
+     25
+    ]
+   ]
+  },
+  {
+   "locale": "de-DE",
+   "n": 400,
+   "to_english_checkpoint": 0.255,
+   "multilingual_minus_english": 0.08,
+   "top_detected": [
+    [
+     "None",
+     254
+    ],
+    [
+     "de",
+     120
+    ],
+    [
+     "en",
+     26
+    ]
+   ]
+  },
+  {
+   "locale": "en-US",
+   "n": 400,
+   "to_english_checkpoint": 0.95,
+   "multilingual_minus_english": -0.14,
+   "top_detected": [
+    [
+     "en",
+     308
+    ],
+    [
+     "None",
+     92
+    ]
+   ]
+  },
+  {
+   "locale": "es-ES",
+   "n": 400,
+   "to_english_checkpoint": 0.1475,
+   "multilingual_minus_english": 0.02,
+   "top_detected": [
+    [
+     "None",
+     171
+    ],
+    [
+     "ca",
+     86
+    ],
+    [
+     "es",
+     82
+    ]
+   ]
+  },
+  {
+   "locale": "fi-FI",
+   "n": 400,
+   "to_english_checkpoint": 0.185,
+   "multilingual_minus_english": 0.16,
+   "top_detected": [
+    [
+     "None",
+     302
+    ],
+    [
+     "fi",
+     95
+    ],
+    [
+     "en",
+     3
+    ]
+   ]
+  },
+  {
+   "locale": "fr-FR",
+   "n": 400,
+   "to_english_checkpoint": 0.0825,
+   "multilingual_minus_english": -0.05,
+   "top_detected": [
+    [
+     "None",
+     193
+    ],
+    [
+     "fr",
+     137
+    ],
+    [
+     "ro",
+     31
+    ]
+   ]
+  },
+  {
+   "locale": "hu-HU",
+   "n": 400,
+   "to_english_checkpoint": 0.0275,
+   "multilingual_minus_english": 0.2,
+   "top_detected": [
+    [
+     "hu",
+     220
+    ],
+    [
+     "None",
+     164
+    ],
+    [
+     "is",
+     13
+    ]
+   ]
+  },
+  {
+   "locale": "id-ID",
+   "n": 400,
+   "to_english_checkpoint": 0.245,
+   "multilingual_minus_english": 0.15,
+   "top_detected": [
+    [
+     "id",
+     229
+    ],
+    [
+     "None",
+     158
+    ],
+    [
+     "ms",
+     12
+    ]
+   ]
+  },
+  {
+   "locale": "is-IS",
+   "n": 400,
+   "to_english_checkpoint": 0.0375,
+   "multilingual_minus_english": 0.19,
+   "top_detected": [
+    [
+     "is",
+     300
+    ],
+    [
+     "None",
+     100
+    ]
+   ]
+  },
+  {
+   "locale": "it-IT",
+   "n": 400,
+   "to_english_checkpoint": 0.275,
+   "multilingual_minus_english": 0.16,
+   "top_detected": [
+    [
+     "None",
+     250
+    ],
+    [
+     "it",
+     86
+    ],
+    [
+     "en",
+     32
+    ]
+   ]
+  },
+  {
+   "locale": "jv-ID",
+   "n": 400,
+   "to_english_checkpoint": 0.2825,
+   "multilingual_minus_english": 0.11,
+   "top_detected": [
+    [
+     "None",
+     199
+    ],
+    [
+     "jv",
+     180
+    ],
+    [
+     "id",
+     16
+    ]
+   ]
+  },
+  {
+   "locale": "lv-LV",
+   "n": 400,
+   "to_english_checkpoint": 0.0375,
+   "multilingual_minus_english": 0.22,
+   "top_detected": [
+    [
+     "lv",
+     380
+    ],
+    [
+     "None",
+     20
+    ]
+   ]
+  },
+  {
+   "locale": "ms-MY",
+   "n": 400,
+   "to_english_checkpoint": 0.2425,
+   "multilingual_minus_english": 0.16,
+   "top_detected": [
+    [
+     "None",
+     154
+    ],
+    [
+     "id",
+     127
+    ],
+    [
+     "ms",
+     117
+    ]
+   ]
+  },
+  {
+   "locale": "nb-NO",
+   "n": 400,
+   "to_english_checkpoint": 0.1775,
+   "multilingual_minus_english": 0.2,
+   "top_detected": [
+    [
+     "None",
+     149
+    ],
+    [
+     "nb",
+     134
+    ],
+    [
+     "da",
+     92
+    ]
+   ]
+  },
+  {
+   "locale": "nl-NL",
+   "n": 400,
+   "to_english_checkpoint": 0.29,
+   "multilingual_minus_english": 0.06,
+   "top_detected": [
+    [
+     "None",
+     202
+    ],
+    [
+     "af",
+     68
+    ],
+    [
+     "en",
+     51
+    ]
+   ]
+  },
+  {
+   "locale": "pl-PL",
+   "n": 400,
+   "to_english_checkpoint": 0.075,
+   "multilingual_minus_english": 0.27,
+   "top_detected": [
+    [
+     "pl",
+     317
+    ],
+    [
+     "None",
+     82
+    ],
+    [
+     "af",
+     1
+    ]
+   ]
+  },
+  {
+   "locale": "pt-PT",
+   "n": 400,
+   "to_english_checkpoint": 0.1875,
+   "multilingual_minus_english": -0.02,
+   "top_detected": [
+    [
+     "None",
+     247
+    ],
+    [
+     "pt",
+     93
+    ],
+    [
+     "en",
+     22
+    ]
+   ]
+  },
+  {
+   "locale": "ro-RO",
+   "n": 400,
+   "to_english_checkpoint": 0.1575,
+   "multilingual_minus_english": 0.02,
+   "top_detected": [
+    [
+     "ro",
+     285
+    ],
+    [
+     "None",
+     99
+    ],
+    [
+     "en",
+     12
+    ]
+   ]
+  },
+  {
+   "locale": "sl-SL",
+   "n": 400,
+   "to_english_checkpoint": 0.155,
+   "multilingual_minus_english": 0.13,
+   "top_detected": [
+    [
+     "None",
+     224
+    ],
+    [
+     "sl",
+     167
+    ],
+    [
+     "en",
+     6
+    ]
+   ]
+  },
+  {
+   "locale": "sq-AL",
+   "n": 400,
+   "to_english_checkpoint": 0.075,
+   "multilingual_minus_english": 0.05,
+   "top_detected": [
+    [
+     "sq",
+     357
+    ],
+    [
+     "None",
+     41
+    ],
+    [
+     "en",
+     1
+    ]
+   ]
+  },
+  {
+   "locale": "sv-SE",
+   "n": 400,
+   "to_english_checkpoint": 0.095,
+   "multilingual_minus_english": 0.19,
+   "top_detected": [
+    [
+     "sv",
+     190
+    ],
+    [
+     "None",
+     173
+    ],
+    [
+     "da",
+     26
+    ]
+   ]
+  },
+  {
+   "locale": "sw-KE",
+   "n": 400,
+   "to_english_checkpoint": 0.255,
+   "multilingual_minus_english": 0.05,
+   "top_detected": [
+    [
+     "sw",
+     225
+    ],
+    [
+     "None",
+     172
+    ],
+    [
+     "sl",
+     3
+    ]
+   ]
+  },
+  {
+   "locale": "tl-PH",
+   "n": 400,
+   "to_english_checkpoint": 0.1575,
+   "multilingual_minus_english": 0.07,
+   "top_detected": [
+    [
+     "tl",
+     297
+    ],
+    [
+     "None",
+     81
+    ],
+    [
+     "en",
+     20
+    ]
+   ]
+  },
+  {
+   "locale": "tr-TR",
+   "n": 400,
+   "to_english_checkpoint": 0.055,
+   "multilingual_minus_english": 0.23,
+   "top_detected": [
+    [
+     "tr",
+     306
+    ],
+    [
+     "None",
+     85
+    ],
+    [
+     "az",
+     7
+    ]
+   ]
+  },
+  {
+   "locale": "vi-VN",
+   "n": 400,
+   "to_english_checkpoint": 0.015,
+   "multilingual_minus_english": 0.2,
+   "top_detected": [
+    [
+     "vi",
+     280
+    ],
+    [
+     "None",
+     54
+    ],
+    [
+     "ro",
+     51
+    ]
+   ]
+  }
+ ],
+ "part_b": {
+  "locale": "tr-TR",
+  "n": 300,
+  "n_options": 20,
+  "router": 0.3033,
+  "router_sent_to_english": 15,
+  "multilingual_only": 0.31,
+  "english_only": 0.08
+ }
+}

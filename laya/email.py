@@ -33,7 +33,6 @@ _HEADER_FROM_NAME = re.compile(r"^\s*De:\s+\S", re.I)
 _HEADER_NEXT = re.compile(r"^\s*(Enviad[oa]( em| el)?:\s|(Data|Fecha):\s.*\d{4})", re.I)
 _SIGNATURE_MARKERS = [
     re.compile(r"^\s*--\s*$"),
-    re.compile(r"^\s*(best|kind|warm|many thanks|thanks|thank you|regards|cheers|sincerely)[\w ,!.]*$", re.I),
     re.compile(r"^\s*sent from my (iphone|android|mobile|ipad)", re.I),
     # Portuguese/Spanish sign-offs match only on their own: "Obrigado pelo retorno, mas ..." is a
     # request, not a signature, so unlike the English marker no trailing words are allowed
@@ -53,6 +52,15 @@ _DEVICE_FOOTER = re.compile(
     r"^\s*((enviad[oa] (do|pelo|pela|via|desde|a partir do)( meu| minha| mi)?|sent from( my)?)"
     r" (%s)( (%s|para|for|no|na|\d+))*|(obter o|get) outlook (para|for) (ios|android))[\s.!]*$"
     % (_DEVICE, _DEVICE),
+    re.I,
+)
+# English closings, held to the same rule as the Portuguese/Spanish markers above: the closing and
+# nothing else. Two-word closings come first, because the first alternative that matches wins and a
+# bare "best" would leave "regards," behind to be read as the sender's name.
+_CLOSING = re.compile(
+    r"\s*((best|kind|warmest|warm)\s+(regards|wishes)|best|regards|cheers|sincerely"
+    r"|(many\s+)?thanks(\s+(again|so\s+much|a\s+lot|in\s+advance|and\s+regards))?"
+    r"|thank\s+you(\s+(again|so\s+much|very\s+much|in\s+advance))?)\b[,.!]*",
     re.I,
 )
 _DISCLAIMER = re.compile(
@@ -126,6 +134,19 @@ def _strip_disclaimer(paragraph: str) -> str:
     return " ".join(p for p in pieces if not _DISCLAIMER.search(p))
 
 
+def _is_sign_off(line: str) -> bool:
+    """A closing alone on its line, optionally followed by the sender's name ("Thanks, Alice").
+
+    An opener that merely starts with a closing word -- "Thanks for getting back to me.", "Best
+    time to call is 5pm." -- is not a sign-off. Cutting there used to delete the request below it.
+    """
+    m = _CLOSING.match(line)
+    if not m:
+        return False
+    name = line[m.end():].split()
+    return len(name) <= 3 and all(w[0].isupper() for w in name)
+
+
 def clean_email_body(body: str, max_chars: int = 3000) -> str:
     """Remove quoted email history, signatures and disclaimers to keep input focused."""
     text = (body or "").replace("\r\n", "\n").replace("\r", "\n").replace("\\n", "\n")
@@ -147,7 +168,8 @@ def clean_email_body(body: str, max_chars: int = 3000) -> str:
     cut = len(lines)
     for i in range(max(1, min(int(len(lines) * 0.6), len(lines) - 8)), len(lines)):
         n = len(lines[i].strip())
-        if (n <= 40 and any(p.match(lines[i]) for p in _SIGNATURE_MARKERS)) or (
+        if (n <= 40 and (_is_sign_off(lines[i])
+                         or any(p.match(lines[i]) for p in _SIGNATURE_MARKERS))) or (
                 n <= 60 and _DEVICE_FOOTER.match(lines[i])):
             cut = i
             break

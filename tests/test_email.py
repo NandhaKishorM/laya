@@ -286,6 +286,39 @@ for label, body in [
 ]:
     check("pt/kept: " + label, clean_email_body(body), body)
 
+# --------------------------------------------------------------- an opener is not a sign-off
+# A short line that merely starts with a closing word used to be taken for the sign-off, and
+# everything below it -- the request -- was cut away.
+for name, body in [
+    ("thanks for", "Hi,\nThanks for getting back to me.\nThe refund still has not arrived.\nCan you check?"),
+    ("thank you for", "Hello,\nThank you for the invoice.\nWe were charged twice for order 5521."),
+    ("best time", "Hi support,\nBest time to reach me is after 5pm.\nOur production database is down."),
+    ("cheers for", "Hey,\nCheers for the quick fix yesterday.\nIt broke again this morning."),
+    ("kind of", "Hi,\nKind of urgent, the export job fails.\nLogs are attached."),
+    ("thanks. sentence", "Hi,\nThanks. I tried that already.\nThe error is still there."),
+    ("word prefix", "Hallo,\nBestellung 4471 ist nicht angekommen.\nBitte prüfen."),
+]:
+    check("opener/%s keeps the request" % name, clean_email_body(body), body)
+
+check(
+    "opener/real sign-off below it is still cut",
+    clean_email_body("Hello,\nThank you for the invoice.\nWe were charged twice.\n\nBest regards,\nDana"),
+    "Hello,\nThank you for the invoice.\nWe were charged twice.",
+)
+
+# --------------------------------------------------------------- real sign-offs are still cut
+for closing in [
+    "Thanks", "Thanks,", "Thanks!", "Thanks again!", "Thanks in advance,", "Thanks and regards,",
+    "Many thanks,", "Thank you,", "Thank you very much.", "Best,", "Best regards,", "Best wishes,",
+    "Kind regards,", "Warm regards,", "Warmest regards,", "Regards,", "Cheers,", "Sincerely,",
+    "Thanks, Alice", "Best regards, Dr. Jane Doe", "Regards, Łukasz", "Kind  regards,",
+]:
+    check(
+        "sign-off/%r is cut" % closing,
+        clean_email_body("Hi team,\nCan you confirm the refund?\n%s\nAlice" % closing),
+        "Hi team,\nCan you confirm the refund?",
+    )
+
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

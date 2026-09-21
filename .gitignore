@@ -24,6 +24,12 @@ wheels/
 .DS_Store
 .env
 .pypirc
+.ruff_cache/
+
+# local setup artifacts from setup_laya.sh: ~2.3 GB of checkpoint weights and the download caches
+models/
+.hf-cache/
+.pip-cache/
 
 
 # session transcripts (may contain pasted credentials)

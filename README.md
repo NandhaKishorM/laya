@@ -42,6 +42,78 @@ Three checkpoints, and a `Router` that picks between them per request:
 pip install laya
 ```
 
+Device selection is automatic, in this order: **CUDA → MPS → CPU**. Mixed precision is used on
+CUDA; CPU and MPS run fp32. Override with `device=`, which is accepted by both entry points:
+
+```python
+agent = laya.load("convaiinnovations/laya", device="cpu")      # or "cuda", "mps"
+router = Router(preload=True, device="mps")
+```
+
+### macOS, including Intel Macs
+
+PyTorch stops publishing macOS **x86_64** wheels at 2.2.2 (2.3 and later are Apple-silicon only),
+while transformers 5.x requires torch >= 2.4 and torch 2.2.2 was built against NumPy 1.x. A plain
+`pip install laya` on an Intel Mac therefore resolves a stack that cannot run — torch 2.2.2 with
+transformers 5.x and NumPy 2.x, and torch fails to initialise NumPy 2, which `predict()` needs for
+its final `.numpy()` conversion. Pin the stack:
+
+```bash
+pip install "numpy<2" "torch==2.2.2" "transformers==4.57.6" laya
+```
+
+`transformers` 4.57.x is the last 4.x line and the newest one that runs on torch 2.2.2. The
+transformers-5 checkpoints load on it unchanged: `build_model` maps their `rope_parameters` onto
+the RoPE attributes 4.x reads, which mmBERT needs because both of its bases are 160000 rather
+than the 4.x defaults. Apple-silicon and CUDA machines need none of this pinning.
+
+---
+
+## Running from this checkout
+
+`setup_laya.sh` stands the whole thing up in the checkout: an isolated `.venv` with the pinned
+stack, the three checkpoints under `models/` (gitignored, ~2.3 GB), and a verification run. It is
+idempotent, so re-running only fills in what is missing. The numbers below are from the machine it
+was developed on — an Intel Mac Pro, no CUDA, AMD Radeon GPUs reachable through Metal (MPS); the
+script itself is not Intel-specific. Commands are relative to the repository root.
+
+```bash
+./setup_laya.sh                                    # venv + pinned deps + checkpoints + verify
+.venv/bin/python laya_smoke_test.py --models ./models            # real weights, device auto -> MPS
+.venv/bin/python laya_smoke_test.py --models ./models --device cpu
+.venv/bin/python verify/numerics_check.py          # RoPE bases, determinism, SDPA vs eager
+.venv/bin/python verify/bench_devices.py           # CPU vs MPS, thread scaling
+.venv/bin/python tests/test_local_e2e.py ./models             # the repo's own e2e suite
+```
+
+Measured here, one `predict()` call answering 4 questions about a short email (median of 10,
+after warm-up):
+
+| checkpoint | CPU (28 threads) | MPS (Radeon Pro Vega II) |
+|---|---|---|
+| `laya` (421M) | 424 ms — 106 ms/question | **141 ms — 35 ms/question** |
+| `laya-multilingual` (322M) | 195 ms — 49 ms/question | **117 ms — 29 ms/question** |
+| `laya-typed-decisions` (421M) | 427 ms — 107 ms/question | **142 ms — 36 ms/question** |
+
+MPS is 1.7-3x this 56-core CPU and matches the T4 reference quoted below (32.8 ms/question for
+`laya-multilingual`). CPU-only work runs fastest around 16 threads (`OMP_NUM_THREADS=16`); the
+default 28 already over-subscribes. The first MPS call pays ~13 s of Metal kernel compilation,
+so warm up before timing.
+
+To keep the router fully offline, point it at the local checkpoints rather than the hub repos:
+
+```python
+from laya import Router
+
+router = Router(models={"english": "models/laya",
+                        "multilingual": "models/laya-multilingual",
+                        "typed-decisions": "models/laya-typed-decisions"},
+                preload=True)
+```
+
+Full notes — version rationale, the two portability fixes this needed, and every verification
+run — are in [`LOCAL_SETUP.md`](LOCAL_SETUP.md).
+
 ---
 
 ## Quickstart: Route Mode (Recommended)
@@ -146,7 +218,7 @@ For a server or production app, preload:
 ```python
 # Every checkpoint resident in memory; language flips cost detection only (<1 ms)
 router = Router(preload=True)
-router = Router(preload=True, device="cuda")
+router = Router(preload=True, device="cuda")     # or "mps" (Apple/AMD GPU), "cpu" to force
 
 # Or preload only the specific checkpoints you serve:
 router.preload(["english", "multilingual"])

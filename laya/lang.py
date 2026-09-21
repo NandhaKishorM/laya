@@ -230,6 +230,11 @@ def script_profile(text: str) -> Dict[str, float]:
 # stopword list matches it.
 NON_EN_DIACRITIC_RATE = 0.02
 
+# At least this share of letters in a non-Latin script means the text is not for the English
+# checkpoint, even when Latin letters are the plurality. A brand name or order code outvotes the
+# CJK request around it letter for letter, though one CJK character carries far more than a letter.
+NON_LATIN_FRACTION = 0.2
+
 
 def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
@@ -297,6 +302,8 @@ def analyse(state: Union[str, dict, list, None]) -> Dict[str, object]:
     prof = script_profile(text)
     script = detect_script(text)
     non_latin = round(1.0 - prof.get("latin", 0.0), 4) if prof else 0.0
+    if script == "latin" and non_latin >= NON_LATIN_FRACTION:
+        script = max((s for s in prof if s != "latin"), key=prof.get)
     if script == "unknown":
         return {"script": "unknown", "script_profile": prof, "language": None,
                 "is_english": True, "language_undecided": True, "diacritic_rate": 0.0,

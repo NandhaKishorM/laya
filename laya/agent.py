@@ -23,6 +23,7 @@ from .common import (
     confidence_from_probs,
     _resolve_noul_labels,
     render_options,
+    serialize_state,
     temp_bucket,
 )
 from .hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
@@ -188,6 +189,9 @@ class Agent(HookRegistry):
     hooks_concurrent = True
     _hooks_lock = None
     model_id = None
+    # Autocast is chosen per device in __init__; this default covers instances built
+    # without it (for example a hand-constructed runtime in tests).
+    amp_enabled = False
 
     def __init__(
         self,
@@ -351,13 +355,26 @@ class Agent(HookRegistry):
                 "using %s. Treat confidence from the affected entries as uncalibrated."
                 % (TEMP_MIN, TEMP_MAX, ", ".join(rejected)),
                 RuntimeWarning, stacklevel=2)
-        self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+        # Autocast policy. CUDA and MPS both support fp16/bf16 autocast and are much faster with
+        # it; the shipped checkpoints are trained in reduced precision. CPU bf16 is only a win on
+        # hardware with native BF16, so it stays opt-in via LAYA_CPU_AMP=bf16.
+        self.dtype = torch.float32
+        self.amp_enabled = False
+        if self.device.type == "cuda":
+            self.amp_enabled = True
+            if torch.cuda.get_device_capability(self.device)[0] < 8:
+                self.dtype = torch.float16
+            else:
+                self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+        elif self.device.type == "mps":
+            self.amp_enabled = True
+            self.dtype = torch.float16
+        elif self.device.type == "cpu":
+            if os.environ.get("LAYA_CPU_AMP", "").lower() in ("bf16", "bfloat16"):
+                self.amp_enabled = True
+                self.dtype = torch.bfloat16
 
         self._fast = None
-        if self.device.type == "cuda" and torch.cuda.get_device_capability(self.device)[0] < 8:
-            self.dtype = torch.float16
-        elif self.device.type in ("cpu", "mps", "xpu"):
-            self.dtype = torch.float32
 
         # 2. Place on device with graceful fallback to CPU on memory error
         fell_back_from = fell_back_why = None
@@ -370,6 +387,7 @@ class Agent(HookRegistry):
                 fell_back_from, fell_back_why = self.device, e
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
+                self.amp_enabled = False
                 self.model.to(self.device).eval()
             else:
                 raise e
@@ -516,20 +534,28 @@ class Agent(HookRegistry):
         # right-truncation (st[:room]) would silently drop the newest turn. Truncate
         # from the left for lists so the most recent intent is preserved.
         truncate_left = isinstance(state, list)
+        # Tokenize the shared state once. The ids are identical for every question, so
+        # re-serializing and re-tokenizing it inside build_sequence per question was pure
+        # duplicated work. Tokenize in full and let build_sequence slice per question, so
+        # left-truncation for conversation lists keeps its meaning.
+        state_ids = self.tok(
+            serialize_state(state).replace(self.tok.mask_token, " "),
+            add_special_tokens=False,
+        )["input_ids"]
         items = []
         for qid in ids:
             q = internal[qid]
             seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len,
-                                          truncate_left=truncate_left)
+                                          truncate_left=truncate_left, state_ids=state_ids)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
         return items
 
-    def _forward(self, b: Dict):
-        """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""
+    def _infer(self, b: Dict):
+        """Run the forward pass under autocast, degrading gracefully on OOM or unsupported autocast."""
         def run():
-            with _amp_context(self.device, self.dtype):
+            with torch.autocast(device_type=self.device.type, dtype=self.dtype, enabled=self.amp_enabled):
                 return self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),
@@ -539,17 +565,27 @@ class Agent(HookRegistry):
                 )
 
         try:
-            logits, act = run()
+            return run()
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
-            if self.device.type != "cpu" and ("memory" in str(e).lower() or "cuda" in str(e).lower()):
+            low = str(e).lower()
+            if self.device.type != "cpu" and ("memory" in low or "cuda" in low):
                 print("Warning: GPU memory exceeded during inference. Falling back to CPU...")
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
+                self.amp_enabled = False
                 self.model.to(self.device)
-                logits, act = run()
-            else:
-                raise e
+                return run()
+            if self.amp_enabled and self.device.type in ("mps", "cpu"):
+                # Not every MPS/CPU build implements autocast for every op. Drop to full
+                # precision once rather than failing the request.
+                self.amp_enabled = False
+                self.dtype = torch.float32
+                return run()
+            raise
 
+    def _forward(self, b: Dict):
+        """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""
+        logits, act = self._infer(b)
         return logits.float().cpu().numpy(), torch.softmax(act.float(), -1).cpu().numpy()
 
     def _decode_answers(self, logits, act, items: List[Dict], ids: List[str],

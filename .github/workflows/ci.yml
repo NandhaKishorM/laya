@@ -68,6 +68,7 @@ jobs:
           python tests/test_packaging.py
           python tests/test_tokenizer_cache.py
           python tests/test_lazy_import.py
+          python tests/test_runtime_fixes.py
           python tests/test_lang_guess.py
           python tests/test_calibration_persistence.py
           python tests/test_context_manager.py

@@ -75,8 +75,13 @@ def build_sequence(
     head_max_len: int = 192,
     option_order: Optional[List[int]] = None,
     truncate_left: bool = False,
+    state_ids: Optional[List[int]] = None,
 ):
-    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP]."""
+    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP].
+
+    `state_ids` lets a caller tokenize the shared state once and reuse it across every question,
+    instead of re-serializing and re-tokenizing the same document per question.
+    """
     mask_tok = tok.mask_token
     opts = render_options(q)
     order = option_order if option_order is not None else list(range(len(opts)))
@@ -101,9 +106,10 @@ def build_sequence(
         ids.extend(o)
     ids.append(tok.sep_token_id)
     room = max(0, max_len - len(ids) - 1)
-    st = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
-    # not st[-room:]: with no room left, st[-0:] is the whole state rather than none of it
-    st = st[max(0, len(st) - room):] if truncate_left else st[:room]
+    if state_ids is None:
+        state_ids = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
+    # not state_ids[-room:]: with no room left, state_ids[-0:] is the whole state rather than none of it
+    st = state_ids[max(0, len(state_ids) - room):] if truncate_left else state_ids[:room]
     ids = ids + st + [tok.sep_token_id]
     return ids[:max_len], [m for m in markers if m < max_len]
 

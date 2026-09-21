@@ -127,6 +127,72 @@ check_true("amp/no unconditional autocast in the forward pass",
            "torch.autocast(device_type=self.device.type" not in _src)
 
 
+# ------------------------------------------------ 3. a failed GPU placement falls back to CPU
+# `system_one` promises to survive a device that cannot hold the work: on a memory error it moves
+# to CPU and re-runs. That path is easy to break and never fires on a machine with no GPU, so it
+# is driven here with a stand-in model that fails the first forward pass the way CUDA does.
+class _FakeTok:
+    cls_token_id, sep_token_id, mask_token_id, pad_token_id = 1, 2, 3, 0
+    mask_token = "[M]"
+
+    def __call__(self, text, add_special_tokens=False):
+        return {"input_ids": [10 + (ord(c) % 40) for c in text]}
+
+
+class _FailsOnce(torch.nn.Module):
+    """Raises a CUDA-style OOM on the first call, then answers."""
+
+    def __init__(self, message):
+        super().__init__()
+        self.message, self.calls = message, 0
+        self.dummy = torch.nn.Parameter(torch.zeros(1))
+
+    def forward(self, input_ids, attention_mask, marker_pos, marker_mask, qtype):
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError(self.message)
+        logits = torch.zeros((input_ids.shape[0], marker_mask.shape[1]))
+        logits[:, 0] = 1.0
+        return logits, torch.tensor([[1.0, 0.0]])
+
+
+def _bare_agent(model):
+    agent = _agent.Agent.__new__(_agent.Agent)     # no weights: exercise system_one only
+    agent.device = torch.device("mps")             # any non-CPU device enters the fallback branch
+    agent.dtype = torch.float32
+    agent.cfg = {"max_len": 64, "head_max_len": 32}
+    agent.temperature = [1.0, 1.0, 1.0]
+    agent.temperature_by_options = {}
+    agent.tok = _FakeTok()
+    agent.model = model
+    return agent
+
+
+QUESTIONS = {"q": {"type": "choice", "instructions": "Pick one",
+                   "criteria": {"a": "first option", "b": "second option"}}}
+
+agent = _bare_agent(_FailsOnce("CUDA out of memory. Tried to allocate 2.00 GiB"))
+try:
+    result = agent.predict({"body": "some state"}, QUESTIONS)
+    check("fallback/answers after a memory failure", result["answers"]["q"]["choice"], "a")
+    check("fallback/forward pass retried once", agent.model.calls, 2)
+    check("fallback/device is cpu now", agent.device.type, "cpu")
+    check("fallback/dtype downgraded to fp32", agent.dtype, torch.float32)
+except Exception as e:  # noqa: BLE001
+    FAIL.append("fallback/memory failure was not survived: %s: %s" % (type(e).__name__, e))
+
+# a non-memory RuntimeError must still propagate: silently swallowing real bugs is worse than
+# the crash it would hide
+agent = _bare_agent(_FailsOnce("shape mismatch in attention"))
+try:
+    agent.predict({"body": "some state"}, QUESTIONS)
+    FAIL.append("fallback/non-memory error propagates (nothing raised)")
+except RuntimeError:
+    PASS.append("fallback/non-memory error propagates")
+except Exception as e:  # noqa: BLE001
+    FAIL.append("fallback/non-memory error raised %s instead of RuntimeError" % type(e).__name__)
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

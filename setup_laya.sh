@@ -88,6 +88,16 @@ PY
   ls -l "$ROOT/models"
 fi
 
+# A truncated or silently-updated download turns into quietly wrong answers, so check the weights
+# against the hashes recorded in verify/checkpoints.json. Runs whenever the weights are there,
+# including on a --skip-models re-run.
+if [ -f "$ROOT/models/laya/model.safetensors" ]; then
+  say "Checking checkpoint integrity"
+  "$VENV/bin/python" "$ROOT/verify/checkpoints.py" --models "$ROOT/models"
+elif [ "$SKIP_MODELS" -eq 0 ]; then
+  echo "warning: models/laya/model.safetensors is still missing" >&2
+fi
+
 if [ "$SKIP_VERIFY" -eq 0 ]; then
   say "Verifying with real weights"
   "$VENV/bin/python" "$ROOT/laya_smoke_test.py" --models "$ROOT/models"

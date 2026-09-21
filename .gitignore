@@ -31,6 +31,9 @@ models/
 .hf-cache/
 .pip-cache/
 
+# outputs written by the research/scripts harnesses; curated runs live in research/results/
+research/*_benchmark_results.json
+
 
 # session transcripts (may contain pasted credentials)
 session-*.md

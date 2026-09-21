@@ -30,8 +30,7 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(REPO, "laya"))
-sys.path.insert(0, os.path.join(REPO, "notebooks"))
+sys.path.insert(0, os.path.dirname(REPO))   # repository root, so `import laya` works from a checkout
 
 import laya  # noqa: E402
 from bench_local import load, metrics, score_cases, softmax_t, temp_for  # noqa: E402

@@ -167,7 +167,13 @@ class Router:
 
     # ------------------------------------------------------------------ loading
     def load(self, name: str):
-        """Return the Agent for `name`, downloading and building it on first use."""
+        """Return the Agent for `name`, downloading and building it on first use.
+
+        Asking for a checkpoint that is already resident is a cache hit, so it does not run
+        eviction: `max_loaded` is enforced when a checkpoint is loaded, not when one is touched.
+        Lower `max_loaded` and then load something new (or call `unload`) if residency has to
+        drop immediately.
+        """
         key = normalise_name(name)
         if key in self._agents:
             self._touch(key)

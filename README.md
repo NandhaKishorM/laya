@@ -117,6 +117,26 @@ run — are in [`LOCAL_SETUP.md`](LOCAL_SETUP.md).
 
 ---
 
+## Worked examples
+
+`examples/` holds 27 runnable scripts, ordered from a single call to a small production service.
+Each one runs against the real checkpoints and prints real output, not placeholders:
+
+```bash
+.venv/bin/python examples/01_hello_world_decision.py
+./examples/run_all.sh            # every example, pass/fail, non-zero exit if any fails
+```
+
+| range | theme |
+|---|---|
+| `01`-`09` | fundamentals: one `noul` answer, `choice` and `score`, all three primitives in one pass, many questions per call, JSON / email / conversation states |
+| `10`-`18` | routing and presets: confidence gating, `route()` with no forward pass, multilingual `predict()`, offline checkpoints, residency (`preload` / `max_loaded` / `attach` / `unload`), triage, guardrails, moderation, model routing |
+| `19`-`27` | the harder edges: the fine-tuned typed-decisions workflows, 20/77/120-option choice sets, long documents and truncation, structured criteria, calibration temperatures, CPU-vs-MPS latency, throughput, error handling, and a production triage service |
+
+[`examples/README.md`](examples/README.md) indexes every script.
+
+---
+
 ## Quickstart: Route Mode (Recommended)
 
 Laya ships three checkpoints. The built-in **`Router`** is the recommended entry point: it evaluates any state in any language, automatically detects scripts and languages in sub-milliseconds, and dispatches to the optimal checkpoint in a single forward pass.

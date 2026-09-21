@@ -46,6 +46,7 @@ jobs:
           python tests/test_router.py
           python tests/test_criteria.py
           python tests/test_portability.py
+          python tests/test_training.py
 
   lint:
     name: lint
@@ -59,7 +60,7 @@ jobs:
       - name: Ruff
         run: ruff check laya/ --select=E9,F63,F7,F82,F401,F811 --line-length=120
       - name: Byte-compile every module
-        run: python -m compileall -q laya/ tests/
+        run: python -m compileall -q laya/ tests/ verify/ examples/
 
   build:
     name: package

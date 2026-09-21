@@ -27,12 +27,12 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(REPO, "laya"))
+sys.path.insert(0, os.path.dirname(REPO))   # repository root, so `import laya` works from a checkout
 
 import laya  # noqa: E402
 from laya.common import QTYPES, build_sequence, collate_items, render_options, temp_bucket  # noqa: E402
 
-ROOT = os.path.expanduser("~/laya_models")
+ROOT = os.environ.get("LAYA_MODELS", os.path.expanduser("~/laya_models"))
 MODELS = {"english": os.path.join(ROOT, "laya"),
           "multilingual": os.path.join(ROOT, "laya-multilingual"),
           "typed-decisions": os.path.join(ROOT, "laya-typed-decisions")}

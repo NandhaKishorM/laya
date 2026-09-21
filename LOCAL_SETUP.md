@@ -25,6 +25,9 @@ two code changes that were needed, how to re-run everything, and the numbers tha
 | `verify/numerics_check.py` | RoPE base actually used vs. trained, run-to-run determinism, SDPA vs. eager |
 | `verify/bench_devices.py` | CPU vs. MPS latency, plus CPU thread scaling |
 | `verify/edge_sweep.py` | inference paths the other suites miss: 12 questions in one pass, 20/77/120-option choice, odd input shapes, truncation, router lifecycle, CPU-vs-MPS agreement |
+| `verify/checkpoints.py` + `verify/checkpoints.json` | checks the weights against recorded sha256 hashes (a truncated download is otherwise silently wrong) |
+| `verify/soak_check.py` | 200 repeated calls for drift and RSS growth, reload/eviction cycles, concurrent calls from several threads. Uses `psutil` if installed and falls back to peak RSS otherwise |
+| `examples/` | 27 worked examples, simple to complex, plus `run_all.sh` |
 
 `laya` is installed editable, so `import laya` from anywhere uses this checkout and picks up edits.
 
@@ -79,7 +82,10 @@ cd /Users/threaded/projects/Laya/laya      # repository root
 .venv/bin/python verify/numerics_check.py
 .venv/bin/python verify/bench_devices.py
 .venv/bin/python verify/edge_sweep.py
-.venv/bin/python tests/test_local_e2e.py ./models                # the repo's own e2e suite
+.venv/bin/python verify/checkpoints.py                           # weights vs recorded hashes
+.venv/bin/python verify/soak_check.py                            # drift, RSS, concurrency
+.venv/bin/python tests/test_local_e2e.py ./models                 # the repo's own e2e suite
+./examples/run_all.sh                                            # every example, one log per run
 ```
 
 Results on this machine:
@@ -93,6 +99,10 @@ Results on this machine:
 | `laya_smoke_test.py` | all checks passed on **both** CPU and MPS |
 | `verify/numerics_check.py` | RoPE bases match training; answers bit-identical run-to-run and SDPA vs. eager (`0.00e+00` on every reported value) |
 | `verify/edge_sweep.py` | all edge-case checks pass (25 here; the MPS checks skip where MPS is unavailable) |
+| `verify/checkpoints.py` | 3/3 checkpoints match the recorded sha256; a deliberately corrupted copy is caught |
+| `verify/soak_check.py` | 200/200 calls byte-identical with flat RSS; 6 reload cycles leave exactly 1 live agent and 1 live model (0 after `unload()`); 4-thread concurrency matches the single-threaded answer |
+| `laya/tests/test_training.py` | 59 passed — proper-scoring-rule reward, TD(λ) targets, ECE, entropy confidence, collation, sequence building |
+| `examples/run_all.sh` | 27 examples, 27 passed, 0 failed (1-48 s each; ~11 min for the sweep) |
 | CI lint (`ruff`) + `compileall` | pass |
 
 CPU and MPS produce identical answers (same presets, same confidences), so the GPU path is not a
@@ -118,6 +128,67 @@ CPU thread scaling on `laya` (medians): 4 → 542 ms, 8 → 390 ms, **16 → 374
 
 Notes: the first MPS call pays ~13 s of Metal kernel compilation, so warm up before timing;
 everything runs fp32 (bf16 autocast is CUDA-only in Laya).
+
+## Independent accuracy check against public data
+
+Setting the machine up only proved the plumbing worked. The published tables were re-checked by
+running the repo's own harnesses against public datasets — this is measured here, CPU only, not
+copied from `BENCHMARKS.md`.
+
+### MASSIVE intent, 20 options — `research/scripts/bench_local.py --langs 10 --per-lang 60 --skip-b`
+
+| | english | multilingual | published, 51 languages (english / multilingual) |
+|---|---|---|---|
+| macro accuracy | 0.2500 | **0.3950** | 0.2269 / 0.3661 |
+| macro ECE *(lower better)* | 0.7100 | **0.4008** | 0.7331 / 0.3869 |
+| languages > 3x random | 4 / 10 | **8 / 10** | 23 / 51 / 45 / 51 |
+
+Per language, `en` scores **0.783** — the published English figure exactly — and the English
+checkpoint then collapses off English *while staying confident*: Amharic 0.100 at 0.949 mean
+confidence, Arabic 0.133 at 0.897, Bengali 0.117 at 0.953, Greek 0.150 at 0.970. The multilingual
+checkpoint holds those up (Arabic 0.450, Bengali 0.450, Greek 0.417, German 0.467), which is the
+whole reason `Router` exists.
+
+### Applications — `research/scripts/bench_apps.py` with `BENCH_N=80`
+
+| suite | english | multilingual | typed-decisions | README (routed) |
+|---|---|---|---|---|
+| AG News, 4 labels | 0.963 | **0.975** | 0.963 | 0.950 |
+| DAIR Emotion, 6 labels | 0.637 | 0.600 | **0.662** | 0.595 |
+| Banking77, 77 labels at once | 0.412 | 0.500 | 0.425 | 0.425 |
+| phishing email | 0.975 | **0.988** | 0.925 | — |
+| email spam | **0.988** | 0.963 | 0.925 | — |
+| guardrails (jailbreak) | 0.838 | **0.875** | 0.863 | 0.698 (injections) |
+| moderation (toxicity) | 0.500 | 0.487 | 0.500 | — |
+| support triage | 0.550 | 0.550 | 0.537 | — |
+
+Banking77 lands on **0.425**, the number the README quotes for the 77-option case, and the
+AG News / emotion figures agree with the published routed results within sampling noise (80 cases
+per suite here). The README's honest limits reproduce too: `score` is the weakest primitive and
+50+ options in one question is where Laya trails Jev.
+
+### Two fixes the harnesses needed to run here
+
+* they hardcoded the model root to `~/laya_models` — now `LAYA_MODELS` (default unchanged), so
+  `LAYA_MODELS=$PWD/models` points them at the checkpoints this repo already has;
+* their `sys.path` insert pointed at a non-existent `research/laya`; it now points at the
+  repository root.
+
+Not verified: the fine-tuning notebook. It trains on 2xT4 and there is no CUDA here, so it was
+read but never executed.
+
+### What the soak check found
+
+Repeated checkpoint loads push RSS up and it never comes back down — after 6 reload cycles the
+process sat at 3.4 GB against 2.3 GB for a single resident checkpoint, and `unload()` did not
+return it. That is macOS `malloc` keeping freed pages, not a leak: counting live objects shows
+**exactly 1 `Agent` and 1 `DecisionModel` while cycling and 0 after `unload()`**, which is what
+the check now asserts.
+
+The same exercise threw up an API subtlety worth knowing: `Router.load()` returns early for a
+checkpoint that is already resident, so it does not run eviction. `max_loaded` is enforced when a
+checkpoint is *loaded*, not when one is touched — lower it and then load something new, or call
+`unload()`, if residency has to drop immediately. That is now stated in `Router.load`'s docstring.
 
 ## Using it from your own code
 

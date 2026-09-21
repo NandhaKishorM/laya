@@ -3,6 +3,7 @@ import json
 import os
 import threading
 import warnings
+from contextlib import nullcontext
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -143,6 +144,19 @@ def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
         tokenizer = AutoTokenizer.from_pretrained(tok_dir)
         _TOKENIZERS[stamp] = tokenizer
         return tokenizer
+
+
+def _amp_context(device, dtype):
+    """Autocast context for the forward pass, or a no-op when mixed precision is not in use.
+
+    Autocast is a CUDA-only win here. Entering `torch.autocast` on a device torch has no
+    autocast backend for raises even with `enabled=False` ('User specified an unsupported
+    autocast device_type mps'), which broke every `predict()` call on the MPS GPU that torch
+    selects automatically on Apple/AMD machines. Only wrap the forward pass when we use it.
+    """
+    if device.type == "cuda":
+        return torch.autocast(device_type="cuda", dtype=dtype)
+    return nullcontext()
 
 
 class Agent:
@@ -452,8 +466,7 @@ class Agent:
     def _forward(self, b: Dict):
         """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""
         def run():
-            use_amp = self.device.type == "cuda"
-            with torch.autocast(device_type=self.device.type, dtype=self.dtype, enabled=use_amp):
+            with _amp_context(self.device, self.dtype):
                 return self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),

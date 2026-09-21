@@ -78,6 +78,7 @@ jobs:
           python tests/test_cli.py
           python tests/test_mcp.py
           python tests/test_langchain.py
+          python tests/test_portability.py
 
       - name: Email cleaning tests
         run: python tests/test_email.py

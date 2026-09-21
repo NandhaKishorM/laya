@@ -42,6 +42,10 @@ Three checkpoints, and a `Router` that picks between them per request:
 pip install laya
 ```
 
+To try the Python SDK in a CPU container, see the
+[Docker Compose quickstart](docs/docker.md). It runs a sample request and keeps
+downloaded models between runs.
+
 ---
 
 ## Quickstart: Route Mode (Recommended)

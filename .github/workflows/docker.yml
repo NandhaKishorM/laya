@@ -1,0 +1,67 @@
+name: Docker
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose and build CPU image
+        run: |
+          docker compose config --quiet
+          docker compose -f compose.yaml -f compose.cuda.yaml config --quiet
+          docker build --pull -t laya:smoke .
+      - name: Check installed runtime and fresh cache permissions
+        run: |
+          docker run --rm --network none -v laya-smoke-cache:/home/laya/.cache/huggingface \
+            laya:smoke python -c '
+          import json, os, pathlib, torch
+          from laya import Router
+          assert os.getuid() == 10001
+          assert torch.version.cuda is None
+          cache = pathlib.Path(os.environ["HF_HOME"])
+          (cache / "write-test").write_text("cache survives container replacement")
+          request = json.loads(pathlib.Path("/opt/laya/examples/request.json").read_text())
+          assert Router().route(request["state"], request["questions"]).model == "english"
+          '
+      - name: Check cache survives container replacement
+        run: |
+          docker run --rm --network none -v laya-smoke-cache:/home/laya/.cache/huggingface \
+            laya:smoke python -c '
+          import os, pathlib
+          marker = pathlib.Path(os.environ["HF_HOME"]) / "write-test"
+          assert marker.read_text() == "cache survives container replacement"
+          marker.unlink()
+          '
+      - name: Run existing tests without model downloads
+        run: |
+          docker run --rm --network none -v "$PWD:/workspace:ro" -w /workspace \
+            laya:smoke python tests/test_router.py
+          docker run --rm --network none -v "$PWD:/workspace:ro" -w /workspace \
+            laya:smoke python tests/test_criteria.py
+      - name: Test secret-file configuration
+        run: |
+          docker run --rm --network none -v "$PWD:/workspace:ro" -w /workspace \
+            laya:smoke python tests/test_docker_entrypoint.py
+      - name: Reject unavailable CUDA before downloading models
+        run: |
+          docker run --rm --network none -e LAYA_DEVICE=cuda laya:smoke python -c '
+          import runpy
+          try:
+              runpy.run_path("/opt/laya/examples/quickstart.py", run_name="__main__")
+          except RuntimeError as error:
+              assert "CUDA was requested but is unavailable" in str(error)
+          else:
+              raise AssertionError("CUDA request unexpectedly succeeded in the CPU image")
+          '
+      - name: Remove test cache
+        if: always()
+        run: docker volume rm laya-smoke-cache || true

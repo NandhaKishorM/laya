@@ -1,0 +1,47 @@
+FROM python:3.11-slim-bookworm AS build
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# CPU by default; the CUDA Compose override selects cu128.
+ARG TORCH_INDEX=cpu
+RUN pip install torch --index-url https://download.pytorch.org/whl/${TORCH_INDEX}
+
+WORKDIR /src
+COPY pyproject.toml setup.py README.md LICENSE ./
+COPY laya/ ./laya/
+RUN pip install . && pip check
+
+FROM python:3.11-slim-bookworm AS runtime
+
+LABEL org.opencontainers.image.title="Laya Docker quickstart" \
+      org.opencontainers.image.source="https://github.com/NandhaKishorM/laya" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    USE_TF=0 \
+    USE_TORCH=1 \
+    TOKENIZERS_PARALLELISM=false \
+    OMP_NUM_THREADS=4 \
+    LAYA_DEVICE=cpu \
+    HF_HOME=/home/laya/.cache/huggingface
+
+RUN groupadd --gid 10001 laya \
+    && useradd --uid 10001 --gid laya --create-home laya \
+    && mkdir -p /home/laya/.cache/huggingface \
+    && chown -R laya:laya /home/laya/.cache
+
+COPY --from=build /opt/venv /opt/venv
+COPY LICENSE /usr/share/doc/laya/LICENSE
+COPY examples/docker/ /opt/laya/examples/
+COPY docker/entrypoint.py /opt/laya/entrypoint.py
+USER laya
+WORKDIR /home/laya
+
+ENTRYPOINT ["python", "/opt/laya/entrypoint.py"]
+CMD ["python", "/opt/laya/examples/quickstart.py"]

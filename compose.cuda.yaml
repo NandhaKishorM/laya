@@ -1,0 +1,15 @@
+# Use with compose.yaml, or with compose.http.yaml on the HTTP preview branch.
+services:
+  laya:
+    build:
+      args:
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
+    environment:
+      LAYA_DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${LAYA_GPU_ID:-0}"]
+              capabilities: [gpu]

@@ -1,0 +1,13 @@
+services:
+  laya:
+    build:
+      context: .
+    environment:
+      LAYA_DEVICE: cpu
+      OMP_NUM_THREADS: "${OMP_NUM_THREADS:-4}"
+    volumes:
+      - model-cache:/home/laya/.cache/huggingface
+    init: true
+
+volumes:
+  model-cache:

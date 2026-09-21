@@ -383,11 +383,34 @@ temperatures at all, so fit them before relying on its probabilities.
 
 ## Fine-Tuning
 
-Fine-tune Laya on your own domain data. The notebook runs on Kaggle's free 2xT4 GPUs and does
-the whole loop: build the dataset, train with RLCD (proper-scoring-rule rewards, GRPO-style
-policy gradient), fit calibration temperatures, evaluate, and push the result to the Hub.
+Fine-tune Laya on your own domain data with RLCD: strictly proper scoring-rule rewards over a
+group of noisy samples, a policy-gradient update, soft cross-entropy guidance, then temperature
+calibration. The loop lives in `laya.finetune` and is device-agnostic; the notebook drives it
+end to end (build the dataset, train, evaluate, optionally publish).
 
-* **[`notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb`](notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb)**
+* **[`notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb`](notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb)** — the reference run, and portable to whatever hardware you have:
+
+| host | how it trains |
+|---|---|
+| 2+ T4s (Kaggle) or any multi-GPU CUDA box | DDP via `torchrun`, fp16 autocast + loss scaling |
+| a **ROCm** build of PyTorch (Linux, AMD) | reports itself as `cuda`, so the multi-GPU path applies unchanged |
+| an **AMD GPU through Metal (MPS)** on macOS | single process, fp32 |
+| CPU | single process, fp32 |
+
+Mixed precision is CUDA-only: MPS has no autocast backend in torch 2.x and fp32 has nothing to
+scale. Everything else — reward, advantage, gradient, calibration, export — is the same code on
+every device.
+
+```bash
+# same loop from the command line, no notebook
+python -m laya.finetune --model-dir models/laya --items train_items.pt \
+    --output-dir finetuned --device mps --epochs 4
+# multi-GPU (CUDA/ROCm)
+torchrun --standalone --nproc_per_node=2 -m laya.finetune --model-dir ... --items ... --output-dir ...
+```
+
+The notebook honours `LAYA_DEVICE`, `LAYA_FINETUNE_LIMIT`, `LAYA_FINETUNE_EPOCHS` and
+`LAYA_EVAL_LIMIT`, so a smoke run that exercises the whole path takes minutes instead of hours.
 
 Fine-tuning is where most of the value is. On the typed-decisions benchmark the base
 checkpoints score near chance zero-shot (0.36 and 0.35 against a 0.318 random baseline),
@@ -395,7 +418,10 @@ while the fine-tuned checkpoint reaches **0.766** on the same 2,000 decisions --
 TypeSafe Jev's published 0.727 and above the 0.735 teacher self-agreement ceiling. Treat Laya
 as a fast base to specialise, not as a zero-shot decision engine.
 
-Runtime on 2xT4 is roughly 4-5 hours for 4 epochs over ~30k questions.
+Runtime on 2xT4 is roughly 4-5 hours for 4 epochs over ~30k questions. On one desktop AMD GPU
+through MPS expect **hours, not minutes** — measured here at ~4 s per micro-batch of 2 at 512
+tokens on a Radeon Pro Vega II, so the full run is a day-scale job. Fine for a smoke run, a
+small domain set, or a last few epochs on top of a Kaggle run; use the T4s for the full one.
 
 ---
 

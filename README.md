@@ -92,14 +92,14 @@ after warm-up):
 
 | checkpoint | CPU (28 threads) | MPS (Radeon Pro Vega II) |
 |---|---|---|
-| `laya` (421M) | 424 ms — 106 ms/question | **141 ms — 35 ms/question** |
-| `laya-multilingual` (322M) | 195 ms — 49 ms/question | **117 ms — 29 ms/question** |
-| `laya-typed-decisions` (421M) | 427 ms — 107 ms/question | **142 ms — 36 ms/question** |
+| `laya` (421M) | 453 ms — 113 ms/question | **146 ms — 37 ms/question** |
+| `laya-multilingual` (322M) | 192 ms — 48 ms/question | **121 ms — 30 ms/question** |
+| `laya-typed-decisions` (421M) | 441 ms — 110 ms/question | **145 ms — 36 ms/question** |
 
-MPS is 1.7-3x this 56-core CPU and matches the T4 reference quoted below (32.8 ms/question for
+MPS is 1.6-3x this 56-core CPU and matches the T4 reference quoted below (32.8 ms/question for
 `laya-multilingual`). CPU-only work runs fastest around 16 threads (`OMP_NUM_THREADS=16`); the
 default 28 already over-subscribes. The first MPS call pays ~13 s of Metal kernel compilation,
-so warm up before timing.
+so warm up before timing. Individual runs move by a few percent with machine load.
 
 To keep the router fully offline, point it at the local checkpoints rather than the hub repos:
 
@@ -119,21 +119,28 @@ run — are in [`LOCAL_SETUP.md`](LOCAL_SETUP.md).
 
 ## Worked examples
 
-`examples/` holds 27 runnable scripts, ordered from a single call to a small production service.
-Each one runs against the real checkpoints and prints real output, not placeholders:
+`examples/` is a 41-script learning path: eight stages, each adding one idea, from a single call to
+a production triage service. Every one runs against the real checkpoints and prints real output,
+not placeholders:
 
 ```bash
-.venv/bin/python examples/01_hello_world_decision.py
+.venv/bin/python examples/01_first_call_minimal.py
 ./examples/run_all.sh            # every example, pass/fail, non-zero exit if any fails
 ```
 
-| range | theme |
+| stage | theme |
 |---|---|
-| `01`-`09` | fundamentals: one `noul` answer, `choice` and `score`, all three primitives in one pass, many questions per call, JSON / email / conversation states |
-| `10`-`18` | routing and presets: confidence gating, `route()` with no forward pass, multilingual `predict()`, offline checkpoints, residency (`preload` / `max_loaded` / `attach` / `unload`), triage, guardrails, moderation, model routing |
-| `19`-`27` | the harder edges: the fine-tuned typed-decisions workflows, 20/77/120-option choice sets, long documents and truncation, structured criteria, calibration temperatures, CPU-vs-MPS latency, throughput, error handling, and a production triage service |
+| 1. `01`-`03` | first contact: the smallest call, and what `predict()` returns |
+| 2. `04`-`10` | the three primitives: `choice`, `score`, `noul`, and how criteria are written |
+| 3. `11`-`15` | state shapes: JSON, email, conversation turns, and truncation |
+| 4. `16`-`19` | cost, confidence and batching |
+| 5. `20`-`24` | the three checkpoints and routing |
+| 6. `25`-`29` | the built-in presets |
+| 7. `30`-`34` | design your own schema, then tune it |
+| 8. `35`-`41` | devices, scale and production shape |
 
-[`examples/README.md`](examples/README.md) indexes every script.
+[`examples/README.md`](examples/README.md) is the full learning path, with a concept index
+("I want to… → go to…").
 
 ---
 

@@ -364,16 +364,16 @@ def _register_routes(app: FastAPI) -> None:
         loop = asyncio.get_running_loop()
         try:
             raw = await loop.run_in_executor(
-                None,
+                _executor,
                 _predict_locked, request.state, raw_questions, request.model
             )
         except ValueError as exc:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=ErrorResponse(
+                content=ErrorResponse(
                     error=ErrorDetail(code="invalid_question", message=str(exc))
                 ).model_dump(),
-            ) from exc
+            )
 
         return DecisionResponse.from_raw(raw)
 
@@ -408,19 +408,19 @@ def _register_routes(app: FastAPI) -> None:
 
         async def _infer_one(state) -> Dict[str, Any]:
             return await loop.run_in_executor(
-                None,
+                _executor,
                 _predict_locked, state, raw_questions, request.model
             )
 
         try:
             raws = await asyncio.gather(*[_infer_one(s) for s in request.states])
         except ValueError as exc:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=ErrorResponse(
+                content=ErrorResponse(
                     error=ErrorDetail(code="invalid_question", message=str(exc))
                 ).model_dump(),
-            ) from exc
+            )
 
         results = [DecisionResponse.from_raw(r) for r in raws]
         total_tokens = sum(r.usage.input_tokens for r in results)
@@ -490,16 +490,16 @@ def _register_routes(app: FastAPI) -> None:
         loop = asyncio.get_running_loop()
         try:
             raw = await loop.run_in_executor(
-                None,
+                _executor,
                 _predict_locked, request.state, raw_questions, request.model
             )
         except ValueError as exc:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=ErrorResponse(
+                content=ErrorResponse(
                     error=ErrorDetail(code="invalid_question", message=str(exc))
                 ).model_dump(),
-            ) from exc
+            )
 
         return DecisionResponse.from_raw(raw)
 

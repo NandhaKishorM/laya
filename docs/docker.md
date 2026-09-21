@@ -108,16 +108,42 @@ path unless you configure and validate a separate backend.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `LAYA_DEVICE` | `cpu` | SDK device; the CUDA override sets `cuda` |
+| `LAYA_MODEL` | `auto` | Router alias: `auto`, `english`, `multilingual` or `typed-decisions` |
+| `LAYA_REQUEST_FILE` | bundled request | JSON request path inside the container |
 | `LAYA_MODEL_PATH` | unset | Load a mounted, compatible checkpoint directly instead of automatic routing |
 | `OMP_NUM_THREADS` | `4` | CPU thread limit |
 | `HF_HOME` | `/home/laya/.cache/huggingface` | Hugging Face cache; update the volume target if changed |
 | `HF_TOKEN` / `HF_TOKEN_FILE` | unset | Optional token for gated or private model downloads |
+| `HF_HUB_OFFLINE` | `0` | Set to `1` to use only already-cached checkpoints |
+| `LAYA_CACHE_VOLUME` | project model cache | Existing or new named Docker volume used by Compose |
 | `LAYA_GPU_ID` | `0` | Host GPU selected by the CUDA Compose override |
-| `LAYA_TORCH_INDEX` | `cu128` | PyTorch wheel index for the CUDA build |
+| `LAYA_TORCH_INDEX` | `cpu` / `cu128` | PyTorch wheel index selected by the base / CUDA Compose file |
 
-Pass runtime settings with `docker compose run --env NAME=value ...` or your
-own Compose override. Compose does not forward every host environment variable
-automatically. Build-time selectors are read by the CUDA override.
+Compose forwards the settings above except `HF_HOME`, which stays aligned with
+its fixed cache mount. Set them in your shell, a local `.env` file, or the
+service's `environment` block. `LAYA_CACHE_VOLUME` and `LAYA_TORCH_INDEX` are
+Compose/build settings; the rest are runtime settings usable with `docker run -e`.
+Do not commit a `.env` file containing secrets.
+
+```bash
+LAYA_MODEL=english OMP_NUM_THREADS=2 docker compose run --build --rm laya
+
+docker build -t laya:local .
+docker run --rm -e LAYA_MODEL=english -e OMP_NUM_THREADS=2 \
+  -v laya-model-cache:/home/laya/.cache/huggingface laya:local
+```
+
+To use your own request, mount it and set `LAYA_REQUEST_FILE` to its container path:
+
+```bash
+docker compose run --rm --volume "$PWD/request.json:/inputs/request.json:ro" \
+  --env LAYA_REQUEST_FILE=/inputs/request.json laya
+```
+
+`LAYA_MODEL_PATH` and an explicit `LAYA_MODEL` are mutually exclusive. Use the
+former for a mounted checkpoint, or the latter to choose a built-in Router alias.
+If you change `HF_HOME` in `docker run` or a custom Compose file, also provide a
+matching writable cache mount.
 For older GPUs, choose a PyTorch build that still supports their compute
 capability; a driver that supports CUDA is not sufficient by itself.
 

@@ -5,7 +5,7 @@ services:
       args:
         TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
     environment:
-      LAYA_DEVICE: cuda
+      LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
     deploy:
       resources:
         reservations:

@@ -318,3 +318,19 @@ def test_jev_typesafe_wire_compatibility(client_choice):
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert "department" in data["answers"]
+
+
+
+def test_choice_empty_criteria_returns_422(client_choice):
+    """Ensure empty criteria {} in ChoiceQuestion fails with 422."""
+    resp = client_choice.post("/v1/decide", json={
+        "state": "Need help with invoice",
+        "questions": {
+            "department": {
+                "type": "choice",
+                "instructions": "Which department?",
+                "criteria": {},
+            }
+        },
+    })
+    assert resp.status_code == 422

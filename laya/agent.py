@@ -46,6 +46,11 @@ def _fix_tokenizer_config(path: str):
             tcfg["extra_special_tokens"] = {"extra_%d" % i: t for i, t in enumerate(extra)}
             changed = True
         if changed:
+            # HuggingFace snapshots are symlinks into a shared blob store. Writing through the
+            # link would truncate a file shared with other revisions and processes, race
+            # concurrent loads, and desync the hub's cache metadata. Detach the local file first.
+            if os.path.islink(cfg_file):
+                os.unlink(cfg_file)
             with open(cfg_file, "w") as f:
                 json.dump(tcfg, f, indent=2)
     except Exception:

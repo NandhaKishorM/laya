@@ -34,6 +34,9 @@ models/
 # outputs written by the research/scripts harnesses; curated runs live in research/results/
 research/*_benchmark_results.json
 
+# output of a local notebook run (Kaggle uses /kaggle/working)
+notebooks/finetune_run/
+
 
 # session transcripts (may contain pasted credentials)
 session-*.md

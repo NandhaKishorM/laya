@@ -28,6 +28,7 @@ two code changes that were needed, how to re-run everything, and the numbers tha
 | `verify/checkpoints.py` + `verify/checkpoints.json` | checks the weights against recorded sha256 hashes (a truncated download is otherwise silently wrong) |
 | `verify/soak_check.py` | 200 repeated calls for drift and RSS growth, reload/eviction cycles, concurrent calls from several threads. Uses `psutil` if installed and falls back to peak RSS otherwise |
 | `examples/` | 41 worked examples as an eight-stage learning path, plus `run_all.sh` and the path doc |
+| `laya/finetune.py` | the RLCD training loop, device-agnostic: CUDA/ROCm (fp16, DDP), MPS and CPU (fp32) |
 
 `laya` is installed editable, so `import laya` from anywhere uses this checkout and picks up edits.
 
@@ -114,6 +115,7 @@ Results on this machine:
 | `verify/checkpoints.py` | 3/3 checkpoints match the recorded sha256; a deliberately corrupted copy is caught |
 | `verify/soak_check.py` | 200/200 calls byte-identical with flat RSS; 6 reload cycles leave exactly 1 live agent and 1 live model (0 after `unload()`); 4-thread concurrency matches the single-threaded answer |
 | `tests/test_training.py` | 59 passed — proper-scoring-rule reward, TD(λ) targets, ECE, entropy confidence, collation, sequence building |
+| `tests/test_finetune.py` | 26 passed — device selection, temperature fitting, and a real training run on a miniature checkpoint (CI-safe: no weights, no GPU) |
 | `examples/run_all.sh` | **41 passed, 0 failed** (eight stages, 23-49 s each; the whole sweep is ~20 min) |
 | CI lint (`ruff`) + `compileall` | pass |
 
@@ -209,6 +211,39 @@ The same exercise threw up an API subtlety worth knowing: `Router.load()` return
 checkpoint that is already resident, so it does not run eviction. `max_loaded` is enforced when a
 checkpoint is *loaded*, not when one is touched — lower it and then load something new, or call
 `unload()`, if residency has to drop immediately. That is now stated in `Router.load`'s docstring.
+
+## Fine-tuning on this machine
+
+The Kaggle notebook used to be CUDA-only in four places: DDP/NCCL with `torch.cuda.set_device`,
+`GradScaler("cuda")`, `autocast("cuda", fp16)` and `torch.cuda.empty_cache()`. The loop now lives
+in `laya/finetune.py` and picks its device the same way inference does — CUDA/ROCm, then MPS, then
+CPU — using fp16 autocast and loss scaling only where a backend exists for them.
+
+Verified here by executing the notebook itself, headless, with `nbclient`:
+
+```bash
+cd notebooks
+HF_HOME=../.hf-cache LAYA_DEVICE=mps LAYA_MODEL_DIR=../models/laya \
+  LAYA_FINETUNE_LIMIT=24 LAYA_FINETUNE_EPOCHS=1 LAYA_FINETUNE_MICRO_BATCH=2 \
+  LAYA_FINETUNE_GRAD_ACCUM=2 LAYA_EVAL_LIMIT=12 \
+  ../.venv/bin/python -m nbclient laya_finetune_typed_decisions_2xT4_kaggle.ipynb
+```
+
+All nine code cells ran on MPS in ~90 s: 24 items tokenized from the real dataset, six optimizer
+updates, temperatures fitted, evaluation, metrics table and report JSON. The saved checkpoint
+reloads through the normal `laya.load()` path with its fitted temperatures.
+
+Two things worth knowing:
+
+* **Throughput.** ~4 s per micro-batch of 2 at 512 tokens on the Radeon Pro Vega II, so the full
+  4-epoch run is a day-scale job here against 4-5 hours on 2xT4. Smoke runs and small domain sets
+  are fine; the T4s are still the right place for the full one.
+* **DDP.** `torchrun` with NCCL/RCCL is unchanged for CUDA and ROCm. `gloo` over the default TCP
+  store hangs on this macOS/torch build (c10d spins on IPv6 address resolution), so the two-process
+  path was verified with a file store instead:
+  `python -m laya.finetune ... --init-method file:///tmp/laya_ddp_init`. MPS has no distributed
+  backend, so it always runs single-process — which is what the notebook does when it finds no
+  CUDA GPUs.
 
 ## Using it from your own code
 

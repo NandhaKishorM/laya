@@ -1,6 +1,7 @@
 """High-level inference runtime for laya System 1 decision models."""
 import json
 import os
+from contextlib import nullcontext
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -91,6 +92,19 @@ def _verify_compatibility(model: torch.nn.Module, cfg: Dict, weights: Dict[str, 
             f"Model weights incomplete for {model_id!r}: missing {len(missing_keys)} parameter tensors "
             f"(e.g. {missing_keys[:3]})."
         )
+
+
+def _amp_context(device, dtype):
+    """Autocast context for the forward pass, or a no-op when mixed precision is not in use.
+
+    Autocast is a CUDA-only win here. Entering `torch.autocast` on a device torch has no
+    autocast backend for raises even with `enabled=False` ('User specified an unsupported
+    autocast device_type mps'), which broke every `predict()` call on the MPS GPU that torch
+    selects automatically on Apple/AMD machines. Only wrap the forward pass when we use it.
+    """
+    if device.type == "cuda":
+        return torch.autocast(device_type="cuda", dtype=dtype)
+    return nullcontext()
 
 
 class Agent:
@@ -264,10 +278,9 @@ class Agent:
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
 
         b = collate_items([items], self.tok.pad_token_id)
-        use_amp = self.device.type == "cuda"
 
         try:
-            with torch.autocast(device_type=self.device.type, dtype=self.dtype, enabled=use_amp):
+            with _amp_context(self.device, self.dtype):
                 logits, act = self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),

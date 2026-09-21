@@ -12,6 +12,7 @@ the numbers quoted in the main README — nothing here is imported by the `laya`
 | `scripts/bench_local.py` | CPU sweep: MASSIVE intent across **all 51 languages**, plus typed-decisions on all three checkpoints |
 | `scripts/bench_apps.py` | the six application workflows (support triage, email + phishing, guardrails, RAG relevance, moderation, model routing) plus the datasets where public Jev numbers exist |
 | `scripts/bench_latency.py` | inference speed including what routing costs: detection overhead, hot path, cold-swap, mixed-language throughput at several `max_loaded` settings |
+| `scripts/bench_latin_routing.py` | share of each Latin script locale that still reaches the English checkpoint after #42, cross referenced with the 51 language sweep, plus optional end to end accuracy for one locale. Run it on `main` and on a branch to see a routing change. |
 | `scripts/make_plots.py` | renders `assets/laya_benchmark.png` from the result JSONs |
 
 Everything runs with `USE_TF=0` — `transformers` probes for TensorFlow at import, and when TF is
@@ -23,6 +24,7 @@ installed its abseil runtime can deadlock model construction on macOS/Python 3.9
 |---|---|
 | `results/t4_colab_benchmark.json` | 17,416 questions on one T4, both checkpoints, identical questions per model |
 | `results/cpu_51_language_sweep.json` | 51 languages x 2 checkpoints, MASSIVE intent, 20 options |
+| `results/latin_routing.json` | routing audit over the 29 Latin script MASSIVE locales, and end to end tr-TR accuracy through the router |
 
 ## Headline findings
 

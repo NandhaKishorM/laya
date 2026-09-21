@@ -80,9 +80,24 @@ for label, text, want in [
     check("is_english/" + label, is_english(text), want)
 
 # Undecided is reported as undecided rather than dressed up as a detection: a single shared
-# function word used to name a language ("para" in Turkish text was called Spanish).
-check("latin/undecided is flagged", analyse("Müşteriden iki kez ücret alındı ve para iadesi istiyor")["language_undecided"], True)
-check("latin/undecided names no language", analyse("Müşteriden iki kez ücret alındı ve para iadesi istiyor")["language"], None)
+# function word must not name a language ("para" in Turkish text was called Spanish). The
+# Turkish sentence that used to sit here is now identified as Turkish from its own function
+# words and from the letters ı and ğ, so the guarantee is checked on text that really does
+# leave nothing to go on.
+check("latin/turkish is identified", analyse("Müşteriden iki kez ücret alındı ve para iadesi istiyor")["language"], "tr")
+check("latin/turkish is not undecided", analyse("Müşteriden iki kez ücret alındı ve para iadesi istiyor")["language_undecided"], False)
+check("latin/undecided is flagged", analyse("zzzz qqqq wwww xxxx yyyy")["language_undecided"], True)
+check("latin/undecided names no language", analyse("zzzz qqqq wwww xxxx yyyy")["language"], None)
+# Turkish written in plain ASCII gives several languages one hit each ("para" is Spanish,
+# Portuguese and Tagalog; "ve" is Turkish, Azerbaijani and Vietnamese). Naming a winner there
+# would be a coin toss, so no language is named, but the text is still not English and must
+# not reach the English checkpoint.
+check("latin/one shared word names nothing", guess_latin_language("Kayit para transferi tamamlandi mi"), None)
+check("latin/thin evidence still leaves english", is_english("Kayit para transferi tamamlandi mi"), False)
+check("latin/ascii turkish leaves english",
+      is_english("Musteriden iki kez ucret alindi ve para iadesi istiyor"), False)
+check("latin/ascii turkish names nothing",
+      guess_latin_language("Musteriden iki kez ucret alindi ve para iadesi istiyor"), None)
 check("latin/english is not undecided", analyse("Please refund the duplicate charge on the invoice")["language_undecided"], False)
 check("latin/diacritic rate reported", analyse("Gătește-mi o rețetă de sarmale")["diacritic_rate"] > 0.02, True)
 check("latin/english has no diacritics", analyse("Please refund the duplicate charge today")["diacritic_rate"], 0.0)
@@ -92,13 +107,16 @@ _KEYS = {"script", "script_profile", "language", "is_english", "language_undecid
 for label, text in [("english", "Please refund the duplicate charge"), ("hindi", "ग्राहक से दो बार"),
                     ("romanian", "Gătește-mi o rețetă de sarmale"), ("no letters", "12345 ???")]:
     check("analyse/keys " + label, set(analyse(text)), _KEYS)
-# A 0-0 tie between non-English stopword lists is no evidence for any of them
-check("latin_lang/zero tie invents nothing", guess_latin_language("Cât e ora acum la Tokyo"), None)
+# A 0-0 tie between non-English stopword lists is no evidence for any of them. The Romanian
+# line that used to stand here now scores for Romanian on its own words, so the tie is checked
+# with text no table claims.
+check("latin_lang/romanian is identified", guess_latin_language("Cât e ora acum la Tokyo"), "ro")
+check("latin_lang/zero tie invents nothing", guess_latin_language("zzzz qqqq wwww xxxx yyyy"), None)
 
-# Known limitation, kept visible on purpose: Romanian short enough to carry no diacritics and an
-# English function word ("in") still reads as English. A real LID model is the fix, not more
-# stopwords -- see the discussion in #35.
-check("latin/KNOWN GAP romanian without diacritics", is_english("Care este ora in Tokyo?"), True)
+# This was a known limitation: Romanian short enough to carry no diacritics and an English
+# function word ("in") read as English, and the note here said more stopwords would not fix it.
+# With Romanian in the table and "in" discounted as a word both languages claim, it does.
+check("latin/romanian without diacritics", is_english("Care este ora in Tokyo?"), False)
 
 
 # --------------------------------------------------------------------- Latin language guess
@@ -219,7 +237,9 @@ for label, text in [
     check("route/unknown latin " + label, _r_lat.route(text).model, "multilingual")
 # and the reason must say what it actually routed on, not report a language it did not identify
 check("route/undecided reason mentions letters",
-      "not identified" in _r_lat.route("Müşteriden iki kez ücret alındı ve para iadesi istiyor").reason, True)
+      "not identified" in _r_lat.route("zzzz qqqq wwww xxxx yyyy àà").reason, True)
+check("route/identified reason names the language",
+      "tr" in _r_lat.route("Müşteriden iki kez ücret alındı ve para iadesi istiyor").reason, True)
 check("route/english still english",
       _r_lat.route("Please refund the duplicate charge on invoice 4411 today.").model, "english")
 check("route/short english still english", _r_lat.route("refund me").model, "english")

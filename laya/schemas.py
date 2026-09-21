@@ -217,7 +217,7 @@ class DecideRequest(BaseModel):
     """
 
     model: str = Field(
-        "convaiinnovations/laya",
+        "english",
         description="HuggingFace model ID or local directory path.",
     )
     state: Union[str, Dict[str, Any], List[Any]] = Field(
@@ -304,7 +304,7 @@ class BatchDecideRequest(BaseModel):
     Each state gets its own entry in the response ``results`` list.
     """
 
-    model: str = Field("convaiinnovations/laya")
+    model: str = Field("english")
     states: List[Union[str, Dict[str, Any], List[Any]]] = Field(
         ...,
         min_length=1,

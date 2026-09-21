@@ -52,6 +52,8 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 import uvicorn
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -102,6 +104,8 @@ settings = _Settings()
 # ---------------------------------------------------------------------------
 
 _router: Optional[laya.Router] = None
+_executor: Optional[ThreadPoolExecutor] = None
+_infer_lock = threading.Lock()
 
 
 def _init_router() -> laya.Router:
@@ -119,6 +123,11 @@ def _init_router() -> laya.Router:
     r.preload([settings.model])
     return r
 
+
+
+def _predict_locked(state, questions, model):
+    with _infer_lock:
+        return _router.predict(state, questions, model=model)
 
 def _get_or_raise() -> laya.Router:
     """Return the loaded Router, or raise 503 if startup hasn't finished."""
@@ -355,7 +364,7 @@ def _register_routes(app: FastAPI) -> None:
         try:
             raw = await loop.run_in_executor(
                 None,
-                lambda: router.predict(request.state, raw_questions, model=request.model),
+                _predict_locked, request.state, raw_questions, request.model
             )
         except ValueError as exc:
             raise HTTPException(
@@ -398,7 +407,7 @@ def _register_routes(app: FastAPI) -> None:
         async def _infer_one(state) -> Dict[str, Any]:
             return await loop.run_in_executor(
                 None,
-                lambda: router.predict(state, raw_questions, model=request.model),
+                _predict_locked, state, raw_questions, request.model
             )
 
         try:
@@ -479,7 +488,7 @@ def _register_routes(app: FastAPI) -> None:
         try:
             raw = await loop.run_in_executor(
                 None,
-                lambda: router.predict(request.state, raw_questions, model=request.model),
+                _predict_locked, request.state, raw_questions, request.model
             )
         except ValueError as exc:
             raise HTTPException(

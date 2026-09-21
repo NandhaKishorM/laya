@@ -102,6 +102,7 @@ jobs:
         run: |
           python tests/test_router.py
           python tests/test_criteria.py
+          python tests/test_finetune.py
           python tests/test_batch.py
           python tests/test_predict_long.py
           python tests/test_attention_dynamic_shapes.py
@@ -356,6 +357,7 @@ jobs:
       - name: Email cleaning tests
         run: python tests/test_email.py
         shell: bash
+          python tests/test_finetune.py
 
   lint:
     name: lint

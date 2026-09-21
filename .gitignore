@@ -29,6 +29,9 @@ wheels/
 node_modules/
 *.tgz
 .pytest_cache/
+
+# output of a local notebook run (Kaggle uses /kaggle/working)
+notebooks/finetune_run/
 .DS_Store
 .env
 .pypirc

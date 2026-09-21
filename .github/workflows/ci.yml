@@ -45,6 +45,7 @@ jobs:
         run: |
           python tests/test_router.py
           python tests/test_criteria.py
+          python tests/test_finetune.py
 
   lint:
     name: lint

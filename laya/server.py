@@ -244,7 +244,7 @@ def create_app() -> FastAPI:
 _bearer = HTTPBearer(auto_error=False)
 
 
-async def _check_auth(credentials: Optional[HTTPAuthorizationCredentials] = None) -> None:
+async def _check_auth(credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer)) -> None:
     """Optional bearer-token guard. Skipped when LAYA_API_KEY is not set."""
     if not settings.api_key:
         return
@@ -317,7 +317,8 @@ def _register_routes(app: FastAPI) -> None:
     # ── POST /v1/decide ───────────────────────────────────────────────────────
 
     @app.post(
-        "/v1/decide",
+    "/v1/decide",
+    dependencies=[Depends(_check_auth)],
         response_model=DecisionResponse,
         summary="Single-state decision",
         tags=["Inference"],
@@ -379,7 +380,8 @@ def _register_routes(app: FastAPI) -> None:
     # ── POST /v1/decide/batch ─────────────────────────────────────────────────
 
     @app.post(
-        "/v1/decide/batch",
+    "/v1/decide/batch",
+    dependencies=[Depends(_check_auth)],
         response_model=BatchDecisionResponse,
         summary="Multi-state batch decision",
         tags=["Inference"],
@@ -436,7 +438,8 @@ def _register_routes(app: FastAPI) -> None:
     # work against this server with ZERO code changes.
 
     @app.post(
-        "/v1/systemone",
+    "/v1/systemone",
+    dependencies=[Depends(_check_auth)],
         response_model=DecisionResponse,
         summary="TypeSafe Jev drop-in alias",
         tags=["Inference"],

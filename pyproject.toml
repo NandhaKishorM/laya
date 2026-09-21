@@ -1,16 +1,14 @@
 [build-system]
-# >=77 for SPDX `license` expressions (PEP 639); the previous TOML license table is deprecated.
-requires = ["setuptools>=77"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-dynamic = ["version"]
+version = "0.3.5"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+license = { text = "Apache-2.0" }
 authors = [
     { name = "Convai Innovations" }
 ]
@@ -18,6 +16,7 @@ keywords = ["decision-model", "rlcd", "calibration", "system-one", "routing", "g
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -33,13 +32,9 @@ dependencies = [
     "numpy>=1.20.0",
 ]
 
-[tool.setuptools.dynamic]
-# Single source of truth for the version; release/CI compare the git tag against it.
-version = { attr = "laya.__version__" }
-
-[tool.setuptools.packages.find]
-# assets/, research/ and notebooks/ sit in the root, so auto-discovery would bail out.
-include = ["laya*"]
+[tool.setuptools]
+# assets/, research/ and notebooks/ sit in the root, so auto-discovery bails out.
+packages = ["laya"]
 
 [project.urls]
 Homepage = "https://huggingface.co/convaiinnovations/laya"

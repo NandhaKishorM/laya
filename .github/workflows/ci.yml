@@ -82,9 +82,9 @@ jobs:
       - name: Version must match the tag on a release
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          pkg=$(python -c "import re;print(re.search(r'__version__ = \"(.*)\"', open('laya/__init__.py').read()).group(1))")
+          pkg=$(python -c "import re;print(re.search(r'version = \"(.*)\"', open('pyproject.toml').read()).group(1))")
           tag="${GITHUB_REF_NAME#v}"
-          test "$pkg" = "$tag" || { echo "laya.__version__ $pkg != tag $tag"; exit 1; }
+          test "$pkg" = "$tag" || { echo "pyproject $pkg != tag $tag"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: dist

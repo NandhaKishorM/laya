@@ -298,11 +298,14 @@ def _register_routes(app: FastAPI) -> None:
         Returns the currently loaded model in an OpenAI-compatible ``/v1/models`` envelope,
         so existing OpenAI-SDK clients can enumerate models without modification.
         """
+        from laya.router import STANDALONE_MODELS
+        resolved_repo = STANDALONE_MODELS.get(settings.model, settings.model)
         return {
             "object": "list",
             "data": [
                 {
-                    "id": settings.model,
+                    "id": resolved_repo,
+                    "alias": settings.model if settings.model != resolved_repo else None,
                     "object": "model",
                     "created": 0,
                     "owned_by": "convai-innovations",

@@ -136,7 +136,7 @@ def main():
 @main.command()
 @click.option("--host", default="0.0.0.0", show_default=True, help="Bind host.")
 @click.option("--port", default=8000, show_default=True, type=int, help="Bind port.")
-@click.option("--model", default=os.environ.get("LAYA_MODEL", "convaiinnovations/laya"),
+@click.option("--model", default=os.environ.get("LAYA_MODEL", "english"),
               show_default=True, help="HuggingFace model ID or local path.")
 @click.option("--device", default=None, help="cuda | cpu | mps (default: auto).")
 @click.option("--workers", default=4, show_default=True, type=int, help="Thread-pool workers.")
@@ -204,7 +204,7 @@ def serve(host, port, model, device, workers, reload, log_level):
               help="Optional description per label (same order as -c).")
 @click.option("-i", "--instructions", default="Classify the input.",
               show_default=True, help="Natural-language question to ask.")
-@click.option("--model", default=os.environ.get("LAYA_MODEL", "convaiinnovations/laya"),
+@click.option("--model", default=os.environ.get("LAYA_MODEL", "english"),
               help="Model ID or path.")
 @click.option("--device", default=None, help="cuda | cpu | mps.")
 @click.option("--json", "as_json", is_flag=True, default=False, help="Output raw JSON.")
@@ -239,7 +239,7 @@ def decide(state, choices, descs, instructions, model, device, as_json):
 @click.argument("state")
 @click.option("-i", "--instructions", required=True,
               help="Yes/no statement to evaluate. E.g. 'Is this a payment failure?'")
-@click.option("--model", default=os.environ.get("LAYA_MODEL", "convaiinnovations/laya"),
+@click.option("--model", default=os.environ.get("LAYA_MODEL", "english"),
               help="Model ID or path.")
 @click.option("--device", default=None, help="cuda | cpu | mps.")
 @click.option("--json", "as_json", is_flag=True, default=False, help="Output raw JSON.")
@@ -277,7 +277,7 @@ def judge(state, instructions, model, device, as_json):
               help="Ordered rubric level (lowest first). Repeat: -l low -l medium -l high")
 @click.option("-i", "--instructions", default="Rate the following input.",
               show_default=True, help="Question to ask about the state.")
-@click.option("--model", default=os.environ.get("LAYA_MODEL", "convaiinnovations/laya"),
+@click.option("--model", default=os.environ.get("LAYA_MODEL", "english"),
               help="Model ID or path.")
 @click.option("--device", default=None, help="cuda | cpu | mps.")
 @click.option("--json", "as_json", is_flag=True, default=False, help="Output raw JSON.")

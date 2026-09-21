@@ -8,6 +8,7 @@ import os
 import shutil
 import sys
 import tempfile
+import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -49,6 +50,22 @@ check("snapshot/drops backend+is_local as intended", '"backend": "x"' not in ope
 # a second call is a no-op and must not disturb anything either
 _fix_tokenizer_config(os.path.dirname(snap_dir))
 check("idempotent/blob still untouched", open(blob).read(), ORIGINAL)
+
+# an unparseable config must warn (not crash, not silently do nothing)
+bad_snap = os.path.join(root, "bad", "tokenizer")
+os.makedirs(bad_snap)
+bad_file = os.path.join(bad_snap, "tokenizer_config.json")
+with open(bad_file, "w") as f:
+    f.write("{ not json")
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    _fix_tokenizer_config(os.path.dirname(bad_snap))
+check(
+    "bad-json/warns instead of raising",
+    any(issubclass(w.category, RuntimeWarning) for w in caught),
+    True,
+)
+check("bad-json/file left as written", open(bad_file).read(), "{ not json")
 
 shutil.rmtree(root, ignore_errors=True)
 

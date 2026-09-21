@@ -53,8 +53,13 @@ def _fix_tokenizer_config(path: str):
                 os.unlink(cfg_file)
             with open(cfg_file, "w") as f:
                 json.dump(tcfg, f, indent=2)
-    except Exception:
-        pass
+    except Exception as e:
+        # Do not swallow this silently: if the patch did not apply, AutoTokenizer may fail later
+        # with a confusing error and no hint that the config was the cause.
+        warnings.warn(
+            "laya: could not patch %s (%s); the tokenizer may fail to load with this "
+            "transformers version." % (cfg_file, e),
+            RuntimeWarning, stacklevel=2)
 
 
 def _verify_compatibility(model: torch.nn.Module, cfg: Dict, weights: Dict[str, torch.Tensor], model_id: str):

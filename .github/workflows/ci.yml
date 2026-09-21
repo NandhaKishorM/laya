@@ -50,6 +50,9 @@ jobs:
           python tests/test_decision_model.py
           python tests/test_packaging.py
 
+      - name: Quilt ledger tests
+        run: python tests/test_quilt.py
+
       - name: Email cleaning tests
         run: python tests/test_email.py
 

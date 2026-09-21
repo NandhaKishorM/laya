@@ -22,6 +22,7 @@ from .presets import (
 )
 from .router import DEFAULT_MODELS, RouteDecision, Router
 from .shortlist import embed_fn_from_agent, predict_shortlist, shortlist_choice
+from .quilt import QuiltLedger, QuiltLayaBridge
 
 __version__ = "0.3.5"
 __all__ = [
@@ -31,6 +32,8 @@ __all__ = [
     "Router",
     "RouteDecision",
     "DEFAULT_MODELS",
+    "QuiltLedger",
+    "QuiltLayaBridge",
     "shortlist_choice",
     "predict_shortlist",
     "embed_fn_from_agent",

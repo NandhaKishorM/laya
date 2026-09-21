@@ -243,6 +243,30 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 
 ---
 
+## Quilt Ledger: decisions as attested observations
+
+Every decision can be booked into a hash-chained ledger — one row per
+decision, each carrying its state binding, engine identity, and a chain
+link any substrate can verify (fnv1a-32, the reference quilt kernel's
+algorithm). Ensembles preserve rival checkpoints' answers side by side;
+resolutions cite what they passed over and delete nothing; failures book
+named REFUSED rows instead of dropping silently.
+
+```python
+from laya import QuiltLedger, QuiltLayaBridge
+
+ledger = QuiltLedger(actor="ops", engine="english")
+bridge = QuiltLayaBridge(route="english")
+ledger.decide(state, questions, bridge.decide_fn())
+ok, bad_row = ledger.verify()   # tamper pins at its own row
+```
+
+Stdlib-only — torch loads lazily through the bridge, never at import.
+Doctrine and the five-opcode mapping: [`docs/QUILT.md`](docs/QUILT.md).
+Demo: `python3 examples/quilt_decisions.py --check`.
+
+---
+
 ## Benchmarks
 
 **Full report: [`BENCHMARKS.md`](BENCHMARKS.md)** — every run consolidated, languages and themes, with per-language detail for all 51 languages.

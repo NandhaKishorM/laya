@@ -381,6 +381,10 @@ temperatures at all, so fit them before relying on its probabilities.
 
 ---
 
+## Community integrations
+
+* **[omp-laya-judge](https://github.com/F0Rextasy/omp-laya-judge)** — [oh-my-pi](https://github.com/can1357/oh-my-pi) plugin: local System-1 judge MCP server + skill (`choice`/`bool`/`score`, 0 tokens, ~0.3 s on CPU), session-start banner, auto-use rule with confidence-gated escalation, plus reproducible quiz (6/8) and planner-assisted Snake (score 12, 300 moves, safety shield) demos.
+
 ## Fine-Tuning
 
 Fine-tune Laya on your own domain data. The notebook runs on Kaggle's free 2xT4 GPUs and does

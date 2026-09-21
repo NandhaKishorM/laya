@@ -119,7 +119,17 @@ class DecisionModel(nn.Module):
         p = torch.softmax(logits.detach(), -1)
         k = marker_mask.sum(-1).clamp(min=2).float()
         ent = -(p * torch.log(p.clamp_min(1e-9))).sum(-1) / torch.log(k)
-        top2 = p.topk(2, -1).values
+        if p.size(-1) >= 2:
+            top2 = p.topk(2, -1).values
+        else:
+            # A single-option question has exactly one marker, so p.topk(2, ...)
+            # has nothing to select for the second slot and raises. The answer
+            # is still well-defined: softmax over one logit is 1.0 regardless of
+            # its value, so pad the missing second entry with 0.0 - that gives
+            # the act head top1 - top2 == 1.0, the same "fully decided" signal
+            # it would see for any other unambiguous top-1-vs-rest gap.
+            top1 = p.topk(1, -1).values
+            top2 = torch.cat([top1, torch.zeros_like(top1)], dim=-1)
         feats = torch.stack([top2[:, 0], top2[:, 0] - top2[:, 1], ent, k / 255.0], -1)
         pooled = h[:, 0].float()
         act_logits = self.act_head(torch.cat([pooled, feats], -1))
@@ -209,6 +219,25 @@ def confidence_from_probs(p: np.ndarray, k: int) -> float:
 def temp_bucket(qtype: int, k: int) -> str:
     size = "2" if k <= 2 else "3-5" if k <= 5 else "6-10" if k <= 10 else "11+"
     return "%s:%s" % (QTYPE_NAMES[int(qtype)], size)
+
+
+# A fitted temperature below 1 sharpens the logits instead of softening them. The shipped
+# `choice:11+` bucket is 0.1006, which multiplies them ~10x: a 0.24 top probability is published as
+# 0.99, so a caller gating on confidence is told a coin flip is a certainty. No honest calibration
+# needs to sharpen this hard, so refuse to apply one that does.
+TEMP_MIN = 0.5
+TEMP_MAX = 5.0
+
+
+def clamp_temperature(t, lo: float = TEMP_MIN, hi: float = TEMP_MAX) -> float:
+    """A usable temperature: `t` confined to [lo, hi], falling back to 1.0 if it is not a number."""
+    try:
+        t = float(t)
+    except (TypeError, ValueError):
+        return 1.0
+    if t != t or t in (float("inf"), float("-inf")):    # NaN / inf
+        return 1.0
+    return min(hi, max(lo, t))
 
 
 def amp_dtype(name: Optional[str]) -> torch.dtype:

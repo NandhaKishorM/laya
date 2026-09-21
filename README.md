@@ -42,6 +42,8 @@ Three checkpoints, and a `Router` that picks between them per request:
 pip install laya
 ```
 
+Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
+
 ---
 
 ## Quickstart: Route Mode (Recommended)
@@ -291,7 +293,7 @@ failure for anything branching on confidence.
 
 #### Where Jev leads
 
-* **High-cardinality label spaces (>20 options at default settings):** On Banking77, Jev scores 0.870 (on 72 labels) while Laya scores 0.425 (on 77 labels at default 256-token head budget). This is an architectural token-budget constraint: options share a fixed `head_max_len` budget (192 tokens on English, 256 on multilingual), so 77 options receive only ~3 to 4 tokens per label, causing text to become indistinguishable. Jev supports up to 255 options out-of-the-box. While `laya-multilingual` supports 1,024 context (and up to 8,192 in the encoder) and you can raise `agent.cfg["head_max_len"] = 512` at runtime, Jev is currently better suited for 50+ options in a single prompt without tuning.
+* **High-cardinality label spaces (>20 options at default settings):** On Banking77, Jev scores 0.870 (on 72 labels) while Laya scores 0.425 (on 77 labels at default 256-token head budget). This is an architectural token-budget constraint: options share a fixed `head_max_len` budget (192 tokens on English, 256 on multilingual), so 77 options receive only ~3 to 4 tokens per label, causing text to become indistinguishable. Jev supports up to 255 options out-of-the-box. While `laya-multilingual` supports 1,024 context (and up to 8,192 in the encoder) and you can raise `agent.cfg["head_max_len"] = 512` at runtime, Jev is currently better suited for 50+ options in a single prompt without tuning. `predict_shortlist` (see [Honest limits](#honest-limits)) keeps the top `k` labels with a caller-supplied embedding, then runs one forward pass on that shortlist.
 * **Soft distribution matching:** On typed-decisions, while Laya achieves higher argmax accuracy (0.766 vs 0.727), Jev achieves higher soft accuracy (0.580 vs 0.471) against the teacher's full probability distributions.
 * **Out-of-the-box raw calibration:** Before temperature scaling, the base checkpoint has higher raw ECE (0.213 vs 0.144). Laya achieves its 0.081 ECE after domain temperature fitting.
 
@@ -366,7 +368,37 @@ temperatures at all, so fit them before relying on its probabilities.
   * `laya-multilingual` and `laya-typed-decisions` default to 1,024 context (`head_max_len = 256`, ~768 tokens for state; mmBERT-base encoder supports up to 8,192 with RoPE).
   At default settings, a 77-option question like Banking77 allocates only `(256 - 16) // 77` ≈ 3–4 tokens per label, which causes accuracy to fall off sharply (0.425 vs Jev's 0.870). If evaluating 50+ options in a single question:
   1. Raise `agent.cfg["head_max_len"] = 512` and `agent.cfg["max_len"] = 1024` (or up to 2048 / 4096 / 8192) so every option has enough tokens to remain distinct.
-  2. Or split large option sets into a two-step coarse-to-fine hierarchical choice.
+  2. Or shortlist with embeddings and run one forward pass on the top `k` labels (`predict_shortlist`, example below). `predict` and `system_one` still score every criterion they are given.
+  3. Or split the label set yourself into a coarse question and a fine question.
+
+```python
+import laya
+
+questions = {
+    "intent": {
+        "type": "choice",
+        "instructions": "Which banking intent is this?",
+        "criteria": {
+            "card_arrival": "where is my card",
+            "transfer_fee": "fee charged on a transfer",
+            # ...the rest of a large label set
+        },
+    }
+}
+result = laya.predict_shortlist(
+    agent,
+    {"text": "I was charged twice for a transfer"},
+    questions,
+    embed_fn=laya.embed_fn_from_agent(agent),  # or any callable: texts -> (n, dim)
+    k=20,
+)
+result["shortlist"]["intent"]["labels"]  # the top 20 labels sent to the model
+```
+
+`embed_fn(texts)` returns one vector per string. `embed_fn_from_agent` mean-pools the encoder already loaded on the agent; the decision head runs in the following `predict` / `system_one` call. Probabilities on a shortlisted choice are over those `k` labels. When `k` is at least the number of labels, the original question is passed through and `embed_fn` is not called.
+
+[Issue #102](https://github.com/NandhaKishorM/laya/issues/102) reports that a top-20 zero-shot shortlist moved a BANKING77 run from 54.3% to 60.8% on the reporter's setup. Those figures are the reporter's; this repository has not remeasured them.
+
 * Ordinal `score` questions are the weakest primitive (SST-5 0.372).
 * `laya` collapses outside English; `laya-multilingual` is weaker on English. Route, or pick
   deliberately.

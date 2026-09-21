@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.11", "3.13"]
+        python: ["3.10", "3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -48,6 +48,11 @@ jobs:
           
       - name: Server and API tests
         run: pytest tests/test_server.py
+          python tests/test_download.py
+          python tests/test_shortlist.py
+
+      - name: Email cleaning tests
+        run: python tests/test_email.py
 
   lint:
     name: lint

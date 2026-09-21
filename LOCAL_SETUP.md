@@ -33,10 +33,11 @@ two code changes that were needed, how to re-run everything, and the numbers tha
 
 ## Code changes that were required
 
-Both are real portability bugs, not local hacks; each is covered by `laya/tests/test_portability.py`
-(18 checks, including the CUDA-OOM fallback) which is wired into CI.
+The first two are real portability bugs, not local hacks; both are covered by
+`tests/test_portability.py` (18 checks, including the CUDA-OOM fallback), which is wired into
+CI along with `tests/test_training.py`.
 
-### 1. `laya/laya/common.py` — transformers 5 checkpoints on transformers 4
+### 1. `laya/common.py` — transformers 5 checkpoints on transformers 4
 
 The checkpoints were saved by transformers 5, which records ModernBERT's RoPE bases as
 `rope_parameters = {"full_attention": {...}, "sliding_attention": {...}}`. transformers 4.x does
@@ -56,7 +57,7 @@ transformers 5 the function is a no-op. Effect on the multilingual checkpoint, s
 | Hindi → `refund_requested` | 0.9897 | 0.9909 |
 | English / typed-decisions outputs | — | **bit-identical** (their configs already matched) |
 
-### 2. `laya/laya/agent.py` — MPS crashed every call
+### 2. `laya/agent.py` — MPS crashed every call
 
 `system_one` entered `torch.autocast(device_type=self.device.type, enabled=use_amp)` on every
 call. Autocast is only ever *enabled* on CUDA, but torch validates the device type regardless, and
@@ -69,6 +70,17 @@ RuntimeError: User specified an unsupported autocast device_type 'mps'
 Laya selects MPS automatically when it is available, so on this machine every `predict()` raised.
 The forward pass now goes through `_amp_context(device, dtype)`, which returns
 `torch.autocast(..., "cuda")` on CUDA and a `nullcontext()` otherwise.
+
+### 3. Smaller fixes found while verifying
+
+* **`collate_items` failed unhelpfully on malformed training data.** A target with more entries
+  than the item has markers died inside a tensor assignment with *"The expanded size of the tensor
+  (k) must match the existing size (kmax)"*, which says nothing about the mistake. It now raises a
+  `ValueError` naming the item and both counts, and `tests/test_training.py` asserts that.
+* **`Router.load()` does not evict on a cache hit.** Asking for a checkpoint that is already
+  resident returns early, so `max_loaded` is enforced when a checkpoint is *loaded* rather than
+  when one is touched. The behaviour is unchanged — it is now stated in the docstring, because
+  lowering `max_loaded` after a `preload` does not free anything until the next miss.
 
 ## Verify it
 
@@ -92,16 +104,16 @@ Results on this machine:
 
 | check | result |
 |---|---|
-| `laya/tests/test_local_e2e.py` (real weights, CPU) | **23 passed, 0 failed** — multilingual billing 8/8, all 11 routing languages correct |
-| `laya/tests/test_router.py` | 106 passed, 0 failed |
-| `laya/tests/test_criteria.py` | 34 passed, 0 failed |
-| `laya/tests/test_portability.py` | 18 passed, 0 failed (includes the CUDA-OOM fallback) |
+| `tests/test_local_e2e.py` (real weights, CPU) | **23 passed, 0 failed** — multilingual billing 8/8, all 11 routing languages correct |
+| `tests/test_router.py` | 106 passed, 0 failed |
+| `tests/test_criteria.py` | 34 passed, 0 failed |
+| `tests/test_portability.py` | 18 passed, 0 failed (includes the CUDA-OOM fallback) |
 | `laya_smoke_test.py` | all checks passed on **both** CPU and MPS |
 | `verify/numerics_check.py` | RoPE bases match training; answers bit-identical run-to-run and SDPA vs. eager (`0.00e+00` on every reported value) |
 | `verify/edge_sweep.py` | all edge-case checks pass (25 here; the MPS checks skip where MPS is unavailable) |
 | `verify/checkpoints.py` | 3/3 checkpoints match the recorded sha256; a deliberately corrupted copy is caught |
 | `verify/soak_check.py` | 200/200 calls byte-identical with flat RSS; 6 reload cycles leave exactly 1 live agent and 1 live model (0 after `unload()`); 4-thread concurrency matches the single-threaded answer |
-| `laya/tests/test_training.py` | 59 passed — proper-scoring-rule reward, TD(λ) targets, ECE, entropy confidence, collation, sequence building |
+| `tests/test_training.py` | 59 passed — proper-scoring-rule reward, TD(λ) targets, ECE, entropy confidence, collation, sequence building |
 | `examples/run_all.sh` | **41 passed, 0 failed** (eight stages, 23-49 s each; the whole sweep is ~20 min) |
 | CI lint (`ruff`) + `compileall` | pass |
 

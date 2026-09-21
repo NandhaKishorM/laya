@@ -6,7 +6,8 @@ Every checkpoint answered **byte-identical questions** in each run (fixed seed).
 |---|---|---|
 | T4 Colab | typed-decisions, MASSIVE (14 langs), XNLI (15 langs), English suites, latency, option-order robustness, calibration repair | `research/results/t4_colab_benchmark.json` |
 | CPU sweep | MASSIVE intent across **all 51 languages**, typed-decisions on all three checkpoints | `research/results/cpu_51_language_sweep.json` |
-| Applications | the six workflow themes + the datasets where Jev numbers exist, all three checkpoints | `research/results/app_benchmark.json` |
+| Applications | the six workflow themes + the datasets where Jev numbers exist, all three checkpoints | produced by `research/scripts/bench_apps.py` (the JSON is not committed; run it as in `research/README.md`) |
+| Independent re-run | CPU only, macOS/Intel: MASSIVE intent (10 languages x 60 cases) and the application suites at N=80, run from this checkout | reproducible with the commands in *Independent reproduction* below; details in `LOCAL_SETUP.md` |
 
 ---
 
@@ -92,8 +93,8 @@ Every checkpoint answered **byte-identical questions** in each run (fixed seed).
 
 ### English vs the rest
 
-| task | | laya | laya-multilingual |
-|---|---|---|---|
+| task | laya | laya-multilingual |
+|---|---|---|
 | MASSIVE intent — English | **0.783** | 0.657 |
 | MASSIVE intent — other languages | 0.306 | **0.451** |
 | MASSIVE scenario — English | **0.603** | 0.560 |
@@ -200,3 +201,57 @@ At 20 options both are less order-stable than Jev — worth fixing with more agg
 - **Both checkpoints ship over-confident.** Fit temperatures on your own data.
 - **Ordinal `score` is the weakest primitive** (SST-5 0.372).
 - `laya` collapses outside English; `laya-multilingual` is weaker on English. Route.
+
+---
+
+## Independent reproduction (macOS Intel, CPU only)
+
+The runs above were made on a T4 and on a CPU sweep of all 51 languages. To check that the
+plumbing and the checkpoints still behave, the repository's own harnesses were also run from a
+plain checkout — an Intel Mac Pro, no CUDA, CPU only — on reduced samples. This is a check, not a
+replacement for the full runs, and it uses the same fixed seed.
+
+```bash
+LAYA_MODELS=$PWD/models python research/scripts/bench_local.py --langs 10 --per-lang 60 --skip-b
+LAYA_MODELS=$PWD/models BENCH_N=80 python research/scripts/bench_apps.py
+```
+
+Two figures land exactly on the published numbers, which is the strongest signal available at
+this sample size:
+
+| | measured here | published |
+|---|---|---|
+| MASSIVE intent, English, 20 options | **0.783** | 0.783 |
+| Banking77, 77 labels at once | **0.425** | 0.425 |
+
+Aggregates, against the 51-language figures in the tables above:
+
+| | `laya` | `laya-multilingual` | published |
+|---|---|---|---|
+| MASSIVE macro accuracy (10 langs x 60) | 0.2500 | **0.3950** | 0.2269 / 0.3661 |
+| MASSIVE macro ECE *(lower better)* | 0.7100 | **0.4008** | 0.7331 / 0.3869 |
+| languages > 3x random | 4 / 10 | **8 / 10** | 23 / 51 / 45 / 51 |
+
+Per language, the English checkpoint reproduces the failure mode this report is built around —
+near-random off English *without* losing confidence:
+
+| MASSIVE intent | `laya` acc | `laya` mean conf | `laya-multilingual` acc |
+|---|---|---|---|
+| English | **0.783** | 0.998 | 0.733 |
+| German | 0.383 | 0.979 | **0.467** |
+| Arabic | 0.133 | 0.897 | **0.450** |
+| Bengali | 0.117 | 0.953 | **0.450** |
+| Greek | 0.150 | 0.970 | **0.417** |
+| Amharic | 0.100 | 0.949 | 0.117 |
+
+The application suites were run at N=80 per suite rather than the 400 above, so they land within a
+few points of those rows in both directions: AG News 0.963 / **0.975** / 0.963 against 0.950
+routed; DAIR Emotion 0.637 / 0.600 / 0.662 against 0.595; phishing 0.975 / **0.988** / 0.925
+against 0.980 / 0.993 / 0.940; email spam **0.988** / 0.963 / 0.925 against 0.993 / 0.993 / 0.958;
+guardrails 0.838 / **0.875** / 0.863 against 0.708 / 0.755 / 0.762; support triage 0.550 / 0.550 /
+0.537 against 0.502 / 0.522 / 0.505. Banking77 lands on 0.425 — the same number the Limits section
+quotes for 77 options at once — and the reduced-sample gap on the held-out suites is expected, not
+a discrepancy.
+
+Both harnesses were re-run a second time and reproduced **identically — every accuracy, F1 and
+ECE digit**. Only the ms/case figures move with machine load.

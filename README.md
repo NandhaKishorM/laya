@@ -34,6 +34,16 @@ Three checkpoints, and a `Router` that picks between them per request:
 | [`laya-multilingual`](https://huggingface.co/convaiinnovations/laya-multilingual) | mmBERT-base | 322M | 1024 | 100+ languages, 2x faster |
 | [`laya-typed-decisions`](https://huggingface.co/convaiinnovations/laya-typed-decisions) | ModernBERT-large | 421M | 1024 | the typed-decisions workflows |
 
+### Where to go next
+
+| document | what is in it |
+|---|---|
+| Quickstart below | the shortest path to a working call |
+| [`examples/README.md`](examples/README.md) | 41 runnable examples as an eight-stage learning path: first call → schema design → production service |
+| [`LOCAL_SETUP.md`](LOCAL_SETUP.md) | running this checkout on macOS/Intel: pinned stack, checkpoint manifest, the two portability fixes, every verification run and its result |
+| [`BENCHMARKS.md`](BENCHMARKS.md) | every benchmark run consolidated, all 51 languages, with the limits stated plainly |
+| [`research/README.md`](research/README.md) | the harnesses that produce those numbers, and how to re-run them |
+
 ---
 
 ## Installation
@@ -84,7 +94,10 @@ script itself is not Intel-specific. Commands are relative to the repository roo
 .venv/bin/python verify/numerics_check.py          # RoPE bases, determinism, SDPA vs eager
 .venv/bin/python verify/bench_devices.py           # CPU vs MPS, thread scaling
 .venv/bin/python verify/edge_sweep.py              # edge cases: option budgets, truncation, router lifecycle
+.venv/bin/python verify/checkpoints.py             # weights vs the recorded sha256 hashes
+.venv/bin/python verify/soak_check.py              # drift, RSS and concurrency over 200 calls
 .venv/bin/python tests/test_local_e2e.py ./models             # the repo's own e2e suite
+./examples/run_all.sh                              # all 41 examples, pass/fail
 ```
 
 Measured here, one `predict()` call answering 4 questions about a short email (median of 10,
@@ -351,7 +364,9 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 
 All Laya numbers below are measured. Every model answered byte-identical questions
 (fixed seed) in the same run. Reproduce with
-[`notebooks/laya_benchmark_colab.ipynb`](https://github.com/NandhaKishorM/laya) on a T4.
+[`research/scripts/laya_benchmark_colab.ipynb`](research/scripts/laya_benchmark_colab.ipynb) on a
+T4, or with the CPU harnesses described in
+[`research/README.md`](research/README.md#running-the-harnesses).
 
 ### Speed (Tesla T4, measured)
 
@@ -434,7 +449,7 @@ All of the capability on this benchmark comes from fine-tuning.
 
 Across all 51 languages the English checkpoint macro-averages **0.227** with macro ECE
 **0.733**, and only 23 of 51 languages clear 3x random. Khmer scores **0.000 at 95.2%
-confidence**. This is why [`Router`](#model-routing-three-checkpoints-one-call) exists: the
+confidence**. This is why [`Router`](#why-route-the-evidence) exists: the
 model's own confidence gives no warning, so the routing decision has to be made before the
 forward pass.
 
@@ -470,6 +485,44 @@ temperatures at all, so fit them before relying on its probabilities.
 * Ordinal `score` questions are the weakest primitive (SST-5 0.372).
 * `laya` collapses outside English; `laya-multilingual` is weaker on English. Route, or pick
   deliberately.
+
+### Independently reproduced here (CPU, no CUDA)
+
+The tables above were re-measured on this checkout by running the repository's own harnesses
+against public data on a 56-core Xeon, as a check on the plumbing rather than a rerun of the full
+sweeps. Two figures land exactly on the published numbers:
+
+| | measured here | published |
+|---|---|---|
+| MASSIVE intent, English, 20 options | **0.783** | 0.783 |
+| Banking77, 77 labels at once | **0.425** | 0.425 |
+
+and the aggregates agree within the sampling noise of the reduced run:
+
+| | `laya` | `laya-multilingual` | published (51 langs) |
+|---|---|---|---|
+| MASSIVE macro accuracy (10 langs x 60 cases) | 0.2500 | **0.3950** | 0.2269 / 0.3661 |
+| MASSIVE macro ECE *(lower better)* | 0.7100 | **0.4008** | 0.7331 / 0.3869 |
+| languages clearing 3x random | 4 / 10 | **8 / 10** | 23 / 51 / 45 / 51 |
+
+The application suites, on 80 cases each rather than the published 400:
+
+| suite | `laya` | `laya-multilingual` | published (400 cases) |
+|---|---|---|---|
+| AG News | 0.963 | **0.975** | 0.950 routed |
+| DAIR Emotion | 0.637 | 0.600 | 0.595 routed |
+| phishing email | 0.975 | **0.988** | 0.980 / 0.993 |
+| email spam | **0.988** | 0.963 | 0.993 / 0.993 |
+| guardrails (jailbreak) | 0.838 | **0.875** | 0.708 / 0.755 |
+| support triage | 0.550 | 0.550 | 0.502 / 0.522 |
+
+A fifth of the cases moves these by a few points either way — guardrails and support triage read
+higher here — so the two exact matches above are the stronger evidence, not the near-misses.
+
+The English checkpoint's collapse off English reproduces too, *and* its confidence gives no
+warning: Amharic 0.100 at 0.949 mean confidence, Bengali 0.117 at 0.953, Greek 0.150 at 0.970.
+Commands, per-language detail and the two harness fixes this needed are in
+[`LOCAL_SETUP.md`](LOCAL_SETUP.md#independent-accuracy-check-against-public-data).
 
 ---
 

@@ -17,6 +17,36 @@ the numbers quoted in the main README — nothing here is imported by the `laya`
 Everything runs with `USE_TF=0` — `transformers` probes for TensorFlow at import, and when TF is
 installed its abseil runtime can deadlock model construction on macOS/Python 3.9.
 
+## Running the harnesses
+
+The checkpoints come from `LAYA_MODELS` (default `~/laya_models`, a directory holding `laya/`,
+`laya-multilingual/` and `laya-typed-decisions/`), so a plain checkout can point them at the
+models `setup_laya.sh` already downloaded:
+
+```bash
+# from the repository root
+LAYA_MODELS=$PWD/models python research/scripts/bench_local.py --langs 10 --per-lang 60 --skip-b
+LAYA_MODELS=$PWD/models BENCH_N=80 python research/scripts/bench_apps.py
+LAYA_MODELS=$PWD/models python research/scripts/bench_latency.py
+```
+
+| option | effect |
+|---|---|
+| `bench_local.py --langs N` | caps the language list (sorted, so `10` is the first ten codes; `0` = all 51) |
+| `bench_local.py --per-lang N` | cases per language (default 120) |
+| `bench_local.py --skip-a` / `--skip-b` | run only the typed-decisions half, or only the MASSIVE half |
+| `bench_apps.py` with `BENCH_N` | cases per application suite (default 400) |
+
+`bench_local.py` and `bench_apps.py` write `research/*_benchmark_results.json`, which is
+gitignored — the curated runs live in `results/`. Set `HF_HOME` inside the checkout to keep the
+dataset cache local.
+
+Both scripts were adjusted so they run from a plain checkout: the model root is now
+`LAYA_MODELS` instead of a hardcoded `~/laya_models`, and their `sys.path` entry points at the
+repository root rather than a directory that does not exist. Results from a reduced CPU re-run,
+and the two figures that match the published numbers exactly, are in
+[`BENCHMARKS.md`](../BENCHMARKS.md#independent-reproduction-macos-intel-cpu-only).
+
 ## Results
 
 | file | contents |

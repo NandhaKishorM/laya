@@ -46,6 +46,7 @@ jobs:
           python tests/test_router.py
           python tests/test_criteria.py
           python tests/test_portability.py
+          python tests/test_training.py
 
   lint:
     name: lint

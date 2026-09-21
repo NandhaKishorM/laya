@@ -95,6 +95,27 @@ check("system_one/state tokenized once for two questions", agent.tok.calls.count
 check("system_one/answers present", sorted(out["answers"]), ["department", "urgent"])
 
 
+class RecordingTok(FakeTok):
+    def __init__(self):
+        super().__init__()
+        self.caps = []
+
+    def __call__(self, text, add_special_tokens=False, truncation=False, max_length=None):
+        self.caps.append((truncation, max_length))
+        return super().__call__(text, add_special_tokens=add_special_tokens,
+                                truncation=truncation, max_length=max_length)
+
+
+long_q = {"t": "choice", "ins": "pick", "crit": {"a": "x" * 400, "b": "y" * 400}}
+rtok = RecordingTok()
+long_seq, long_markers = build_sequence(rtok, "state", long_q, 300, 200)
+# options are capped at the tokenizer (truncation=True, max_length=48), not sliced afterwards
+check("build_sequence/options capped at the tokenizer",
+      len([c for c in rtok.caps if c == (True, 48)]), len(long_markers))
+check("build_sequence/option segments stay <= 49 tokens",
+      all(long_markers[i + 1] - long_markers[i] <= 49 for i in range(len(long_markers) - 1)), True)
+
+
 # ------------------------------------------------------------------ autocast
 class DummyEnc(nn.Module):
     def __init__(self, d=16):

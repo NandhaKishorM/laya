@@ -89,10 +89,16 @@ def build_sequence(
     head_ids = tok("%s question: %s" % (q["t"], ins), add_special_tokens=False)["input_ids"]
     opt_ids = []
     for i in order:
-        opt_ids.append(
-            [tok.mask_token_id]
-            + tok(" " + opts[i].replace(mask_tok, " "), add_special_tokens=False)["input_ids"][:48]
-        )
+        # Cap at the tokenizer, not after the fact: `[:48]` still makes the tokenizer process the
+        # whole (possibly long) description. truncation=True, max_length=48 keeps the first 48
+        # tokens, which is exactly what the previous slice produced.
+        opt_tokens = tok(
+            " " + opts[i].replace(mask_tok, " "),
+            add_special_tokens=False,
+            truncation=True,
+            max_length=48,
+        )["input_ids"]
+        opt_ids.append([tok.mask_token_id] + opt_tokens)
     opt_budget = head_max_len - sum(len(o) for o in opt_ids)
     if opt_budget < 16:
         per = max(4, (head_max_len - 16) // max(1, len(opt_ids)))

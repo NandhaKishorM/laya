@@ -119,7 +119,17 @@ class DecisionModel(nn.Module):
         p = torch.softmax(logits.detach(), -1)
         k = marker_mask.sum(-1).clamp(min=2).float()
         ent = -(p * torch.log(p.clamp_min(1e-9))).sum(-1) / torch.log(k)
-        top2 = p.topk(2, -1).values
+        if p.size(-1) >= 2:
+            top2 = p.topk(2, -1).values
+        else:
+            # A single-option question has exactly one marker, so p.topk(2, ...)
+            # has nothing to select for the second slot and raises. The answer
+            # is still well-defined: softmax over one logit is 1.0 regardless of
+            # its value, so pad the missing second entry with 0.0 - that gives
+            # the act head top1 - top2 == 1.0, the same "fully decided" signal
+            # it would see for any other unambiguous top-1-vs-rest gap.
+            top1 = p.topk(1, -1).values
+            top2 = torch.cat([top1, torch.zeros_like(top1)], dim=-1)
         feats = torch.stack([top2[:, 0], top2[:, 0] - top2[:, 1], ent, k / 255.0], -1)
         pooled = h[:, 0].float()
         act_logits = self.act_head(torch.cat([pooled, feats], -1))

@@ -48,6 +48,9 @@ jobs:
           
       - name: Server and API tests
         run: pytest tests/test_server.py
+
+      - name: Downloader & Shortlist tests
+        run: |
           python tests/test_download.py
           python tests/test_shortlist.py
 

@@ -17,6 +17,8 @@ jobs:
       - name: Validate Compose and build CPU image
         run: |
           docker compose config --quiet
+          docker compose -f compose.yaml -f compose.example.yml config --quiet
+          docker compose -f compose.yaml -f compose.example.yml -f compose.cuda.yaml config --quiet
           docker compose -f compose.yaml -f compose.cuda.yaml config --quiet
           docker build --pull -t laya:smoke .
       - name: Check installed runtime and fresh cache permissions

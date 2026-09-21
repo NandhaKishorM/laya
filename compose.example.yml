@@ -1,0 +1,26 @@
+# Run from the repository root:
+# docker compose -f compose.yaml -f compose.example.yml run --build --rm laya
+# For NVIDIA, append -f compose.cuda.yaml before "run".
+# This override inherits the image build and persistent cache from compose.yaml.
+services:
+  laya:
+    environment:
+      LAYA_DEVICE: "${LAYA_DEVICE:-cpu}"
+      LAYA_MODEL: "${LAYA_MODEL:-english}"
+      LAYA_REQUEST_FILE: /inputs/request.json
+      OMP_NUM_THREADS: "${OMP_NUM_THREADS:-4}"
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"
+
+      # Local checkpoint: set LAYA_MODEL=auto above, then enable both this
+      # setting and the checkpoint mount below. The directory must be writable
+      # by UID 10001 for tokenizer compatibility updates.
+      # LAYA_MODEL_PATH: /models/custom
+
+      # Optional token: enable this setting and its read-only mount below.
+      # The token file must be readable by UID 10001. Never put its value here.
+      # HF_TOKEN_FILE: /run/secrets/hf_token
+    volumes:
+      # Replace the source path with your own request file.
+      - ./examples/docker/request.json:/inputs/request.json:ro
+      # - ${LAYA_CHECKPOINT_PATH:?Set LAYA_CHECKPOINT_PATH}:/models/custom
+      # - ${HF_TOKEN_PATH:?Set HF_TOKEN_PATH}:/run/secrets/hf_token:ro

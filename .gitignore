@@ -24,6 +24,7 @@ wheels/
 .DS_Store
 .env
 .pypirc
+.idea/
 
 
 # session transcripts (may contain pasted credentials)

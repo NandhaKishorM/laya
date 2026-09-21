@@ -42,6 +42,7 @@ class ChoiceQuestion(BaseModel):
     instructions: str = Field(..., description="Natural-language question to ask about the state.")
     criteria: Dict[str, Optional[str]] = Field(
         ...,
+        min_length=1,
         description=(
             "Mapping of label → optional description. "
             "Example: {'billing': 'invoices and refunds', 'technical': 'bugs and outages'}"

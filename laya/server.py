@@ -52,7 +52,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -123,7 +123,10 @@ def _init_router() -> laya.Router:
 def _get_or_raise() -> laya.Router:
     """Return the loaded Router, or raise 503 if startup hasn't finished."""
     if _router is None:
-        raise RuntimeError("Router is not loaded yet — the server is still starting.")
+        raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Model is still loading.",
+    )
     return _router
 
 
@@ -211,7 +214,7 @@ def create_app() -> FastAPI:
         body = ErrorResponse(
             error=ErrorDetail(
                 code="internal_error",
-                message=str(exc),
+                message="Internal server error",
             )
         )
         return JSONResponse(
@@ -352,7 +355,7 @@ def _register_routes(app: FastAPI) -> None:
         try:
             raw = await loop.run_in_executor(
                 None,
-                lambda: router.predict(request.state, raw_questions, model=settings.model),
+                lambda: router.predict(request.state, raw_questions, model=request.model),
             )
         except ValueError as exc:
             raise HTTPException(
@@ -395,7 +398,7 @@ def _register_routes(app: FastAPI) -> None:
         async def _infer_one(state) -> Dict[str, Any]:
             return await loop.run_in_executor(
                 None,
-                lambda: router.predict(state, raw_questions, model=settings.model),
+                lambda: router.predict(state, raw_questions, model=request.model),
             )
 
         try:
@@ -476,7 +479,7 @@ def _register_routes(app: FastAPI) -> None:
         try:
             raw = await loop.run_in_executor(
                 None,
-                lambda: router.predict(request.state, raw_questions, model=settings.model),
+                lambda: router.predict(request.state, raw_questions, model=request.model),
             )
         except ValueError as exc:
             raise HTTPException(

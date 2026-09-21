@@ -78,28 +78,6 @@ def _make_mock_router(raw: Dict[str, Any] = None) -> MagicMock:
     return router
 
 
-def _make_client(raw: Dict[str, Any] = None) -> TestClient:
-    """
-    Build a TestClient where _init_router is patched to return a mock.
-
-    This prevents any model download from happening during tests.
-    The patch target is "laya.server._init_router" because server.py
-    calls _init_router() in the lifespan, and _init_router is a
-    module-level function that can be patched before the app starts.
-    """
-    mock_router = _make_mock_router(raw)
-    with patch("laya.server._init_router", return_value=mock_router):
-        from laya import server as srv
-        # Force re-import in case a previous test cached the module
-        import importlib
-        importlib.reload(srv)
-        app = srv.create_app()
-    # TestClient must be created AFTER the patch context because the
-    # lifespan runs when entering TestClient.__enter__.
-    # We patch _init_router globally so even after the `with` exits the
-    # already-created app object holds the right lifespan reference.
-    with patch("laya.server._init_router", return_value=mock_router):
-        return TestClient(app)
 
 
 @pytest.fixture()

@@ -1,4 +1,4 @@
-﻿"""Laya: Fast, non-autoregressive System 1 decision engine with calibrated probabilities."""
+"""Laya: Fast, non-autoregressive System 1 decision engine with calibrated probabilities."""
 
 from .agent import Agent, RLAgent, load
 from .common import (

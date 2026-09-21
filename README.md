@@ -83,6 +83,7 @@ script itself is not Intel-specific. Commands are relative to the repository roo
 .venv/bin/python laya_smoke_test.py --models ./models --device cpu
 .venv/bin/python verify/numerics_check.py          # RoPE bases, determinism, SDPA vs eager
 .venv/bin/python verify/bench_devices.py           # CPU vs MPS, thread scaling
+.venv/bin/python verify/edge_sweep.py              # edge cases: option budgets, truncation, router lifecycle
 .venv/bin/python tests/test_local_e2e.py ./models             # the repo's own e2e suite
 ```
 

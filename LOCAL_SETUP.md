@@ -24,6 +24,7 @@ two code changes that were needed, how to re-run everything, and the numbers tha
 | `laya_smoke_test.py` | end-to-end check on real weights: routing, all three checkpoints, all three primitives, presets, latency |
 | `verify/numerics_check.py` | RoPE base actually used vs. trained, run-to-run determinism, SDPA vs. eager |
 | `verify/bench_devices.py` | CPU vs. MPS latency, plus CPU thread scaling |
+| `verify/edge_sweep.py` | inference paths the other suites miss: 12 questions in one pass, 20/77/120-option choice, odd input shapes, truncation, router lifecycle, CPU-vs-MPS agreement |
 
 `laya` is installed editable, so `import laya` from anywhere uses this checkout and picks up edits.
 
@@ -77,6 +78,7 @@ cd /Users/threaded/projects/Laya/laya      # repository root
 .venv/bin/python laya_smoke_test.py --models ./models --device cpu
 .venv/bin/python verify/numerics_check.py
 .venv/bin/python verify/bench_devices.py
+.venv/bin/python verify/edge_sweep.py
 .venv/bin/python tests/test_local_e2e.py ./models                # the repo's own e2e suite
 ```
 
@@ -90,6 +92,7 @@ Results on this machine:
 | `laya/tests/test_portability.py` | 13 passed, 0 failed |
 | `laya_smoke_test.py` | all checks passed on **both** CPU and MPS |
 | `verify/numerics_check.py` | RoPE bases match training; answers bit-identical run-to-run and SDPA vs. eager (`0.00e+00` on every reported value) |
+| `verify/edge_sweep.py` | all edge-case checks pass (25 here; the MPS checks skip where MPS is unavailable) |
 | CI lint (`ruff`) + `compileall` | pass |
 
 CPU and MPS produce identical answers (same presets, same confidences), so the GPU path is not a

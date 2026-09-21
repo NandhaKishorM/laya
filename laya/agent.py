@@ -140,7 +140,8 @@ class Agent:
         if not os.path.exists(cfg_path):
             raise FileNotFoundError(
                 f"Incompatible model: {model_id_or_path!r} does not contain 'rl_agent_config.json'. "
-                f"Make sure you are loading a compatible RL Agent model (e.g. 'convaiinnovations/rl-agent')."
+                f"That file ships with the weights of a Laya checkpoint, so load one of those "
+                f"(e.g. 'convaiinnovations/laya') or a directory your own training run wrote."
             )
 
         with open(cfg_path) as f:

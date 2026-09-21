@@ -81,7 +81,7 @@ logger = logging.getLogger("laya.server")
 
 
 class _Settings:
-    model: str = os.environ.get("LAYA_MODEL", "convaiinnovations/laya")
+    model: str = os.environ.get("LAYA_MODEL", "english")
     device: Optional[str] = os.environ.get("LAYA_DEVICE") or None  # None → auto
     hf_token: Optional[str] = os.environ.get("LAYA_HF_TOKEN") or None
     workers: int = int(os.environ.get("LAYA_WORKERS", "4"))

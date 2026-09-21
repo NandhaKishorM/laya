@@ -46,6 +46,9 @@ jobs:
           python tests/test_router.py
           python tests/test_criteria.py
 
+      - name: Email cleaning tests
+        run: python tests/test_email.py
+
   lint:
     name: lint
     runs-on: ubuntu-latest

@@ -39,6 +39,7 @@ jobs:
         run: |
           python tests/test_router.py
           python tests/test_criteria.py
+          python tests/test_email.py
 
       - name: Build
         run: python -m build

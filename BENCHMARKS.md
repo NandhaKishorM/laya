@@ -190,6 +190,47 @@ How often the answer changes when the options are permuted. Jev measured at 0.13
 
 At 20 options both are less order-stable than Jev — worth fixing with more aggressive option-order shuffling during training.
 
+
+## Other hardware: GB10 and a laptop CPU
+
+Contributed measurements from a router deployment (laya 0.3.5). They were taken through a small HTTP server wrapping `Agent.system_one`, not in-process, so every figure includes one HTTP round trip.
+
+### NVIDIA GB10 (DGX Spark, aarch64), CUDA
+
+`typed-decisions` checkpoint (1024 ctx), default dtype, torch 2.14.0+cu130. The GPU was shared with a resident 73 GB SGLang server and a whisper server. Each question is a 3-option `choice`, with 40 calls per row after warm-up. Loopback round trip to `/health` was 0.6 ms, so network is not in these numbers.
+
+| questions per call | p50 | p95 |
+|---|---|---|
+| 1 | 100.2 ms | 169.3 ms |
+| 5 | 137.7 ms | 162.4 ms |
+| 10 | 159.3 ms | 243.0 ms |
+| 50 | 443.1 ms | 464.6 ms |
+
+Each extra question costs about **7.0 ms**, half the T4's ~14.9 ms. But one question is **slower** than the T4's 39.5 ms, because roughly 93 ms per call is fixed overhead that the GPU does not remove. We have not isolated where that overhead goes. On a GB10, batching questions into one call is where the speedup is.
+
+On laya_router's 180 labelled requests (one tier question), accuracy on CUDA matched CPU to within one row per wording (0.700 vs 0.694, 0.656 vs 0.656, 0.611 vs 0.606). That is backend floating-point noise, not a change in behaviour.
+
+Setup note for aarch64 without root: Triton JIT-compiles a CUDA shim with `gcc` on the first CUDA call, which fails with `Python.h: No such file or directory` if `python3-dev` is absent. Fetch the headers with `apt-get download libpython3.12-dev python3.12-dev`, unpack with `dpkg-deb -x` into a directory, and set `CPATH` to both `usr/include` and `usr/include/python3.12` under it.
+
+### Laptop CPU (Ryzen 9 6900HX, avx2 only, WSL2)
+
+**Pin inter-op threads to 1.** `system_one` runs one forward pass per call, so there is nothing for inter-op parallelism to overlap. On a three-question call over HTTP, on a busy host, torch's defaults (10 intra-op, 5 inter-op on 10 vCPUs) gave p50 **9,396 ms**. `torch.set_num_threads(8)` plus `torch.set_num_interop_threads(1)` brought it to **783 ms**, 12x faster with no code change.
+
+With inter-op pinned, one question in-process on a quieter host:
+
+| intra-op threads | p50 | p95 |
+|---|---|---|
+| 1 | 910 ms | 1,023 ms |
+| 4 | 374 ms | 552 ms |
+| 8 | **329 ms** | **378 ms** |
+| 10 (every vCPU) | 388 ms | 708 ms |
+
+The best setting is the physical core count plus a little, not one thread per vCPU. SMT siblings contend.
+
+### Calibration on a routing task runs the other way
+
+On laya_router's 180 requests (zero-shot, one 3-tier `choice`), nearly every configuration we measured was **under**-confident (the few exceptions were +0.01 to +0.06, and among the least accurate). Mean P(chosen) (the chosen option's probability, not the entropy-based `confidence` field) sat below accuracy, by −0.18 on the root checkpoint with example-led tier descriptions (0.562 vs 0.744) and by −0.19 on `typed-decisions` (0.501 vs 0.694). This is one task and one set of labels, so it does not contradict the over-confidence reported above. It does mean the direction of the miscalibration depends on the task, and a temperature fit on your own data is the right fix either way.
+
 ---
 
 ## Limits, stated plainly

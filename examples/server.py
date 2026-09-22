@@ -135,10 +135,7 @@ class BatchRequest(BaseModel):
 # --------------------------------------------------------------------------- #
 
 ROUTER: Optional[Router] = None
-# FastAPI runs these sync `def` handlers concurrently in worker threads, but Router.load()/
-# _touch() mutate its _agents/_order cache without their own locking -- real under --no-preload
-# or max_loaded < 3, where a request can trigger a checkpoint load/eviction. Serialize access.
-_ROUTER_LOCK = threading.Lock()
+
 _CFG: Dict[str, Any] = {
     "preload": os.getenv("LAYA_PRELOAD", "1") not in ("0", "false", "False"),
     "device": os.getenv("LAYA_DEVICE") or None,
@@ -181,9 +178,7 @@ def _router() -> Router:
 
 
 def _predict(state: Any, questions: Dict[str, Any], **kw: Any) -> Dict[str, Any]:
-    """The one place that calls Router.predict -- see the _ROUTER_LOCK comment above."""
-    with _ROUTER_LOCK:
-        return _router().predict(state, questions, **kw)
+    return _router().predict(state, questions, **kw)
 
 
 def _questions(model_map: Dict[str, Question]) -> Dict[str, Any]:
@@ -568,7 +563,11 @@ def _answer_card(name: str, ans: Dict[str, Any], question: Dict[str, Any]) -> st
         probs = ans.get("probabilities") or {}
         legend = ans.get("legend") or {}
         top = max(probs, key=probs.get) if probs else None
-        rows = [(legend.get(str(k), str(k)), v * 100, k == top) for k, v in probs.items()]
+        
+        def _fmt(val):
+            return val if isinstance(val, str) else json.dumps(val)
+
+        rows = [(_fmt(legend.get(str(k), str(k))), v * 100, k == top) for k, v in probs.items()]
         head = "level"
     elif kind == "noul":
         p = float(ans.get("noul", 0.0))

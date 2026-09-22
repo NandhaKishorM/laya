@@ -1,8 +1,9 @@
 """End-to-end local test: real weights, real forward passes.
 
-Covers the two things routing is supposed to buy us:
+Covers three integration properties:
   1. non-English input reaches a checkpoint that can actually read it
   2. the shipped application presets still behave on English
+  3. a noul label override preserves false/true polarity on the English checkpoint
 
 Run:  python3 tests/test_local_e2e.py [model_root]
 Defaults to ~/laya_models, expecting laya/, laya-multilingual/, laya-typed-decisions/.
@@ -75,6 +76,31 @@ CATS = {"billing": "invoices, payments, refunds", "technical": "bugs, outages, i
         "sales": "pricing, demos, new purchases", "hr": "hiring, leave, payroll"}
 QD = {"dept": {"type": "choice", "instructions": "Which team should handle `message`?", "criteria": CATS},
       "refund": {"type": "noul", "instructions": "Does the customer ask for money back?"}}
+REVIEWS = [
+    ("positive", {"body": "This product is excellent quality - six months in and not a single problem."}, True),
+    ("negative", {"body": "It arrived broken and nobody answers when I contact support."}, False),
+]
+REVIEW_Q = {
+    "plain": {"type": "noul", "instructions": "Is this review positive?",
+              "labels": {"false": "B", "true": "A"}},
+    "rich": {
+        "type": "noul",
+        "instructions": "Is this review positive?",
+        "criteria": {"true": "the review is positive", "false": "the review is negative"},
+        "labels": {"false": "B", "true": "A"},
+    },
+}
+
+
+def check_noul_label_override(agent, checkpoint):
+    for polarity, state, want_true in REVIEWS:
+        answers = agent.predict(state, REVIEW_Q)["answers"]
+        for qid in REVIEW_Q:
+            probability = answers[qid]["noul"]
+            ok("noul labels/%s/%s/%s" % (checkpoint, polarity, qid),
+               (probability > 0.5) == want_true, "P(true)=%.4f" % probability)
+
+
 BILLING = [
     ("english", "I was charged twice for invoice 4411, please refund it today."),
     ("german", "Ich wurde zweimal fuer Rechnung 4411 belastet, bitte erstatten Sie den Betrag."),
@@ -101,6 +127,7 @@ head("3. English checkpoint on the same non-English inputs (why routing matters)
 ml_only = {l: t for l, t in BILLING if l in ("hindi", "japanese", "chinese", "russian")}
 del ml
 en = laya.load(LOCAL["english"], device=DEVICE)
+check_noul_label_override(en, "english")
 en_correct = 0
 for label, text in ml_only.items():
     a = en.predict({"message": text}, QD)["answers"]

@@ -439,6 +439,31 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 | **`score`** | Expected level on ordinal rubric, distribution, confidence | Frustration level, ticket urgency, harm severity |
 | **`noul`** | Calibrated probability P(true) from 0.0 to 1.0 | Phishing detection, spam filtering, jailbreak detection, churn risk |
 
+`noul` always scores two semantic slots in `[false, true]` order and returns the probability of
+the second slot. For compatibility, those slots are shown to the model as `false` and `true` by
+default. The optional `labels` mapping overrides only that model-facing text without changing the
+returned meaning:
+
+```python
+question = {
+    "type": "noul",
+    "instructions": "Is this review positive?",
+    "criteria": {
+        "false": "the review is negative",
+        "true": "the review is positive",
+    },
+    "labels": {
+        "false": "B",
+        "true": "A",
+    },
+}
+```
+
+The `labels` mapping is optional. It must contain exactly the string keys `false` and `true`,
+whose values must be distinct non-empty strings. Mapping order does not matter, and the returned
+`noul` value is still P(true). Label sensitivity varies by checkpoint and state, so validate any
+override on your own data rather than treating `A`/`B` as a universal fix.
+
 ---
 
 ## Benchmarks
@@ -570,6 +595,10 @@ failure; it does not establish calibrated confidence.
   against a 0.318 random baseline and a 0.461 majority-class baseline. The 0.766 figure comes
   from the checkpoint fine-tuned on that benchmark's own training split. Laya is a fast base to
   specialise, not a zero-shot decision engine.
+* **Avoid boolean-word labels in `choice` questions.** Choice keys are rendered verbatim, and the
+  current checkpoints can follow labels such as `true`/`false` or `yes`/`no` instead of the option
+  descriptions. Use semantic labels or opaque labels such as `A`/`B`, and validate them on the
+  checkpoint and states you serve.
 * **High-cardinality choice questions and token budgets:** Sequences split into an option prompt budget (`head_max_len`) and the remaining document/state budget (`max_len - head_max_len`):
   * `laya` (English) defaults to 512 context (`head_max_len = 192`, ~320 tokens for state).
   * `laya-multilingual` and `laya-typed-decisions` default to 1,024 context (`head_max_len = 256`, ~768 tokens for state; mmBERT-base encoder supports up to 8,192 with RoPE).
@@ -607,7 +636,16 @@ result["shortlist"]["intent"]["labels"]  # the top 20 labels sent to the model
 [Issue #102](https://github.com/NandhaKishorM/laya/issues/102) reports that a top-20 zero-shot shortlist moved a BANKING77 run from 54.3% to 60.8% on the reporter's setup. Those figures are the reporter's; this repository has not remeasured them.
 
 * Ordinal `score` questions are the weakest primitive (SST-5 0.372).
-* **`noul` can follow its option labels instead of the state, most strongly on `laya` (English).** `noul` renders its two options as `false:` / `true:`, and on the English checkpoint that label pair can dominate the answer, returning a confident "no" for clearly positive input (#156). Until a retrained checkpoint lands, check `noul` answers on your own data. If they look stuck, ask the same question as a two-option `choice` with neutral keys and your yes/no wording as the descriptions:
+* **`noul` can follow its option labels instead of the state, most strongly on `laya` (English).** `noul` renders its two options as `false:` / `true:` by default, and on the English checkpoint that label pair can dominate the answer, returning a confident "no" for clearly positive input (#156). Until a retrained checkpoint lands, check `noul` answers on your own data. You can override the model-facing pair while keeping the `noul` result as P(true):
+
+  ```python
+  {"type": "noul", "instructions": "Is this review positive?",
+   "criteria": {"true": "yes, the review is positive", "false": "no, the review is negative"},
+   "labels": {"true": "A", "false": "B"}}
+  ```
+
+  Label sensitivity varies by checkpoint and state, so validate the override on your own data. A
+  two-option `choice` with neutral keys remains another workaround:
 
   ```python
   {"type": "choice", "instructions": "Is this review positive?",

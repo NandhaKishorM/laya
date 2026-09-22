@@ -17,6 +17,7 @@ from .common import (
     clamp_temperature,
     collate_items,
     confidence_from_probs,
+    _resolve_noul_labels,
     render_options,
     temp_bucket,
 )
@@ -300,6 +301,13 @@ class Agent:
         elif crit is not None and not isinstance(crit, dict):
             raise ValueError("question %r: a noul question takes 'criteria' as a dict with optional "
                              "'true'/'false' descriptions, or omits it" % (qid,))
+        if "labels" in qdef:
+            if t != "noul":
+                raise ValueError("question %r: 'labels' is only supported for noul questions" % (qid,))
+            try:
+                _resolve_noul_labels(qdef["labels"])
+            except ValueError as e:
+                raise ValueError("question %r: %s" % (qid, e)) from e
 
     @staticmethod
     def _to_internal(qdef: Dict) -> Dict:
@@ -313,7 +321,10 @@ class Agent:
         ins = qdef["instructions"]
         if not isinstance(ins, str):
             ins = json.dumps(ins)
-        return {"t": t, "ins": ins, "crit": crit}
+        q = {"t": t, "ins": ins, "crit": crit}
+        if "labels" in qdef:
+            q["labels"] = qdef["labels"]
+        return q
 
     @torch.no_grad()
     def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -324,7 +335,13 @@ class Agent:
             questions: Dictionary mapping question_id -> question definition.
                 - choice: {"type": "choice", "instructions": "...", "criteria": {"optA": "...", ...}}
                 - score:  {"type": "score",  "instructions": "...", "criteria": ["lvl0", "lvl1", ...]}
-                - noul:   {"type": "noul",   "instructions": "...", "criteria": {"true": "...", "false": "..."}}
+                - noul:   {"type": "noul", "instructions": "...",
+                           "criteria": {"false": "...", "true": "..."},
+                           "labels": {"false": "B", "true": "A"}}
+
+                  Noul criteria and labels are optional. Labels only control the text shown to the
+                  model; their keys retain false/true semantics, and the returned `noul` value is
+                  always P(true). Labels default to false/true for compatibility.
 
         Returns:
             Dictionary with answers, probabilities, calibrated confidence, and token usage.

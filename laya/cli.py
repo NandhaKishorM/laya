@@ -148,10 +148,9 @@ def serve(host, port, model, device, workers, reload, log_level):
     """
     Launch the Laya REST API server.
 
-    \b
     Exposes:
-      POST /v1/decide          Single-state inference (OpenAI-compatible)
-      POST /v1/systemone       Drop-in for TypeSafe Jev SDK
+      POST /v1/systemone       Drop-in for TypeSafe Jev SDK (wire-compatible)
+      POST /v1/decide          Decision inference endpoint (alias)
       POST /v1/decide/batch    Batch inference (up to 256 states)
       GET  /v1/models          OpenRouter-compatible model list
       GET  /health             Liveness probe

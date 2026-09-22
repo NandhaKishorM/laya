@@ -284,7 +284,7 @@ class ErrorDetail(BaseModel):
 
 
 class ErrorResponse(BaseModel):
-    """Top-level error envelope (mirrors OpenAI error shape)."""
+    """Top-level error envelope."""
 
     error: ErrorDetail
 

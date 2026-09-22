@@ -1,9 +1,9 @@
 """
-Laya REST API server — OpenAI-compatible decision inference endpoint.
+Laya REST API server — TypeSafe Jev wire-compatible decision inference endpoint.
 
 Wraps ``laya.Router`` behind a FastAPI application so that Laya can be
-called from any language (JavaScript, Go, Rust, cURL, …) and submitted
-to OpenRouter as a drop-in replacement for TypeSafe Jev.
+called from any language (JavaScript, Go, Rust, cURL, …) and serve as a
+drop-in self-hosted replacement for TypeSafe Jev.
 
 Quick start
 -----------
@@ -19,7 +19,7 @@ Run::
 
 Environment variables
 ---------------------
-LAYA_MODEL          HuggingFace model ID or local path (default: convaiinnovations/laya)
+LAYA_MODEL          HuggingFace model ID or model alias (default: english)
 LAYA_DEVICE         cuda | cpu | mps | auto (default: auto)
 LAYA_HF_TOKEN       HuggingFace token for private model repos
 LAYA_WORKERS        Number of inference threads in the thread-pool (default: 4)
@@ -31,15 +31,12 @@ LAYA_API_KEY        Optional bearer token — when set, all inference endpoints
 
 Endpoints
 ---------
-GET  /health                  Liveness + model info
+GET  /health                  Liveness probe + loaded router info
 GET  /v1/models               List available model(s)  [OpenRouter-compatible]
-POST /v1/decide               Single-state decision     [OpenAI-compatible naming]
-POST /v1/systemone            Drop-in alias — 100% wire-compatible with
+POST /v1/systemone            TypeSafe Jev drop-in endpoint — 100% wire-compatible with
                               TypeSafe Python + JavaScript SDKs, Vercel AI SDK
+POST /v1/decide               Decision inference endpoint (alias for /v1/systemone)
 POST /v1/decide/batch         Multi-state batch decision (up to 256 states)
-
-All responses mirror the OpenAI JSON envelope convention so that
-existing OpenAI-compatible clients need only change the base URL.
 """
 
 from __future__ import annotations

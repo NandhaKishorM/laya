@@ -253,7 +253,7 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 
 All Laya numbers below are measured. Every model answered byte-identical questions
 (fixed seed) in the same run. Reproduce with
-[`notebooks/laya_benchmark_colab.ipynb`](https://github.com/NandhaKishorM/laya) on a T4.
+[`research/scripts/laya_benchmark_colab.ipynb`](research/scripts/laya_benchmark_colab.ipynb) on a T4.
 
 ### Speed (Tesla T4, measured)
 

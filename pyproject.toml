@@ -32,6 +32,9 @@ dependencies = [
     "numpy>=1.20.0",
 ]
 
+[project.scripts]
+laya = "laya.cli:main"
+
 [tool.setuptools]
 # assets/, research/ and notebooks/ sit in the root, so auto-discovery bails out.
 packages = ["laya"]

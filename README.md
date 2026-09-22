@@ -46,6 +46,38 @@ Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `t
 
 ---
 
+## Command-Line Interface
+
+After installing, the `laya` command is available on your PATH for testing from the terminal without writing a script.
+
+```bash
+# Pick one of several options (choice)
+laya "the customer was charged twice" \
+    --instructions "which department should handle this?" \
+    --options "billing:invoices,payments,refunds;technical:bugs,outages;sales:pricing"
+
+# Rate on an ordered scale (score)
+laya "the server is completely down" --type score \
+    --instructions "how urgent is this?" \
+    --levels "not urgent,soon,critical"
+
+# Yes/no (noul)
+laya "cancel my subscription now" --type noul \
+    --instructions "does the user threaten to leave?"
+```
+
+The state text can also come from a file or stdin, and `--json` prints the raw response:
+
+```bash
+laya --file state.txt --instructions "department?" --options "billing:...;sales:..."
+echo "refund my duplicate charge" | laya --instructions "department?" --options "billing:...;sales:..."
+laya "..." --instructions "..." --options "..." --json
+```
+
+Use `--model` to pin a checkpoint (`english`, `multilingual`, `typed-decisions`) or `--lang` to hint the router with a language tag. Run `laya --help` for the full surface. `python -m laya` works too.
+
+---
+
 ## Quickstart: Route Mode (Recommended)
 
 Laya ships three checkpoints. The built-in **`Router`** is the recommended entry point: it evaluates any state in any language, automatically detects scripts and languages in sub-milliseconds, and dispatches to the optimal checkpoint in a single forward pass.

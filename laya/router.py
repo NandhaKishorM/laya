@@ -27,6 +27,7 @@ primary routing signal.
 `auto_task_detection=True` or pass `task="typed_decisions"`: it is fine-tuned on four specific
 synthetic workflows and should not be a silent default.
 """
+import gc
 import os
 import threading
 from typing import Any, Dict, List, Optional, Union
@@ -198,13 +199,28 @@ class Router:
 
     def _evict(self):
         with self._lock:
+            evicted = False
             while len(self._order) > self.max_loaded:
                 victim = self._order.pop(0)
-                self._agents.pop(victim, None)
+                agent = self._agents.pop(victim, None)
+                if agent is not None:
+                    evicted = True
+                    del agent
             if len(self._order) < len(self._agents):     # keep the two views consistent
                 for k in list(self._agents):
                     if k not in self._order:
-                        self._agents.pop(k, None)
+                        agent = self._agents.pop(k, None)
+                        if agent is not None:
+                            evicted = True
+                            del agent
+            if evicted:
+                gc.collect()
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except Exception:
+                    pass
 
     def attach(self, name: str, agent: Any):
         """Register an already-built Agent under `name` instead of loading a second copy.
@@ -244,9 +260,17 @@ class Router:
                 self._order.clear()
             else:
                 key = normalise_name(name)
-                self._agents.pop(key, None)
+                agent = self._agents.pop(key, None)
                 if key in self._order:
                     self._order.remove(key)
+                del agent
+            gc.collect()
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
 
     @property
     def loaded(self) -> List[str]:

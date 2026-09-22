@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.checkpoint import checkpoint as _grad_checkpoint
 
 QTYPES = {"choice": 0, "score": 1, "noul": 2}
 QTYPE_NAMES = {v: k for k, v in QTYPES.items()}
@@ -109,8 +110,20 @@ class DecisionModel(nn.Module):
         h = h + self.type_emb(qtype)[:, None, :]
         if self.head is not None:
             pad = ~attention_mask.bool()
+            use_ckpt = self.head_checkpointing and self.training and torch.is_grad_enabled()
             for layer in self.head.layers:
-                h = layer(h, src_key_padding_mask=pad)
+                if use_ckpt:
+                    # Non-reentrant checkpointing (matching the encoder's
+                    # gradient_checkpointing_kwargs={"use_reentrant": False} in the
+                    # fine-tuning notebook): activations are recomputed on backward,
+                    # RNG state is preserved, eval/no-grad paths are untouched.
+                    h = _grad_checkpoint(
+                        lambda x: layer(x, src_key_padding_mask=pad),
+                        h,
+                        use_reentrant=False,
+                    )
+                else:
+                    h = layer(h, src_key_padding_mask=pad)
         idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
         m = torch.gather(h, 1, idx)
         logits = self.scorer(m).squeeze(-1).float()

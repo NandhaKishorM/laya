@@ -218,7 +218,7 @@ class DecideRequest(BaseModel):
 
     model: str = Field(
         "english",
-        description="HuggingFace model ID or local directory path.",
+        description="HuggingFace model ID or model alias (e.g. 'english', 'multilingual', 'convaiinnovations/laya').",
     )
     state: Union[str, Dict[str, Any], List[Any]] = Field(
         ...,

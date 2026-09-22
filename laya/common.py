@@ -54,8 +54,22 @@ def build_sequence(
     head_max_len: int = 192,
     option_order: Optional[List[int]] = None,
     truncate_left: bool = False,
+    return_stats: bool = False,
 ):
-    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP]."""
+    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP].
+
+    The state is clamped to whatever room is left after the head, so a long state loses tokens
+    here silently. `return_stats=True` adds a third return value reporting that clamp:
+
+        {"state_tokens": int, "state_tokens_used": int, "state_tokens_dropped": int,
+         "truncated": bool}
+
+    Callers cannot reconstruct this from the outside. The budget is in tokens, not characters,
+    and the room left for the state depends on `max_len`, `head_max_len`, the instruction and
+    the rendered options - so it moves per checkpoint and per question. A caller guessing with a
+    fixed character threshold is wrong in both directions: it reports truncation that did not
+    happen, and stays silent while evidence is being dropped (issue #174).
+    """
     mask_tok = tok.mask_token
     opts = render_options(q)
     order = option_order if option_order is not None else list(range(len(opts)))
@@ -81,9 +95,22 @@ def build_sequence(
     ids.append(tok.sep_token_id)
     room = max(0, max_len - len(ids) - 1)
     st = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
-    st = st[-room:] if truncate_left else st[:room]
-    ids = ids + st + [tok.sep_token_id]
-    return ids[:max_len], [m for m in markers if m < max_len]
+    kept = st[-room:] if truncate_left else st[:room]
+    head_len = len(ids)
+    ids = ids + kept + [tok.sep_token_id]
+    out, markers = ids[:max_len], [m for m in markers if m < max_len]
+    if not return_stats:
+        return out, markers
+    # Count against the final clamp rather than against `kept`. With room == 0 a left-truncating
+    # slice is st[-0:], which is the whole state, and `out = ids[:max_len]` is what actually drops
+    # it - so `kept` overstates. This counts the state tokens the encoder really receives.
+    used = max(0, min(len(kept), max_len - head_len))
+    return out, markers, {
+        "state_tokens": len(st),
+        "state_tokens_used": used,
+        "state_tokens_dropped": len(st) - used,
+        "truncated": used < len(st),
+    }
 
 
 class DecisionModel(nn.Module):

@@ -44,6 +44,7 @@ serve = [
 ]
 
 [project.scripts]
+laya = "laya.cli:main"
 laya-serve = "laya.serve:main"
 
 [project.urls]

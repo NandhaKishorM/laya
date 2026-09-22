@@ -137,6 +137,19 @@ own. Both ids run the checkpoints published here, unmodified, at `max_len` 8192.
 
 [Docs](https://impossibl.com/docs/evaluation) · [Model page](https://impossibl.com/convaiinnovations/laya)
 
+### Command line
+
+Installing the package also installs a `laya` command for quick local testing, no script needed:
+
+```bash
+laya "I was charged twice, please refund"            # routing decision only; works offline, no download
+laya "Refactor this service" --predict               # full answers (downloads the checkpoint on first use)
+laya "Mein Konto wurde zweimal belastet" --lang de   # force a language instead of detecting it
+laya                                                 # interactive mode
+```
+
+Routing alone never downloads a checkpoint, so it returns in milliseconds. `--predict` loads the routed checkpoint, which needs network access to the Hugging Face hub the first time; if a checkpoint cannot be downloaded, the CLI says so instead of crashing.
+
 ---
 
 ## Quickstart: Route Mode (Recommended)

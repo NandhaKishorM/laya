@@ -160,13 +160,24 @@ def detect_script(text: str) -> str:
         if not ch.isalpha():
             continue
         cp = ord(ch)
-        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF:      # Latin + Latin Extended Additional
-            latin += 1
+        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
+            latin += 1                                   # Latin, Latin Ext-Additional, fullwidth
             continue
         for name, ranges in _SCRIPT_RANGES:
             if any(lo <= cp <= hi for lo, hi in ranges):
                 counts[name] = counts.get(name, 0) + 1
                 break
+        else:
+            # An alphabetic character no range claims used to be counted nowhere, so text
+            # written only in an unlisted script produced a total of 0 and was reported as
+            # "unknown" -- and `analyse` treats "unknown" as English, sending it to the
+            # checkpoint that has no tokens for it. 68% of Unicode's alphabetic codepoints
+            # are outside _SCRIPT_RANGES (the CJK extensions, kana supplements, bopomofo,
+            # halfwidth katakana, and dozens of smaller scripts), so enumerating them all is
+            # not maintainable. Counting the remainder under "other" keeps them visible and
+            # non-Latin, which is the safe direction: an unreadable script must not be
+            # handed to the English checkpoint.
+            counts["other"] = counts.get("other", 0) + 1
     counts["latin"] = latin
     total = sum(counts.values())
     if total == 0:
@@ -181,13 +192,15 @@ def script_profile(text: str) -> Dict[str, float]:
         if not ch.isalpha():
             continue
         cp = ord(ch)
-        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF:
+        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
             counts["latin"] += 1
             continue
         for name, ranges in _SCRIPT_RANGES:
             if any(lo <= cp <= hi for lo, hi in ranges):
                 counts[name] = counts.get(name, 0) + 1
                 break
+        else:
+            counts["other"] = counts.get("other", 0) + 1
     total = sum(counts.values())
     if not total:
         return {}

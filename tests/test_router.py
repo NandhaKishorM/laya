@@ -487,6 +487,61 @@ check("threads/hot-path loads keep one entry", order_len, 1)
 check("threads/hot-path loads keep agents consistent", agents_len, 1)
 check("threads/hot-path order intact", order, ["english"])
 
+
+
+# --------------------------------------------------------------------- unlisted scripts
+# `detect_script` counts an alphabetic character only when one of `_SCRIPT_RANGES` claims
+# it. Those ranges cover the scripts the checkpoints were measured on, and most of Unicode
+# is outside them -- 68% of alphabetic codepoints, including the CJK extensions, the kana
+# supplements, bopomofo, halfwidth katakana and dozens of smaller scripts. An unclaimed
+# character used to be counted nowhere, so text written only in such a script produced a
+# total of 0, was reported as "unknown", and `analyse` treats "unknown" as English. It was
+# therefore routed to the English checkpoint, which has no tokens for it at all, with the
+# reason "no letters detected in state" -- for text that plainly has letters.
+#
+# Every case below reported unknown / is_english=True / model "english" before this change.
+for label, text in (
+    ("halfwidth katakana", "ｱﾘｶﾞﾄｳ"),
+    ("bopomofo", "ㄆㄇㄈㄉ"),
+    ("kana supplement", "\U0001B000\U0001B001"),
+    ("CJK Ext-B", "\U00020000\U00020001"),
+    ("hangul jamo ext-A", "\ua960\ua961"),
+    ("Cherokee", "ᏣᎳᎩ"),
+    ("Mongolian", "ᠮᠣᠩᠭᠣᠯ"),
+    ("Syriac", "ܫܠܡܐ"),
+    ("Thaana", "ދިވެހި"),
+    ("Tifinagh", "ⵜⴰⵎⴰⵣⵉⵖⵜ"),
+    ("Yi", "ꆈꌠ"),
+):
+    check("unlisted/" + label + " is not called English", analyse(text)["is_english"], False)
+    check("unlisted/" + label + " routes to multilingual",
+          Router().route(text)["model"], "multilingual")
+
+# Fullwidth Latin is Latin, not an unlisted script.
+check("unlisted/fullwidth latin is latin", detect_script("ＨＥＬＬＯ"), "latin")
+
+# A state with no letters at all must keep behaving exactly as before.
+for label, text in (("empty", ""), ("digits only", "12345 67890"), ("emoji only", "😀😀😀")):
+    check("unlisted/letterless " + label + " is still unknown",
+          analyse(text)["script"], "unknown")
+    check("unlisted/letterless " + label + " keeps the default",
+          Router().route(text)["model"], "english")
+
+# The scripts the table does name must be untouched.
+for label, text, script in (
+    ("english", "please cancel my subscription", "latin"),
+    ("german", "Mein Konto wurde zweimal belastet, bitte erstatten Sie den Betrag", "latin"),
+    ("hindi", "यह एक हिंदी वाक्य है", "devanagari"),
+    ("chinese", "请取消我的订阅", "han"),
+    ("japanese", "ありがとう", "kana"),
+    ("korean", "감사합니다", "hangul"),
+    ("russian", "Мой аккаунт был списан дважды", "cyrillic"),
+    ("arabic", "تم خصم حسابي مرتين", "arabic"),
+    ("greek", "Η χρέωση έγινε δύο φορές", "greek"),
+    ("armenian", "Իմ հաշիվը գանձվել է երկու անգամ", "armenian"),
+):
+    check("unlisted/regression " + label + " script", detect_script(text), script)
+
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

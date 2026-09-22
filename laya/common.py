@@ -137,14 +137,24 @@ class DecisionModel(nn.Module):
 
 
 def build_model(cfg: Dict, encoder_dir: Optional[str] = None) -> DecisionModel:
+    """Build the encoder and decision head.
+
+    On Windows with Python 3.14 or newer, encoder construction skips
+    ``PreTrainedModel.initialize_weights``. That call segfaults while building
+    ModernBERT on that stack (#123). ``Agent`` then loads the checkpoint with
+    ``load_state_dict(strict=True)``, so the skipped values are never read.
+    """
     from transformers import AutoConfig, AutoModel
 
-    if encoder_dir and os.path.exists(encoder_dir):
-        ecfg = AutoConfig.from_pretrained(encoder_dir)
-        enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
-    else:
-        enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")
-    return DecisionModel(enc, cfg.get("head_layers", 2), len(cfg.get("act_costs", {})) + 1)
+    from .win_patch import guard
+
+    with guard():
+        if encoder_dir and os.path.exists(encoder_dir):
+            ecfg = AutoConfig.from_pretrained(encoder_dir)
+            enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
+        else:
+            enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")
+        return DecisionModel(enc, cfg.get("head_layers", 2), len(cfg.get("act_costs", {})) + 1)
 
 
 def proper_reward(

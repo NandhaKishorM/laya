@@ -42,7 +42,20 @@ Three checkpoints, and a `Router` that picks between them per request:
 pip install laya
 ```
 
-Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
+Python 3.10 or newer, including 3.14. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
+
+### Troubleshooting
+
+**Windows + Python 3.14.** On Windows 11 with Python 3.14 and torch 2.14, building a ModernBERT encoder can segfault inside `PreTrainedModel.initialize_weights` ([#123](https://github.com/NandhaKishorM/laya/issues/123)). `Agent` loads the checkpoint with `load_state_dict(strict=True)` immediately after construction, so Laya skips that initialization automatically while it builds the encoder when `platform.system() == "Windows"` and Python is 3.14 or newer. To wrap your own ModernBERT construction the same way:
+
+```python
+import laya.win_patch
+
+with laya.win_patch.guard():
+    ...  # build the encoder; restore happens when the block exits
+```
+
+This is the no-op the reporter verified on #123. The segfault was not remeasured on Windows here (CI runs on Linux).
 
 ---
 

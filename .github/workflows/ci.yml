@@ -49,6 +49,7 @@ jobs:
           python tests/test_shortlist.py
           python tests/test_decision_model.py
           python tests/test_packaging.py
+          python tests/test_win_patch.py
 
       - name: Email cleaning tests
         run: python tests/test_email.py

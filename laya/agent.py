@@ -257,6 +257,9 @@ class Agent:
         crit = qdef.get("criteria")
         if t == "choice" and isinstance(crit, list):
             crit = {c: None for c in crit}
+        elif t == "noul" and isinstance(crit, dict):
+            # Normalize boolean literal keys to string keys ("true"/"false")
+            crit = {str(k).lower(): v for k, v in crit.items()}
         ins = qdef["instructions"]
         if not isinstance(ins, str):
             ins = json.dumps(ins)

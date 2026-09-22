@@ -330,6 +330,13 @@ class Router:
         result["routing"] = dict(decision)
         return result
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.unload()
+        return False
+
     system_one = predict
 
     def __repr__(self):

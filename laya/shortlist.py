@@ -245,14 +245,14 @@ def _embeddings(embed_fn, texts: Sequence[str]) -> np.ndarray:
 
 def _cosine(query: np.ndarray, docs: np.ndarray) -> np.ndarray:
     qn = float(np.linalg.norm(query))
+    if qn == 0.0 or docs.shape[0] == 0:
+        return np.zeros(docs.shape[0], dtype=np.float64)
     dn = np.linalg.norm(docs, axis=1)
-    sims = np.zeros(docs.shape[0], dtype=np.float64)
-    if qn == 0.0:
-        return sims
     denom = dn * qn
     ok = denom > 0.0
+    sims = np.zeros(docs.shape[0], dtype=np.float64)
     if np.any(ok):
-        sims[ok] = docs[ok] @ query / denom[ok]
+        sims[ok] = np.clip(np.dot(docs[ok], query) / denom[ok], -1.0, 1.0)
     return sims
 
 

@@ -10,6 +10,13 @@ footer ran on without a blank line, the request went with it:
 
 Dropping the request is silent and severe; leaving one boilerplate line behind is neither, so the
 cleaning errs towards keeping text.
+
+The same asymmetry drives the sign-off tests below. `_SIGNATURE_MARKERS` allowed a whole
+sentence behind the closing word, so an ordinary body line beginning with one of them was read
+as the start of a signature and everything after it was cut:
+
+    clean_email_body("Hi,\\n\\nThanks for the quick reply.\\nCould you refund invoice 4411?")
+    # before: 'Hi,'    <- the request was cut away
 """
 import os
 import sys
@@ -285,6 +292,50 @@ for label, body in [
     ("`get` + device word", "Hi,\nThe box is at the front desk.\nGet mail"),
 ]:
     check("pt/kept: " + label, clean_email_body(body), body)
+
+# ------------------------------------------- a sign-off word inside the body is not a sign-off
+SHORT = "Hi,\n\nThanks for the quick reply.\nCould you refund invoice 4411 as well?"
+check("signoff word/short mail keeps the request", clean_email_body(SHORT), SHORT)
+check(
+    "signoff word/thanks mid-body keeps what follows",
+    clean_email_body(
+        "Hello,\n\nWe were billed twice in March.\nThanks for looking into it.\n"
+        "The duplicate is 49 EUR on invoice 4411."
+    ),
+    "Hello,\n\nWe were billed twice in March.\nThanks for looking into it.\n"
+    "The duplicate is 49 EUR on invoice 4411.",
+)
+check(
+    "signoff word/best mid-body keeps what follows",
+    clean_email_body(
+        "Hi team,\n\nOur account is locked.\nBest practice would be a manual unlock.\n"
+        "Please unlock account 88213 today."
+    ),
+    "Hi team,\n\nOur account is locked.\nBest practice would be a manual unlock.\n"
+    "Please unlock account 88213 today.",
+)
+check(
+    "signoff word/email_state keeps the request",
+    email_state("Duplicate charge", SHORT)["body"],
+    SHORT,
+)
+
+# ------------------------------------------- real sign-offs are still cut (positive controls)
+BODY = "Hi,\n\nPlease refund invoice 4411."
+for label, tail in [
+    ("thanks comma", "Thanks,\nAnna"),
+    ("thanks bang", "Thanks!"),
+    ("best regards", "Best regards,\nAnna"),
+    ("kind regards", "Kind regards"),
+    ("cheers name", "Cheers, Anna"),
+    ("many thanks", "Many thanks,\nAnna Meier"),
+    ("thank you", "Thank you,"),
+    ("thanks in advance", "Thanks in advance,"),
+    ("sincerely", "Sincerely,\nA. Meier"),
+    ("sent from phone", "Sent from my iPhone"),
+    ("dash delimiter", "--\nAnna Meier\nSupport"),
+]:
+    check("signoff cut/" + label, clean_email_body("%s\n\n%s" % (BODY, tail)), BODY)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

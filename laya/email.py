@@ -33,7 +33,15 @@ _HEADER_FROM_NAME = re.compile(r"^\s*De:\s+\S", re.I)
 _HEADER_NEXT = re.compile(r"^\s*(Enviad[oa]( em| el)?:\s|(Data|Fecha):\s.*\d{4})", re.I)
 _SIGNATURE_MARKERS = [
     re.compile(r"^\s*--\s*$"),
-    re.compile(r"^\s*(best|kind|warm|many thanks|thanks|thank you|regards|cheers|sincerely)[\w ,!.]*$", re.I),
+    # A closing line is the closing word plus punctuation and at most a name. Anything else on
+    # the line is a sentence, and the case of the next word is what separates the two: a name is
+    # capitalised, "for" in "Thanks for the quick reply." is not. The closing words are matched
+    # case-insensitively, the name is not, so the flag is scoped instead of global.
+    re.compile(
+        r"^\s*(?i:best|kind|warm|many thanks|thanks|thank you|regards|cheers|sincerely)"
+        r"(?i:\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?"
+        r"[\s,;:!.]*(?:[A-Z][\w'-]*[\s,.]*){0,3}$"
+    ),
     re.compile(r"^\s*sent from my (iphone|android|mobile|ipad)", re.I),
     # Portuguese/Spanish sign-offs match only on their own: "Obrigado pelo retorno, mas ..." is a
     # request, not a signature, so unlike the English marker no trailing words are allowed

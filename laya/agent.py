@@ -17,6 +17,7 @@ from .common import (
     clamp_temperature,
     collate_items,
     confidence_from_probs,
+    materialise_meta_parameters,
     render_options,
     temp_bucket,
 )
@@ -185,12 +186,16 @@ class Agent:
         self.tok = AutoTokenizer.from_pretrained(tok_dir if os.path.exists(tok_dir) else self.cfg.get("encoder"))
 
         enc_dir = os.path.join(model_dir, "encoder")
-        self.model = build_model(self.cfg, encoder_dir=enc_dir if os.path.exists(enc_dir) else None)
 
-        # Load weights and verify architectural compatibility
+        # Load weights and verify architectural compatibility. The model is built with
+        # uninitialised `meta` parameters because `load_state_dict` below supplies every one of
+        # them; letting nn.Module.__init__ randomise ~400M parameters first roughly triples the
+        # cost of a cold load and the result is discarded immediately.
         weights = load_file(weights_path)
+        self.model = build_model(self.cfg, encoder_dir=enc_dir if os.path.exists(enc_dir) else None,
+                                 empty=True)
         _verify_compatibility(self.model, self.cfg, weights, model_id_or_path)
-
+        materialise_meta_parameters(self.model, device="cpu")
         self.model.load_state_dict(weights, strict=True)
 
         # ModernBERT's reference_compile defaults to "auto" and will torch.compile the encoder.

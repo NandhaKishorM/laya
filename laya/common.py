@@ -2,6 +2,7 @@
 import json
 import math
 import os
+from contextlib import contextmanager, nullcontext
 from typing import Dict, List, Optional, Union
 
 import numpy as np
@@ -136,15 +137,71 @@ class DecisionModel(nn.Module):
         return logits, act_logits
 
 
-def build_model(cfg: Dict, encoder_dir: Optional[str] = None) -> DecisionModel:
+@contextmanager
+def _meta_parameters():
+    """Create parameters on the `meta` device while everything else builds normally.
+
+    Training-free inference loads every parameter from a checkpoint, so the random init that
+    `nn.Module.__init__` performs is pure waste -- and it is not cheap. On a 3-thread CPU box it
+    accounts for ~17 s of the ~19 s a cold `laya.load()` takes, against ~1.4 s to read 0.84 GB of
+    weights and apply them. Pinning parameters to `meta` skips that allocation and initialisation.
+
+    Buffers are deliberately left alone. They must still be initialised: ModernBERT computes its
+    non-persistent RoPE `inv_freq` buffers in `__init__`, they are absent from the checkpoint, and
+    they are read during the forward pass. `to_empty()` would materialise them as zeros and the
+    encoder would then silently attend with a dead rotary embedding.
+
+    Only `register_parameter` is shadowed, so nested modules and `None` parameters behave exactly
+    as before. Callers must materialise the parameters with `materialise_meta_parameters()` before
+    the module is used.
+    """
+    original = nn.Module.register_parameter
+
+    def register_parameter(module, name, param):
+        if param is None:
+            module._parameters[name] = None
+            return
+        module._parameters[name] = nn.Parameter(
+            torch.empty(param.shape, dtype=param.dtype, device="meta"),
+            requires_grad=param.requires_grad)
+
+    nn.Module.register_parameter = register_parameter
+    try:
+        yield
+    finally:
+        nn.Module.register_parameter = original
+
+
+def materialise_meta_parameters(module: nn.Module, device="cpu") -> nn.Module:
+    """Give every `meta` parameter real storage on `device`, in place.
+
+    `to_empty()` would also re-create the buffers, discarding the values `_meta_parameters()`
+    carefully preserved, so only parameters are converted here.
+    """
+    for submodule in module.modules():
+        for name, param in submodule._parameters.items():
+            if param is not None and param.device.type == "meta":
+                submodule._parameters[name] = nn.Parameter(
+                    torch.empty(param.shape, dtype=param.dtype, device=device),
+                    requires_grad=param.requires_grad)
+    return module
+
+
+def build_model(cfg: Dict, encoder_dir: Optional[str] = None, empty: bool = False) -> DecisionModel:
+    """Build the architecture.
+
+    `empty=True` leaves the parameters uninitialised on the `meta` device, which is what a
+    checkpoint load wants. The caller must call `materialise_meta_parameters()` before use.
+    """
     from transformers import AutoConfig, AutoModel
 
-    if encoder_dir and os.path.exists(encoder_dir):
-        ecfg = AutoConfig.from_pretrained(encoder_dir)
-        enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
-    else:
-        enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")
-    return DecisionModel(enc, cfg.get("head_layers", 2), len(cfg.get("act_costs", {})) + 1)
+    with _meta_parameters() if empty else nullcontext():
+        if encoder_dir and os.path.exists(encoder_dir):
+            ecfg = AutoConfig.from_pretrained(encoder_dir)
+            enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
+        else:
+            enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")
+        return DecisionModel(enc, cfg.get("head_layers", 2), len(cfg.get("act_costs", {})) + 1)
 
 
 def proper_reward(

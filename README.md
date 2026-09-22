@@ -141,7 +141,7 @@ The English checkpoint collapses on non-Latin scripts (Khmer scores **0.000 accu
 
 ### Production Preload & Memory
 
-A cold checkpoint build costs seconds; language detection costs microseconds. At the default `max_loaded=1`, traffic that alternates languages rebuilds a model on *every* request (measured at a 7.4 s median reload on CPU and 10.3 s on T4).
+A cold checkpoint build costs seconds; language detection costs microseconds. At the default `max_loaded=1`, traffic that alternates languages rebuilds a model on *every* request (measured at a 7.4 s median reload on CPU and 10.3 s on T4). Only a fraction of that is the weights: applying 0.84 GB of them takes ~0.4 s once the file is read, and the rest was random initialisation of ~400M parameters that the checkpoint load immediately overwrites.
 
 For a server or production app, preload:
 

@@ -23,7 +23,7 @@ from .presets import (
 from .router import DEFAULT_MODELS, RouteDecision, Router
 from .shortlist import embed_fn_from_agent, predict_shortlist, shortlist_choice
 
-__version__ = "0.3.4"
+__version__ = "0.3.5"
 __all__ = [
     # Core agent
     "Agent",
@@ -58,3 +58,30 @@ __all__ = [
     # Version
     "__version__",
 ]
+
+_SCHEMA_NAMES = {
+    "DecideRequest",
+    "BatchDecideRequest",
+    "ChoiceQuestion",
+    "ScoreQuestion",
+    "NoulQuestion",
+    "AnyQuestion",
+    "DecisionResponse",
+    "BatchDecisionResponse",
+    "ChoiceAnswer",
+    "ScoreAnswer",
+    "NoulAnswer",
+    "AnyAnswer",
+    "UsageInfo",
+    "ErrorDetail",
+    "ErrorResponse",
+    "ActionResult",
+}
+
+
+def __getattr__(name: str):
+    if name in _SCHEMA_NAMES:
+        from . import schemas
+        return getattr(schemas, name)
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+

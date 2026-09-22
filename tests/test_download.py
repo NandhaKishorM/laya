@@ -92,7 +92,10 @@ class DownloadTests(unittest.TestCase):
             self.assertEqual(download.call_args.kwargs["token"], "test-token")
             self.assertEqual(agent.predict("hello", self.questions), self.expected)
             prefix = subfolder + "/" if subfolder else ""
-            self.assertEqual(set(downloaded), {prefix + name for name in self.runtime_files})
+            self.assertEqual(
+                {p.replace("\\", "/") for p in downloaded},
+                {(prefix + name).replace("\\", "/") for name in self.runtime_files}
+            )
 
     def test_default_english_does_not_download_sibling_checkpoints(self):
         self.check_download("convaiinnovations/laya")

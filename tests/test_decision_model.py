@@ -89,3 +89,9 @@ def test_multi_option_question_is_unaffected():
     assert act_logits.shape == (2, 2)
     assert torch.isfinite(logits).all()
     assert torch.isfinite(act_logits).all()
+
+if __name__ == "__main__":
+    test_single_option_question_does_not_crash()
+    test_multi_option_question_is_unaffected()
+    print("all decision_model tests passed")
+

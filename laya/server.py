@@ -125,9 +125,27 @@ def _init_router() -> laya.Router:
 
 
 
-def _predict_locked(state, questions, model):
+def _resolve_model_alias(name: Optional[str]) -> str:
+    """Resolve a full HuggingFace repo ID or alias to a Router-compatible alias."""
+    if not name:
+        return "english"
+    from laya.router import STANDALONE_MODELS
+    repo_to_alias = {repo: alias for alias, repo in STANDALONE_MODELS.items()}
+    repo_to_alias["convaiinnovations/laya"] = "english"
+    return repo_to_alias.get(name.strip(), name.strip())
+
+
+def _get_canonical_model_id(name: Optional[str]) -> str:
+    """Return the official HuggingFace repo identifier for a model alias or name."""
+    alias = _resolve_model_alias(name)
+    from laya.router import STANDALONE_MODELS
+    return STANDALONE_MODELS.get(alias, alias)
+
+
+def _predict_locked(router: laya.Router, state, questions, model: Optional[str]):
+    alias = _resolve_model_alias(model)
     with _infer_lock:
-        return _router.predict(state, questions, model=model)
+        return router.predict(state, questions, model=alias)
 
 def _get_or_raise() -> laya.Router:
     """Return the loaded Router, or raise 503 if startup hasn't finished."""
@@ -146,28 +164,33 @@ def _get_or_raise() -> laya.Router:
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    global _router
+    global _router, _executor
+    _executor = ThreadPoolExecutor(max_workers=settings.workers)
 
     logger.info(
-        "Loading Laya model '%s' on device '%s' …",
+        "Loading Laya model '%s' on device '%s' with %d workers …",
         settings.model,
         settings.device or "auto",
+        settings.workers,
     )
     t0 = time.perf_counter()
 
     # Run the blocking model load in a thread-pool executor so the event loop stays free.
     loop = asyncio.get_running_loop()
-    _router = await loop.run_in_executor(None, _init_router)
+    _router = await loop.run_in_executor(_executor, _init_router)
 
     elapsed = time.perf_counter() - t0
     logger.info("Model ready in %.2fs", elapsed)
 
     yield  # ⌛ server handles requests here
 
-    logger.info("Shutting down — releasing model.")
+    logger.info("Shutting down — releasing model and thread pool.")
     if _router is not None:
         _router.unload()
     _router = None
+    if _executor is not None:
+        _executor.shutdown(wait=False)
+    _executor = None
 
 
 # ---------------------------------------------------------------------------
@@ -320,8 +343,8 @@ def _register_routes(app: FastAPI) -> None:
     # ── POST /v1/decide ───────────────────────────────────────────────────────
 
     @app.post(
-    "/v1/decide",
-    dependencies=[Depends(_check_auth)],
+        "/v1/decide",
+        dependencies=[Depends(_check_auth)],
         response_model=DecisionResponse,
         summary="Single-state decision",
         tags=["Inference"],
@@ -368,7 +391,7 @@ def _register_routes(app: FastAPI) -> None:
         try:
             raw = await loop.run_in_executor(
                 _executor,
-                _predict_locked, request.state, raw_questions, request.model
+                _predict_locked, router, request.state, raw_questions, request.model
             )
         except ValueError as exc:
             return JSONResponse(
@@ -378,13 +401,14 @@ def _register_routes(app: FastAPI) -> None:
                 ).model_dump(),
             )
 
+        raw["model"] = _get_canonical_model_id(request.model)
         return DecisionResponse.from_raw(raw)
 
     # ── POST /v1/decide/batch ─────────────────────────────────────────────────
 
     @app.post(
-    "/v1/decide/batch",
-    dependencies=[Depends(_check_auth)],
+        "/v1/decide/batch",
+        dependencies=[Depends(_check_auth)],
         response_model=BatchDecisionResponse,
         summary="Multi-state batch decision",
         tags=["Inference"],
@@ -412,7 +436,7 @@ def _register_routes(app: FastAPI) -> None:
         async def _infer_one(state) -> Dict[str, Any]:
             return await loop.run_in_executor(
                 _executor,
-                _predict_locked, state, raw_questions, request.model
+                _predict_locked, router, state, raw_questions, request.model
             )
 
         try:
@@ -441,8 +465,8 @@ def _register_routes(app: FastAPI) -> None:
     # work against this server with ZERO code changes.
 
     @app.post(
-    "/v1/systemone",
-    dependencies=[Depends(_check_auth)],
+        "/v1/systemone",
+        dependencies=[Depends(_check_auth)],
         response_model=DecisionResponse,
         summary="TypeSafe Jev drop-in alias",
         tags=["Inference"],
@@ -494,7 +518,7 @@ def _register_routes(app: FastAPI) -> None:
         try:
             raw = await loop.run_in_executor(
                 _executor,
-                _predict_locked, request.state, raw_questions, request.model
+                _predict_locked, router, request.state, raw_questions, request.model
             )
         except ValueError as exc:
             return JSONResponse(
@@ -504,6 +528,7 @@ def _register_routes(app: FastAPI) -> None:
                 ).model_dump(),
             )
 
+        raw["model"] = _get_canonical_model_id(request.model)
         return DecisionResponse.from_raw(raw)
 
 

@@ -41,21 +41,20 @@ jobs:
       - name: Import check
         run: python -c "import laya; print(laya.__version__); print(sorted(laya.__all__))"
 
-      - name: Core engine tests
+      - name: Core engine and routing tests
         run: |
           python tests/test_router.py
           python tests/test_criteria.py
-          
-      - name: Server and API tests
-        run: pytest tests/test_server.py
-
-      - name: Downloader & Shortlist tests
-        run: |
           python tests/test_download.py
           python tests/test_shortlist.py
+          python tests/test_decision_model.py
+          python tests/test_packaging.py
 
       - name: Email cleaning tests
         run: python tests/test_email.py
+
+      - name: Server and API tests
+        run: pytest tests/test_server.py
 
   lint:
     name: lint

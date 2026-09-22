@@ -10,12 +10,20 @@ footer ran on without a blank line, the request went with it:
 
 Dropping the request is silent and severe; leaving one boilerplate line behind is neither, so the
 cleaning errs towards keeping text.
+
+The last block guards a different kind of silence. `email_questions` was defined twice, here and
+in `laya/presets.py`, and `laya/__init__.py` re-exports the `presets` one. Editing the copy in
+`laya/email.py` moved `laya.email.email_questions` and left `laya.email_questions` where it was,
+with no test and no lint failing.
 """
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import laya  # noqa: E402
+from laya import email as email_module  # noqa: E402
+from laya import presets  # noqa: E402
 from laya.email import clean_email_body, email_state  # noqa: E402
 
 PASS, FAIL = [], []
@@ -285,6 +293,28 @@ for label, body in [
     ("`get` + device word", "Hi,\nThe box is at the front desk.\nGet mail"),
 ]:
     check("pt/kept: " + label, clean_email_body(body), body)
+
+
+# ------------------------------------------- email_questions has exactly one definition
+check_true(
+    "email_questions/one definition behind both module paths",
+    email_module.email_questions is presets.email_questions,
+    "laya.email.email_questions is not laya.presets.email_questions",
+)
+check_true(
+    "email_questions/the package export is that same object",
+    laya.email_questions is presets.email_questions,
+)
+check(
+    "email_questions/both paths answer the same",
+    email_module.email_questions(),
+    laya.email_questions(),
+)
+check(
+    "email_questions/a caller override reaches both paths",
+    email_module.email_questions({"legal": "contracts"})["category"]["criteria"],
+    laya.email_questions({"legal": "contracts"})["category"]["criteria"],
+)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

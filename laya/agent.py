@@ -283,10 +283,14 @@ class Agent:
 
         for qid in ids:
             q = self._to_internal(questions[qid])
-            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len)
+            seq, markers, info = build_sequence(self.tok, state, q, max_len, head_max_len, return_info=True)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
-            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
+            # Surface whether input evidence was dropped fitting this
+            # question into the window, so callers can drive an accurate
+            # truncated flag instead of guessing from a character estimate.
+            truncated = info["state_truncated"] or info["head_truncated"]
+            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]], "truncated": truncated})
 
         b = collate_items([items], self.tok.pad_token_id)
         use_amp = self.device.type == "cuda"
@@ -342,6 +346,7 @@ class Agent:
                     "probabilities": {kk: round(float(v), 4) for kk, v in zip(keys, p)},
                     "confidence": conf_score,
                     "action": ext,
+                    "truncated": items[r]["truncated"],
                 }
             elif q["t"] == "score":
                 exp_score = float((np.arange(k) * p).sum())
@@ -352,6 +357,7 @@ class Agent:
                     "probabilities": {str(i): round(float(v), 4) for i, v in enumerate(p)},
                     "confidence": conf_score,
                     "action": ext,
+                    "truncated": items[r]["truncated"],
                 }
             else:
                 answers[qid] = {
@@ -359,6 +365,7 @@ class Agent:
                     "noul": round(float(p[1]), 4),
                     "confidence": round(max(float(p[1]), 1.0 - float(p[1])), 4),
                     "action": ext,
+                    "truncated": items[r]["truncated"],
                 }
 
         return {

@@ -429,6 +429,17 @@ as a fast base to specialise, not as a zero-shot decision engine.
 
 Runtime on 2xT4 is roughly 4-5 hours for 4 epochs over ~30k questions.
 
+### Worked example: a browser-agent decision head
+
+[`docs/finetune_browser_agent.md`](docs/finetune_browser_agent.md) records a complete specialisation
+on a single 16 GB GPU with no paid API: Laya as the operation/target decider for
+[browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) (same request format as
+TypeSafe Jev). Element top-1 among ~45 candidates goes from 0.10 zero-shot to 0.66, real-task
+success from 0 % to 62 % at 17-23 ms per step; weights, pipeline code and per-run results are on
+the Hub at [cklxx/laya-browser](https://huggingface.co/cklxx/laya-browser). The write-up covers the
+data recipe (reverse-generated goals, executed DONE states, Mind2Web, on-policy corrections), the
+input-format change that mattered most, and the things that did not work.
+
 ---
 
 ## Support the Project

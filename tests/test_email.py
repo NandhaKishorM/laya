@@ -46,7 +46,12 @@ check(
 check(
     "inline footer/no terminal punctuation still recovers the request",
     clean_email_body("My account is locked\n%s\nPlease unlock it." % DISCLAIMER),
-    "Please unlock it.",
+    "My account is locked Please unlock it.",
+)
+check(
+    "inline footer/indented disclaimer still recovers the request",
+    clean_email_body("My account is locked\n   %s\nPlease unlock it." % DISCLAIMER),
+    "My account is locked Please unlock it.",
 )
 check(
     "inline footer/body is never emptied",

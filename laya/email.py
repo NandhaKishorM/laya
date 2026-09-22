@@ -19,6 +19,7 @@ _DISCLAIMER = re.compile(
     re.I,
 )
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
+_FRESH_NEWLINE = re.compile(r"\n\s*(?=[A-Z])")
 
 
 def _strip_disclaimer(paragraph: str) -> str:
@@ -31,7 +32,16 @@ def _strip_disclaimer(paragraph: str) -> str:
     if not _DISCLAIMER.search(paragraph):
         return paragraph                     # nothing to do: keep the original line structure
     parts = [p.strip() for p in _SENTENCE.split(paragraph) if p.strip()]
-    return " ".join(p for p in parts if not _DISCLAIMER.search(p))
+    
+    kept = []
+    for p in parts:
+        if not _DISCLAIMER.search(p):
+            kept.append(p)
+        elif "\n" in p:
+            # Attempt to rescue non-disclaimer lines grouped via missing punctuation
+            subparts = [sp.strip() for sp in _FRESH_NEWLINE.split(p) if sp.strip()]
+            kept.extend(sp for sp in subparts if not _DISCLAIMER.search(sp))
+    return " ".join(kept)
 
 
 def clean_email_body(body: str, max_chars: int = 3000) -> str:

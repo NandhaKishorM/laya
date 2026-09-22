@@ -38,11 +38,59 @@ Three checkpoints, and a `Router` that picks between them per request:
 
 ## Installation
 
+If you already use a virtual environment, install the PyPI release with:
+
 ```bash
-pip install laya
+python -m pip install laya
 ```
 
 Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
+
+For a new environment, choose the commands for your platform below. Run them from your project directory; the explicit Python paths keep installation and verification in the same environment.
+
+**macOS / Linux** (with Python 3.10 or newer):
+
+On Debian/Ubuntu, the system Python may require `sudo apt install python3-venv` before creating a virtual environment. If `venv` reports that `ensurepip` is unavailable, install that package and retry.
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install laya
+.venv/bin/python -I -c "import laya; print(laya.__version__)"
+```
+
+**Windows PowerShell** (this example uses an installed Python 3.11):
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install laya
+.\.venv\Scripts\python.exe -I -c "import laya; print(laya.__version__)"
+```
+
+Both checks print the installed Laya version without loading a checkpoint. `-I` excludes the current directory from the import search path, so a local source copy cannot mask a missing installation. Keep using the same virtual environment's Python when running your application.
+
+**Install from GitHub**
+
+To use the development version instead of the PyPI release, create the virtual environment above and replace its installation command with the appropriate command below. Git must be installed.
+
+```bash
+# macOS / Linux
+.venv/bin/python -m pip install "git+https://github.com/NandhaKishorM/laya.git"
+```
+
+```powershell
+# Windows PowerShell
+.\.venv\Scripts\python.exe -m pip install "git+https://github.com/NandhaKishorM/laya.git"
+```
+
+Run the same version check afterward. The GitHub version follows the repository's default branch and may differ from the published release.
+
+**Model setup and troubleshooting**
+
+Continue with the [Router quickstart](#quickstart-route-mode-recommended) to run inference. Loading a Hub checkpoint requires access to Hugging Face on its first download; the quickstart's `Router(preload=True)` loads all three configured checkpoints at construction.
+
+- **`ModuleNotFoundError: No module named 'laya'`:** run both installation and your script with the same virtual environment's Python executable shown above. In an editor, select that interpreter as well.
+- **Missing `rl_agent_config.json`:** this file ships with a Laya checkpoint alongside `model.safetensors`; it is not a configuration file you need to create in the source repository. For a local model, pass the directory containing those checkpoint files.
+- **Choosing a PyTorch build for CPU or GPU:** use [PyTorch's installation guide](https://pytorch.org/get-started/locally/) for your platform and compute backend, and run the selected installation command in this virtual environment before installing Laya.
 
 ---
 

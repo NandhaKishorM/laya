@@ -1,6 +1,7 @@
 """High-level inference runtime for laya System 1 decision models."""
 import json
 import os
+import threading
 import warnings
 from typing import Any, Dict, Optional, Union
 
@@ -98,6 +99,42 @@ def _verify_compatibility(model: torch.nn.Module, cfg: Dict, weights: Dict[str, 
         )
 
 
+_TOKENIZERS: Dict[tuple, Any] = {}
+_TOKENIZERS_LOCK = threading.Lock()
+
+
+def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
+    """Tokenizer for a checkpoint, parsed once per process.
+
+    Parsing `tokenizer.json` is not free and it is not cached by huggingface_hub: the
+    multilingual checkpoint ships a 34 MB, 256k-vocabulary file that costs ~4.5 s to load, which
+    is several times the cost of applying its weights. A tokenizer is read-only during inference,
+    so one instance is shared by every Agent that wants the same directory -- including an Agent
+    the Router has just evicted and is about to rebuild.
+
+    Keyed on the tokenizer directory and its mtime, so `_fix_tokenizer_config()` rewriting the
+    config or a re-download still produces a fresh parse. Non-directory sources (a hub id) are
+    not cached, so a caller cannot pin a stale remote revision.
+    """
+    from transformers import AutoTokenizer
+
+    if not os.path.isdir(tok_dir):
+        return AutoTokenizer.from_pretrained(cfg.get("encoder"))
+
+    try:
+        stamp = (os.path.abspath(tok_dir), os.path.getmtime(os.path.join(tok_dir, "tokenizer_config.json")))
+    except OSError:
+        return AutoTokenizer.from_pretrained(tok_dir)
+
+    with _TOKENIZERS_LOCK:
+        cached = _TOKENIZERS.get(stamp)
+        if cached is not None:
+            return cached
+        tokenizer = AutoTokenizer.from_pretrained(tok_dir)
+        _TOKENIZERS[stamp] = tokenizer
+        return tokenizer
+
+
 class Agent:
     """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions."""
 
@@ -115,7 +152,6 @@ class Agent:
         downloaded, so bundling does not cost every user the whole family.
         """
         from safetensors.torch import load_file
-        from transformers import AutoTokenizer
 
         model_dir = model_id_or_path
         if not os.path.exists(model_dir):
@@ -183,7 +219,7 @@ class Agent:
                 self.device = torch.device("cpu")
 
         tok_dir = os.path.join(model_dir, "tokenizer")
-        self.tok = AutoTokenizer.from_pretrained(tok_dir if os.path.exists(tok_dir) else self.cfg.get("encoder"))
+        self.tok = _load_tokenizer(tok_dir, self.cfg)
 
         enc_dir = os.path.join(model_dir, "encoder")
 

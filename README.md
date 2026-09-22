@@ -166,6 +166,12 @@ router.unload()                     # free memory
 | `Router()` (lazy, `max_loaded=1`) | 7 to 10 s on every language switch | 1 per switch |
 | `Router(preload=True)` | **32.8 ms (GPU) / 193–464 ms (CPU)** | **none** |
 
+A reload no longer re-initialises the weights it is about to overwrite, so the cost above is now
+dominated by reading the checkpoint and by the multilingual tokenizer (a 34 MB, 256k-vocabulary
+`tokenizer.json`). `research/scripts/bench_load_latency.py` measures it per checkpoint. Preloading
+is still the right answer for a server: it removes the reload entirely rather than making it
+cheaper.
+
 ---
 
 ## Single-Model Mode (Direct SDK)

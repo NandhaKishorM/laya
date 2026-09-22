@@ -44,6 +44,17 @@ pip install laya
 
 Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
 
+> **Windows + Python 3.14 note:** building a ModernBERT model via `transformers` segfaults inside
+> `PreTrainedModel.initialize_weights` on Windows 11 + Python 3.14 + torch 2.14, so `Agent(...)`
+> cannot finish loading there (see #123). Either use Python 3.11–3.13, or apply the opt-in
+> workaround before loading laya (safe because `Agent` immediately overwrites the skipped
+> initialization with `load_state_dict(strict=True)`):
+>
+> ```python
+> import laya.win_patch  # no-op on all other platforms
+> from laya import Router
+> ```
+
 ---
 
 ## Quickstart: Route Mode (Recommended)

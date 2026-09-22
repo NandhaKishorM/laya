@@ -377,6 +377,46 @@ for text in [
     check("route/pt-br control " + text[:32], _r_lat.route(text).model, "english")
 
 
+# --------------------------------------------------------------------- romanized Bangla
+# Bangla is often typed in Latin letters ("Banglish") when no Bengali keyboard is at hand. It has no
+# diacritics and matched no stopword list, so it was reported `is_english=True` and handed to the
+# English checkpoint, which scores 0.08 on Bangla MASSIVE at 0.94 confidence. The Bengali-script
+# spelling of the same text already routed on script alone.
+for text in [
+    "amar kach theke duibar taka kata hoyeche, doya kore ferot din",
+    "ami invoice er jonno duibar charge peyechi, refund chai",
+    "Ami ei product ta niye khub hotash, ekhon e cancel korte chai",
+    "apnara keno amar call dhorchen na? ajke kichu ekta korun",
+    "bhai amar account e login korte parchi na",
+    "taka ekhono ferot paini, kobe pabo?",
+    "order ta kobe asbe bolte parben?",
+]:
+    check("latin_lang/banglish " + text[:32], guess_latin_language(text), "bn")
+    check("is_english/banglish " + text[:32], is_english(text), False)
+    check("route/banglish " + text[:32], _r_lat.route(text).model, "multilingual")
+check("route/bengali script", _r_lat.route("আমার কাছ থেকে দুইবার টাকা কাটা হয়েছে").model, "multilingual")
+
+# English must not move. `chai`, `ar`, `ami`, `koto`, `kore`, `oi` are Bangla words that also turn
+# up in English text as a drink, an acronym or a name; one of them next to English function words
+# stays English.
+for text in [
+    "Chai latte order was charged twice, please refund the extra amount",
+    "The AR team says the ETA for the fix is Friday",
+    "Ami Patel from the Koto office sent the invoice to Kore Ltd",
+    "Our AR and VR demo in Oi Bahia went well, the client wants a quote",
+    "Take the age of the account into account before you refund",
+]:
+    check("is_english/banglish control " + text[:32], is_english(text), True)
+    check("route/banglish control " + text[:32], _r_lat.route(text).model, "english")
+# ...and no other language may move either: the `bn` list claims no word another list holds, and
+# leaves out Romance words such as `ora`, `nei`, `vai`.
+from laya.lang import _STOP  # noqa: E402
+check("latin_lang/bn list shares no word with another list",
+      sorted(w for w in _STOP.get("bn", ()) for lg, words in _STOP.items() if lg != "bn" and w in words), [])
+check("latin_lang/romanian with ei stays romanian",
+      guess_latin_language("Ei nu sunt de acord cu factura, vreau o corecție"), "ro")
+
+
 # --------------------------------------------------------------------- temperature clamp (#35)
 # A fitted temperature below 1 sharpens logits. The shipped `choice:11+` bucket is 0.1006, which
 # turned a 0.24 top probability into 0.99 confidence on 13-option skill routing.

@@ -115,6 +115,27 @@ _STOP = {
     "ro": {"și", "să", "este", "sunt", "care", "pentru", "din", "dar", "după", "până", "fără",
            "ale", "lui", "în", "fost", "acum", "vreau", "trebuie", "foarte", "acest", "această",
            "acesta", "aceasta", "mi", "ți", "vă", "nu"},
+    # Romanized Bangla ("Banglish"): how Bangla is typed in chats, tickets and email when no Bengali
+    # keyboard is at hand. It has no diacritics, so without a list it read as undecided-but-English
+    # and went to the English checkpoint, which scores 0.08 on Bangla at 0.94 confidence. Spelling
+    # is not standardised, so the common variants are listed (`bhalo`/`valo`, `korchi`/`korsi`).
+    # Left out on purpose: frequent Bangla words that are also English words -- `ache` (is),
+    # `are` (is there), `to` (so), `take` (to him), `age` (before), `pore` (later), `mane`
+    # (meaning), `din` (give), `sob` (all), `tar` (his), `dao` (give), `eta` (this; ETA) --
+    # ordinary words of a neighbouring language (`ora`, `nei`, `vai`), and words another list
+    # already claims (`na`, `o`, `e`, `je`, `ta`, `por`, `hoy`), so adding `bn` cannot move a
+    # state of any other language.
+    "bn": {"ami", "amar", "amake", "amra", "amader", "apni", "apnar", "apnake", "apnara",
+           "tumi", "tomar", "tomake", "tomra", "tader", "ota", "eita", "oita",
+           "ekta", "ei", "oi", "ki", "keno", "kivabe", "kibhabe", "kothay", "kokhon", "kobe",
+           "koto", "kintu", "jodi", "tahole", "ar", "theke", "jonno", "sathe", "shathe", "diye",
+           "niye", "moddhe", "kore", "korte", "korchi", "korsi", "korbo", "korechi", "koreche",
+           "korun", "koren", "korlam", "hobe", "hoyeche", "hoise", "hocche", "hoyni",
+           "chai", "chaina", "lagbe", "parchi", "parbo", "parchina", "peyechi", "paini",
+           "dite", "dilam", "diyechi", "nai", "khub", "onek", "ekhon", "akhon", "ekhono",
+           "abar", "ekbar", "duibar", "ajke", "kalke", "taka", "bhalo", "valo", "kharap",
+           "shomossa", "somossa", "dhonnobad", "bhai", "shob", "keu", "kichu", "bolte", "bolun",
+           "parben", "asbe", "jabe", "pabo", "ferot", "dorkar", "hoye", "geche", "gese"},
 }
 # Letters that ordinary English does not use. This is the signal that catches a Latin-script
 # language we hold no stopwords for at all (Romanian, Polish, Czech, Turkish, Baltic, ...),

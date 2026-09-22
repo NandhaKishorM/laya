@@ -116,6 +116,36 @@ check("latin_lang/long english stays en",
                            "we have been waiting for three days and nobody has replied to us"), "en")
 
 
+# --------------------------------------------------------------------- dotted tokens (#177)
+# `com` is Portuguese ("with") and `o` is its article, and `_WORD` splits `github.com` into
+# `github` + `com`, so every domain in a state scored a Portuguese hit: two of them crossed the
+# margin and sent an English state with links in it to the multilingual checkpoint, reported as
+# Portuguese. A token whose dot or @ joins word characters is an identifier, not prose.
+_r_dotted = Router()
+for label, state in [
+    ("url and email fields", {"url": "github.com", "email": "user@acme.com"}),
+    ("two bare domains", "github.com acme.com"),
+    ("link list", {"links": ["example.com", "example.co.uk", "docs.readthedocs.io"]}),
+]:
+    check("latin_lang/dotted " + label, analyse(state)["language"], None)
+    check("is_english/dotted " + label, is_english(state), True)
+    check("route/dotted " + label, _r_dotted.route(state).model, "english")
+# versions, decimals and dotted abbreviations are identifiers too, and were never prose
+for text, label in [("build 1.2.3 on 12.30 with ratio 0.5", "version and decimal"),
+                    ("Report by Smith et al., e.g. the U.S.A. office", "dotted abbreviation")]:
+    check("is_english/dotted " + label, is_english(text), True)
+    check("route/dotted " + label, _r_dotted.route(text).model, "english")
+# masking identifiers must not cost the prose around them its language, and a full stop ends a
+# sentence rather than joining an identifier: the word before it keeps its letters.
+check("latin_lang/portuguese prose with a link",
+      guess_latin_language("O cliente nao recebeu o produto, mas quer o dinheiro para a conta, "
+                           "veja example.com"), "pt")
+check("latin_lang/portuguese sentence with a full stop",
+      guess_latin_language("O cliente nao recebeu o produto, mas quer o dinheiro para a conta."), "pt")
+check("route/english with a link stays english",
+      _r_dotted.route({"body": "Please check example.com and acme.com for the invoice"}).model, "english")
+
+
 # --------------------------------------------------------------------- state flattening
 check("state_text/dict", "charged twice" in state_text({"body": "charged twice", "n": 3}), True)
 check("state_text/nested", "deep" in state_text({"a": {"b": ["deep"]}}), True)

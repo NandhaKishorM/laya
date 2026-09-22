@@ -271,7 +271,7 @@ class Agent:
             questions: Dictionary mapping question_id -> question definition.
                 - choice: {"type": "choice", "instructions": "...", "criteria": {"optA": "...", ...}}
                 - score:  {"type": "score",  "instructions": "...", "criteria": ["lvl0", "lvl1", ...]}
-                - noul:   {"type": "noul",   "instructions": "..."}
+                - noul:   {"type": "noul",   "instructions": "...", "criteria": {"true": "...", "false": "..."}}
 
         Returns:
             Dictionary with answers, probabilities, calibrated confidence, and token usage.

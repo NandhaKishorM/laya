@@ -230,10 +230,14 @@ def script_profile(text: str) -> Dict[str, float]:
 # stopword list matches it.
 NON_EN_DIACRITIC_RATE = 0.02
 
-# At least this share of letters in a non-Latin script means the text is not for the English
-# checkpoint, even when Latin letters are the plurality. A brand name or order code outvotes the
-# CJK request around it letter for letter, though one CJK character carries far more than a letter.
+# Non-Latin text is not for the English checkpoint even when Latin letters are the plurality: a
+# brand name or order code outvotes the CJK request around it letter for letter, though one CJK
+# character carries far more than a letter. A short message needs a large share to count; a long
+# payload (ticket fields, English agent turns) dilutes the share, so there a sentence's worth of
+# letters counts -- but not a name, a signature or a few Greek symbols in a formula.
 NON_LATIN_FRACTION = 0.2
+NON_LATIN_MIN_FRACTION = 0.05
+NON_LATIN_MIN_LETTERS = 10
 
 
 def latin_profile(text: str) -> Dict[str, object]:
@@ -302,7 +306,9 @@ def analyse(state: Union[str, dict, list, None]) -> Dict[str, object]:
     prof = script_profile(text)
     script = detect_script(text)
     non_latin = round(1.0 - prof.get("latin", 0.0), 4) if prof else 0.0
-    if script == "latin" and non_latin >= NON_LATIN_FRACTION:
+    n_non_latin = round(non_latin * sum(ch.isalpha() for ch in text))
+    if script == "latin" and (non_latin >= NON_LATIN_FRACTION or (
+            non_latin >= NON_LATIN_MIN_FRACTION and n_non_latin >= NON_LATIN_MIN_LETTERS)):
         script = max((s for s in prof if s != "latin"), key=prof.get)
     if script == "unknown":
         return {"script": "unknown", "script_profile": prof, "language": None,

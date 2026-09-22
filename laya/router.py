@@ -133,9 +133,16 @@ class Router:
     Models are downloaded and built on first use. `max_loaded` caps how many stay resident
     (least-recently-used is evicted), because all three together are ~1.16B parameters.
 
+    The default is 2, because automatic routing only ever chooses between `english` and
+    `multilingual`: a cap of one rebuilds the checkpoint it just evicted on every script switch,
+    which is seconds per request on exactly the traffic the Router exists for. Traffic that only
+    ever sees one language never builds the second checkpoint, so the default costs it nothing.
+    Lower it to 1 for a memory-constrained host, and raise it to 3 (or preload) when
+    `auto_task_detection`, an explicit `model=` or an explicit `task=` can reach
+    `typed-decisions` as well.
+
     For a server or a demo, preload instead: a cold load costs seconds, while detection costs
-    microseconds, so anything that alternates languages at `max_loaded=1` reloads on every
-    request.
+    microseconds, so even the default still pays a load the first time a language appears.
 
         r = Router(preload=True)                    # all three resident, routing is free
         r = Router(preload=True, device="cuda")
@@ -147,7 +154,7 @@ class Router:
         models: Optional[Dict[str, str]] = None,
         device: Optional[str] = None,
         token: Optional[str] = None,
-        max_loaded: int = 1,
+        max_loaded: int = 2,
         default: str = "english",
         auto_task_detection: bool = False,
         standalone_repos: bool = False,

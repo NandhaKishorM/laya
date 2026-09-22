@@ -290,6 +290,47 @@ rr.unload()
 check("lru/unload all", rr.loaded, [])
 
 
+# --------------------------------------------------------------------- default cap (#172)
+# #172 measured a workload that alternates languages at 20-23 s per request on CPU (reloading a
+# checkpoint every request) against 49-136 ms with both resident. Automatic routing only ever
+# chooses between `english` and `multilingual`, so the default holds both, and a deployment that
+# never alternates never builds the second.
+def counting_router(cap=None):
+    """Router whose loader records which checkpoints it had to build."""
+    rr = Router() if cap is None else Router(max_loaded=cap)
+    built = []
+
+    def load(name, _rr=rr, _built=built):
+        key = normalise_name(name)
+        if key in _rr._agents:
+            _rr._touch(key)
+            return _rr._agents[key]
+        _built.append(key)
+        _rr._agents[key] = _Stub(key)
+        _rr._order.append(key)
+        _rr._evict()
+        return _rr._agents[key]
+
+    rr.load = load
+    return rr, built
+
+
+check("lru/default is two", Router().max_loaded, 2)
+_en = {"body": "I was charged twice for invoice 4411, please refund."}
+_ml = {"body": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung"}
+for cap, want_built in ((1, 20), (2, 2)):
+    cr, built = counting_router(cap)
+    for _ in range(10):                          # the reported alternating workload
+        cr.predict(_en, Q_GENERIC)
+        cr.predict(_ml, Q_GENERIC)
+    check("lru/alternating traffic, cap=%d builds" % cap, len(built), want_built)
+# and the default costs a single-language deployment nothing at all
+cr, built = counting_router()
+for _ in range(5):
+    cr.predict(_en, Q_GENERIC)
+check("lru/single-language traffic builds one checkpoint", built, ["english"])
+
+
 # --------------------------------------------------------------------- bundle vs standalone
 check("bundle/english is repo root", DEFAULT_MODELS["english"], (BUNDLE_REPO, None))
 check("bundle/multilingual subfolder", DEFAULT_MODELS["multilingual"], (BUNDLE_REPO, "multilingual"))

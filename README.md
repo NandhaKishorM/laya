@@ -141,7 +141,7 @@ The English checkpoint collapses on non-Latin scripts (Khmer scores **0.000 accu
 
 ### Production Preload & Memory
 
-A cold checkpoint build costs seconds; language detection costs microseconds. At the default `max_loaded=1`, traffic that alternates languages rebuilds a model on *every* request (measured at a 7.4 s median reload on CPU and 10.3 s on T4).
+A cold checkpoint build costs seconds; language detection costs microseconds. The lazy default keeps **two** checkpoints resident — `english` and `multilingual`, the only two automatic routing chooses between — so a language flip costs detection only once each has been built. `max_loaded=1` rebuilds the checkpoint it just evicted on *every* switch (measured at a 7.4 s median reload on CPU and 10.3 s on T4), and traffic that only ever sees one language never builds the second, so the default costs a single-language deployment nothing.
 
 For a server or production app, preload:
 
@@ -156,14 +156,16 @@ router.preload(["english", "multilingual"])
 # If your app already built an agent, attach it to avoid duplicate VRAM:
 router.attach("english", existing_agent)
 
-# Manage resident memory (default keeps 1 hot, LRU eviction)
-router = Router(max_loaded=2)       # keep two hot
+# Manage resident memory (default keeps two hot: english + multilingual, LRU eviction)
+router = Router(max_loaded=3)       # keep all three hot, e.g. with auto_task_detection
+router = Router(max_loaded=1)       # memory-constrained host, reloads on every switch
 router.unload()                     # free memory
 ```
 
 | Deployment Mode | Per-Request Latency | Model Reloads |
 |---|---|---|
-| `Router()` (lazy, `max_loaded=1`) | 7 to 10 s on every language switch | 1 per switch |
+| `Router()` (lazy, `max_loaded=2`) | detection only (<1 ms) on a switch, after each language's first load | 1 the first time a language appears |
+| `Router(max_loaded=1)` | 7 to 10 s on every language switch | 1 per switch |
 | `Router(preload=True)` | **32.8 ms (GPU) / 193–464 ms (CPU)** | **none** |
 
 ---

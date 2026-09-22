@@ -88,7 +88,7 @@ check("latin/diacritic rate reported", analyse("Gătește-mi o rețetă de sarma
 check("latin/english has no diacritics", analyse("Please refund the duplicate charge today")["diacritic_rate"], 0.0)
 # every branch of analyse() reports the same keys, so a caller can read one without guarding
 _KEYS = {"script", "script_profile", "language", "is_english", "language_undecided",
-         "diacritic_rate", "non_latin_fraction"}
+         "diacritic_rate", "non_latin_fraction", "non_latin_letters"}
 for label, text in [("english", "Please refund the duplicate charge"), ("hindi", "ग्राहक से दो बार"),
                     ("romanian", "Gătește-mi o rețetă de sarmale"), ("no letters", "12345 ???")]:
     check("analyse/keys " + label, set(analyse(text)), _KEYS)
@@ -425,6 +425,61 @@ order_len, agents_len, order = _concurrent_hotpath()
 check("threads/hot-path loads keep one entry", order_len, 1)
 check("threads/hot-path loads keep agents consistent", agents_len, 1)
 check("threads/hot-path order intact", order, ["english"])
+
+# ------------------------------------------------ mixed-script states (regression)
+# `detect_script` answers "which script dominates", but routing needs "can the English
+# checkpoint read all of this". A production state is an English wrapper -- ticket ids, agent
+# notes, a signature block -- around one message in the customer's language, so it stays
+# Latin-majority and the message went to the checkpoint that scores it at near-random while
+# reporting high confidence.
+_mixed = Router()
+
+_cn_ticket = {
+    "ticket_id": "TCK-84213",
+    "channel": "web widget",
+    "agent_notes": "Customer contacted support earlier this week about a billing discrepancy. "
+                   "Previous agent escalated to the billing team but no response yet.",
+    "message": "我的账户这个月被重复扣款了两次，请尽快退款",
+}
+_hi_signed = {
+    "body": "मेरे खाते से दो बार पैसे कट गए हैं, कृपया तुरंत रिफंड करें",
+    "signature": "Best regards, Customer Support Team, Acme Corporation Limited",
+}
+_ko_history = [
+    {"role": "assistant", "text": "Hello and welcome to support, how can I help you today?"},
+    {"role": "assistant", "text": "Please describe the issue and I will look into your account."},
+    {"role": "user", "text": "계정에서 두 번 결제가 되었습니다. 환불해 주세요."},
+]
+
+check("mixed/Latin-majority CJK ticket", _mixed.route(_cn_ticket)["model"], "multilingual")
+check("mixed/Devanagari under an English signature", _mixed.route(_hi_signed)["model"], "multilingual")
+check("mixed/Hangul in the newest turn", _mixed.route(_ko_history)["model"], "multilingual")
+check("mixed/analyse does not call it English", analyse(_cn_ticket)["is_english"], False)
+check("mixed/is_english agrees", is_english(_hi_signed), False)
+check("mixed/reason names the script share",
+      "mixed script" in _mixed.route(_cn_ticket)["reason"], True)
+check("mixed/analyse reports the same keys as any other branch",
+      set(analyse(_cn_ticket)), set(analyse("hello world this is english")))
+check("mixed/analyse counts the unreadable letters", analyse(_cn_ticket)["non_latin_letters"], 20)
+
+# A stray symbol is not a foreign message: the rate alone would reroute the first of these at 14%.
+check("mixed/a lone Greek variable stays English",
+      _mixed.route({"message": "Set \u03b1 to 0.05 now"})["model"], "english")
+check("mixed/a lone CJK name stays English",
+      _mixed.route({"message": "Please add \u674e as an authorised billing contact on the account."})["model"],
+      "english")
+
+# English still routes to the English checkpoint, and an explicit choice still overrides.
+check("mixed/plain English untouched",
+      _mixed.route({"message": "I was charged twice for a transfer"})["model"], "english")
+check("mixed/an accented name is not another script",
+      _mixed.route({"message": "Please update the billing contact to Renee Dubois, she handles "
+                               "our invoices and should receive every statement from now on."})["model"],
+      "english")
+check("mixed/explicit model still wins",
+      _mixed.route(_cn_ticket, model="english")["model"], "english")
+check("mixed/explicit lang still wins",
+      _mixed.route(_cn_ticket, lang="en")["model"], "english")
 
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

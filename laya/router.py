@@ -23,6 +23,13 @@ intent it scores 0.100 on Hindi and 0.103 on Korean, against 0.050 for random gu
 reports high confidence while doing so (ECE 0.855 on Hindi). Script detection is therefore the
 primary routing signal.
 
+Script *presence* matters, not just which script dominates. A production state is usually an
+English wrapper -- ticket ids, agent notes, a signature block -- around one message in the
+customer's own language, so its letters stay Latin-majority while the part the question is
+actually about is unreadable to the English checkpoint. Any state carrying at least
+`NON_LATIN_ROUTE_RATE` of its letters, and at least `NON_LATIN_ROUTE_MIN` of them, in another
+script goes to the multilingual checkpoint.
+
 `typed-decisions` is never selected automatically unless you opt in with
 `auto_task_detection=True` or pass `task="typed_decisions"`: it is fine-tuned on four specific
 synthetic workflows and should not be a silent default.
@@ -31,7 +38,7 @@ import os
 import threading
 from typing import Any, Dict, List, Optional, Union
 
-from .lang import analyse
+from .lang import NON_LATIN_ROUTE_MIN, NON_LATIN_ROUTE_RATE, analyse
 
 # The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
 BUNDLE_REPO = "convaiinnovations/laya"
@@ -296,6 +303,11 @@ class Router:
             key = "multilingual"
             reason = "non-Latin script (%s, %.0f%% of letters); the English checkpoint cannot read it" % (
                 det["script"], 100 * float(det["non_latin_fraction"]))
+        elif (float(det["non_latin_fraction"]) >= NON_LATIN_ROUTE_RATE
+              and int(det["non_latin_letters"]) >= NON_LATIN_ROUTE_MIN):
+            key = "multilingual"
+            reason = ("mixed script: %.0f%% of the letters are in a script the English "
+                      "checkpoint cannot read" % (100 * float(det["non_latin_fraction"])))
         elif not det["is_english"]:
             key = "multilingual"
             if det["language"]:

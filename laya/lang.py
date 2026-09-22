@@ -108,42 +108,41 @@ def state_text(state: Union[str, dict, list, None], max_chars: int = 4000) -> st
     return " ".join(_iter_text(state))[:max_chars]
 
 
-def detect_script(text: str) -> str:
-    """Dominant script of `text`: 'latin', 'han', 'devanagari', ... or 'unknown' if there are no letters."""
-    counts: Dict[str, int] = {}
-    latin = 0
-    for ch in text:
-        if not ch.isalpha():
-            continue
-        cp = ord(ch)
-        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF:      # Latin + Latin Extended Additional
-            latin += 1
-            continue
-        for name, ranges in _SCRIPT_RANGES:
-            if any(lo <= cp <= hi for lo, hi in ranges):
-                counts[name] = counts.get(name, 0) + 1
-                break
-    counts["latin"] = latin
-    total = sum(counts.values())
-    if total == 0:
-        return "unknown"
-    return max(counts.items(), key=lambda kv: kv[1])[0]
+def script_counts(text: str) -> Dict[str, int]:
+    """Number of alphabetic characters belonging to each detected script.
 
-
-def script_profile(text: str) -> Dict[str, float]:
-    """Fraction of alphabetic characters belonging to each detected script."""
+    'latin' is always present, so a caller can read a zero off it. Letters outside every known
+    range are not counted at all, which keeps them from voting on the dominant script.
+    """
     counts: Dict[str, int] = {"latin": 0}
     for ch in text:
         if not ch.isalpha():
             continue
         cp = ord(ch)
-        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF:
+        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF:      # Latin + Latin Extended Additional
             counts["latin"] += 1
             continue
         for name, ranges in _SCRIPT_RANGES:
             if any(lo <= cp <= hi for lo, hi in ranges):
                 counts[name] = counts.get(name, 0) + 1
                 break
+    return counts
+
+
+def detect_script(text: str) -> str:
+    """Dominant script of `text`: 'latin', 'han', 'devanagari', ... or 'unknown' if there are no letters."""
+    counts = script_counts(text)
+    # 'latin' is inserted first but read last on a tie, so a tie goes to the script the English
+    # checkpoint cannot read -- the safe direction for routing.
+    counts["latin"] = counts.pop("latin")
+    if sum(counts.values()) == 0:
+        return "unknown"
+    return max(counts.items(), key=lambda kv: kv[1])[0]
+
+
+def script_profile(text: str) -> Dict[str, float]:
+    """Fraction of alphabetic characters belonging to each detected script."""
+    counts = script_counts(text)
     total = sum(counts.values())
     if not total:
         return {}
@@ -153,6 +152,20 @@ def script_profile(text: str) -> Dict[str, float]:
 # A diacritic rate above this is taken as evidence the text is not English, even when no
 # stopword list matches it.
 NON_EN_DIACRITIC_RATE = 0.02
+
+# Script detection answers "which script dominates", but routing needs "can the English
+# checkpoint read all of this". Real states mix the two: an English wrapper (ticket ids, agent
+# notes, a signature block) around a message in Han, Devanagari or Hangul still has a Latin
+# majority, so the dominant script is Latin and the message reaches the checkpoint that scores
+# it at near-random while reporting high confidence. Any meaningful share of letters in a script
+# that checkpoint has no tokens for is therefore enough to prefer the multilingual one.
+#
+# Both thresholds have to be met. The rate alone would reroute a short English state over a
+# single stray symbol -- one Greek variable name in "Set a to 0.05" is 14% of its letters -- and
+# the multilingual checkpoint is the weaker of the two on English (0.619 against 0.684). A real
+# message in another script clears the count comfortably; a stray symbol never does.
+NON_LATIN_ROUTE_RATE = 0.05
+NON_LATIN_ROUTE_MIN = 4
 
 
 def latin_profile(text: str) -> Dict[str, object]:
@@ -209,22 +222,36 @@ def analyse(state: Union[str, dict, list, None]) -> Dict[str, object]:
     """Full detection result for a state.
 
     Returns `script`, `script_profile`, `language` (best effort, may be None),
-    `is_english` and `non_latin_fraction`.
+    `is_english`, `non_latin_fraction` and `non_latin_letters`.
+
+    `is_english` is false for a Latin-majority state that still carries at least
+    `NON_LATIN_ROUTE_RATE` of its letters, and at least `NON_LATIN_ROUTE_MIN` of them, in another
+    script: the English checkpoint cannot read those letters whether or not they are a minority.
     """
     text = state_text(state)
+    counts = script_counts(text)
     prof = script_profile(text)
     script = detect_script(text)
     non_latin = round(1.0 - prof.get("latin", 0.0), 4) if prof else 0.0
+    n_non_latin = sum(v for k, v in counts.items() if k != "latin")
     if script == "unknown":
         return {"script": "unknown", "script_profile": prof, "language": None,
                 "is_english": True, "language_undecided": True, "diacritic_rate": 0.0,
-                "non_latin_fraction": 0.0}
+                "non_latin_fraction": 0.0, "non_latin_letters": 0}
     if script != "latin":
         return {"script": script, "script_profile": prof, "language": None,
                 "is_english": False, "language_undecided": True, "diacritic_rate": 0.0,
-                "non_latin_fraction": non_latin}
+                "non_latin_fraction": non_latin, "non_latin_letters": n_non_latin}
     prof_lat = latin_profile(text)
     lang = prof_lat["language"]
+    # Latin only dominates here; `non_latin` is whatever share of the letters belongs to a
+    # script the English checkpoint cannot read. A Latin majority does not make those letters
+    # readable, so they decide the answer before the stopword heuristic gets a say.
+    if non_latin >= NON_LATIN_ROUTE_RATE and n_non_latin >= NON_LATIN_ROUTE_MIN:
+        return {"script": "latin", "script_profile": prof, "language": lang,
+                "is_english": False, "language_undecided": lang is None,
+                "diacritic_rate": round(float(prof_lat["diacritic_rate"]), 4),
+                "non_latin_fraction": non_latin, "non_latin_letters": n_non_latin}
     # Undecided is not English. Treating it as English sent every Latin-script language we hold no
     # stopwords for to the checkpoint that cannot read it, silently. When nothing identifies the
     # language, non-English letters are enough to prefer the multilingual checkpoint; text with no
@@ -234,7 +261,7 @@ def analyse(state: Union[str, dict, list, None]) -> Dict[str, object]:
     return {"script": "latin", "script_profile": prof, "language": lang,
             "is_english": english, "language_undecided": undecided,
             "diacritic_rate": round(float(prof_lat["diacritic_rate"]), 4),
-            "non_latin_fraction": non_latin}
+            "non_latin_fraction": non_latin, "non_latin_letters": n_non_latin}
 
 
 def is_english(state: Union[str, dict, list, None]) -> bool:

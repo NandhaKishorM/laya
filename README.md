@@ -643,6 +643,13 @@ policy gradient), fit calibration temperatures, evaluate, and push the result to
 
 * **[`notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb`](notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb)**
 
+The notebook enables gradient checkpointing on both the encoder and the decision head.
+For custom training loops, `model.head_checkpointing = True` enables activation
+checkpointing for the decision-head layers; enable the encoder's gradient checkpointing
+separately. During gradient-enabled training, this reduces stored intermediate activations
+by recomputing them during backward, trading extra computation for lower activation memory.
+The head flag defaults to `False` and is bypassed in evaluation and under `torch.no_grad()`.
+
 The notebook fits one `temperature` per type (`choice`, `score`, `noul`) and removes inherited
 `temperature_by_options` from the exported config. Otherwise those old bucket values take
 precedence at inference and silently mask the new fit. Existing checkpoints still honor

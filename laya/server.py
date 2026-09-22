@@ -420,13 +420,14 @@ def _register_routes(app: FastAPI) -> None:
     )
     async def decide_batch(request: BatchDecideRequest) -> BatchDecisionResponse:
         """
-        Evaluate the **same question set** over multiple states concurrently.
+        Evaluate the **same question set** over multiple states in a single batch.
 
-        Each state is processed independently; results are returned in the same
-        order as the input ``states`` list. Up to **256 states** per request.
+        Each state is evaluated independently and serialized safely across threads
+        to avoid PyTorch and Router LRU cache races; results are returned in the
+        same order as the input ``states`` list. Up to **256 states** per request.
 
-        This is the fastest way to process a queue of tickets, emails, or log lines
-        in bulk — all states run in the thread-pool concurrently.
+        This is the recommended way to process a queue of tickets, emails, or log lines
+        in bulk safely without client-side request overhead.
         """
         router = _get_or_raise()
         raw_questions = _to_raw_questions(request.questions)

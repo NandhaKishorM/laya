@@ -367,6 +367,23 @@ class Agent:
             "usage": {"input_tokens": n_tokens, "output_tokens": 0},
         }
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if hasattr(self, "model") and self.model is not None:
+            del self.model
+            self.model = None
+        try:
+            import gc
+            gc.collect()
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+        return False
+
     predict = system_one
 
 

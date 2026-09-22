@@ -263,7 +263,7 @@ class Router:
 
         workflow = match_typed_decisions_workflow(questions or {})
         if workflow and self.auto_task_detection:
-            return RouteDecision(model="typed-decisions", repo=self.models["typed-decisions"],
+            return RouteDecision(model="typed-decisions", repo=_repo_str(self.models["typed-decisions"]),
                                  reason="question ids match the %r typed-decisions workflow" % workflow,
                                  detection=None, workflow=workflow)
 

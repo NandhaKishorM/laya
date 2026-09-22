@@ -35,6 +35,14 @@ dependencies = [
 [project.scripts]
 laya = "laya.cli:main"
 
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.0",
+    "python-multipart>=0.0.9",
+]
+
 [tool.setuptools]
 # assets/, research/ and notebooks/ sit in the root, so auto-discovery bails out.
 packages = ["laya"]

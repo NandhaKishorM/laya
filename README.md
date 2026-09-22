@@ -78,6 +78,38 @@ Use `--model` to pin a checkpoint (`english`, `multilingual`, `typed-decisions`)
 
 ---
 
+## Try it locally: web GUI + JSON API
+
+`examples/server.py` is a self-contained FastAPI app for testing Laya without writing any code:
+a request builder (or a raw-JSON paste box) that renders `choice`/`score`/`noul` answers as
+0-100 bars, plus a plain JSON API (`/predict`, `/predict/batch`) for scripting against.
+
+```bash
+pip install "laya[server]"
+python examples/server.py               # http://127.0.0.1:8000
+```
+
+Open `http://127.0.0.1:8000` in a browser for the builder UI, or hit it directly:
+
+```bash
+curl -s localhost:8000/predict -H 'content-type: application/json' -d '{
+  "state": {"body": "We were billed twice for March. Please refund it today."},
+  "questions": {
+    "department": {"type": "choice",
+                   "instructions": "Which department should handle this?",
+                   "criteria": {"billing": "invoices, payments, refunds", "other": "everything else"}},
+    "urgency": {"type": "score",
+                "instructions": "How urgent is this?",
+                "criteria": ["not urgent", "soon", "critical"]}
+  }
+}' | python -m json.tool
+```
+
+`--no-preload` loads checkpoints lazily instead of all three up front; `--device cuda|cpu|mps`
+pins the device. See `python examples/server.py --help` for the rest.
+
+---
+
 ## Quickstart: Route Mode (Recommended)
 
 Laya ships three checkpoints. The built-in **`Router`** is the recommended entry point: it evaluates any state in any language, automatically detects scripts and languages in sub-milliseconds, and dispatches to the optimal checkpoint in a single forward pass.

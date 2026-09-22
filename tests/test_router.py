@@ -185,6 +185,40 @@ cases = [
 for label, state, qs, kw, want in cases:
     check("route/" + label, r.route(state, qs, **kw)["model"], want)
 
+# Emirati Arabic and mixed Arabic-English must reach the multilingual encoder,
+# even when English is dominant. These checks verify routing, not dialect accuracy.
+UAE_CASES = [
+    ("emirati refund", "أبا أسترجع المبلغ، انخصم مني مرتين"),
+    ("emirati delivery", "وين طلبي؟ أباه اليوم لو سمحت"),
+    ("mixed billing", "Please check invoice 4411 and refund the duplicate payment, أباه اليوم"),
+    ("short arabic suffix", "Please check the delivery status for my order الحين"),
+    ("nested mixed state", {"subject": "Please check the duplicate charge on my invoice",
+                            "conversation": [{"body": "أبا فلوسي"}]}),
+]
+for label, state in UAE_CASES:
+    check("uae/" + label, r.route(state, Q_GENERIC).model, "multilingual")
+    check("uae/not English " + label, is_english(state), False)
+
+mixed = r.route(UAE_CASES[2][1], Q_GENERIC)
+check("uae/dominant script preserved", mixed["detection"]["script"], "latin")
+check("uae/mixed reason", "mixed Latin and Arabic" in mixed.reason, True)
+check("uae/no dialect inferred", mixed["detection"]["language"], None)
+check("uae/payload keys preserved", set(mixed["detection"]), _KEYS)
+for locale in ("ar-AE", "ar-ae", "ar_AE"):
+    check("uae/explicit locale " + locale,
+          r.route("Please check my order", Q_GENERIC, lang=locale).model, "multilingual")
+check("uae/model override preserved",
+      r.route(UAE_CASES[2][1], Q_GENERIC, model="english").model, "english")
+check("uae/lang override preserved",
+      r.route(UAE_CASES[2][1], Q_GENERIC, lang="en").model, "english")
+for label, state in [
+    ("English UAE context", "Please send the invoice in AED to our Dubai office today."),
+    ("Arabic digits only", "Please check invoice ٤٤١١ today."),
+    ("Arabic punctuation only", "Please check my invoice، and refund the duplicate charge؟"),
+    ("Arabic keys only", {"رسالة": "Please check my invoice today"}),
+]:
+    check("uae/English unchanged " + label, r.route(state, Q_GENERIC).model, "english")
+
 # auto task detection is opt-in
 r_auto = Router(auto_task_detection=True)
 check("route/td workflow, auto ON",

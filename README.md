@@ -123,6 +123,60 @@ router.route({"body": "Der Kunde wurde zweimal belastet"}, questions).reason
 # "Latin script but language looks like 'de', not English"
 ```
 
+### UAE Arabic and mixed Arabic–English
+
+Emirati Arabic written in Arabic script uses the existing multilingual checkpoint.
+Mixed Arabic–English messages also route there when Arabic-script letters appear
+in the inspected state, even if most of the message is English.
+
+```python
+from laya import Router, arabic_triage_questions
+
+router = Router()
+questions = arabic_triage_questions()
+
+result = router.predict(
+    {"message": "أبا أسترجع المبلغ، انخصم مني مرتين"},
+    questions,
+    lang="ar-AE",  # Use the known locale, or omit it for script-based routing.
+)
+
+decision = router.route(
+    {"message": "Please check invoice 4411 and refund the duplicate payment, أباه اليوم"},
+    questions,
+)
+assert decision.model == "multilingual"
+```
+
+Detection inspects up to 4,000 characters of string values in the state; JSON keys
+are ignored. Arabic-script letters trigger multilingual routing, while Arabic
+digits and punctuation alone do not. If the state would use the English model,
+the router also inspects up to 4,000 characters of serialized question instructions
+and criteria, including choice labels. Arabic question text selects multilingual
+even for English input; question IDs do not affect detection.
+Explicit `model`, `task`, or `lang` settings
+and opt-in workflow detection retain their existing routing precedence.
+
+This is routing support using existing weights, not a newly trained Emirati
+checkpoint or a claim of validated dialect accuracy. The detector identifies
+script, not UAE dialect. Evaluate predictions and confidence on representative
+Emirati data before relying on them. Automatic Arabizi detection is not included.
+
+`arabic_triage_questions()` provides Arabic instructions and rubrics for `category`,
+`refund_requested`, and `urgency`. Category values remain stable English keys
+(`billing`, `technical`, `delivery`, `general`), and urgency is an expected score
+from 0 to 2. The existing English presets are unchanged.
+
+Run the [Arabic regression benchmark](research/README.md#arabic-regression-benchmark)
+to evaluate standard Arabic, Emirati Arabic, and mixed messages with both Arabic
+and English question wording. Its synthetic examples are not a substitute for
+native-speaker-reviewed evaluation data.
+
+The broader [workflow comparison](research/README.md#cross-workflow-arabic-comparison)
+covers intent, sentiment, moderation, relevance, and urgency, comparing the
+original state-only routing policy with Arabic-aware routing. Model quality still
+varies by task; correct routing does not guarantee a correct decision.
+
 ### Why Route: The Evidence
 
 On a shared benchmark (17,416 questions, one T4 GPU, identical questions per model):

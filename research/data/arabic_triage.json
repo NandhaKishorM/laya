@@ -1,0 +1,516 @@
+{
+  "schema_version": 1,
+  "provenance": "AI-authored synthetic regression examples; not native-speaker reviewed or a representative held-out benchmark.",
+  "limitations": [
+    "Parallel scenarios are related, not independent samples.",
+    "Emirati wording and labels need native-speaker review.",
+    "Do not train or fit temperatures on these evaluation cases.",
+    "No Arabizi coverage."
+  ],
+  "cases": [
+    {
+      "id": "msa-01",
+      "parallel_id": "scenario-01",
+      "group": "msa",
+      "state": {
+        "message": "خُصم المبلغ مرتين. أريد استرداد الدفعة الزائدة، لكن الطلب غير مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "emirati-01",
+      "parallel_id": "scenario-01",
+      "group": "emirati",
+      "state": {
+        "message": "انخصم مني مرتين، أبا فلوسي الزايدة ترجع. مب مستعجل وخذوا راحتكم."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "mixed-01",
+      "parallel_id": "scenario-01",
+      "group": "mixed",
+      "state": {
+        "message": "I was charged twice, أبا فلوسي back please. No rush; it can wait."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "msa-02",
+      "parallel_id": "scenario-02",
+      "group": "msa",
+      "state": {
+        "message": "أريد استرداد الدفعة المكررة اليوم إن أمكن، ولا يوجد موعد نهائي محدد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "emirati-02",
+      "parallel_id": "scenario-02",
+      "group": "emirati",
+      "state": {
+        "message": "أبا ترجعون الدفعة المكررة اليوم إذا تقدرون، ما عندي موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "mixed-02",
+      "parallel_id": "scenario-02",
+      "group": "mixed",
+      "state": {
+        "message": "Please refund the duplicate payment today if possible، أبا المبلغ يرجع. No hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "msa-03",
+      "parallel_id": "scenario-03",
+      "group": "msa",
+      "state": {
+        "message": "أطلب استرداد المبلغ الخاطئ قبل الساعة الثانية اليوم؛ هذا موعد نهائي لا يمكن تأجيله."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "emirati-03",
+      "parallel_id": "scenario-03",
+      "group": "emirati",
+      "state": {
+        "message": "أبا المبلغ الغلط يرجع قبل الساعة ثنتين اليوم، هذا آخر موعد وما أقدر أأجله."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "mixed-03",
+      "parallel_id": "scenario-03",
+      "group": "mixed",
+      "state": {
+        "message": "Please refund the incorrect charge before 2 pm today، ضروري. This is a hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "msa-04",
+      "parallel_id": "scenario-04",
+      "group": "msa",
+      "state": {
+        "message": "أرغب في المساعدة لإصلاح خلل في التطبيق. لا أحتاج إلى الحل الآن ويمكنني الانتظار."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "emirati-04",
+      "parallel_id": "scenario-04",
+      "group": "emirati",
+      "state": {
+        "message": "في خلل في التطبيق وأبا مساعدة، بس مب مستعجل وأقدر أنتظر."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "mixed-04",
+      "parallel_id": "scenario-04",
+      "group": "mixed",
+      "state": {
+        "message": "There is a bug in the app، أبا مساعدة when you have time. No rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "msa-05",
+      "parallel_id": "scenario-05",
+      "group": "msa",
+      "state": {
+        "message": "تظهر رسالة خطأ أحيانا في التطبيق. أرجو المساعدة اليوم إن أمكن، ويمكنني مواصلة العمل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "emirati-05",
+      "parallel_id": "scenario-05",
+      "group": "emirati",
+      "state": {
+        "message": "التطبيق يطلع لي خطأ أحيانا. شوفوه اليوم إذا تقدرون، أقدر أكمل شغلي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "mixed-05",
+      "parallel_id": "scenario-05",
+      "group": "mixed",
+      "state": {
+        "message": "The app sometimes shows an error، شوفوه اليوم if possible. I can still work."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "msa-06",
+      "parallel_id": "scenario-06",
+      "group": "msa",
+      "state": {
+        "message": "لا يستطيع أي موظف تسجيل الدخول، وقد توقف العمل بالكامل. نحتاج إلى إصلاح فوري."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "emirati-06",
+      "parallel_id": "scenario-06",
+      "group": "emirati",
+      "state": {
+        "message": "محد يقدر يدخل النظام والشغل كله واقف. نبا تصلحونه الحين."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "mixed-06",
+      "parallel_id": "scenario-06",
+      "group": "mixed",
+      "state": {
+        "message": "Nobody can log in and all work has stopped، نبا حل الحين. Please fix this immediately."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "msa-07",
+      "parallel_id": "scenario-07",
+      "group": "msa",
+      "state": {
+        "message": "أين شحنتي؟ أريد معرفة موقعها فقط، ولا أمانع الانتظار حتى الأسبوع القادم."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "emirati-07",
+      "parallel_id": "scenario-07",
+      "group": "emirati",
+      "state": {
+        "message": "وين طلبي؟ أبا أعرف وين وصل بس، عادي أنتظر لين الأسبوع الياي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "mixed-07",
+      "parallel_id": "scenario-07",
+      "group": "mixed",
+      "state": {
+        "message": "Where is my shipment، وين وصل؟ I can wait until next week, no rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "msa-08",
+      "parallel_id": "scenario-08",
+      "group": "msa",
+      "state": {
+        "message": "أرجو تحديث حالة توصيل الطلب اليوم إن أمكن، وليس لدي موعد استلام نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "emirati-08",
+      "parallel_id": "scenario-08",
+      "group": "emirati",
+      "state": {
+        "message": "أبا تحديث عن توصيل طلبي اليوم إذا تقدرون، ما عندي موعد استلام محدد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "mixed-08",
+      "parallel_id": "scenario-08",
+      "group": "mixed",
+      "state": {
+        "message": "Please update my delivery status today، وين الطلب؟ There is no hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "msa-09",
+      "parallel_id": "scenario-09",
+      "group": "msa",
+      "state": {
+        "message": "يجب تسليم الشحنة قبل الساعة الخامسة اليوم لأن المكتب يغلق حينها؛ لا يمكن تأجيل الموعد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "emirati-09",
+      "parallel_id": "scenario-09",
+      "group": "emirati",
+      "state": {
+        "message": "لازم الشحنة توصل قبل خمس اليوم لأن المكتب بيسكر، ما نقدر نأجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "mixed-09",
+      "parallel_id": "scenario-09",
+      "group": "mixed",
+      "state": {
+        "message": "The shipment must arrive before 5 pm today، ضروري قبل ما نسكر. This deadline cannot move."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "msa-10",
+      "parallel_id": "scenario-10",
+      "group": "msa",
+      "state": {
+        "message": "ما ساعات العمل المعتادة؟ هذا استفسار عام غير مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "emirati-10",
+      "parallel_id": "scenario-10",
+      "group": "emirati",
+      "state": {
+        "message": "شو أوقات دوامكم؟ بس أستفسر، مب مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "mixed-10",
+      "parallel_id": "scenario-10",
+      "group": "mixed",
+      "state": {
+        "message": "What are your opening hours، شو الدوام؟ This is just a general question, no rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      }
+    },
+    {
+      "id": "msa-11",
+      "parallel_id": "scenario-11",
+      "group": "msa",
+      "state": {
+        "message": "أرجو إرسال معلومات عامة عن الخدمات اليوم إن أمكن، ولا يوجد موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "emirati-11",
+      "parallel_id": "scenario-11",
+      "group": "emirati",
+      "state": {
+        "message": "أبا معلومات عن خدماتكم اليوم إذا تقدرون، ما عندي موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "mixed-11",
+      "parallel_id": "scenario-11",
+      "group": "mixed",
+      "state": {
+        "message": "Please send general information about your services today، شو تقدمون؟ No hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      }
+    },
+    {
+      "id": "msa-12",
+      "parallel_id": "scenario-12",
+      "group": "msa",
+      "state": {
+        "message": "أحتاج إلى تأكيد ساعات العمل قبل الساعة الثالثة اليوم، وهو الموعد النهائي لتقديم طلبي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "emirati-12",
+      "parallel_id": "scenario-12",
+      "group": "emirati",
+      "state": {
+        "message": "أبا تأكيد أوقات الدوام قبل ثلاث اليوم، هذا آخر موعد لتقديم طلبي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    },
+    {
+      "id": "mixed-12",
+      "parallel_id": "scenario-12",
+      "group": "mixed",
+      "state": {
+        "message": "Please confirm your opening hours before 3 pm today، ضروري. That is my application deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      }
+    }
+  ]
+}

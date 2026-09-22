@@ -1,0 +1,910 @@
+{
+  "schema_version": 1,
+  "provenance": "AI-authored synthetic cross-workflow evaluation; not native-speaker reviewed. Created after triage prompt exploration and not used to tune these question sets. Parallel language variants are related samples.",
+  "workflows": {
+    "intent": {
+      "ar": {
+        "decision": {
+          "type": "choice",
+          "instructions": "ما موضوع رسالة العميل؟",
+          "criteria": {
+            "account": "الحساب وتسجيل الدخول",
+            "delivery": "الشحن والتوصيل",
+            "billing": "الفواتير والدفعات",
+            "information": "معلومات عامة"
+          }
+        }
+      },
+      "en": {
+        "decision": {
+          "type": "choice",
+          "instructions": "What is the topic of the customer message?",
+          "criteria": {
+            "account": "account and login",
+            "delivery": "shipping and delivery",
+            "billing": "invoices and payments",
+            "information": "general information"
+          }
+        }
+      }
+    },
+    "sentiment": {
+      "ar": {
+        "decision": {
+          "type": "choice",
+          "instructions": "ما شعور العميل تجاه الخدمة؟",
+          "criteria": {
+            "positive": "راضٍ وسعيد",
+            "neutral": "محايد",
+            "negative": "غير راضٍ"
+          }
+        }
+      },
+      "en": {
+        "decision": {
+          "type": "choice",
+          "instructions": "What is the customer sentiment about the service?",
+          "criteria": {
+            "positive": "satisfied and happy",
+            "neutral": "neutral",
+            "negative": "dissatisfied"
+          }
+        }
+      }
+    },
+    "moderation": {
+      "ar": {
+        "decision": {
+          "type": "noul",
+          "instructions": "هل تتضمن الرسالة إهانة موجهة لشخص؟"
+        }
+      },
+      "en": {
+        "decision": {
+          "type": "noul",
+          "instructions": "Does the message contain an insult directed at a person?"
+        }
+      }
+    },
+    "relevance": {
+      "ar": {
+        "decision": {
+          "type": "noul",
+          "instructions": "هل يجيب النص عن السؤال المذكور في الرسالة؟"
+        }
+      },
+      "en": {
+        "decision": {
+          "type": "noul",
+          "instructions": "Does the passage answer the question stated in the message?"
+        }
+      }
+    },
+    "urgency": {
+      "ar": {
+        "decision": {
+          "type": "score",
+          "instructions": "ما مدى استعجال الطلب؟",
+          "criteria": [
+            "غير مستعجل ويمكن الانتظار",
+            "يحتاج متابعة قريبة دون موعد نهائي",
+            "توقف العمل أو موعد نهائي صريح"
+          ]
+        }
+      },
+      "en": {
+        "decision": {
+          "type": "score",
+          "instructions": "How urgent is the request?",
+          "criteria": [
+            "not urgent; can wait",
+            "needs attention soon without a hard deadline",
+            "work is blocked or an explicit hard deadline"
+          ]
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "intent-msa-01",
+      "parallel_id": "scenario-01",
+      "workflow": "intent",
+      "group": "msa",
+      "state": {
+        "message": "نسيت كلمة المرور وأريد الدخول إلى حسابي."
+      },
+      "expected": "account"
+    },
+    {
+      "id": "intent-emirati-01",
+      "parallel_id": "scenario-01",
+      "workflow": "intent",
+      "group": "emirati",
+      "state": {
+        "message": "نسيت الباسورد وأبا أدخل حسابي."
+      },
+      "expected": "account"
+    },
+    {
+      "id": "intent-mixed-01",
+      "parallel_id": "scenario-01",
+      "workflow": "intent",
+      "group": "mixed",
+      "state": {
+        "message": "I forgot my password، أبا أدخل حسابي."
+      },
+      "expected": "account"
+    },
+    {
+      "id": "intent-english_control-01",
+      "parallel_id": "scenario-01",
+      "workflow": "intent",
+      "group": "english_control",
+      "state": {
+        "message": "I forgot my password and need to log into my account."
+      },
+      "expected": "account"
+    },
+    {
+      "id": "intent-msa-02",
+      "parallel_id": "scenario-02",
+      "workflow": "intent",
+      "group": "msa",
+      "state": {
+        "message": "أين وصلت الشحنة؟ أريد رقم التتبع."
+      },
+      "expected": "delivery"
+    },
+    {
+      "id": "intent-emirati-02",
+      "parallel_id": "scenario-02",
+      "workflow": "intent",
+      "group": "emirati",
+      "state": {
+        "message": "وين وصلت الشحنة؟ أبا رقم التتبع."
+      },
+      "expected": "delivery"
+    },
+    {
+      "id": "intent-mixed-02",
+      "parallel_id": "scenario-02",
+      "workflow": "intent",
+      "group": "mixed",
+      "state": {
+        "message": "Where is the shipment، أبا رقم التتبع please."
+      },
+      "expected": "delivery"
+    },
+    {
+      "id": "intent-english_control-02",
+      "parallel_id": "scenario-02",
+      "workflow": "intent",
+      "group": "english_control",
+      "state": {
+        "message": "Where is the shipment? I need the tracking number."
+      },
+      "expected": "delivery"
+    },
+    {
+      "id": "intent-msa-03",
+      "parallel_id": "scenario-03",
+      "workflow": "intent",
+      "group": "msa",
+      "state": {
+        "message": "أحتاج نسخة من فاتورة اشتراكي لشهر أبريل."
+      },
+      "expected": "billing"
+    },
+    {
+      "id": "intent-emirati-03",
+      "parallel_id": "scenario-03",
+      "workflow": "intent",
+      "group": "emirati",
+      "state": {
+        "message": "أبا نسخة من فاتورة اشتراكي لشهر أبريل."
+      },
+      "expected": "billing"
+    },
+    {
+      "id": "intent-mixed-03",
+      "parallel_id": "scenario-03",
+      "workflow": "intent",
+      "group": "mixed",
+      "state": {
+        "message": "Please send my April subscription invoice، أبا نسخة."
+      },
+      "expected": "billing"
+    },
+    {
+      "id": "intent-english_control-03",
+      "parallel_id": "scenario-03",
+      "workflow": "intent",
+      "group": "english_control",
+      "state": {
+        "message": "Please send me a copy of my April subscription invoice."
+      },
+      "expected": "billing"
+    },
+    {
+      "id": "intent-msa-04",
+      "parallel_id": "scenario-04",
+      "workflow": "intent",
+      "group": "msa",
+      "state": {
+        "message": "ما الخدمات التي تقدمونها في فرع الشارقة؟"
+      },
+      "expected": "information"
+    },
+    {
+      "id": "intent-emirati-04",
+      "parallel_id": "scenario-04",
+      "workflow": "intent",
+      "group": "emirati",
+      "state": {
+        "message": "شو الخدمات اللي تقدمونها في فرع الشارقة؟"
+      },
+      "expected": "information"
+    },
+    {
+      "id": "intent-mixed-04",
+      "parallel_id": "scenario-04",
+      "workflow": "intent",
+      "group": "mixed",
+      "state": {
+        "message": "What services do you offer، شو الموجود in the Sharjah branch?"
+      },
+      "expected": "information"
+    },
+    {
+      "id": "intent-english_control-04",
+      "parallel_id": "scenario-04",
+      "workflow": "intent",
+      "group": "english_control",
+      "state": {
+        "message": "What services do you offer in the Sharjah branch?"
+      },
+      "expected": "information"
+    },
+    {
+      "id": "sentiment-msa-05",
+      "parallel_id": "scenario-05",
+      "workflow": "sentiment",
+      "group": "msa",
+      "state": {
+        "message": "الخدمة ممتازة وأنا سعيد جدا بالتجربة، شكرا لكم."
+      },
+      "expected": "positive"
+    },
+    {
+      "id": "sentiment-emirati-05",
+      "parallel_id": "scenario-05",
+      "workflow": "sentiment",
+      "group": "emirati",
+      "state": {
+        "message": "خدمتكم وايد زينة وأنا مستانس، تسلمون."
+      },
+      "expected": "positive"
+    },
+    {
+      "id": "sentiment-mixed-05",
+      "parallel_id": "scenario-05",
+      "workflow": "sentiment",
+      "group": "mixed",
+      "state": {
+        "message": "The service was excellent، وايد مستانس. Thank you!"
+      },
+      "expected": "positive"
+    },
+    {
+      "id": "sentiment-english_control-05",
+      "parallel_id": "scenario-05",
+      "workflow": "sentiment",
+      "group": "english_control",
+      "state": {
+        "message": "The service was excellent. I am very happy, thank you!"
+      },
+      "expected": "positive"
+    },
+    {
+      "id": "sentiment-msa-06",
+      "parallel_id": "scenario-06",
+      "workflow": "sentiment",
+      "group": "msa",
+      "state": {
+        "message": "أنا غير راضٍ عن الخدمة السيئة والتأخير المتكرر."
+      },
+      "expected": "negative"
+    },
+    {
+      "id": "sentiment-emirati-06",
+      "parallel_id": "scenario-06",
+      "workflow": "sentiment",
+      "group": "emirati",
+      "state": {
+        "message": "مب راضي عن الخدمة، التأخير وايد ومزعج."
+      },
+      "expected": "negative"
+    },
+    {
+      "id": "sentiment-mixed-06",
+      "parallel_id": "scenario-06",
+      "workflow": "sentiment",
+      "group": "mixed",
+      "state": {
+        "message": "I am unhappy with the poor service، مب راضي about these repeated delays."
+      },
+      "expected": "negative"
+    },
+    {
+      "id": "sentiment-english_control-06",
+      "parallel_id": "scenario-06",
+      "workflow": "sentiment",
+      "group": "english_control",
+      "state": {
+        "message": "I am unhappy with the poor service and repeated delays."
+      },
+      "expected": "negative"
+    },
+    {
+      "id": "sentiment-msa-07",
+      "parallel_id": "scenario-07",
+      "workflow": "sentiment",
+      "group": "msa",
+      "state": {
+        "message": "استلمت الطلب يوم الاثنين وكان رقم الطلب ٥٢."
+      },
+      "expected": "neutral"
+    },
+    {
+      "id": "sentiment-emirati-07",
+      "parallel_id": "scenario-07",
+      "workflow": "sentiment",
+      "group": "emirati",
+      "state": {
+        "message": "استلمت الطلب يوم الاثنين ورقمه ٥٢."
+      },
+      "expected": "neutral"
+    },
+    {
+      "id": "sentiment-mixed-07",
+      "parallel_id": "scenario-07",
+      "workflow": "sentiment",
+      "group": "mixed",
+      "state": {
+        "message": "The order arrived on Monday، رقم الطلب 52."
+      },
+      "expected": "neutral"
+    },
+    {
+      "id": "sentiment-english_control-07",
+      "parallel_id": "scenario-07",
+      "workflow": "sentiment",
+      "group": "english_control",
+      "state": {
+        "message": "The order arrived on Monday. Its number was 52."
+      },
+      "expected": "neutral"
+    },
+    {
+      "id": "sentiment-msa-08",
+      "parallel_id": "scenario-08",
+      "workflow": "sentiment",
+      "group": "msa",
+      "state": {
+        "message": "لم تعجبني التجربة إطلاقا ولن أكررها."
+      },
+      "expected": "negative"
+    },
+    {
+      "id": "sentiment-emirati-08",
+      "parallel_id": "scenario-08",
+      "workflow": "sentiment",
+      "group": "emirati",
+      "state": {
+        "message": "التجربة ما عيبتني أبد وما بكررها."
+      },
+      "expected": "negative"
+    },
+    {
+      "id": "sentiment-mixed-08",
+      "parallel_id": "scenario-08",
+      "workflow": "sentiment",
+      "group": "mixed",
+      "state": {
+        "message": "I did not like the experience، ما عيبتني and I will not repeat it."
+      },
+      "expected": "negative"
+    },
+    {
+      "id": "sentiment-english_control-08",
+      "parallel_id": "scenario-08",
+      "workflow": "sentiment",
+      "group": "english_control",
+      "state": {
+        "message": "I did not like the experience at all and will not repeat it."
+      },
+      "expected": "negative"
+    },
+    {
+      "id": "moderation-msa-09",
+      "parallel_id": "scenario-09",
+      "workflow": "moderation",
+      "group": "msa",
+      "state": {
+        "message": "أنت غبي ولا تفهم أبسط الأمور."
+      },
+      "expected": true
+    },
+    {
+      "id": "moderation-emirati-09",
+      "parallel_id": "scenario-09",
+      "workflow": "moderation",
+      "group": "emirati",
+      "state": {
+        "message": "إنت غبي وما تفهم شي."
+      },
+      "expected": true
+    },
+    {
+      "id": "moderation-mixed-09",
+      "parallel_id": "scenario-09",
+      "workflow": "moderation",
+      "group": "mixed",
+      "state": {
+        "message": "You are an idiot، ما تفهم شي."
+      },
+      "expected": true
+    },
+    {
+      "id": "moderation-english_control-09",
+      "parallel_id": "scenario-09",
+      "workflow": "moderation",
+      "group": "english_control",
+      "state": {
+        "message": "You are an idiot and understand nothing."
+      },
+      "expected": true
+    },
+    {
+      "id": "moderation-msa-10",
+      "parallel_id": "scenario-10",
+      "workflow": "moderation",
+      "group": "msa",
+      "state": {
+        "message": "لا أتفق مع رأيك، لكنني أحترم وجهة نظرك."
+      },
+      "expected": false
+    },
+    {
+      "id": "moderation-emirati-10",
+      "parallel_id": "scenario-10",
+      "workflow": "moderation",
+      "group": "emirati",
+      "state": {
+        "message": "ما أتفق وياك بس أحترم رايك."
+      },
+      "expected": false
+    },
+    {
+      "id": "moderation-mixed-10",
+      "parallel_id": "scenario-10",
+      "workflow": "moderation",
+      "group": "mixed",
+      "state": {
+        "message": "I disagree with you، بس أحترم رايك."
+      },
+      "expected": false
+    },
+    {
+      "id": "moderation-english_control-10",
+      "parallel_id": "scenario-10",
+      "workflow": "moderation",
+      "group": "english_control",
+      "state": {
+        "message": "I disagree with you, but I respect your opinion."
+      },
+      "expected": false
+    },
+    {
+      "id": "moderation-msa-11",
+      "parallel_id": "scenario-11",
+      "workflow": "moderation",
+      "group": "msa",
+      "state": {
+        "message": "توقف التطبيق مرة أخرى. أرجو إصلاح هذا الخطأ."
+      },
+      "expected": false
+    },
+    {
+      "id": "moderation-emirati-11",
+      "parallel_id": "scenario-11",
+      "workflow": "moderation",
+      "group": "emirati",
+      "state": {
+        "message": "التطبيق وقف مرة ثانية، يا ريت تصلحون الخلل."
+      },
+      "expected": false
+    },
+    {
+      "id": "moderation-mixed-11",
+      "parallel_id": "scenario-11",
+      "workflow": "moderation",
+      "group": "mixed",
+      "state": {
+        "message": "The app stopped again، يا ريت تصلحون الخلل please."
+      },
+      "expected": false
+    },
+    {
+      "id": "moderation-english_control-11",
+      "parallel_id": "scenario-11",
+      "workflow": "moderation",
+      "group": "english_control",
+      "state": {
+        "message": "The app stopped again. Please fix the bug."
+      },
+      "expected": false
+    },
+    {
+      "id": "moderation-msa-12",
+      "parallel_id": "scenario-12",
+      "workflow": "moderation",
+      "group": "msa",
+      "state": {
+        "message": "أنت عديم الفائدة وكلامك تافه."
+      },
+      "expected": true
+    },
+    {
+      "id": "moderation-emirati-12",
+      "parallel_id": "scenario-12",
+      "workflow": "moderation",
+      "group": "emirati",
+      "state": {
+        "message": "إنت ما منك فايدة وكلامك تافه."
+      },
+      "expected": true
+    },
+    {
+      "id": "moderation-mixed-12",
+      "parallel_id": "scenario-12",
+      "workflow": "moderation",
+      "group": "mixed",
+      "state": {
+        "message": "You are useless، كلامك تافه."
+      },
+      "expected": true
+    },
+    {
+      "id": "moderation-english_control-12",
+      "parallel_id": "scenario-12",
+      "workflow": "moderation",
+      "group": "english_control",
+      "state": {
+        "message": "You are useless and what you say is nonsense."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-msa-13",
+      "parallel_id": "scenario-13",
+      "workflow": "relevance",
+      "group": "msa",
+      "state": {
+        "message": "السؤال: متى يغلق المكتب؟ النص: يغلق المكتب الساعة السادسة مساء."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-emirati-13",
+      "parallel_id": "scenario-13",
+      "workflow": "relevance",
+      "group": "emirati",
+      "state": {
+        "message": "السؤال: متى يسكر المكتب؟ النص: المكتب يسكر ست المسا."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-mixed-13",
+      "parallel_id": "scenario-13",
+      "workflow": "relevance",
+      "group": "mixed",
+      "state": {
+        "message": "Question: when does the office close? Passage: المكتب يسكر at 6 pm."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-english_control-13",
+      "parallel_id": "scenario-13",
+      "workflow": "relevance",
+      "group": "english_control",
+      "state": {
+        "message": "Question: when does the office close? Passage: the office closes at 6 pm."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-msa-14",
+      "parallel_id": "scenario-14",
+      "workflow": "relevance",
+      "group": "msa",
+      "state": {
+        "message": "السؤال: متى يغلق المكتب؟ النص: يقع المكتب في الطابق الثاني."
+      },
+      "expected": false
+    },
+    {
+      "id": "relevance-emirati-14",
+      "parallel_id": "scenario-14",
+      "workflow": "relevance",
+      "group": "emirati",
+      "state": {
+        "message": "السؤال: متى يسكر المكتب؟ النص: المكتب في الطابق الثاني."
+      },
+      "expected": false
+    },
+    {
+      "id": "relevance-mixed-14",
+      "parallel_id": "scenario-14",
+      "workflow": "relevance",
+      "group": "mixed",
+      "state": {
+        "message": "Question: when does the office close? Passage: المكتب في الطابق الثاني."
+      },
+      "expected": false
+    },
+    {
+      "id": "relevance-english_control-14",
+      "parallel_id": "scenario-14",
+      "workflow": "relevance",
+      "group": "english_control",
+      "state": {
+        "message": "Question: when does the office close? Passage: the office is on the second floor."
+      },
+      "expected": false
+    },
+    {
+      "id": "relevance-msa-15",
+      "parallel_id": "scenario-15",
+      "workflow": "relevance",
+      "group": "msa",
+      "state": {
+        "message": "السؤال: هل التوصيل مجاني؟ النص: التوصيل مجاني لجميع الطلبات داخل دبي."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-emirati-15",
+      "parallel_id": "scenario-15",
+      "workflow": "relevance",
+      "group": "emirati",
+      "state": {
+        "message": "السؤال: التوصيل ببلاش؟ النص: التوصيل ببلاش لكل الطلبات داخل دبي."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-mixed-15",
+      "parallel_id": "scenario-15",
+      "workflow": "relevance",
+      "group": "mixed",
+      "state": {
+        "message": "Question: is delivery free? Passage: التوصيل ببلاش for all Dubai orders."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-english_control-15",
+      "parallel_id": "scenario-15",
+      "workflow": "relevance",
+      "group": "english_control",
+      "state": {
+        "message": "Question: is delivery free? Passage: delivery is free for all Dubai orders."
+      },
+      "expected": true
+    },
+    {
+      "id": "relevance-msa-16",
+      "parallel_id": "scenario-16",
+      "workflow": "relevance",
+      "group": "msa",
+      "state": {
+        "message": "السؤال: هل التوصيل مجاني؟ النص: يستغرق التوصيل ثلاثة أيام ولا تتوفر معلومات عن الرسوم."
+      },
+      "expected": false
+    },
+    {
+      "id": "relevance-emirati-16",
+      "parallel_id": "scenario-16",
+      "workflow": "relevance",
+      "group": "emirati",
+      "state": {
+        "message": "السؤال: التوصيل ببلاش؟ النص: التوصيل ياخذ ثلاث أيام وما عندنا معلومات عن الرسوم."
+      },
+      "expected": false
+    },
+    {
+      "id": "relevance-mixed-16",
+      "parallel_id": "scenario-16",
+      "workflow": "relevance",
+      "group": "mixed",
+      "state": {
+        "message": "Question: is delivery free? Passage: التوصيل takes three days; fees are not specified."
+      },
+      "expected": false
+    },
+    {
+      "id": "relevance-english_control-16",
+      "parallel_id": "scenario-16",
+      "workflow": "relevance",
+      "group": "english_control",
+      "state": {
+        "message": "Question: is delivery free? Passage: delivery takes three days; fees are not specified."
+      },
+      "expected": false
+    },
+    {
+      "id": "urgency-msa-17",
+      "parallel_id": "scenario-17",
+      "workflow": "urgency",
+      "group": "msa",
+      "state": {
+        "message": "أرجو إرسال الكتيب حين يتوفر لديكم الوقت، لا يوجد أي استعجال."
+      },
+      "expected": 0
+    },
+    {
+      "id": "urgency-emirati-17",
+      "parallel_id": "scenario-17",
+      "workflow": "urgency",
+      "group": "emirati",
+      "state": {
+        "message": "طرشوا الكتيب يوم تفضون، مب مستعجل أبد."
+      },
+      "expected": 0
+    },
+    {
+      "id": "urgency-mixed-17",
+      "parallel_id": "scenario-17",
+      "workflow": "urgency",
+      "group": "mixed",
+      "state": {
+        "message": "Please send the brochure when convenient، مب مستعجل at all."
+      },
+      "expected": 0
+    },
+    {
+      "id": "urgency-english_control-17",
+      "parallel_id": "scenario-17",
+      "workflow": "urgency",
+      "group": "english_control",
+      "state": {
+        "message": "Please send the brochure when convenient. There is no rush."
+      },
+      "expected": 0
+    },
+    {
+      "id": "urgency-msa-18",
+      "parallel_id": "scenario-18",
+      "workflow": "urgency",
+      "group": "msa",
+      "state": {
+        "message": "أرجو مراجعة الطلب اليوم إن أمكن، ولا يوجد موعد نهائي."
+      },
+      "expected": 1
+    },
+    {
+      "id": "urgency-emirati-18",
+      "parallel_id": "scenario-18",
+      "workflow": "urgency",
+      "group": "emirati",
+      "state": {
+        "message": "شوفوا الطلب اليوم إذا تقدرون، ما عندي موعد نهائي."
+      },
+      "expected": 1
+    },
+    {
+      "id": "urgency-mixed-18",
+      "parallel_id": "scenario-18",
+      "workflow": "urgency",
+      "group": "mixed",
+      "state": {
+        "message": "Please review this today if possible، ما عندي موعد نهائي."
+      },
+      "expected": 1
+    },
+    {
+      "id": "urgency-english_control-18",
+      "parallel_id": "scenario-18",
+      "workflow": "urgency",
+      "group": "english_control",
+      "state": {
+        "message": "Please review this today if possible. There is no hard deadline."
+      },
+      "expected": 1
+    },
+    {
+      "id": "urgency-msa-19",
+      "parallel_id": "scenario-19",
+      "workflow": "urgency",
+      "group": "msa",
+      "state": {
+        "message": "تعطل نظام الدفع وتوقفت جميع المبيعات. نحتاج إصلاحه فورا."
+      },
+      "expected": 2
+    },
+    {
+      "id": "urgency-emirati-19",
+      "parallel_id": "scenario-19",
+      "workflow": "urgency",
+      "group": "emirati",
+      "state": {
+        "message": "نظام الدفع خرب وكل البيع واقف. نبا تصلحونه الحين."
+      },
+      "expected": 2
+    },
+    {
+      "id": "urgency-mixed-19",
+      "parallel_id": "scenario-19",
+      "workflow": "urgency",
+      "group": "mixed",
+      "state": {
+        "message": "The payment system is down and all sales have stopped، نبا حل الحين."
+      },
+      "expected": 2
+    },
+    {
+      "id": "urgency-english_control-19",
+      "parallel_id": "scenario-19",
+      "workflow": "urgency",
+      "group": "english_control",
+      "state": {
+        "message": "The payment system is down and all sales have stopped. We need an immediate fix."
+      },
+      "expected": 2
+    },
+    {
+      "id": "urgency-msa-20",
+      "parallel_id": "scenario-20",
+      "workflow": "urgency",
+      "group": "msa",
+      "state": {
+        "message": "يجب تقديم الوثائق خلال عشر دقائق وإلا نفقد فرصة التسجيل."
+      },
+      "expected": 2
+    },
+    {
+      "id": "urgency-emirati-20",
+      "parallel_id": "scenario-20",
+      "workflow": "urgency",
+      "group": "emirati",
+      "state": {
+        "message": "لازم نسلم الأوراق خلال عشر دقايق ولا بيروح علينا التسجيل."
+      },
+      "expected": 2
+    },
+    {
+      "id": "urgency-mixed-20",
+      "parallel_id": "scenario-20",
+      "workflow": "urgency",
+      "group": "mixed",
+      "state": {
+        "message": "We must submit the documents within ten minutes، ولا بيروح التسجيل."
+      },
+      "expected": 2
+    },
+    {
+      "id": "urgency-english_control-20",
+      "parallel_id": "scenario-20",
+      "workflow": "urgency",
+      "group": "english_control",
+      "state": {
+        "message": "We must submit the documents within ten minutes or lose the registration opportunity."
+      },
+      "expected": 2
+    }
+  ]
+}

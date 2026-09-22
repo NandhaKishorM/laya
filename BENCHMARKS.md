@@ -24,6 +24,79 @@ Every checkpoint answered **byte-identical questions** in each run (fixed seed).
 
 ## Languages
 
+### Arabic regression suite (local CPU)
+
+The Arabic suite uses 36 AI-authored synthetic messages: 12 parallel scenarios in
+standard Arabic, Emirati Arabic, and mixed Arabic-English. Each message is tested
+with Arabic and English question wording (72 evaluations, 216 typed decisions).
+The examples and labels have **not been native-speaker reviewed**. These small,
+related samples measure regression behavior, not general Arabic proficiency.
+
+Measured on 2026-09-22 using the multilingual checkpoint at Hugging Face revision
+`1c5edc17a7acd8701df6fc341c0d179f1c62c982`, on macOS arm64 CPU:
+
+| Question language | Message group | Category accuracy | Refund accuracy | Urgency MAE (0–2, lower better) |
+|---|---|---:|---:|---:|
+| Arabic | Standard Arabic | 91.7% | 91.7% | 0.586 |
+| Arabic | Emirati Arabic | 83.3% | 83.3% | 0.618 |
+| Arabic | Mixed | 83.3% | 58.3% | 0.727 |
+| English | Standard Arabic | 75.0% | 75.0% | 0.700 |
+| English | Emirati Arabic | 75.0% | 75.0% | 0.607 |
+| English | Mixed | 83.3% | 75.0% | 0.618 |
+
+All 72 evaluations routed to multilingual without a locale override. Routing
+success is separate from prediction accuracy. The category majority baseline is
+25%; the refund majority baseline is 75%; always predicting urgency 1 gives MAE
+0.667. **Arabic-question refund detection on mixed text falls below baseline.**
+Urgency prediction is also weak. Arabic wording improves category accuracy on
+this corpus, but does not consistently improve every decision type.
+
+The [raw report](research/results/arabic_triage_cpu.json) contains all predictions,
+labels, calibration metrics, warm latency, configuration, and source hashes.
+See the [runner and reproduction commands](research/README.md#arabic-regression-benchmark).
+No weights or temperatures were fitted to these cases.
+
+### Cross-workflow Arabic routing comparison
+
+80 synthetic messages cover intent, sentiment, moderation, relevance, and urgency
+in standard Arabic, Emirati, mixed text, and English controls. Each is evaluated
+with Arabic and English question wording under two routing policies. There are
+160 decisions per policy; the predictions are reused where both policies select
+the same checkpoint. This is a routing comparison using identical weights and
+the current inference runtime, not a retrained model comparison.
+
+| Question language | Task | Original routing | Arabic-aware routing |
+|---|---|---:|---:|
+| Arabic | Intent accuracy | 100% | 100% |
+| Arabic | Sentiment accuracy | 87.5% | 100% |
+| Arabic | Moderation accuracy | 81.3% | 87.5% |
+| Arabic | Relevance accuracy | 93.8% | 87.5% |
+| Arabic | Urgency MAE (lower better) | 0.640 | 0.553 |
+| English | Intent accuracy | 93.8% | 93.8% |
+| English | Sentiment accuracy | 93.8% | 100% |
+| English | Moderation accuracy | 93.8% | 93.8% |
+| English | Relevance accuracy | 93.8% | 87.5% |
+| English | Urgency MAE (lower better) | 0.580 | 0.641 |
+
+Each row aggregates 16 cases, including English controls. The expected routing
+policy matches 100% of cases after the fix versus 50% with Arabic questions and
+75% with English questions before it. **Prediction quality does not improve
+uniformly:** relevance regresses under both question languages, and urgency error
+increases with English questions. The routing fix ensures Arabic reaches the
+multilingual model, but does not resolve all model-quality gaps. Do not infer a
+general quality gain from routing accuracy. No workflow-specific checkpoint
+selection was fitted to these results.
+
+This corpus was authored after a small triage prompt exploration; it was not
+used for prompt selection or training. It is still synthetic, unreviewed, and
+too small to qualify production behavior (four cases per task/message group).
+Native-speaker-reviewed, representative evaluation and separate training data
+are needed for broader model improvement.
+
+[Raw paired results](research/results/arabic_workflows_cpu.json) include every
+answer, per-group metrics and baselines, checkpoint revisions, and source hashes.
+[Reproduction commands](research/README.md#cross-workflow-arabic-comparison).
+
 ### All 51 MASSIVE languages — intent, 20 options (random = 0.050)
 
 | | laya | laya-multilingual |

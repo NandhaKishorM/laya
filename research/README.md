@@ -46,6 +46,91 @@ checkpoint fine-tuned on that benchmark's own training split.
 **Speed.** 32.8 ms for one question and 7.2 ms/question at batch 10 on a T4; 103–332 questions/s
 batched.
 
+## Arabic regression benchmark
+
+`scripts/bench_arabic.py` evaluates the public `Router.predict` API on
+[`data/arabic_triage.json`](data/arabic_triage.json): 12 parallel support scenarios
+in each of standard Arabic (`msa`), Emirati Arabic (`emirati`), and mixed
+Arabic-English (`mixed`). Each message has category, refund-request, and urgency
+labels. Both Arabic and English question wording run by default, giving 72
+evaluations and 216 typed decisions. No checkpoint is fine-tuned by this script.
+
+The corpus is AI-authored, synthetic, and not native-speaker reviewed. Scenarios
+across groups are related, not independent samples. Results are smoke/regression
+measurements, not production qualification or a representative Arabic benchmark.
+Do not use these cases for training or temperature fitting. Add a separate,
+reviewed held-out dataset before making dialect-quality claims.
+
+From the repository root, after installing Laya:
+
+```bash
+# Routing only: no model downloads or prediction-accuracy claims.
+python research/scripts/bench_arabic.py --routing-only \
+  --output research/results/arabic_routing.json
+
+# Real inference: downloads the multilingual checkpoint on first use.
+python research/scripts/bench_arabic.py --device cpu \
+  --output research/results/arabic_triage_cpu.json
+
+# Or supply an existing local multilingual checkpoint and a single question language.
+python research/scripts/bench_arabic.py --model-path /path/to/multilingual \
+  --question-language ar --output /tmp/arabic.json
+
+# Offline regressions, also included in CI.
+python tests/test_arabic.py
+```
+
+Reports contain raw predictions and expected labels, routing accuracy, category
+accuracy, refund accuracy and binary Brier score, urgency mean absolute error
+and nearest-level accuracy, warm per-message p50/p95 latency, and majority/constant
+baselines. Every metric is split by message group and question language. ECE uses
+the predicted-label probability, **not** Laya's entropy-based confidence; with
+only 12 cases per group it is descriptive and unstable. Urgency levels round
+half-up. Latency includes all three questions per message and excludes model
+loading and one warm-up per question language. Failures abort without writing a
+partial success report. Metadata records the corpus hash, code revision and dirty
+state, package versions, checkpoint configuration, and actual device.
+
+`lang="ar-AE"` is available for applications with a known locale. The benchmark
+deliberately omits that hint so it also checks automatic Arabic/mixed routing.
+
+## Cross-workflow Arabic comparison
+
+`scripts/bench_arabic_workflows.py` extends evaluation beyond refunds and triage.
+[`data/arabic_workflows.json`](data/arabic_workflows.json) contains 20 scenarios
+across intent, sentiment, moderation, relevance, and urgency. Each has standard
+Arabic, Emirati, mixed Arabic-English, and English-control versions: 80 messages,
+tested with Arabic and English questions (160 decisions per routing policy).
+
+```bash
+python research/scripts/bench_arabic_workflows.py --routing-only \
+  --output /tmp/arabic_workflow_routing.json
+python research/scripts/bench_arabic_workflows.py --device cpu \
+  --output research/results/arabic_workflows_cpu.json
+```
+
+Optional `--english-path` and `--multilingual-path` select local checkpoint
+directories. Inference holds both checkpoints in memory. Model loading is
+excluded from the recorded evaluation duration, which is not a latency benchmark.
+
+The original policy is the upstream default behavior at `573e5b6`: classify the
+state's dominant script, use the Latin-language heuristic if needed, and ignore
+question text. Its reconstruction was checked against that upstream router on
+all 80 fixtures. The current policy additionally handles minority Arabic in the
+state and Arabic question text. Explicit overrides and workflow-detection modes
+are outside this comparison. Both paths use the same current inference runtime;
+predictions are reused where the selected checkpoint is identical.
+
+The report includes every answer and compares accuracy, Brier score, ECE, ordinal
+error, and simple baselines per workflow, message group, and question language.
+No overall quality score combines these different tasks. Routing-only mode emits
+no prediction-quality metrics. This corpus was created after exploratory prompt
+tests on the separate triage corpus; its question sets were not selected by
+testing variants on these cases. **Neither corpus is native-speaker-reviewed or
+representative**, and related language versions are not independent samples.
+Per-group cells have only four cases. This is a regression comparison, not proof
+of general Arabic capability. It does not train weights or fit temperatures.
+
 ## On comparisons with Jev
 
 There is no TypeSafe API credential in this project, so **Jev was never run here**. Every Jev

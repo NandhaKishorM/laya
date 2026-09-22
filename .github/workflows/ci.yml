@@ -44,6 +44,7 @@ jobs:
       - name: Routing and language-detection tests
         run: |
           python tests/test_router.py
+          python tests/test_arabic.py
           python tests/test_criteria.py
           python tests/test_download.py
           python tests/test_shortlist.py

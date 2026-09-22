@@ -38,6 +38,7 @@ jobs:
       - name: Tests must pass before anything is published
         run: |
           python tests/test_router.py
+          python tests/test_arabic.py
           python tests/test_criteria.py
           python tests/test_email.py
           python tests/test_download.py

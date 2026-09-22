@@ -219,7 +219,10 @@ def analyse(state: Union[str, dict, list, None]) -> Dict[str, object]:
         return {"script": "unknown", "script_profile": prof, "language": None,
                 "is_english": True, "language_undecided": True, "diacritic_rate": 0.0,
                 "non_latin_fraction": 0.0}
-    if script != "latin":
+    # UAE messages often mix English with short Arabic requests. Even a minority
+    # of Arabic-script letters needs the multilingual encoder. This detects a
+    # script, not an Arabic dialect (other languages also use Arabic script).
+    if script != "latin" or prof.get("arabic", 0.0) > 0:
         return {"script": script, "script_profile": prof, "language": None,
                 "is_english": False, "language_undecided": True, "diacritic_rate": 0.0,
                 "non_latin_fraction": non_latin}

@@ -14,6 +14,7 @@ from .email import clean_email_body, email_state
 from .lang import analyse as detect_language
 from .lang import detect_script, is_english
 from .presets import (
+    arabic_triage_questions,
     email_questions,
     guard_questions,
     moderation_questions,
@@ -40,6 +41,7 @@ __all__ = [
     "clean_email_body",
     "email_questions",
     "email_state",
+    "arabic_triage_questions",
     "guard_questions",
     "moderation_questions",
     "router_questions",

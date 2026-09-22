@@ -259,7 +259,7 @@ class Agent:
             crit = {c: None for c in crit}
         ins = qdef["instructions"]
         if not isinstance(ins, str):
-            ins = json.dumps(ins)
+            ins = json.dumps(ins, ensure_ascii=False)
         return {"t": t, "ins": ins, "crit": crit}
 
     @torch.no_grad()

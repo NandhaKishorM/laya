@@ -27,6 +27,7 @@ primary routing signal.
 `auto_task_detection=True` or pass `task="typed_decisions"`: it is fine-tuned on four specific
 synthetic workflows and should not be a silent default.
 """
+import json
 import os
 import threading
 from typing import Any, Dict, List, Optional, Union
@@ -296,6 +297,9 @@ class Router:
             key = "multilingual"
             reason = "non-Latin script (%s, %.0f%% of letters); the English checkpoint cannot read it" % (
                 det["script"], 100 * float(det["non_latin_fraction"]))
+        elif det["script_profile"].get("arabic", 0.0) > 0:
+            key = "multilingual"
+            reason = "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint"
         elif not det["is_english"]:
             key = "multilingual"
             if det["language"]:
@@ -308,6 +312,22 @@ class Router:
         else:
             key = "english"
             reason = "English Latin text"
+        # Questions are part of the encoder input too. English state text does
+        # not make Arabic instructions or choice labels readable by that model.
+        # Ignore question IDs, but include criteria keys because they are labels.
+        if key == "english" and questions:
+            question_text = json.dumps(
+                [{"instructions": q.get("instructions", ""), "criteria": q.get("criteria")}
+                 for q in questions.values() if isinstance(q, dict)],
+                ensure_ascii=False, default=str,
+            )
+            question_detection = analyse(question_text)
+            if question_detection["script_profile"].get("arabic", 0.0) > 0:
+                return RouteDecision(
+                    model="multilingual", repo=_repo_str(self.models["multilingual"]),
+                    reason="Arabic-script question text needs the multilingual checkpoint",
+                    detection=det, question_detection=question_detection, workflow=workflow,
+                )
         return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason=reason,
                              detection=det, workflow=workflow)
 

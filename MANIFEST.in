@@ -1,0 +1,5 @@
+# Keep the Arabic tests and their evaluation fixtures runnable from an sdist.
+include research/data/arabic_triage.json
+include research/data/arabic_workflows.json
+include research/scripts/bench_arabic.py
+include research/scripts/bench_arabic_workflows.py

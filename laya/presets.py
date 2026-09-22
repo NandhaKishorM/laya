@@ -2,6 +2,40 @@
 from typing import Dict, Optional
 
 
+def arabic_triage_questions() -> Dict:
+    """Arabic support-triage rubric with stable English output keys.
+
+    Supports Arabic-script input, including Emirati and mixed Arabic-English,
+    through the multilingual checkpoint. This preset does not tune model weights.
+    """
+    return {
+        "category": {
+            "type": "choice",
+            "instructions": "ما القسم الأنسب للتعامل مع طلب العميل في message؟",
+            "criteria": {
+                "billing": "الفواتير والدفعات واسترداد المبالغ",
+                "technical": "الأعطال التقنية ومشاكل تسجيل الدخول والتطبيق",
+                "delivery": "توصيل الطلبات والشحن وتتبع الشحنات",
+                "general": "الاستفسارات العامة وساعات العمل ومعلومات الخدمات",
+            },
+        },
+        "refund_requested": {
+            "type": "noul",
+            "instructions": "هل يطلب العميل صراحة استرداد مبلغ مالي في message؟",
+            "criteria": {"false": "لا يطلب استرداد مبلغ", "true": "يطلب استرداد مبلغ"},
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "ما مدى استعجال الطلب في message؟",
+            "criteria": [
+                "غير مستعجل ويمكن الانتظار",
+                "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+                "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله",
+            ],
+        },
+    }
+
+
 def triage_questions() -> Dict:
     """Preset questions for customer support ticket triage."""
     return {

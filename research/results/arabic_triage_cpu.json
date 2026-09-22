@@ -1,0 +1,5938 @@
+{
+  "metadata": {
+    "timestamp_utc": "2026-09-22T17:33:16.586344+00:00",
+    "mode": "model_inference",
+    "dataset_sha256": "8f110a6eb5a95a9e103487860b30c9cb502137396985cc14d3a7013f6951f144",
+    "dataset_provenance": "AI-authored synthetic regression examples; not native-speaker reviewed or a representative held-out benchmark.",
+    "limitations": [
+      "Parallel scenarios are related, not independent samples.",
+      "Emirati wording and labels need native-speaker review.",
+      "Do not train or fit temperatures on these evaluation cases.",
+      "No Arabizi coverage."
+    ],
+    "git_commit": "573e5b62696ba441230cd6be71d593331b5d23af",
+    "working_tree_dirty": true,
+    "source_sha256": {
+      "laya/__init__.py": "3a8221a1caadd1ea59758d6b82847e61565c0446195fe2d69c1656a452663055",
+      "laya/agent.py": "6d09f0717081634f1409b9f200dc5886bbd79f499409f9bd8f3dc228d65c7988",
+      "laya/common.py": "f231d42fcec84da203222fcaa89c083b22776e00341e66e118183d754e1dcabf",
+      "laya/email.py": "481440b9f4dfc1d8c0c297322581ec2ba567f4286c1988c6e0b5163889f32088",
+      "laya/lang.py": "ed9015757b43d3c7d690f2966d16adc303bc2cc0deba5036fda6f90c499f3f62",
+      "laya/presets.py": "f7b7ab88f1e6e0d264f2789873942ae9472f8a029bdc0ddffc349382819e430f",
+      "laya/router.py": "5d2a50955327e265e23e35bf3f013566a65c6cc3009d61844d6c06ce1f5d4a46",
+      "laya/shortlist.py": "0d5a2a0f59ceb3e7fbf1f087864fcce41bb73eb039cf73357792976c10bfdb76",
+      "research/scripts/bench_arabic.py": "41e14ffbad18c121a9c49f917a7a7466a652dc6bafb746c9c27fbeb7e9a62387"
+    },
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.15",
+    "question_languages": [
+      "ar",
+      "en"
+    ],
+    "requested_device": "cpu",
+    "packages": {
+      "laya": "0.3.5",
+      "torch": "2.14.0",
+      "transformers": "5.17.0",
+      "numpy": "2.4.6"
+    },
+    "metric_notes": "ECE uses predicted-label probabilities, not Laya entropy confidence. Latency is warm SDK time for 3 questions per case. Rounding uses half-up for ordinal levels. Groups are parallel synthetic scenarios.",
+    "actual_device": "cpu",
+    "checkpoint": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+    "model_config": {
+      "encoder": "jhu-clsp/mmBERT-base",
+      "head_layers": 2,
+      "max_len": 1024,
+      "head_max_len": 256,
+      "max_prefixes": 6,
+      "act_costs": {
+        "escalate": 0.5
+      },
+      "cost_wrong_act": 3.0,
+      "amp_dtype": "bf16",
+      "model_name": "rl-agent",
+      "temperature": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "temperature_by_options": {},
+      "training": {
+        "updates": 15987,
+        "epochs_completed": 4,
+        "hours": 4.97,
+        "world_size": 1,
+        "fine_tuned_from_checkpoint": false
+      }
+    },
+    "temperatures": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "temperature_by_options": {},
+    "cpu_threads": 10,
+    "machine": "arm64",
+    "checkpoint_path": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual"
+  },
+  "summaries": {
+    "ar/all": {
+      "cases": 36,
+      "routing_accuracy": 1.0,
+      "category_accuracy": 0.8611111111111112,
+      "category_ece": 0.10916666666666669,
+      "refund_accuracy": 0.7777777777777778,
+      "refund_brier": 0.18615208166666666,
+      "refund_ece": 0.17117222222222228,
+      "urgency_mae": 0.6436611111111112,
+      "urgency_nearest_level_accuracy": 0.3611111111111111,
+      "latency_p50_ms": 69.90724948991556,
+      "latency_p95_ms": 80.57902074506273,
+      "baselines": {
+        "category_majority_accuracy": 0.25,
+        "refund_majority_accuracy": 0.75,
+        "urgency_constant_1_mae": 0.6666666666666666
+      }
+    },
+    "ar/msa": {
+      "cases": 12,
+      "routing_accuracy": 1.0,
+      "category_accuracy": 0.9166666666666666,
+      "category_ece": 0.11428333333333317,
+      "refund_accuracy": 0.9166666666666666,
+      "refund_brier": 0.07157096249999999,
+      "refund_ece": 0.07579166666666665,
+      "urgency_mae": 0.5860500000000001,
+      "urgency_nearest_level_accuracy": 0.4166666666666667,
+      "latency_p50_ms": 73.49391699244734,
+      "latency_p95_ms": 78.4469043413992,
+      "baselines": {
+        "category_majority_accuracy": 0.25,
+        "refund_majority_accuracy": 0.75,
+        "urgency_constant_1_mae": 0.6666666666666666
+      }
+    },
+    "ar/emirati": {
+      "cases": 12,
+      "routing_accuracy": 1.0,
+      "category_accuracy": 0.8333333333333334,
+      "category_ece": 0.13656666666666664,
+      "refund_accuracy": 0.8333333333333334,
+      "refund_brier": 0.16699170666666666,
+      "refund_ece": 0.25499999999999995,
+      "urgency_mae": 0.6183416666666667,
+      "urgency_nearest_level_accuracy": 0.3333333333333333,
+      "latency_p50_ms": 68.68860450049397,
+      "latency_p95_ms": 82.20239618676715,
+      "baselines": {
+        "category_majority_accuracy": 0.25,
+        "refund_majority_accuracy": 0.75,
+        "urgency_constant_1_mae": 0.6666666666666666
+      }
+    },
+    "ar/mixed": {
+      "cases": 12,
+      "routing_accuracy": 1.0,
+      "category_accuracy": 0.8333333333333334,
+      "category_ece": 0.07846666666666682,
+      "refund_accuracy": 0.5833333333333334,
+      "refund_brier": 0.31989357583333333,
+      "refund_ece": 0.35734166666666667,
+      "urgency_mae": 0.7265916666666669,
+      "urgency_nearest_level_accuracy": 0.3333333333333333,
+      "latency_p50_ms": 69.87752100394573,
+      "latency_p95_ms": 80.66893734940095,
+      "baselines": {
+        "category_majority_accuracy": 0.25,
+        "refund_majority_accuracy": 0.75,
+        "urgency_constant_1_mae": 0.6666666666666666
+      }
+    },
+    "en/all": {
+      "cases": 36,
+      "routing_accuracy": 1.0,
+      "category_accuracy": 0.7777777777777778,
+      "category_ece": 0.09547777777777781,
+      "refund_accuracy": 0.75,
+      "refund_brier": 0.16843471000000002,
+      "refund_ece": 0.10750000000000003,
+      "urgency_mae": 0.6416305555555557,
+      "urgency_nearest_level_accuracy": 0.3611111111111111,
+      "latency_p50_ms": 57.123000486171804,
+      "latency_p95_ms": 61.53779123269487,
+      "baselines": {
+        "category_majority_accuracy": 0.25,
+        "refund_majority_accuracy": 0.75,
+        "urgency_constant_1_mae": 0.6666666666666666
+      }
+    },
+    "en/msa": {
+      "cases": 12,
+      "routing_accuracy": 1.0,
+      "category_accuracy": 0.75,
+      "category_ece": 0.10799166666666662,
+      "refund_accuracy": 0.75,
+      "refund_brier": 0.12550385249999998,
+      "refund_ece": 0.14757499999999996,
+      "urgency_mae": 0.7000250000000001,
+      "urgency_nearest_level_accuracy": 0.3333333333333333,
+      "latency_p50_ms": 58.77056250756141,
+      "latency_p95_ms": 62.61362907825969,
+      "baselines": {
+        "category_majority_accuracy": 0.25,
+        "refund_majority_accuracy": 0.75,
+        "urgency_constant_1_mae": 0.6666666666666666
+      }
+    },
+    "en/emirati": {
+      "cases": 12,
+      "routing_accuracy": 1.0,
+      "category_accuracy": 0.75,
+      "category_ece": 0.07991666666666668,
+      "refund_accuracy": 0.75,
+      "refund_brier": 0.1861236775,
+      "refund_ece": 0.144225,
+      "urgency_mae": 0.6067666666666668,
+      "urgency_nearest_level_accuracy": 0.3333333333333333,
+      "latency_p50_ms": 58.956125503755175,
+      "latency_p95_ms": 61.44725830090465,
+      "baselines": {
+        "category_majority_accuracy": 0.25,
+        "refund_majority_accuracy": 0.75,
+        "urgency_constant_1_mae": 0.6666666666666666
+      }
+    },
+    "en/mixed": {
+      "cases": 12,
+      "routing_accuracy": 1.0,
+      "category_accuracy": 0.8333333333333334,
+      "category_ece": 0.13530833333333342,
+      "refund_accuracy": 0.75,
+      "refund_brier": 0.1936766,
+      "refund_ece": 0.22510000000000002,
+      "urgency_mae": 0.6181,
+      "urgency_nearest_level_accuracy": 0.4166666666666667,
+      "latency_p50_ms": 53.99585400300566,
+      "latency_p95_ms": 56.55173543927958,
+      "baselines": {
+        "category_majority_accuracy": 0.25,
+        "refund_majority_accuracy": 0.75,
+        "urgency_constant_1_mae": 0.6666666666666666
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "msa-01",
+      "parallel_id": "scenario-01",
+      "group": "msa",
+      "state": {
+        "message": "خُصم المبلغ مرتين. أريد استرداد الدفعة الزائدة، لكن الطلب غير مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9974,
+            "technical": 0.001,
+            "delivery": 0.0006,
+            "general": 0.001
+          },
+          "confidence": 0.9848,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.8609,
+          "confidence": 0.8609,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.6658,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.4733,
+            "1": 0.3876,
+            "2": 0.1391
+          },
+          "confidence": 0.0936,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 73.75991699518636,
+      "usage": {
+        "input_tokens": 304,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-01",
+      "parallel_id": "scenario-01",
+      "group": "emirati",
+      "state": {
+        "message": "انخصم مني مرتين، أبا فلوسي الزايدة ترجع. مب مستعجل وخذوا راحتكم."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9984,
+            "technical": 0.0006,
+            "delivery": 0.0006,
+            "general": 0.0004
+          },
+          "confidence": 0.99,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9992,
+          "confidence": 0.9992,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0289,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.3139,
+            "1": 0.3434,
+            "2": 0.3427
+          },
+          "confidence": 0.0008,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 74.2970000137575,
+      "usage": {
+        "input_tokens": 307,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-01",
+      "parallel_id": "scenario-01",
+      "group": "mixed",
+      "state": {
+        "message": "I was charged twice, أبا فلوسي back please. No rush; it can wait."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8367346938775511,
+            "arabic": 0.16326530612244897
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1633
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9998,
+            "technical": 0.0,
+            "delivery": 0.0001,
+            "general": 0.0001
+          },
+          "confidence": 0.9984,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9329,
+          "confidence": 0.9329,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1458,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0247,
+            "1": 0.8047,
+            "2": 0.1706
+          },
+          "confidence": 0.483,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 80.91620801133104,
+      "usage": {
+        "input_tokens": 280,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-02",
+      "parallel_id": "scenario-02",
+      "group": "msa",
+      "state": {
+        "message": "أريد استرداد الدفعة المكررة اليوم إن أمكن، ولا يوجد موعد نهائي محدد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9804,
+            "technical": 0.0057,
+            "delivery": 0.0049,
+            "general": 0.009
+          },
+          "confidence": 0.9155,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9856,
+          "confidence": 0.9856,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.3071,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.1024,
+            "1": 0.4882,
+            "2": 0.4094
+          },
+          "confidence": 0.1362,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 80.08924999739975,
+      "usage": {
+        "input_tokens": 295,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-02",
+      "parallel_id": "scenario-02",
+      "group": "emirati",
+      "state": {
+        "message": "أبا ترجعون الدفعة المكررة اليوم إذا تقدرون، ما عندي موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9996,
+            "technical": 0.0002,
+            "delivery": 0.0001,
+            "general": 0.0001
+          },
+          "confidence": 0.9975,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9899,
+          "confidence": 0.9899,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9671,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.122,
+            "1": 0.789,
+            "2": 0.0891
+          },
+          "confidence": 0.4001,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 70.33295798464678,
+      "usage": {
+        "input_tokens": 295,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-02",
+      "parallel_id": "scenario-02",
+      "group": "mixed",
+      "state": {
+        "message": "Please refund the duplicate payment today if possible، أبا المبلغ يرجع. No hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.821917808219178,
+            "arabic": 0.1780821917808219
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1781
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9999,
+            "technical": 0.0,
+            "delivery": 0.0,
+            "general": 0.0
+          },
+          "confidence": 0.9992,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9974,
+          "confidence": 0.9974,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0288,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.3723,
+            "1": 0.2266,
+            "2": 0.4011
+          },
+          "confidence": 0.0254,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 71.66737501393072,
+      "usage": {
+        "input_tokens": 280,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-03",
+      "parallel_id": "scenario-03",
+      "group": "msa",
+      "state": {
+        "message": "أطلب استرداد المبلغ الخاطئ قبل الساعة الثانية اليوم؛ هذا موعد نهائي لا يمكن تأجيله."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9781,
+            "technical": 0.0086,
+            "delivery": 0.0044,
+            "general": 0.0089
+          },
+          "confidence": 0.9075,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9546,
+          "confidence": 0.9546,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.3262,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.2214,
+            "1": 0.231,
+            "2": 0.5476
+          },
+          "confidence": 0.0879,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 68.83187498897314,
+      "usage": {
+        "input_tokens": 298,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-03",
+      "parallel_id": "scenario-03",
+      "group": "emirati",
+      "state": {
+        "message": "أبا المبلغ الغلط يرجع قبل الساعة ثنتين اليوم، هذا آخر موعد وما أقدر أأجله."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9978,
+            "technical": 0.001,
+            "delivery": 0.0007,
+            "general": 0.0006
+          },
+          "confidence": 0.987,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9042,
+          "confidence": 0.9042,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.2692,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.1351,
+            "1": 0.4605,
+            "2": 0.4043
+          },
+          "confidence": 0.0955,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 68.64187499741092,
+      "usage": {
+        "input_tokens": 301,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-03",
+      "parallel_id": "scenario-03",
+      "group": "mixed",
+      "state": {
+        "message": "Please refund the incorrect charge before 2 pm today، ضروري. This is a hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.9253731343283582,
+            "arabic": 0.07462686567164178
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.0746
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.4059,
+            "technical": 0.0394,
+            "delivery": 0.0426,
+            "general": 0.5121
+          },
+          "confidence": 0.2999,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0,
+          "confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.357,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.164,
+            "1": 0.3149,
+            "2": 0.5211
+          },
+          "confidence": 0.0897,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 80.46662498963997,
+      "usage": {
+        "input_tokens": 280,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-04",
+      "parallel_id": "scenario-04",
+      "group": "msa",
+      "state": {
+        "message": "أرغب في المساعدة لإصلاح خلل في التطبيق. لا أحتاج إلى الحل الآن ويمكنني الانتظار."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0023,
+            "technical": 0.9858,
+            "delivery": 0.007,
+            "general": 0.0049
+          },
+          "confidence": 0.9359,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.1993,
+          "confidence": 0.8007,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0848,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0248,
+            "1": 0.8657,
+            "2": 0.1095
+          },
+          "confidence": 0.5824,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 77.10316698648967,
+      "usage": {
+        "input_tokens": 298,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-04",
+      "parallel_id": "scenario-04",
+      "group": "emirati",
+      "state": {
+        "message": "في خلل في التطبيق وأبا مساعدة، بس مب مستعجل وأقدر أنتظر."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0006,
+            "technical": 0.9969,
+            "delivery": 0.0006,
+            "general": 0.002
+          },
+          "confidence": 0.9828,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.3704,
+          "confidence": 0.6296,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.2523,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.1079,
+            "1": 0.5319,
+            "2": 0.3602
+          },
+          "confidence": 0.1409,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 86.52974999858998,
+      "usage": {
+        "input_tokens": 280,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-04",
+      "parallel_id": "scenario-04",
+      "group": "mixed",
+      "state": {
+        "message": "There is a bug in the app، أبا مساعدة when you have time. No rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8163265306122449,
+            "arabic": 0.1836734693877551
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1837
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0019,
+            "technical": 0.9908,
+            "delivery": 0.0019,
+            "general": 0.0054
+          },
+          "confidence": 0.9559,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9972,
+          "confidence": 0.9972,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.6667,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.045,
+            "1": 0.2432,
+            "2": 0.7117
+          },
+          "confidence": 0.3396,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 73.0781250167638,
+      "usage": {
+        "input_tokens": 280,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-05",
+      "parallel_id": "scenario-05",
+      "group": "msa",
+      "state": {
+        "message": "تظهر رسالة خطأ أحيانا في التطبيق. أرجو المساعدة اليوم إن أمكن، ويمكنني مواصلة العمل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0043,
+            "technical": 0.9794,
+            "delivery": 0.0045,
+            "general": 0.0118
+          },
+          "confidence": 0.9131,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.2858,
+          "confidence": 0.7142,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.4413,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0355,
+            "1": 0.4877,
+            "2": 0.4768
+          },
+          "confidence": 0.2519,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 75.40295799844898,
+      "usage": {
+        "input_tokens": 304,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-05",
+      "parallel_id": "scenario-05",
+      "group": "emirati",
+      "state": {
+        "message": "التطبيق يطلع لي خطأ أحيانا. شوفوه اليوم إذا تقدرون، أقدر أكمل شغلي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0008,
+            "technical": 0.9966,
+            "delivery": 0.0014,
+            "general": 0.0012
+          },
+          "confidence": 0.9809,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.1109,
+          "confidence": 0.8891,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1815,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0991,
+            "1": 0.6202,
+            "2": 0.2807
+          },
+          "confidence": 0.1972,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 75.44129199231975,
+      "usage": {
+        "input_tokens": 307,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-05",
+      "parallel_id": "scenario-05",
+      "group": "mixed",
+      "state": {
+        "message": "The app sometimes shows an error، شوفوه اليوم if possible. I can still work."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8333333333333334,
+            "arabic": 0.16666666666666666
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1667
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0006,
+            "technical": 0.996,
+            "delivery": 0.001,
+            "general": 0.0024
+          },
+          "confidence": 0.9786,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.5982,
+          "confidence": 0.5982,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.4214,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0816,
+            "1": 0.4154,
+            "2": 0.503
+          },
+          "confidence": 0.167,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 70.39708399679512,
+      "usage": {
+        "input_tokens": 277,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-06",
+      "parallel_id": "scenario-06",
+      "group": "msa",
+      "state": {
+        "message": "لا يستطيع أي موظف تسجيل الدخول، وقد توقف العمل بالكامل. نحتاج إلى إصلاح فوري."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0057,
+            "technical": 0.963,
+            "delivery": 0.0064,
+            "general": 0.0248
+          },
+          "confidence": 0.8629,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.8301,
+          "confidence": 0.8301,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.8678,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0089,
+            "1": 0.1144,
+            "2": 0.8767
+          },
+          "confidence": 0.631,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 75.50366700161248,
+      "usage": {
+        "input_tokens": 304,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-06",
+      "parallel_id": "scenario-06",
+      "group": "emirati",
+      "state": {
+        "message": "محد يقدر يدخل النظام والشغل كله واقف. نبا تصلحونه الحين."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.1351,
+            "technical": 0.7106,
+            "delivery": 0.0359,
+            "general": 0.1184
+          },
+          "confidence": 0.3614,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.3603,
+          "confidence": 0.6397,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1533,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.1987,
+            "1": 0.4492,
+            "2": 0.3521
+          },
+          "confidence": 0.0459,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 67.73474998772144,
+      "usage": {
+        "input_tokens": 289,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-06",
+      "parallel_id": "scenario-06",
+      "group": "mixed",
+      "state": {
+        "message": "Nobody can log in and all work has stopped، نبا حل الحين. Please fix this immediately."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8529411764705882,
+            "arabic": 0.14705882352941177
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1471
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0168,
+            "technical": 0.9178,
+            "delivery": 0.004,
+            "general": 0.0613
+          },
+          "confidence": 0.7542,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9838,
+          "confidence": 0.9838,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.6726,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0236,
+            "1": 0.2801,
+            "2": 0.6962
+          },
+          "confidence": 0.3655,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 66.9740000157617,
+      "usage": {
+        "input_tokens": 283,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-07",
+      "parallel_id": "scenario-07",
+      "group": "msa",
+      "state": {
+        "message": "أين شحنتي؟ أريد معرفة موقعها فقط، ولا أمانع الانتظار حتى الأسبوع القادم."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0809,
+            "technical": 0.1291,
+            "delivery": 0.7387,
+            "general": 0.0514
+          },
+          "confidence": 0.3912,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0037,
+          "confidence": 0.9963,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9275,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.1176,
+            "1": 0.8374,
+            "2": 0.0451
+          },
+          "confidence": 0.5084,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 65.74683298822492,
+      "usage": {
+        "input_tokens": 304,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-07",
+      "parallel_id": "scenario-07",
+      "group": "emirati",
+      "state": {
+        "message": "وين طلبي؟ أبا أعرف وين وصل بس، عادي أنتظر لين الأسبوع الياي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0001,
+            "technical": 0.0001,
+            "delivery": 0.9998,
+            "general": 0.0
+          },
+          "confidence": 0.9987,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0383,
+          "confidence": 0.9617,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.7353,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.3793,
+            "1": 0.5061,
+            "2": 0.1146
+          },
+          "confidence": 0.1256,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 64.73791698226705,
+      "usage": {
+        "input_tokens": 289,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-07",
+      "parallel_id": "scenario-07",
+      "group": "mixed",
+      "state": {
+        "message": "Where is my shipment، وين وصل؟ I can wait until next week, no rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.88,
+            "arabic": 0.12
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.12
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0002,
+            "technical": 0.001,
+            "delivery": 0.9982,
+            "general": 0.0006
+          },
+          "confidence": 0.9894,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.075,
+          "confidence": 0.925,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9777,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.1542,
+            "1": 0.7139,
+            "2": 0.1319
+          },
+          "confidence": 0.2754,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 66.14191600237973,
+      "usage": {
+        "input_tokens": 274,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-08",
+      "parallel_id": "scenario-08",
+      "group": "msa",
+      "state": {
+        "message": "أرجو تحديث حالة توصيل الطلب اليوم إن أمكن، وليس لدي موعد استلام نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0,
+            "technical": 0.0,
+            "delivery": 1.0,
+            "general": 0.0
+          },
+          "confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0814,
+          "confidence": 0.9186,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0883,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0332,
+            "1": 0.8452,
+            "2": 0.1215
+          },
+          "confidence": 0.5344,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 74.53487499151379,
+      "usage": {
+        "input_tokens": 292,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-08",
+      "parallel_id": "scenario-08",
+      "group": "emirati",
+      "state": {
+        "message": "أبا تحديث عن توصيل طلبي اليوم إذا تقدرون، ما عندي موعد استلام محدد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0,
+            "technical": 0.0,
+            "delivery": 1.0,
+            "general": 0.0
+          },
+          "confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.7754,
+          "confidence": 0.7754,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9823,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0323,
+            "1": 0.9531,
+            "2": 0.0146
+          },
+          "confidence": 0.8011,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 66.79683297988959,
+      "usage": {
+        "input_tokens": 295,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-08",
+      "parallel_id": "scenario-08",
+      "group": "mixed",
+      "state": {
+        "message": "Please update my delivery status today، وين الطلب؟ There is no hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8709677419354839,
+            "arabic": 0.12903225806451613
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.129
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0,
+            "technical": 0.0,
+            "delivery": 0.9999,
+            "general": 0.0
+          },
+          "confidence": 0.9995,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0029,
+          "confidence": 0.9971,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.585,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.4929,
+            "1": 0.4292,
+            "2": 0.0779
+          },
+          "confidence": 0.1712,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 66.80383402272128,
+      "usage": {
+        "input_tokens": 271,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-09",
+      "parallel_id": "scenario-09",
+      "group": "msa",
+      "state": {
+        "message": "يجب تسليم الشحنة قبل الساعة الخامسة اليوم لأن المكتب يغلق حينها؛ لا يمكن تأجيل الموعد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0015,
+            "technical": 0.0063,
+            "delivery": 0.9906,
+            "general": 0.0016
+          },
+          "confidence": 0.9556,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0009,
+          "confidence": 0.9991,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.3459,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.1213,
+            "1": 0.4114,
+            "2": 0.4672
+          },
+          "confidence": 0.1109,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 69.48154099518433,
+      "usage": {
+        "input_tokens": 301,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-09",
+      "parallel_id": "scenario-09",
+      "group": "emirati",
+      "state": {
+        "message": "لازم الشحنة توصل قبل خمس اليوم لأن المكتب بيسكر، ما نقدر نأجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0617,
+            "technical": 0.2436,
+            "delivery": 0.6556,
+            "general": 0.0391
+          },
+          "confidence": 0.3368,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.3429,
+          "confidence": 0.6571,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0775,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0171,
+            "1": 0.8884,
+            "2": 0.0945
+          },
+          "confidence": 0.6381,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 78.66183397709392,
+      "usage": {
+        "input_tokens": 292,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-09",
+      "parallel_id": "scenario-09",
+      "group": "mixed",
+      "state": {
+        "message": "The shipment must arrive before 5 pm today، ضروري قبل ما نسكر. This deadline cannot move."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8,
+            "arabic": 0.2
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.2
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0,
+            "technical": 0.0002,
+            "delivery": 0.9998,
+            "general": 0.0
+          },
+          "confidence": 0.9984,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.5874,
+          "confidence": 0.5874,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1842,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0689,
+            "1": 0.678,
+            "2": 0.2531
+          },
+          "confidence": 0.2759,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 71.81058300193399,
+      "usage": {
+        "input_tokens": 286,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-10",
+      "parallel_id": "scenario-10",
+      "group": "msa",
+      "state": {
+        "message": "ما ساعات العمل المعتادة؟ هذا استفسار عام غير مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0453,
+            "technical": 0.0236,
+            "delivery": 0.0144,
+            "general": 0.9168
+          },
+          "confidence": 0.7338,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.1073,
+          "confidence": 0.8927,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1258,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0518,
+            "1": 0.7705,
+            "2": 0.1777
+          },
+          "confidence": 0.3981,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 65.80970899085514,
+      "usage": {
+        "input_tokens": 268,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-10",
+      "parallel_id": "scenario-10",
+      "group": "emirati",
+      "state": {
+        "message": "شو أوقات دوامكم؟ بس أستفسر، مب مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0635,
+            "technical": 0.0283,
+            "delivery": 0.0107,
+            "general": 0.8975
+          },
+          "confidence": 0.6959,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0723,
+          "confidence": 0.9277,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0135,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.247,
+            "1": 0.4925,
+            "2": 0.2605
+          },
+          "confidence": 0.0491,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 67.44041599449702,
+      "usage": {
+        "input_tokens": 274,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-10",
+      "parallel_id": "scenario-10",
+      "group": "mixed",
+      "state": {
+        "message": "What are your opening hours، شو الدوام؟ This is just a general question, no rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.873015873015873,
+            "arabic": 0.12698412698412698
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.127
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0029,
+            "technical": 0.0209,
+            "delivery": 0.0038,
+            "general": 0.9723
+          },
+          "confidence": 0.8942,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0663,
+          "confidence": 0.9337,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0567,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.2139,
+            "1": 0.5155,
+            "2": 0.2706
+          },
+          "confidence": 0.0669,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 69.35795801109634,
+      "usage": {
+        "input_tokens": 280,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-11",
+      "parallel_id": "scenario-11",
+      "group": "msa",
+      "state": {
+        "message": "أرجو إرسال معلومات عامة عن الخدمات اليوم إن أمكن، ولا يوجد موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0103,
+            "technical": 0.0031,
+            "delivery": 0.9759,
+            "general": 0.0106
+          },
+          "confidence": 0.9009,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0928,
+          "confidence": 0.9072,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9959,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0802,
+            "1": 0.8438,
+            "2": 0.076
+          },
+          "confidence": 0.507,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 73.22791698970832,
+      "usage": {
+        "input_tokens": 286,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-11",
+      "parallel_id": "scenario-11",
+      "group": "emirati",
+      "state": {
+        "message": "أبا معلومات عن خدماتكم اليوم إذا تقدرون، ما عندي موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.4869,
+            "technical": 0.0433,
+            "delivery": 0.4311,
+            "general": 0.0387
+          },
+          "confidence": 0.2967,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9057,
+          "confidence": 0.9057,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.026,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0605,
+            "1": 0.853,
+            "2": 0.0865
+          },
+          "confidence": 0.5294,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 68.73533400357701,
+      "usage": {
+        "input_tokens": 280,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-11",
+      "parallel_id": "scenario-11",
+      "group": "mixed",
+      "state": {
+        "message": "Please send general information about your services today، شو تقدمون؟ No hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8888888888888888,
+            "arabic": 0.1111111111111111
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1111
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0027,
+            "technical": 0.0015,
+            "delivery": 0.977,
+            "general": 0.0189
+          },
+          "confidence": 0.911,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.059,
+          "confidence": 0.941,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.3757,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.6814,
+            "1": 0.2615,
+            "2": 0.0571
+          },
+          "confidence": 0.294,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 65.22266598767601,
+      "usage": {
+        "input_tokens": 271,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-12",
+      "parallel_id": "scenario-12",
+      "group": "msa",
+      "state": {
+        "message": "أحتاج إلى تأكيد ساعات العمل قبل الساعة الثالثة اليوم، وهو الموعد النهائي لتقديم طلبي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0205,
+            "technical": 0.2971,
+            "delivery": 0.0251,
+            "general": 0.6573
+          },
+          "confidence": 0.4167,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0007,
+          "confidence": 0.9993,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0722,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0303,
+            "1": 0.8672,
+            "2": 0.1025
+          },
+          "confidence": 0.5785,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 68.28537498950027,
+      "usage": {
+        "input_tokens": 295,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-12",
+      "parallel_id": "scenario-12",
+      "group": "emirati",
+      "state": {
+        "message": "أبا تأكيد أوقات الدوام قبل ثلاث اليوم، هذا آخر موعد لتقديم طلبي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.2952,
+            "technical": 0.1317,
+            "delivery": 0.4047,
+            "general": 0.1684
+          },
+          "confidence": 0.0671,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.4117,
+          "confidence": 0.5883,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.368,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0683,
+            "1": 0.4954,
+            "2": 0.4363
+          },
+          "confidence": 0.187,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 67.86025001201779,
+      "usage": {
+        "input_tokens": 286,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-12",
+      "parallel_id": "scenario-12",
+      "group": "mixed",
+      "state": {
+        "message": "Please confirm your opening hours before 3 pm today، ضروري. That is my application deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "ar",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.9324324324324325,
+            "arabic": 0.06756756756756757
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.0676
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0629,
+            "technical": 0.2253,
+            "delivery": 0.1339,
+            "general": 0.578
+          },
+          "confidence": 0.2095,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.3944,
+          "confidence": 0.6056,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.4035,
+          "legend": {
+            "0": "غير مستعجل ويمكن الانتظار",
+            "1": "يحتاج إلى متابعة قريبة أو خلال اليوم دون موعد نهائي محدد",
+            "2": "مشكلة تمنع العمل أو موعد نهائي صريح لا يمكن تأجيله"
+          },
+          "probabilities": {
+            "0": 0.0763,
+            "1": 0.4438,
+            "2": 0.4798
+          },
+          "confidence": 0.1724,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 67.21950002247468,
+      "usage": {
+        "input_tokens": 280,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-01",
+      "parallel_id": "scenario-01",
+      "group": "msa",
+      "state": {
+        "message": "خُصم المبلغ مرتين. أريد استرداد الدفعة الزائدة، لكن الطلب غير مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.972,
+            "technical": 0.0025,
+            "delivery": 0.0021,
+            "general": 0.0235
+          },
+          "confidence": 0.8965,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.8815,
+          "confidence": 0.8815,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0747,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.022,
+            "1": 0.8814,
+            "2": 0.0967
+          },
+          "confidence": 0.6167,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 58.899041992845014,
+      "usage": {
+        "input_tokens": 243,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-01",
+      "parallel_id": "scenario-01",
+      "group": "emirati",
+      "state": {
+        "message": "انخصم مني مرتين، أبا فلوسي الزايدة ترجع. مب مستعجل وخذوا راحتكم."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.1795,
+            "technical": 0.3446,
+            "delivery": 0.1645,
+            "general": 0.3114
+          },
+          "confidence": 0.0365,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9908,
+          "confidence": 0.9908,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.014,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.11,
+            "1": 0.7661,
+            "2": 0.124
+          },
+          "confidence": 0.3577,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 58.31312501686625,
+      "usage": {
+        "input_tokens": 246,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-01",
+      "parallel_id": "scenario-01",
+      "group": "mixed",
+      "state": {
+        "message": "I was charged twice, أبا فلوسي back please. No rush; it can wait."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8367346938775511,
+            "arabic": 0.16326530612244897
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1633
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 1.0,
+            "technical": 0.0,
+            "delivery": 0.0,
+            "general": 0.0
+          },
+          "confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9694,
+          "confidence": 0.9694,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0475,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0444,
+            "1": 0.8638,
+            "2": 0.0918
+          },
+          "confidence": 0.5594,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 54.478167003253475,
+      "usage": {
+        "input_tokens": 219,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-02",
+      "parallel_id": "scenario-02",
+      "group": "msa",
+      "state": {
+        "message": "أريد استرداد الدفعة المكررة اليوم إن أمكن، ولا يوجد موعد نهائي محدد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9901,
+            "technical": 0.0009,
+            "delivery": 0.0015,
+            "general": 0.0075
+          },
+          "confidence": 0.9548,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.978,
+          "confidence": 0.978,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.115,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0612,
+            "1": 0.7625,
+            "2": 0.1762
+          },
+          "confidence": 0.3777,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 59.15495799854398,
+      "usage": {
+        "input_tokens": 234,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-02",
+      "parallel_id": "scenario-02",
+      "group": "emirati",
+      "state": {
+        "message": "أبا ترجعون الدفعة المكررة اليوم إذا تقدرون، ما عندي موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.7977,
+            "technical": 0.0409,
+            "delivery": 0.0772,
+            "general": 0.0842
+          },
+          "confidence": 0.4828,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.996,
+          "confidence": 0.996,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.012,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0462,
+            "1": 0.8957,
+            "2": 0.0582
+          },
+          "confidence": 0.6304,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 60.76108300476335,
+      "usage": {
+        "input_tokens": 234,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-02",
+      "parallel_id": "scenario-02",
+      "group": "mixed",
+      "state": {
+        "message": "Please refund the duplicate payment today if possible، أبا المبلغ يرجع. No hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.821917808219178,
+            "arabic": 0.1780821917808219
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1781
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 1.0,
+            "technical": 0.0,
+            "delivery": 0.0,
+            "general": 0.0
+          },
+          "confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9945,
+          "confidence": 0.9945,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9662,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.087,
+            "1": 0.8598,
+            "2": 0.0532
+          },
+          "confidence": 0.5463,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 56.71758300741203,
+      "usage": {
+        "input_tokens": 219,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-03",
+      "parallel_id": "scenario-03",
+      "group": "msa",
+      "state": {
+        "message": "أطلب استرداد المبلغ الخاطئ قبل الساعة الثانية اليوم؛ هذا موعد نهائي لا يمكن تأجيله."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.2798,
+            "technical": 0.3092,
+            "delivery": 0.0932,
+            "general": 0.3179
+          },
+          "confidence": 0.0588,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9771,
+          "confidence": 0.9771,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0464,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0402,
+            "1": 0.8732,
+            "2": 0.0866
+          },
+          "confidence": 0.5817,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 60.11962500633672,
+      "usage": {
+        "input_tokens": 237,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-03",
+      "parallel_id": "scenario-03",
+      "group": "emirati",
+      "state": {
+        "message": "أبا المبلغ الغلط يرجع قبل الساعة ثنتين اليوم، هذا آخر موعد وما أقدر أأجله."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.9991,
+            "technical": 0.0005,
+            "delivery": 0.0001,
+            "general": 0.0003
+          },
+          "confidence": 0.9943,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9653,
+          "confidence": 0.9653,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9691,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0586,
+            "1": 0.9137,
+            "2": 0.0277
+          },
+          "confidence": 0.6832,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 62.28591699618846,
+      "usage": {
+        "input_tokens": 240,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-03",
+      "parallel_id": "scenario-03",
+      "group": "mixed",
+      "state": {
+        "message": "Please refund the incorrect charge before 2 pm today، ضروري. This is a hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "billing",
+        "refund_requested": true,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.9253731343283582,
+            "arabic": 0.07462686567164178
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.0746
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.1124,
+            "technical": 0.1774,
+            "delivery": 0.0494,
+            "general": 0.6609
+          },
+          "confidence": 0.2969,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9649,
+          "confidence": 0.9649,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1901,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0897,
+            "1": 0.6305,
+            "2": 0.2798
+          },
+          "confidence": 0.214,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 53.42420798842795,
+      "usage": {
+        "input_tokens": 219,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-04",
+      "parallel_id": "scenario-04",
+      "group": "msa",
+      "state": {
+        "message": "أرغب في المساعدة لإصلاح خلل في التطبيق. لا أحتاج إلى الحل الآن ويمكنني الانتظار."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0005,
+            "technical": 0.9922,
+            "delivery": 0.0039,
+            "general": 0.0034
+          },
+          "confidence": 0.9621,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0418,
+          "confidence": 0.9582,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0173,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.017,
+            "1": 0.9488,
+            "2": 0.0343
+          },
+          "confidence": 0.7864,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 58.155000006081536,
+      "usage": {
+        "input_tokens": 237,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-04",
+      "parallel_id": "scenario-04",
+      "group": "emirati",
+      "state": {
+        "message": "في خلل في التطبيق وأبا مساعدة، بس مب مستعجل وأقدر أنتظر."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0002,
+            "technical": 0.9985,
+            "delivery": 0.0003,
+            "general": 0.0009
+          },
+          "confidence": 0.9909,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.4789,
+          "confidence": 0.5211,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9885,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0232,
+            "1": 0.9651,
+            "2": 0.0117
+          },
+          "confidence": 0.842,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 59.52433301717974,
+      "usage": {
+        "input_tokens": 219,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-04",
+      "parallel_id": "scenario-04",
+      "group": "mixed",
+      "state": {
+        "message": "There is a bug in the app، أبا مساعدة when you have time. No rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8163265306122449,
+            "arabic": 0.1836734693877551
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1837
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0023,
+            "technical": 0.9858,
+            "delivery": 0.0029,
+            "general": 0.009
+          },
+          "confidence": 0.9369,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9386,
+          "confidence": 0.9386,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0328,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0322,
+            "1": 0.9028,
+            "2": 0.065
+          },
+          "confidence": 0.6535,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 56.41604197444394,
+      "usage": {
+        "input_tokens": 219,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-05",
+      "parallel_id": "scenario-05",
+      "group": "msa",
+      "state": {
+        "message": "تظهر رسالة خطأ أحيانا في التطبيق. أرجو المساعدة اليوم إن أمكن، ويمكنني مواصلة العمل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0058,
+            "technical": 0.9044,
+            "delivery": 0.0254,
+            "general": 0.0644
+          },
+          "confidence": 0.7183,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.1717,
+          "confidence": 0.8283,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1853,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0227,
+            "1": 0.7693,
+            "2": 0.208
+          },
+          "confidence": 0.4407,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 61.28841597819701,
+      "usage": {
+        "input_tokens": 243,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-05",
+      "parallel_id": "scenario-05",
+      "group": "emirati",
+      "state": {
+        "message": "التطبيق يطلع لي خطأ أحيانا. شوفوه اليوم إذا تقدرون، أقدر أكمل شغلي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0001,
+            "technical": 0.9985,
+            "delivery": 0.0011,
+            "general": 0.0002
+          },
+          "confidence": 0.9911,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.103,
+          "confidence": 0.897,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0199,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0091,
+            "1": 0.9618,
+            "2": 0.0291
+          },
+          "confidence": 0.8332,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 58.89504199149087,
+      "usage": {
+        "input_tokens": 246,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-05",
+      "parallel_id": "scenario-05",
+      "group": "mixed",
+      "state": {
+        "message": "The app sometimes shows an error، شوفوه اليوم if possible. I can still work."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8333333333333334,
+            "arabic": 0.16666666666666666
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1667
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0015,
+            "technical": 0.9791,
+            "delivery": 0.0069,
+            "general": 0.0125
+          },
+          "confidence": 0.9138,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.2411,
+          "confidence": 0.7589,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1722,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0473,
+            "1": 0.7331,
+            "2": 0.2196
+          },
+          "confidence": 0.3584,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 54.89724999642931,
+      "usage": {
+        "input_tokens": 216,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-06",
+      "parallel_id": "scenario-06",
+      "group": "msa",
+      "state": {
+        "message": "لا يستطيع أي موظف تسجيل الدخول، وقد توقف العمل بالكامل. نحتاج إلى إصلاح فوري."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0021,
+            "technical": 0.9864,
+            "delivery": 0.0024,
+            "general": 0.0091
+          },
+          "confidence": 0.9397,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.5084,
+          "confidence": 0.5084,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.3084,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0076,
+            "1": 0.6764,
+            "2": 0.316
+          },
+          "confidence": 0.3942,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 59.483832999831066,
+      "usage": {
+        "input_tokens": 243,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-06",
+      "parallel_id": "scenario-06",
+      "group": "emirati",
+      "state": {
+        "message": "محد يقدر يدخل النظام والشغل كله واقف. نبا تصلحونه الحين."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0093,
+            "technical": 0.7009,
+            "delivery": 0.0137,
+            "general": 0.2761
+          },
+          "confidence": 0.4901,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.51,
+          "confidence": 0.51,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1026,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.1273,
+            "1": 0.6429,
+            "2": 0.2298
+          },
+          "confidence": 0.1951,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 57.88829197990708,
+      "usage": {
+        "input_tokens": 228,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-06",
+      "parallel_id": "scenario-06",
+      "group": "mixed",
+      "state": {
+        "message": "Nobody can log in and all work has stopped، نبا حل الحين. Please fix this immediately."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "technical",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8529411764705882,
+            "arabic": 0.14705882352941177
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1471
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.001,
+            "technical": 0.986,
+            "delivery": 0.0018,
+            "general": 0.0112
+          },
+          "confidence": 0.9407,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9787,
+          "confidence": 0.9787,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.102,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0055,
+            "1": 0.887,
+            "2": 0.1075
+          },
+          "confidence": 0.659,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 55.58254197239876,
+      "usage": {
+        "input_tokens": 222,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-07",
+      "parallel_id": "scenario-07",
+      "group": "msa",
+      "state": {
+        "message": "أين شحنتي؟ أريد معرفة موقعها فقط، ولا أمانع الانتظار حتى الأسبوع القادم."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0042,
+            "technical": 0.3568,
+            "delivery": 0.5095,
+            "general": 0.1295
+          },
+          "confidence": 0.2793,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0084,
+          "confidence": 0.9916,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9793,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.038,
+            "1": 0.9448,
+            "2": 0.0173
+          },
+          "confidence": 0.7744,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 56.92366699804552,
+      "usage": {
+        "input_tokens": 243,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-07",
+      "parallel_id": "scenario-07",
+      "group": "emirati",
+      "state": {
+        "message": "وين طلبي؟ أبا أعرف وين وصل بس، عادي أنتظر لين الأسبوع الياي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0,
+            "technical": 0.0,
+            "delivery": 1.0,
+            "general": 0.0
+          },
+          "confidence": 0.9997,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.1025,
+          "confidence": 0.8975,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.5639,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.4455,
+            "1": 0.5451,
+            "2": 0.0094
+          },
+          "confidence": 0.3311,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 59.01720901601948,
+      "usage": {
+        "input_tokens": 228,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-07",
+      "parallel_id": "scenario-07",
+      "group": "mixed",
+      "state": {
+        "message": "Where is my shipment، وين وصل؟ I can wait until next week, no rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.88,
+            "arabic": 0.12
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.12
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0016,
+            "technical": 0.007,
+            "delivery": 0.9825,
+            "general": 0.0089
+          },
+          "confidence": 0.9247,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0074,
+          "confidence": 0.9926,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0386,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0419,
+            "1": 0.8777,
+            "2": 0.0804
+          },
+          "confidence": 0.5903,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 53.51354100275785,
+      "usage": {
+        "input_tokens": 213,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-08",
+      "parallel_id": "scenario-08",
+      "group": "msa",
+      "state": {
+        "message": "أرجو تحديث حالة توصيل الطلب اليوم إن أمكن، وليس لدي موعد استلام نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0,
+            "technical": 0.0,
+            "delivery": 0.9999,
+            "general": 0.0
+          },
+          "confidence": 0.9996,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.5256,
+          "confidence": 0.5256,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1323,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0156,
+            "1": 0.8365,
+            "2": 0.1479
+          },
+          "confidence": 0.5478,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 64.2333339783363,
+      "usage": {
+        "input_tokens": 231,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-08",
+      "parallel_id": "scenario-08",
+      "group": "emirati",
+      "state": {
+        "message": "أبا تحديث عن توصيل طلبي اليوم إذا تقدرون، ما عندي موعد استلام محدد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0,
+            "technical": 0.0,
+            "delivery": 1.0,
+            "general": 0.0
+          },
+          "confidence": 0.9998,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.4624,
+          "confidence": 0.5376,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0544,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.022,
+            "1": 0.9017,
+            "2": 0.0764
+          },
+          "confidence": 0.66,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 59.092459006933495,
+      "usage": {
+        "input_tokens": 234,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-08",
+      "parallel_id": "scenario-08",
+      "group": "mixed",
+      "state": {
+        "message": "Please update my delivery status today، وين الطلب؟ There is no hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8709677419354839,
+            "arabic": 0.12903225806451613
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.129
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0001,
+            "technical": 0.0,
+            "delivery": 0.9999,
+            "general": 0.0
+          },
+          "confidence": 0.9992,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0103,
+          "confidence": 0.9897,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9809,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0233,
+            "1": 0.9725,
+            "2": 0.0042
+          },
+          "confidence": 0.8748,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 53.160374984145164,
+      "usage": {
+        "input_tokens": 210,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-09",
+      "parallel_id": "scenario-09",
+      "group": "msa",
+      "state": {
+        "message": "يجب تسليم الشحنة قبل الساعة الخامسة اليوم لأن المكتب يغلق حينها؛ لا يمكن تأجيل الموعد."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0249,
+            "technical": 0.3941,
+            "delivery": 0.3148,
+            "general": 0.2662
+          },
+          "confidence": 0.1524,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.1196,
+          "confidence": 0.8804,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0791,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0078,
+            "1": 0.9052,
+            "2": 0.087
+          },
+          "confidence": 0.69,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 57.32233397429809,
+      "usage": {
+        "input_tokens": 240,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-09",
+      "parallel_id": "scenario-09",
+      "group": "emirati",
+      "state": {
+        "message": "لازم الشحنة توصل قبل خمس اليوم لأن المكتب بيسكر، ما نقدر نأجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "technical",
+          "probabilities": {
+            "billing": 0.0138,
+            "technical": 0.7739,
+            "delivery": 0.0148,
+            "general": 0.1975
+          },
+          "confidence": 0.5381,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.3792,
+          "confidence": 0.6208,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1285,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0123,
+            "1": 0.8469,
+            "2": 0.1408
+          },
+          "confidence": 0.5715,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 59.7482500015758,
+      "usage": {
+        "input_tokens": 231,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-09",
+      "parallel_id": "scenario-09",
+      "group": "mixed",
+      "state": {
+        "message": "The shipment must arrive before 5 pm today، ضروري قبل ما نسكر. This deadline cannot move."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "delivery",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8,
+            "arabic": 0.2
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.2
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0,
+            "technical": 0.0,
+            "delivery": 1.0,
+            "general": 0.0
+          },
+          "confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0862,
+          "confidence": 0.9138,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0499,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0404,
+            "1": 0.8694,
+            "2": 0.0903
+          },
+          "confidence": 0.5737,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 53.206375014269724,
+      "usage": {
+        "input_tokens": 225,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-10",
+      "parallel_id": "scenario-10",
+      "group": "msa",
+      "state": {
+        "message": "ما ساعات العمل المعتادة؟ هذا استفسار عام غير مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.026,
+            "technical": 0.0253,
+            "delivery": 0.0104,
+            "general": 0.9382
+          },
+          "confidence": 0.7869,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.1538,
+          "confidence": 0.8462,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0826,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0314,
+            "1": 0.8545,
+            "2": 0.114
+          },
+          "confidence": 0.5533,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 55.85645799874328,
+      "usage": {
+        "input_tokens": 207,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-10",
+      "parallel_id": "scenario-10",
+      "group": "emirati",
+      "state": {
+        "message": "شو أوقات دوامكم؟ بس أستفسر، مب مستعجل."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0357,
+            "technical": 0.0896,
+            "delivery": 0.0146,
+            "general": 0.8601
+          },
+          "confidence": 0.6202,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0911,
+          "confidence": 0.9089,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9527,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0821,
+            "1": 0.8831,
+            "2": 0.0348
+          },
+          "confidence": 0.6069,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 51.96099999011494,
+      "usage": {
+        "input_tokens": 213,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-10",
+      "parallel_id": "scenario-10",
+      "group": "mixed",
+      "state": {
+        "message": "What are your opening hours، شو الدوام؟ This is just a general question, no rush."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 0
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.873015873015873,
+            "arabic": 0.12698412698412698
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.127
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0079,
+            "technical": 0.0088,
+            "delivery": 0.0084,
+            "general": 0.9749
+          },
+          "confidence": 0.8955,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.1151,
+          "confidence": 0.8849,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9477,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0975,
+            "1": 0.8574,
+            "2": 0.0451
+          },
+          "confidence": 0.5461,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 52.45166600798257,
+      "usage": {
+        "input_tokens": 219,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-11",
+      "parallel_id": "scenario-11",
+      "group": "msa",
+      "state": {
+        "message": "أرجو إرسال معلومات عامة عن الخدمات اليوم إن أمكن، ولا يوجد موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0113,
+            "technical": 0.0225,
+            "delivery": 0.5709,
+            "general": 0.3953
+          },
+          "confidence": 0.4065,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.886,
+          "confidence": 0.886,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.443,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0091,
+            "1": 0.5388,
+            "2": 0.4521
+          },
+          "confidence": 0.3313,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 56.26229097833857,
+      "usage": {
+        "input_tokens": 225,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-11",
+      "parallel_id": "scenario-11",
+      "group": "emirati",
+      "state": {
+        "message": "أبا معلومات عن خدماتكم اليوم إذا تقدرون، ما عندي موعد نهائي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.439,
+            "technical": 0.0708,
+            "delivery": 0.3711,
+            "general": 0.1191
+          },
+          "confidence": 0.1559,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.9738,
+          "confidence": 0.9738,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1321,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0152,
+            "1": 0.8376,
+            "2": 0.1473
+          },
+          "confidence": 0.5502,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 54.210832982789725,
+      "usage": {
+        "input_tokens": 219,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-11",
+      "parallel_id": "scenario-11",
+      "group": "mixed",
+      "state": {
+        "message": "Please send general information about your services today، شو تقدمون؟ No hard deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 1
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.8888888888888888,
+            "arabic": 0.1111111111111111
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.1111
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "delivery",
+          "probabilities": {
+            "billing": 0.0152,
+            "technical": 0.0037,
+            "delivery": 0.923,
+            "general": 0.0581
+          },
+          "confidence": 0.7666,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.6349,
+          "confidence": 0.6349,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0185,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0458,
+            "1": 0.89,
+            "2": 0.0642
+          },
+          "confidence": 0.6167,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 55.350125010591,
+      "usage": {
+        "input_tokens": 210,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "msa-12",
+      "parallel_id": "scenario-12",
+      "group": "msa",
+      "state": {
+        "message": "أحتاج إلى تأكيد ساعات العمل قبل الساعة الثالثة اليوم، وهو الموعد النهائي لتقديم طلبي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0256,
+            "technical": 0.3345,
+            "delivery": 0.0874,
+            "general": 0.5525
+          },
+          "confidence": 0.278,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.3194,
+          "confidence": 0.6806,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1953,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.027,
+            "1": 0.7508,
+            "2": 0.2223
+          },
+          "confidence": 0.4112,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 58.6420830222778,
+      "usage": {
+        "input_tokens": 234,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "emirati-12",
+      "parallel_id": "scenario-12",
+      "group": "emirati",
+      "state": {
+        "message": "أبا تأكيد أوقات الدوام قبل ثلاث اليوم، هذا آخر موعد لتقديم طلبي."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+        "detection": {
+          "script": "arabic",
+          "script_profile": {
+            "arabic": 1.0
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 1.0
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0244,
+            "technical": 0.1559,
+            "delivery": 0.0605,
+            "general": 0.7591
+          },
+          "confidence": 0.4523,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.6383,
+          "confidence": 0.6383,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.2561,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.032,
+            "1": 0.68,
+            "2": 0.288
+          },
+          "confidence": 0.3348,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 53.98012499790639,
+      "usage": {
+        "input_tokens": 225,
+        "output_tokens": 0
+      }
+    },
+    {
+      "id": "mixed-12",
+      "parallel_id": "scenario-12",
+      "group": "mixed",
+      "state": {
+        "message": "Please confirm your opening hours before 3 pm today، ضروري. That is my application deadline."
+      },
+      "expected_route": "multilingual",
+      "expected": {
+        "category": "general",
+        "refund_requested": false,
+        "urgency": 2
+      },
+      "question_language": "en",
+      "route": {
+        "model": "multilingual",
+        "repo": "/Users/jagadish.thoutam/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+        "reason": "mixed Latin and Arabic script; Arabic-script content needs the multilingual checkpoint",
+        "detection": {
+          "script": "latin",
+          "script_profile": {
+            "latin": 0.9324324324324325,
+            "arabic": 0.06756756756756757
+          },
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "diacritic_rate": 0.0,
+          "non_latin_fraction": 0.0676
+        },
+        "workflow": null
+      },
+      "answers": {
+        "category": {
+          "type": "choice",
+          "choice": "general",
+          "probabilities": {
+            "billing": 0.0436,
+            "technical": 0.0443,
+            "delivery": 0.0438,
+            "general": 0.8684
+          },
+          "confidence": 0.6147,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "refund_requested": {
+          "type": "noul",
+          "noul": 0.0321,
+          "confidence": 0.9679,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.551,
+          "legend": {
+            "0": "not urgent, can wait",
+            "1": "needs attention soon or today without a fixed deadline",
+            "2": "blocking work or an explicit hard deadline that cannot move"
+          },
+          "probabilities": {
+            "0": 0.0299,
+            "1": 0.3892,
+            "2": 0.5809
+          },
+          "confidence": 0.2829,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "latency_ms": 52.94862497248687,
+      "usage": {
+        "input_tokens": 219,
+        "output_tokens": 0
+      }
+    }
+  ]
+}

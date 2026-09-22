@@ -252,6 +252,41 @@ class Agent:
                 % (fell_back_from, fell_back_why), flush=True)
 
     @staticmethod
+    def _check_question(qid: str, qdef: Any) -> None:
+        """Reject a question that cannot be answered, naming it and what to fix.
+
+        `render_options` reads `criteria` in the shape the question's type expects and the decision
+        head needs at least one option, so a malformed definition used to surface from three frames
+        down as something that names neither the question nor the problem: `AttributeError:
+        'NoneType' object has no attribute 'items'`, `KeyError: 'bool'`, or a `selected index k out
+        of range` raised inside the model for a question that ended up with no options at all.
+        """
+        if not isinstance(qdef, dict):
+            raise ValueError("question %r: definition must be a dict, got %s"
+                             % (qid, type(qdef).__name__))
+        t = qdef.get("type")
+        if t not in QTYPES:
+            raise ValueError("question %r: unknown type %r; use one of %s" % (qid, t, sorted(QTYPES)))
+        if "instructions" not in qdef:
+            raise ValueError("question %r: no 'instructions'; add the text the model should answer" % (qid,))
+        crit = qdef.get("criteria")
+        if t == "choice":
+            if not isinstance(crit, (dict, list)):
+                raise ValueError("question %r: a choice question takes 'criteria' as a dict of "
+                                 "label -> description, or a list of labels" % (qid,))
+            if not crit:
+                raise ValueError("question %r: a choice question needs at least one criterion" % (qid,))
+        elif t == "score":
+            if not isinstance(crit, list):
+                raise ValueError("question %r: a score question takes 'criteria' as a list of level "
+                                 "descriptions, index 0 first" % (qid,))
+            if not crit:
+                raise ValueError("question %r: a score question needs at least one level" % (qid,))
+        elif crit is not None and not isinstance(crit, dict):
+            raise ValueError("question %r: a noul question takes 'criteria' as a dict with optional "
+                             "'true'/'false' descriptions, or omits it" % (qid,))
+
+    @staticmethod
     def _to_internal(qdef: Dict) -> Dict:
         t = qdef["type"]
         crit = qdef.get("criteria")
@@ -282,6 +317,7 @@ class Agent:
         head_max_len = self.cfg.get("head_max_len", 192)
 
         for qid in ids:
+            self._check_question(qid, questions[qid])
             q = self._to_internal(questions[qid])
             seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len)
             if len(markers) != len(render_options(q)):

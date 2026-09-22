@@ -3,6 +3,11 @@
 Regression tests for the bug reported in PR #2 (trocker): a `noul` question whose criteria
 values were dicts raised `TypeError: can only concatenate str (not "dict") to str`, and
 `choice`/`score` stringified dicts as Python reprs instead of JSON.
+
+A question whose *shape* is wrong is the other half of the same promise and lives at the bottom of
+this file: `Agent.system_one` rejects it by name before anything is rendered or tokenized, instead
+of raising `AttributeError: 'NoneType' object has no attribute 'items'` from `render_options` or a
+`selected index k out of range` from inside the decision head (#182).
 """
 import json
 import os
@@ -114,6 +119,130 @@ check_true("fallback/reports the underlying reason", "Reason: %s" in _src)
 check_true("fallback/keeps the actionable advice", "download.pytorch.org/whl/nightly" in _src)
 check_true("fallback/no bare cuda probe for the warning",
            "torch.cuda.is_available() or getattr(torch.version" not in _src)
+
+
+# --------------------------------------------------------------- malformed question shapes (#182)
+# A question that cannot be answered used to fail three frames down, as an exception that named
+# neither the question nor the fix: `AttributeError: 'NoneType' object has no attribute 'items'`
+# from `render_options` for a `choice` without criteria, `KeyError: 'bool'` from the type table,
+# and -- for a question that ended up with no options at all -- a `selected index k out of range`
+# raised inside `DecisionModel.forward`, which reads like a bug in laya rather than in the caller's
+# definition. The inference path below is real: a tiny from-config encoder, no checkpoint
+# downloaded (tests/test_local_e2e.py covers the real weights).
+import torch  # noqa: E402
+from transformers import AutoConfig, AutoModel  # noqa: E402
+
+from laya.agent import Agent  # noqa: E402
+from laya.common import DecisionModel  # noqa: E402
+from laya.router import Router  # noqa: E402
+
+
+class _FakeTok:
+    """The tokenizer surface `build_sequence` uses, with predictable ids."""
+    cls_token_id, sep_token_id, mask_token_id, pad_token_id = 0, 1, 4, 2
+    mask_token = "[MASK]"
+
+    def __call__(self, text, add_special_tokens=False):
+        return {"input_ids": [10 + (len(w) % 90) for w in text.split() if w]}
+
+
+def _tiny_agent():
+    """An `Agent` with a tiny random encoder: the inference path, without the download."""
+    agent = object.__new__(Agent)
+    cfg = AutoConfig.for_model("bert", hidden_size=16, num_hidden_layers=1, num_attention_heads=1,
+                               intermediate_size=32, vocab_size=64)
+    agent.cfg = {"max_len": 256, "head_max_len": 96, "encoder": "tiny"}
+    agent.tok = _FakeTok()
+    agent.model = DecisionModel(AutoModel.from_config(cfg), head_layers=1, n_act=2).eval()
+    agent.device = torch.device("cpu")
+    agent.dtype = torch.float32
+    agent.temperature = [1.0, 1.0, 1.0]
+    agent.temperature_by_options = {}
+    return agent
+
+
+STATE = {"body": "I was charged twice for invoice 4411 and want a refund"}
+agent = _tiny_agent()
+for label, qdef in [
+    ("choice without criteria", {"type": "choice", "instructions": "Which team?"}),
+    ("choice with criteria None", {"type": "choice", "instructions": "Which team?", "criteria": None}),
+    ("choice with empty criteria", {"type": "choice", "instructions": "Which team?", "criteria": {}}),
+    ("choice with a tuple of labels", {"type": "choice", "instructions": "Which team?",
+                                       "criteria": ("billing", "tech")}),
+    ("score without criteria", {"type": "score", "instructions": "How urgent?"}),
+    ("score with an empty list", {"type": "score", "instructions": "How urgent?", "criteria": []}),
+    ("score with a dict of levels", {"type": "score", "instructions": "How urgent?",
+                                     "criteria": {"low": "no pressure", "high": "blocking"}}),
+    ("noul with list criteria", {"type": "noul", "instructions": "Is it spam?", "criteria": ["a", "b"]}),
+    ("noul with string criteria", {"type": "noul", "instructions": "Is it spam?", "criteria": "spam?"}),
+    ("unknown type", {"type": "bool", "instructions": "Is it spam?"}),
+    ("missing type", {"instructions": "Is it spam?"}),
+    ("no instructions", {"type": "noul"}),
+]:
+    try:
+        agent.system_one(STATE, {"q": qdef})
+        FAIL.append("rejected/%s: no error raised" % label)
+    except ValueError as e:
+        # the message must name the question: a caller with twenty of them needs to know which
+        check_true("rejected/%s names the question" % label, "'q'" in str(e), str(e))
+        check_true("rejected/%s says what to fix" % label, len(str(e)) > 40, str(e))
+    except Exception as e:
+        FAIL.append("rejected/%s: %s instead of ValueError: %s" % (label, type(e).__name__, e))
+
+# the same questions through the public entry point, not only the method under it
+router = Router()
+router.attach("english", agent)
+for label, qdef in (("choice without criteria", {"type": "choice", "instructions": "x"}),):
+    try:
+        router.predict(STATE, {"q": qdef}, model="english")
+        FAIL.append("rejected/router %s: no error raised" % label)
+    except ValueError as e:
+        check_true("rejected/router %s names the question" % label, "'q'" in str(e), str(e))
+    except Exception as e:
+        FAIL.append("rejected/router %s: %s instead of ValueError: %s" % (label, type(e).__name__, e))
+
+# every question id is validated, not only the first one put in the dict
+try:
+    agent.system_one(STATE, {"ok": {"type": "noul", "instructions": "Is it urgent?"},
+                             "broken": {"type": "choice", "instructions": "Which team?"}})
+    FAIL.append("rejected/second question: no error raised")
+except ValueError as e:
+    check_true("rejected/second question names it", "'broken'" in str(e), str(e))
+except Exception as e:
+    FAIL.append("rejected/second question: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# ...and the shapes that are valid still answer, so this is not validation-only coverage
+GOOD = {
+    "choice": {"type": "choice", "instructions": "Which team?",
+               "criteria": {"billing": "invoices and refunds", "tech": "bugs"}},
+    "choice as a list": {"type": "choice", "instructions": "Which team?",
+                         "criteria": ["billing", "tech"]},
+    "score": {"type": "score", "instructions": "How urgent?",
+              "criteria": ["no pressure", "soon", "blocking"]},
+    "noul": {"type": "noul", "instructions": "Does the sender want a reply?"},
+    "noul with criteria": {"type": "noul", "instructions": "Is it phishing?",
+                           "criteria": {"true": "phishing", "false": "legitimate"}},
+    "non-string instructions": {"type": "noul", "instructions": {"asks": "for a refund"}},
+}
+out = agent.system_one(STATE, GOOD)
+check("good/one answer per question", sorted(out["answers"]), sorted(GOOD))
+check_true("good/choice label", out["answers"]["choice"]["choice"] in ("billing", "tech"),
+           str(out["answers"]["choice"]))
+check_true("good/choice from a list",
+           out["answers"]["choice as a list"]["choice"] in ("billing", "tech"),
+           str(out["answers"]["choice as a list"]))
+check("good/choice probabilities sum", round(sum(out["answers"]["choice"]["probabilities"].values()), 3), 1.0)
+check_true("good/score is in range", 0.0 <= out["answers"]["score"]["score"] <= 2.0,
+           str(out["answers"]["score"]))
+check_true("good/score legend", out["answers"]["score"]["legend"],
+           {"0": "no pressure", "1": "soon", "2": "blocking"})
+check_true("good/noul is a probability", 0.0 <= out["answers"]["noul"]["noul"] <= 1.0,
+           str(out["answers"]["noul"]))
+check_true("good/noul with criteria is a probability",
+           0.0 <= out["answers"]["noul with criteria"]["noul"] <= 1.0,
+           str(out["answers"]["noul with criteria"]))
+check("good/usage has no output tokens", out["usage"]["output_tokens"], 0)
+check_true("good/usage counted input tokens", out["usage"]["input_tokens"] > 0, str(out["usage"]))
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

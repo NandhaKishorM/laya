@@ -225,6 +225,67 @@ check("route/english still english",
 check("route/short english still english", _r_lat.route("refund me").model, "english")
 
 
+# --------------------------------------------------------------------- plain-ASCII Romance (#172)
+# A state that lost its accents carries no diacritic rate for the non-English signal to read, and
+# mail clients and ticket systems strip them routinely, so the function-word lists are the only
+# evidence left. Spanish and Italian complaints were reported `is_english=True` and handed to the
+# English checkpoint -- the one that collapses off English -- while the accented spelling of the
+# same text reached multilingual. The lists for fr/es/pt/it held mostly accented words (`está`,
+# `más`, `è`, `être`, `não`) plus a handful of unaccented ones, so a stripped state matched one
+# word or none and fell under the two-hit margin below.
+for lang, text in [
+    ("es", "El pedido llego roto y nadie responde cuando escribo al soporte"),
+    ("es", "Quiero cancelar mi plan y pedir un reembolso"),
+    ("es", "La factura tiene un error en el importe total"),
+    ("es", "Necesito que me devuelvan el dinero de la compra duplicada"),
+    ("it", "Il cliente e stato addebitato due volte e vuole un rimborso"),
+    ("it", "Voglio cancellare il mio abbonamento e chiedere un rimborso"),
+    ("it", "La fattura contiene un errore nell importo totale"),
+    ("pt", "O cliente foi cobrado duas vezes e quer o dinheiro de volta"),
+    ("fr", "Le client a ete facture deux fois et demande un remboursement"),
+    ("fr", "Je ne peux pas acceder a mon compte et j ai besoin d aide"),
+]:
+    check("latin_lang/plain ascii " + lang + " " + text[:32], guess_latin_language(text), lang)
+    check("is_english/plain ascii " + lang + " " + text[:32], is_english(text), False)
+    check("route/plain ascii " + lang + " " + text[:32], _r_lat.route(text).model, "multilingual")
+# the accented spellings must keep working: those route on the diacritic rate
+for lang, text in [
+    ("es", "La facturación tiene un error y necesito una corrección urgente"),
+    ("it", "La fattura è sbagliata, devo avere un rimborso per il pagamento"),
+    ("fr", "La commande est arrivée cassée et personne ne répond au support"),
+]:
+    check("route/accented " + lang, _r_lat.route(text).model, "multilingual")
+
+# English must not move for this. The added words are ordinary English tokens as well -- `de facto`,
+# `et al.`, `e.g.`, `la carte`, `UN`, `MI5`, `DOS` -- and a state carrying none of them is the case
+# that has to keep routing to English.
+for text in [
+    "The customer was charged twice and wants a refund for this invoice",
+    "Please cancel my subscription and refund the duplicate charge today",
+    "The report by Smith et al. shows the de facto standard, e.g. the LA office and Rio",
+    "Our MI5 and UN contacts discussed the DOS attack in LA last month",
+    "No refund was issued, so I am writing to you again about invoice 4411",
+    "no refund no reply",
+    "The son of the director filed a complaint about the duplicate invoice",
+]:
+    check("is_english/romance control " + text[:32], is_english(text), True)
+    check("route/romance control " + text[:32], _r_lat.route(text).model, "english")
+
+# A word several lists claim (`la`, `e`, `o`) says "not English" without saying *which* language, so
+# it may not name one on its own -- the same rule as the 0-0 tie above, which is why the sample
+# below still names nothing even though `la` and `e` now count for Italian: it routes to multilingual
+# on the Romanian diacritic, not on a guessed language.
+check("latin_lang/shared words alone name nothing",
+      analyse("Cât e ora acum la Tokyo")["language"], None)
+check("route/shared words still multilingual",
+      _r_lat.route("Cât e ora acum la Tokyo").model, "multilingual")
+# ...but a distinctive word in the same state is enough to name the language it belongs to.
+check("latin_lang/distinctive word names the language",
+      guess_latin_language("La fattura contiene un errore nell importo totale"), "it")
+check("latin_lang/shared hits still count toward a named language",
+      guess_latin_language("La factura tiene un error en el importe total"), "es")
+
+
 # --------------------------------------------------------------------- temperature clamp (#35)
 # A fitted temperature below 1 sharpens logits. The shipped `choice:11+` bucket is 0.1006, which
 # turned a 0.24 top probability into 0.99 confidence on 13-option skill routing.

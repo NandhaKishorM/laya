@@ -44,6 +44,10 @@ jobs:
           python tests/test_decision_model.py
           python tests/test_packaging.py
           python tests/test_email.py
+          python tests/test_download.py
+          python tests/test_shortlist.py
+          python tests/test_decision_model.py
+          python tests/test_packaging.py
 
       - name: Build
         run: python -m build

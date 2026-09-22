@@ -23,7 +23,7 @@ from .presets import (
 from .router import DEFAULT_MODELS, RouteDecision, Router
 from .shortlist import embed_fn_from_agent, predict_shortlist, shortlist_choice
 
-__version__ = "0.3.5"
+__version__ = "0.3.6"
 __all__ = [
     # Core agent
     "Agent",

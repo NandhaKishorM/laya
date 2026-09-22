@@ -275,18 +275,25 @@ class Agent:
 
         Returns:
             Dictionary with answers, probabilities, calibrated confidence, and token usage.
+            `usage` also reports whether the state fit: `truncated`, `state_tokens`,
+            `state_tokens_dropped`, and `truncated_questions` (the questions whose head left
+            too little room). A caller that cares whether the answer saw the whole state should
+            read `usage["truncated"]` rather than estimate from the length of what it sent.
         """
         ids = list(questions.keys())
         items = []
+        seq_stats = []
         max_len = self.cfg.get("max_len", 512)
         head_max_len = self.cfg.get("head_max_len", 192)
 
         for qid in ids:
             q = self._to_internal(questions[qid])
-            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len)
+            seq, markers, stats = build_sequence(
+                self.tok, state, q, max_len, head_max_len, return_stats=True)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
+            seq_stats.append(stats)
 
         b = collate_items([items], self.tok.pad_token_id)
         use_amp = self.device.type == "cuda"
@@ -361,10 +368,24 @@ class Agent:
                     "action": ext,
                 }
 
+        # How much of the state actually reached the encoder. Truncation is a token budget, so it
+        # moves with `max_len`, `head_max_len` and the rendered head of each question - a caller
+        # cannot infer it from the length of the state it sent, and a fixed character threshold
+        # both over- and under-reports it (issue #174). Report it from the only place that knows.
+        state_tokens = seq_stats[0]["state_tokens"] if seq_stats else 0
+        dropped = max([s["state_tokens_dropped"] for s in seq_stats], default=0)
         return {
             "model": "laya-rl-agent",
             "answers": answers,
-            "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+            "usage": {
+                "input_tokens": n_tokens,
+                "output_tokens": 0,
+                "state_tokens": state_tokens,
+                # the worst case across the questions, which share one state but not one head budget
+                "state_tokens_dropped": dropped,
+                "truncated": dropped > 0,
+                "truncated_questions": [q for q, st in zip(ids, seq_stats) if st["truncated"]],
+            },
         }
 
     predict = system_one

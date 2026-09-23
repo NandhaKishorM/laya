@@ -12,6 +12,7 @@ from transformers import AutoConfig, AutoModel
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from laya.common import DecisionModel
+from laya.agent import Agent
 
 
 def _tiny_model(head_layers: int = 1, n_act: int = 2) -> DecisionModel:
@@ -36,6 +37,17 @@ def _inputs(batch: int, seq: int, n_markers: int):
     marker_pos = torch.arange(n_markers).unsqueeze(0).expand(batch, -1).clone()
     marker_mask = torch.ones(batch, n_markers, dtype=torch.bool)
     return input_ids, attention_mask, marker_pos, marker_mask, qtype
+
+
+def test_empty_questions_raise_clear_error_before_model_access():
+    # An uninitialised Agent has no model or tokenizer, proving validation happens first.
+    agent = Agent.__new__(Agent)
+    try:
+        agent.system_one("state", {})
+    except ValueError as exc:
+        assert str(exc) == "questions must contain at least one question"
+    else:
+        raise AssertionError("empty questions should raise ValueError")
 
 
 def test_single_option_question_does_not_crash():
@@ -94,6 +106,7 @@ def test_multi_option_question_is_unaffected():
 
 
 if __name__ == "__main__":
+    test_empty_questions_raise_clear_error_before_model_access()
     test_single_option_question_does_not_crash()
     test_single_option_top1_minus_top2_is_exactly_one()
     test_multi_option_question_is_unaffected()

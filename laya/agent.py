@@ -276,6 +276,9 @@ class Agent:
         Returns:
             Dictionary with answers, probabilities, calibrated confidence, and token usage.
         """
+        if not questions:
+            raise ValueError("questions must contain at least one question")
+
         ids = list(questions.keys())
         items = []
         max_len = self.cfg.get("max_len", 512)

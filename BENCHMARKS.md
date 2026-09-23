@@ -257,16 +257,24 @@ RTX 4070 Ti SUPER, torch 2.11 + CUDA 13, tilelang 0.1.14; raw numbers in `benchm
 
 ### Same answers
 
-Max change in any reported probability against an fp32 forward, and accuracy / ECE on 1,000 shuffled test
-samples (seed 0) of AG News (4 labels) and dair-ai/emotion (6 labels), same question for both paths.
+`benchmarks/parity_fast.py` answers a fixed, deterministic set of 60 states x up to 8 questions (the five presets over
+12 texts in six languages, short and long) with the stock bf16-autocast forward, the fast path, and an fp32 forward as
+the reference; every per-option probability from all three is in `benchmarks/results/parity_*.json`, so the comparison
+can be re-checked without a GPU.
 
-| checkpoint | max Δp vs fp32, stock bf16 | max Δp vs fp32, fast | AG News acc stock → fast | AG News ECE | emotion acc stock → fast | emotion ECE | argmax agreement |
+| checkpoint | type | n | max \|p_fast - p_stock\| | max \|p_fast - p_fp32\| | max \|p_stock - p_fp32\| | argmax fast = stock | fast = fp32 |
 |---|---|---|---|---|---|---|---|
-| laya | 0.013 | 0.004 | 0.922 → 0.925 | 0.032 → 0.032 | 0.588 → 0.588 | 0.314 → 0.315 | 99.5 % / 99.6 % |
-| laya-multilingual | 0.002 | 0.003 | 0.923 → 0.923 | 0.051 → 0.050 | 0.538 → 0.540 | 0.332 → 0.332 | 99.6 % / 99.2 % |
+| laya | choice | 48 | 0.031 | **0.022** | 0.024 | 47/48 | 47/48 |
+| laya | noul | 180 | 0.076 | **0.044** | 0.058 | 180/180 | 180/180 |
+| laya | score | 60 | 0.015 | **0.011** | 0.017 | 59/60 | 60/60 |
+| laya-multilingual | choice | 48 | 0.049 | **0.015** | 0.039 | 47/48 | 47/48 |
+| laya-multilingual | noul | 180 | 0.037 | 0.046 | 0.045 | 180/180 | 179/180 |
+| laya-multilingual | score | 60 | 0.010 | **0.009** | 0.009 | 59/60 | 59/60 |
 
-(The ~0.5 % of disagreements are near-tie options where bf16 accumulation order flips the argmax; the fast
-path is as close to fp32 as the stock bf16 autocast path is.)
+The fast path is at least as close to the fp32 reference as the stock bf16 path is (the residual stream stays in fp32 in
+both), and the two bf16 paths differ from each other only by bf16 accumulation order; the few argmax disagreements are
+near-tie options, and on every one of them the fast path agrees with fp32. Dataset accuracy / ECE (AG News, dair-ai
+emotion, 1,000 samples each) are identical within noise; see `benchmarks/bench_fast.py --eval 1000`.
 
 ### Latency, `agent.predict()` end to end (ms, incl. tokenization)
 

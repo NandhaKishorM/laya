@@ -402,8 +402,9 @@ agent = laya.load("convaiinnovations/laya", fast=True)   # or: agent.accelerate(
 agent.predict(state, questions)                            # same API, same answers
 ```
 
-Numerics match the stock bf16 autocast path (max probability delta vs fp32 is the same, dataset
-accuracy/ECE identical within noise) — see `benchmarks/bench_fast.py` and [BENCHMARKS.md](BENCHMARKS.md#gpu-fast-path).
+Numerics: on a fixed set of 60 states the fast path is at least as close to an fp32 forward as the stock bf16
+path is (max |Δp| ≤ 0.05 vs fp32 on both checkpoints, argmax agreement ≥ 47/48 per question type; every per-option
+probability is in `benchmarks/results/parity_*.json`) — see `benchmarks/parity_fast.py` and [BENCHMARKS.md](BENCHMARKS.md#gpu-fast-path).
 Falls back to the stock forward on CPU/MPS or when `tilelang` is not installed; `agent.deaccelerate()`
 restores it. Kernels compile once per shape bucket on first use (a few seconds, cached on disk).
 

@@ -74,23 +74,28 @@ def gemm_geglu_kernel(F, K, bm=64, bn=64, bk=64, stages=3, threads=128):
 # ----------------------------------------------------------------------------- LayerNorm (+residual)
 @tilelang.jit(pass_configs=FAST)
 def add_ln_kernel(D, residual=True, bias=False, eps=1e-5, bm=4, threads=32):
-    """X = X + R (in place, if residual);  Y = LN(X) * w (+ b).   Stats in fp32."""
+    """X (fp32 residual stream) += R (bf16 branch output, if residual);  Y (bf16) = LN(X) * w (+ b).
+
+    The residual stream stays in fp32 exactly like the stock autocast path: ModernBERT-large's residual
+    activations reach ~3e4, where bf16's 8-bit mantissa would lose ~100 units per add and drift layer by layer."""
     M = T.dynamic("M")
 
     @T.prim_func
-    def main(X: T.Tensor((M, D), DT), R: T.Tensor((M, D), DT), Wv: T.Tensor((D,), ACC), Bv: T.Tensor((D,), ACC),
+    def main(X: T.Tensor((M, D), ACC), R: T.Tensor((M, D), DT), Wv: T.Tensor((D,), ACC), Bv: T.Tensor((D,), ACC),
              Y: T.Tensor((M, D), DT)):
         with T.Kernel(T.ceildiv(M, bm), threads=threads) as bx:
             x = T.alloc_fragment((bm, D), ACC)
             xs = T.alloc_fragment((bm, D), ACC)
             mean = T.alloc_fragment((bm,), ACC)
             var = T.alloc_fragment((bm,), ACC)
-            Xb = T.alloc_shared((bm, D), DT)
+            Xb = T.alloc_shared((bm, D), ACC)
+            Rb = T.alloc_shared((bm, D), DT)
+            Yb = T.alloc_shared((bm, D), DT)
             T.copy(X[bx * bm, 0], Xb)
             T.copy(Xb, x)
             if residual:
-                T.copy(R[bx * bm, 0], Xb)
-                T.copy(Xb, xs)
+                T.copy(R[bx * bm, 0], Rb)
+                T.copy(Rb, xs)
                 for i, j in T.Parallel(bm, D):
                     x[i, j] = x[i, j] + xs[i, j]
                 T.copy(x, Xb)
@@ -108,8 +113,8 @@ def add_ln_kernel(D, residual=True, bias=False, eps=1e-5, bm=4, threads=32):
                 if bias:
                     v = v + Bv[j]
                 xs[i, j] = v
-            T.copy(xs, Xb)
-            T.copy(Xb, Y[bx * bm, 0])
+            T.copy(xs, Yb)
+            T.copy(Yb, Y[bx * bm, 0])
     return main
 
 

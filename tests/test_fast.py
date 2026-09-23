@@ -37,12 +37,13 @@ def test_geglu():
 
 def test_add_layernorm():
     M, D = 100, 768
-    X = torch.randn(M, D, device=dev, dtype=torch.bfloat16); R = torch.randn_like(X)
+    X = torch.randn(M, D, device=dev) * 3000            # fp32 residual stream at ModernBERT-large's real magnitude
+    R = torch.randn(M, D, device=dev, dtype=torch.bfloat16) * 50
     w = torch.rand(D, device=dev) + 0.5; b = torch.randn(D, device=dev)
-    X2 = X.clone(); Y = torch.empty_like(X)
+    X2 = X.clone(); Y = torch.empty(M, D, device=dev, dtype=torch.bfloat16)
     K.add_ln_kernel(D, residual=True, bias=True)(X2, R, w, b, Y)
-    xr = (X.float() + R.float()).bfloat16().float()
-    assert err(X2, xr) < 1e-6
+    xr = X + R.float()
+    assert torch.equal(X2, xr)                              # the stream is updated exactly, in fp32
     assert err(Y, torch.nn.functional.layer_norm(xr, (D,), w, b, 1e-5)) < 0.05
 
 

@@ -34,15 +34,19 @@ class FastLaya:
         self.zeros = {self.D: zeros, 3 * self.D: torch.zeros(3 * self.D, device=dev), 4 * self.D: torch.zeros(4 * self.D, device=dev),
                       2 * self.F: torch.zeros(2 * self.F, device=dev)}
         # --- encoder weights
-        self.emb_w = b16(enc.embeddings.tok_embeddings.weight)
+        # embeddings are gathered from an exact fp16 copy of the checkpoint values and upcast to fp32, like the stock path
+        self.emb_w = enc.embeddings.tok_embeddings.weight.detach().to(torch.float16).contiguous()
         self.emb_ln = f32(enc.embeddings.norm.weight)
+        # HF's bidirectional sliding mask keeps keys with |i - j| <= config.sliding_window (= local_attention // 2);
+        # ModernBertAttention.sliding_window is that value + 1 (flash-attn's inclusive convention) and must NOT be used here.
+        win = getattr(cfg, "sliding_window", None) or cfg.local_attention // 2
         self.layers = []
         for i, lyr in enumerate(enc.layers):
             self.layers.append(dict(
                 attn_ln=None if i == 0 else f32(lyr.attn_norm.weight),
                 wqkv=b16(lyr.attn.Wqkv.weight), wo=b16(lyr.attn.Wo.weight),
                 mlp_ln=f32(lyr.mlp_norm.weight), wi=b16(lyr.mlp.Wi.weight), wo2=b16(lyr.mlp.Wo.weight),
-                window=lyr.attn.sliding_window or 0, ltype=lyr.attention_type))
+                window=(win if lyr.attention_type == "sliding_attention" else 0), ltype=lyr.attention_type))
         self.final_ln = f32(enc.final_norm.weight)
         # --- rotary tables (rounded through bf16 exactly like HF does before applying)
         rot = enc.rotary_emb
@@ -68,7 +72,6 @@ class FastLaya:
         self.k_o = K.gemm_kernel(D, D)
         self.k_geglu = K.gemm_geglu_kernel(F, D)
         self.k_o2 = K.gemm_kernel(D, F)
-        self.k_ln = K.add_ln_kernel(D, residual=False, bias=False, eps=self.eps)
         self.k_addln = K.add_ln_kernel(D, residual=True, bias=False, eps=self.eps)
         self.k_addln_b = K.add_ln_kernel(D, residual=True, bias=True, eps=1e-5)
         self.k_ln_b = K.add_ln_kernel(D, residual=False, bias=True, eps=1e-5)
@@ -107,18 +110,17 @@ class FastLaya:
         B, L = ids.shape
         M, D = B * L, self.D
         dev = self.dev
-        X = torch.nn.functional.embedding(ids, self.emb_w).view(M, D)          # residual stream (bf16)
-        Y = torch.empty_like(X)
+        emb = torch.nn.functional.embedding(ids, self.emb_w).view(M, D).float()
+        # residual stream = embeddings.norm(emb), kept in fp32 exactly like the stock autocast path
+        X = torch.nn.functional.layer_norm(emb, (D,), self.emb_ln, None, self.eps)
+        Y = X.to(BF)                                                            # layer 0 attends to it directly (attn_norm = Identity)
         qkv = torch.empty(M, 3 * D, device=dev, dtype=BF)
         O = torch.empty(M, D, device=dev, dtype=BF)
         G = torch.empty(M, self.F, device=dev, dtype=BF)
         z = self.zeros
-        self.k_ln(X, X, self.emb_ln, z[D], Y)                                   # embeddings.norm
-        X, Y = Y, X                                                             # X is now the residual stream
         nl = len(self.layers)
         for i, ly in enumerate(self.layers):
-            src = X if i == 0 else Y                                            # layer 0 has attn_norm = Identity
-            self.k_qkv(src, ly["wqkv"], z[3 * D], qkv)
+            self.k_qkv(Y, ly["wqkv"], z[3 * D], qkv)                            # Y = attn_norm(X) (layer 0: X itself)
             cos, sin = self.rope_tab(ly["ltype"], L)
             self.rope_k()(qkv, cos, sin)
             self.attn_k(B, L, ly["window"])(qkv.view(B, L, 3, self.H, self.Dh), lens, O.view(B, L, D))
@@ -129,17 +131,17 @@ class FastLaya:
             nxt = self.layers[i + 1]["attn_ln"] if i + 1 < nl else self.final_ln
             self.k_addln(X, Y, nxt, z[D], Y)                                    # X += Y ; Y = next norm(X)
         # decision head: h = final_norm(x) + type_emb ; 2 x pre-norm transformer layers (relu ffn)
-        X = (Y.view(B, L, D) + self.type_emb[qtype][:, None, :]).view(M, D).contiguous()
+        X = (Y.view(B, L, D).float() + self.type_emb[qtype].float()[:, None, :]).view(M, D).contiguous()   # fp32 stream for the head
         F1 = torch.empty(M, 4 * D, device=dev, dtype=BF)
         for j, h in enumerate(self.head):
-            self.k_ln_b(X, X, h["n1w"], h["n1b"], Y)
+            self.k_ln_b(X, Y, h["n1w"], h["n1b"], Y)
             self.k_in(Y, h["in_w"], h["in_b"], qkv)
             self.attn_k(B, L, 0)(qkv.view(B, L, 3, self.H, self.Dh), lens, O.view(B, L, D))
             self.k_out(O, h["out_w"], h["out_b"], Y)
             self.k_addln_b(X, Y, h["n2w"], h["n2b"], Y)                         # X += attn ; Y = norm2(X)
             self.k_ffn1(Y, h["l1w"], h["l1b"], F1)
             self.k_ffn2(F1, h["l2w"], h["l2b"], Y)
-            X = X + Y                                                           # residual (torch, last op)
+            X = X + Y.float()                                                   # residual (fp32, torch, last op)
         return X.view(B, L, D)
 
     def _encode_graphed(self, ids, lens, qtype):

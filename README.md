@@ -474,7 +474,7 @@ agent.system_one("I was charged twice.", {"urgent": {"type": "noul", "instructio
 A hook is a plain callable, or an object implementing any of `on_predict_start`,
 `on_predict_end`, `on_route`, `on_load`, `on_evict`, `on_error`. A start hook can rewrite the
 state/questions or `ctx.skip(...)` a cached answer; an end hook can rewrite the result. See
-[**`docs/hooks.md`**](docs/hooks.md) and [`examples/hooks/`](examples/hooks/).
+[**`docs/hooks/`**](docs/hooks/index.md) and [`examples/hooks/`](examples/hooks/).
 
 ---
 

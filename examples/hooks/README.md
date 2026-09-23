@@ -1,6 +1,6 @@
 # Prediction hook examples
 
-Small, runnable hooks. See [`docs/hooks.md`](../../docs/hooks.md) for the full reference.
+Small, runnable hooks. See [`docs/hooks/index.md`](../../docs/hooks/index.md) for the full reference.
 
 - [`audit.py`](audit.py): log every decision and optionally ship it to an external service.
 - [`redact.py`](redact.py): strip emails/phones from the state before inference.

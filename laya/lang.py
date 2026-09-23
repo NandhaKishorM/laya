@@ -11,6 +11,7 @@ Script detection is exact. The Latin-script language guess is a stopword/diacrit
 is explicitly best-effort: pass an explicit model or `lang=` when you already know the language.
 """
 import re
+import unicodedata
 from typing import Dict, List, Optional, Union
 
 # Unicode blocks that the English (ModernBERT-large, 50k English BPE) checkpoint cannot read.
@@ -251,6 +252,51 @@ def script_profile(text: str) -> Dict[str, float]:
 # stopword list matches it.
 NON_EN_DIACRITIC_RATE = 0.02
 
+# Non-Latin text is not for the English checkpoint even when Latin letters are the plurality: a
+# brand name or order code outvotes the CJK request around it letter for letter, though one CJK
+# character carries far more than a letter. A short message needs a large share to count; a long
+# payload (ticket fields, English agent turns) dilutes the share, so there a sentence's worth of
+# letters counts too.
+NON_LATIN_FRACTION = 0.2
+NON_LATIN_MIN_FRACTION = 0.1
+NON_LATIN_MIN_LETTERS = 10
+
+
+def _script_of(ch: str) -> Optional[str]:
+    """The named non-Latin script of one letter, or None for Latin and for unclaimed letters."""
+    cp = ord(ch)
+    if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
+        return None
+    for name, ranges in _SCRIPT_RANGES:
+        if any(lo <= cp <= hi for lo, hi in ranges):
+            return name
+    return None
+
+
+def _non_latin_words(text: str) -> List[str]:
+    """Non-Latin runs that read as words rather than as annotation inside English prose.
+
+    English prose carries three kinds of non-Latin letters that are not a request written in
+    another script, and each is excluded here: a symbol (`Set α to 0.05`, one letter), a proper
+    name (`Дмитрий Петрович Савицкий`, capitalised), and a pronunciation (`[vlɐˈdʲimʲɪr]`, which
+    no script range claims). A combining mark belongs to the letter before it and never splits a
+    word, so `Влади́мир` stays one capitalised name rather than becoming `Влади` + `мир`.
+    """
+    runs, cur, script = [], "", None
+    for ch in text:
+        if unicodedata.combining(ch):
+            continue
+        s = _script_of(ch)
+        if s is not None and s == script:
+            cur += ch
+            continue
+        if cur:
+            runs.append(cur)
+        cur, script = (ch, s) if s is not None else ("", None)
+    if cur:
+        runs.append(cur)
+    return [w for w in runs if len(w) >= 2 and not w[0].isupper()]
+
 
 def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
@@ -318,6 +364,11 @@ def analyse(state: Union[str, dict, list, None]) -> Dict[str, object]:
     prof = script_profile(text)
     script = detect_script(text)
     non_latin = round(1.0 - prof.get("latin", 0.0), 4) if prof else 0.0
+    n_non_latin = round(non_latin * sum(ch.isalpha() for ch in text))
+    if script == "latin" and _non_latin_words(text) and (
+            non_latin >= NON_LATIN_FRACTION or (
+                non_latin >= NON_LATIN_MIN_FRACTION and n_non_latin >= NON_LATIN_MIN_LETTERS)):
+        script = max((s for s in prof if s != "latin"), key=prof.get)
     if script == "unknown":
         return {"script": "unknown", "script_profile": prof, "language": None,
                 "is_english": True, "language_undecided": True, "diacritic_rate": 0.0,

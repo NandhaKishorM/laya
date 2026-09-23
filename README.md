@@ -137,6 +137,19 @@ own. Both ids run the checkpoints published here, unmodified, at `max_len` 8192.
 
 [Docs](https://impossibl.com/docs/evaluation) · [Model page](https://impossibl.com/convaiinnovations/laya)
 
+### Command line
+
+Installing the package also installs a `laya` command for quick local testing, no script needed:
+
+```bash
+laya "I was charged twice, please refund"            # routing decision only; works offline, no download
+laya "Refactor this service" --predict               # full answers (downloads the checkpoint on first use)
+laya "Mein Konto wurde zweimal belastet" --lang de   # force a language instead of detecting it
+laya                                                 # interactive mode
+```
+
+Routing alone never downloads a checkpoint, so it returns in milliseconds. `--predict` loads the routed checkpoint, which needs network access to the Hugging Face hub the first time; if a checkpoint cannot be downloaded, the CLI says so instead of crashing.
+
 ---
 
 ## Quickstart: Route Mode (Recommended)
@@ -392,6 +405,27 @@ Passing an empty question dictionary to `agent.predict(state, {})` or
 `agent.system_one(state, {})` returns the standard response with `"answers": {}`
 and `"usage": {"input_tokens": 0, "output_tokens": 0}`. The state is not tokenized
 and no model forward pass runs.
+
+---
+
+## GPU Fast Path (TileLang)
+
+`pip install laya[fast]` adds an optional forward built from fused [TileLang](https://github.com/tile-ai/tilelang)
+kernels: GEMM + bias/activation epilogues, GEMM + GEGLU, residual + LayerNorm, in-place RoPE, and a
+sliding-window flash attention that reads the packed QKV buffer directly. Weights stay resident in bf16
+and every (batch, length) bucket is captured as a CUDA graph, so a one-question call no longer pays
+~200 kernel launches from Python.
+
+```python
+agent = laya.load("convaiinnovations/laya", fast=True)   # or: agent.accelerate()
+agent.predict(state, questions)                            # same API, same answers
+```
+
+Numerics: on a fixed set of 60 states the fast path is at least as close to an fp32 forward as the stock bf16
+path is (max |Δp| ≤ 0.05 vs fp32 on both checkpoints, argmax agreement ≥ 47/48 per question type; every per-option
+probability is in `benchmarks/results/parity_*.json`) — see `benchmarks/parity_fast.py` and [BENCHMARKS.md](BENCHMARKS.md#gpu-fast-path).
+Falls back to the stock forward on CPU/MPS or when `tilelang` is not installed; `agent.deaccelerate()`
+restores it. Kernels compile once per shape bucket on first use (a few seconds, cached on disk).
 
 ---
 

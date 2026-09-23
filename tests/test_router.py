@@ -201,6 +201,37 @@ cases = [
     ("japanese text", {"body": "二重に請求されました"}, Q_GENERIC, {}, "multilingual"),
     ("korean text", {"body": "두 번 청구되었습니다"}, Q_GENERIC, {}, "multilingual"),
     ("arabic text", {"body": "تم خصم المبلغ مرتين"}, Q_GENERIC, {}, "multilingual"),
+    # Latin brand names are the letter plurality here, but the request itself is CJK
+    ("chinese with a brand", {"body": "我的 iPhone 15 Pro Max 订单还没到"}, Q_GENERIC, {}, "multilingual"),
+    ("japanese with brands", {"body": "Amazonで買ったiPhoneが届かない"}, Q_GENERIC, {}, "multilingual"),
+    ("korean with a brand", {"body": "Samsung Galaxy 주문이 아직 안 왔어요"}, Q_GENERIC, {}, "multilingual"),
+    ("english with a han name", {"body": "My name is 王小明 and my order is late"}, Q_GENERIC, {}, "english"),
+    # an English wrapper dilutes the share, but the request is still CJK
+    ("chinese in a ticket", {"ticket_id": "TCK-88213", "channel": "web chat",
+                             "agent_notes": "Customer asked about a delayed order. Please check shipping status.",
+                             "message": "我的订单已经两个星期了还没有到"}, Q_GENERIC, {}, "multilingual"),
+    ("korean after english turns", [{"role": "agent", "text": "Hello! Thanks for contacting support."},
+                                    {"role": "agent", "text": "Could you share your order number please?"},
+                                    {"role": "user", "text": "주문번호는 5521이고 아직 배송이 안 됐어요"}],
+     Q_GENERIC, {}, "multilingual"),
+    ("english with greek symbols", {"request": "Compute the mean μ and variance σ of X, then P(|X-μ| > 2σ)."},
+     Q_GENERIC, {}, "english"),
+    # English prose that names someone in their own script: the name is not the request, and a
+    # capitalised run, a lone symbol and a pronunciation are all annotation rather than content.
+    ("english prose, russian name",
+     {"body": "Anton Pavlovich Chekhov (Russian: Антон Павлович Чехов) was a playwright."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, name with IPA",
+     {"body": "Vladimir Nabokov (Russian: Влади́мир Набо́ков [vlɐˈdʲimʲɪr nɐˈbokəf]) wrote Lolita "
+              "and taught literature at Cornell for more than a decade."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, greek name",
+     {"body": "Eleftherios Venizelos (Greek: Ελευθέριος Βενιζέλος) served as prime minister."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, hebrew name",
+     {"body": "Amos Oz (Hebrew: עמוס עוז), born Amos Klausner, was an Israeli writer and professor "
+              "of literature at Ben-Gurion University of the Negev in Beersheba."},
+     Q_GENERIC, {}, "english"),
     ("german text", {"body": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung "
                              "fuer die Rechnung die nicht korrekt ist"}, Q_GENERIC, {}, "multilingual"),
     ("explicit model", {"body": "anything"}, Q_GENERIC, {"model": "multilingual"}, "multilingual"),

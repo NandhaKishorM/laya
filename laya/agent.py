@@ -143,8 +143,12 @@ class Agent:
         device: Optional[str] = None,
         token: Optional[str] = None,
         subfolder: Optional[str] = None,
+        fast: bool = False,
     ):
         """Load a Laya checkpoint.
+
+        `fast=True` swaps the encoder/head forward for the TileLang fast path (CUDA only, needs
+        `pip install laya[fast]`); see `Agent.accelerate`.
 
         `subfolder` selects one checkpoint from a repo that bundles several, e.g.
         `Agent("convaiinnovations/laya", subfolder="multilingual")`. Only that subfolder is
@@ -276,6 +280,7 @@ class Agent:
                 RuntimeWarning, stacklevel=2)
         self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
 
+        self._fast = None
         if self.device.type == "cuda" and torch.cuda.get_device_capability(self.device)[0] < 8:
             self.dtype = torch.float16
         elif self.device.type in ("cpu", "mps", "xpu"):
@@ -296,6 +301,9 @@ class Agent:
             else:
                 raise e
 
+        if fast:
+            self.accelerate()
+
         if fell_back_from is not None:
             print(
                 "\n[laya] Warning: could not place the model on %s, so it is running on CPU.\n"
@@ -306,6 +314,42 @@ class Agent:
                 "    pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128\n"
                 "  See https://pytorch.org/get-started/locally/\n"
                 % (fell_back_from, fell_back_why), flush=True)
+
+    def accelerate(self, use_graphs: bool = True, strict: bool = False):
+        """Replace the model forward with the TileLang fast path (fused GEMM/GEGLU/LayerNorm/RoPE kernels,
+        sliding-window flash attention, bf16 resident weights, CUDA graphs per shape bucket).
+
+        Same numerics as the stock bf16 autocast path (see benchmarks/bench_fast.py). Returns True if
+        enabled. With `strict=False` any failure (no CUDA, tilelang missing) leaves the stock path in place.
+        """
+        if self._fast is not None:
+            return True
+        if self.device.type != "cuda":
+            if strict:
+                raise RuntimeError("laya fast path needs a CUDA device")
+            return False
+        last = None
+        for _attempt in range(2):  # tilelang's JIT cache has been seen to fail once, then succeed
+            try:
+                from .fast import FastLaya
+                self._fast = FastLaya(self.model, max_len=self.cfg.get("max_len", 512), use_graphs=use_graphs)
+                break
+            except Exception as e:  # tilelang missing / unsupported arch
+                last = e
+        if self._fast is None:
+            if strict:
+                raise last
+            print("Warning: laya fast path unavailable (%s); using the stock forward." % last)
+            return False
+        self._stock_forward = self.model.forward
+        self.model.forward = self._fast.forward
+        return True
+
+    def deaccelerate(self):
+        """Restore the stock forward."""
+        if self._fast is not None:
+            self.model.forward = self._stock_forward
+            self._fast = None
 
     @staticmethod
     def _check_question(qid: str, qdef: Any) -> None:
@@ -504,12 +548,13 @@ RLAgent = Agent
 
 
 def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,
-         token: Optional[str] = None, subfolder: Optional[str] = None) -> Agent:
+         token: Optional[str] = None, subfolder: Optional[str] = None, fast: bool = False) -> Agent:
     """Load a Laya agent.
 
     `subfolder` picks one checkpoint out of a repo that bundles several:
 
         laya.load("convaiinnovations/laya")                           # English (repo root)
         laya.load("convaiinnovations/laya", subfolder="multilingual")
+        laya.load("convaiinnovations/laya", fast=True)                # TileLang GPU fast path
     """
-    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder)
+    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast)

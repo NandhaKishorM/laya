@@ -256,3 +256,54 @@ On laya_router's 180 requests (zero-shot, one 3-tier `choice`), nearly every con
 - **Both checkpoints ship over-confident.** Fit temperatures on your own data.
 - **Ordinal `score` is the weakest primitive** (SST-5 0.372).
 - `laya` collapses outside English; `laya-multilingual` is weaker on English. Route.
+
+---
+
+## GPU fast path
+
+`pip install laya[fast]` + `laya.load(..., fast=True)` replaces the encoder/head forward with fused
+[TileLang](https://github.com/tile-ai/tilelang) kernels (GEMM+epilogue, GEMM+GEGLU, residual+LayerNorm,
+in-place RoPE, sliding-window flash attention over the packed QKV buffer), bf16-resident weights and one
+CUDA graph per (batch, length) bucket. Measured with `benchmarks/bench_fast.py --eval 1000` on an
+RTX 4070 Ti SUPER, torch 2.11 + CUDA 13, tilelang 0.1.14; raw numbers in `benchmarks/results/`.
+
+### Same answers
+
+`benchmarks/parity_fast.py` answers a fixed, deterministic set of 60 states x up to 8 questions (the five presets over
+12 texts in six languages, short and long) with the stock bf16-autocast forward, the fast path, and an fp32 forward as
+the reference; every per-option probability from all three is in `benchmarks/results/parity_*.json`, so the comparison
+can be re-checked without a GPU.
+
+| checkpoint | type | n | max \|p_fast - p_stock\| | max \|p_fast - p_fp32\| | max \|p_stock - p_fp32\| | argmax fast = stock | fast = fp32 |
+|---|---|---|---|---|---|---|---|
+| laya | choice | 48 | 0.031 | **0.022** | 0.024 | 47/48 | 47/48 |
+| laya | noul | 180 | 0.076 | **0.044** | 0.058 | 180/180 | 180/180 |
+| laya | score | 60 | 0.015 | **0.011** | 0.017 | 59/60 | 60/60 |
+| laya-multilingual | choice | 48 | 0.049 | **0.015** | 0.039 | 47/48 | 47/48 |
+| laya-multilingual | noul | 180 | 0.037 | 0.046 | 0.045 | 180/180 | 179/180 |
+| laya-multilingual | score | 60 | 0.010 | **0.009** | 0.009 | 59/60 | 59/60 |
+
+The fast path is at least as close to the fp32 reference as the stock bf16 path is (the residual stream stays in fp32 in
+both), and the two bf16 paths differ from each other only by bf16 accumulation order; the few argmax disagreements are
+near-tie options, and on every one of them the fast path agrees with fp32. Dataset accuracy / ECE (AG News, dair-ai
+emotion, 1,000 samples each) are identical within noise; see `benchmarks/bench_fast.py --eval 1000`.
+
+### Latency, `agent.predict()` end to end (ms, incl. tokenization)
+
+| checkpoint | case | stock | fast | speedup |
+|---|---|---|---|---|
+| laya (ModernBERT-large) | 1 question, 72 tok | 17.7 | 4.6 | **3.8×** |
+| | 3 questions, 72 tok | 18.9 | 6.6 | 2.9× |
+| | 30 questions, 72 tok | 43.2 | 35.7 | 1.2× |
+| | 30 questions, 512 tok | 327.5 | 232.1 | 1.4× |
+| laya-multilingual (mmBERT-base) | 1 question, 72 tok | 14.1 | 2.8 | **5.1×** |
+| | 3 questions, 72 tok | 15.0 | 3.9 | 3.9× |
+| | 30 questions, 72 tok | 22.2 | 17.8 | 1.2× |
+| | 30 questions, 966 tok | 320.7 | 187.6 | 1.7× |
+| laya-multilingual, AG News eval loop | 1 question / sample | 14.9 | 3.2 | 4.7× |
+
+Small requests are launch-overhead bound in the stock path (≈200 kernels from Python per call); the CUDA
+graph removes that. Large batches are GEMM bound; the fused kernels sit at ~80 TFLOPS there, on par with
+cuBLAS, so the gain comes from the fused epilogues and the sliding-window attention (16× faster than SDPA
+with a dense mask at L=1024). First use of a new length bucket compiles kernels (a few seconds, cached on
+disk); inputs ≤256 tokens share one dynamic-shape kernel and never recompile.

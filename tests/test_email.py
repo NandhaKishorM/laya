@@ -98,6 +98,126 @@ check(
 )
 check("empty body stays empty", clean_email_body(""), "")
 
+# --------------------------------------------------------------- Portuguese and Spanish mail
+# With English-only markers none of this was removed, and the quoted history below (a cancellation)
+# reached the model next to the new message (a refund request).
+PT_EMAIL = """Olá equipe,
+
+Fomos cobrados duas vezes na fatura de março. Por favor, estornem a cobrança duplicada hoje.
+
+Atenciosamente,
+João Silva
+Financeiro - ACME Ltda
+
+Enviado do meu iPhone
+
+Esta mensagem pode conter informações confidenciais. Se você recebeu esta mensagem por engano, favor apagá-la.
+
+Em seg., 22 de set. de 2026 às 10:14, Suporte <suporte@x.com> escreveu:
+> Olá João, recebemos seu chamado de cancelamento do plano Enterprise.
+"""
+check(
+    "pt/full reply keeps only the request",
+    clean_email_body(PT_EMAIL),
+    "Olá equipe,\n\nFomos cobrados duas vezes na fatura de março. "
+    "Por favor, estornem a cobrança duplicada hoje.",
+)
+check(
+    "pt/outlook original-message block is cut",
+    clean_email_body(
+        "Segue o comprovante do pagamento.\n\n-----Mensagem original-----\n"
+        "De: Maria <maria@acme.com>\nAssunto: cancelar contrato\nQueremos cancelar o contrato."
+    ),
+    "Segue o comprovante do pagamento.",
+)
+check(
+    "pt/outlook header without separator is cut",
+    clean_email_body(
+        "Segue o comprovante.\n\nDe: Maria <maria@acme.com>\nEnviado: segunda-feira\n"
+        "Assunto: cancelar contrato\nQueremos cancelar o contrato."
+    ),
+    "Segue o comprovante.",
+)
+check(
+    "pt/gmail attribution wrapped over two lines is cut whole",
+    clean_email_body(
+        "O acesso voltou, obrigado.\n\nEm seg., 22 de set. de 2026 às 10:14, Suporte Técnico <\n"
+        "suporte@acme.com> escreveu:\n> texto antigo"
+    ),
+    "O acesso voltou, obrigado.",
+)
+check(
+    "pt/short sign-off is removed",
+    clean_email_body("Bom dia,\nO boleto de março não chegou.\nObrigado,\nAna"),
+    "Bom dia,\nO boleto de março não chegou.",
+)
+check(
+    "es/reply keeps only the request",
+    clean_email_body(
+        "Hola,\nNo puedo acceder a mi cuenta desde ayer.\nSaludos,\nCarlos\n\n"
+        "El lun, 22 sept 2026 a las 10:14, Soporte <soporte@x.com> escribió:\n> texto anterior"
+    ),
+    "Hola,\nNo puedo acceder a mi cuenta desde ayer.",
+)
+check(
+    "es/disclaimer footer is dropped",
+    clean_email_body(
+        "Necesito la factura de marzo.\n\nSi usted ha recibido este mensaje por error, bórrelo."
+    ),
+    "Necesito la factura de marzo.",
+)
+
+# --------------------------------------------------------------- ...without eating the request
+check(
+    "pt/request mentioning `confidencial` is kept",
+    clean_email_body("Preciso do contrato confidencial assinado até sexta."),
+    "Preciso do contrato confidencial assinado até sexta.",
+)
+check(
+    "pt/`Obrigado` opening a sentence is not a signature",
+    clean_email_body("Oi,\nRecebi a resposta.\nObrigado pelo retorno, mas continua\nsem funcionar."),
+    "Oi,\nRecebi a resposta.\nObrigado pelo retorno, mas continua\nsem funcionar.",
+)
+check(
+    "pt/`caso tenha recebido` footer is dropped",
+    clean_email_body(
+        "Favor reenviar a nota fiscal.\n\nCaso tenha recebido esta mensagem por engano, "
+        "notifique o remetente."
+    ),
+    "Favor reenviar a nota fiscal.",
+)
+check(
+    "pt/gmail attribution wrapped inside the name is cut whole",
+    clean_email_body(
+        "Resolvido, pode fechar.\n\nEm qua., 24 de set. de 2026 às 09:02, Suporte\n"
+        "Técnico <suporte@acme.com> escreveu:\n> texto antigo"
+    ),
+    "Resolvido, pode fechar.",
+)
+check(
+    "en/wrapped attribution is cut whole too",
+    clean_email_body(
+        "Fixed, thanks.\n\nOn Wed, Sep 24, 2026 at 9:02 AM Support Team <\n"
+        "support@acme.com> wrote:\n> old text"
+    ),
+    "Fixed, thanks.",
+)
+check(
+    "pt/`Em ... escreveu:` without a date is body text",
+    clean_email_body("Oi,\nEm resposta ao que você escreveu:\no pedido 4411 ainda não chegou."),
+    "Oi,\nEm resposta ao que você escreveu:\no pedido 4411 ainda não chegou.",
+)
+check(
+    "pt/`destinado exclusivamente` in a request is kept",
+    clean_email_body("O valor é destinado exclusivamente ao pagamento do boleto. Podem confirmar?"),
+    "O valor é destinado exclusivamente ao pagamento do boleto. Podem confirmar?",
+)
+check(
+    "pt/`De:` without an address is body text",
+    clean_email_body("Preciso das férias.\nDe: 10/09 a 15/09\nPode aprovar?"),
+    "Preciso das férias.\nDe: 10/09 a 15/09\nPode aprovar?",
+)
+
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

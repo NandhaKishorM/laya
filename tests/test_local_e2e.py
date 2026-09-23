@@ -1,8 +1,9 @@
 """End-to-end local test: real weights, real forward passes.
 
-Covers the two things routing is supposed to buy us:
+Covers three integration properties:
   1. non-English input reaches a checkpoint that can actually read it
   2. the shipped application presets still behave on English
+  3. a noul label override preserves false/true polarity on the English checkpoint
 
 Run:  python3 tests/test_local_e2e.py [model_root]
 Defaults to ~/laya_models, expecting laya/, laya-multilingual/, laya-typed-decisions/.
@@ -75,6 +76,31 @@ CATS = {"billing": "invoices, payments, refunds", "technical": "bugs, outages, i
         "sales": "pricing, demos, new purchases", "hr": "hiring, leave, payroll"}
 QD = {"dept": {"type": "choice", "instructions": "Which team should handle `message`?", "criteria": CATS},
       "refund": {"type": "noul", "instructions": "Does the customer ask for money back?"}}
+REVIEWS = [
+    ("positive", {"body": "This product is excellent quality - six months in and not a single problem."}, True),
+    ("negative", {"body": "It arrived broken and nobody answers when I contact support."}, False),
+]
+REVIEW_Q = {
+    "plain": {"type": "noul", "instructions": "Is this review positive?",
+              "labels": {"false": "B", "true": "A"}},
+    "rich": {
+        "type": "noul",
+        "instructions": "Is this review positive?",
+        "criteria": {"true": "the review is positive", "false": "the review is negative"},
+        "labels": {"false": "B", "true": "A"},
+    },
+}
+
+
+def check_noul_label_override(agent, checkpoint):
+    for polarity, state, want_true in REVIEWS:
+        answers = agent.predict(state, REVIEW_Q)["answers"]
+        for qid in REVIEW_Q:
+            probability = answers[qid]["noul"]
+            ok("noul labels/%s/%s/%s" % (checkpoint, polarity, qid),
+               (probability > 0.5) == want_true, "P(true)=%.4f" % probability)
+
+
 BILLING = [
     ("english", "I was charged twice for invoice 4411, please refund it today."),
     ("german", "Ich wurde zweimal fuer Rechnung 4411 belastet, bitte erstatten Sie den Betrag."),
@@ -101,6 +127,7 @@ head("3. English checkpoint on the same non-English inputs (why routing matters)
 ml_only = {l: t for l, t in BILLING if l in ("hindi", "japanese", "chinese", "russian")}
 del ml
 en = laya.load(LOCAL["english"], device=DEVICE)
+check_noul_label_override(en, "english")
 en_correct = 0
 for label, text in ml_only.items():
     a = en.predict({"message": text}, QD)["answers"]
@@ -209,6 +236,100 @@ ok("hindi answer is billing", res_hi["answers"]["dept"]["choice"] == "billing",
 res_td = r2.predict({"message": "anything"}, QD, model="typed-decisions")
 ok("explicit typed-decisions honoured", res_td["routing"]["model"] == "typed-decisions")
 ok("routing payload serialises", isinstance(json.dumps(res_td["routing"]), str))
+
+# ---------------------------------------------------------------- 6. tokenizer reuse
+head("6. Tokenizers are parsed once per checkpoint, not per Agent")
+# `huggingface_hub` caches the download but not the parsed tokenizer, and the eviction above
+# destroyed the whole Agent. Rebuilding it must not re-parse tokenizer.json -- 34 MB on the
+# multilingual checkpoint, several times the cost of applying its weights.
+first = laya.load(LOCAL["english"], device=DEVICE)
+again = laya.load(LOCAL["english"], device=DEVICE)
+ok("same checkpoint reuses its tokenizer", first.tok is again.tok)
+
+multi = laya.load(LOCAL["multilingual"], device=DEVICE)
+ok("a different checkpoint gets its own tokenizer", multi.tok is not first.tok)
+
+tok_dir = os.path.join(LOCAL["english"], "tokenizer")
+os.utime(os.path.join(tok_dir, "tokenizer_config.json"), None)
+refreshed = laya.load(LOCAL["english"], device=DEVICE)
+ok("a rewritten tokenizer config forces a fresh parse", refreshed.tok is not first.tok,
+   "an edited on-disk tokenizer must not be masked by the cache")
+del first, again, multi, refreshed
+
+
+# ------------------------------------------------- 7. Batch inference matches one-by-one
+head("7. predict_batch matches system_one, decision-for-decision (real forward passes)")
+BATCH_STATES = [
+    {"message": "I was charged twice for invoice 4411, please refund it today."},
+    {"message": "The dashboard has been down for an hour and my team is blocked."},
+    {"message": "What is the price of the enterprise plan? No rush at all."},
+    {"message": "Cannot reset my password, the email never arrives."},
+    {"message": "Thanks, everything is working great now!"},
+]
+# The English checkpoint was freed above; load a fresh agent for this section.
+ba = laya.load(LOCAL["multilingual"], device=DEVICE)
+# fp16 autocast on GPU reorders reductions across padding widths, so numbers can wobble in the
+# 4th decimal; CPU fp32 is exact. Decisions (argmax) must be identical either way.
+ATOL = 5e-3 if str(ba.device) != "cpu" else 0.0
+
+single = [ba.predict(s, QD) for s in BATCH_STATES]
+batched = ba.predict_batch(BATCH_STATES, QD)
+chunked = ba.predict_batch(BATCH_STATES, QD, batch_size=2)
+
+ok("batch returns one result per state", len(batched) == len(BATCH_STATES),
+   "got %d" % len(batched))
+ok("empty batch returns []", ba.predict_batch([], QD) == [])
+try:
+    ba.predict_batch("a bare string", QD)
+    ok("bare state rejected", False, "no TypeError raised")
+except TypeError:
+    ok("bare state rejected", True)
+
+
+def _num_close(x, y, atol):
+    return abs(x - y) <= atol
+
+
+def _answers_agree(a, b, atol):
+    if set(a) != set(b):
+        return False, "question ids differ"
+    for qid in a:
+        x, y = a[qid], b[qid]
+        if x["type"] != y["type"]:
+            return False, "%s: type" % qid
+        if x["type"] == "choice":
+            if x["choice"] != y["choice"]:
+                return False, "%s: choice %s vs %s" % (qid, x["choice"], y["choice"])
+            for kk in x["probabilities"]:
+                if not _num_close(x["probabilities"][kk], y["probabilities"][kk], atol):
+                    return False, "%s: prob[%s]" % (qid, kk)
+        elif x["type"] == "score":
+            if not _num_close(x["score"], y["score"], atol):
+                return False, "%s: score %s vs %s" % (qid, x["score"], y["score"])
+        elif x["type"] == "noul":
+            if not _num_close(x["noul"], y["noul"], atol):
+                return False, "%s: noul %s vs %s" % (qid, x["noul"], y["noul"])
+    return True, ""
+
+
+bad = 0
+for i, (s, b) in enumerate(zip(single, batched)):
+    agree, why = _answers_agree(s["answers"], b["answers"], ATOL)
+    if not agree:
+        bad += 1
+        print("   FAIL state %d: %s" % (i, why), flush=True)
+    if s["usage"]["input_tokens"] != b["usage"]["input_tokens"]:
+        bad += 1
+        print("   FAIL state %d: token count %d vs %d"
+              % (i, s["usage"]["input_tokens"], b["usage"]["input_tokens"]), flush=True)
+ok("batched == one-by-one (decisions + numbers within atol %.0e)" % ATOL, bad == 0,
+   "%d states diverged" % bad)
+
+bad_chunk = sum(0 if _answers_agree(b["answers"], c["answers"], ATOL)[0] else 1
+                for b, c in zip(batched, chunked))
+ok("batch_size chunking matches one big pass", bad_chunk == 0, "%d diverged" % bad_chunk)
+print("   verified %d states across full / chunked / one-by-one paths" % len(BATCH_STATES), flush=True)
+del ba
 
 # ---------------------------------------------------------------- summary
 head("SUMMARY")

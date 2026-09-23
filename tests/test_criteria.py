@@ -36,6 +36,14 @@ def check_true(name, cond, detail=""):
         FAIL.append("%s %s" % (name, detail))
 
 
+def check_raises(name, fn, message):
+    try:
+        fn()
+        FAIL.append("%s: should have raised ValueError" % name)
+    except ValueError as e:
+        check(name, str(e), message)
+
+
 # --------------------------------------------------------------- render_criterion
 check("criterion/str passes through", render_criterion("phishing or scam"), "phishing or scam")
 check("criterion/dict -> json", render_criterion({"desc": "phishing"}), '{"desc": "phishing"}')
@@ -86,17 +94,50 @@ check("ece/zero confidence has its proper weight",
       ece_score(np.array([0.0, 1.0]), np.array([1.0, 1.0])), 0.5)
 
 
-# --------------------------------------------------------------- unchanged behaviour
+# --------------------------------------------------------------- noul labels
 check("noul/default false text", render_options({"t": "noul", "ins": "x", "crit": None})[0],
       "false: no, the statement does not hold")
 check("noul/default true text", render_options({"t": "noul", "ins": "x", "crit": None})[1],
       "true: yes, the statement holds")
+check("noul/explicit None labels use defaults",
+      render_options({"t": "noul", "ins": "x", "crit": None, "labels": None}),
+      ["false: no, the statement does not hold", "true: yes, the statement holds"])
 check("noul/string criteria still work",
       render_options({"t": "noul", "ins": "x", "crit": {"true": "yes it is", "false": "no"}}),
       ["false: no", "true: yes it is"])
+custom_labels = {"true": " A ", "false": " B "}
+custom_question = {"t": "noul", "ins": "x", "crit": None, "labels": custom_labels}
+check("noul/custom labels preserve false-then-true semantics", render_options(custom_question),
+      ["B: no, the statement does not hold", "A: yes, the statement holds"])
+check("noul/custom label input is not mutated", custom_labels, {"true": " A ", "false": " B "})
+
+_label_error = "noul labels must map exactly 'false' and 'true' to distinct non-empty strings"
+for name, labels in [
+    ("not a dict", ["negative", "positive"]),
+    ("missing true", {"false": "negative"}),
+    ("extra key", {"false": "negative", "true": "positive", "other": "x"}),
+    ("blank value", {"false": " ", "true": "positive"}),
+    ("duplicate values", {"false": "same", "true": "same"}),
+    ("non-string value", {"false": 0, "true": "positive"}),
+]:
+    check_raises("noul/invalid labels " + name,
+                 lambda labels=labels: render_options({"t": "noul", "ins": "x", "labels": labels}),
+                 _label_error)
+
+for qtype, crit in [("choice", {"a": None, "b": None}), ("score", ["low", "high"])]:
+    check_raises("%s/rejects labels" % qtype,
+                 lambda qtype=qtype, crit=crit: render_options(
+                     {"t": qtype, "ins": "x", "crit": crit,
+                      "labels": {"false": "B", "true": "A"}}),
+                 "labels is only supported for noul questions")
+
+# --------------------------------------------------------------- unchanged choice and score behaviour
 check("choice/string criteria still work",
       render_options({"t": "choice", "ins": "x", "crit": {"a": "first", "b": None}}),
       ["a: first", "b"])
+check("choice/boolean-word labels are not rewritten",
+      render_options({"t": "choice", "ins": "x", "crit": {"true": "yes", "false": "no"}}),
+      ["true: yes", "false: no"])
 check("score/string criteria still work",
       render_options({"t": "score", "ins": "x", "crit": ["low", "high"]}),
       ["level 0: low", "level 1: high"])
@@ -112,6 +153,27 @@ for qq in [{"t": "choice", "ins": "x", "crit": {"a": {"n": 1}, "b": [1, 2], "c":
 parsed = json.loads(render_options(
     {"t": "noul", "ins": "x", "crit": {"true": {"a": 1}, "false": {"b": 2}}})[1].split("true: ", 1)[1])
 check("emitted json round-trips", parsed, {"a": 1})
+
+# public labels reach the renderer through Agent._to_internal without changing caller data
+from laya.agent import Agent  # noqa: E402
+
+public_labels = {"true": "A", "false": "B"}
+public_question = {"type": "noul", "instructions": "Is this true?", "labels": public_labels}
+internal = Agent._to_internal(public_question)
+check("agent/forwards noul labels", internal["labels"], public_labels)
+check("agent/forwarded labels reach renderer", render_options(internal),
+      ["B: no, the statement does not hold", "A: yes, the statement holds"])
+check("agent/leaves public question unchanged", public_question,
+      {"type": "noul", "instructions": "Is this true?", "labels": {"true": "A", "false": "B"}})
+
+boolean_criteria = {True: "yes", False: "no"}
+boolean_question = {"type": "noul", "instructions": "Is this true?", "criteria": boolean_criteria,
+                    "labels": {"false": "B", "true": "A"}}
+boolean_internal = Agent._to_internal(boolean_question)
+check("agent/custom labels keep boolean criteria normalization", boolean_internal["crit"],
+      {"true": "yes", "false": "no"})
+check("agent/boolean criteria render with custom labels", render_options(boolean_internal), ["B: no", "A: yes"])
+check("agent/leaves boolean criteria unchanged", boolean_criteria, {True: "yes", False: "no"})
 
 
 # --------------------------------------------------------------- CPU-fallback warning (#9 follow-up)
@@ -144,6 +206,31 @@ from transformers import AutoConfig, AutoModel  # noqa: E402
 from laya.agent import Agent  # noqa: E402
 from laya.common import DecisionModel  # noqa: E402
 from laya.router import Router  # noqa: E402
+
+
+# `_to_internal` serialises non-string `instructions` with json.dumps. The default
+# `ensure_ascii=True` escaped non-ASCII to literal `\uXXXX`, which the tokenizer then
+# read as escape text: on the English checkpoint one German question answered noul=0.1652
+# as a dict and noul=0.2650 as the identical plain string. Every other text path keeps
+# its characters -- see the `criterion/non-ascii kept` case above.
+_internal = Agent._to_internal(
+    {"type": "noul", "instructions": {"frage": "Bittet um eine R\u00fcckerstattung?"},
+     "criteria": None})
+check("instructions/non-ascii kept as a dict",
+      _internal["ins"], '{"frage": "Bittet um eine R\u00fcckerstattung?"}')
+check_true("instructions/no escape sequences in the prompt",
+           "\\u" not in _internal["ins"], repr(_internal["ins"]))
+check("instructions/ascii is unchanged",
+      Agent._to_internal({"type": "noul", "instructions": {"asks": "for a refund"},
+                          "criteria": None})["ins"],
+      '{"asks": "for a refund"}')
+check("instructions/plain string is untouched",
+      Agent._to_internal({"type": "noul", "instructions": "Bittet der Kunde um eine "
+                          "R\u00fcckerstattung?", "criteria": None})["ins"],
+      "Bittet der Kunde um eine R\u00fcckerstattung?")
+check("instructions/non-string still renders as json",
+      Agent._to_internal({"type": "noul", "instructions": ["a", "b"],
+                          "criteria": None})["ins"], '["a", "b"]')
 
 
 class _FakeTok:
@@ -182,8 +269,18 @@ for label, qdef in [
     ("score with an empty list", {"type": "score", "instructions": "How urgent?", "criteria": []}),
     ("score with a dict of levels", {"type": "score", "instructions": "How urgent?",
                                      "criteria": {"low": "no pressure", "high": "blocking"}}),
+    ("choice with labels", {"type": "choice", "instructions": "Which team?",
+                            "criteria": ["billing", "tech"],
+                            "labels": {"false": "B", "true": "A"}}),
+    ("score with labels", {"type": "score", "instructions": "How urgent?",
+                           "criteria": ["low", "high"],
+                           "labels": {"false": "B", "true": "A"}}),
     ("noul with list criteria", {"type": "noul", "instructions": "Is it spam?", "criteria": ["a", "b"]}),
     ("noul with string criteria", {"type": "noul", "instructions": "Is it spam?", "criteria": "spam?"}),
+    ("noul with incomplete labels", {"type": "noul", "instructions": "Is it spam?",
+                                     "labels": {"true": "A"}}),
+    ("noul with duplicate labels", {"type": "noul", "instructions": "Is it spam?",
+                                    "labels": {"false": "A", "true": "A"}}),
     ("unknown type", {"type": "bool", "instructions": "Is it spam?"}),
     ("missing type", {"instructions": "Is it spam?"}),
     ("no instructions", {"type": "noul"}),
@@ -231,6 +328,9 @@ GOOD = {
     "noul": {"type": "noul", "instructions": "Does the sender want a reply?"},
     "noul with criteria": {"type": "noul", "instructions": "Is it phishing?",
                            "criteria": {"true": "phishing", "false": "legitimate"}},
+    "noul with labels": {"type": "noul", "instructions": "Is it phishing?",
+                         "criteria": {"true": "phishing", "false": "legitimate"},
+                         "labels": {"false": "B", "true": "A"}},
     "non-string instructions": {"type": "noul", "instructions": {"asks": "for a refund"}},
 }
 out = agent.system_one(STATE, GOOD)
@@ -243,15 +343,41 @@ check_true("good/choice from a list",
 check("good/choice probabilities sum", round(sum(out["answers"]["choice"]["probabilities"].values()), 3), 1.0)
 check_true("good/score is in range", 0.0 <= out["answers"]["score"]["score"] <= 2.0,
            str(out["answers"]["score"]))
-check_true("good/score legend", out["answers"]["score"]["legend"],
-           {"0": "no pressure", "1": "soon", "2": "blocking"})
+check("good/score legend", out["answers"]["score"]["legend"],
+      {"0": "no pressure", "1": "soon", "2": "blocking"})
 check_true("good/noul is a probability", 0.0 <= out["answers"]["noul"]["noul"] <= 1.0,
            str(out["answers"]["noul"]))
 check_true("good/noul with criteria is a probability",
            0.0 <= out["answers"]["noul with criteria"]["noul"] <= 1.0,
            str(out["answers"]["noul with criteria"]))
+check_true("good/noul with labels is a probability",
+           0.0 <= out["answers"]["noul with labels"]["noul"] <= 1.0,
+           str(out["answers"]["noul with labels"]))
 check("good/usage has no output tokens", out["usage"]["output_tokens"], 0)
 check_true("good/usage counted input tokens", out["usage"]["input_tokens"] > 0, str(out["usage"]))
+
+# --------------------------------------------------------------- build_sequence left truncation
+# With no room left for the state, `st[-0:]` kept all of it: the closing [SEP] was replaced by the
+# *first* state token, i.e. the wrong end of the state and an unterminated sequence.
+from laya.common import build_sequence  # noqa: E402
+
+
+class _SeqTok:
+    mask_token, mask_token_id, cls_token_id, sep_token_id = "[MASK]", 1, 2, 3
+
+    def __init__(self):
+        self.vocab = {}
+
+    def __call__(self, text, add_special_tokens=False):
+        return {"input_ids": [self.vocab.setdefault(w, 100 + len(self.vocab)) for w in text.split()]}
+
+
+_tok, _q = _SeqTok(), {"t": "noul", "ins": "Is it urgent?", "crit": None}
+_full = len(build_sequence(_tok, "", _q, 10 ** 6)[0])     # prompt + closing [SEP], no state
+for room, kept in [(0, []), (2, ["two", "three"]), (10, ["one", "two", "three"])]:
+    ids = build_sequence(_tok, "one two three", _q, _full + room, truncate_left=True)[0]
+    check("truncate_left/room=%d keeps the tail" % room, ids[_full - 1:],
+          [_tok.vocab[w] for w in kept] + [_tok.sep_token_id])
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

@@ -1,8 +1,9 @@
 """High-level inference runtime for laya System 1 decision models."""
 import json
 import os
+import threading
 import warnings
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
@@ -17,6 +18,7 @@ from .common import (
     clamp_temperature,
     collate_items,
     confidence_from_probs,
+    _resolve_noul_labels,
     render_options,
     temp_bucket,
 )
@@ -97,6 +99,42 @@ def _verify_compatibility(model: torch.nn.Module, cfg: Dict, weights: Dict[str, 
         )
 
 
+_TOKENIZERS: Dict[tuple, Any] = {}
+_TOKENIZERS_LOCK = threading.Lock()
+
+
+def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
+    """Tokenizer for a checkpoint, parsed once per process.
+
+    Parsing `tokenizer.json` is not free and `huggingface_hub` caches only the download, not
+    the parsed object: the multilingual checkpoint ships a 34 MB, 256k-vocabulary file that
+    costs seconds to load, several times the cost of applying its weights. A tokenizer is
+    read-only during inference, so one instance is shared by every Agent that wants the same
+    directory -- including an Agent the Router has rebuilt after eviction.
+
+    Keyed on the tokenizer directory and its mtime, so a re-download or a config rewritten by
+    `_fix_tokenizer_config()` still produces a fresh parse. Non-directory sources (a hub id)
+    are not cached, so a caller cannot pin a stale remote revision.
+    """
+    from transformers import AutoTokenizer
+
+    if not os.path.isdir(tok_dir):
+        return AutoTokenizer.from_pretrained(cfg.get("encoder"))
+
+    try:
+        stamp = (os.path.abspath(tok_dir), os.path.getmtime(os.path.join(tok_dir, "tokenizer_config.json")))
+    except OSError:
+        return AutoTokenizer.from_pretrained(tok_dir)
+
+    with _TOKENIZERS_LOCK:
+        cached = _TOKENIZERS.get(stamp)
+        if cached is not None:
+            return cached
+        tokenizer = AutoTokenizer.from_pretrained(tok_dir)
+        _TOKENIZERS[stamp] = tokenizer
+        return tokenizer
+
+
 class Agent:
     """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions."""
 
@@ -106,16 +144,19 @@ class Agent:
         device: Optional[str] = None,
         token: Optional[str] = None,
         subfolder: Optional[str] = None,
+        fast: bool = False,
         compile: bool = False,
     ):
         """Load a Laya checkpoint.
+
+        `fast=True` swaps the encoder/head forward for the TileLang fast path (CUDA only, needs
+        `pip install laya[fast]`); see `Agent.accelerate`.
 
         `subfolder` selects one checkpoint from a repo that bundles several, e.g.
         `Agent("convaiinnovations/laya", subfolder="multilingual")`. Only that subfolder is
         downloaded, so bundling does not cost every user the whole family.
         """
         from safetensors.torch import load_file
-        from transformers import AutoTokenizer
         try:
             from transformers.initialization import no_init_weights
         except ImportError:  # Transformers 4.x
@@ -176,6 +217,9 @@ class Agent:
             elif target_device.type == "mps" and not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
                 print("Warning: MPS requested but not available. Falling back to CPU.")
                 self.device = torch.device("cpu")
+            elif target_device.type == "xpu" and not (hasattr(torch, "xpu") and torch.xpu.is_available()):
+                print("Warning: XPU requested but not available. Falling back to CPU.")
+                self.device = torch.device("cpu")
             else:
                 self.device = target_device
         else:
@@ -183,11 +227,13 @@ class Agent:
                 self.device = torch.device("cuda")
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 self.device = torch.device("mps")
+            elif hasattr(torch, "xpu") and torch.xpu.is_available():
+                self.device = torch.device("xpu")
             else:
                 self.device = torch.device("cpu")
 
         tok_dir = os.path.join(model_dir, "tokenizer")
-        self.tok = AutoTokenizer.from_pretrained(tok_dir if os.path.exists(tok_dir) else self.cfg.get("encoder"))
+        self.tok = _load_tokenizer(tok_dir, self.cfg)
 
         enc_dir = os.path.join(model_dir, "encoder")
         # The checkpoint supplies every parameter; skip random/base-model weights.
@@ -209,7 +255,8 @@ class Agent:
         except Exception:
             pass
             
-        if compile:
+        # The TileLang fast path replaces the forward itself, so it takes precedence over compile.
+        if compile and not fast:
             self.model = torch.compile(self.model)
 
         # Keep what the checkpoint shipped for inspection, but only ever apply clamped values:
@@ -239,9 +286,10 @@ class Agent:
                 RuntimeWarning, stacklevel=2)
         self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
 
+        self._fast = None
         if self.device.type == "cuda" and torch.cuda.get_device_capability(self.device)[0] < 8:
             self.dtype = torch.float16
-        elif self.device.type in ("cpu", "mps"):
+        elif self.device.type in ("cpu", "mps", "xpu"):
             self.dtype = torch.float32
 
         # 2. Place on device with graceful fallback to CPU on memory error
@@ -259,6 +307,9 @@ class Agent:
             else:
                 raise e
 
+        if fast:
+            self.accelerate()
+
         if fell_back_from is not None:
             print(
                 "\n[laya] Warning: could not place the model on %s, so it is running on CPU.\n"
@@ -269,6 +320,42 @@ class Agent:
                 "    pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128\n"
                 "  See https://pytorch.org/get-started/locally/\n"
                 % (fell_back_from, fell_back_why), flush=True)
+
+    def accelerate(self, use_graphs: bool = True, strict: bool = False):
+        """Replace the model forward with the TileLang fast path (fused GEMM/GEGLU/LayerNorm/RoPE kernels,
+        sliding-window flash attention, bf16 resident weights, CUDA graphs per shape bucket).
+
+        Same numerics as the stock bf16 autocast path (see benchmarks/bench_fast.py). Returns True if
+        enabled. With `strict=False` any failure (no CUDA, tilelang missing) leaves the stock path in place.
+        """
+        if self._fast is not None:
+            return True
+        if self.device.type != "cuda":
+            if strict:
+                raise RuntimeError("laya fast path needs a CUDA device")
+            return False
+        last = None
+        for _attempt in range(2):  # tilelang's JIT cache has been seen to fail once, then succeed
+            try:
+                from .fast import FastLaya
+                self._fast = FastLaya(self.model, max_len=self.cfg.get("max_len", 512), use_graphs=use_graphs)
+                break
+            except Exception as e:  # tilelang missing / unsupported arch
+                last = e
+        if self._fast is None:
+            if strict:
+                raise last
+            print("Warning: laya fast path unavailable (%s); using the stock forward." % last)
+            return False
+        self._stock_forward = self.model.forward
+        self.model.forward = self._fast.forward
+        return True
+
+    def deaccelerate(self):
+        """Restore the stock forward."""
+        if self._fast is not None:
+            self.model.forward = self._stock_forward
+            self._fast = None
 
     @staticmethod
     def _check_question(qid: str, qdef: Any) -> None:
@@ -304,6 +391,13 @@ class Agent:
         elif crit is not None and not isinstance(crit, dict):
             raise ValueError("question %r: a noul question takes 'criteria' as a dict with optional "
                              "'true'/'false' descriptions, or omits it" % (qid,))
+        if "labels" in qdef:
+            if t != "noul":
+                raise ValueError("question %r: 'labels' is only supported for noul questions" % (qid,))
+            try:
+                _resolve_noul_labels(qdef["labels"])
+            except ValueError as e:
+                raise ValueError("question %r: %s" % (qid, e)) from e
 
     @staticmethod
     def _to_internal(qdef: Dict) -> Dict:
@@ -316,81 +410,70 @@ class Agent:
             crit = {str(k).lower(): v for k, v in crit.items()}
         ins = qdef["instructions"]
         if not isinstance(ins, str):
-            ins = json.dumps(ins)
-        return {"t": t, "ins": ins, "crit": crit}
+            # `ensure_ascii=False`, matching `serialize_state` and `render_criterion` in
+            # common.py and the instructions path in shortlist.py. The default escaped
+            # non-ASCII to literal `\uXXXX`, which the tokenizer then read as escape text:
+            # on the English checkpoint one German question answered noul=0.1652 as a dict
+            # and noul=0.2650 as the identical plain string.
+            ins = json.dumps(ins, ensure_ascii=False)
+        q = {"t": t, "ins": ins, "crit": crit}
+        if "labels" in qdef:
+            q["labels"] = qdef["labels"]
+        return q
 
-    @torch.no_grad()
-    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-        """Evaluate typed questions across state in a single, parallel forward pass.
-
-        Args:
-            state: Text string, JSON dict, or conversation turn list.
-            questions: Dictionary mapping question_id -> question definition.
-                - choice: {"type": "choice", "instructions": "...", "criteria": {"optA": "...", ...}}
-                - score:  {"type": "score",  "instructions": "...", "criteria": ["lvl0", "lvl1", ...]}
-                - noul:   {"type": "noul",   "instructions": "...", "criteria": {"true": "...", "false": "..."}}
-
-        Returns:
-            Dictionary with answers, probabilities, calibrated confidence, and token usage.
-            Empty questions return empty answers and zero token usage without tokenization
-            or a model forward pass.
-        """
-        ids = list(questions.keys())
-        if not ids:
-            return {
-                "model": "laya-rl-agent",
-                "answers": {},
-                "usage": {"input_tokens": 0, "output_tokens": 0},
-            }
-        items = []
+    def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict]) -> List[Dict]:
+        """Tokenize one state against every (already validated + normalized) question."""
         max_len = self.cfg.get("max_len", 512)
         head_max_len = self.cfg.get("head_max_len", 192)
-
+        # A chronological conversation list is serialized newest-last, so the default
+        # right-truncation (st[:room]) would silently drop the newest turn. Truncate
+        # from the left for lists so the most recent intent is preserved.
+        truncate_left = isinstance(state, list)
+        items = []
         for qid in ids:
-            self._check_question(qid, questions[qid])
-            q = self._to_internal(questions[qid])
-            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len)
+            q = internal[qid]
+            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len,
+                                          truncate_left=truncate_left)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
+        return items
 
-        b = collate_items([items], self.tok.pad_token_id)
-        use_amp = self.device.type == "cuda"
-
-        try:
+    def _forward(self, b: Dict):
+        """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""
+        def run():
+            use_amp = self.device.type == "cuda"
             with torch.autocast(device_type=self.device.type, dtype=self.dtype, enabled=use_amp):
-                logits, act = self.model(
+                return self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),
                     b["marker_pos"].to(self.device),
                     b["marker_mask"].to(self.device),
                     b["qtype"].to(self.device),
                 )
+
+        try:
+            logits, act = run()
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
             if self.device.type != "cpu" and ("memory" in str(e).lower() or "cuda" in str(e).lower()):
                 print("Warning: GPU memory exceeded during inference. Falling back to CPU...")
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
                 self.model.to(self.device)
-                logits, act = self.model(
-                    b["input_ids"].to(self.device),
-                    b["attention_mask"].to(self.device),
-                    b["marker_pos"].to(self.device),
-                    b["marker_mask"].to(self.device),
-                    b["qtype"].to(self.device),
-                )
+                logits, act = run()
             else:
                 raise e
 
-        logits = logits.float().cpu().numpy()
-        act = torch.softmax(act.float(), -1).cpu().numpy()
+        return logits.float().cpu().numpy(), torch.softmax(act.float(), -1).cpu().numpy()
 
+    def _decode_answers(self, logits, act, items: List[Dict], ids: List[str],
+                        internal: Dict[str, Dict], offset: int) -> Dict[str, Any]:
+        """Turn one state's logit rows (starting at `offset`) into typed answers."""
         answers = {}
-        n_tokens = int(b["attention_mask"].sum())
-
-        for r, qid in enumerate(ids):
-            q = self._to_internal(questions[qid])
-            k = len(items[r]["markers"])
+        for j, qid in enumerate(ids):
+            r = offset + j
+            q = internal[qid]
+            k = len(items[j]["markers"])
             qt = QTYPES[q["t"]]
             t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])
             z = logits[r, :k] / t_scale
@@ -426,12 +509,97 @@ class Agent:
                     "confidence": round(max(float(p[1]), 1.0 - float(p[1])), 4),
                     "action": ext,
                 }
+        return answers
 
-        return {
-            "model": "laya-rl-agent",
-            "answers": answers,
-            "usage": {"input_tokens": n_tokens, "output_tokens": 0},
-        }
+    @torch.no_grad()
+    def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
+                      batch_size: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Evaluate the same questions over many states, packing them into shared forward passes.
+
+        This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
+        GPU that leaves most of the batch dimension idle. `predict_batch` collates several states'
+        question rows into one tensor, so a call that would take N sequential forward passes takes
+        one (or `ceil(len(states) / batch_size)`), which is several times faster per decision on GPU.
+
+        Args:
+            states: A list of states (each a text string, JSON dict, or conversation turn list).
+                    The same `questions` are evaluated against every state.
+            questions: Question definitions, exactly as accepted by `system_one`.
+            batch_size: Optional cap on states per forward pass. `None` sends them all in one pass;
+                        set it to bound peak memory when batching many or long states.
+
+        Returns:
+            A list of per-state result dicts, each identical in shape to `system_one`'s output and
+            aligned with `states` by index.
+        """
+        if isinstance(states, (str, bytes, dict)):
+            raise TypeError(
+                "predict_batch expects a list of states; pass a single state to predict()/system_one()."
+            )
+        states = list(states)
+        if not states:
+            return []
+
+        ids = list(questions.keys())
+        # Empty questions: empty answers, zero usage, no tokenization or forward (matches system_one).
+        if not ids:
+            return [{"model": "laya-rl-agent", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}
+                    for _ in states]
+
+        # Validate + normalize each question once (state-independent), preserving system_one's checks.
+        for qid in ids:
+            self._check_question(qid, questions[qid])
+        internal = {qid: self._to_internal(questions[qid]) for qid in ids}
+        chunk = batch_size if (batch_size and batch_size > 0) else len(states)
+
+        results: List[Dict[str, Any]] = []
+        for start in range(0, len(states), chunk):
+            part = states[start:start + chunk]
+            per_state_items = [self._encode_state(st, ids, internal) for st in part]
+
+            b = collate_items(per_state_items, self.tok.pad_token_id)
+            logits, act = self._forward(b)
+            att = b["attention_mask"]
+
+            row = 0
+            for items in per_state_items:
+                nrows = len(items)
+                n_tokens = int(att[row:row + nrows].sum())
+                answers = self._decode_answers(logits, act, items, ids, internal, row)
+                results.append({
+                    "model": "laya-rl-agent",
+                    "answers": answers,
+                    "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+                })
+                row += nrows
+
+        return results
+
+    @torch.no_grad()
+    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """Evaluate typed questions across state in a single, parallel forward pass.
+
+        Args:
+            state: Text string, JSON dict, or conversation turn list.
+            questions: Dictionary mapping question_id -> question definition.
+                - choice: {"type": "choice", "instructions": "...", "criteria": {"optA": "...", ...}}
+                - score:  {"type": "score",  "instructions": "...", "criteria": ["lvl0", "lvl1", ...]}
+                - noul:   {"type": "noul", "instructions": "...",
+                           "criteria": {"false": "...", "true": "..."},
+                           "labels": {"false": "B", "true": "A"}}
+
+                  Noul criteria and labels are optional. Labels only control the text shown to the
+                  model; their keys retain false/true semantics, and the returned `noul` value is
+                  always P(true). Labels default to false/true for compatibility.
+
+        Returns:
+            Dictionary with answers, probabilities, calibrated confidence, and token usage.
+            Empty questions return empty answers and zero token usage without tokenization
+            or a model forward pass.
+
+        To score many states at once, see `predict_batch`, which shares forward passes across them.
+        """
+        return self.predict_batch([state], questions)[0]
 
     def __enter__(self):
         return self
@@ -457,12 +625,13 @@ RLAgent = Agent
 
 
 def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,
-         token: Optional[str] = None, subfolder: Optional[str] = None) -> Agent:
+         token: Optional[str] = None, subfolder: Optional[str] = None, fast: bool = False) -> Agent:
     """Load a Laya agent.
 
     `subfolder` picks one checkpoint out of a repo that bundles several:
 
         laya.load("convaiinnovations/laya")                           # English (repo root)
         laya.load("convaiinnovations/laya", subfolder="multilingual")
+        laya.load("convaiinnovations/laya", fast=True)                # TileLang GPU fast path
     """
-    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder)
+    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast)

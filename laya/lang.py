@@ -11,6 +11,7 @@ Script detection is exact. The Latin-script language guess is a stopword/diacrit
 is explicitly best-effort: pass an explicit model or `lang=` when you already know the language.
 """
 import re
+import unicodedata
 from typing import Dict, List, Optional, Union
 
 # Unicode blocks that the English (ModernBERT-large, 50k English BPE) checkpoint cannot read.
@@ -115,6 +116,34 @@ _STOP = {
     "ro": {"și", "să", "este", "sunt", "care", "pentru", "din", "dar", "după", "până", "fără",
            "ale", "lui", "în", "fost", "acum", "vreau", "trebuie", "foarte", "acest", "această",
            "acesta", "aceasta", "mi", "ți", "vă", "nu"},
+    # Romanized Bangla ("Banglish"): how Bangla is typed in chats, tickets and email when no Bengali
+    # keyboard is at hand. It has no diacritics, so without a list it read as undecided-but-English
+    # and went to the English checkpoint, which scores 0.08 on Bangla at 0.94 confidence. Spelling
+    # is not standardised, so the common variants are listed (`bhalo`/`valo`, `korchi`/`korsi`).
+    # Left out on purpose: frequent Bangla words that are also English words -- `ache` (is),
+    # `are` (is there), `to` (so), `take` (to him), `age` (before), `pore` (later), `mane`
+    # (meaning), `din` (give), `sob` (all), `tar` (his), `dao` (give), `eta` (this; ETA) --
+    # ordinary words of a neighbouring language (`ora`, `nei`, `vai`), and words another list
+    # already claims (`na`, `o`, `e`, `je`, `ta`, `por`, `hoy`), so adding `bn` cannot move a
+    # state of any other language.
+    "bn": {"ami", "amar", "amake", "amra", "amader", "apni", "apnar", "apnake", "apnara",
+           "tumi", "tomar", "tomake", "tomra", "tader", "ota", "eita", "oita",
+           "ekta", "ei", "oi", "ki", "keno", "kivabe", "kibhabe", "kothay", "kokhon", "kobe",
+           "koto", "kintu", "jodi", "tahole", "ar", "theke", "jonno", "sathe", "shathe", "diye",
+           "niye", "moddhe", "kore", "korte", "korchi", "korsi", "korbo", "korechi", "koreche",
+           "korun", "koren", "korlam", "hobe", "hoyeche", "hoise", "hocche", "hoyni",
+           "chai", "chaina", "lagbe", "parchi", "parbo", "parchina", "peyechi", "paini",
+           "dite", "dilam", "diyechi", "nai", "khub", "onek", "ekhon", "akhon", "ekhono",
+           "abar", "ekbar", "duibar", "ajke", "kalke", "taka", "bhalo", "valo", "kharap",
+           "shomossa", "somossa", "dhonnobad", "bhai", "shob", "keu", "kichu", "bolte", "bolun",
+           "parben", "asbe", "jabe", "pabo", "ferot", "dorkar", "hoye", "geche", "gese"},
+
+    # "her", "ne", "men", "de" collide with English, French and Romanian, and "ki" with the
+    # romanized Bangla list, so they are left out.
+    "az": {"və", "ve", "bir", "bu", "üçün", "ucun", "ilə", "ile", "olan", "olub", "olmasa",
+           "var", "yox", "yoxdur", "mən", "sən", "biz", "siz", "onlar", "daha", "çox", "cox",
+           "hər", "nə", "kimi", "görə", "sonra", "əgər", "eger", "deyil", "lakin", "amma",
+           "ancaq", "artıq", "artiq", "də", "isə", "həm", "yalnız", "yalniz"},
 }
 # Letters that ordinary English does not use. This is the signal that catches a Latin-script
 # language we hold no stopwords for at all (Romanian, Polish, Czech, Turkish, Baltic, ...),
@@ -129,6 +158,7 @@ _NON_EN_DIACRITICS = set(
     "ğı"                                        # Turkish (text is lowercased before matching)
     "āēģīķļņūž"                                 # Baltic
     "đ"                                         # Serbo-Croatian / Vietnamese
+    "ə"                                         # Azerbaijani
 )
 # Words that more than one list claims. `la`, `un`, `e`, `que`, `una` and friends are function words
 # of several of these languages at once, so matching one says "not English" without saying *which*
@@ -179,8 +209,8 @@ def detect_script(text: str) -> str:
         if not ch.isalpha():
             continue
         cp = ord(ch)
-        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
-            latin += 1                                   # Latin, Latin Ext-Additional, fullwidth
+        if cp < 0x02B0 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
+            latin += 1                                   # Latin, IPA Extensions, Ext-Additional, fullwidth
             continue
         for name, ranges in _SCRIPT_RANGES:
             if any(lo <= cp <= hi for lo, hi in ranges):
@@ -211,7 +241,7 @@ def script_profile(text: str) -> Dict[str, float]:
         if not ch.isalpha():
             continue
         cp = ord(ch)
-        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
+        if cp < 0x02B0 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
             counts["latin"] += 1
             continue
         for name, ranges in _SCRIPT_RANGES:
@@ -230,6 +260,51 @@ def script_profile(text: str) -> Dict[str, float]:
 # stopword list matches it.
 NON_EN_DIACRITIC_RATE = 0.02
 
+# Non-Latin text is not for the English checkpoint even when Latin letters are the plurality: a
+# brand name or order code outvotes the CJK request around it letter for letter, though one CJK
+# character carries far more than a letter. A short message needs a large share to count; a long
+# payload (ticket fields, English agent turns) dilutes the share, so there a sentence's worth of
+# letters counts too.
+NON_LATIN_FRACTION = 0.2
+NON_LATIN_MIN_FRACTION = 0.1
+NON_LATIN_MIN_LETTERS = 10
+
+
+def _script_of(ch: str) -> Optional[str]:
+    """The named non-Latin script of one letter, or None for Latin and for unclaimed letters."""
+    cp = ord(ch)
+    if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
+        return None
+    for name, ranges in _SCRIPT_RANGES:
+        if any(lo <= cp <= hi for lo, hi in ranges):
+            return name
+    return None
+
+
+def _non_latin_words(text: str) -> List[str]:
+    """Non-Latin runs that read as words rather than as annotation inside English prose.
+
+    English prose carries three kinds of non-Latin letters that are not a request written in
+    another script, and each is excluded here: a symbol (`Set α to 0.05`, one letter), a proper
+    name (`Дмитрий Петрович Савицкий`, capitalised), and a pronunciation (`[vlɐˈdʲimʲɪr]`, which
+    no script range claims). A combining mark belongs to the letter before it and never splits a
+    word, so `Влади́мир` stays one capitalised name rather than becoming `Влади` + `мир`.
+    """
+    runs, cur, script = [], "", None
+    for ch in text:
+        if unicodedata.combining(ch):
+            continue
+        s = _script_of(ch)
+        if s is not None and s == script:
+            cur += ch
+            continue
+        if cur:
+            runs.append(cur)
+        cur, script = (ch, s) if s is not None else ("", None)
+    if cur:
+        runs.append(cur)
+    return [w for w in runs if len(w) >= 2 and not w[0].isupper()]
+
 
 def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
@@ -242,7 +317,8 @@ def latin_profile(text: str) -> Dict[str, object]:
     A non-English language is only named when it matched at least one word that no other list
     claims: shared function words alone (`la`, `e`, `o`) identify no particular language.
     """
-    words = [w.lower() for w in _WORD.findall(_IDENTIFIER.sub(" ", text))]
+    # 'İ'.lower() is 'i' + a combining dot, which matches no word list
+    words = _WORD.findall(_IDENTIFIER.sub(" ", text).replace("İ", "i").lower())
     lowered = text.lower()
     diac = sum(1 for ch in lowered if ch in _NON_EN_DIACRITICS)
     diac_rate = diac / max(1, len(lowered))
@@ -297,6 +373,11 @@ def analyse(state: Union[str, dict, list, None]) -> Dict[str, object]:
     prof = script_profile(text)
     script = detect_script(text)
     non_latin = round(1.0 - prof.get("latin", 0.0), 4) if prof else 0.0
+    n_non_latin = round(non_latin * sum(ch.isalpha() for ch in text))
+    if script == "latin" and _non_latin_words(text) and (
+            non_latin >= NON_LATIN_FRACTION or (
+                non_latin >= NON_LATIN_MIN_FRACTION and n_non_latin >= NON_LATIN_MIN_LETTERS)):
+        script = max((s for s in prof if s != "latin"), key=prof.get)
     if script == "unknown":
         return {"script": "unknown", "script_profile": prof, "language": None,
                 "is_english": True, "language_undecided": True, "diacritic_rate": 0.0,

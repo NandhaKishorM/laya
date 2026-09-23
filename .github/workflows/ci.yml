@@ -48,7 +48,8 @@ jobs:
           python -m pip install --upgrade pip
           # CPU-only torch keeps the job under a minute instead of pulling CUDA wheels
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .
+          # Install with the mcp extra so laya[mcp] resolution and the laya.mcp layer are both exercised
+          pip install -e ".[mcp]"
 
       - name: Import check
         run: python -c "import laya; print(laya.__version__); print(sorted(laya.__all__))"
@@ -57,9 +58,11 @@ jobs:
         run: |
           python tests/test_router.py
           python tests/test_criteria.py
+          python tests/test_batch.py
           python tests/test_download.py
           python tests/test_shortlist.py
           python tests/test_decision_model.py
+          python tests/test_head_checkpointing.py
           python tests/test_packaging.py
           python tests/test_lang_guess.py
           python tests/test_calibration_persistence.py
@@ -70,9 +73,72 @@ jobs:
           python tests/test_router_memory.py
           python tests/test_shortlist_cosine.py
           python tests/test_temperature_loading.py
+          python tests/test_cli.py
+          python tests/test_mcp.py
 
       - name: Email cleaning tests
         run: python tests/test_email.py
+
+  # Every workflow in this repo ran on ubuntu-latest only, so a test that fails off Linux was
+  # invisible until a user hit it -- which is what happened to tests/test_download.py (#140).
+  #
+  # A separate job rather than an extra axis on `test`, deliberately: it leaves that job's name,
+  # and therefore the `tests (pyX.Y)` required checks, exactly as they are. It runs one Python
+  # because the variable that was untested is the OS, not the interpreter.
+  test-windows:
+    name: tests (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # The +cpu index used on Linux is Linux/macOS only. On Windows the default PyPI wheel is
+      # already CPU-only, so installing torch plainly is both correct and what a user gets.
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch
+          pip install -e .
+        shell: bash
+
+      # bash on this runner so the quoting rules match the Linux job; the default shell on a
+      # Windows runner is PowerShell, where `python -c "...; ..."` is not the same command.
+      - name: Import check
+        run: python -c "import laya; print(laya.__version__); print(sorted(laya.__all__))"
+        shell: bash
+
+      # Same suites as the Linux job. Guarded with -f so a suite added by another open branch
+      # cannot make this job red on a tree that does not have it yet.
+      #
+      # test_docker_entrypoint is skipped here on purpose. It drives docker/entrypoint.py, which
+      # only ever runs inside a Linux container, through `os.execvp`. On Windows exec* rebuilds
+      # the command line from argv without re-applying the quoting `subprocess` used to build it,
+      # so its `-c "<script>"` argument arrives split at the first space and the child dies with
+      # "SyntaxError: invalid syntax" before printing. The environment passthrough the suite
+      # exists to check is unaffected, and switching the entrypoint to `subprocess.run` makes it
+      # pass -- a change to a container script, so it belongs in its own PR, not this one.
+      - name: Routing and language-detection tests
+        run: |
+          for t in test_router test_criteria test_download test_shortlist \
+                   test_decision_model test_packaging test_lang_guess \
+                   test_calibration_persistence test_context_manager \
+                   test_criteria_normalization test_docker_entrypoint \
+                   test_empty_questions test_router_memory test_shortlist_cosine \
+                   test_temperature_loading; do
+            if [ "$t" = "test_docker_entrypoint" ]; then
+              echo "skipping $t: docker/entrypoint.py is Linux-container only"
+              continue
+            fi
+            if [ -f "tests/$t.py" ]; then python "tests/$t.py"; fi
+          done
+        shell: bash
+
+      - name: Email cleaning tests
+        run: python tests/test_email.py
+        shell: bash
 
   lint:
     name: lint

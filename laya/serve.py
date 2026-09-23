@@ -40,6 +40,14 @@ from typing import Any, Dict, Optional
 # Jev model id (ignore it and let the router auto-select).
 _KNOWN_MODELS = {"english", "multilingual", "typed-decisions"}
 
+# Public Hugging Face ids accepted by the hosted API. The root bundle is
+# deliberately absent: the documented ``convaiinnovations/laya`` value means
+# "let the Router choose", rather than pinning the English checkpoint.
+_PUBLISHED_MODEL_IDS = {
+    "convaiinnovations/laya-multilingual": "multilingual",
+    "convaiinnovations/laya-typed-decisions": "typed-decisions",
+}
+
 
 def _env_bool(name: str, default: bool) -> bool:
     v = os.environ.get(name)
@@ -52,6 +60,9 @@ def _resolve_model(model: Optional[str]) -> Optional[str]:
     """Map a client's `model` field onto a Laya checkpoint, or None to auto-route."""
     if not model:
         return None
+    published = _PUBLISHED_MODEL_IDS.get(str(model).strip().lower())
+    if published is not None:
+        return published
     from .router import normalise_name
 
     # normalise_name raises ValueError on anything that is not a known checkpoint
@@ -100,11 +111,27 @@ def build_router():
 def create_app(router: Optional[Any] = None):
     """Build the FastAPI app. Pass a Router to inject one (tests); otherwise one
     is built from the environment (and preloaded) at app-creation time."""
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+
     from fastapi import FastAPI, Header, HTTPException, Request
 
     if router is None:
         router = build_router()
     api_key = os.environ.get("LAYA_API_KEY") or None
+
+    # Inference is synchronous torch, and a CPU call takes hundreds of milliseconds to
+    # seconds, so it must not run on the event loop: one request would stall every
+    # other client, `GET /health` included. One worker, because one forward pass at a
+    # time is what a single CPU or GPU Agent wants (the Router already guards checkpoint
+    # lifecycle, and leaves `Agent.system_one` unguarded deliberately so concurrent
+    # predictions can share a checkpoint -- a GPU-shaped choice this endpoint does not
+    # rely on). `loop.run_in_executor` is the API the issue asked for.
+    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="laya-infer")
+    # Created on first request, not here: an `asyncio.Lock` binds to the loop that is
+    # running when it is first awaited, and `create_app` may be called before that loop
+    # exists (module scope, TestClient startup, a preload script).
+    gate: Optional[asyncio.Lock] = None
 
     app = FastAPI(
         title="laya-serve",
@@ -127,6 +154,7 @@ def create_app(router: Optional[Any] = None):
 
     @app.post("/v1/systemone")
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):
+        nonlocal gate
         _check_auth(authorization)
         body = await request.json()
         if not isinstance(body, dict) or "questions" not in body:
@@ -134,10 +162,15 @@ def create_app(router: Optional[Any] = None):
         state = body.get("state")
         questions = body["questions"]
         model = _resolve_model(body.get("model"))
+        if gate is None:
+            gate = asyncio.Lock()
         try:
             # Laya's result is already Jev-shaped: {model, answers, usage, routing}.
             # hs-jev decodes `answers` and `usage` and ignores the rest.
-            return router.predict(state, questions, model=model)
+            async with gate:
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(
+                    pool, lambda: router.predict(state, questions, model=model))
         except HTTPException:
             raise
         except Exception as e:  # noqa: BLE001 -- surface model/tokenizer errors as 422

@@ -35,6 +35,8 @@ SCRIPTS = [
     ("armenian", "Հայերեն", "armenian"),
     ("armenian uppercase", "ՀԱՅԵՐԵՆ", "armenian"),
     ("armenian punctuation only", "։֊", "unknown"),
+    ("azerbaijani lone schwa", "ə", "latin"),
+    ("azerbaijani uppercase", "MÜŞTƏRİ İLƏ ƏLAQƏ SAXLAYIN", "latin"),
     ("french", "Le client a été facturé deux fois et demande un remboursement.", "latin"),
     ("hindi", "ग्राहक से दो बार शुल्क लिया गया और वह धनवापसी चाहता है।", "devanagari"),
     ("japanese", "お客様は二重に請求されたため返金を希望しています。", "kana"),
@@ -57,6 +59,8 @@ for label, text, want in SCRIPTS:
 for label, text, want in [
     ("plain english", "Please refund the duplicate charge on invoice 4411 today.", True),
     ("armenian", "Հայերեն", False),
+    ("azerbaijani no diacritics", "Sifarisim gelmedi ve pulum geri qaytarilmadi, zehmet olmasa yoxlayin", False),
+    ("azerbaijani few diacritics", "Mən sizin xidmətinizdən razı deyiləm və pulumu geri istəyirəm", False),
     ("english short", "refund me", True),
     ("hindi", "ग्राहक से दो बार शुल्क लिया गया", False),
     ("japanese", "お客様は二重に請求されました", False),
@@ -108,6 +112,11 @@ for label, text, want in [
     ("french", "Le client a ete facture deux fois et il demande un remboursement pour la facture", "fr"),
     ("german", "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung", "de"),
     ("spanish", "El cliente fue cobrado dos veces y quiere que le devuelvan el dinero por la factura", "es"),
+    ("azerbaijani", "Zəhmət olmasa, sifarişim üçün pulu geri qaytarın, çünki məhsul gəlmədi", "az"),
+    # one shared function word is not enough to name a language
+    ("azerbaijani single hit stays undecided",
+     "Müştəridən iki dəfə pul alınıb və o, geri qaytarılmasını istəyir", None),
+    ("azerbaijani uppercase dotted I", "MÜŞTƏRİ İLƏ ƏLAQƏ SAXLAYIN VƏ PULU GERİ QAYTARIN", "az"),
     ("too short", "refund", None),
 ]:
     check("latin_lang/" + label, guess_latin_language(text), want)
@@ -160,6 +169,7 @@ check("state_text/keys ignored",
 # --------------------------------------------------------------------- workflow signatures
 check("profile/armenian", analyse("Հայերեն")["script_profile"], {"armenian": 1.0})
 check("profile/armenian mixed with Latin", analyse("Հայերեն abc")["non_latin_fraction"], 0.7)
+check("profile/azerbaijani schwa is latin", analyse("ələ")["script_profile"], {"latin": 1.0})
 
 TD = {
     "agent_trace_observability": ["action", "needs_review", "outcome", "risk", "urgency"],
@@ -197,10 +207,45 @@ cases = [
     ("english text", {"body": "I was charged twice, please refund."}, Q_GENERIC, {}, "english"),
     ("armenian text", {"body": "Հայերեն"}, Q_GENERIC, {}, "multilingual"),
     ("armenian explicit override", {"body": "Հայերեն"}, Q_GENERIC, {"model": "english"}, "english"),
+    ("azerbaijani no diacritics", {"body": "Sifarisim gelmedi ve pulum geri qaytarilmadi, zehmet olmasa yoxlayin"},
+     Q_GENERIC, {}, "multilingual"),
+    ("azerbaijani explicit override", {"body": "Müştəridən iki dəfə pul alınıb"}, Q_GENERIC,
+     {"model": "english"}, "english"),
     ("hindi text", {"body": "मुझसे दो बार शुल्क लिया गया"}, Q_GENERIC, {}, "multilingual"),
     ("japanese text", {"body": "二重に請求されました"}, Q_GENERIC, {}, "multilingual"),
     ("korean text", {"body": "두 번 청구되었습니다"}, Q_GENERIC, {}, "multilingual"),
     ("arabic text", {"body": "تم خصم المبلغ مرتين"}, Q_GENERIC, {}, "multilingual"),
+    # Latin brand names are the letter plurality here, but the request itself is CJK
+    ("chinese with a brand", {"body": "我的 iPhone 15 Pro Max 订单还没到"}, Q_GENERIC, {}, "multilingual"),
+    ("japanese with brands", {"body": "Amazonで買ったiPhoneが届かない"}, Q_GENERIC, {}, "multilingual"),
+    ("korean with a brand", {"body": "Samsung Galaxy 주문이 아직 안 왔어요"}, Q_GENERIC, {}, "multilingual"),
+    ("english with a han name", {"body": "My name is 王小明 and my order is late"}, Q_GENERIC, {}, "english"),
+    # an English wrapper dilutes the share, but the request is still CJK
+    ("chinese in a ticket", {"ticket_id": "TCK-88213", "channel": "web chat",
+                             "agent_notes": "Customer asked about a delayed order. Please check shipping status.",
+                             "message": "我的订单已经两个星期了还没有到"}, Q_GENERIC, {}, "multilingual"),
+    ("korean after english turns", [{"role": "agent", "text": "Hello! Thanks for contacting support."},
+                                    {"role": "agent", "text": "Could you share your order number please?"},
+                                    {"role": "user", "text": "주문번호는 5521이고 아직 배송이 안 됐어요"}],
+     Q_GENERIC, {}, "multilingual"),
+    ("english with greek symbols", {"request": "Compute the mean μ and variance σ of X, then P(|X-μ| > 2σ)."},
+     Q_GENERIC, {}, "english"),
+    # English prose that names someone in their own script: the name is not the request, and a
+    # capitalised run, a lone symbol and a pronunciation are all annotation rather than content.
+    ("english prose, russian name",
+     {"body": "Anton Pavlovich Chekhov (Russian: Антон Павлович Чехов) was a playwright."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, name with IPA",
+     {"body": "Vladimir Nabokov (Russian: Влади́мир Набо́ков [vlɐˈdʲimʲɪr nɐˈbokəf]) wrote Lolita "
+              "and taught literature at Cornell for more than a decade."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, greek name",
+     {"body": "Eleftherios Venizelos (Greek: Ελευθέριος Βενιζέλος) served as prime minister."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, hebrew name",
+     {"body": "Amos Oz (Hebrew: עמוס עוז), born Amos Klausner, was an Israeli writer and professor "
+              "of literature at Ben-Gurion University of the Negev in Beersheba."},
+     Q_GENERIC, {}, "english"),
     ("german text", {"body": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung "
                              "fuer die Rechnung die nicht korrekt ist"}, Q_GENERIC, {}, "multilingual"),
     ("explicit model", {"body": "anything"}, Q_GENERIC, {"model": "multilingual"}, "multilingual"),
@@ -377,6 +422,46 @@ for text in [
     check("route/pt-br control " + text[:32], _r_lat.route(text).model, "english")
 
 
+# --------------------------------------------------------------------- romanized Bangla
+# Bangla is often typed in Latin letters ("Banglish") when no Bengali keyboard is at hand. It has no
+# diacritics and matched no stopword list, so it was reported `is_english=True` and handed to the
+# English checkpoint, which scores 0.08 on Bangla MASSIVE at 0.94 confidence. The Bengali-script
+# spelling of the same text already routed on script alone.
+for text in [
+    "amar kach theke duibar taka kata hoyeche, doya kore ferot din",
+    "ami invoice er jonno duibar charge peyechi, refund chai",
+    "Ami ei product ta niye khub hotash, ekhon e cancel korte chai",
+    "apnara keno amar call dhorchen na? ajke kichu ekta korun",
+    "bhai amar account e login korte parchi na",
+    "taka ekhono ferot paini, kobe pabo?",
+    "order ta kobe asbe bolte parben?",
+]:
+    check("latin_lang/banglish " + text[:32], guess_latin_language(text), "bn")
+    check("is_english/banglish " + text[:32], is_english(text), False)
+    check("route/banglish " + text[:32], _r_lat.route(text).model, "multilingual")
+check("route/bengali script", _r_lat.route("আমার কাছ থেকে দুইবার টাকা কাটা হয়েছে").model, "multilingual")
+
+# English must not move. `chai`, `ar`, `ami`, `koto`, `kore`, `oi` are Bangla words that also turn
+# up in English text as a drink, an acronym or a name; one of them next to English function words
+# stays English.
+for text in [
+    "Chai latte order was charged twice, please refund the extra amount",
+    "The AR team says the ETA for the fix is Friday",
+    "Ami Patel from the Koto office sent the invoice to Kore Ltd",
+    "Our AR and VR demo in Oi Bahia went well, the client wants a quote",
+    "Take the age of the account into account before you refund",
+]:
+    check("is_english/banglish control " + text[:32], is_english(text), True)
+    check("route/banglish control " + text[:32], _r_lat.route(text).model, "english")
+# ...and no other language may move either: the `bn` list claims no word another list holds, and
+# leaves out Romance words such as `ora`, `nei`, `vai`.
+from laya.lang import _STOP  # noqa: E402
+check("latin_lang/bn list shares no word with another list",
+      sorted(w for w in _STOP.get("bn", ()) for lg, words in _STOP.items() if lg != "bn" and w in words), [])
+check("latin_lang/romanian with ei stays romanian",
+      guess_latin_language("Ei nu sunt de acord cu factura, vreau o corecție"), "ro")
+
+
 # --------------------------------------------------------------------- temperature clamp (#35)
 # A fitted temperature below 1 sharpens logits. The shipped `choice:11+` bucket is 0.1006, which
 # turned a 0.24 top probability into 0.99 confidence on 13-option skill routing.
@@ -516,6 +601,11 @@ with patch("laya.agent.Agent", side_effect=lambda repo, **kw: _Stub(repo)) as bu
     check("preload/returns router", rp.preload() is rp, True)
     check("preload/repeated call reuses models", build.call_count, 3)
 
+    empty = Router()
+    empty.preload([])
+    check("preload/empty selection leaves models unloaded", empty.loaded, [])
+    check("preload/empty selection builds nothing", build.call_count, 3)
+
     rp2 = Router()
     rp2.preload(["english", "multilingual"])
     check("preload/subset stays resident", sorted(rp2.loaded), ["english", "multilingual"])
@@ -565,9 +655,14 @@ sentinel = _Stub("already-built")
 ra.attach("english", sentinel)
 check("attach/registers under the name", ra._agents["english"], sentinel)
 check("attach/counts as resident", "english" in ra.loaded, True)
-check("attach/raises max_loaded to hold it", ra.max_loaded >= 1, True)
+# `max_loaded` starts at `max(1, max_loaded)`, so one attach to a cap-1 router cannot
+# move it and `ra.max_loaded >= 1` held before `attach` was ever called. The cap only
+# rises on the attach that would not otherwise fit.
+check("attach/first attach leaves the cap alone", ra.max_loaded, 1)
+ra.attach("multilingual", _Stub("second"))
+check("attach/raises max_loaded to hold the extra one", ra.max_loaded, 2)
+ra.unload("multilingual")
 # attaching then loading another must not evict the attached one
-ra.max_loaded = max(ra.max_loaded, 2)
 _load_stub(ra, "multilingual")
 check("attach/survives a later load", sorted(ra.loaded), ["english", "multilingual"])
 check("attach/still the same object", ra._agents["english"] is sentinel, True)

@@ -1,0 +1,60 @@
+# Serve Laya over HTTP from the same image, so a Jev client can point its `baseUrl` at it:
+#
+#   docker compose -f compose.yaml -f compose.http.yaml up --build laya-serve
+#   curl -s localhost:8000/health
+#   curl -s localhost:8000/v1/systemone -H 'content-type: application/json' \
+#     --data @examples/docker/request.json
+#
+# For NVIDIA, append -f compose.cuda.yaml before "up":
+#
+#   docker compose -f compose.yaml -f compose.http.yaml -f compose.cuda.yaml up --build laya-serve
+#
+# This file is additive. `laya` in compose.yaml still runs the one-shot SDK quickstart and
+# still publishes no ports, so `docker compose run --rm laya` behaves exactly as before.
+# Weights share the same named cache volume as that service.
+#
+# Set LAYA_API_KEY (or LAYA_API_KEY_FILE) to require `Authorization: Bearer <key>`.
+# LAYA_PRELOAD=1 builds every checkpoint at startup so the first request does not pay for
+# it; the default here is 0 because it makes the container download the whole family on
+# first boot, which is a surprise in a quickstart.
+services:
+  laya-serve:
+    build:
+      context: .
+      args:
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cpu}"
+    # Overrides the image's one-shot quickstart CMD; the ENTRYPOINT that loads *_FILE
+    # secrets still runs first.
+    command: ["laya-serve"]
+    ports:
+      # Host port first, container port second. Both come from LAYA_PORT, which
+      # `laya-serve` itself reads, so they cannot drift apart.
+      - "${LAYA_PORT:-8000}:${LAYA_PORT:-8000}"
+    environment:
+      LAYA_HOST: "${LAYA_HOST:-0.0.0.0}"
+      LAYA_PORT: "${LAYA_PORT:-8000}"
+      LAYA_DEVICE: "${LAYA_DEVICE:-cpu}"
+      LAYA_PRELOAD: "${LAYA_PRELOAD:-0}"
+      LAYA_MODELS: "${LAYA_MODELS:-}"
+      LAYA_THREADS: "${LAYA_THREADS:-${OMP_NUM_THREADS:-4}}"
+      LAYA_AUTO_TASK: "${LAYA_AUTO_TASK:-0}"
+      LAYA_LOG_LEVEL: "${LAYA_LOG_LEVEL:-info}"
+      LAYA_API_KEY: "${LAYA_API_KEY:-}"
+      LAYA_API_KEY_FILE: "${LAYA_API_KEY_FILE:-}"
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"
+      HF_TOKEN: "${HF_TOKEN:-}"
+      HF_TOKEN_FILE: "${HF_TOKEN_FILE:-}"
+      OMP_NUM_THREADS: "${OMP_NUM_THREADS:-4}"
+    volumes:
+      - model-cache:/home/laya/.cache/huggingface
+      # Optional token files, readable by UID 10001. Never put a secret value in the
+      # environment; these paths are read once at startup and the *_FILE variable is
+      # then removed before the server execs.
+      # - ${HF_TOKEN_PATH:?Set HF_TOKEN_PATH}:/run/secrets/hf_token:ro
+      # - ${LAYA_API_KEY_PATH:?Set LAYA_API_KEY_PATH}:/run/secrets/laya_api_key:ro
+    init: true
+    restart: unless-stopped
+
+volumes:
+  model-cache:
+    name: "${LAYA_CACHE_VOLUME:-${COMPOSE_PROJECT_NAME}_model-cache}"

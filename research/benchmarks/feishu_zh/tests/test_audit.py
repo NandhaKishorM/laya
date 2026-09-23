@@ -22,15 +22,15 @@ class AuditTests(unittest.TestCase):
                 self.assertEqual(result[mode]['failed_requests'], 0)
 
     def fixture(self, folder):
-        metadata = json.loads((ROOT / 'results/v1/laya/metadata.json').read_text())
-        rows = [json.loads(x) for x in (ROOT / 'results/v1/laya/raw.jsonl').read_text().splitlines()]
+        metadata = json.loads((ROOT / 'results/v1/laya/metadata.json').read_text(encoding='utf-8'))
+        rows = [json.loads(x) for x in (ROOT / 'results/v1/laya/raw.jsonl').read_text(encoding='utf-8').splitlines()]
         rows = [r for r in rows if r['mode'] == 'choice' and r['repeat'] == 0]
         metadata.update(repeats=1, modes=['choice'], evaluated_ids=[r['id'] for r in rows])
-        (folder / 'metadata.json').write_text(json.dumps(metadata))
+        (folder / 'metadata.json').write_text(json.dumps(metadata), encoding='utf-8')
         return rows
 
     def write(self, folder, rows):
-        (folder / 'raw.jsonl').write_text(''.join(json.dumps(x) + '\n' for x in rows))
+        (folder / 'raw.jsonl').write_text(''.join(json.dumps(x) + '\n' for x in rows), encoding='utf-8')
 
     def test_reject_corrupted_records(self):
         for corruption in ['missing', 'duplicate', 'gold', 'request', 'prediction', 'negative_latency']:

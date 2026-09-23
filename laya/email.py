@@ -9,6 +9,10 @@ history (often a *different* request) weighed on the answer as much as the new m
 import re
 from typing import Dict, List, Optional
 
+# One definition, in the module that holds the other presets. Re-exported here because
+# `from laya.email import email_questions` is a path callers already have.
+from .presets import email_questions  # noqa: F401
+
 _QUOTE_HEADERS = [
     re.compile(r"^\s*On .{0,300}wrote:\s*$", re.I),
     # "Em resposta ao que você escreveu:" is body text; a client's attribution always carries a date
@@ -33,7 +37,15 @@ _HEADER_FROM_NAME = re.compile(r"^\s*De:\s+\S", re.I)
 _HEADER_NEXT = re.compile(r"^\s*(Enviad[oa]( em| el)?:\s|(Data|Fecha):\s.*\d{4})", re.I)
 _SIGNATURE_MARKERS = [
     re.compile(r"^\s*--\s*$"),
-    re.compile(r"^\s*(best|kind|warm|many thanks|thanks|thank you|regards|cheers|sincerely)[\w ,!.]*$", re.I),
+    # A closing line is the closing word plus punctuation and at most a name. Anything else on
+    # the line is a sentence, and the case of the next word is what separates the two: a name is
+    # capitalised, "for" in "Thanks for the quick reply." is not. The closing words are matched
+    # case-insensitively, the name is not, so the flag is scoped instead of global.
+    re.compile(
+        r"^\s*(?i:best|kind|warm|many thanks|thanks|thank you|regards|cheers|sincerely)"
+        r"(?i:\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?"
+        r"[\s,;:!.]*(?:[A-Z][\w'-]*[\s,.]*){0,3}$"
+    ),
     re.compile(r"^\s*sent from my (iphone|android|mobile|ipad)", re.I),
     # Portuguese/Spanish sign-offs match only on their own: "Obrigado pelo retorno, mas ..." is a
     # request, not a signature, so unlike the English marker no trailing words are allowed
@@ -56,7 +68,14 @@ _DEVICE_FOOTER = re.compile(
     re.I,
 )
 _DISCLAIMER = re.compile(
-    r"(confidential|intended (solely )?for the (use of the )?(named )?(addressee|recipient)|"
+    # English: tied to a disclaimer noun and a disclaimer tail, the way the Portuguese
+    # branches below are. The bare word matched any sentence that merely mentioned it,
+    # so "Is this confidential?" and "Confidential: I need a refund." were deleted whole.
+    # `[^.]` rather than `[^.\n]`: a footer wraps, so "are\nconfidential" must still match.
+    r"(\b(e-?mail|message|information|communication|transmission|contents?)\b[^.]{0,60}"
+    r"\bconfidential\b[^.]{0,60}\b(intended|solely|addressee|recipient|privileged|"
+    r"disclos|unauthori[sz]ed)|"
+    r"\bconfidential\b[^.]{0,60}\b(and (may|is) (also )?privileged)|"
     r"if you (have )?received this (e-?mail|message) in error|"
     # Portuguese/Spanish: tied to "this message/e-mail" rather than the bare word `confidencial`,
     # which a sender's own request ("preciso do contrato confidencial") uses just as often
@@ -167,40 +186,3 @@ def email_state(subject: str, body: str, sender: Optional[str] = None, clean: bo
         state["from"] = sender
     state.update({k: v for k, v in extra.items() if v is not None})
     return state
-
-
-def email_questions(categories: Optional[Dict[str, str]] = None) -> Dict:
-    """Standard pre-built questions for email triage."""
-    categories = categories or {
-        "billing": "invoices, payments, refunds",
-        "technical": "bugs, outages, integrations",
-        "sales": "pricing, demos, new purchases",
-        "security": "phishing, scams, account compromise",
-        "hr": "hiring, leave, payroll",
-        "other": "none of the above",
-    }
-    return {
-        "category": {
-            "type": "choice",
-            "instructions": "Which team should handle the email in `body`?",
-            "criteria": categories,
-        },
-        "is_spam": {
-            "type": "noul",
-            "instructions": "Is this email unsolicited spam or bulk marketing?",
-        },
-        "is_phishing": {
-            "type": "noul",
-            "instructions": "Is this email a phishing or scam attempt to steal money, credentials, or personal data?",
-            "criteria": {"true": "phishing, scam, or fraud", "false": "a legitimate email"},
-        },
-        "urgency": {
-            "type": "score",
-            "instructions": "How urgent is the request in `body`?",
-            "criteria": ["no time pressure", "needs attention soon", "blocking issue or hard deadline"],
-        },
-        "needs_reply": {
-            "type": "noul",
-            "instructions": "Does the sender expect a reply?",
-        },
-    }

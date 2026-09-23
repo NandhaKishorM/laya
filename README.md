@@ -137,6 +137,19 @@ own. Both ids run the checkpoints published here, unmodified, at `max_len` 8192.
 
 [Docs](https://impossibl.com/docs/evaluation) · [Model page](https://impossibl.com/convaiinnovations/laya)
 
+### Command line
+
+Installing the package also installs a `laya` command for quick local testing, no script needed:
+
+```bash
+laya "I was charged twice, please refund"            # routing decision only; works offline, no download
+laya "Refactor this service" --predict               # full answers (downloads the checkpoint on first use)
+laya "Mein Konto wurde zweimal belastet" --lang de   # force a language instead of detecting it
+laya                                                 # interactive mode
+```
+
+Routing alone never downloads a checkpoint, so it returns in milliseconds. `--predict` loads the routed checkpoint, which needs network access to the Hugging Face hub the first time; if a checkpoint cannot be downloaded, the CLI says so instead of crashing.
+
 ---
 
 ## Quickstart: Route Mode (Recommended)
@@ -272,6 +285,12 @@ router.unload()                     # free memory
 | `Router(max_loaded=1)` | 7 to 10 s on every language switch | 1 per switch |
 | `Router(preload=True)` | **32.8 ms (GPU) / 193–464 ms (CPU)** | **none** |
 
+A rebuild still re-reads the checkpoint, but each checkpoint's tokenizer is parsed once per process
+and reused by every `Agent` — including one the Router rebuilds after eviction. The multilingual
+`tokenizer.json` alone is 34 MB / 256k vocab, several times the cost of applying its weights.
+Preloading is still the right answer for a server: it removes the rebuild rather than making it
+cheaper.
+
 ### Supplying Your Own Language Detection
 
 Routing asks one question: *can the English checkpoint read this state?* The built-in detector answers it from the script and a function-word heuristic, and is deliberately dependency-free. That heuristic is best-effort on Latin-script languages it holds no word list for, so a short request can carry no usable signal:
@@ -387,6 +406,50 @@ Passing an empty question dictionary to `agent.predict(state, {})` or
 and `"usage": {"input_tokens": 0, "output_tokens": 0}`. The state is not tokenized
 and no model forward pass runs.
 
+### Batch Mode: score many states in one forward pass
+
+`predict` handles one state per call, which leaves most of the GPU's batch dimension idle. When you
+have a list of items to score against the *same* questions — a backlog of tickets, a table of rows,
+a log slice — `predict_batch` packs them into shared forward passes:
+
+```python
+states = [{"body": t} for t in ticket_texts]           # a list of states
+
+results = agent.predict_batch(states, questions)       # one forward pass for the whole list
+# results[i] is exactly what agent.predict(states[i], questions) would return
+
+# Bound peak memory when the list (or the texts) are large — chunk into passes of N:
+results = agent.predict_batch(states, questions, batch_size=64)
+```
+
+Results are aligned with `states` by index and identical in shape to `predict`. Decisions match the
+one-at-a-time path exactly (numbers are bit-identical on CPU; on GPU they can differ in the 4th
+decimal because fp16 autocast reorders reductions across padding widths). Batching is a **GPU
+throughput win** — on an RTX 5060 Ti, per-decision latency drops from ~10 ms one-by-one to ~1 ms
+batched (measured ~9–10×). On CPU the model is already compute-bound, so batching does not speed it
+up; use it there only for API convenience.
+
+---
+
+## GPU Fast Path (TileLang)
+
+`pip install laya[fast]` adds an optional forward built from fused [TileLang](https://github.com/tile-ai/tilelang)
+kernels: GEMM + bias/activation epilogues, GEMM + GEGLU, residual + LayerNorm, in-place RoPE, and a
+sliding-window flash attention that reads the packed QKV buffer directly. Weights stay resident in bf16
+and every (batch, length) bucket is captured as a CUDA graph, so a one-question call no longer pays
+~200 kernel launches from Python.
+
+```python
+agent = laya.load("convaiinnovations/laya", fast=True)   # or: agent.accelerate()
+agent.predict(state, questions)                            # same API, same answers
+```
+
+Numerics: on a fixed set of 60 states the fast path is at least as close to an fp32 forward as the stock bf16
+path is (max |Δp| ≤ 0.05 vs fp32 on both checkpoints, argmax agreement ≥ 47/48 per question type; every per-option
+probability is in `benchmarks/results/parity_*.json`) — see `benchmarks/parity_fast.py` and [BENCHMARKS.md](BENCHMARKS.md#gpu-fast-path).
+Falls back to the stock forward on CPU/MPS or when `tilelang` is not installed; `agent.deaccelerate()`
+restores it. Kernels compile once per shape bucket on first use (a few seconds, cached on disk).
+
 ---
 
 ## Automated Confidence Gating
@@ -438,6 +501,74 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 | **`choice`** | Top label, probabilities per option, confidence | Department routing, intent classification, topic categorization |
 | **`score`** | Expected level on ordinal rubric, distribution, confidence | Frustration level, ticket urgency, harm severity |
 | **`noul`** | Calibrated probability P(true) from 0.0 to 1.0 | Phishing detection, spam filtering, jailbreak detection, churn risk |
+
+`noul` always scores two semantic slots in `[false, true]` order and returns the probability of
+the second slot. For compatibility, those slots are shown to the model as `false` and `true` by
+default. The optional `labels` mapping overrides only that model-facing text without changing the
+returned meaning:
+
+```python
+question = {
+    "type": "noul",
+    "instructions": "Is this review positive?",
+    "criteria": {
+        "false": "the review is negative",
+        "true": "the review is positive",
+    },
+    "labels": {
+        "false": "B",
+        "true": "A",
+    },
+}
+```
+
+The `labels` mapping is optional. It must contain exactly the string keys `false` and `true`,
+whose values must be distinct non-empty strings. Mapping order does not matter, and the returned
+`noul` value is still P(true). Label sensitivity varies by checkpoint and state, so validate any
+override on your own data rather than treating `A`/`B` as a universal fix.
+
+---
+
+## MCP Server (Optional)
+
+Laya can be exposed as an [MCP](https://modelcontextprotocol.io) stdio server, so any MCP
+client (OpenClaw, Claude Desktop, Cursor, ...) can call typed decisions as tools
+(`laya_predict`, `laya_route`, `laya_preset`, `laya_status`) without writing glue code.
+This is an **optional extra**: the core package has no `mcp` dependency.
+
+```bash
+pip install "laya[mcp]"
+laya-mcp-server          # or: python -m laya.mcp.server
+```
+
+Example MCP client configuration (stdio transport):
+
+```json
+{
+  "mcpServers": {
+    "laya": {
+      "command": "laya-mcp-server",
+      "env": { "LAYA_DEVICE": "cpu" }
+    }
+  }
+}
+```
+
+The environment variables follow the contract documented at the top of
+[`laya/serve.py`](laya/serve.py), so the same variable has one meaning across the
+package:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `LAYA_DEVICE` | (auto) | Same as `laya.serve`: the value is passed straight to torch |
+| `LAYA_PRELOAD` | `1` | Same as `laya.serve`: build the checkpoints at startup, not lazily |
+| `LAYA_MODELS` | `english,multilingual` | Comma list to preload (serve contract). MCP difference: an empty value preloads `english,multilingual` so `typed-decisions` stays lazy; in `laya.serve` empty means every checkpoint |
+| `LAYA_THREADS` | (torch default) | Same as `laya.serve`: cap torch intra-op threads for CPU inference; keep it at or below the physical core count |
+
+The tools return structured JSON (answers with probabilities, routing metadata, device,
+`latency_ms`). As with the SDK, use it for structured decisions only; not for open Q&A or
+text generation. Tests: `tests/test_mcp.py` (CI, no weights) and
+`tests/test_mcp_local_e2e.py` (local, real weights and a real stdio handshake).
 
 ---
 
@@ -536,7 +667,7 @@ All of the capability on this benchmark comes from fine-tuning.
 
 Across all 51 languages the English checkpoint macro-averages **0.227** with macro ECE
 **0.733**, and only 23 of 51 languages clear 3x random. Khmer scores **0.000 at 95.2%
-confidence**. This is why [`Router`](#model-routing-three-checkpoints-one-call) exists: the
+confidence**. This is why [`Router`](#quickstart-route-mode-recommended) exists: the
 model's own confidence gives no warning, so the routing decision has to be made before the
 forward pass.
 
@@ -570,6 +701,10 @@ failure; it does not establish calibrated confidence.
   against a 0.318 random baseline and a 0.461 majority-class baseline. The 0.766 figure comes
   from the checkpoint fine-tuned on that benchmark's own training split. Laya is a fast base to
   specialise, not a zero-shot decision engine.
+* **Avoid boolean-word labels in `choice` questions.** Choice keys are rendered verbatim, and the
+  current checkpoints can follow labels such as `true`/`false` or `yes`/`no` instead of the option
+  descriptions. Use semantic labels or opaque labels such as `A`/`B`, and validate them on the
+  checkpoint and states you serve.
 * **High-cardinality choice questions and token budgets:** Sequences split into an option prompt budget (`head_max_len`) and the remaining document/state budget (`max_len - head_max_len`):
   * `laya` (English) defaults to 512 context (`head_max_len = 192`, ~320 tokens for state).
   * `laya-multilingual` and `laya-typed-decisions` default to 1,024 context (`head_max_len = 256`, ~768 tokens for state; mmBERT-base encoder supports up to 8,192 with RoPE).
@@ -607,7 +742,16 @@ result["shortlist"]["intent"]["labels"]  # the top 20 labels sent to the model
 [Issue #102](https://github.com/NandhaKishorM/laya/issues/102) reports that a top-20 zero-shot shortlist moved a BANKING77 run from 54.3% to 60.8% on the reporter's setup. Those figures are the reporter's; this repository has not remeasured them.
 
 * Ordinal `score` questions are the weakest primitive (SST-5 0.372).
-* **`noul` can follow its option labels instead of the state, most strongly on `laya` (English).** `noul` renders its two options as `false:` / `true:`, and on the English checkpoint that label pair can dominate the answer, returning a confident "no" for clearly positive input (#156). Until a retrained checkpoint lands, check `noul` answers on your own data. If they look stuck, ask the same question as a two-option `choice` with neutral keys and your yes/no wording as the descriptions:
+* **`noul` can follow its option labels instead of the state, most strongly on `laya` (English).** `noul` renders its two options as `false:` / `true:` by default, and on the English checkpoint that label pair can dominate the answer, returning a confident "no" for clearly positive input (#156). Until a retrained checkpoint lands, check `noul` answers on your own data. You can override the model-facing pair while keeping the `noul` result as P(true):
+
+  ```python
+  {"type": "noul", "instructions": "Is this review positive?",
+   "criteria": {"true": "yes, the review is positive", "false": "no, the review is negative"},
+   "labels": {"true": "A", "false": "B"}}
+  ```
+
+  Label sensitivity varies by checkpoint and state, so validate the override on your own data. A
+  two-option `choice` with neutral keys remains another workaround:
 
   ```python
   {"type": "choice", "instructions": "Is this review positive?",
@@ -642,6 +786,13 @@ the whole loop: build the dataset, train with RLCD (proper-scoring-rule rewards,
 policy gradient), fit calibration temperatures, evaluate, and push the result to the Hub.
 
 * **[`notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb`](notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb)**
+
+The notebook enables gradient checkpointing on both the encoder and the decision head.
+For custom training loops, `model.head_checkpointing = True` enables activation
+checkpointing for the decision-head layers; enable the encoder's gradient checkpointing
+separately. During gradient-enabled training, this reduces stored intermediate activations
+by recomputing them during backward, trading extra computation for lower activation memory.
+The head flag defaults to `False` and is bypassed in evaluation and under `torch.no_grad()`.
 
 The notebook fits one `temperature` per type (`choice`, `score`, `noul`) and removes inherited
 `temperature_by_options` from the exported config. Otherwise those old bucket values take

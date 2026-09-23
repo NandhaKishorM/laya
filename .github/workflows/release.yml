@@ -39,6 +39,7 @@ jobs:
         run: |
           python tests/test_router.py
           python tests/test_criteria.py
+          python tests/test_batch.py
           python tests/test_email.py
           python tests/test_download.py
           python tests/test_shortlist.py
@@ -53,6 +54,7 @@ jobs:
           python tests/test_router_memory.py
           python tests/test_shortlist_cosine.py
           python tests/test_temperature_loading.py
+          python tests/test_cli.py
 
       - name: Build
         run: python -m build

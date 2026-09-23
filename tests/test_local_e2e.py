@@ -237,6 +237,25 @@ res_td = r2.predict({"message": "anything"}, QD, model="typed-decisions")
 ok("explicit typed-decisions honoured", res_td["routing"]["model"] == "typed-decisions")
 ok("routing payload serialises", isinstance(json.dumps(res_td["routing"]), str))
 
+# ---------------------------------------------------------------- 6. tokenizer reuse
+head("6. Tokenizers are parsed once per checkpoint, not per Agent")
+# `huggingface_hub` caches the download but not the parsed tokenizer, and the eviction above
+# destroyed the whole Agent. Rebuilding it must not re-parse tokenizer.json -- 34 MB on the
+# multilingual checkpoint, several times the cost of applying its weights.
+first = laya.load(LOCAL["english"], device=DEVICE)
+again = laya.load(LOCAL["english"], device=DEVICE)
+ok("same checkpoint reuses its tokenizer", first.tok is again.tok)
+
+multi = laya.load(LOCAL["multilingual"], device=DEVICE)
+ok("a different checkpoint gets its own tokenizer", multi.tok is not first.tok)
+
+tok_dir = os.path.join(LOCAL["english"], "tokenizer")
+os.utime(os.path.join(tok_dir, "tokenizer_config.json"), None)
+refreshed = laya.load(LOCAL["english"], device=DEVICE)
+ok("a rewritten tokenizer config forces a fresh parse", refreshed.tok is not first.tok,
+   "an edited on-disk tokenizer must not be masked by the cache")
+del first, again, multi, refreshed
+
 # ---------------------------------------------------------------- summary
 head("SUMMARY")
 for n in NOTES:

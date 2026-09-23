@@ -137,6 +137,19 @@ own. Both ids run the checkpoints published here, unmodified, at `max_len` 8192.
 
 [Docs](https://impossibl.com/docs/evaluation) · [Model page](https://impossibl.com/convaiinnovations/laya)
 
+### Command line
+
+Installing the package also installs a `laya` command for quick local testing, no script needed:
+
+```bash
+laya "I was charged twice, please refund"            # routing decision only; works offline, no download
+laya "Refactor this service" --predict               # full answers (downloads the checkpoint on first use)
+laya "Mein Konto wurde zweimal belastet" --lang de   # force a language instead of detecting it
+laya                                                 # interactive mode
+```
+
+Routing alone never downloads a checkpoint, so it returns in milliseconds. `--predict` loads the routed checkpoint, which needs network access to the Hugging Face hub the first time; if a checkpoint cannot be downloaded, the CLI says so instead of crashing.
+
 ---
 
 ## Quickstart: Route Mode (Recommended)
@@ -272,6 +285,12 @@ router.unload()                     # free memory
 | `Router(max_loaded=1)` | 7 to 10 s on every language switch | 1 per switch |
 | `Router(preload=True)` | **32.8 ms (GPU) / 193–464 ms (CPU)** | **none** |
 
+A rebuild still re-reads the checkpoint, but each checkpoint's tokenizer is parsed once per process
+and reused by every `Agent` — including one the Router rebuilds after eviction. The multilingual
+`tokenizer.json` alone is 34 MB / 256k vocab, several times the cost of applying its weights.
+Preloading is still the right answer for a server: it removes the rebuild rather than making it
+cheaper.
+
 ### Supplying Your Own Language Detection
 
 Routing asks one question: *can the English checkpoint read this state?* The built-in detector answers it from the script and a function-word heuristic, and is deliberately dependency-free. That heuristic is best-effort on Latin-script languages it holds no word list for, so a short request can carry no usable signal:
@@ -386,6 +405,27 @@ Passing an empty question dictionary to `agent.predict(state, {})` or
 `agent.system_one(state, {})` returns the standard response with `"answers": {}`
 and `"usage": {"input_tokens": 0, "output_tokens": 0}`. The state is not tokenized
 and no model forward pass runs.
+
+---
+
+## GPU Fast Path (TileLang)
+
+`pip install laya[fast]` adds an optional forward built from fused [TileLang](https://github.com/tile-ai/tilelang)
+kernels: GEMM + bias/activation epilogues, GEMM + GEGLU, residual + LayerNorm, in-place RoPE, and a
+sliding-window flash attention that reads the packed QKV buffer directly. Weights stay resident in bf16
+and every (batch, length) bucket is captured as a CUDA graph, so a one-question call no longer pays
+~200 kernel launches from Python.
+
+```python
+agent = laya.load("convaiinnovations/laya", fast=True)   # or: agent.accelerate()
+agent.predict(state, questions)                            # same API, same answers
+```
+
+Numerics: on a fixed set of 60 states the fast path is at least as close to an fp32 forward as the stock bf16
+path is (max |Δp| ≤ 0.05 vs fp32 on both checkpoints, argmax agreement ≥ 47/48 per question type; every per-option
+probability is in `benchmarks/results/parity_*.json`) — see `benchmarks/parity_fast.py` and [BENCHMARKS.md](BENCHMARKS.md#gpu-fast-path).
+Falls back to the stock forward on CPU/MPS or when `tilelang` is not installed; `agent.deaccelerate()`
+restores it. Kernels compile once per shape bucket on first use (a few seconds, cached on disk).
 
 ---
 
@@ -561,7 +601,7 @@ All of the capability on this benchmark comes from fine-tuning.
 
 Across all 51 languages the English checkpoint macro-averages **0.227** with macro ECE
 **0.733**, and only 23 of 51 languages clear 3x random. Khmer scores **0.000 at 95.2%
-confidence**. This is why [`Router`](#model-routing-three-checkpoints-one-call) exists: the
+confidence**. This is why [`Router`](#quickstart-route-mode-recommended) exists: the
 model's own confidence gives no warning, so the routing decision has to be made before the
 forward pass.
 
@@ -680,6 +720,13 @@ the whole loop: build the dataset, train with RLCD (proper-scoring-rule rewards,
 policy gradient), fit calibration temperatures, evaluate, and push the result to the Hub.
 
 * **[`notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb`](notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb)**
+
+The notebook enables gradient checkpointing on both the encoder and the decision head.
+For custom training loops, `model.head_checkpointing = True` enables activation
+checkpointing for the decision-head layers; enable the encoder's gradient checkpointing
+separately. During gradient-enabled training, this reduces stored intermediate activations
+by recomputing them during backward, trading extra computation for lower activation memory.
+The head flag defaults to `False` and is bypassed in evaluation and under `torch.no_grad()`.
 
 The notebook fits one `temperature` per type (`choice`, `score`, `noul`) and removes inherited
 `temperature_by_options` from the exported config. Otherwise those old bucket values take

@@ -1,6 +1,7 @@
 """High-level inference runtime for laya System 1 decision models."""
 import json
 import os
+import threading
 import warnings
 from typing import Any, Dict, Optional, Union
 
@@ -98,6 +99,42 @@ def _verify_compatibility(model: torch.nn.Module, cfg: Dict, weights: Dict[str, 
         )
 
 
+_TOKENIZERS: Dict[tuple, Any] = {}
+_TOKENIZERS_LOCK = threading.Lock()
+
+
+def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
+    """Tokenizer for a checkpoint, parsed once per process.
+
+    Parsing `tokenizer.json` is not free and `huggingface_hub` caches only the download, not
+    the parsed object: the multilingual checkpoint ships a 34 MB, 256k-vocabulary file that
+    costs seconds to load, several times the cost of applying its weights. A tokenizer is
+    read-only during inference, so one instance is shared by every Agent that wants the same
+    directory -- including an Agent the Router has rebuilt after eviction.
+
+    Keyed on the tokenizer directory and its mtime, so a re-download or a config rewritten by
+    `_fix_tokenizer_config()` still produces a fresh parse. Non-directory sources (a hub id)
+    are not cached, so a caller cannot pin a stale remote revision.
+    """
+    from transformers import AutoTokenizer
+
+    if not os.path.isdir(tok_dir):
+        return AutoTokenizer.from_pretrained(cfg.get("encoder"))
+
+    try:
+        stamp = (os.path.abspath(tok_dir), os.path.getmtime(os.path.join(tok_dir, "tokenizer_config.json")))
+    except OSError:
+        return AutoTokenizer.from_pretrained(tok_dir)
+
+    with _TOKENIZERS_LOCK:
+        cached = _TOKENIZERS.get(stamp)
+        if cached is not None:
+            return cached
+        tokenizer = AutoTokenizer.from_pretrained(tok_dir)
+        _TOKENIZERS[stamp] = tokenizer
+        return tokenizer
+
+
 class Agent:
     """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions."""
 
@@ -107,15 +144,18 @@ class Agent:
         device: Optional[str] = None,
         token: Optional[str] = None,
         subfolder: Optional[str] = None,
+        fast: bool = False,
     ):
         """Load a Laya checkpoint.
+
+        `fast=True` swaps the encoder/head forward for the TileLang fast path (CUDA only, needs
+        `pip install laya[fast]`); see `Agent.accelerate`.
 
         `subfolder` selects one checkpoint from a repo that bundles several, e.g.
         `Agent("convaiinnovations/laya", subfolder="multilingual")`. Only that subfolder is
         downloaded, so bundling does not cost every user the whole family.
         """
         from safetensors.torch import load_file
-        from transformers import AutoTokenizer
         try:
             from transformers.initialization import no_init_weights
         except ImportError:  # Transformers 4.x
@@ -176,6 +216,9 @@ class Agent:
             elif target_device.type == "mps" and not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
                 print("Warning: MPS requested but not available. Falling back to CPU.")
                 self.device = torch.device("cpu")
+            elif target_device.type == "xpu" and not (hasattr(torch, "xpu") and torch.xpu.is_available()):
+                print("Warning: XPU requested but not available. Falling back to CPU.")
+                self.device = torch.device("cpu")
             else:
                 self.device = target_device
         else:
@@ -183,11 +226,13 @@ class Agent:
                 self.device = torch.device("cuda")
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 self.device = torch.device("mps")
+            elif hasattr(torch, "xpu") and torch.xpu.is_available():
+                self.device = torch.device("xpu")
             else:
                 self.device = torch.device("cpu")
 
         tok_dir = os.path.join(model_dir, "tokenizer")
-        self.tok = AutoTokenizer.from_pretrained(tok_dir if os.path.exists(tok_dir) else self.cfg.get("encoder"))
+        self.tok = _load_tokenizer(tok_dir, self.cfg)
 
         enc_dir = os.path.join(model_dir, "encoder")
         # The checkpoint supplies every parameter; skip random/base-model weights.
@@ -236,9 +281,10 @@ class Agent:
                 RuntimeWarning, stacklevel=2)
         self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
 
+        self._fast = None
         if self.device.type == "cuda" and torch.cuda.get_device_capability(self.device)[0] < 8:
             self.dtype = torch.float16
-        elif self.device.type in ("cpu", "mps"):
+        elif self.device.type in ("cpu", "mps", "xpu"):
             self.dtype = torch.float32
 
         # 2. Place on device with graceful fallback to CPU on memory error
@@ -256,6 +302,9 @@ class Agent:
             else:
                 raise e
 
+        if fast:
+            self.accelerate()
+
         if fell_back_from is not None:
             print(
                 "\n[laya] Warning: could not place the model on %s, so it is running on CPU.\n"
@@ -266,6 +315,42 @@ class Agent:
                 "    pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128\n"
                 "  See https://pytorch.org/get-started/locally/\n"
                 % (fell_back_from, fell_back_why), flush=True)
+
+    def accelerate(self, use_graphs: bool = True, strict: bool = False):
+        """Replace the model forward with the TileLang fast path (fused GEMM/GEGLU/LayerNorm/RoPE kernels,
+        sliding-window flash attention, bf16 resident weights, CUDA graphs per shape bucket).
+
+        Same numerics as the stock bf16 autocast path (see benchmarks/bench_fast.py). Returns True if
+        enabled. With `strict=False` any failure (no CUDA, tilelang missing) leaves the stock path in place.
+        """
+        if self._fast is not None:
+            return True
+        if self.device.type != "cuda":
+            if strict:
+                raise RuntimeError("laya fast path needs a CUDA device")
+            return False
+        last = None
+        for _attempt in range(2):  # tilelang's JIT cache has been seen to fail once, then succeed
+            try:
+                from .fast import FastLaya
+                self._fast = FastLaya(self.model, max_len=self.cfg.get("max_len", 512), use_graphs=use_graphs)
+                break
+            except Exception as e:  # tilelang missing / unsupported arch
+                last = e
+        if self._fast is None:
+            if strict:
+                raise last
+            print("Warning: laya fast path unavailable (%s); using the stock forward." % last)
+            return False
+        self._stock_forward = self.model.forward
+        self.model.forward = self._fast.forward
+        return True
+
+    def deaccelerate(self):
+        """Restore the stock forward."""
+        if self._fast is not None:
+            self.model.forward = self._stock_forward
+            self._fast = None
 
     @staticmethod
     def _check_question(qid: str, qdef: Any) -> None:
@@ -320,7 +405,12 @@ class Agent:
             crit = {str(k).lower(): v for k, v in crit.items()}
         ins = qdef["instructions"]
         if not isinstance(ins, str):
-            ins = json.dumps(ins)
+            # `ensure_ascii=False`, matching `serialize_state` and `render_criterion` in
+            # common.py and the instructions path in shortlist.py. The default escaped
+            # non-ASCII to literal `\uXXXX`, which the tokenizer then read as escape text:
+            # on the English checkpoint one German question answered noul=0.1652 as a dict
+            # and noul=0.2650 as the identical plain string.
+            ins = json.dumps(ins, ensure_ascii=False)
         q = {"t": t, "ins": ins, "crit": crit}
         if "labels" in qdef:
             q["labels"] = qdef["labels"]
@@ -358,11 +448,16 @@ class Agent:
         items = []
         max_len = self.cfg.get("max_len", 512)
         head_max_len = self.cfg.get("head_max_len", 192)
+        # A chronological conversation list is serialized newest-last, so the default
+        # right-truncation (st[:room]) would silently drop the newest turn. Truncate
+        # from the left for lists so the most recent intent is preserved.
+        truncate_left = isinstance(state, list)
 
         for qid in ids:
             self._check_question(qid, questions[qid])
             q = self._to_internal(questions[qid])
-            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len)
+            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len,
+                                          truncate_left=truncate_left)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
@@ -470,12 +565,13 @@ RLAgent = Agent
 
 
 def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,
-         token: Optional[str] = None, subfolder: Optional[str] = None) -> Agent:
+         token: Optional[str] = None, subfolder: Optional[str] = None, fast: bool = False) -> Agent:
     """Load a Laya agent.
 
     `subfolder` picks one checkpoint out of a repo that bundles several:
 
         laya.load("convaiinnovations/laya")                           # English (repo root)
         laya.load("convaiinnovations/laya", subfolder="multilingual")
+        laya.load("convaiinnovations/laya", fast=True)                # TileLang GPU fast path
     """
-    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder)
+    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast)

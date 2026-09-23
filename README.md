@@ -44,6 +44,28 @@ pip install laya
 
 Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
 
+### JavaScript / TypeScript
+
+The [TypeScript SDK](sdk/typescript/README.md) supports JavaScript and TypeScript
+apps through an optional self-hosted Python API server. It includes inferred
+answer types, all five question presets, ESM/CommonJS exports, and cancellation.
+
+```bash
+# From this checkout, install and start the Python inference service:
+pip install -e '.[server]'
+laya-serve
+
+# In another terminal:
+cd sdk/typescript
+npm ci
+npm run build
+node examples/triage.mjs
+```
+
+The npm package is named `@laya/typescript-sdk`.
+See [installation, examples, and publishing](sdk/typescript/README.md) and the
+[repository analysis](docs/typescript-sdk.md) for architecture and scope.
+
 ---
 
 ## Quickstart: Route Mode (Recommended)

@@ -32,6 +32,12 @@ dependencies = [
     "numpy>=1.20.0",
 ]
 
+[project.optional-dependencies]
+server = ["fastapi>=0.115.0,<1", "pydantic>=2.9,<3", "uvicorn>=0.30.0,<1"]
+
+[project.scripts]
+laya-serve = "laya.server:main"
+
 [tool.setuptools]
 # assets/, research/ and notebooks/ sit in the root, so auto-discovery bails out.
 packages = ["laya"]

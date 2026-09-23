@@ -12,6 +12,70 @@ QTYPES = {"choice": 0, "score": 1, "noul": 2}
 QTYPE_NAMES = {v: k for k, v in QTYPES.items()}
 
 
+def validate_question(qid, qdef: Dict) -> None:
+    """Reject a malformed question definition at the entry point.
+
+    Without this a typo surfaced several frames deep as an AttributeError,
+    a TypeError, or a RuntimeError from inside DecisionModel.forward, none of
+    which named the question or the field that was wrong. A `choice`/`score`
+    with no options at all reached the decision head with zero markers and
+    crashed the model's topk call, reading like a library bug rather than the
+    caller's typo.
+    """
+    if not isinstance(qdef, dict):
+        raise ValueError(
+            "question %r must be a dict, got %s; expected one of "
+            "{'type': 'choice', ...}, {'type': 'score', ...} or {'type': 'noul', ...}"
+            % (qid, type(qdef).__name__))
+    t = qdef.get("type")
+    if t not in QTYPES:
+        raise ValueError(
+            "question %r has unknown type %r; expected one of %s"
+            % (qid, t, sorted(QTYPES)))
+    if "instructions" not in qdef:
+        raise ValueError(
+            "question %r (type %r) is missing required field 'instructions'" % (qid, t))
+    crit = qdef.get("criteria")
+    if t == "choice":
+        if crit is None:
+            raise ValueError(
+                "question %r (type 'choice') is missing required field 'criteria': "
+                "pass the options as a dict {'optA': 'description', ...} or a list ['optA', ...]"
+                % qid)
+        if not isinstance(crit, (dict, list)):
+            raise ValueError(
+                "question %r (type 'choice') has criteria of type %s; expected a dict or a list"
+                % (qid, type(crit).__name__))
+        if len(crit) == 0:
+            raise ValueError(
+                "question %r (type 'choice') has empty criteria; a choice question needs "
+                "at least one option" % qid)
+    elif t == "score":
+        if crit is None:
+            raise ValueError(
+                "question %r (type 'score') is missing required field 'criteria': "
+                "pass the levels as a list ['low', 'medium', 'high']" % qid)
+        if isinstance(crit, dict):
+            raise ValueError(
+                "question %r (type 'score') has criteria as a dict, which would render the "
+                "keys as levels and silently drop the descriptions; pass the levels as a "
+                "list ['low', 'medium', 'high']" % qid)
+        if not isinstance(crit, list):
+            raise ValueError(
+                "question %r (type 'score') has criteria of type %s; expected a list"
+                % (qid, type(crit).__name__))
+        if len(crit) == 0:
+            raise ValueError(
+                "question %r (type 'score') has empty criteria; a score question needs "
+                "at least one level" % qid)
+    else:  # noul
+        if crit is not None and not isinstance(crit, dict):
+            raise ValueError(
+                "question %r (type 'noul') has criteria of type %s; expected a dict like "
+                "{'true': '...', 'false': '...'} or no criteria at all"
+                % (qid, type(crit).__name__))
+
+
 def serialize_state(state: Union[str, dict, list]) -> str:
     if isinstance(state, str):
         return state

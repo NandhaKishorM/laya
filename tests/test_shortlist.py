@@ -264,7 +264,7 @@ check("caller/criteria unchanged", questions["intent"]["criteria"], full)
 check_true("caller/criteria object unchanged", questions["intent"]["criteria"] is full)
 check("caller/sentinel intact", full["billing"], sentinel)
 
-internal = Agent._to_internal(got_questions["intent"])
+internal = Agent._to_internal("intent", got_questions["intent"])
 check("predict/internal choice keys are the shortlist", list(internal["crit"]), ["tech", "sales"])
 check("result/choice is the mock's first shortlisted label", result["answers"]["intent"]["choice"], "tech")
 check("result/shortlist labels", result["shortlist"]["intent"]["labels"], ["tech", "sales"])
@@ -323,7 +323,7 @@ check("list/predict receives a list of k labels", received, ["beta", "alpha"])
 check("list/caller criteria unchanged", list_questions["intent"]["criteria"], ["alpha", "beta", "gamma"])
 check(
     "list/internal keys follow the shortlist",
-    list(Agent._to_internal(list_agent.calls[0][1]["intent"])["crit"]),
+    list(Agent._to_internal("intent", list_agent.calls[0][1]["intent"])["crit"]),
     ["beta", "alpha"],
 )
 
@@ -477,7 +477,7 @@ pipe_q = {
     "urgency": score_q,
 }
 piped = predict_shortlist(pipe_agent, "I was charged twice", pipe_q, TableEmbed(full_vectors), k=2)
-scored = Agent._to_internal(pipe_agent.calls[0][1]["intent"])
+scored = Agent._to_internal("intent", pipe_agent.calls[0][1]["intent"])
 check("pipe/marker count equals k", len(scored["crit"]), 2)
 check("pipe/answer choice is inside the shortlist", piped["answers"]["intent"]["choice"] in piped["shortlist"]["intent"]["labels"], True)
 

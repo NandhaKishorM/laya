@@ -19,6 +19,7 @@ from .common import (
     confidence_from_probs,
     render_options,
     temp_bucket,
+    validate_question,
 )
 
 
@@ -252,11 +253,12 @@ class Agent:
                 % (fell_back_from, fell_back_why), flush=True)
 
     @staticmethod
-    def _to_internal(qdef: Dict) -> Dict:
+    def _to_internal(qid: str, qdef: Dict) -> Dict:
+        validate_question(qid, qdef)
         t = qdef["type"]
         crit = qdef.get("criteria")
         if t == "choice" and isinstance(crit, list):
-            crit = {c: None for c in crit}
+            crit = {str(c): None for c in crit}
         ins = qdef["instructions"]
         if not isinstance(ins, str):
             ins = json.dumps(ins)
@@ -282,7 +284,7 @@ class Agent:
         head_max_len = self.cfg.get("head_max_len", 192)
 
         for qid in ids:
-            q = self._to_internal(questions[qid])
+            q = self._to_internal(qid, questions[qid])
             seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
@@ -323,7 +325,7 @@ class Agent:
         n_tokens = int(b["attention_mask"].sum())
 
         for r, qid in enumerate(ids):
-            q = self._to_internal(questions[qid])
+            q = self._to_internal(qid, questions[qid])
             k = len(items[r]["markers"])
             qt = QTYPES[q["t"]]
             t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])

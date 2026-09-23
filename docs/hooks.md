@@ -45,6 +45,7 @@ Every hook receives a mutable `PredictContext`:
 |---|---|
 | `states` | the states for this call (`system_one` = one). A start hook may rewrite it. |
 | `questions` | the questions. A start hook may rewrite them. |
+| `run_id` | a unique id shared by every hook of this call, for tracing and correlation. |
 | `results` | per-state result dicts. Set before `on_predict_end`; an end hook may rewrite it. |
 | `decision` | Router only: the routing decision. `on_route` may rewrite it. |
 | `model` | the resolved checkpoint name. |
@@ -189,5 +190,29 @@ laya.load("convaiinnovations/laya", on_predict_end=metrics, hooks_concurrent=Fal
 
 ## Synchronous only
 
-Hooks are synchronous, like the rest of the core. For work that must be async, offload it from
-the hook or do it in `laya.serve` middleware. An `AsyncHook` adapter is a possible follow-up.
+Hooks are synchronous, like the rest of the core. Keep them fast and non-blocking: they run on
+the calling thread, and `laya.serve` runs inference on a single worker, so a slow hook delays
+other requests. For work that must be async or slow, offload it from the hook or do it in
+`laya.serve` middleware. An `AsyncHook` adapter is a possible follow-up.
+
+## Tracing
+
+Every hook of one call receives the same `run_id`, so a tracer can correlate the start, end and
+error events (and any spans it opens) without threading its own state:
+
+```python
+class Trace:
+    def __init__(self):
+        self.spans = {}
+
+    def on_predict_start(self, ctx):
+        self.spans[ctx.run_id] = start_span(ctx.model, ctx.run_id)
+
+    def on_predict_end(self, ctx):
+        end_span(self.spans.pop(ctx.run_id, None), ctx.usage, ctx.elapsed_ms)
+
+    def on_error(self, ctx):
+        end_span(self.spans.pop(ctx.run_id, None), error=ctx.error)
+
+laya.load("convaiinnovations/laya", hooks=[Trace()])
+```

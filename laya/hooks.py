@@ -7,6 +7,7 @@ Everything here is pure Python: importing `laya` must not start pulling torch.
 from __future__ import annotations
 
 import time
+import uuid
 import warnings
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Union
@@ -26,6 +27,7 @@ class PredictContext:
 
     states: List[Any]
     questions: Dict[str, Any]
+    run_id: str = field(default_factory=lambda: uuid.uuid4().hex)  # shared by every hook of one call
     results: Optional[List[Dict[str, Any]]] = None
     decision: Optional[Dict[str, Any]] = None       # Router: the RouteDecision dict
     model: Optional[str] = None                     # resolved checkpoint name

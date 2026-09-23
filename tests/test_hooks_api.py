@@ -89,7 +89,7 @@ check_true("Router.system_one is Router.predict", Router.system_one is Router.pr
 check_true("ONNXAgent.predict is ONNXAgent.system_one", ONNXAgent.predict is ONNXAgent.system_one)
 
 # --------------------------------------------------------------- context
-FIELDS = ["states", "questions", "results", "decision", "model", "agent", "router",
+FIELDS = ["states", "questions", "run_id", "results", "decision", "model", "agent", "router",
           "usage", "started_at", "elapsed_ms", "error"]
 check("PredictContext fields", [f.name for f in dataclasses.fields(PredictContext)], FIELDS)
 check("PredictContext/states required", PredictContext.__dataclass_fields__["states"].default,
@@ -100,6 +100,8 @@ for optional in ("results", "decision", "model", "agent", "router", "usage", "el
     check("PredictContext/%s default None" % optional,
           PredictContext.__dataclass_fields__[optional].default, None)
 check_true("PredictContext/skip exists", callable(getattr(PredictContext, "skip", None)))
+check_true("PredictContext/run_id has a factory",
+           PredictContext.__dataclass_fields__["run_id"].default_factory is not dataclasses.MISSING)
 
 # --------------------------------------------------------------- hook protocol
 check("Hook lifecycle events", set(HOOK_EVENTS),

@@ -84,16 +84,20 @@ def make_fake():
 events = []
 results_at_start = []
 results_at_end = []
+run_id_start = []
+run_id_end = []
 
 
 def start(ctx):
     events.append(("start", ctx))
     results_at_start.append(ctx.results)
+    run_id_start.append(ctx.run_id)
 
 
 def end(ctx):
     events.append(("end", ctx))
     results_at_end.append(ctx.results)
+    run_id_end.append(ctx.run_id)
 
 
 f = make_fake()
@@ -108,6 +112,15 @@ check("context/end result count", len(results_at_end[0]), 2)
 check_true("context/elapsed_ms set", events[1][1].elapsed_ms is not None)
 check("context/usage aggregated", events[1][1].usage, {"input_tokens": 12, "output_tokens": 0})
 check_true("context/agent set", events[1][1].agent is f)
+check_true("context/run_id is a non-empty string",
+           isinstance(run_id_start[0], str) and bool(run_id_start[0]))
+check("context/run_id is shared by start and end", run_id_end[0], run_id_start[0])
+
+_rids = []
+_f2 = make_fake()
+_f2.predict_batch(["s0"], QUESTIONS, on_predict_end=lambda c: _rids.append(c.run_id))
+_f2.predict_batch(["s0"], QUESTIONS, on_predict_end=lambda c: _rids.append(c.run_id))
+check("context/run_id differs per call", len(set(_rids)), 2)
 
 
 # --------------------------------------------------------------- mutation

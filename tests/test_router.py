@@ -194,6 +194,19 @@ check("route/auto ON but generic questions",
 # explicit model still beats auto-detected workflow
 check("route/explicit beats workflow",
       r_auto.route({"body": "x"}, Q_TD, model="multilingual")["model"], "multilingual")
+# RouteDecision.repo must be a string on every branch: the auto-workflow path used to return
+# the raw (repo, subfolder) pair, which serialised as a JSON array instead of a string.
+_td_auto = r_auto.route({"body": "I was charged twice"}, Q_TD)
+check("route/auto ON repo is bundle string", _td_auto["repo"], "convaiinnovations/laya/typed-decisions")
+check("route/auto ON repo is str", isinstance(_td_auto["repo"], str), True)
+check("route/auto ON repo matches other branches",
+      Router().route({"body": "x"}, Q_GENERIC, model="typed-decisions")["repo"], _td_auto["repo"])
+check("route/auto ON standalone repo is str",
+      Router(auto_task_detection=True, standalone_repos=True)
+      .route({"body": "x"}, Q_TD)["repo"], "convaiinnovations/laya-typed-decisions")
+check("route/auto ON local override kept as str",
+      Router(auto_task_detection=True, models={"typed-decisions": "/tmp/td"})
+      .route({"body": "x"}, Q_TD)["repo"], "/tmp/td")
 
 # decision payload shape
 d = r.route({"body": "मुझसे दो बार शुल्क लिया गया"}, Q_GENERIC)

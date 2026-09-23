@@ -279,7 +279,10 @@ class Router:
 
         workflow = match_typed_decisions_workflow(questions or {})
         if workflow and self.auto_task_detection:
-            return RouteDecision(model="typed-decisions", repo=self.models["typed-decisions"],
+            # _repo_str keeps this a string when the checkpoint is a (repo, subfolder) bundle
+            # pair; returning the raw spec leaked a tuple (JSON array) into RouteDecision.repo,
+            # while every other branch publishes the same field as a string.
+            return RouteDecision(model="typed-decisions", repo=_repo_str(self.models["typed-decisions"]),
                                  reason="question ids match the %r typed-decisions workflow" % workflow,
                                  detection=None, workflow=workflow)
 

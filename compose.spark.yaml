@@ -1,0 +1,18 @@
+# DGX Spark is Linux ARM64 with NVIDIA CUDA 13.0, not Apple MPS or Jetson.
+# Use with compose.yaml instead of compose.cuda.yaml:
+#   docker compose -f compose.yaml -f compose.spark.yaml run --build --rm laya
+services:
+  laya:
+    platform: linux/arm64
+    build:
+      args:
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu130}"
+    environment:
+      LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${LAYA_GPU_ID:-0}"]
+              capabilities: [gpu]

@@ -10,7 +10,13 @@ permissions:
 
 jobs:
   smoke:
-    runs-on: ubuntu-latest
+    # Native runners for both architectures; torch wheels install for the target, so
+    # an emulated cross-build would be slow and would not prove the ARM64 wheels.
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +26,7 @@ jobs:
           docker compose -f compose.yaml -f compose.example.yml config --quiet
           docker compose -f compose.yaml -f compose.example.yml -f compose.cuda.yaml config --quiet
           docker compose -f compose.yaml -f compose.cuda.yaml config --quiet
+          docker compose -f compose.yaml -f compose.spark.yaml config --quiet
           docker build --pull -t laya:smoke .
       - name: Check installed runtime and fresh cache permissions
         run: |
@@ -53,6 +60,8 @@ jobs:
         run: |
           docker run --rm --network none -v "$PWD:/workspace:ro" -w /workspace \
             laya:smoke python tests/test_docker_entrypoint.py
+          docker run --rm --network none -v "$PWD:/workspace:ro" -w /workspace \
+            laya:smoke python tests/test_docker_torch.py
       - name: Reject unavailable CUDA before downloading models
         run: |
           docker run --rm --network none -e LAYA_DEVICE=cuda laya:smoke python -c '
@@ -67,3 +76,24 @@ jobs:
       - name: Remove test cache
         if: always()
         run: docker volume rm laya-smoke-cache || true
+
+  spark-build:
+    # Builds the DGX Spark image (ARM64, CUDA 13.0) and checks its libraries load.
+    # No GPU here, so this proves installation, not inference.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ARM64 CUDA 13.0 image
+        run: docker build --pull --build-arg TORCH_INDEX=cu130 -t laya:spark .
+      - name: Check CUDA libraries and dependencies without a GPU
+        run: |
+          docker run --rm --network none laya:spark python -c '
+          import platform, torch
+          from torch.backends import cusparselt
+          assert platform.machine() == "aarch64"
+          assert torch.version.cuda == "13.0"
+          assert cusparselt.is_available()
+          print(torch.__version__, cusparselt.version())
+          '
+          docker run --rm --network none laya:spark pip check

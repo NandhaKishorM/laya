@@ -19,6 +19,9 @@ Weights stay in a named volume. Subsequent runs use `docker compose run --rm lay
 Predictions and confidence still need evaluation on your workload. See the
 [benchmark limits](../BENCHMARKS.md).
 
+For ARM64 hosts, DGX Spark and Apple Silicon, see
+[ARM64 and DGX Spark containers](docker-platforms.md).
+
 ## NVIDIA GPU / CUDA
 
 Install a compatible NVIDIA driver and configure Docker with the
@@ -70,7 +73,8 @@ work with `docker run -e`; Compose-only settings are identified below.
 | `HF_HOME` | `/home/laya/.cache/huggingface` | Cache path; see mount requirement below |
 | `LAYA_CACHE_VOLUME` | project model cache | **Compose only:** named cache volume |
 | `LAYA_GPU_ID` | `0` | **Compose only:** NVIDIA device index or UUID |
-| `LAYA_TORCH_INDEX` | `cpu` / `cu128` | **Compose build:** PyTorch wheel index |
+| `LAYA_TORCH_INDEX` | `cpu` / `cu128` / `cu130` | **Compose build:** PyTorch wheel index |
+| `LAYA_TORCH_VERSION` | `2.14.0` | **Compose build:** pinned PyTorch version |
 
 Compose forwards the runtime variables except `HF_HOME`, which stays aligned
 with its fixed cache mount. If overriding `HF_HOME` in `docker run` or your own

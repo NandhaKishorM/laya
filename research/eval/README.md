@@ -137,8 +137,24 @@ having an empty `temperature_by_options`, so the clamp cannot explain it.
 Ruled out: the option sets (identical digest to the english run), the weights
 (bundled and standalone multilingual are byte-identical, all 170 tensors
 `torch.equal`), the dataset (revision `940fd47a`, last modified 2026-02-24), and
-`build_sequence` (unchanged since `v0.2.0`). It is in the multilingual inference path
-between `laya 0.2.0` and `0.3.6` and is **not** reconciled. Flagged rather than hidden.
+`build_sequence` (unchanged since `v0.2.0`). Also ruled out, on re-measurement:
+
+* **the shipped `head_max_len`**, which matters here because this checkpoint ships
+  `256` and english ships `192`. The harness reads it from the checkpoint's own
+  config and the run's `config` block records `head_max_len: 256, max_len: 1024`, so
+  the multilingual numbers above were not taken at english's budget. Re-running with
+  the value read from config gives the same `0.4008`, and `6/51` again.
+* **which of the two multilingual copies was measured.** The bundled `multilingual/`
+  subfolder and the standalone `convaiinnovations/laya-multilingual` repo were each
+  run end to end over all 51 languages and both give `macro_accuracy 0.4008`,
+  `macro_ece 0.3911`, `6/51`.
+* **a checkpoint change since the committed sweep.** `multilingual/model.safetensors`
+  is `643835514` bytes at `sha256 b99c8bea…` and `multilingual/rl_agent_config.json`
+  is `472` bytes at `sha256 00e35f88…` at every revision from the sweep's timestamp to
+  today; the Hub commits in that window are model-card `docs:`/`assets:` only.
+
+It is in the multilingual inference path between `laya 0.2.0` and `0.3.6` and is
+**not** reconciled. Flagged rather than hidden.
 
 Related: **`head_max_len` is load-bearing for accuracy**, not just for option
 truncation. The english checkpoint at its shipped `head_max_len=192` scores 0.82;
@@ -150,7 +166,7 @@ forcing 256 or 512 drops it to 0.79.
 checkpoint, no network:
 
 ```bash
-python research/eval/test_laya_eval.py     # 49 passed, 0 failed
+python research/eval/test_laya_eval.py     # 64 passed, 0 failed
 ```
 
 It pins the upstream constants (seed 13, 20 options, the exact instruction string),

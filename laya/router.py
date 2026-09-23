@@ -555,6 +555,18 @@ class Router(HookRegistry):
                     raise
         return ctx.results[0]
 
+    def decide(self, state: Union[str, dict, list], schema: Any = None, *,
+               questions: Optional[Dict[str, Any]] = None, return_details: bool = False,
+               **predict_kwargs) -> Any:
+        """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
+
+        See `laya.structured`. Pass exactly one of `schema` or `questions`; extra keyword arguments
+        (for example `model=`, `task=`, `hooks=`) are forwarded to `predict`.
+        """
+        from .structured import decide as _decide
+        return _decide(self, state, schema, questions=questions,
+                       return_details=return_details, **predict_kwargs)
+
     def __enter__(self):
         return self
 

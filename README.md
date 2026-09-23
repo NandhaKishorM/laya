@@ -534,6 +534,34 @@ state/questions or `ctx.skip(...)` a cached answer; an end hook can rewrite the 
 
 ---
 
+## Schema-driven decisions
+
+Describe the shape you want with a JSON schema or a pydantic model, and Laya answers it in one
+forward pass, with typed values and calibrated confidence.
+
+```python
+import laya
+
+schema = {
+    "type": "object",
+    "properties": {
+        "department": {"type": "string", "enum": ["billing", "support", "sales"],
+                       "description": "Which team should handle this?"},
+        "urgency": {"type": "integer", "minimum": 0, "maximum": 2},
+        "needs_human": {"type": "boolean"},
+    },
+}
+
+agent = laya.load("convaiinnovations/laya")
+agent.decide("I was charged twice, refund me.", schema=schema)
+# {"department": "billing", "urgency": 2, "needs_human": True}
+```
+
+`decide` also works on a `Router`, accepts a pydantic model (install `laya[structured]`), and can
+return per-field confidence with `return_details=True`. See [`docs/structured.md`](docs/structured.md).
+
+---
+
 ## Built-in Workflow Presets
 
 Laya provides pre-tuned question schemas for immediate production use:

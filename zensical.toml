@@ -11,6 +11,7 @@ edit_uri = "edit/main/docs/"
 copyright = "Apache 2.0. Developed by Convai Innovations."
 nav = [
   { "Home" = "index.md" },
+  { "Schema-driven decisions" = "structured.md" },
   { "Docker quickstart" = "docker.md" },
   { "LangChain & LangGraph" = "langchain.md" },
   { "Fine-tuning example: browser agent" = "finetune_browser_agent.md" },

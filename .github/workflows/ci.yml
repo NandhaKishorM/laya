@@ -17,6 +17,29 @@ env:
   TOKENIZERS_PARALLELISM: "false"
 
 jobs:
+  typescript:
+    name: TypeScript (node${{ matrix.node }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: laya-ts
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: laya-ts/package-lock.json
+      - run: npm ci
+      - name: Unit tests
+        run: npm test -- --run
+      - name: Packed package end-to-end test
+        run: npm run test:package
+
   feishu-benchmark:
     name: Chinese benchmark audit (no models or API)
     runs-on: ubuntu-latest

@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.checkpoint import checkpoint
 
 QTYPES = {"choice": 0, "score": 1, "noul": 2}
 QTYPE_NAMES = {v: k for k, v in QTYPES.items()}
@@ -81,7 +82,8 @@ def build_sequence(
     ids.append(tok.sep_token_id)
     room = max(0, max_len - len(ids) - 1)
     st = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
-    st = st[-room:] if truncate_left else st[:room]
+    # not st[-room:]: with no room left, st[-0:] is the whole state rather than none of it
+    st = st[max(0, len(st) - room):] if truncate_left else st[:room]
     ids = ids + st + [tok.sep_token_id]
     return ids[:max_len], [m for m in markers if m < max_len]
 
@@ -110,7 +112,12 @@ class DecisionModel(nn.Module):
         if self.head is not None:
             pad = ~attention_mask.bool()
             for layer in self.head.layers:
-                h = layer(h, src_key_padding_mask=pad)
+                if self.head_checkpointing and self.training and torch.is_grad_enabled():
+                    # Non-reentrant checkpointing also trains the head when its input
+                    # is frozen. Default RNG preservation keeps dropout consistent.
+                    h = checkpoint(layer, h, src_key_padding_mask=pad, use_reentrant=False)
+                else:
+                    h = layer(h, src_key_padding_mask=pad)
         idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
         m = torch.gather(h, 1, idx)
         logits = self.scorer(m).squeeze(-1).float()

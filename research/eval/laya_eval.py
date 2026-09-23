@@ -175,15 +175,22 @@ def temperature_for(agent, qtype: int, k: int, unclamped: bool = False) -> float
 
 
 def ece(confidence, correct, bins: int = ECE_BINS) -> float:
-    """Expected calibration error over equal-width confidence bins."""
+    """Expected calibration error over equal-width confidence bins.
+
+    The first bin is closed at the bottom (`>= lo`), so `confidence == 0.0` is counted.
+    That is the boundary #39 settled in `laya.common.ece_score`,
+    `research/scripts/bench_local.py` and `research/scripts/build_benchmark_nb.py`. This
+    harness kept the pre-#39 test until the divergence was found, which made it the only
+    one of the four implementations that binned differently.
+    """
     import numpy as np
     confidence = np.asarray(confidence, dtype=float)
     correct = np.asarray(correct, dtype=float)
     if not len(confidence):
         return float("nan")
     total, edges = 0.0, np.linspace(0.0, 1.0, bins + 1)
-    for lo, hi in zip(edges[:-1], edges[1:]):
-        sel = (confidence > lo) & (confidence <= hi)
+    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+        sel = (confidence >= lo if i == 0 else confidence > lo) & (confidence <= hi)
         if sel.any():
             total += sel.mean() * abs(confidence[sel].mean() - correct[sel].mean())
     return float(total)

@@ -125,10 +125,11 @@ def main():
                 metadata['warmups'].append(dict(mode=mode, elapsed_ms=elapsed, usage=result.get('usage')))
             except Exception as e:
                 metadata['warmups'].append(dict(mode=mode, error_type=type(e).__name__))
-        (args.output / 'metadata.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
+        (args.output / 'metadata.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2),
+                                                   encoding='utf-8', newline='\n')
         jobs = [(repeat, case, mode) for repeat in range(args.repeats) for case in cases for mode in args.modes]
         random.Random(20260921).shuffle(jobs)
-        with (args.output / 'raw.jsonl').open('w') as stream:
+        with (args.output / 'raw.jsonl').open('w', encoding='utf-8', newline='\n') as stream:
             for i, (repeat, case, mode) in enumerate(jobs):
                 req = frozen_request(case)[mode]
                 row = dict(id=case['id'], family=case['family'], expected=case['expected'], mode=mode,
@@ -146,7 +147,8 @@ def main():
                 if (i + 1) % 32 == 0:
                     print(f'{i + 1}/{len(jobs)} requests completed', flush=True)
         metadata['finished_at'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        (args.output / 'metadata.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
+        (args.output / 'metadata.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2),
+                                                   encoding='utf-8', newline='\n')
     finally:
         if client:
             client.close()

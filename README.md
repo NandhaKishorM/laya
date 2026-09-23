@@ -804,6 +804,7 @@ result["shortlist"]["intent"]["labels"]  # the top 20 labels sent to the model
 * **[omp-laya-judge](https://github.com/F0Rextasy/omp-laya-judge)**: an [oh-my-pi](https://github.com/can1357/oh-my-pi) plugin with a local System-1 judge MCP server and skill (`choice`/`bool`/`score`, 0 tokens, about 0.3 s on CPU), confidence-gated escalation, and reproducible quiz and Snake demos.
 * **[laya-adk-toolkit](https://github.com/Ashfaqbs/laya-adk-toolkit)**: [Google ADK](https://google.github.io/adk-docs/) tools that let an agent call Laya's `classify`/`score`/`detect` typed decisions directly as tools, instead of asking an LLM to guess at structured output.
 * **[laya-Ascend](https://github.com/zzhdbw/laya-Ascend)**: Laya on Huawei Ascend NPUs through `torch-npu`, with a CPU vs NPU benchmark (34x to 71x faster at batch size 1), a setup guide, and Snake and Tetris demos.
+* **[laya-apple](https://github.com/tc3oliver/laya-apple)**: a correctness-validated Laya runtime for Apple silicon that uses the MLX GPU and the Apple Neural Engine, with automatic routing and concurrent heterogeneous serving.
 
 ---
 

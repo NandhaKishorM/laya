@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parent
 
 
 def load_cases():
-    cases = [json.loads(line) for line in (ROOT / 'data/cases.jsonl').read_text().splitlines()]
-    manifest = json.loads((ROOT / 'data/manifest.json').read_text())
+    cases = [json.loads(line) for line in (ROOT / 'data/cases.jsonl').read_text(encoding='utf-8').splitlines()]
+    manifest = json.loads((ROOT / 'data/manifest.json').read_text(encoding='utf-8'))
     if digest(cases) != manifest['cases_sha256']:
         raise ValueError('Dataset hash mismatch')
     if digest({c['id']: requests_for(c) for c in cases}) != manifest['requests_sha256']:
@@ -25,7 +25,7 @@ def load_cases():
 def audit_run(folder):
     cases, manifest = load_cases()
     by_id = {c['id']: c for c in cases}
-    metadata = json.loads((folder / 'metadata.json').read_text())
+    metadata = json.loads((folder / 'metadata.json').read_text(encoding='utf-8'))
     for key in ['cases_sha256', 'requests_sha256']:
         if metadata[key] != manifest[key]:
             raise ValueError('Run uses a different frozen protocol')
@@ -36,7 +36,7 @@ def audit_run(folder):
             or not set(ids) <= set(by_id) or not modes or len(set(modes)) != len(modes)
             or not set(modes) <= {'choice', 'four_noul'}):
         raise ValueError('Invalid run metadata')
-    rows = [json.loads(line) for line in (folder / 'raw.jsonl').read_text().splitlines()]
+    rows = [json.loads(line) for line in (folder / 'raw.jsonl').read_text(encoding='utf-8').splitlines()]
     expected = {(case_id, mode, repeat) for case_id in ids for mode in modes for repeat in range(repeats)}
     seen = set()
     for row in rows:
@@ -67,7 +67,7 @@ def audit_run(folder):
 
 
 def verify_archive():
-    source = json.loads((ROOT / 'SOURCE.json').read_text())
+    source = json.loads((ROOT / 'SOURCE.json').read_text(encoding='utf-8'))
     for item in source['files']:
         name, expected = item['path'], item['sha256']
         relative = Path(name)
@@ -89,7 +89,8 @@ def main():
     if args.write_summary:
         if args.write_summary.exists():
             raise SystemExit('Refusing to overwrite an existing summary')
-        args.write_summary.write_text(json.dumps(results, ensure_ascii=False, indent=2) + '\n')
+        args.write_summary.write_text(json.dumps(results, ensure_ascii=False, indent=2) + '\n',
+                                      encoding='utf-8', newline='\n')
     for name, modes in results.items():
         for mode, result in modes.items():
             print(f"{name} / {mode}: {result['correct']}/{result['n']}; "

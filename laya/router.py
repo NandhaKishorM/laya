@@ -120,6 +120,31 @@ def match_typed_decisions_workflow(questions: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+# Subtags that mean "the English checkpoint can read this". Routing needs one bit -- is this
+# English Latin text, or something the English checkpoint cannot read -- not a language id, so
+# every other code resolves to the multilingual checkpoint.
+_ENGLISH_SUBTAGS = ("en", "eng", "english")
+
+
+def _english_from_code(value: Any) -> Optional[bool]:
+    """True/False for a language code, or None when the code identifies nothing.
+
+    Accepts the forms a caller is likely to have to hand: `"en"`, `"EN"`, `"en-US"`, the
+    POSIX `"en_US"` (which `$LANG` holds), and `"en_US.UTF-8"`. `None` here means "no usable
+    hint", which is what lets a language-identification model abstain.
+    """
+    if value is None:
+        return None
+    code = str(value).strip().lower()
+    if not code:
+        return None
+    code = code.split(".", 1)[0]                       # en_US.UTF-8 -> en_US
+    primary = code.replace("_", "-").split("-", 1)[0]  # en_US -> en
+    if not primary:
+        return None
+    return primary in _ENGLISH_SUBTAGS
+
+
 class Router:
     """Lazily loads Laya checkpoints and sends each request to the right one.
 
@@ -152,6 +177,7 @@ class Router:
         auto_task_detection: bool = False,
         standalone_repos: bool = False,
         preload: bool = False,
+        lang_guess: Optional[Any] = None,
     ):
         self.models = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
         if models:
@@ -161,6 +187,11 @@ class Router:
         self.max_loaded = max(1, int(max_loaded))
         self.default = normalise_name(default)
         self.auto_task_detection = bool(auto_task_detection)
+        # An opt-in language hint installed for every request: a code, or a callable taking the
+        # state and returning one (or None to abstain). Checked before the built-in detection,
+        # never before an explicit `model`, `task` or `lang`. The default path is unchanged, so
+        # the heuristic stays dependency-free; this is the seam for a real LID model.
+        self.lang_guess = lang_guess
         self._agents: Dict[str, Any] = {}
         self._order: List[str] = []          # least-recently-used first
         # Re-entrant lock guarding model lifecycle (load/unload/attach/preload) and the
@@ -253,6 +284,19 @@ class Router:
         with self._lock:
             return list(self._order)
 
+    def _resolve_hint(self, hint: Any, state: Union[str, dict, list, None]) -> Optional[bool]:
+        """True/False for a hint about whether the English checkpoint can read `state`.
+
+        `hint` is either a language code or a callable taking the state. Anything the hint
+        cannot answer returns None, which makes `route` fall through to detection rather than
+        picking a checkpoint on no evidence.
+        """
+        if hint is None:
+            return None
+        if callable(hint):
+            hint = hint(state)
+        return _english_from_code(hint)
+
     # ------------------------------------------------------------------ routing
     def route(
         self,
@@ -261,11 +305,19 @@ class Router:
         model: Optional[str] = None,
         task: Optional[str] = None,
         lang: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
     ) -> RouteDecision:
         """Decide which checkpoint to use, without loading or running anything.
 
         Precedence: explicit `model` > explicit `task` > detected workflow (opt-in) >
-        explicit `lang` > detected script/language > default.
+        explicit `lang` > `lang_guess` > detected script/language > default.
+
+        `lang_guess` is an opt-in hint -- a language code or a callable taking the state --
+        checked after an explicit `lang` and before the built-in detection. It only answers
+        "can the English checkpoint read this?", so any non-English code routes to the
+        multilingual checkpoint. A hint that resolves to nothing falls through to detection,
+        which lets a language-identification model abstain. Pass one here, or set
+        `Router(lang_guess=...)` to apply it to every request.
         """
         if model is not None:
             key = normalise_name(model)
@@ -284,9 +336,21 @@ class Router:
                                  detection=None, workflow=workflow)
 
         if lang is not None:
-            key = "english" if str(lang).lower().split("-")[0] in ("en", "eng", "english") else "multilingual"
+            key = "english" if _english_from_code(lang) else "multilingual"
             return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
                                  detection=None, workflow=workflow)
+
+        # Caller-supplied hint, per-call first then the one installed on the Router. Only a hint
+        # that actually answers the question routes here; anything else falls through.
+        for source, hint in (("lang_guess", lang_guess), ("Router(lang_guess=...)", self.lang_guess)):
+            resolved = self._resolve_hint(hint, state)
+            if resolved is not None:
+                key = "english" if resolved else "multilingual"
+                return RouteDecision(
+                    model=key, repo=_repo_str(self.models[key]),
+                    reason="%s: the caller identified this as %s text" % (
+                        source, "English" if resolved else "non-English"),
+                    detection=None, workflow=workflow)
 
         det = analyse(state)
         if det["script"] == "unknown":
@@ -319,12 +383,13 @@ class Router:
         model: Optional[str] = None,
         task: Optional[str] = None,
         lang: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
 
         The result is the usual `system_one` payload plus a `routing` key recording the decision.
         """
-        decision = self.route(state, questions, model=model, task=task, lang=lang)
+        decision = self.route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
         agent = self.load(decision["model"])
         result = agent.system_one(state, questions)
         result["routing"] = dict(decision)

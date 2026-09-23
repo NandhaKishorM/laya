@@ -166,6 +166,31 @@ router.unload()                     # free memory
 | `Router()` (lazy, `max_loaded=1`) | 7 to 10 s on every language switch | 1 per switch |
 | `Router(preload=True)` | **32.8 ms (GPU) / 193–464 ms (CPU)** | **none** |
 
+### Supplying Your Own Language Detection
+
+Routing asks one question: *can the English checkpoint read this state?* The built-in detector answers it from the script and a function-word heuristic, and is deliberately dependency-free. That heuristic is best-effort on Latin-script languages it holds no word list for, so a short request can carry no usable signal:
+
+```python
+from laya.lang import analyse
+analyse("Care este ora in Tokyo?")
+# {'script': 'latin', 'language': 'en', 'is_english': True}   -> the English checkpoint
+```
+
+If you already run a language-identification model, hand routing the answer instead of relying on the heuristic. `lang_guess` takes a language code or a callable receiving the state, and is checked after an explicit `lang=` and before detection:
+
+```python
+# A code you already know
+router.predict(state, questions, lang_guess="ro")
+
+# A callable, e.g. wrapping fastText, CLD3 or a transformer LID
+router.predict(state, questions, lang_guess=lambda s: my_lid(s))
+
+# Or install one for every request on a server
+router = Router(preload=True, lang_guess=my_lid)
+```
+
+The hint only decides *English or not*: a code whose primary subtag is `en`, `eng` or `english` routes to the English checkpoint and everything else routes to the multilingual one. `"en_US"` and `"en_US.UTF-8"` are read as English, so `$LANG` can be passed straight through. Returning `None`, or an empty code, makes it abstain and the built-in detector decides as before — so a LID model that is unsure does not force a checkpoint. An explicit `model=`, `task=` or `lang=` still wins, and the default path is unchanged.
+
 ---
 
 ## Single-Model Mode (Direct SDK)

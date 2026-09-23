@@ -286,6 +286,33 @@ check("latin_lang/shared hits still count toward a named language",
       guess_latin_language("La factura tiene un error en el importe total"), "es")
 
 
+# --------------------------------------------------------------------- Brazilian support text
+# Short Brazilian messages lean on `você`/`vc`, the unaccented `nao`/`voce` and `gostaria`, none of
+# which the `pt` list held, so each matched one word, fell under the two-hit margin and went to the
+# English checkpoint -- which on `pt` reports 0.97 mean confidence at 0.47 accuracy (ECE 0.51).
+for text in [
+    "Boa tarde, gostaria de cancelar o plano",
+    "Voce pode me mandar a nota fiscal?",
+    "Você pode me mandar a nota fiscal?",
+    "Nao consigo fazer login no app",
+    "Pix nao caiu na conta",
+    "Gostaria de saber o prazo de entrega",
+    "Estou esperando faz uma semana",
+    "Vc pode cancelar pra mim?",
+]:
+    check("latin_lang/pt-br " + text[:32], guess_latin_language(text), "pt")
+    check("route/pt-br " + text[:32], _r_lat.route(text).model, "multilingual")
+# each added word that is also an English token must not move English text
+for text in [
+    "Our Sao Paulo office still has not received the invoice",
+    "My VC asked for the cap table and the invoice",
+    "Nossa Cafe charged my card twice this month",
+    "The Boa Vista branch reported an outage this morning",
+    "The pra team will review the claim tomorrow",
+]:
+    check("route/pt-br control " + text[:32], _r_lat.route(text).model, "english")
+
+
 # --------------------------------------------------------------------- temperature clamp (#35)
 # A fitted temperature below 1 sharpens logits. The shipped `choice:11+` bucket is 0.1006, which
 # turned a 0.24 top probability into 0.99 confidence on 13-option skill routing.

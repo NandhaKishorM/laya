@@ -83,7 +83,15 @@ _STOP = {
            "tem", "tenho", "pode", "podem", "quero", "preciso", "eu", "meu", "minha", "seu",
            "sua", "isso", "isto", "aqui", "ali", "como", "quando", "onde", "porque", "mais",
            "já", "ainda", "agora", "hoje", "ontem", "dois", "três", "tudo", "nada", "obrigado",
-           "olá"},
+           "olá",
+           # Brazilian support text: `você` and the unaccented `nao`/`voce`/`sao`/`ja` that a stripped
+           # state keeps (#172), and the chat abbreviations `vc`/`pra`. Without them "Voce pode me
+           # mandar a nota fiscal?" matched one word and went to the English checkpoint, which on
+           # `pt` reports 0.97 mean confidence at 0.47 accuracy. `ate`, `bom`, `sim` and `cade` stay
+           # out: each is an English token too (ate, BOM, SIM, Cade).
+           "você", "vocês", "voce", "voces", "vc", "vcs", "nao", "sao", "ja", "até", "tá", "pra",
+           "gostaria", "obrigada", "também", "tambem", "estou", "estamos", "meus", "minhas",
+           "nosso", "nossa", "consigo", "cadê", "boa", "tarde", "noite"},
     "it": {"il", "lo", "gli", "che", "di", "per", "con", "non", "è", "si", "del", "della", "sono",
            "questo", "questa", "anche", "come", "più", "sono", "nella", "alla",
            "la", "le", "un", "uno", "una", "e", "ed", "o", "da", "su", "tra", "fra", "mi",

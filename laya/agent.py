@@ -133,7 +133,7 @@ class Agent:
             # checkpoints, which an unfiltered snapshot would unnecessarily download.
             prefix = f"{subfolder}/" if subfolder else ""
             kw = {
-                "token": token or os.environ.get("HF_TOKEN"),
+                "token": token or os.environ.get("HF_TOKEN") or None,
                 "allow_patterns": [prefix + name for name in (
                     "rl_agent_config.json", "model.safetensors", "tokenizer/*", "encoder/*",
                 )],

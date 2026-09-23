@@ -1,7 +1,22 @@
 <p align="center">
+  <img
+    src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/readme-header.svg"
+    width="100%"
+    alt="Laya"
+  />
+</p>
+
+<p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/logo-lockup-dark.png" />
-    <img src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/logo-lockup.png" alt="Laya" width="330" />
+    <source
+      media="(prefers-color-scheme: dark)"
+      srcset="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/logo-lockup-dark.png"
+    />
+    <img
+      src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/logo-lockup.png"
+      alt="Laya"
+      width="330"
+    />
   </picture>
 </p>
 

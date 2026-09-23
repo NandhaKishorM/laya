@@ -214,7 +214,7 @@ export async function loadTokenizerJson(pathOrUrl: string): Promise<TokenizerDat
   if (/^https?:\/\//.test(pathOrUrl)) {
     const res = await fetch(pathOrUrl);
     if (!res.ok) return null;
-    raw = JSON.parse(new TextDecoder().decode(await res.arrayBuffer()));
+    raw = await res.json();
   } else {
     const fs: typeof import("node:fs/promises") = await import("node:fs/promises");
     raw = JSON.parse(await fs.readFile(pathOrUrl, "utf8"));

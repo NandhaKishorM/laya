@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.3.8"
+version = "0.3.11"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -41,6 +41,7 @@ packages = ["laya", "laya.mcp", "laya.integrations"]
 serve = [
     "fastapi>=0.110.0",
     "uvicorn>=0.27.0",
+    "python-multipart>=0.0.9",  # examples/server.py form uploads
 ]
 # `pip install laya[fast]` adds the TileLang GPU fast path (laya/fast.py); everything else works without it.
 fast = ["tilelang>=0.1.14"]
@@ -53,6 +54,11 @@ onnx = ["onnx", "onnxruntime"]
 # `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
 langchain = [
     "langchain-core>=0.2.0",
+    "langgraph>=0.1.0",
+]
+langgraph = [
+    "langchain-core>=0.2.0",
+    "langgraph>=0.1.0",
 ]
 
 [project.scripts]

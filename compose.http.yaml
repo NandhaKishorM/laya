@@ -23,13 +23,16 @@ services:
       context: .
       args:
         TORCH_INDEX: "${LAYA_TORCH_INDEX:-cpu}"
+        TORCH_VERSION: "${LAYA_TORCH_VERSION:-2.14.0}"
     # Overrides the image's one-shot quickstart CMD; the ENTRYPOINT that loads *_FILE
     # secrets still runs first.
     command: ["laya-serve"]
     ports:
-      # Host port first, container port second. Both come from LAYA_PORT, which
-      # `laya-serve` itself reads, so they cannot drift apart.
-      - "${LAYA_PORT:-8000}:${LAYA_PORT:-8000}"
+      # Host address, host port, container port. The port comes from LAYA_PORT, which
+      # `laya-serve` itself reads, so the two sides cannot drift apart. The host side
+      # stays on loopback unless LAYA_BIND_ADDRESS says otherwise, because the API has
+      # no authentication until LAYA_API_KEY is set.
+      - "${LAYA_BIND_ADDRESS:-127.0.0.1}:${LAYA_PORT:-8000}:${LAYA_PORT:-8000}"
     environment:
       LAYA_HOST: "${LAYA_HOST:-0.0.0.0}"
       LAYA_PORT: "${LAYA_PORT:-8000}"
@@ -54,6 +57,15 @@ services:
       # - ${LAYA_API_KEY_PATH:?Set LAYA_API_KEY_PATH}:/run/secrets/laya_api_key:ro
     init: true
     restart: unless-stopped
+    # The server preloads before it binds, so /health answers once the preloaded
+    # checkpoints are ready. `up --wait` therefore waits for a usable server.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['LAYA_PORT'] + '/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+      start_interval: 2s
 
 volumes:
   model-cache:

@@ -84,6 +84,33 @@ def test_missing_questions_is_400(monkeypatch):
     assert r.status_code == 400
 
 
+@pytest.mark.parametrize("payload", [
+    b"not json",
+    b"",                    # empty body
+    b"\xff\xfe\x00bad",     # invalid UTF-8
+    b'{"questions": ',      # truncated
+])
+def test_malformed_json_body_is_400(monkeypatch, payload):
+    """A body that isn't valid JSON must not fall through to an unstyled 500."""
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/systemone", content=payload,
+                    headers={"content-type": "application/json"})
+    assert r.status_code == 400
+    # pin which 400: the other branch below also answers 400, so the status alone
+    # would not notice the parse guard disappearing.
+    assert r.json()["detail"] == "request body must be valid JSON"
+
+
+@pytest.mark.parametrize("payload", [b"[1,2,3]", b'"hello"', b"null"])
+def test_json_that_is_not_an_object_is_400(monkeypatch, payload):
+    """Valid JSON that isn't an object is the other 400, not a parse failure."""
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/systemone", content=payload,
+                    headers={"content-type": "application/json"})
+    assert r.status_code == 400
+    assert "questions" in r.json()["detail"]
+
+
 def test_auth_required_when_key_set(monkeypatch):
     client, _ = _client(monkeypatch, api_key="s3cret")
     assert client.post("/v1/systemone", json=REQ).status_code == 401

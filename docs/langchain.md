@@ -1,27 +1,29 @@
 # LangChain & LangGraph Integration
 
-Laya provides fast (~33 ms), non-autoregressive decision components for **LangChain** and **LangGraph**:
+Laya provides fast, non-autoregressive decision components for **LangChain** and **LangGraph** (single-question latency measured at **32.8 ms** with `laya-multilingual` and **39.5 ms** with `laya` on a Tesla T4 GPU; 193–464 ms on CPU):
 
 * **`LayaRouter`**: Conditional edge and branch router with confidence fallback gating.
 * **`LayaGuardrail`**: Sub-40ms inline screening for prompt injections, jailbreaks, and sensitive data.
 * **`LayaTriage`**: Support ticket triage node evaluating intent, urgency, frustration, and churn risk in one forward pass.
 * **`LayaEvaluator`**: Rubric-based output grading and hallucination evaluation.
 
-Supports both **local in-process inference** (`Agent` or `Router`) and **remote HTTP inference** (`laya-serve` or hosted API) without requiring PyTorch on edge clients.
+Supports both **local in-process inference** (`Agent` or `Router`) and **remote HTTP inference** against your own `laya-serve` without requiring PyTorch on edge clients.
 
 ---
 
 ## Installation
 
 ```bash
-pip install "laya[langchain]"
+pip install "laya[langchain]"   # Installs both langchain-core and langgraph
+# or
+pip install "laya[langgraph]"
 ```
 
 ---
 
 ## 1. LangGraph Conditional Edge Routing
 
-In LangGraph, conditional edges determine which node executes next. Autoregressive LLMs take 500–2,000 ms to make this decision. `LayaRouter` runs in **~33 ms**:
+In LangGraph, conditional edges determine which node executes next. Autoregressive LLMs take 500–2,000 ms to make this decision. `LayaRouter` runs in **~33 ms** (measured at 32.8 ms on `laya-multilingual` / 39.5 ms on `laya` English on a Tesla T4 GPU):
 
 ```python
 from typing import TypedDict

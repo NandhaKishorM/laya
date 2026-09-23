@@ -1,0 +1,38 @@
+# Documentation site, built with Zensical (https://zensical.org). Preview locally:
+#   pip install -r requirements-docs.txt && zensical serve
+
+[project]
+site_name = "Laya"
+site_description = "Multilingual, non-autoregressive System 1 decision engine"
+site_url = "https://nandhakishorm.github.io/laya/"
+repo_url = "https://github.com/NandhaKishorM/laya"
+repo_name = "NandhaKishorM/laya"
+edit_uri = "edit/main/docs/"
+copyright = "Apache 2.0. Developed by Convai Innovations."
+nav = [
+  { "Home" = "index.md" },
+  { "Docker quickstart" = "docker.md" },
+  { "LangChain & LangGraph" = "langchain.md" },
+  { "Fine-tuning example: browser agent" = "finetune_browser_agent.md" },
+]
+
+[project.theme]
+# Reuse the README logo to avoid maintaining a second copy.
+logo = "https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/logo-mark.svg"
+favicon = "https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/logo-mark.svg"
+features = [
+  "content.code.copy",
+  "navigation.footer",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"

@@ -150,13 +150,15 @@ forcing 256 or 512 drops it to 0.79.
 checkpoint, no network:
 
 ```bash
-python research/eval/test_laya_eval.py     # 47 passed, 0 failed
+python research/eval/test_laya_eval.py     # 49 passed, 0 failed
 ```
 
 It pins the upstream constants (seed 13, 20 options, the exact instruction string),
 the determinism of the sampler, that a fresh RNG per language is used, and the
 metric arithmetic, including the `confidence == 0.0` bin boundary that this harness
-shares with `bench_local.py` and `laya.common.ece_score`.
+shares with `laya.common.ece_score`, `research/scripts/bench_local.py` and
+`research/scripts/build_benchmark_nb.py`. That boundary is asserted against all four,
+not just against this harness's own arithmetic.
 
 ## Limits
 
@@ -167,6 +169,10 @@ shares with `bench_local.py` and `laya.common.ece_score`.
 * The English checkpoint collapses on non-Latin scripts (see `BENCHMARKS.md`), so a
   low score in one language is not by itself evidence of a misroute — check
   `laya.lang.analyse` for the script before concluding which checkpoint was used.
-* `confidence == 0.0` is not binned, matching `laya.common.ece_score` and
-  `bench_local.py`. If [#39](https://github.com/NandhaKishorM/laya/pull/39) lands
-  with a different boundary, this should follow it.
+* The `confidence == 0.0` bin boundary is the one
+  [#39](https://github.com/NandhaKishorM/laya/pull/39) settled: the first bin is closed
+  at the bottom, so `0.0` is counted. This harness used `conf > lo` for every bin until
+  the divergence was found, which made it the only one of the four implementations that
+  binned differently. It now matches `laya.common.ece_score`,
+  `research/scripts/bench_local.py` and `research/scripts/build_benchmark_nb.py`, and
+  `test_laya_eval.py` asserts that agreement.

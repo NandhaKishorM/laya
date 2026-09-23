@@ -37,6 +37,21 @@ session-*.md
 *-session.md
 .claude-session*
 
+# laya-ts: exported weights (regenerate via laya-ts/scripts/export_onnx.py)
+model-*/
+*.onnx
+*.onnx.data
+
+# laya-ts: build output + deps
+laya-ts/dist/
+node_modules/
+
+# uv lockfile (repo pins via pip/venv, not uv)
+uv.lock
+
+# agent process docs (specs/plans) - not shipped
+docs/superpowers/
+
 # credentials - never commit
 .env
 .env.*

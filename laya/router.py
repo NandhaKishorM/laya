@@ -282,7 +282,7 @@ class Router:
         server or a demo. `max_loaded` is raised to fit both the requested checkpoints and
         all already-resident agents, so incremental preloading does not evict either.
         """
-        names = [normalise_name(n) for n in (names or list(self.models))]
+        names = [normalise_name(n) for n in (list(self.models) if names is None else names)]
         with self._lock:
             self.max_loaded = max(self.max_loaded, len(set(names) | set(self._agents)))
             for n in names:

@@ -146,6 +146,31 @@ from laya.common import DecisionModel  # noqa: E402
 from laya.router import Router  # noqa: E402
 
 
+# `_to_internal` serialises non-string `instructions` with json.dumps. The default
+# `ensure_ascii=True` escaped non-ASCII to literal `\uXXXX`, which the tokenizer then
+# read as escape text: on the English checkpoint one German question answered noul=0.1652
+# as a dict and noul=0.2650 as the identical plain string. Every other text path keeps
+# its characters -- see the `criterion/non-ascii kept` case above.
+_internal = Agent._to_internal(
+    {"type": "noul", "instructions": {"frage": "Bittet um eine R\u00fcckerstattung?"},
+     "criteria": None})
+check("instructions/non-ascii kept as a dict",
+      _internal["ins"], '{"frage": "Bittet um eine R\u00fcckerstattung?"}')
+check_true("instructions/no escape sequences in the prompt",
+           "\\u" not in _internal["ins"], repr(_internal["ins"]))
+check("instructions/ascii is unchanged",
+      Agent._to_internal({"type": "noul", "instructions": {"asks": "for a refund"},
+                          "criteria": None})["ins"],
+      '{"asks": "for a refund"}')
+check("instructions/plain string is untouched",
+      Agent._to_internal({"type": "noul", "instructions": "Bittet der Kunde um eine "
+                          "R\u00fcckerstattung?", "criteria": None})["ins"],
+      "Bittet der Kunde um eine R\u00fcckerstattung?")
+check("instructions/non-string still renders as json",
+      Agent._to_internal({"type": "noul", "instructions": ["a", "b"],
+                          "criteria": None})["ins"], '["a", "b"]')
+
+
 class _FakeTok:
     """The tokenizer surface `build_sequence` uses, with predictable ids."""
     cls_token_id, sep_token_id, mask_token_id, pad_token_id = 0, 1, 4, 2
@@ -243,8 +268,8 @@ check_true("good/choice from a list",
 check("good/choice probabilities sum", round(sum(out["answers"]["choice"]["probabilities"].values()), 3), 1.0)
 check_true("good/score is in range", 0.0 <= out["answers"]["score"]["score"] <= 2.0,
            str(out["answers"]["score"]))
-check_true("good/score legend", out["answers"]["score"]["legend"],
-           {"0": "no pressure", "1": "soon", "2": "blocking"})
+check("good/score legend", out["answers"]["score"]["legend"],
+      {"0": "no pressure", "1": "soon", "2": "blocking"})
 check_true("good/noul is a probability", 0.0 <= out["answers"]["noul"]["noul"] <= 1.0,
            str(out["answers"]["noul"]))
 check_true("good/noul with criteria is a probability",
@@ -252,6 +277,29 @@ check_true("good/noul with criteria is a probability",
            str(out["answers"]["noul with criteria"]))
 check("good/usage has no output tokens", out["usage"]["output_tokens"], 0)
 check_true("good/usage counted input tokens", out["usage"]["input_tokens"] > 0, str(out["usage"]))
+
+# --------------------------------------------------------------- build_sequence left truncation
+# With no room left for the state, `st[-0:]` kept all of it: the closing [SEP] was replaced by the
+# *first* state token, i.e. the wrong end of the state and an unterminated sequence.
+from laya.common import build_sequence  # noqa: E402
+
+
+class _SeqTok:
+    mask_token, mask_token_id, cls_token_id, sep_token_id = "[MASK]", 1, 2, 3
+
+    def __init__(self):
+        self.vocab = {}
+
+    def __call__(self, text, add_special_tokens=False):
+        return {"input_ids": [self.vocab.setdefault(w, 100 + len(self.vocab)) for w in text.split()]}
+
+
+_tok, _q = _SeqTok(), {"t": "noul", "ins": "Is it urgent?", "crit": None}
+_full = len(build_sequence(_tok, "", _q, 10 ** 6)[0])     # prompt + closing [SEP], no state
+for room, kept in [(0, []), (2, ["two", "three"]), (10, ["one", "two", "three"])]:
+    ids = build_sequence(_tok, "one two three", _q, _full + room, truncate_left=True)[0]
+    check("truncate_left/room=%d keeps the tail" % room, ids[_full - 1:],
+          [_tok.vocab[w] for w in kept] + [_tok.sep_token_id])
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

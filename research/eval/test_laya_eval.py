@@ -103,13 +103,17 @@ check("ece/normalised by count", round(ece([0.9] * 100, [1.0] * 100), 4),
       round(ece([0.9] * 1000, [1.0] * 1000), 4))
 check("ece/one sample", round(ece([1.0], [1.0]), 4), 0.0)
 
-# Known boundary: the bin test is `conf > lo`, so conf == 0.0 falls in no bin and
-# contributes nothing. `laya.common.ece_score` and `research/scripts/bench_local.py`
-# bin identically, so this harness deliberately matches them rather than diverging --
-# comparability with the published tables is the point. PR #39 addresses the same
-# boundary in `laya.common`; if it lands, this harness should follow it.
-check("ece/conf==0.0 is not binned (matches upstream)",
-      round(ece([0.0, 0.0], [1.0, 1.0]), 4), 0.0)
+# Bin boundary: the first bin is closed at the bottom, so conf == 0.0 IS counted. This
+# harness tested `conf > lo` for every bin until the divergence was found, which made it
+# the only one of the four implementations that binned differently --
+# `laya.common.ece_score`, `research/scripts/bench_local.py` and
+# `research/scripts/build_benchmark_nb.py` all settled on this boundary in #39.
+check("ece/conf==0.0 is binned (matches the other three)",
+      round(ece([0.0, 0.0], [1.0, 1.0]), 4), 1.0)
+check("ece/conf==0.0 carries its bin weight",
+      round(ece([0.0, 1.0], [1.0, 1.0]), 4), 0.5)
+check("ece/conf==0.0 and correct costs nothing",
+      round(ece([0.0, 0.0], [0.0, 0.0]), 4), 0.0)
 check_true("ece/conf slightly above 0 IS binned",
            ece([1e-9, 1e-9], [1.0, 1.0]) > 0.0)
 

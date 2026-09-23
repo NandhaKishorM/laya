@@ -9,12 +9,8 @@ repo_url = "https://github.com/NandhaKishorM/laya"
 repo_name = "NandhaKishorM/laya"
 edit_uri = "edit/main/docs/"
 copyright = "Apache 2.0. Developed by Convai Innovations."
-nav = [
-  { "Home" = "index.md" },
-  { "Docker quickstart" = "docker.md" },
-  { "LangChain & LangGraph" = "langchain.md" },
-  { "Fine-tuning example: browser agent" = "finetune_browser_agent.md" },
-]
+# No nav list: Zensical builds the navigation from docs/, so a new page appears without an
+# edit here. A folder with an index.md becomes a section that opens on that page.
 
 [project.theme]
 # Reuse the README logo to avoid maintaining a second copy.
@@ -23,6 +19,7 @@ favicon = "https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/logo
 features = [
   "content.code.copy",
   "navigation.footer",
+  "navigation.indexes",
 ]
 
 [[project.theme.palette]]

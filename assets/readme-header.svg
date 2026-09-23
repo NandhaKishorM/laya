@@ -1,0 +1,123 @@
+<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+
+    <!-- Main black → blue gradient -->
+    <linearGradient id="background" x1="0" y1="0" x2="1200" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#000000"/>
+      <stop offset="45%" stop-color="#030712"/>
+      <stop offset="75%" stop-color="#06152F"/>
+      <stop offset="100%" stop-color="#003B99"/>
+    </linearGradient>
+
+    <!-- Blue glow -->
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(1000 90) rotate(130) scale(400 400)">
+      <stop offset="0%" stop-color="#1677FF" stop-opacity="0.55"/>
+      <stop offset="45%" stop-color="#0055FF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#0055FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Bottom blue glow -->
+    <radialGradient id="bottomGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(550 390) rotate(-90) scale(250 700)">
+      <stop offset="0%" stop-color="#0066FF" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#0066FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Soft blur -->
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+
+    <!-- Border gradient -->
+    <linearGradient id="border" x1="0" y1="0" x2="1200" y2="360">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="55%" stop-color="#0B3B8F"/>
+      <stop offset="100%" stop-color="#1683FF"/>
+    </linearGradient>
+
+    <clipPath id="rounded">
+      <rect width="1200" height="360" rx="28"/>
+    </clipPath>
+
+  </defs>
+
+  <!-- Main background -->
+  <rect
+    width="1200"
+    height="360"
+    rx="28"
+    fill="url(#background)"
+  />
+
+  <!-- Glow effects -->
+  <g clip-path="url(#rounded)">
+    <rect
+      width="1200"
+      height="360"
+      fill="url(#glow)"
+    />
+
+    <rect
+      width="1200"
+      height="360"
+      fill="url(#bottomGlow)"
+    />
+
+    <!-- Decorative blue glow -->
+    <circle
+      cx="1060"
+      cy="70"
+      r="110"
+      fill="#0066FF"
+      opacity="0.08"
+      filter="url(#blur)"
+    />
+
+    <circle
+      cx="160"
+      cy="330"
+      r="100"
+      fill="#0044FF"
+      opacity="0.06"
+      filter="url(#blur)"
+    />
+
+    <!-- Subtle grid -->
+    <path
+      d="M0 80H1200
+         M0 160H1200
+         M0 240H1200
+         M0 320H1200
+         M100 0V360
+         M200 0V360
+         M300 0V360
+         M400 0V360
+         M500 0V360
+         M600 0V360
+         M700 0V360
+         M800 0V360
+         M900 0V360
+         M1000 0V360
+         M1100 0V360"
+      stroke="#3B82F6"
+      stroke-opacity="0.035"
+      stroke-width="1"
+    />
+  </g>
+
+  <!-- Border -->
+  <rect
+    x="1"
+    y="1"
+    width="1198"
+    height="358"
+    rx="27"
+    fill="none"
+    stroke="url(#border)"
+    stroke-opacity="0.65"
+    stroke-width="2"
+  />
+
+</svg>

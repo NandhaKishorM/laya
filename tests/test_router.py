@@ -473,6 +473,11 @@ for text in ["trage diesen termin in meinen kalender ein",
     check("route/ascii german " + text, _r_lat.route(text).model, "multilingual")
 check("route/english control for #54",
       _r_lat.route("I would like to book a flight to Berlin tomorrow").model, "english")
+# English that shares words with the German list stays English. `in` and `den` leave the first, a real
+# en-US MASSIVE utterance, one German hit short of flipping; the chat line carries `im` and flips if
+# any one of the English words `am`, `an` or `so` joins the German list.
+for text in ["turn off smart lamp in den", "im so sorry, am an hour late, stuck in traffic"]:
+    check("route/english sharing german words " + text, _r_lat.route(text).model, "english")
 # German words that Spanish (`es`) or French (`du`) also claim would stop naming those languages
 check("latin_lang/spanish es stays evidence", guess_latin_language("que hora es en australia"), "es")
 check("latin_lang/french du stays evidence", guess_latin_language("baisse le volume du haut-parleur"), "fr")

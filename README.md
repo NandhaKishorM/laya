@@ -272,6 +272,12 @@ router.unload()                     # free memory
 | `Router(max_loaded=1)` | 7 to 10 s on every language switch | 1 per switch |
 | `Router(preload=True)` | **32.8 ms (GPU) / 193–464 ms (CPU)** | **none** |
 
+A rebuild still re-reads the checkpoint, but each checkpoint's tokenizer is parsed once per process
+and reused by every `Agent` — including one the Router rebuilds after eviction. The multilingual
+`tokenizer.json` alone is 34 MB / 256k vocab, several times the cost of applying its weights.
+Preloading is still the right answer for a server: it removes the rebuild rather than making it
+cheaper.
+
 ### Supplying Your Own Language Detection
 
 Routing asks one question: *can the English checkpoint read this state?* The built-in detector answers it from the script and a function-word heuristic, and is deliberately dependency-free. That heuristic is best-effort on Latin-script languages it holds no word list for, so a short request can carry no usable signal:

@@ -179,8 +179,8 @@ curl -s localhost:8000/v1/systemone -H 'content-type: application/json' \
 ```
 
 For NVIDIA, add the CUDA override. It repeats the build args and the device reservation
-for `laya-serve`, because a Compose override replaces a service's `build` block whole
-rather than merging it:
+for `laya-serve`, because `laya-serve` is a separate service and overrides for `laya`
+never reach it:
 
 ```bash
 docker compose -f compose.yaml -f compose.http.yaml -f compose.cuda.yaml up --build laya-serve
@@ -191,6 +191,15 @@ named `model-cache` volume as the quickstart, so serving after a quickstart run 
 with the checkpoints already on disk. Stop with `docker compose ... down`, using the same
 Compose files.
 
+The port is published on `127.0.0.1` only. The API has no authentication until
+`LAYA_API_KEY` is set, so set a key before exposing it with
+`LAYA_BIND_ADDRESS=0.0.0.0`, and put a TLS reverse proxy in front for remote clients.
+`/health` does not require authentication in either case.
+
+The service has a healthcheck on `/health`. The server preloads before it starts
+listening, so with `LAYA_PRELOAD=1` a healthy container has its checkpoints loaded.
+`docker compose ... up -d --wait laya-serve` returns once it is healthy.
+
 ### Server configuration
 
 These apply to the `laya-serve` service only.
@@ -199,6 +208,7 @@ These apply to the `laya-serve` service only.
 |---|---|---|
 | `LAYA_HOST` | `0.0.0.0` | bind address inside the container |
 | `LAYA_PORT` | `8000` | container port, and the host port published for it |
+| `LAYA_BIND_ADDRESS` | `127.0.0.1` | host address the port is published on |
 | `LAYA_PRELOAD` | `0` | `1` builds every checkpoint at startup instead of on first request |
 | `LAYA_MODELS` | (all) | comma list to preload: `english,multilingual,typed-decisions` |
 | `LAYA_THREADS` | `OMP_NUM_THREADS` | caps torch intra-op threads; keep at or below physical cores |

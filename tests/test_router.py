@@ -194,6 +194,16 @@ check("route/auto ON but generic questions",
 # explicit model still beats auto-detected workflow
 check("route/explicit beats workflow",
       r_auto.route({"body": "x"}, Q_TD, model="multilingual")["model"], "multilingual")
+# An auto-detected workflow reports `repo` like every other branch does. It used to hand back the raw
+# (repo, subfolder) spec, which serialises to a JSON list instead of the "repo/subfolder" string.
+check("route/auto workflow repo is a string",
+      r_auto.route({"body": "I was charged twice"}, Q_TD)["repo"], "convaiinnovations/laya/typed-decisions")
+check("route/auto workflow repo matches explicit task",
+      r_auto.route({"body": "I was charged twice"}, Q_TD)["repo"],
+      r_auto.route({"body": "I was charged twice"}, Q_TD, task="typed_decisions")["repo"])
+check("route/auto workflow repo standalone",
+      Router(auto_task_detection=True, standalone_repos=True).route({"body": "x"}, Q_TD)["repo"],
+      "convaiinnovations/laya-typed-decisions")
 
 # decision payload shape
 d = r.route({"body": "मुझसे दो बार शुल्क लिया गया"}, Q_GENERIC)

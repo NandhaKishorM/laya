@@ -56,7 +56,14 @@ _DEVICE_FOOTER = re.compile(
     re.I,
 )
 _DISCLAIMER = re.compile(
-    r"(confidential|intended (solely )?for the (use of the )?(named )?(addressee|recipient)|"
+    # English: tied to a disclaimer noun and a disclaimer tail, the way the Portuguese
+    # branches below are. The bare word matched any sentence that merely mentioned it,
+    # so "Is this confidential?" and "Confidential: I need a refund." were deleted whole.
+    # `[^.]` rather than `[^.\n]`: a footer wraps, so "are\nconfidential" must still match.
+    r"(\b(e-?mail|message|information|communication|transmission|contents?)\b[^.]{0,60}"
+    r"\bconfidential\b[^.]{0,60}\b(intended|solely|addressee|recipient|privileged|"
+    r"disclos|unauthori[sz]ed)|"
+    r"\bconfidential\b[^.]{0,60}\b(and (may|is) (also )?privileged)|"
     r"if you (have )?received this (e-?mail|message) in error|"
     # Portuguese/Spanish: tied to "this message/e-mail" rather than the bare word `confidencial`,
     # which a sender's own request ("preciso do contrato confidencial") uses just as often

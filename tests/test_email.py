@@ -287,6 +287,58 @@ for label, body in [
     check("pt/kept: " + label, clean_email_body(body), body)
 
 
+# ------------------------------------------------- the word, without the disclaimer
+# `confidential` was a bare substring of `_DISCLAIMER`, so any sentence that merely
+# mentioned it was dropped. A one-sentence body that mentions it was deleted whole and
+# the model was then scored on an empty state, silently. The Portuguese branches beside
+# it were already tied to disclaimer phrasing for this reason; English now is too.
+for label, body in [
+    ("a question about the word", "Is this confidential?"),
+    ("a policy question", "What is your confidentiality policy?"),
+    ("a request containing the word", "Please keep this confidential but process my refund."),
+    ("a request about handling", "Please treat this as confidential."),
+    ("a question with a dash", "This is confidential - can you help?"),
+    ("a question about an attachment", "Is the attached document confidential?"),
+    ("a label prefix", "Confidential: I need a refund."),
+    ("a question about information", "What is the information policy for contractors?"),
+]:
+    check("word only/kept: " + label, clean_email_body(body), body)
+check_true(
+    "word only/body is never emptied",
+    clean_email_body("Is this confidential?").strip() != "",
+)
+check(
+    "word only/email_state keeps the request",
+    email_state("Question", "Is this confidential?")["body"],
+    "Is this confidential?",
+)
+
+# ...while the real footers those branches exist for are still dropped
+for label, body in [
+    ("named addressee", "This email is confidential and intended solely for the named addressee."),
+    ("the individual addressed",
+     "This message is confidential and intended solely for the use of the individual to whom it is addressed."),
+    ("may be privileged", "The information in this email is confidential and may be privileged."),
+    ("wrapped across lines",
+     "This email and any files transmitted with it are\n"
+     "confidential and intended solely for the named addressee."),
+]:
+    check_true("word only/still dropped: " + label, not clean_email_body(body).strip())
+check(
+    "word only/request before a footer survives",
+    clean_email_body("My account is locked.\n"
+                     "This email is confidential and intended solely for the named addressee.\n"
+                     "Please unlock it."),
+    "My account is locked. Please unlock it.",
+)
+check(
+    "word only/request inside one sentence survives",
+    clean_email_body("Please unlock it. This email is confidential and intended solely "
+                     "for the named addressee."),
+    "Please unlock it.",
+)
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

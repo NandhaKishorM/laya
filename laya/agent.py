@@ -167,17 +167,16 @@ def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
         return tokenizer
 
 
-def _amp_context(device, dtype):
+def _amp_context(device, dtype, enabled: bool):
     """Autocast context for the forward pass, or a no-op when mixed precision is not in use.
 
-    Autocast is a CUDA-only win here. Entering `torch.autocast` on a device torch has no
-    autocast backend for raises even with `enabled=False` ('User specified an unsupported
-    autocast device_type mps'), which broke every `predict()` call on the MPS GPU that torch
-    selects automatically on Apple/AMD machines. Only wrap the forward pass when we use it.
+    Entering `torch.autocast` on a device torch has no autocast backend for raises even with
+    `enabled=False` ("User specified an unsupported autocast device_type mps"), which broke
+    every `predict()` on Apple Silicon on some torch builds. Only enter it when we use it.
     """
-    if device.type == "cuda":
-        return torch.autocast(device_type="cuda", dtype=dtype)
-    return nullcontext()
+    if not enabled:
+        return nullcontext()
+    return torch.autocast(device_type=device.type, dtype=dtype)
 
 
 MPS_AMP_MIN_ROWS_DEFAULT = 5
@@ -587,9 +586,9 @@ class Agent(HookRegistry):
 
         def run():
             # Recomputed inside run() so a fallback that disables amp (or moves to CPU) takes
-            # effect on the retry.
+            # effect on the retry. A disabled gate never enters torch.autocast at all.
             enabled = self._amp_enabled_for(b["input_ids"].shape[0])
-            with torch.autocast(device_type=self.device.type, dtype=self.dtype, enabled=enabled):
+            with _amp_context(self.device, self.dtype, enabled):
                 return self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),

@@ -7,6 +7,7 @@ Covers:
 """
 import os
 import sys
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 import torch
@@ -14,7 +15,7 @@ import torch.nn as nn
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from laya.agent import MPS_AMP_MIN_ROWS_DEFAULT, Agent, _mps_amp_min_rows  # noqa: E402
+from laya.agent import MPS_AMP_MIN_ROWS_DEFAULT, Agent, _amp_context, _mps_amp_min_rows  # noqa: E402
 from laya.common import DecisionModel, build_sequence, serialize_state  # noqa: E402
 
 PASS, FAIL = [], []
@@ -208,6 +209,26 @@ os.environ["LAYA_MPS_AMP_MIN_ROWS"] = "nonsense"
 check("mps-gate/env invalid falls back", _mps_amp_min_rows(), MPS_AMP_MIN_ROWS_DEFAULT)
 del os.environ["LAYA_MPS_AMP_MIN_ROWS"]
 check("mps-gate/env default", _mps_amp_min_rows(), MPS_AMP_MIN_ROWS_DEFAULT)
+
+
+# ------------------------------------------------------------------ amp context shape
+# A disabled gate must never construct torch.autocast: on torch builds without an MPS
+# autocast backend, entering it raises even with enabled=False, which broke MPS predict().
+mps = torch.device("mps")
+check("amp-context/disabled mps is a no-op", isinstance(_amp_context(mps, torch.float16, False), nullcontext), True)
+with _amp_context(mps, torch.float16, False):  # must not raise
+    pass
+check("amp-context/disabled mps enters cleanly", True, True)
+
+check("amp-context/disabled cpu is a no-op",
+      isinstance(_amp_context(torch.device("cpu"), torch.float32, False), nullcontext), True)
+check("amp-context/enabled cpu is autocast",
+      not isinstance(_amp_context(torch.device("cpu"), torch.bfloat16, True), nullcontext), True)
+
+# the disabled path through _infer completes on a plain CPU agent
+cpu_disabled = _bare_agent(FakeModel())  # amp=False
+cpu_disabled._infer(batch)
+check("amp-context/_infer disabled completes", True, True)
 
 
 # ------------------------------------------------------------------ report

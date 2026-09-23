@@ -63,9 +63,15 @@ class TransformTests(unittest.TestCase):
         criteria = order["case"][1]["intent"]["criteria"]
         self.assertEqual(len(criteria), 28)
 
+    def test_none_or_blank_descriptions_accepted(self):
+        for criteria in ({"a": None, "b": "two"}, {"a": " ", "b": ""}, {"a": None, "b": None}):
+            case = deepcopy(CASE)
+            case[1]["intent"]["criteria"] = criteria
+            variants = m.make_variants(case, random.Random(0))
+            self.assertEqual(len(variants), 2)
+
     def test_invalid_cases(self):
-        for criteria in ({}, {"a": "one"}, {"a": None, "b": "two"},
-                         {"a": " ", "b": "two"}, {1: "one", "b": "two"}):
+        for criteria in ({}, {"a": "one"}, {1: "one", "b": "two"}, {" ": "one", "b": "two"}, {"": "one", "b": "two"}):
             case = deepcopy(CASE)
             case[1]["intent"]["criteria"] = criteria
             with self.subTest(criteria=criteria), self.assertRaises(ValueError):

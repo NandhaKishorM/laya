@@ -18,11 +18,7 @@ from . import laya_eval as harness
 
 @dataclass
 class MetamorphicCase:
-    """One canonical choice decision in the existing harness input format.
-
-    Descriptions must stand alone; state/instructions must not refer to labels
-    or positions. Nonempty descriptions are necessary, not proof of equivalence.
-    """
+    """One canonical choice decision in the existing harness input format."""
 
     state: Any
     questions: dict
@@ -39,9 +35,6 @@ class MetamorphicCase:
             raise ValueError("at least two options are required")
         if any(not isinstance(k, str) or not k.strip() for k in criteria):
             raise ValueError("option keys must be nonempty strings")
-        if any(v is None or (isinstance(v, str) and not v.strip())
-               for v in criteria.values()):
-            raise ValueError("options require standalone nonempty descriptions")
         if self.gold_index is not None and (
                 type(self.gold_index) is not int or not 0 <= self.gold_index < len(criteria)):
             raise ValueError("gold index outside canonical options")

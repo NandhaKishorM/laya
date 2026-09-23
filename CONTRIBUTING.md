@@ -4,6 +4,13 @@ Thanks for helping improve Laya. This guide keeps reviews fast and the history c
 
 By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Scope
+
+Laya is a fast, local, on-device decision engine. Keep additions in that spirit: they should run
+in the user's own process or on their own hardware, with no dependency on a hosted service or an
+external API. A feature that only works against a hosted backend is out of scope for the core
+package; it belongs in a separate integration or a community project.
+
 ## Ways to contribute
 
 - Report a bug with the bug report template.

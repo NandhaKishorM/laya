@@ -218,6 +218,43 @@ check(
     "Preciso das férias.\nDe: 10/09 a 15/09\nPode aprovar?",
 )
 
+# --------------------------------------------------------------- Brazilian clients and footers
+BOLETO = "Preciso da segunda via do boleto."
+for label, footer in [
+    ("galaxy", "Enviado do meu Galaxy"),
+    ("samsung default, 41 characters", "Enviado do meu smartphone Samsung Galaxy."),
+    ("outlook ios", "Enviado do Outlook para iOS"),
+    ("outlook android download line", "Obter o Outlook para Android"),
+    ("windows mail", "Enviado do Email para Windows"),
+    ("yahoo", "Enviado do Yahoo Mail no Android"),
+    ("eco footer", "Antes de imprimir, pense em sua responsabilidade e compromisso com o MEIO AMBIENTE."),
+    ("eco footer, reversed", "Pense no meio ambiente antes de imprimir este e-mail."),
+]:
+    check("pt/footer removed: " + label, clean_email_body(BOLETO + "\n\n" + footer), BOLETO)
+check(
+    "en/outlook download line removed",
+    clean_email_body("Please resend the invoice.\n\nGet Outlook for iOS"),
+    "Please resend the invoice.",
+)
+# Exchange leaves the address out of the header; the `Enviado:`/dated `Data:` line under it still marks it
+for label, second in [("enviado", "Enviado: sexta-feira, 19 de setembro de 2026 10:02"),
+                      ("data", "Data: sexta-feira, 19 de setembro de 2026 10:02")]:
+    check(
+        "pt/outlook header without address is cut: " + label,
+        clean_email_body("Segue o comprovante.\n\nDe: Maria Souza\n%s\nPara: Suporte\n"
+                         "Assunto: cancelar contrato\n\nQueremos cancelar o contrato." % second),
+        "Segue o comprovante.",
+    )
+# ...and none of them may take the request with it
+for label, body in [
+    ("device words inside a request", "Oi,\nSegue o pedido.\nEnviado do meu celular o comprovante ontem."),
+    ("`De:`/`Para:` date range", "Preciso das férias.\nDe: 10/09\nPara: 15/09\nPode aprovar?"),
+    ("`De:` + undated `Data:`", "Relatório do evento.\nDe: João\nData: amanhã cedo\nPode confirmar?"),
+    ("`antes de imprimir` in a request", "Antes de imprimir o boleto, confira o valor. Está errado."),
+    ("`get` + device word", "Hi,\nThe box is at the front desk.\nGet mail"),
+]:
+    check("pt/kept: " + label, clean_email_body(body), body)
+
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

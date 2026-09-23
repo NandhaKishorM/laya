@@ -26,6 +26,11 @@ _QUOTE_HEADERS = [
 # That tail cuts too, and takes the `On/Em/El ...` head it belongs to with it.
 _ATTRIBUTION_TAIL = re.compile(r"^.{0,120}\S@\S+\s+(wrote|escreveu|escribi[óo]):\s*$", re.I)
 _ATTRIBUTION_HEAD = re.compile(r"^\s*(On|Em|El) (?=.*\d)", re.I)
+# Exchange often leaves the address out of Outlook's reply header ("De: Maria Souza"), so a bare `De:`
+# only cuts when the header's own `Enviado:` line, or a dated `Data:`/`Fecha:` line, follows it.
+# `Para:` is not enough: "De: 10/09 / Para: 15/09" is how a leave request reads.
+_HEADER_FROM_NAME = re.compile(r"^\s*De:\s+\S", re.I)
+_HEADER_NEXT = re.compile(r"^\s*(Enviad[oa]( em| el)?:\s|(Data|Fecha):\s.*\d{4})", re.I)
 _SIGNATURE_MARKERS = [
     re.compile(r"^\s*--\s*$"),
     re.compile(r"^\s*(best|kind|warm|many thanks|thanks|thank you|regards|cheers|sincerely)[\w ,!.]*$", re.I),
@@ -38,8 +43,18 @@ _SIGNATURE_MARKERS = [
         r"(un )?saludos?( cordiales)?|atentamente|(muchas )?gracias( de antemano)?)[\s,!.]*$",
         re.I,
     ),
-    re.compile(r"^\s*enviado (do meu|desde mi) (iphone|android|celular|telemóvel|ipad|móvil)", re.I),
 ]
+# Mobile and mail-app footers. Only a line that is nothing *but* the footer matches -- "Enviado do meu
+# celular o comprovante ontem." is a request -- and such a line may run to 60 characters, since
+# Samsung's default ("Enviado do meu smartphone Samsung Galaxy.") is longer than a sign-off's 40.
+_DEVICE = (r"iphone|ipad|android|ios|celular|telemóvel|móvil|galaxy|smartphone|samsung|tablet|"
+           r"outlook|yahoo|mail|e-?mail|gmail|windows")
+_DEVICE_FOOTER = re.compile(
+    r"^\s*((enviad[oa] (do|pelo|pela|via|desde|a partir do)( meu| minha| mi)?|sent from( my)?)"
+    r" (%s)( (%s|para|for|no|na|\d+))*|(obter o|get) outlook (para|for) (ios|android))[\s.!]*$"
+    % (_DEVICE, _DEVICE),
+    re.I,
+)
 _DISCLAIMER = re.compile(
     r"(confidential|intended (solely )?for the (use of the )?(named )?(addressee|recipient)|"
     r"if you (have )?received this (e-?mail|message) in error|"
@@ -49,7 +64,11 @@ _DISCLAIMER = re.compile(
     r"\b(uso exclusivo|exclusivamente|únicamente|unicamente)\b[^.]{0,30}"
     r"(destinatári|destinatari|pessoa|persona|entidade|entidad)|"
     r"\b(recebeu|recebido|receber) (esta|este) (mensagem|e-?mail)\b[^.]{0,20} por (engano|erro)|"
-    r"\b(ha recibido|recibió|recibe) (este|esta) (mensaje|correo)\b[^.]{0,20} por error)",
+    r"\b(ha recibido|recibió|recibe) (este|esta) (mensaje|correo)\b[^.]{0,20} por error|"
+    # the "think before printing" footer, tied to its environmental ending rather than to
+    # `antes de imprimir`, which a request uses too ("antes de imprimir o boleto, confira o valor")
+    r"\bantes de imprimir\b[^.]{0,100}(meio ambiente|medio ambiente|natureza|planeta|realmente necess)|"
+    r"\b(meio|medio) ambiente\b[^.]{0,30}antes de imprimir)",
     re.I,
 )
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
@@ -72,8 +91,12 @@ def clean_email_body(body: str, max_chars: int = 3000) -> str:
     """Remove quoted email history, signatures and disclaimers to keep input focused."""
     text = (body or "").replace("\r\n", "\n").replace("\r", "\n").replace("\\n", "\n")
     lines = []
-    for line in text.split("\n"):
+    src = text.split("\n")
+    for i, line in enumerate(src):
         if any(p.match(line) for p in _QUOTE_HEADERS) and lines:
+            break
+        if (lines and _HEADER_FROM_NAME.match(line) and i + 1 < len(src)
+                and _HEADER_NEXT.match(src[i + 1])):
             break
         if _ATTRIBUTION_TAIL.match(line) and lines:
             if _ATTRIBUTION_HEAD.match(lines[-1]):
@@ -84,7 +107,9 @@ def clean_email_body(body: str, max_chars: int = 3000) -> str:
         lines.append(line.rstrip())
     cut = len(lines)
     for i in range(max(1, min(int(len(lines) * 0.6), len(lines) - 8)), len(lines)):
-        if len(lines[i].strip()) <= 40 and any(p.match(lines[i]) for p in _SIGNATURE_MARKERS):
+        n = len(lines[i].strip())
+        if (n <= 40 and any(p.match(lines[i]) for p in _SIGNATURE_MARKERS)) or (
+                n <= 60 and _DEVICE_FOOTER.match(lines[i])):
             cut = i
             break
     lines = lines[:cut]

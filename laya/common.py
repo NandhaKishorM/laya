@@ -173,8 +173,24 @@ class DecisionModel(nn.Module):
         h = h + self.type_emb(qtype)[:, None, :]
         if self.head is not None:
             pad = ~attention_mask.bool()
+            # Checkpointing trades compute for memory: each layer's activations are
+            # recomputed during backward instead of being held for the whole forward
+            # pass. Only meaningful while training - eval and no_grad keep no graph,
+            # so there is nothing to free and recompute.
+            use_ckpt = (
+                self.head_checkpointing
+                and self.training
+                and torch.is_grad_enabled()
+            )
             for layer in self.head.layers:
-                h = layer(h, src_key_padding_mask=pad)
+                if use_ckpt:
+                    # use_reentrant=False preserves the dropout RNG state in each layer and
+                    # supports the keyword argument a Transformer's src_key_padding_mask needs.
+                    h = torch.utils.checkpoint.checkpoint(
+                        layer, h, src_key_padding_mask=pad, use_reentrant=False
+                    )
+                else:
+                    h = layer(h, src_key_padding_mask=pad)
         idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
         m = torch.gather(h, 1, idx)
         logits = self.scorer(m).squeeze(-1).float()

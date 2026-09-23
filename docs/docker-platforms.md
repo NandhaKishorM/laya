@@ -48,9 +48,8 @@ or 0.8.1 (PyTorch 2.14). NVIDIA's AArch64 wheels for those two versions declare
 0.9.0 corrects it. The build checks that the library is ELF64 AArch64 and loads,
 then corrects that tag and its `RECORD` hash. Any other version with the same
 defect fails the build instead of receiving the repair, and `pip check` still
-runs. This follows the compatibility finding in
-[FastLaya](https://github.com/emtay-com/fastlaya), with credit to Michael Tiel
-(@TheIrritainer).
+runs. This follows @TheIrritainer's compatibility finding in
+[FastLaya](https://github.com/emtay-com/fastlaya).
 
 ### Reporting Spark results
 

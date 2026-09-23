@@ -193,7 +193,8 @@ check_true("compose.cuda/no stale reference to a missing file",
            "compose.cuda.yaml still describes compose.http.yaml as living on another branch")
 
 # Every file the Docker workflow validates must exist.
-for name in ("compose.yaml", "compose.example.yml", "compose.cuda.yaml", "compose.http.yaml"):
+for name in ("compose.yaml", "compose.example.yml", "compose.cuda.yaml", "compose.http.yaml",
+             "compose.spark.yaml"):
     check_true("compose/%s exists" % name, os.path.exists(name))
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

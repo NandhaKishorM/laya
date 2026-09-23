@@ -93,9 +93,72 @@ def test_multi_option_question_is_unaffected():
     assert torch.isfinite(act_logits).all()
 
 
+def test_head_checkpointing_recomputes_on_backward():
+    # Regression test for #148: `model.head_checkpointing = True` (as set by the
+    # fine-tuning notebook) must checkpoint head activations and recompute them
+    # on backward. Off -> 1 layer call; on -> 2 calls (forward + recompute).
+    torch.manual_seed(3)
+    model = _tiny_model(head_layers=1)
+    model.train()
+    input_ids, attention_mask, marker_pos, marker_mask, qtype = _inputs(
+        batch=1, seq=8, n_markers=2
+    )
+    calls = []
+    hook = model.head.layers[0].register_forward_pre_hook(
+        lambda module, args: calls.append(1)
+    )
+    try:
+        for enabled, expected in ((False, 1), (True, 2)):
+            model.zero_grad(set_to_none=True)
+            model.head_checkpointing = enabled
+            calls.clear()
+            logits, act_logits = model(
+                input_ids, attention_mask, marker_pos, marker_mask, qtype
+            )
+            (logits.square().mean() + act_logits.square().mean()).backward()
+            assert len(calls) == expected, (enabled, len(calls))
+            grads = [p.grad for p in model.head.parameters() if p.requires_grad]
+            assert grads and all(g is not None for g in grads)
+    finally:
+        hook.remove()
+
+
+def test_head_checkpointing_leaves_eval_untouched():
+    # Eval / no-grad execution must keep the single-call path and identical
+    # outputs even with the flag enabled.
+    torch.manual_seed(4)
+    model = _tiny_model(head_layers=2)
+    model.eval()
+    input_ids, attention_mask, marker_pos, marker_mask, qtype = _inputs(
+        batch=2, seq=10, n_markers=3
+    )
+    calls = []
+    hook = model.head.layers[0].register_forward_pre_hook(
+        lambda module, args: calls.append(1)
+    )
+    try:
+        with torch.no_grad():
+            model.head_checkpointing = False
+            logits_off, act_off = model(
+                input_ids, attention_mask, marker_pos, marker_mask, qtype
+            )
+            model.head_checkpointing = True
+            calls.clear()
+            logits_on, act_on = model(
+                input_ids, attention_mask, marker_pos, marker_mask, qtype
+            )
+            assert len(calls) == 1
+    finally:
+        hook.remove()
+    assert torch.equal(logits_off, logits_on)
+    assert torch.equal(act_off, act_on)
+
+
 if __name__ == "__main__":
     test_single_option_question_does_not_crash()
     test_single_option_top1_minus_top2_is_exactly_one()
     test_multi_option_question_is_unaffected()
+    test_head_checkpointing_recomputes_on_backward()
+    test_head_checkpointing_leaves_eval_untouched()
     print("all decision model tests passed")
 

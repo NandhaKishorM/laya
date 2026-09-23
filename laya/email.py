@@ -44,7 +44,7 @@ _SIGNATURE_MARKERS = [
     re.compile(
         r"^\s*(?i:best|kind|warmest|warm|many thanks|thanks|thank you|regards|cheers|sincerely)"
         r"(?i:\s+(?:and\s+regards|&\s+regards|regards|wishes|again|in advance|a lot|so much|very much))?"
-        r"[\s,;:!.]*(?:[^a-z][\w'-]*[\s,.]*){0,3}$"
+        r"[\s,;:!.]*(?:[^\W\d_a-z][\w'-]*[\s,.]*){0,3}$"
     ),
     re.compile(r"^\s*sent from my (iphone|android|mobile|ipad)", re.I),
     # Portuguese/Spanish sign-offs match only on their own: "Obrigado pelo retorno, mas ..." is a

@@ -342,8 +342,22 @@ for label, tail in [
     ("sincerely", "Sincerely,\nA. Meier"),
     ("sent from phone", "Sent from my iPhone"),
     ("dash delimiter", "--\nAnna Meier\nSupport"),
+    # #245: closings the pre-#132 pattern cut but the #132 rule kept
+    ("warmest regards", "Warmest regards,\nAnna"),
+    ("thanks and regards", "Thanks and regards,\nAnna"),
+    ("thanks amp regards", "Thanks & Regards,\nAnna Meier"),
+    ("non-ascii name", "Regards, Łukasz"),
 ]:
     check("signoff cut/" + label, clean_email_body("%s\n\n%s" % (BODY, tail)), BODY)
+
+# #245 guards: name slot is Unicode letters only, so digits/emoji are not names
+for label, tail in [
+    ("emoji is not a name", "Thanks, 👍"),
+    ("digits are not a name", "Regards, 2026."),
+    ("sentence after thanks-and", "Thanks and the team will confirm it today."),
+]:
+    body = "%s\n\n%s\nPlease advise." % (BODY, tail)
+    check_true("signoff kept/" + label, tail in clean_email_body(body), clean_email_body(body))
 
 
 # ------------------------------------------------- the word, without the disclaimer

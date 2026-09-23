@@ -3,7 +3,7 @@ import json
 import os
 import threading
 import warnings
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
@@ -18,6 +18,7 @@ from .common import (
     clamp_temperature,
     collate_items,
     confidence_from_probs,
+    _resolve_noul_labels,
     render_options,
     temp_bucket,
 )
@@ -144,6 +145,7 @@ class Agent:
         token: Optional[str] = None,
         subfolder: Optional[str] = None,
         fast: bool = False,
+        compile: bool = False,
     ):
         """Load a Laya checkpoint.
 
@@ -247,11 +249,15 @@ class Agent:
 
         # ModernBERT's reference_compile defaults to "auto" and will torch.compile the encoder.
         # That is a loss for the batch sizes Laya runs (a handful of questions per call) and can
-        # hang on some platforms, so keep the eager path.
+        # hang on some platforms, so keep the eager path unless explicitly requested.
         try:
-            self.model.encoder.config.reference_compile = False
+            self.model.encoder.config.reference_compile = compile
         except Exception:
             pass
+            
+        # The TileLang fast path replaces the forward itself, so it takes precedence over compile.
+        if compile and not fast:
+            self.model = torch.compile(self.model)
 
         # Keep what the checkpoint shipped for inspection, but only ever apply clamped values:
         # some buckets are fitted to sharpen rather than soften (see clamp_temperature).
@@ -385,6 +391,13 @@ class Agent:
         elif crit is not None and not isinstance(crit, dict):
             raise ValueError("question %r: a noul question takes 'criteria' as a dict with optional "
                              "'true'/'false' descriptions, or omits it" % (qid,))
+        if "labels" in qdef:
+            if t != "noul":
+                raise ValueError("question %r: 'labels' is only supported for noul questions" % (qid,))
+            try:
+                _resolve_noul_labels(qdef["labels"])
+            except ValueError as e:
+                raise ValueError("question %r: %s" % (qid, e)) from e
 
     @staticmethod
     def _to_internal(qdef: Dict) -> Dict:
@@ -403,85 +416,64 @@ class Agent:
             # on the English checkpoint one German question answered noul=0.1652 as a dict
             # and noul=0.2650 as the identical plain string.
             ins = json.dumps(ins, ensure_ascii=False)
-        return {"t": t, "ins": ins, "crit": crit}
+        q = {"t": t, "ins": ins, "crit": crit}
+        if "labels" in qdef:
+            q["labels"] = qdef["labels"]
+        return q
 
-    @torch.no_grad()
-    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-        """Evaluate typed questions across state in a single, parallel forward pass.
-
-        Args:
-            state: Text string, JSON dict, or conversation turn list.
-            questions: Dictionary mapping question_id -> question definition.
-                - choice: {"type": "choice", "instructions": "...", "criteria": {"optA": "...", ...}}
-                - score:  {"type": "score",  "instructions": "...", "criteria": ["lvl0", "lvl1", ...]}
-                - noul:   {"type": "noul",   "instructions": "...", "criteria": {"true": "...", "false": "..."}}
-
-        Returns:
-            Dictionary with answers, probabilities, calibrated confidence, and token usage.
-            Empty questions return empty answers and zero token usage without tokenization
-            or a model forward pass.
-        """
-        ids = list(questions.keys())
-        if not ids:
-            return {
-                "model": "laya-rl-agent",
-                "answers": {},
-                "usage": {"input_tokens": 0, "output_tokens": 0},
-            }
-        items = []
+    def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict]) -> List[Dict]:
+        """Tokenize one state against every (already validated + normalized) question."""
         max_len = self.cfg.get("max_len", 512)
         head_max_len = self.cfg.get("head_max_len", 192)
         # A chronological conversation list is serialized newest-last, so the default
         # right-truncation (st[:room]) would silently drop the newest turn. Truncate
         # from the left for lists so the most recent intent is preserved.
         truncate_left = isinstance(state, list)
-
+        items = []
         for qid in ids:
-            self._check_question(qid, questions[qid])
-            q = self._to_internal(questions[qid])
+            q = internal[qid]
             seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len,
                                           truncate_left=truncate_left)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
+        return items
 
-        b = collate_items([items], self.tok.pad_token_id)
-        use_amp = self.device.type == "cuda"
-
-        try:
+    def _forward(self, b: Dict):
+        """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""
+        def run():
+            use_amp = self.device.type == "cuda"
             with torch.autocast(device_type=self.device.type, dtype=self.dtype, enabled=use_amp):
-                logits, act = self.model(
+                return self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),
                     b["marker_pos"].to(self.device),
                     b["marker_mask"].to(self.device),
                     b["qtype"].to(self.device),
                 )
+
+        try:
+            logits, act = run()
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
             if self.device.type != "cpu" and ("memory" in str(e).lower() or "cuda" in str(e).lower()):
                 print("Warning: GPU memory exceeded during inference. Falling back to CPU...")
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
                 self.model.to(self.device)
-                logits, act = self.model(
-                    b["input_ids"].to(self.device),
-                    b["attention_mask"].to(self.device),
-                    b["marker_pos"].to(self.device),
-                    b["marker_mask"].to(self.device),
-                    b["qtype"].to(self.device),
-                )
+                logits, act = run()
             else:
                 raise e
 
-        logits = logits.float().cpu().numpy()
-        act = torch.softmax(act.float(), -1).cpu().numpy()
+        return logits.float().cpu().numpy(), torch.softmax(act.float(), -1).cpu().numpy()
 
+    def _decode_answers(self, logits, act, items: List[Dict], ids: List[str],
+                        internal: Dict[str, Dict], offset: int) -> Dict[str, Any]:
+        """Turn one state's logit rows (starting at `offset`) into typed answers."""
         answers = {}
-        n_tokens = int(b["attention_mask"].sum())
-
-        for r, qid in enumerate(ids):
-            q = self._to_internal(questions[qid])
-            k = len(items[r]["markers"])
+        for j, qid in enumerate(ids):
+            r = offset + j
+            q = internal[qid]
+            k = len(items[j]["markers"])
             qt = QTYPES[q["t"]]
             t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])
             z = logits[r, :k] / t_scale
@@ -517,12 +509,97 @@ class Agent:
                     "confidence": round(max(float(p[1]), 1.0 - float(p[1])), 4),
                     "action": ext,
                 }
+        return answers
 
-        return {
-            "model": "laya-rl-agent",
-            "answers": answers,
-            "usage": {"input_tokens": n_tokens, "output_tokens": 0},
-        }
+    @torch.no_grad()
+    def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
+                      batch_size: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Evaluate the same questions over many states, packing them into shared forward passes.
+
+        This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
+        GPU that leaves most of the batch dimension idle. `predict_batch` collates several states'
+        question rows into one tensor, so a call that would take N sequential forward passes takes
+        one (or `ceil(len(states) / batch_size)`), which is several times faster per decision on GPU.
+
+        Args:
+            states: A list of states (each a text string, JSON dict, or conversation turn list).
+                    The same `questions` are evaluated against every state.
+            questions: Question definitions, exactly as accepted by `system_one`.
+            batch_size: Optional cap on states per forward pass. `None` sends them all in one pass;
+                        set it to bound peak memory when batching many or long states.
+
+        Returns:
+            A list of per-state result dicts, each identical in shape to `system_one`'s output and
+            aligned with `states` by index.
+        """
+        if isinstance(states, (str, bytes, dict)):
+            raise TypeError(
+                "predict_batch expects a list of states; pass a single state to predict()/system_one()."
+            )
+        states = list(states)
+        if not states:
+            return []
+
+        ids = list(questions.keys())
+        # Empty questions: empty answers, zero usage, no tokenization or forward (matches system_one).
+        if not ids:
+            return [{"model": "laya-rl-agent", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}
+                    for _ in states]
+
+        # Validate + normalize each question once (state-independent), preserving system_one's checks.
+        for qid in ids:
+            self._check_question(qid, questions[qid])
+        internal = {qid: self._to_internal(questions[qid]) for qid in ids}
+        chunk = batch_size if (batch_size and batch_size > 0) else len(states)
+
+        results: List[Dict[str, Any]] = []
+        for start in range(0, len(states), chunk):
+            part = states[start:start + chunk]
+            per_state_items = [self._encode_state(st, ids, internal) for st in part]
+
+            b = collate_items(per_state_items, self.tok.pad_token_id)
+            logits, act = self._forward(b)
+            att = b["attention_mask"]
+
+            row = 0
+            for items in per_state_items:
+                nrows = len(items)
+                n_tokens = int(att[row:row + nrows].sum())
+                answers = self._decode_answers(logits, act, items, ids, internal, row)
+                results.append({
+                    "model": "laya-rl-agent",
+                    "answers": answers,
+                    "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+                })
+                row += nrows
+
+        return results
+
+    @torch.no_grad()
+    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """Evaluate typed questions across state in a single, parallel forward pass.
+
+        Args:
+            state: Text string, JSON dict, or conversation turn list.
+            questions: Dictionary mapping question_id -> question definition.
+                - choice: {"type": "choice", "instructions": "...", "criteria": {"optA": "...", ...}}
+                - score:  {"type": "score",  "instructions": "...", "criteria": ["lvl0", "lvl1", ...]}
+                - noul:   {"type": "noul", "instructions": "...",
+                           "criteria": {"false": "...", "true": "..."},
+                           "labels": {"false": "B", "true": "A"}}
+
+                  Noul criteria and labels are optional. Labels only control the text shown to the
+                  model; their keys retain false/true semantics, and the returned `noul` value is
+                  always P(true). Labels default to false/true for compatibility.
+
+        Returns:
+            Dictionary with answers, probabilities, calibrated confidence, and token usage.
+            Empty questions return empty answers and zero token usage without tokenization
+            or a model forward pass.
+
+        To score many states at once, see `predict_batch`, which shares forward passes across them.
+        """
+        return self.predict_batch([state], questions)[0]
 
     def __enter__(self):
         return self

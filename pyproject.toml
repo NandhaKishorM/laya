@@ -34,7 +34,7 @@ dependencies = [
 
 [tool.setuptools]
 # assets/, research/ and notebooks/ sit in the root, so auto-discovery bails out.
-packages = ["laya"]
+packages = ["laya", "laya.mcp", "laya.integrations"]
 
 [project.optional-dependencies]
 # `pip install laya[serve]` adds the HTTP server (laya.serve / the laya-serve CLI).
@@ -45,9 +45,20 @@ serve = [
 # `pip install laya[fast]` adds the TileLang GPU fast path (laya/fast.py); everything else works without it.
 fast = ["tilelang>=0.1.14"]
 
+# `pip install laya[mcp]` adds the MCP stdio server (laya.mcp / the laya-mcp-server CLI).
+mcp = ["mcp>=2.2.0"]
+
+onnx = ["onnx", "onnxruntime"]
+
+# `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
+langchain = [
+    "langchain-core>=0.2.0",
+]
+
 [project.scripts]
 laya = "laya.cli:main"
 laya-serve = "laya.serve:main"
+laya-mcp-server = "laya.mcp.server:main"
 
 [project.urls]
 Homepage = "https://huggingface.co/convaiinnovations/laya"

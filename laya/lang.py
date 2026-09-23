@@ -137,6 +137,13 @@ _STOP = {
            "abar", "ekbar", "duibar", "ajke", "kalke", "taka", "bhalo", "valo", "kharap",
            "shomossa", "somossa", "dhonnobad", "bhai", "shob", "keu", "kichu", "bolte", "bolun",
            "parben", "asbe", "jabe", "pabo", "ferot", "dorkar", "hoye", "geche", "gese"},
+
+    # "her", "ne", "men", "de" collide with English, French and Romanian, and "ki" with the
+    # romanized Bangla list, so they are left out.
+    "az": {"və", "ve", "bir", "bu", "üçün", "ucun", "ilə", "ile", "olan", "olub", "olmasa",
+           "var", "yox", "yoxdur", "mən", "sən", "biz", "siz", "onlar", "daha", "çox", "cox",
+           "hər", "nə", "kimi", "görə", "sonra", "əgər", "eger", "deyil", "lakin", "amma",
+           "ancaq", "artıq", "artiq", "də", "isə", "həm", "yalnız", "yalniz"},
 }
 # Letters that ordinary English does not use. This is the signal that catches a Latin-script
 # language we hold no stopwords for at all (Romanian, Polish, Czech, Turkish, Baltic, ...),
@@ -151,6 +158,7 @@ _NON_EN_DIACRITICS = set(
     "ğı"                                        # Turkish (text is lowercased before matching)
     "āēģīķļņūž"                                 # Baltic
     "đ"                                         # Serbo-Croatian / Vietnamese
+    "ə"                                         # Azerbaijani
 )
 # Words that more than one list claims. `la`, `un`, `e`, `que`, `una` and friends are function words
 # of several of these languages at once, so matching one says "not English" without saying *which*
@@ -201,8 +209,8 @@ def detect_script(text: str) -> str:
         if not ch.isalpha():
             continue
         cp = ord(ch)
-        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
-            latin += 1                                   # Latin, Latin Ext-Additional, fullwidth
+        if cp < 0x02B0 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
+            latin += 1                                   # Latin, IPA Extensions, Ext-Additional, fullwidth
             continue
         for name, ranges in _SCRIPT_RANGES:
             if any(lo <= cp <= hi for lo, hi in ranges):
@@ -233,7 +241,7 @@ def script_profile(text: str) -> Dict[str, float]:
         if not ch.isalpha():
             continue
         cp = ord(ch)
-        if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
+        if cp < 0x02B0 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
             counts["latin"] += 1
             continue
         for name, ranges in _SCRIPT_RANGES:
@@ -309,7 +317,8 @@ def latin_profile(text: str) -> Dict[str, object]:
     A non-English language is only named when it matched at least one word that no other list
     claims: shared function words alone (`la`, `e`, `o`) identify no particular language.
     """
-    words = [w.lower() for w in _WORD.findall(_IDENTIFIER.sub(" ", text))]
+    # 'İ'.lower() is 'i' + a combining dot, which matches no word list
+    words = _WORD.findall(_IDENTIFIER.sub(" ", text).replace("İ", "i").lower())
     lowered = text.lower()
     diac = sum(1 for ch in lowered if ch in _NON_EN_DIACRITICS)
     diac_rate = diac / max(1, len(lowered))

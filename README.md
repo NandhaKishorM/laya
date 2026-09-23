@@ -406,6 +406,29 @@ Passing an empty question dictionary to `agent.predict(state, {})` or
 and `"usage": {"input_tokens": 0, "output_tokens": 0}`. The state is not tokenized
 and no model forward pass runs.
 
+### Batch Mode: score many states in one forward pass
+
+`predict` handles one state per call, which leaves most of the GPU's batch dimension idle. When you
+have a list of items to score against the *same* questions — a backlog of tickets, a table of rows,
+a log slice — `predict_batch` packs them into shared forward passes:
+
+```python
+states = [{"body": t} for t in ticket_texts]           # a list of states
+
+results = agent.predict_batch(states, questions)       # one forward pass for the whole list
+# results[i] is exactly what agent.predict(states[i], questions) would return
+
+# Bound peak memory when the list (or the texts) are large — chunk into passes of N:
+results = agent.predict_batch(states, questions, batch_size=64)
+```
+
+Results are aligned with `states` by index and identical in shape to `predict`. Decisions match the
+one-at-a-time path exactly (numbers are bit-identical on CPU; on GPU they can differ in the 4th
+decimal because fp16 autocast reorders reductions across padding widths). Batching is a **GPU
+throughput win** — on an RTX 5060 Ti, per-decision latency drops from ~10 ms one-by-one to ~1 ms
+batched (measured ~9–10×). On CPU the model is already compute-bound, so batching does not speed it
+up; use it there only for API convenience.
+
 ---
 
 ## GPU Fast Path (TileLang)
@@ -471,6 +494,29 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 
 ---
 
+## LangChain & LangGraph Integration
+
+Fast System 1 routing and guardrails directly inside LangGraph workflows and LCEL chains:
+
+```python
+from laya.integrations.langchain import LayaRouter, LayaGuardrail
+
+# 1. Sub-35ms LangGraph conditional edge routing with confidence fallback
+router = LayaRouter(
+    criteria={"billing": "invoices, charges", "tech": "bugs, outages"},
+    confidence_threshold=0.80,
+    fallback="human_agent",
+)
+workflow.add_conditional_edges("triage", router)
+
+# 2. Inline prompt guardrails
+guard = LayaGuardrail(action="raise")  # raises LayaGuardrailError on jailbreak/injection
+```
+
+See [**`docs/langchain.md`**](docs/langchain.md) for full guide, support ticket triage nodes, and remote HTTP server configuration.
+
+---
+
 ## Decision Primitives
 
 | Primitive | Output | Use Cases |
@@ -478,6 +524,74 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 | **`choice`** | Top label, probabilities per option, confidence | Department routing, intent classification, topic categorization |
 | **`score`** | Expected level on ordinal rubric, distribution, confidence | Frustration level, ticket urgency, harm severity |
 | **`noul`** | Calibrated probability P(true) from 0.0 to 1.0 | Phishing detection, spam filtering, jailbreak detection, churn risk |
+
+`noul` always scores two semantic slots in `[false, true]` order and returns the probability of
+the second slot. For compatibility, those slots are shown to the model as `false` and `true` by
+default. The optional `labels` mapping overrides only that model-facing text without changing the
+returned meaning:
+
+```python
+question = {
+    "type": "noul",
+    "instructions": "Is this review positive?",
+    "criteria": {
+        "false": "the review is negative",
+        "true": "the review is positive",
+    },
+    "labels": {
+        "false": "B",
+        "true": "A",
+    },
+}
+```
+
+The `labels` mapping is optional. It must contain exactly the string keys `false` and `true`,
+whose values must be distinct non-empty strings. Mapping order does not matter, and the returned
+`noul` value is still P(true). Label sensitivity varies by checkpoint and state, so validate any
+override on your own data rather than treating `A`/`B` as a universal fix.
+
+---
+
+## MCP Server (Optional)
+
+Laya can be exposed as an [MCP](https://modelcontextprotocol.io) stdio server, so any MCP
+client (OpenClaw, Claude Desktop, Cursor, ...) can call typed decisions as tools
+(`laya_predict`, `laya_route`, `laya_preset`, `laya_status`) without writing glue code.
+This is an **optional extra**: the core package has no `mcp` dependency.
+
+```bash
+pip install "laya[mcp]"
+laya-mcp-server          # or: python -m laya.mcp.server
+```
+
+Example MCP client configuration (stdio transport):
+
+```json
+{
+  "mcpServers": {
+    "laya": {
+      "command": "laya-mcp-server",
+      "env": { "LAYA_DEVICE": "cpu" }
+    }
+  }
+}
+```
+
+The environment variables follow the contract documented at the top of
+[`laya/serve.py`](laya/serve.py), so the same variable has one meaning across the
+package:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `LAYA_DEVICE` | (auto) | Same as `laya.serve`: the value is passed straight to torch |
+| `LAYA_PRELOAD` | `1` | Same as `laya.serve`: build the checkpoints at startup, not lazily |
+| `LAYA_MODELS` | `english,multilingual` | Comma list to preload (serve contract). MCP difference: an empty value preloads `english,multilingual` so `typed-decisions` stays lazy; in `laya.serve` empty means every checkpoint |
+| `LAYA_THREADS` | (torch default) | Same as `laya.serve`: cap torch intra-op threads for CPU inference; keep it at or below the physical core count |
+
+The tools return structured JSON (answers with probabilities, routing metadata, device,
+`latency_ms`). As with the SDK, use it for structured decisions only; not for open Q&A or
+text generation. Tests: `tests/test_mcp.py` (CI, no weights) and
+`tests/test_mcp_local_e2e.py` (local, real weights and a real stdio handshake).
 
 ---
 
@@ -610,6 +724,10 @@ failure; it does not establish calibrated confidence.
   against a 0.318 random baseline and a 0.461 majority-class baseline. The 0.766 figure comes
   from the checkpoint fine-tuned on that benchmark's own training split. Laya is a fast base to
   specialise, not a zero-shot decision engine.
+* **Avoid boolean-word labels in `choice` questions.** Choice keys are rendered verbatim, and the
+  current checkpoints can follow labels such as `true`/`false` or `yes`/`no` instead of the option
+  descriptions. Use semantic labels or opaque labels such as `A`/`B`, and validate them on the
+  checkpoint and states you serve.
 * **High-cardinality choice questions and token budgets:** Sequences split into an option prompt budget (`head_max_len`) and the remaining document/state budget (`max_len - head_max_len`):
   * `laya` (English) defaults to 512 context (`head_max_len = 192`, ~320 tokens for state).
   * `laya-multilingual` and `laya-typed-decisions` default to 1,024 context (`head_max_len = 256`, ~768 tokens for state; mmBERT-base encoder supports up to 8,192 with RoPE).
@@ -647,7 +765,16 @@ result["shortlist"]["intent"]["labels"]  # the top 20 labels sent to the model
 [Issue #102](https://github.com/NandhaKishorM/laya/issues/102) reports that a top-20 zero-shot shortlist moved a BANKING77 run from 54.3% to 60.8% on the reporter's setup. Those figures are the reporter's; this repository has not remeasured them.
 
 * Ordinal `score` questions are the weakest primitive (SST-5 0.372).
-* **`noul` can follow its option labels instead of the state, most strongly on `laya` (English).** `noul` renders its two options as `false:` / `true:`, and on the English checkpoint that label pair can dominate the answer, returning a confident "no" for clearly positive input (#156). Until a retrained checkpoint lands, check `noul` answers on your own data. If they look stuck, ask the same question as a two-option `choice` with neutral keys and your yes/no wording as the descriptions:
+* **`noul` can follow its option labels instead of the state, most strongly on `laya` (English).** `noul` renders its two options as `false:` / `true:` by default, and on the English checkpoint that label pair can dominate the answer, returning a confident "no" for clearly positive input (#156). Until a retrained checkpoint lands, check `noul` answers on your own data. You can override the model-facing pair while keeping the `noul` result as P(true):
+
+  ```python
+  {"type": "noul", "instructions": "Is this review positive?",
+   "criteria": {"true": "yes, the review is positive", "false": "no, the review is negative"},
+   "labels": {"true": "A", "false": "B"}}
+  ```
+
+  Label sensitivity varies by checkpoint and state, so validate the override on your own data. A
+  two-option `choice` with neutral keys remains another workaround:
 
   ```python
   {"type": "choice", "instructions": "Is this review positive?",

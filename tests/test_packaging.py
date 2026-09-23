@@ -145,6 +145,56 @@ for _path in _md:
 
 check("md/no link to a file that does not exist", _broken_files, [])
 check("md/no anchor that matches no heading", _broken_anchors, [])
+# ---------------------------------------------------------------- Compose layout
+# `compose.http.yaml` is an override, so it is merged onto `compose.yaml` rather than
+# read on its own. These checks are textual because the suite takes no third-party
+# dependency and PyYAML is not one; the real validation is `docker compose config`,
+# which the Docker workflow runs for every file combination.
+http = read("compose.http.yaml")
+base = read("compose.yaml")
+cuda = read("compose.cuda.yaml")
+dockerfile = read("Dockerfile")
+
+check_true("compose.http/declares laya-serve", "laya-serve:" in http, http[:200])
+check_true("compose.http/runs the server command",
+           'command: ["laya-serve"]' in http, "laya-serve is not the container command")
+check_true("compose.http/publishes a port", re.search(r"^\s*ports:", http, re.M) is not None)
+# Host and container port must come from the same variable, or they drift apart and the
+# published port stops reaching the server.
+port_map = re.search(r'-\s*"(\$\{[A-Z_]+:-(\d+)\}):(\$\{[A-Z_]+:-(\d+)\})"', http)
+check_true("compose.http/port mapping is present", port_map is not None, http[:300])
+if port_map:
+    check("compose.http/host port equals container port", port_map.group(2), port_map.group(4))
+    check("compose.http/both sides use the same variable", port_map.group(1), port_map.group(3))
+check_true("compose.http/the server reads the same variable",
+           'LAYA_PORT: "${LAYA_PORT:-8000}"' in http)
+check_true("compose.http/shares the model cache",
+           "model-cache:/home/laya/.cache/huggingface" in http)
+# The base service is what `docker compose run --rm laya` uses; publishing it a port or
+# changing its command would be a breaking change to the quickstart.
+check_true("compose.http/leaves the quickstart service alone",
+           "laya:" not in http, "compose.http.yaml overrides the base `laya` service")
+
+# `pip install .` alone puts no `laya-serve` in the image, so the extra is load-bearing.
+check_true("Dockerfile/installs the serve extra", '".[serve]"' in dockerfile, dockerfile[:400])
+check_true("Dockerfile/still runs pip check", "pip check" in dockerfile)
+
+# A Compose override replaces a service's `build` block whole. If the CUDA override does
+# not repeat the args for laya-serve, that service silently serves on CPU.
+check_true("compose.cuda/covers laya-serve too",
+           re.search(r"^\s{2}laya-serve:", cuda, re.M) is not None,
+           "compose.cuda.yaml does not mention laya-serve, so GPU serving would be CPU")
+check("compose.cuda/repeats the torch index for the base service",
+      len(re.findall(r'TORCH_INDEX: "\$\{LAYA_TORCH_INDEX:-cu128\}"', cuda)), 2)
+check("compose.cuda/repeats the device reservation for both services",
+      len(re.findall(r"driver: nvidia", cuda)), 2)
+check_true("compose.cuda/no stale reference to a missing file",
+           "compose.http.yaml on the HTTP preview branch" not in cuda,
+           "compose.cuda.yaml still describes compose.http.yaml as living on another branch")
+
+# Every file the Docker workflow validates must exist.
+for name in ("compose.yaml", "compose.example.yml", "compose.cuda.yaml", "compose.http.yaml"):
+    check_true("compose/%s exists" % name, os.path.exists(name))
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

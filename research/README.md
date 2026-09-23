@@ -27,6 +27,7 @@ installed its abseil runtime can deadlock model construction on macOS/Python 3.9
 |---|---|
 | `results/t4_colab_benchmark.json` | 17,416 questions on one T4, both checkpoints, identical questions per model |
 | `results/cpu_51_language_sweep.json` | 51 languages x 2 checkpoints, MASSIVE intent, 20 options |
+| `results/cpu_51_language_sweep_clamped.json` | the same 51 languages and 5,100 cases re-run with 0.3.7, raw temperatures and served temperatures side by side ([#208](https://github.com/NandhaKishorM/laya/issues/208)) |
 
 ## Headline findings
 

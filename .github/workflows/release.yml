@@ -39,6 +39,7 @@ jobs:
         run: |
           python tests/test_router.py
           python tests/test_criteria.py
+          python tests/test_batch.py
           python tests/test_email.py
           python tests/test_download.py
           python tests/test_shortlist.py

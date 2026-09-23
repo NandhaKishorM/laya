@@ -17,12 +17,20 @@ as the start of a signature and everything after it was cut:
 
     clean_email_body("Hi,\\n\\nThanks for the quick reply.\\nCould you refund invoice 4411?")
     # before: 'Hi,'    <- the request was cut away
+
+The last block guards a different kind of silence. `email_questions` was defined twice, here and
+in `laya/presets.py`, and `laya/__init__.py` re-exports the `presets` one. Editing the copy in
+`laya/email.py` moved `laya.email.email_questions` and left `laya.email_questions` where it was,
+with no test and no lint failing.
 """
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import laya  # noqa: E402
+from laya import email as email_module  # noqa: E402
+from laya import presets  # noqa: E402
 from laya.email import clean_email_body, email_state  # noqa: E402
 
 PASS, FAIL = [], []
@@ -409,6 +417,28 @@ check(
     clean_email_body("Please unlock it. This email is confidential and intended solely "
                      "for the named addressee."),
     "Please unlock it.",
+)
+
+
+# ------------------------------------------- email_questions has exactly one definition
+check_true(
+    "email_questions/one definition behind both module paths",
+    email_module.email_questions is presets.email_questions,
+    "laya.email.email_questions is not laya.presets.email_questions",
+)
+check_true(
+    "email_questions/the package export is that same object",
+    laya.email_questions is presets.email_questions,
+)
+check(
+    "email_questions/both paths answer the same",
+    email_module.email_questions(),
+    laya.email_questions(),
+)
+check(
+    "email_questions/a caller override reaches both paths",
+    email_module.email_questions({"legal": "contracts"})["category"]["criteria"],
+    laya.email_questions({"legal": "contracts"})["category"]["criteria"],
 )
 
 

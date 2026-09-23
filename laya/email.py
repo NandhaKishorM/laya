@@ -9,6 +9,10 @@ history (often a *different* request) weighed on the answer as much as the new m
 import re
 from typing import Dict, List, Optional
 
+# One definition, in the module that holds the other presets. Re-exported here because
+# `from laya.email import email_questions` is a path callers already have.
+from .presets import email_questions  # noqa: F401
+
 _QUOTE_HEADERS = [
     re.compile(r"^\s*On .{0,300}wrote:\s*$", re.I),
     # "Em resposta ao que você escreveu:" is body text; a client's attribution always carries a date
@@ -185,40 +189,3 @@ def email_state(subject: str, body: str, sender: Optional[str] = None, clean: bo
         state["from"] = sender
     state.update({k: v for k, v in extra.items() if v is not None})
     return state
-
-
-def email_questions(categories: Optional[Dict[str, str]] = None) -> Dict:
-    """Standard pre-built questions for email triage."""
-    categories = categories or {
-        "billing": "invoices, payments, refunds",
-        "technical": "bugs, outages, integrations",
-        "sales": "pricing, demos, new purchases",
-        "security": "phishing, scams, account compromise",
-        "hr": "hiring, leave, payroll",
-        "other": "none of the above",
-    }
-    return {
-        "category": {
-            "type": "choice",
-            "instructions": "Which team should handle the email in `body`?",
-            "criteria": categories,
-        },
-        "is_spam": {
-            "type": "noul",
-            "instructions": "Is this email unsolicited spam or bulk marketing?",
-        },
-        "is_phishing": {
-            "type": "noul",
-            "instructions": "Is this email a phishing or scam attempt to steal money, credentials, or personal data?",
-            "criteria": {"true": "phishing, scam, or fraud", "false": "a legitimate email"},
-        },
-        "urgency": {
-            "type": "score",
-            "instructions": "How urgent is the request in `body`?",
-            "criteria": ["no time pressure", "needs attention soon", "blocking issue or hard deadline"],
-        },
-        "needs_reply": {
-            "type": "noul",
-            "instructions": "Does the sender expect a reply?",
-        },
-    }

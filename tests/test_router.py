@@ -35,6 +35,8 @@ SCRIPTS = [
     ("armenian", "Հայերեն", "armenian"),
     ("armenian uppercase", "ՀԱՅԵՐԵՆ", "armenian"),
     ("armenian punctuation only", "։֊", "unknown"),
+    ("azerbaijani lone schwa", "ə", "latin"),
+    ("azerbaijani uppercase", "MÜŞTƏRİ İLƏ ƏLAQƏ SAXLAYIN", "latin"),
     ("french", "Le client a été facturé deux fois et demande un remboursement.", "latin"),
     ("hindi", "ग्राहक से दो बार शुल्क लिया गया और वह धनवापसी चाहता है।", "devanagari"),
     ("japanese", "お客様は二重に請求されたため返金を希望しています。", "kana"),
@@ -57,6 +59,8 @@ for label, text, want in SCRIPTS:
 for label, text, want in [
     ("plain english", "Please refund the duplicate charge on invoice 4411 today.", True),
     ("armenian", "Հայերեն", False),
+    ("azerbaijani no diacritics", "Sifarisim gelmedi ve pulum geri qaytarilmadi, zehmet olmasa yoxlayin", False),
+    ("azerbaijani few diacritics", "Mən sizin xidmətinizdən razı deyiləm və pulumu geri istəyirəm", False),
     ("english short", "refund me", True),
     ("hindi", "ग्राहक से दो बार शुल्क लिया गया", False),
     ("japanese", "お客様は二重に請求されました", False),
@@ -108,6 +112,11 @@ for label, text, want in [
     ("french", "Le client a ete facture deux fois et il demande un remboursement pour la facture", "fr"),
     ("german", "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung", "de"),
     ("spanish", "El cliente fue cobrado dos veces y quiere que le devuelvan el dinero por la factura", "es"),
+    ("azerbaijani", "Zəhmət olmasa, sifarişim üçün pulu geri qaytarın, çünki məhsul gəlmədi", "az"),
+    # one shared function word is not enough to name a language
+    ("azerbaijani single hit stays undecided",
+     "Müştəridən iki dəfə pul alınıb və o, geri qaytarılmasını istəyir", None),
+    ("azerbaijani uppercase dotted I", "MÜŞTƏRİ İLƏ ƏLAQƏ SAXLAYIN VƏ PULU GERİ QAYTARIN", "az"),
     ("too short", "refund", None),
 ]:
     check("latin_lang/" + label, guess_latin_language(text), want)
@@ -160,6 +169,7 @@ check("state_text/keys ignored",
 # --------------------------------------------------------------------- workflow signatures
 check("profile/armenian", analyse("Հայերեն")["script_profile"], {"armenian": 1.0})
 check("profile/armenian mixed with Latin", analyse("Հայերեն abc")["non_latin_fraction"], 0.7)
+check("profile/azerbaijani schwa is latin", analyse("ələ")["script_profile"], {"latin": 1.0})
 
 TD = {
     "agent_trace_observability": ["action", "needs_review", "outcome", "risk", "urgency"],
@@ -197,6 +207,10 @@ cases = [
     ("english text", {"body": "I was charged twice, please refund."}, Q_GENERIC, {}, "english"),
     ("armenian text", {"body": "Հայերեն"}, Q_GENERIC, {}, "multilingual"),
     ("armenian explicit override", {"body": "Հայերեն"}, Q_GENERIC, {"model": "english"}, "english"),
+    ("azerbaijani no diacritics", {"body": "Sifarisim gelmedi ve pulum geri qaytarilmadi, zehmet olmasa yoxlayin"},
+     Q_GENERIC, {}, "multilingual"),
+    ("azerbaijani explicit override", {"body": "Müştəridən iki dəfə pul alınıb"}, Q_GENERIC,
+     {"model": "english"}, "english"),
     ("hindi text", {"body": "मुझसे दो बार शुल्क लिया गया"}, Q_GENERIC, {}, "multilingual"),
     ("japanese text", {"body": "二重に請求されました"}, Q_GENERIC, {}, "multilingual"),
     ("korean text", {"body": "두 번 청구되었습니다"}, Q_GENERIC, {}, "multilingual"),

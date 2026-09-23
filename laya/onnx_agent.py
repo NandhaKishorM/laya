@@ -1,0 +1,199 @@
+import json
+import os
+import warnings
+from typing import Any, Dict, Optional, Union
+
+import numpy as np
+
+from laya.common import (
+    QTYPES,
+    build_sequence,
+    collate_items,
+    confidence_from_probs,
+    render_options,
+    temp_bucket,
+    TEMP_MIN,
+    TEMP_MAX,
+    clamp_temperature,
+)
+
+
+class ONNXAgent:
+    """System 1 decision model runtime via ONNX: fast CPU-optimized decisions."""
+
+    def __init__(
+        self,
+        model_id_or_path: str,
+        onnx_path: str = "laya.onnx",
+        subfolder: Optional[str] = None,
+    ):
+        """Load a Laya agent backed by ONNX Runtime.
+
+        Args:
+            model_id_or_path: HuggingFace Hub ID or local path to the original PyTorch checkpoint
+                              (used to load the tokenizer and config).
+            onnx_path: Path to the exported .onnx file.
+            subfolder: Optional subfolder if downloading from a repo bundle.
+        """
+        import onnxruntime as ort
+        from transformers import AutoTokenizer
+
+        model_dir = model_id_or_path
+        if not os.path.exists(model_dir):
+            if model_id_or_path.startswith(("/", "./", "../")) or os.path.isabs(model_id_or_path):
+                raise FileNotFoundError(
+                    f"Local model path not found: {model_id_or_path!r}."
+                )
+            from huggingface_hub import snapshot_download
+
+            prefix = f"{subfolder}/" if subfolder else ""
+            kw = {
+                "allow_patterns": [prefix + name for name in (
+                    "rl_agent_config.json", "tokenizer/*", "encoder/*",
+                )],
+            }
+            model_dir = snapshot_download(model_id_or_path, **kw)
+
+        if subfolder:
+            model_dir = os.path.join(model_dir, subfolder)
+            if not os.path.isdir(model_dir):
+                raise FileNotFoundError(
+                    f"Subfolder {subfolder!r} not found in {model_id_or_path!r}."
+                )
+
+        cfg_path = os.path.join(model_dir, "rl_agent_config.json")
+        if not os.path.exists(cfg_path):
+            raise FileNotFoundError(
+                f"Incompatible model: {model_id_or_path!r} does not contain 'rl_agent_config.json'."
+            )
+
+        with open(cfg_path) as f:
+            self.cfg = json.load(f)
+
+        if not os.path.exists(onnx_path):
+            raise FileNotFoundError(
+                f"ONNX model not found at {onnx_path!r}. Please run export_onnx.py first."
+            )
+
+        # Load Tokenizer
+        tok_dir = os.path.join(model_dir, "tokenizer")
+        self.tok = AutoTokenizer.from_pretrained(tok_dir if os.path.exists(tok_dir) else self.cfg.get("encoder"))
+
+        # Initialize ONNX Runtime Session (auto-detect GPU if available)
+        available = ort.get_available_providers()
+        providers = (
+            ["CUDAExecutionProvider", "CPUExecutionProvider"]
+            if "CUDAExecutionProvider" in available
+            else ["CPUExecutionProvider"]
+        )
+        self.session = ort.InferenceSession(onnx_path, providers=providers)
+
+        self.temperature_raw = self.cfg.get("temperature", [1.0, 1.0, 1.0])
+        self.temperature_by_options_raw = self.cfg.get("temperature_by_options", {})
+        self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
+        self.temperature_by_options = {k: clamp_temperature(v)
+                                       for k, v in self.temperature_by_options_raw.items()}
+        rejected = ["%s=%.4g" % (k, float(v)) for k, v in self.temperature_by_options_raw.items()
+                    if clamp_temperature(v) != float(v)]
+        rejected += ["temperature[%d]=%.4g" % (i, float(t)) for i, t in enumerate(self.temperature_raw)
+                     if clamp_temperature(t) != float(t)]
+        if rejected:
+            warnings.warn(
+                "laya ONNX: this checkpoint ships temperatures outside [%g, %g] which would distort "
+                "confidence; clamping %s. Treat confidence from the affected buckets as uncalibrated."
+                % (TEMP_MIN, TEMP_MAX, ", ".join(rejected)),
+                RuntimeWarning, stacklevel=2)
+
+    @staticmethod
+    def _to_internal(qdef: Dict) -> Dict:
+        t = qdef["type"]
+        crit = qdef.get("criteria")
+        if t == "choice" and isinstance(crit, list):
+            crit = {c: None for c in crit}
+        ins = qdef["instructions"]
+        if not isinstance(ins, str):
+            ins = json.dumps(ins)
+        return {"t": t, "ins": ins, "crit": crit}
+
+    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        ids = list(questions.keys())
+        items = []
+        max_len = self.cfg.get("max_len", 512)
+        head_max_len = self.cfg.get("head_max_len", 192)
+
+        for qid in ids:
+            q = self._to_internal(questions[qid])
+            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len)
+            if len(markers) != len(render_options(q)):
+                raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
+            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
+
+        b = collate_items([items], self.tok.pad_token_id)
+        
+        # Prepare ONNX inputs as numpy arrays
+        ort_inputs = {
+            "input_ids": b["input_ids"].numpy().astype(np.int64),
+            "attention_mask": b["attention_mask"].numpy().astype(np.int64),
+            "marker_pos": b["marker_pos"].numpy().astype(np.int64),
+            "marker_mask": b["marker_mask"].numpy().astype(bool),
+            "qtype": b["qtype"].numpy().astype(np.int64),
+        }
+
+        # Run ONNX inference
+        ort_outs = self.session.run(["logits", "act_logits"], ort_inputs)
+        logits = ort_outs[0]
+        act_logits = ort_outs[1]
+
+        # Compute softmax for actions manually in numpy
+        act_exp = np.exp(act_logits - np.max(act_logits, axis=-1, keepdims=True))
+        act = act_exp / np.sum(act_exp, axis=-1, keepdims=True)
+
+        answers = {}
+        n_tokens = int(b["attention_mask"].sum())
+
+        for r, qid in enumerate(ids):
+            q = self._to_internal(questions[qid])
+            k = len(items[r]["markers"])
+            qt = QTYPES[q["t"]]
+            t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])
+            z = logits[r, :k] / t_scale
+            p = np.exp(z - z.max())
+            p = p / p.sum()
+
+            conf_score = round(confidence_from_probs(p, k), 4)
+            ext = {"act_probability": round(float(act[r, 0]), 4)}
+
+            if q["t"] == "choice":
+                keys = list(q["crit"].keys())
+                answers[qid] = {
+                    "type": "choice",
+                    "choice": keys[int(p.argmax())],
+                    "probabilities": {kk: round(float(v), 4) for kk, v in zip(keys, p)},
+                    "confidence": conf_score,
+                    "action": ext,
+                }
+            elif q["t"] == "score":
+                exp_score = float((np.arange(k) * p).sum())
+                answers[qid] = {
+                    "type": "score",
+                    "score": round(exp_score, 4),
+                    "legend": {str(i): c for i, c in enumerate(q["crit"])},
+                    "probabilities": {str(i): round(float(v), 4) for i, v in enumerate(p)},
+                    "confidence": conf_score,
+                    "action": ext,
+                }
+            else:
+                answers[qid] = {
+                    "type": "noul",
+                    "noul": round(float(p[1]), 4),
+                    "confidence": round(max(float(p[1]), 1.0 - float(p[1])), 4),
+                    "action": ext,
+                }
+
+        return {
+            "model": "laya-rl-agent-onnx",
+            "answers": answers,
+            "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+        }
+
+    predict = system_one

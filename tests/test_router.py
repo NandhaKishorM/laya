@@ -516,6 +516,11 @@ with patch("laya.agent.Agent", side_effect=lambda repo, **kw: _Stub(repo)) as bu
     check("preload/returns router", rp.preload() is rp, True)
     check("preload/repeated call reuses models", build.call_count, 3)
 
+    empty = Router()
+    empty.preload([])
+    check("preload/empty selection leaves models unloaded", empty.loaded, [])
+    check("preload/empty selection builds nothing", build.call_count, 3)
+
     rp2 = Router()
     rp2.preload(["english", "multilingual"])
     check("preload/subset stays resident", sorted(rp2.loaded), ["english", "multilingual"])

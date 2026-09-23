@@ -405,6 +405,12 @@ result["shortlist"]["intent"]["labels"]  # the top 20 labels sent to the model
 
 ---
 
+## Community Tools
+
+* [laya-adk-toolkit](https://github.com/Ashfaqbs/laya-adk-toolkit) — [Google ADK](https://google.github.io/adk-docs/) tools that let an agent call Laya's `classify`/`score`/`detect` typed decisions directly as tools, instead of asking an LLM to guess at structured output.
+
+---
+
 ## Live Demo & Resources
 
 * **Hugging Face Model:** [convaiinnovations/laya](https://huggingface.co/convaiinnovations/laya)

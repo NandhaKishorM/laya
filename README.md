@@ -688,6 +688,32 @@ return per-field confidence with `return_details=True`. See [`docs/structured.md
 
 ---
 
+## OpenAI-compatible API
+
+`laya-serve` speaks the OpenAI wire format for structured decisions, so any OpenAI client can use
+Laya as a fast, local decision backend with no LLM. Send `response_format` with a JSON schema, or
+`tools` for function calling, to `POST /v1/chat/completions` (and `/v1/responses`), plus
+`/v1/models` and `/v1/moderations`.
+
+```bash
+pip install "laya[serve]"
+laya-serve
+
+curl -s localhost:8000/v1/chat/completions -H 'content-type: application/json' -d '{
+  "model": "laya",
+  "messages": [{"role": "user", "content": "I was charged twice, refund me."}],
+  "response_format": {"type": "json_schema", "json_schema": {"name": "ticket", "schema": {
+    "type": "object", "properties": {
+      "department": {"type": "string", "enum": ["billing", "support", "sales"]},
+      "needs_human": {"type": "boolean"}}}}}
+}'
+```
+
+Laya answers a fixed option set, so requests that need free text are rejected with a clear 400.
+See [`docs/openai.md`](docs/openai.md).
+
+---
+
 ## Built-in Workflow Presets
 
 Laya provides pre-tuned question schemas for immediate production use:

@@ -104,6 +104,8 @@ jobs:
           python tests/test_structured.py
           python tests/test_structured_api.py
           python tests/test_onnx_lang_parity.py
+          python tests/test_openai.py
+          python tests/test_openai_api.py
           python tests/test_download.py
           python tests/test_shortlist.py
           python tests/test_decision_model.py
@@ -185,6 +187,25 @@ jobs:
 
       - name: Fixture dataset validates
         run: laya-evals validate research/evals/fixture.jsonl
+
+  # The OpenAI HTTP surface is pytest based and needs fastapi. test_serve.py now runs in the
+  # main job (#376); this job covers only tests/test_serve_openai.py.
+  serve:
+    name: serve (OpenAI route pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . --no-deps
+          pip install "fastapi>=0.110.0" "uvicorn>=0.27.0" httpx pytest
+      - name: OpenAI route tests
+        run: python -m pytest tests/test_serve_openai.py -q
 
   # Every workflow in this repo ran on ubuntu-latest only, so a test that fails off Linux was
   # invisible until a user hit it -- which is what happened to tests/test_download.py (#140).

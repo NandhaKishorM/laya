@@ -214,3 +214,107 @@ one 2.14.0. The clamped run differs from the committed file on `ece` and `mean_c
 `accuracy`, `macro_f1` and `n` are identical in all three columns by construction: scaling
 logits by any positive temperature does not change the argmax. That is why a re-run can settle
 the calibration question without reopening the accuracy numbers.
+
+---
+
+## Presentation checks (`presentation_checks.py`)
+
+A label-free regression check for the `score` position prior in #131.
+`laya-multilingual` rarely picks the first-listed `score` level, and the fix is a
+position-balanced retrain. This script says whether a retrained checkpoint removed
+the prior. Every input is fixed in the file (10 short English states written for it),
+so it needs no dataset and no labels.
+
+```bash
+python research/eval/presentation_checks.py --model convaiinnovations/laya --subfolder multilingual
+python research/eval/presentation_checks.py --model ./retrained-checkpoint --out report.json
+```
+
+Exit status: `0` every check passed, `1` a check failed, `2` the harness disagrees with
+`Agent.system_one` by more than `1e-3` (nothing else is trusted then). CPU is the
+default device: fp32 and deterministic, which is what the thresholds were set on.
+
+### The two checks
+
+| check | input | metric | gate |
+|---|---|---|---|
+| `score_slot0_identical` | one `score` question whose K levels all carry the same text; texts `moderate` and `a request`, K = 3, 4, 5 | raw slot-0 marker logit minus the mean over the K slots, averaged over 10 states × 6 configurations | `>= -0.20` |
+| `score_first_slot_permuted` | `Not urgent` / `Soon` / `Work is blocked` in all 6 orders, per state | share of the 60 decisions whose argmax is the first slot | `>= 0.15` |
+
+`score_slot0_identical` is the identical-option control from @AlKor13 in #131. With
+identical texts the rendered options differ only by position and by the `level N:`
+prefix that `render_options` always emits, so a checkpoint without a slot prior has
+no reason to prefer or avoid any slot.
+
+`score_first_slot_permuted` presents every order of the three levels, so each level
+sits in each slot exactly twice per state. A checkpoint whose answer does not depend
+on the order picks the first slot in exactly 1/3 of the decisions, whatever the states
+say; the rate moves only through order dependence.
+
+Both read raw marker logits (before temperature) through `laya_eval.score_cases`,
+and the script first compares that path with `Agent.system_one` on every state.
+
+### Measured on the shipped checkpoints
+
+CPU, fp32, `convaiinnovations/laya@1c5edc1`, laya 0.3.7. Full output, per state and
+per configuration: `research/results/presentation_checks_shipped.json`.
+
+| checkpoint | `score_slot0_identical` (leave-one-out) | `score_first_slot_permuted` (leave-one-out) | verdict |
+|---|---|---|---|
+| `laya` (english) | **+0.664** (+0.520 .. +0.741) | **0.217** (0.204 .. 0.241) | PASS |
+| `laya-multilingual` | **−0.492** (−0.563 .. −0.425) | **0.017** (0.000 .. 0.019) | FAIL |
+
+Parity with `Agent.system_one`: max |Δp| 4.98e-5 (multilingual) and 4.92e-5 (english),
+which is the 4-decimal rounding of `system_one`'s probabilities.
+
+### Thresholds
+
+The gates were set from the leave-one-out ranges above, not tuned to them. Two
+conditions were fixed before the 10-state run:
+
+1. the current multilingual checkpoint fails and the english checkpoint passes in
+   **every** leave-one-out subset, and
+2. the worst leave-one-out value of each checkpoint clears the threshold by at least
+   0.10 logit (slot 0) and 0.05 (first-slot rate, 3 of 60 decisions).
+
+| check | threshold | multilingual worst → margin | english worst → margin |
+|---|---|---|---|
+| `score_slot0_identical` | −0.20 | −0.425 → 0.225 | +0.520 → 0.720 |
+| `score_first_slot_permuted` | 0.15 | 0.019 → 0.131 | 0.204 → 0.054 |
+
+The tightest margin is the english first-slot rate, at 0.054 against the 0.05 rule.
+An order-invariant checkpoint sits at exactly 0.333 on that check.
+
+### Tests
+
+`research/eval/test_presentation_checks.py` runs offline, with scripted logits in
+place of a checkpoint:
+
+```bash
+python research/eval/test_presentation_checks.py     # 69 passed, 0 failed
+```
+
+It pins the fixed inputs and both gates. It checks that the identical-option
+questions render as `level i: <same text>`, and that every level sits in every slot
+exactly twice. It also checks the metric arithmetic by hand, the leave-one-out
+bounds, the one-sided gates, and the exit codes. A scripted slot-0 hole fails both
+checks, and an order-invariant model scores exactly 1/3.
+
+### Limits
+
+* **The gate is one-sided because the english checkpoint is not flat either.** With
+  identical options it prefers the early slots, more strongly as K grows: slot 0 sits
+  +0.10 / +0.41 / +0.85 above the mean at K = 3 / 4 / 5 with `moderate`, and
+  +0.21 / +0.74 / +1.68 with `a request`. At K = 3 with `moderate` it is close to flat,
+  which matches the #131 control. A two-sided "no position effect" gate would fail
+  the english checkpoint, so the check asks the narrower question #131 is about:
+  whether slot 0 is suppressed.
+  (multilingual: −0.75 / −0.52 / −0.25 and −0.58 / −0.47 / −0.37.)
+* Passing is not accuracy. A checkpoint can clear both gates and still rank urgency
+  badly; this checks one known failure, not `score` quality.
+* English only, `score` only, 10 states. The states are short support messages, so a
+  checkpoint's behaviour on long inputs or other languages is not covered here.
+* Thresholds were set on CPU fp32. On CUDA, `Agent` runs the forward pass under
+  reduced-precision autocast and `score_cases` does not. The parity check reports that
+  difference instead of hiding it.
+* New checks are one function each, registered in `CHECKS`.

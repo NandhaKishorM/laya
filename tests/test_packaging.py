@@ -161,7 +161,12 @@ check_true("compose.http/runs the server command",
 check_true("compose.http/publishes a port", re.search(r"^\s*ports:", http, re.M) is not None)
 # Host and container port must come from the same variable, or they drift apart and the
 # published port stops reaching the server.
-port_map = re.search(r'-\s*"(\$\{[A-Z_]+:-(\d+)\}):(\$\{[A-Z_]+:-(\d+)\})"', http)
+port_map = re.search(r'-\s*"(?:\$\{LAYA_BIND_ADDRESS:-[^}]+\}:)?(\$\{[A-Z_]+:-(\d+)\}):(\$\{[A-Z_]+:-(\d+)\})"', http)
+# The API is unauthenticated until LAYA_API_KEY is set, so exposure beyond the host is opt-in.
+check_true("compose.http/publishes on loopback unless LAYA_BIND_ADDRESS is set",
+           '"${LAYA_BIND_ADDRESS:-127.0.0.1}:' in http)
+check_true("compose.http/has a healthcheck on /health",
+           "healthcheck:" in http and "/health" in http)
 check_true("compose.http/port mapping is present", port_map is not None, http[:300])
 if port_map:
     check("compose.http/host port equals container port", port_map.group(2), port_map.group(4))
@@ -179,7 +184,7 @@ check_true("compose.http/leaves the quickstart service alone",
 check_true("Dockerfile/installs the serve extra", '".[serve]"' in dockerfile, dockerfile[:400])
 check_true("Dockerfile/still runs pip check", "pip check" in dockerfile)
 
-# A Compose override replaces a service's `build` block whole. If the CUDA override does
+# Overrides for `laya` never reach `laya-serve`, a separate service. If the CUDA override does
 # not repeat the args for laya-serve, that service silently serves on CPU.
 check_true("compose.cuda/covers laya-serve too",
            re.search(r"^\s{2}laya-serve:", cuda, re.M) is not None,
@@ -193,7 +198,8 @@ check_true("compose.cuda/no stale reference to a missing file",
            "compose.cuda.yaml still describes compose.http.yaml as living on another branch")
 
 # Every file the Docker workflow validates must exist.
-for name in ("compose.yaml", "compose.example.yml", "compose.cuda.yaml", "compose.http.yaml"):
+for name in ("compose.yaml", "compose.example.yml", "compose.cuda.yaml", "compose.http.yaml",
+             "compose.spark.yaml"):
     check_true("compose/%s exists" % name, os.path.exists(name))
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

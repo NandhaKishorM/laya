@@ -281,6 +281,19 @@ for label, qdef in [
                                      "labels": {"true": "A"}}),
     ("noul with duplicate labels", {"type": "noul", "instructions": "Is it spam?",
                                     "labels": {"false": "A", "true": "A"}}),
+    # `render_options` reads the two noul descriptions by name, so any other key used to be
+    # dropped and replaced with the defaults without a word (#156). These are the shapes a
+    # caller reaches for when they want to word the two options themselves.
+    ("noul with yes/no criteria", {"type": "noul", "instructions": "Is it spam?",
+                                   "criteria": {"yes": "it is spam", "no": "it is not"}}),
+    ("noul with neutral keys", {"type": "noul", "instructions": "Is it spam?",
+                                "criteria": {"spam": "it is spam", "ham": "it is not"}}),
+    ("noul with alpha/beta criteria", {"type": "noul", "instructions": "Is it spam?",
+                                       "criteria": {"alpha": "yes", "beta": "no"}}),
+    ("noul with a typo'd key", {"type": "noul", "instructions": "Is it spam?",
+                                "criteria": {"ture": "yes", "false": "no"}}),
+    ("noul with an extra key", {"type": "noul", "instructions": "Is it spam?",
+                                "criteria": {"true": "y", "false": "n", "maybe": "?"}}),
     ("unknown type", {"type": "bool", "instructions": "Is it spam?"}),
     ("missing type", {"instructions": "Is it spam?"}),
     ("no instructions", {"type": "noul"}),
@@ -354,6 +367,67 @@ check_true("good/noul with labels is a probability",
            0.0 <= out["answers"]["noul with labels"]["noul"] <= 1.0,
            str(out["answers"]["noul with labels"]))
 check("good/usage has no output tokens", out["usage"]["output_tokens"], 0)
+
+
+# ------------------------------------------------- noul criteria keys that must keep working
+# The guard above rejects a key it cannot use. These are the spellings it must still accept,
+# and the check is on the rendered text rather than on "no exception", because the whole point
+# is that the caller's descriptions reach the model. Before the guard, the yes/no row below
+# would have rendered the defaults instead and the caller had no way to tell (#156).
+_DEFAULT_FALSE_TEXT = "false: no, the statement does not hold"
+_DEFAULT_TRUE_TEXT = "true: yes, the statement holds"
+
+for label, crit, want in [
+    ("true/false use the caller's text",
+     {"true": "the review is positive", "false": "the review is negative"},
+     ["false: the review is negative", "true: the review is positive"]),
+    ("uppercase keys work, via the .lower() in _to_internal",
+     {"TRUE": "the review is positive", "FALSE": "the review is negative"},
+     ["false: the review is negative", "true: the review is positive"]),
+    ("Python bool keys work, which is how JSON true/false arrive",
+     {True: "the review is positive", False: "the review is negative"},
+     ["false: the review is negative", "true: the review is positive"]),
+    ("one key is enough",
+     {"true": "the review is positive"},
+     [_DEFAULT_FALSE_TEXT, "true: the review is positive"]),
+    ("an empty dict falls back to both defaults", {},
+     [_DEFAULT_FALSE_TEXT, _DEFAULT_TRUE_TEXT]),
+    ("omitting criteria falls back to both defaults", None,
+     [_DEFAULT_FALSE_TEXT, _DEFAULT_TRUE_TEXT]),
+    ("a description equal to the default wording still counts as given",
+     {"true": "yes, the statement holds", "false": "no, the statement does not hold"},
+     [_DEFAULT_FALSE_TEXT, _DEFAULT_TRUE_TEXT]),
+]:
+    qdef = {"type": "noul", "instructions": "Is the review positive?"}
+    if crit is not None:
+        qdef["criteria"] = crit
+    try:
+        check("noul keys/%s" % label, render_options(Agent._to_internal(qdef)), want)
+    except Exception as exc:  # noqa: BLE001
+        FAIL.append("noul keys/%s raised %s: %s" % (label, type(exc).__name__, exc))
+
+# `labels` is the supported way to word the answer without touching the option text, so the
+# message the guard raises points at it. It replaces the `false:`/`true:` prefixes the model
+# reads; the criteria text after them is unchanged, and the result stays P(true).
+_mixed = Agent._to_internal({"type": "noul", "instructions": "Is the review positive?",
+                             "criteria": {"true": "the review is positive",
+                                          "false": "the review is negative"},
+                             "labels": {"true": "positive", "false": "negative"}})
+check("noul keys/criteria text survives alongside labels",
+      render_options(_mixed),
+      ["negative: the review is negative", "positive: the review is positive"])
+check("noul keys/labels are carried through", _mixed["labels"],
+      {"true": "positive", "false": "negative"})
+check("noul keys/labels keep the false/true slot order",
+      render_options(_mixed)[0].startswith("negative:"),
+      True)
+# ...and the criteria descriptions are all `labels` changes -- the same pair without labels
+# is the same text behind the default prefixes.
+check("noul keys/labels change only the prefix",
+      [o.split(": ", 1)[1] for o in render_options(_mixed)],
+      [o.split(": ", 1)[1] for o in render_options(Agent._to_internal(
+          {"type": "noul", "instructions": "Is the review positive?",
+           "criteria": {"true": "the review is positive", "false": "the review is negative"}}))])
 check_true("good/usage counted input tokens", out["usage"]["input_tokens"] > 0, str(out["usage"]))
 
 # --------------------------------------------------------------- build_sequence left truncation

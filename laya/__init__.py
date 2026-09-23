@@ -12,7 +12,7 @@ from .presets import (
 )
 from .router import DEFAULT_MODELS, RouteDecision, Router
 
-__version__ = "0.3.9"
+__version__ = "0.3.10"
 
 # Routing, language detection and email cleaning are pure Python. The torch-backed names are
 # resolved lazily so that `import laya` -- and therefore `from laya import Router` or

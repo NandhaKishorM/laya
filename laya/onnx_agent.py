@@ -93,10 +93,18 @@ class ONNXAgent:
         self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
         self.temperature_by_options = {k: clamp_temperature(v)
                                        for k, v in self.temperature_by_options_raw.items()}
-        rejected = ["%s=%.4g" % (k, float(v)) for k, v in self.temperature_by_options_raw.items()
-                    if clamp_temperature(v) != float(v)]
-        rejected += ["temperature[%d]=%.4g" % (i, float(t)) for i, t in enumerate(self.temperature_raw)
-                     if clamp_temperature(t) != float(t)]
+        entries = [(k, v, self.temperature_by_options[k]) for k, v in self.temperature_by_options_raw.items()]
+        entries += [("temperature[%d]" % i, t, self.temperature[i]) for i, t in enumerate(self.temperature_raw)]
+        rejected = []
+        for name, raw, applied in entries:
+            try:
+                if float(raw) == applied:
+                    continue
+            except (TypeError, ValueError):
+                # Invalid entries already have a neutral fallback; diagnostics must not
+                # repeat the failed conversion or prevent the checkpoint from loading.
+                pass
+            rejected.append("%s=%r -> %g" % (name, raw, applied))
         if rejected:
             warnings.warn(
                 "laya ONNX: this checkpoint ships temperatures outside [%g, %g] which would distort "
@@ -110,13 +118,23 @@ class ONNXAgent:
         crit = qdef.get("criteria")
         if t == "choice" and isinstance(crit, list):
             crit = {c: None for c in crit}
+        elif t == "noul" and isinstance(crit, dict):
+            # Normalize boolean literal keys to string keys ("true"/"false")
+            crit = {str(k).lower(): v for k, v in crit.items()}
         ins = qdef["instructions"]
         if not isinstance(ins, str):
-            ins = json.dumps(ins)
-        return {"t": t, "ins": ins, "crit": crit}
+            ins = json.dumps(ins, ensure_ascii=False)
+        q = {"t": t, "ins": ins, "crit": crit}
+        if "labels" in qdef:
+            q["labels"] = qdef["labels"]
+        return q
 
     def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        from .agent import Agent as _Agent
+
         ids = list(questions.keys())
+        for qid in ids:
+            _Agent._check_question(qid, questions[qid])
         items = []
         max_len = self.cfg.get("max_len", 512)
         head_max_len = self.cfg.get("head_max_len", 192)

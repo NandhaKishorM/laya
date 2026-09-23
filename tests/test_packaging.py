@@ -70,6 +70,13 @@ ci_versions = [version_tuple(v) for v in re.findall(r'"(\d+\.\d+)"', workflow)]
 stale = [".".join(str(p) for p in v) for v in ci_versions if v < floor]
 check("ci/tests no Python below requires-python", stale, [])
 
+# Classifiers on PyPI are a support claim. If a version is listed there, CI must run it
+# (3.12 was advertised while the matrix jumped 3.11 -> 3.13).
+missing_from_ci = [
+    ".".join(str(p) for p in v) for v in classifier_versions if v not in ci_versions
+]
+check("ci/tests every advertised Python version", missing_from_ci, [])
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL", f)

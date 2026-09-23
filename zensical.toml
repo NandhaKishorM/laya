@@ -36,3 +36,21 @@ media = "(prefers-color-scheme: dark)"
 scheme = "slate"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to light mode"
+
+# API reference pages under docs/reference/ are generated from the docstrings in laya/.
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["."]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+docstring_options = { returns_multiple_items = false }
+docstring_section_style = "list"
+filters = ["!^_"]
+members_order = "source"
+merge_init_into_class = true
+line_length = 70
+separate_signature = true
+show_root_full_path = false
+show_root_heading = true
+show_signature_annotations = true
+show_source = false

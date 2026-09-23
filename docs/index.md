@@ -5,6 +5,7 @@ decisions over any state, in a single forward pass.
 
 The [README](https://github.com/NandhaKishorM/laya#readme) is the main guide. It covers
 installation, the `Router` quickstart, the HTTP server, calibration, benchmarks and known limits.
+The [Python API reference](reference/index.md) is generated from the docstrings.
 These guides cover individual topics:
 
 - [Docker quickstart](docker.md): run the SDK in a container, on CPU or an NVIDIA GPU.

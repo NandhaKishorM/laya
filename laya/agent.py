@@ -539,7 +539,7 @@ class Agent:
 
     @torch.no_grad()
     def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
-                      batch_size: Optional[int] = None) -> List[Dict[str, Any]]:
+                      batch_size: Optional[int] = None, lang: Optional[str] = None) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, packing them into shared forward passes.
 
         This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
@@ -625,7 +625,7 @@ class Agent:
 
         To score many states at once, see `predict_batch`, which shares forward passes across them.
         """
-        return self.predict_batch([state], questions)[0]
+        return self.predict_batch([state], questions, lang=lang)[0]
 
     def __enter__(self):
         return self

@@ -430,7 +430,19 @@ class Router:
         """
         decision = self.route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
         agent = self.load(decision["model"])
-        result = agent.system_one(state, questions)
+        
+        effective_lang = lang
+        if effective_lang is None and decision.get("detection") and decision["detection"].get("language"):
+            effective_lang = decision["detection"]["language"]
+            
+        try:
+            result = agent.system_one(state, questions, lang=effective_lang)
+        except TypeError as e:
+            if "unexpected keyword argument 'lang'" in str(e):
+                result = agent.system_one(state, questions)
+            else:
+                raise
+                
         result["routing"] = dict(decision)
         return result
 

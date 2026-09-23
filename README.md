@@ -494,6 +494,29 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 
 ---
 
+## LangChain & LangGraph Integration
+
+Fast System 1 routing and guardrails directly inside LangGraph workflows and LCEL chains:
+
+```python
+from laya.integrations.langchain import LayaRouter, LayaGuardrail
+
+# 1. Sub-35ms LangGraph conditional edge routing with confidence fallback
+router = LayaRouter(
+    criteria={"billing": "invoices, charges", "tech": "bugs, outages"},
+    confidence_threshold=0.80,
+    fallback="human_agent",
+)
+workflow.add_conditional_edges("triage", router)
+
+# 2. Inline prompt guardrails
+guard = LayaGuardrail(action="raise")  # raises LayaGuardrailError on jailbreak/injection
+```
+
+See [**`docs/langchain.md`**](docs/langchain.md) for full guide, support ticket triage nodes, and remote HTTP server configuration.
+
+---
+
 ## Decision Primitives
 
 | Primitive | Output | Use Cases |

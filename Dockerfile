@@ -13,7 +13,10 @@ RUN pip install torch --index-url https://download.pytorch.org/whl/${TORCH_INDEX
 WORKDIR /src
 COPY pyproject.toml setup.py README.md LICENSE ./
 COPY laya/ ./laya/
-RUN pip install . && pip check
+# The `serve` extra puts `laya-serve` (POST /v1/systemone, GET /health) in the image, so
+# the same image can run a one-shot request or serve the Jev-compatible API. It adds
+# fastapi and uvicorn only; torch was installed above.
+RUN pip install ".[serve]" && pip check
 
 FROM python:3.11-slim-bookworm AS runtime
 

@@ -156,6 +156,7 @@ class Agent:
     hooks_raise = True
     hooks_concurrent = True
     _hooks_lock = None
+    model_id = None
 
     def __init__(
         self,
@@ -187,6 +188,7 @@ class Agent:
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
+        self.model_id = model_id_or_path
 
         from safetensors.torch import load_file
         try:
@@ -573,11 +575,10 @@ class Agent:
         """
         active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
-        ctx = PredictContext(states=states, questions=questions, agent=self)
-        dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
-
-        states, questions = ctx.states, ctx.questions
+        ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self)
         try:
+            dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+            states, questions = ctx.states, ctx.questions
             if ctx.results is None:
                 # A start hook may have normalised a bare string/dict into a list; only the value
                 # that survives the hook is validated.

@@ -240,6 +240,48 @@ check_true("on_error/failing hook is chained",
            isinstance(getattr(raised, "__context__", None), ValueError))
 
 
+# a start hook that raises must still run on_error and the end hooks
+class StartErrRec:
+    def __init__(self):
+        self.errors = []
+
+    def on_error(self, ctx):
+        self.errors.append(ctx.error)
+
+
+start_fail_seen = []
+
+
+def raising_start(ctx):
+    raise ValueError("start boom")
+
+
+def end_after_start_fail(ctx):
+    start_fail_seen.append(ctx.error)
+
+
+rec2 = StartErrRec()
+f = make_fake()
+raised = None
+try:
+    f.predict_batch(["s0"], QUESTIONS, hooks=[rec2],
+                    on_predict_start=raising_start, on_predict_end=end_after_start_fail)
+except ValueError as exc:
+    raised = exc
+check_true("start failure/propagates", isinstance(raised, ValueError))
+check("start failure/on_error fired", len(rec2.errors), 1)
+check("start failure/end fired with the error", len(start_fail_seen), 1)
+check("start failure/end saw the error", str(start_fail_seen[0]), "start boom")
+
+
+# ctx.model carries the agent's model id
+f = make_fake()
+f.model_id = "convaiinnovations/laya"
+models = []
+f.predict_batch(["s0"], QUESTIONS, on_predict_end=lambda c: models.append(c.model))
+check("context/model is the agent model_id", models, ["convaiinnovations/laya"])
+
+
 # --------------------------------------------------------------- empty inputs
 empty = []
 f = make_fake()
@@ -279,6 +321,18 @@ f = make_fake()
 res = f.predict_batch(["s0", "s1", "s2"], QUESTIONS)
 check("defaults/unset hooks are a no-op", len(res), 3)
 check("defaults/offsets unchanged", [r["answers"]["_offset"] for r in res], [0, NQ, 2 * NQ])
+
+
+# --------------------------------------------------------------- validation
+class NotAHook:
+    pass
+
+
+check_raises("validation/hooks= rejects a class", TypeError, lambda: normalise_hooks(hooks=[NotAHook]))
+check_raises("validation/hooks= rejects a plain callable", TypeError,
+             lambda: normalise_hooks(hooks=[lambda ctx: None]))
+check_raises("validation/on_predict_start must be callable", TypeError,
+             lambda: normalise_hooks(on_predict_start=123))
 
 
 # --------------------------------------------------------------- Router
@@ -343,6 +397,21 @@ out = r.predict("hello", QUESTIONS)
 check("router/predict start sees the decision", predict_seen["decision"]["model"], "english")
 check("router/predict end sees results", len(predict_seen["results"]), 1)
 check("router/predict keeps routing", out["routing"]["model"], "english")
+
+
+class PerCallRoute:
+    def __init__(self):
+        self.decisions = []
+
+    def on_route(self, ctx):
+        self.decisions.append(dict(ctx.decision))
+
+
+pcr = PerCallRoute()
+r = Router()
+r.attach("english", FakeAgent())
+r.predict("hello", QUESTIONS, hooks=[pcr])
+check("router/per-call hooks apply to on_route", len(pcr.decisions), 1)
 
 
 # --------------------------------------------------------------- concurrency

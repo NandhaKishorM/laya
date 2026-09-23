@@ -29,6 +29,7 @@ class ONNXAgent:
     hooks_raise = True
     hooks_concurrent = True
     _hooks_lock = None
+    model_id = None
 
     def __init__(
         self,
@@ -55,6 +56,7 @@ class ONNXAgent:
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
+        self.model_id = model_id_or_path
 
         import onnxruntime as ort
         from transformers import AutoTokenizer
@@ -142,9 +144,9 @@ class ONNXAgent:
         """Evaluate typed questions, running any opt-in hooks around the inference."""
         active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
-        ctx = PredictContext(states=[state], questions=questions, agent=self)
-        dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+        ctx = PredictContext(states=[state], questions=questions, model=self.model_id, agent=self)
         try:
+            dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
             if ctx.results is None:
                 ctx.results = [self._infer(ctx.states[0], ctx.questions)]
         except BaseException as exc:

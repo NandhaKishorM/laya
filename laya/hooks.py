@@ -111,6 +111,11 @@ def normalise_hooks(
     """
     result: List[Any] = []
     for hook in _as_sequence(hooks):
+        if isinstance(hook, type):
+            raise TypeError(
+                "hooks entries must be instances, not classes; got %s. Instantiate it first."
+                % hook.__name__
+            )
         if not any(hasattr(hook, event) for event in HOOK_EVENTS):
             raise TypeError(
                 "hooks entries must implement at least one of %s; got %s. Pass a plain "

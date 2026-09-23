@@ -34,6 +34,8 @@ laya.load("convaiinnovations/laya", hooks=[Audit()])
 
 `hooks=` accepts a single object or a sequence. `on_predict_start=` / `on_predict_end=` accept a
 single callable or a sequence. Installed hooks run first; per-call hooks are appended after them.
+On the `Router`, per-call `hooks=` also apply to `on_route` (so a hook can pin a checkpoint for a
+single call), and `route()` itself takes `hooks=`.
 
 ## The context
 

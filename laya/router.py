@@ -379,15 +379,20 @@ class Router:
         task: Optional[str] = None,
         lang: Optional[str] = None,
         lang_guess: Optional[Any] = None,
+        hooks=None,
+        hooks_raise: Optional[bool] = None,
     ) -> RouteDecision:
         """Decide which checkpoint to use, then let `on_route` hooks observe or replace it.
 
         `ctx.decision` is the `RouteDecision`; a hook may replace it (for example to pin a
-        checkpoint) and the replacement is what gets returned and used.
+        checkpoint) and the replacement is what gets returned and used. `hooks` are per-call
+        hooks, appended after any installed on the Router.
         """
         decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
+        raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
+        active = list(self.hooks) + normalise_hooks(hooks)
         ctx = PredictContext(states=[state], questions=questions or {}, decision=decision, router=self)
-        dispatch(self.hooks, "on_route", ctx, raise_errors=self.hooks_raise, lock=self._hooks_lock)
+        dispatch(active, "on_route", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
         return ctx.decision
 
     def _route(
@@ -498,12 +503,14 @@ class Router:
         active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
 
-        decision = self.route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
+        # Per-call hooks apply to the whole call, including on_route inside route().
+        decision = self.route(state, questions, model=model, task=task, lang=lang,
+                              lang_guess=lang_guess, hooks=hooks, hooks_raise=hooks_raise)
         agent = self.load(decision["model"])
         ctx = PredictContext(states=[state], questions=questions, decision=dict(decision),
                              model=decision["model"], agent=agent, router=self)
-        dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
         try:
+            dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
             if ctx.results is None:
                 result = agent.system_one(ctx.states[0], ctx.questions)
                 result["routing"] = dict(decision)

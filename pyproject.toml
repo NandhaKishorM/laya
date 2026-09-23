@@ -42,6 +42,7 @@ serve = [
     "fastapi>=0.110.0",
     "uvicorn>=0.27.0",
 ]
+onnx = ["onnx", "onnxruntime"]
 
 [project.scripts]
 laya-serve = "laya.serve:main"

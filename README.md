@@ -757,6 +757,13 @@ result["shortlist"]["intent"]["labels"]  # the top 20 labels sent to the model
   {"type": "choice", "instructions": "Is this review positive?",
    "criteria": {"A": "yes, the review is positive", "B": "no, the review is negative"}}
   ```
+
+  `criteria` on a `noul` must be keyed `true`/`false` — those two keys *are* the option text the
+  model reads, so any other key is rejected instead of being quietly replaced with the defaults.
+  Before that check, `criteria: {"yes": ..., "no": ...}` was accepted, dropped, and answered
+  against `false:` / `true:` anyway, which cost 2 of 3 clearly positive reviews on the English
+  checkpoint ([#156](https://github.com/NandhaKishorM/laya/issues/156)). Use `labels` as above to
+  change the wording without touching the option text.
 * **`laya-multilingual` has a position bias on `score` questions** (#131): it rarely picks the first-listed level, in any language. For English score questions, route to `model="english"`, and for other languages validate score outputs on your own data before relying on them.
 * **`action.act_probability` carries no usable signal yet** (#185). It reads 1.0 for almost every input, and its raw logits run against correctness (AUROC 0.30 on 396 labelled decisions). Gate on `confidence` instead, which reaches an AUROC of 0.77 on the same items.
 * `laya` collapses outside English; `laya-multilingual` is weaker on English. Route, or pick

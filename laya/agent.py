@@ -391,6 +391,21 @@ class Agent:
         elif crit is not None and not isinstance(crit, dict):
             raise ValueError("question %r: a noul question takes 'criteria' as a dict with optional "
                              "'true'/'false' descriptions, or omits it" % (qid,))
+        elif isinstance(crit, dict):
+            # `render_options` reads these two descriptions out by name -- `crit.get("false")` and
+            # `crit.get("true")` -- so a dict keyed any other way is not a noul description at all.
+            # It used to be substituted with the default pair without a word, so a caller saw their
+            # descriptions accepted and never reach the model (#156). `labels` just below has
+            # rejected the same mistake since #163; this is the same rule on the other parameter,
+            # and a noul is a boolean question either way, so those are the only two keys it can have.
+            keys = {str(k).lower() for k in crit}
+            if not keys <= {"true", "false"}:
+                raise ValueError(
+                    "question %r: a noul question takes 'criteria' keyed only 'true'/'false' (either "
+                    "or both, and omitted is fine), got %s. Those keys are the option texts the model "
+                    "reads; any other key was silently dropped and replaced with the defaults. If you "
+                    "want the answer worded differently, keep 'criteria' keyed 'true'/'false' and set "
+                    "'labels' instead." % (qid, sorted(keys)))
         if "labels" in qdef:
             if t != "noul":
                 raise ValueError("question %r: 'labels' is only supported for noul questions" % (qid,))

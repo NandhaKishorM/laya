@@ -31,6 +31,11 @@ _LAZY_ATTRS = {
     "shortlist_choice": (".shortlist", "shortlist_choice"),
     "predict_shortlist": (".shortlist", "predict_shortlist"),
     "embed_fn_from_agent": (".shortlist", "embed_fn_from_agent"),
+    "LayaRouter": (".integrations", "LayaRouter"),
+    "LayaGuardrail": (".integrations", "LayaGuardrail"),
+    "LayaGuardrailError": (".integrations", "LayaGuardrailError"),
+    "LayaTriage": (".integrations", "LayaTriage"),
+    "LayaEvaluator": (".integrations", "LayaEvaluator"),
 }
 
 
@@ -77,5 +82,10 @@ __all__ = [
     "render_options",
     "QTYPES",
     "QTYPE_NAMES",
+    "LayaRouter",
+    "LayaGuardrail",
+    "LayaGuardrailError",
+    "LayaTriage",
+    "LayaEvaluator",
     "__version__",
 ]

@@ -145,6 +145,7 @@ class Agent:
         token: Optional[str] = None,
         subfolder: Optional[str] = None,
         fast: bool = False,
+        compile: bool = False,
     ):
         """Load a Laya checkpoint.
 
@@ -248,11 +249,15 @@ class Agent:
 
         # ModernBERT's reference_compile defaults to "auto" and will torch.compile the encoder.
         # That is a loss for the batch sizes Laya runs (a handful of questions per call) and can
-        # hang on some platforms, so keep the eager path.
+        # hang on some platforms, so keep the eager path unless explicitly requested.
         try:
-            self.model.encoder.config.reference_compile = False
+            self.model.encoder.config.reference_compile = compile
         except Exception:
             pass
+            
+        # The TileLang fast path replaces the forward itself, so it takes precedence over compile.
+        if compile and not fast:
+            self.model = torch.compile(self.model)
 
         # Keep what the checkpoint shipped for inspection, but only ever apply clamped values:
         # some buckets are fitted to sharpen rather than soften (see clamp_temperature).

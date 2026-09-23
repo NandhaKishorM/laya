@@ -6,6 +6,7 @@ read the [Router](#routerpredict) one; it is the superset.
 - [Agent.predict_batch](#agentpredict_batch)
 - [Agent.system_one / predict](#agentsystem_one-predict)
 - [Router.predict](#routerpredict)
+- [Router.predict_batch](#routerpredict_batch)
 - [Model lifecycle](#model-lifecycle)
 - [Caching with skip](#caching-with-skip)
 - [Empty inputs](#empty-inputs)
@@ -108,6 +109,46 @@ Key points:
 - Router-level predict hooks wrap the whole call. They are **not** forwarded into the Agent;
   an attached Agent with its own hooks runs those too, which is expected.
 - A Router-level `ctx.skip()` still adds `routing`, so the return shape is stable.
+
+## Router.predict_batch
+
+Each result is what `predict` returns for that request, so Router-level predict hooks run per
+request here too: every request gets its own `PredictContext`, `run_id` and `elapsed_ms`.
+
+```
+Router.predict_batch(requests, batch_size=...)
+  │
+  ├─ route_batch(requests) ──► on_route, once per request   (no checkpoint loaded yet)
+  │
+  └─ for each checkpoint, in order of first appearance:
+       │
+       ├─ load(checkpoint) ──► on_load / on_evict
+       ├─ for each request of this checkpoint, in input order:
+       │      ctx = PredictContext(states=[state], questions, decision, model, agent, router)
+       │      on_predict_start       a hook may redact, rewrite, set a token budget or skip
+       ├─ group the requests left to infer by (questions, ctx.max_len, ctx.head_max_len)
+       │      agent.predict_batch(states, questions, ...)  ──► one shared forward pass per group
+       │      result["routing"] = decision;  ctx.results = [result]
+       ├─ (any failure) ──► on_error for every started request without a result,
+       │                    on_predict_end for every started request, re-raise
+       └─ on_predict_end, once per request of this checkpoint, in input order
+```
+
+Key points:
+
+- Every start hook of a checkpoint's requests runs before any of their end hooks, because they
+  share forward passes. A cache that fills in `on_predict_end` therefore cannot serve a duplicate
+  state within the same checkpoint group; it can across calls.
+- A start hook that replaces `ctx.states`, `ctx.questions` or the token budget changes its own
+  request only: requests are grouped for the forward pass after their start hooks have run.
+  Mutating a questions dict in place changes it for every request that shares that dict, and for
+  the caller, as it would with `predict`.
+- Every started request gets exactly one `on_predict_end`, even when an earlier request's end hook
+  raises; the first such error is raised after all of them have run.
+- If the batch fails, a request that did not get a result is reported as failed (`on_error`, with
+  `ctx.error` set to the exception that failed the batch), because the caller gets no result for
+  it. Requests of checkpoint groups that already finished have ended with their results, as the
+  earlier calls of `[router.predict(...) for ...]` would have.
 
 ## Model lifecycle
 

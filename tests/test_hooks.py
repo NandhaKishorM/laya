@@ -555,6 +555,256 @@ r.predict("hello", QUESTIONS, hooks=[pcr])
 check("router/per-call hooks apply to on_route", len(pcr.decisions), 1)
 
 
+# --------------------------------------------------------------- Router.predict_batch
+# `predict_batch` promises each result is what `predict` returns for that request, so Router-level
+# predict hooks must run per request there too. It used to skip them: a redaction hook never ran,
+# and the raw state reached the model.
+class BatchFake:
+    """Records every `predict_batch` call and answers with the state it was given."""
+
+    def __init__(self):
+        self.calls = []
+
+    def predict_batch(self, states, questions, batch_size=None, **overrides):
+        self.calls.append((list(states), questions, overrides))
+        if "boom" in states:
+            raise RuntimeError("inference failed")
+        return [{"model": "fake", "answers": {"seen": s},
+                 "usage": {"input_tokens": len(s), "output_tokens": 0}} for s in states]
+
+    def system_one(self, state, questions, **overrides):
+        return self.predict_batch([state], questions, **overrides)[0]
+
+
+def batch_router(**kwargs):
+    r = Router(**kwargs)
+    en, ml = BatchFake(), BatchFake()
+    r.attach("english", en)
+    r.attach("multilingual", ml)
+    return r, en, ml
+
+
+def req(state, model="english", questions=QUESTIONS):
+    return {"state": state, "questions": questions, "model": model}
+
+
+def redact_start(ctx):
+    ctx.states = [s.replace("secret", "[redacted]") for s in ctx.states]
+
+
+r, en, ml = batch_router(on_predict_start=redact_start)
+out = r.predict_batch([req("a secret"), req("b secret", "multilingual"), req("c secret")])
+check("router_batch/start hook rewrite reaches the agent",
+      [c[0] for c in en.calls + ml.calls], [["a [redacted]", "c [redacted]"], ["b [redacted]"]])
+check("router_batch/results follow the rewrite", [o["answers"]["seen"] for o in out],
+      ["a [redacted]", "b [redacted]", "c [redacted]"])
+
+batch_events = []
+batch_results_at_start = {}
+
+
+class BatchTrace:
+    def on_predict_start(self, ctx):
+        batch_events.append(("start", ctx.states[0], ctx))
+        batch_results_at_start[ctx.states[0]] = ctx.results
+
+    def on_predict_end(self, ctx):
+        batch_events.append(("end", ctx.states[0], ctx))
+
+    def on_error(self, ctx):
+        batch_events.append(("error", ctx.states[0], ctx))
+
+
+r, en, ml = batch_router(hooks=[BatchTrace()])
+out = r.predict_batch([req("one"), req("two", "multilingual"), req("three")])
+check("router_batch/one start and one end per request, per checkpoint group",
+      [(e[0], e[1]) for e in batch_events],
+      [("start", "one"), ("start", "three"), ("end", "one"), ("end", "three"),
+       ("start", "two"), ("end", "two")])
+starts = {e[1]: e[2] for e in batch_events if e[0] == "start"}
+ends = {e[1]: e[2] for e in batch_events if e[0] == "end"}
+check("router_batch/every request starts and ends", (sorted(starts), sorted(ends)),
+      (["one", "three", "two"], ["one", "three", "two"]))
+if len(starts) == len(ends) == 3:
+    check("router_batch/start sees its own state", starts["two"].states, ["two"])
+    check("router_batch/start sees its own questions", starts["two"].questions, QUESTIONS)
+    check("router_batch/start sees its own decision", starts["two"].decision["model"], "multilingual")
+    check("router_batch/context model is the routed checkpoint", starts["two"].model, "multilingual")
+    check_true("router_batch/context agent is the routed agent", starts["two"].agent is ml)
+    check_true("router_batch/context router is set", starts["two"].router is r)
+    check("router_batch/start has no results", batch_results_at_start, {"one": None, "two": None, "three": None})
+    check_true("router_batch/start and end share one context per request", ends["two"] is starts["two"])
+    check("router_batch/end sees its own result", ends["two"].results[0]["answers"]["seen"], "two")
+    check("router_batch/end result carries routing", ends["two"].results[0]["routing"]["model"], "multilingual")
+    check("router_batch/usage is per request", ends["three"].usage, {"input_tokens": 5, "output_tokens": 0})
+    check_true("router_batch/elapsed_ms set", ends["one"].elapsed_ms is not None)
+    check("router_batch/run_id differs per request", len({c.run_id for c in starts.values()}), 3)
+check("router_batch/still one agent call per checkpoint", [c[0] for c in en.calls + ml.calls],
+      [["one", "three"], ["two"]])
+
+
+class PlainDictPin:
+    """An on_route hook replacing the decision with a plain dict, which `predict` accepts."""
+
+    def on_route(self, ctx):
+        ctx.decision = {**ctx.decision, "model": "multilingual"}
+
+
+r, en, ml = batch_router(hooks=[PlainDictPin()])
+try:
+    out = r.predict_batch([req("pinned")])
+    got = ([c[0] for c in ml.calls], out[0]["routing"]["model"])
+except AttributeError as e:
+    got = repr(e)
+check("router_batch/an on_route hook may replace the decision with a plain dict", got, ([["pinned"]], "multilingual"))
+
+group_ctxs = []
+elapsed_when_first_end_ran = []
+
+
+def remember_start(ctx):
+    group_ctxs.append(ctx)
+
+
+def first_end(ctx):
+    if not elapsed_when_first_end_ran:
+        elapsed_when_first_end_ran.append([c.elapsed_ms is not None for c in group_ctxs])
+
+
+r, en, ml = batch_router(on_predict_start=remember_start, on_predict_end=first_end)
+r.predict_batch([req("a"), req("b"), req("c")])
+check("router_batch/elapsed_ms is set for the whole group before any end hook runs",
+      elapsed_when_first_end_ran, [[True, True, True]])
+
+
+def replace_result(ctx):
+    ctx.results = [{"replaced": ctx.states[0]}]
+
+
+r, en, ml = batch_router(on_predict_end=replace_result)
+check("router_batch/an end hook's replacement is what is returned",
+      r.predict_batch([req("x"), req("y", "multilingual")]), [{"replaced": "x"}, {"replaced": "y"}])
+
+cached_x = {"model": "cached", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}
+r, en, ml = batch_router(on_predict_start=lambda c: c.skip([dict(cached_x)]) if c.states == ["x"] else None)
+out = r.predict_batch([req("x"), req("y")])
+check("router_batch/skip keeps that state from the agent", [c[0] for c in en.calls], [["y"]])
+check("router_batch/skip returns the cached payload", out[0]["model"], "cached")
+check("router_batch/skip still adds routing", out[0].get("routing", {}).get("model"), "english")
+check("router_batch/the other request is inferred", out[1]["answers"]["seen"], "y")
+
+
+def annotate_end(ctx):
+    ctx.results[0]["audited"] = ctx.decision["model"]
+
+
+mixed = [req("a secret"), req("b secret", "multilingual"), req("c", "english")]
+r, en, ml = batch_router(on_predict_start=redact_start, on_predict_end=annotate_end)
+batched = r.predict_batch(mixed)
+one_by_one = [r.predict(m["state"], m["questions"], model=m["model"]) for m in mixed]
+check("router_batch/identical to one predict call per request", batched, one_by_one)
+
+
+def budget_start(ctx):
+    if ctx.states == ["long"]:
+        ctx.max_len = 1024
+
+
+r, en, ml = batch_router(on_predict_start=budget_start)
+r.predict_batch([req("short"), req("long"), req("short again")])
+check("router_batch/hook-set token budget reaches the agent for that request only",
+      [(c[0], c[2]) for c in en.calls], [(["short", "short again"], {}), (["long"], {"max_len": 1024})])
+
+Q_OTHER = {"other": {"type": "noul", "instructions": "Other?"}}
+r, en, ml = batch_router(on_predict_start=lambda c: setattr(c, "questions", Q_OTHER) if c.states == ["b"] else None)
+r.predict_batch([req("a"), req("b"), req("c")])
+check("router_batch/rewritten questions are batched on their own",
+      [(c[0], c[1]) for c in en.calls], [(["a", "c"], QUESTIONS), (["b"], Q_OTHER)])
+
+
+class StrictBatchFake(BatchFake):
+    """An agent-like object whose predict_batch takes no token-budget kwargs."""
+
+    def predict_batch(self, states, questions, batch_size=None):
+        return BatchFake.predict_batch(self, states, questions, batch_size)
+
+
+r = Router(on_predict_start=lambda c: None)
+strict = StrictBatchFake()
+r.attach("english", strict)
+r.predict_batch([req("a"), req("b")], batch_size=8)
+check("router_batch/default passes no override kwargs", [c[0] for c in strict.calls], [["a", "b"]])
+
+batch_events = []
+r, en, ml = batch_router(hooks=[BatchTrace()])
+check_raises("router_batch/inference failure propagates", RuntimeError,
+             lambda: r.predict_batch([req("ok", "multilingual"), req("boom"), req("also")]))
+check("router_batch/failure pairs every started request with on_error then on_predict_end",
+      [(e[0], e[1]) for e in batch_events],
+      [("start", "ok"), ("end", "ok"), ("start", "boom"), ("start", "also"),
+       ("error", "boom"), ("error", "also"), ("end", "boom"), ("end", "also")])
+ends = {e[1]: e[2] for e in batch_events if e[0] == "end"}
+check_true("router_batch/end of a failed request sees the error",
+           all(isinstance(getattr(ends.get(s), "error", None), RuntimeError) for s in ("boom", "also")))
+check_true("router_batch/an earlier group that finished ends without an error",
+           "ok" in ends and ends["ok"].error is None)
+
+batch_events = []
+r, en, ml = batch_router(hooks=[BatchTrace()],
+                         on_predict_start=lambda c: c.skip([dict(cached_x)]) if c.states == ["cached"] else None)
+check_raises("router_batch/inference failure with a cache hit in the group propagates", RuntimeError,
+             lambda: r.predict_batch([req("cached"), req("boom")]))
+ends = {e[1]: e[2] for e in batch_events if e[0] == "end"}
+check("router_batch/only requests without a result get on_error",
+      [e[1] for e in batch_events if e[0] == "error"], ["boom"])
+check_true("router_batch/a cache hit in a failed group keeps its result and no error",
+           "cached" in ends and ends["cached"].error is None and ends["cached"].results is not None)
+
+batch_events = []
+
+
+def fail_end_on_a(ctx):
+    if ctx.states == ["a"]:
+        raise ValueError("end hook failed")
+
+
+r, en, ml = batch_router(on_predict_end=fail_end_on_a, hooks=[BatchTrace()])
+check_raises("router_batch/end hook failure propagates", ValueError,
+             lambda: r.predict_batch([req("a"), req("b")]))
+check("router_batch/end hook failure still ends the other requests",
+      [(e[0], e[1]) for e in batch_events if e[0] == "end"], [("end", "a"), ("end", "b")])
+
+batch_events = []
+r, en, ml = batch_router(hooks=[BatchTrace()])
+check_raises("router_batch/inference failure propagates before a later group", RuntimeError,
+             lambda: r.predict_batch([req("boom"), req("later", "multilingual")]))
+check("router_batch/a later group never starts", ("start", "later") in [(e[0], e[1]) for e in batch_events], False)
+check("router_batch/a later group runs no inference", ml.calls, [])
+
+batch_events = []
+
+
+def fail_on_b(ctx):
+    if ctx.states == ["b"]:
+        raise ValueError("start hook failed")
+
+
+r, en, ml = batch_router(hooks=[BatchTrace()], on_predict_start=fail_on_b)
+check_raises("router_batch/start hook failure propagates", ValueError,
+             lambda: r.predict_batch([req("a"), req("b"), req("c")]))
+check("router_batch/start hook failure still ends every started request",
+      [(e[0], e[1]) for e in batch_events],
+      [("start", "a"), ("start", "b"), ("error", "a"), ("error", "b"), ("end", "a"), ("end", "b")])
+check("router_batch/start hook failure runs no inference", en.calls, [])
+
+r, en, ml = batch_router(on_predict_start=fail_on_b, hooks_raise=False)
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    out = r.predict_batch([req("a"), req("b")])
+check("router_batch/hooks_raise=False keeps the batch going", [o["answers"]["seen"] for o in out], ["a", "b"])
+check_true("router_batch/hooks_raise=False warns", any("start hook failed" in str(w.message) for w in caught))
+
+
 # --------------------------------------------------------------- hooks_concurrent storage
 r = Router()
 check("router/hooks_concurrent default True", r.hooks_concurrent, True)

@@ -38,13 +38,15 @@ Three checkpoints, and a `Router` that picks between them per request:
 
 ## Installation
 
+Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
+
+**Optional PyTorch build selection:** If you need a CPU-only or GPU-specific PyTorch build, follow [PyTorch's installation guide](https://pytorch.org/get-started/locally/) after creating your virtual environment and before installing Laya. Replace `pip` or `pip3` in the selected command with the environment's Python executable followed by `-m pip`.
+
 If you already use a virtual environment, install the PyPI release with:
 
 ```bash
 python -m pip install laya
 ```
-
-Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
 
 For a new environment, choose the commands for your platform below. Run them from your project directory; the explicit Python paths keep installation and verification in the same environment.
 
@@ -90,7 +92,6 @@ Continue with the [Router quickstart](#quickstart-route-mode-recommended) to run
 
 - **`ModuleNotFoundError: No module named 'laya'`:** run both installation and your script with the same virtual environment's Python executable shown above. In an editor, select that interpreter as well.
 - **Missing `rl_agent_config.json`:** this file ships with a Laya checkpoint alongside `model.safetensors`; it is not a configuration file you need to create in the source repository. For a local model, pass the directory containing those checkpoint files.
-- **Choosing a PyTorch build for CPU or GPU:** use [PyTorch's installation guide](https://pytorch.org/get-started/locally/) for your platform and compute backend, and run the selected installation command in this virtual environment before installing Laya.
 
 ---
 

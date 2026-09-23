@@ -180,6 +180,18 @@ def _amp_context(device, dtype):
     return nullcontext()
 
 
+MPS_AMP_MIN_ROWS_DEFAULT = 5
+
+
+def _mps_amp_min_rows() -> int:
+    """Rows at which MPS fp16 autocast starts to pay off. Override with LAYA_MPS_AMP_MIN_ROWS."""
+    raw = os.environ.get("LAYA_MPS_AMP_MIN_ROWS", "")
+    try:
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return MPS_AMP_MIN_ROWS_DEFAULT
+
+
 class Agent(HookRegistry):
     """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions."""
 
@@ -192,6 +204,7 @@ class Agent(HookRegistry):
     # Autocast is chosen per device in __init__; this default covers instances built
     # without it (for example a hand-constructed runtime in tests).
     amp_enabled = False
+    mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
 
     def __init__(
         self,
@@ -355,11 +368,15 @@ class Agent(HookRegistry):
                 "using %s. Treat confidence from the affected entries as uncalibrated."
                 % (TEMP_MIN, TEMP_MAX, ", ".join(rejected)),
                 RuntimeWarning, stacklevel=2)
-        # Autocast policy. CUDA and MPS both support fp16/bf16 autocast and are much faster with
-        # it; the shipped checkpoints are trained in reduced precision. CPU bf16 is only a win on
-        # hardware with native BF16, so it stays opt-in via LAYA_CPU_AMP=bf16.
+        # Autocast policy. CUDA and MPS both support fp16/bf16 autocast and the shipped
+        # checkpoints are trained in reduced precision. CPU bf16 is only a win on hardware with
+        # native BF16, so it stays opt-in via LAYA_CPU_AMP=bf16. MPS fp16 is slower than fp32 on
+        # a single small row (autocast overhead dominates) and only wins once the batch has
+        # several rows, so it is gated per call by `mps_amp_min_rows` (default 5, override with
+        # LAYA_MPS_AMP_MIN_ROWS) rather than enabled unconditionally.
         self.dtype = torch.float32
         self.amp_enabled = False
+        self.mps_amp_min_rows = _mps_amp_min_rows()
         if self.device.type == "cuda":
             self.amp_enabled = True
             if torch.cuda.get_device_capability(self.device)[0] < 8:
@@ -552,10 +569,27 @@ class Agent(HookRegistry):
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
         return items
 
+    def _amp_enabled_for(self, rows: int) -> bool:
+        """Whether to autocast a forward with `rows` question rows.
+
+        MPS fp16 loses to fp32 on a single small row and wins once the batch grows, so it is
+        only enabled at or above `mps_amp_min_rows`. Other devices are unaffected.
+        """
+        if not self.amp_enabled:
+            return False
+        if self.device.type == "mps" and rows < self.mps_amp_min_rows:
+            return False
+        return True
+
     def _infer(self, b: Dict):
         """Run the forward pass under autocast, degrading gracefully on OOM or unsupported autocast."""
+        use_amp = self._amp_enabled_for(b["input_ids"].shape[0])
+
         def run():
-            with torch.autocast(device_type=self.device.type, dtype=self.dtype, enabled=self.amp_enabled):
+            # Recomputed inside run() so a fallback that disables amp (or moves to CPU) takes
+            # effect on the retry.
+            enabled = self._amp_enabled_for(b["input_ids"].shape[0])
+            with torch.autocast(device_type=self.device.type, dtype=self.dtype, enabled=enabled):
                 return self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),
@@ -575,7 +609,7 @@ class Agent(HookRegistry):
                 self.amp_enabled = False
                 self.model.to(self.device)
                 return run()
-            if self.amp_enabled and self.device.type in ("mps", "cpu"):
+            if use_amp and self.device.type in ("mps", "cpu"):
                 # Not every MPS/CPU build implements autocast for every op. Drop to full
                 # precision once rather than failing the request.
                 self.amp_enabled = False

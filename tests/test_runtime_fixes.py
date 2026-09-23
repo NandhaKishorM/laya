@@ -14,7 +14,7 @@ import torch.nn as nn
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from laya.agent import Agent  # noqa: E402
+from laya.agent import MPS_AMP_MIN_ROWS_DEFAULT, Agent, _mps_amp_min_rows  # noqa: E402
 from laya.common import DecisionModel, build_sequence, serialize_state  # noqa: E402
 
 PASS, FAIL = [], []
@@ -177,6 +177,37 @@ try:
 except RuntimeError:
     raised = True
 check("infer/non-autocast error propagates", raised, True)
+
+
+# ------------------------------------------------------------------ MPS autocast gating
+# MPS fp16 is slower than fp32 on one small row and only wins once the batch grows, so it is
+# gated by row count. These check the gate without an MPS device.
+def _mps_agent(amp=True, min_rows=None):
+    a = _bare_agent(FakeModel(), dtype=torch.float16, amp=amp)
+    a.device = torch.device("mps")
+    if min_rows is not None:
+        a.mps_amp_min_rows = min_rows
+    return a
+
+
+a = _mps_agent()
+check("mps-gate/one row stays fp32", a._amp_enabled_for(1), False)
+check("mps-gate/below threshold stays fp32", a._amp_enabled_for(a.mps_amp_min_rows - 1), False)
+check("mps-gate/at threshold enables fp16", a._amp_enabled_for(a.mps_amp_min_rows), True)
+check("mps-gate/above threshold enables fp16", a._amp_enabled_for(a.mps_amp_min_rows + 3), True)
+
+check("mps-gate/threshold override", _mps_agent(min_rows=2)._amp_enabled_for(2), True)
+check("mps-gate/amp disabled stays off", _mps_agent(amp=False)._amp_enabled_for(100), False)
+
+cpu = _bare_agent(FakeModel(), dtype=torch.bfloat16, amp=True)
+check("cpu-gate/not gated by rows", cpu._amp_enabled_for(1), True)
+
+os.environ["LAYA_MPS_AMP_MIN_ROWS"] = "2"
+check("mps-gate/env override", _mps_amp_min_rows(), 2)
+os.environ["LAYA_MPS_AMP_MIN_ROWS"] = "nonsense"
+check("mps-gate/env invalid falls back", _mps_amp_min_rows(), MPS_AMP_MIN_ROWS_DEFAULT)
+del os.environ["LAYA_MPS_AMP_MIN_ROWS"]
+check("mps-gate/env default", _mps_amp_min_rows(), MPS_AMP_MIN_ROWS_DEFAULT)
 
 
 # ------------------------------------------------------------------ report

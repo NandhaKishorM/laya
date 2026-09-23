@@ -156,7 +156,14 @@ def create_app(router: Optional[Any] = None):
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):
         nonlocal gate
         _check_auth(authorization)
-        body = await request.json()
+        try:
+            # Every parse failure a client can cause is a ValueError: JSONDecodeError for
+            # malformed/empty/truncated bodies, UnicodeDecodeError for invalid UTF-8. A
+            # broader catch would also swallow ClientDisconnect and Starlette's own
+            # stream errors, reporting a transport or server fault as the client's.
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="request body must be valid JSON")
         if not isinstance(body, dict) or "questions" not in body:
             raise HTTPException(status_code=400, detail="request body must be an object with a 'questions' field")
         state = body.get("state")

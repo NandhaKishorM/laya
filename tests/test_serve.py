@@ -68,6 +68,16 @@ def test_known_model_is_honoured(monkeypatch):
     assert fake.calls[0]["model"] == "multilingual"
 
 
+@pytest.mark.parametrize(("model", "expected"), [
+    ("convaiinnovations/laya-multilingual", "multilingual"),
+    ("convaiinnovations/laya-typed-decisions", "typed-decisions"),
+])
+def test_published_model_id_is_honoured(monkeypatch, model, expected):
+    client, fake = _client(monkeypatch)
+    client.post("/v1/systemone", json={**REQ, "model": model})
+    assert fake.calls[0]["model"] == expected
+
+
 def test_missing_questions_is_400(monkeypatch):
     client, _ = _client(monkeypatch)
     r = client.post("/v1/systemone", json={"state": "hi"})
@@ -89,6 +99,9 @@ def test_health(monkeypatch):
 
 def test_helpers():
     assert _resolve_model("multilingual") == "multilingual"
+    assert _resolve_model("convaiinnovations/laya-multilingual") == "multilingual"
+    assert _resolve_model("convaiinnovations/laya-typed-decisions") == "typed-decisions"
+    assert _resolve_model("convaiinnovations/laya") is None
     assert _resolve_model("jev-1") is None
     assert _resolve_model(None) is None
     import os

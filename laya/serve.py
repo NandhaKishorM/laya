@@ -40,6 +40,14 @@ from typing import Any, Dict, Optional
 # Jev model id (ignore it and let the router auto-select).
 _KNOWN_MODELS = {"english", "multilingual", "typed-decisions"}
 
+# Public Hugging Face ids accepted by the hosted API. The root bundle is
+# deliberately absent: the documented ``convaiinnovations/laya`` value means
+# "let the Router choose", rather than pinning the English checkpoint.
+_PUBLISHED_MODEL_IDS = {
+    "convaiinnovations/laya-multilingual": "multilingual",
+    "convaiinnovations/laya-typed-decisions": "typed-decisions",
+}
+
 
 def _env_bool(name: str, default: bool) -> bool:
     v = os.environ.get(name)
@@ -52,6 +60,9 @@ def _resolve_model(model: Optional[str]) -> Optional[str]:
     """Map a client's `model` field onto a Laya checkpoint, or None to auto-route."""
     if not model:
         return None
+    published = _PUBLISHED_MODEL_IDS.get(str(model).strip().lower())
+    if published is not None:
+        return published
     from .router import normalise_name
 
     # normalise_name raises ValueError on anything that is not a known checkpoint

@@ -10,14 +10,14 @@ From the repository root:
 docker compose run --build --rm laya
 ```
 
-This builds the checkout, runs the [sample request](../examples/docker/request.json)
+This builds the checkout, runs the [sample request](https://github.com/NandhaKishorM/laya/blob/main/examples/docker/request.json)
 on CPU and prints JSON covering `choice`, `score` and `noul`. The first request
 downloads the selected public Hugging Face checkpoint; no account is needed.
 Allow several minutes for its first download.
 Weights stay in a named volume. Subsequent runs use `docker compose run --rm laya`.
 
 Predictions and confidence still need evaluation on your workload. See the
-[benchmark limits](../BENCHMARKS.md).
+[benchmark limits](https://github.com/NandhaKishorM/laya/blob/main/BENCHMARKS.md).
 
 ## NVIDIA GPU / CUDA
 
@@ -94,7 +94,7 @@ docker compose run --rm --volume "$PWD/request.json:/inputs/request.json:ro" \
 ```
 
 For a commented configuration with request, checkpoint and secret-file mounts,
-see [`compose.example.yml`](../compose.example.yml):
+see [`compose.example.yml`](https://github.com/NandhaKishorM/laya/blob/main/compose.example.yml):
 
 ```bash
 docker compose -f compose.yaml -f compose.example.yml run --build --rm laya

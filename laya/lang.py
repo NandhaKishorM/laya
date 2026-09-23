@@ -91,7 +91,11 @@ _STOP = {
            # out: each is an English token too (ate, BOM, SIM, Cade).
            "você", "vocês", "voce", "voces", "vc", "vcs", "nao", "sao", "ja", "até", "tá", "pra",
            "gostaria", "obrigada", "também", "tambem", "estou", "estamos", "meus", "minhas",
-           "nosso", "nossa", "consigo", "cadê", "boa", "tarde", "noite"},
+           "nosso", "nossa", "consigo", "cadê", "boa", "tarde", "noite",
+           # the words a ticket keeps once the jargon is English ("Deu erro 500 no endpoint de login
+           # depois do update"): time and person words plus the past tenses a bug report is told in
+           "depois", "antes", "então", "entao", "ninguém", "ninguem", "alguém", "alguem", "nenhum",
+           "nenhuma", "estava", "ficou", "fiz", "deu"},
     "it": {"il", "lo", "gli", "che", "di", "per", "con", "non", "è", "si", "del", "della", "sono",
            "questo", "questa", "anche", "come", "più", "sono", "nella", "alla",
            "la", "le", "un", "uno", "una", "e", "ed", "o", "da", "su", "tra", "fra", "mi",

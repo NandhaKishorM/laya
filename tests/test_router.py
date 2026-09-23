@@ -299,6 +299,12 @@ for text in [
     "Gostaria de saber o prazo de entrega",
     "Estou esperando faz uma semana",
     "Vc pode cancelar pra mim?",
+    # a bug report whose jargon is English keeps only these words to say it is Portuguese
+    "Deu erro 500 no endpoint de login depois do update",
+    "Depois da atualizacao ninguem consegue logar",
+    "Antes funcionava, agora deu pau",
+    "Estava tudo certo ate a migracao",
+    "Entao o sistema travou de novo",
 ]:
     check("latin_lang/pt-br " + text[:32], guess_latin_language(text), "pt")
     check("route/pt-br " + text[:32], _r_lat.route(text).model, "multilingual")

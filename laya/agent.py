@@ -175,6 +175,9 @@ class Agent:
             elif target_device.type == "mps" and not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
                 print("Warning: MPS requested but not available. Falling back to CPU.")
                 self.device = torch.device("cpu")
+            elif target_device.type == "xpu" and not (hasattr(torch, "xpu") and torch.xpu.is_available()):
+                print("Warning: XPU requested but not available. Falling back to CPU.")
+                self.device = torch.device("cpu")
             else:
                 self.device = target_device
         else:
@@ -182,6 +185,8 @@ class Agent:
                 self.device = torch.device("cuda")
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 self.device = torch.device("mps")
+            elif hasattr(torch, "xpu") and torch.xpu.is_available():
+                self.device = torch.device("xpu")
             else:
                 self.device = torch.device("cpu")
 
@@ -237,7 +242,7 @@ class Agent:
 
         if self.device.type == "cuda" and torch.cuda.get_device_capability(self.device)[0] < 8:
             self.dtype = torch.float16
-        elif self.device.type in ("cpu", "mps"):
+        elif self.device.type in ("cpu", "mps", "xpu"):
             self.dtype = torch.float32
 
         # 2. Place on device with graceful fallback to CPU on memory error

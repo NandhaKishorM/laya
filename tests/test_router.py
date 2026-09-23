@@ -462,6 +462,19 @@ check("latin_lang/romanian with ei stays romanian",
       guess_latin_language("Ei nu sunt de acord cu factura, vreau o corecție"), "ro")
 
 
+# --------------------------------------------------------------------- plain-ASCII German (#54)
+# No umlaut for the diacritic rate to catch, and `in`/`was` counted for English alone, so these were
+# labelled English and handed to the checkpoint that cannot read them.
+for text in ["trage diesen termin in meinen kalender ein",
+             "wie lautet die temperatur in fulda in hessen",
+             "schalte das licht im wohnzimmer aus",
+             "was ist die aktuelle zeit"]:
+    check("latin_lang/ascii german " + text, guess_latin_language(text), "de")
+    check("route/ascii german " + text, _r_lat.route(text).model, "multilingual")
+check("route/english control for #54",
+      _r_lat.route("I would like to book a flight to Berlin tomorrow").model, "english")
+
+
 # --------------------------------------------------------------------- temperature clamp (#35)
 # A fitted temperature below 1 sharpens logits. The shipped `choice:11+` bucket is 0.1006, which
 # turned a 0.24 top probability into 0.99 confidence on 13-option skill routing.

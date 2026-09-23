@@ -25,10 +25,11 @@ predict_batch(states, questions, batch_size=..., hooks=..., ...)
   ├─ try:
   │    │
   │    ├─ on_predict_start ─────────────────────────────┐
-  │    │      a hook may:                               │
-  │    │        • rewrite ctx.states / ctx.questions    │
-  │    │        • ctx.skip(results) ─────────────┐      │
-  │    │        • raise (aborts; see errors)     │      │
+  │    │      a hook may:                                │
+  │    │        • rewrite ctx.states / ctx.questions     │
+  │    │        • set ctx.max_len / ctx.head_max_len     │
+  │    │        • ctx.skip(results) ─────────────┐       │
+  │    │        • raise (aborts; see errors)     │       │
   │    │                                         │      │
   │    ├─ if ctx.results is not None:  ◄─────────┘      │  cache hit
   │    │      skip tokenization and forward             │

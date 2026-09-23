@@ -79,6 +79,14 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
 
 check_param("Agent.predict_batch", Agent.predict_batch, "batch_size", None)
 
+# per-call token-budget overrides
+for label, fn in (("Agent.predict_batch", Agent.predict_batch),
+                  ("Agent.system_one", Agent.system_one),
+                  ("Router.predict", Router.predict),
+                  ("ONNXAgent.system_one", ONNXAgent.system_one)):
+    check_param(label, fn, "max_len", None)
+    check_param(label, fn, "head_max_len", None)
+
 # route() takes per-call hooks so a hook can pin a checkpoint for one call
 check_param("Router.route", Router.route, "hooks", None)
 check_param("Router.route", Router.route, "hooks_raise", None)
@@ -90,7 +98,7 @@ check_true("ONNXAgent.predict is ONNXAgent.system_one", ONNXAgent.predict is ONN
 
 # --------------------------------------------------------------- context
 FIELDS = ["states", "questions", "run_id", "results", "decision", "model", "agent", "router",
-          "usage", "started_at", "elapsed_ms", "error"]
+          "max_len", "head_max_len", "usage", "started_at", "elapsed_ms", "error"]
 check("PredictContext fields", [f.name for f in dataclasses.fields(PredictContext)], FIELDS)
 check("PredictContext/states required", PredictContext.__dataclass_fields__["states"].default,
       dataclasses.MISSING)
@@ -125,6 +133,11 @@ for label, cls in (("Agent", Agent), ("Router", Router), ("ONNXAgent", ONNXAgent
 # Agent and ONNXAgent carry the checkpoint id for ctx.model; Router has no single model.
 for label, cls in (("Agent", Agent), ("ONNXAgent", ONNXAgent)):
     check("%s/model_id default" % label, cls.model_id, None)
+
+# runtime registration surface
+for label, cls in (("Agent", Agent), ("Router", Router), ("ONNXAgent", ONNXAgent)):
+    for method in ("add_hook", "remove_hook", "hooks_installed"):
+        check_true("%s/%s exists" % (label, method), callable(getattr(cls, method, None)))
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

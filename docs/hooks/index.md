@@ -46,6 +46,16 @@ class Audit:
 laya.load("convaiinnovations/laya", hooks=[Audit()])
 ```
 
+Hooks can also be added later or scoped to a block:
+
+```python
+agent.add_hook(tracer)               # attach at runtime
+with agent.hooks_installed(debug):   # installed for the block, removed on exit
+    agent.system_one(state, questions)
+```
+
+See [runtime registration](api.md#runtime-registration).
+
 ## The mental model
 
 There are three ideas.

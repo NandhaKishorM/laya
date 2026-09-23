@@ -34,6 +34,8 @@ class PredictContext:
     model: Optional[str] = None
     agent: Any = None
     router: Any = None
+    max_len: Optional[int] = None
+    head_max_len: Optional[int] = None
     usage: Optional[Dict[str, int]] = None
     started_at: float = <perf_counter()>
     elapsed_ms: Optional[float] = None
@@ -50,6 +52,8 @@ class PredictContext:
 | `model` | `str \| None` | always | no | the checkpoint id: `Agent.model_id` for an Agent, the resolved alias (for example `"english"`) for a Router. |
 | `agent` | `Agent \| ONNXAgent \| None` | predict events | no | the runtime answering the call. |
 | `router` | `Router \| None` | Router events | no | the Router, when one is in play. |
+| `max_len` | `int \| None` | always | yes (start) | per-call token budget for the encoder. `None` uses the agent config. |
+| `head_max_len` | `int \| None` | always | yes (start) | per-call token budget for the question head. `None` uses the agent config. |
 | `usage` | `dict \| None` | end | yes (end) | `{"input_tokens", "output_tokens"}`, summed over the states of the call. |
 | `started_at` | `float` | always | no | `time.perf_counter()` when the call began. |
 | `elapsed_ms` | `float \| None` | end | no | wall time for the whole call, milliseconds. |
@@ -106,6 +110,24 @@ PredictHook = Callable[[PredictContext], None]
 `PredictHook` is the type of a plain callable used with `on_predict_start=` / `on_predict_end=`.
 Pass a single callable or a sequence of them; each is wrapped into a minimal hook.
 
+## Runtime registration
+
+Every runtime mixes in `HookRegistry`, so hooks can be added, removed or scoped after
+construction. Mutation is thread-safe; a call reads a snapshot of the list, so adding or
+removing a hook never disturbs a call in flight.
+
+```python
+agent.add_hook(tracer)              # one hook or a sequence; returns self for chaining
+agent.remove_hook(tracer)           # by identity; True if it was installed
+
+with agent.hooks_installed(debug):  # installed for the block, removed on exit
+    agent.system_one(state, questions)
+```
+
+`add_hook` accepts the same objects as `hooks=` (not plain callables). `hooks_installed` takes
+any number of hook objects or sequences and restores the previous list on exit, including when
+the block raises.
+
 ## Configuration surface
 
 Every entry point accepts the same five hook parameters. `hooks` takes an object or a sequence
@@ -133,10 +155,12 @@ load(..., hooks=None, on_predict_start=None, on_predict_end=None,
      hooks_raise=True, hooks_concurrent=True)
 
 agent.predict_batch(states, questions, batch_size=None,
-                    hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None)
+                    hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
+                    max_len=None, head_max_len=None)
 
 agent.system_one(state, questions,
-                 hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None)
+                 hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
+                 max_len=None, head_max_len=None)
 
 agent.predict(...)          # alias of system_one
 ```
@@ -158,7 +182,8 @@ router.route(state, questions=None, model=None, task=None, lang=None, lang_guess
              hooks=None, hooks_raise=None)
 
 router.predict(state, questions, model=None, task=None, lang=None, lang_guess=None,
-               hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None)
+               hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
+               max_len=None, head_max_len=None)
 
 router.system_one(...)      # alias of predict
 router.load(name)           # builds on first use; fires on_load
@@ -180,7 +205,8 @@ ONNXAgent(model_id_or_path, onnx_path="laya.onnx", subfolder=None,
           hooks_raise=True, hooks_concurrent=True)
 
 onnx_agent.system_one(state, questions,
-                      hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None)
+                      hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
+                      max_len=None, head_max_len=None)
 
 onnx_agent.predict(...)     # alias of system_one
 ```

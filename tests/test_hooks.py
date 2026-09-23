@@ -80,6 +80,11 @@ def make_fake():
     return fake
 
 
+class FakeAgent:
+    def system_one(self, state, questions):
+        return {"model": "fake", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}
+
+
 # --------------------------------------------------------------- order and context
 events = []
 results_at_start = []
@@ -336,6 +341,110 @@ check("defaults/unset hooks are a no-op", len(res), 3)
 check("defaults/offsets unchanged", [r["answers"]["_offset"] for r in res], [0, NQ, 2 * NQ])
 
 
+# --------------------------------------------------------------- dynamic registration
+class Tag:
+    def __init__(self, log, tag):
+        self.log = log
+        self.tag = tag
+
+    def on_predict_end(self, ctx):
+        self.log.append(self.tag)
+
+
+log = []
+f = make_fake()
+f.add_hook(Tag(log, "a"))
+f.predict_batch(["s0"], QUESTIONS)
+check("add_hook/fires", log, ["a"])
+check("remove_hook/returns True", f.remove_hook(f.hooks[-1]), True)
+log.clear()
+f.predict_batch(["s0"], QUESTIONS)
+check("remove_hook/no longer fires", log, [])
+check("remove_hook/unknown returns False", f.remove_hook(object()), False)
+
+log = []
+f = make_fake()
+check_true("add_hook/returns self", f.add_hook([Tag(log, "x"), Tag(log, "y")]) is f)
+f.predict_batch(["s0"], QUESTIONS)
+check("add_hook/sequence order", log, ["x", "y"])
+
+log = []
+f = make_fake()
+f.add_hook(Tag(log, "installed"))
+with f.hooks_installed(Tag(log, "temp")):
+    f.predict_batch(["s0"], QUESTIONS)
+f.predict_batch(["s0"], QUESTIONS)
+check("hooks_installed/only during the block", log, ["installed", "temp", "installed"])
+
+log = []
+r = Router()
+r.add_hook(Tag(log, "router"))
+r.attach("english", FakeAgent())
+r.predict("hello", QUESTIONS)
+check("router/add_hook fires", log, ["router"])
+
+
+# --------------------------------------------------------------- per-call token budget
+def make_len_fake():
+    fake = make_fake()
+    fake._seen = []
+
+    def _encode(state, ids, internal, max_len=None, head_max_len=None):
+        fake._seen.append((max_len, head_max_len))
+        return [{"ids": [1, 2, 3], "markers": [0, 1], "qtype": 2} for _ in ids]
+
+    fake._encode_state = _encode
+    return fake
+
+
+f = make_len_fake()
+f.predict_batch(["s"], QUESTIONS, max_len=128, head_max_len=64)
+check("budget/per-call kwargs reach _encode_state", f._seen, [(128, 64)])
+
+f = make_len_fake()
+f.predict_batch(["s"], QUESTIONS, on_predict_start=lambda c: setattr(c, "max_len", 200))
+check("budget/hook-set ctx reaches _encode_state", f._seen, [(200, None)])
+
+f = make_len_fake()
+f.predict_batch(["s"], QUESTIONS)
+check("budget/default passes no override", f._seen, [(None, None)])
+
+
+class LenFake:
+    def __init__(self):
+        self.seen = []
+
+    def system_one(self, state, questions, max_len=None, head_max_len=None):
+        self.seen.append((max_len, head_max_len))
+        return {"model": "x", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}
+
+
+lf = LenFake()
+r = Router()
+r.attach("english", lf)
+r.predict("hello", QUESTIONS, max_len=256, head_max_len=128)
+check("budget/router per-call reaches the agent", lf.seen, [(256, 128)])
+
+lf = LenFake()
+r = Router()
+r.attach("english", lf)
+r.predict("hello", QUESTIONS, on_predict_start=lambda c: setattr(c, "head_max_len", 96))
+check("budget/router hook-set reaches the agent", lf.seen, [(None, 96)])
+
+
+class StrictFake:
+    """An agent-like object that does not accept the override kwargs."""
+
+    def system_one(self, state, questions):
+        return {"model": "x", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}
+
+
+r = Router()
+r.attach("english", StrictFake())
+r.predict("hello", QUESTIONS)
+check("budget/default does not pass override kwargs", True, True)
+
+
 # --------------------------------------------------------------- context semantics
 from laya.hooks import PredictContext  # noqa: E402
 
@@ -366,11 +475,6 @@ check_raises("validation/hook method must be callable", TypeError,
 
 
 # --------------------------------------------------------------- Router
-class FakeAgent:
-    def system_one(self, state, questions):
-        return {"model": "fake", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}
-
-
 class RouteHook:
     def __init__(self):
         self.decisions = []

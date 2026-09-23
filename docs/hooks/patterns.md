@@ -14,6 +14,8 @@ that hold up in production and the ones that bite.
   - [Model lifecycle](#model-lifecycle)
   - [Multi-tenant context](#multi-tenant-context)
   - [Composition](#composition)
+  - [Scoped instrumentation](#scoped-instrumentation)
+  - [Token-budget shaping](#token-budget-shaping)
 - [Anti-patterns](#anti-patterns)
   - [Blocking work](#blocking-work)
   - [Raising from end hooks for control flow](#raising-from-end-hooks-for-control-flow)
@@ -214,6 +216,36 @@ agent = laya.load(
 
 Keep the ordering deliberate and documented, because a later hook sees the mutations of an
 earlier one.
+
+### Scoped instrumentation
+
+Attach a tracer or debug hook only for the code that needs it, instead of reconstructing the
+agent. `hooks_installed` restores the previous list on exit, even if the block raises.
+
+```python
+with agent.hooks_installed(DebugDump()):
+    agent.system_one(state, questions)   # DebugDump only here
+```
+
+`add_hook`/`remove_hook` do the same without a block, for a tracer that lives as long as the
+process.
+
+### Token-budget shaping
+
+A start hook can raise the token budget for one call, for example when a question has many
+options and the default head budget would collapse the labels. This does not touch the shared
+agent config, so concurrent calls are unaffected.
+
+```python
+def widen_for_high_cardinality(ctx):
+    k = len(next(iter(ctx.questions.values())).get("criteria", {}) or {})
+    if k >= 50:
+        ctx.head_max_len = max(ctx.head_max_len or 192, 16 + 4 * k)
+
+agent = laya.load("convaiinnovations/laya", on_predict_start=widen_for_high_cardinality)
+```
+
+The same knobs are available per call: `agent.system_one(state, questions, head_max_len=324)`.
 
 ## Anti-patterns
 

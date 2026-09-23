@@ -33,7 +33,7 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Union
 
-from .hooks import PredictContext, aggregate_usage, dispatch, normalise_hooks
+from .hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
 from .lang import analyse
 
 # The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
@@ -148,7 +148,7 @@ def _english_from_code(value: Any) -> Optional[bool]:
     return primary in _ENGLISH_SUBTAGS
 
 
-class Router:
+class Router(HookRegistry):
     """Lazily loads Laya checkpoints and sends each request to the right one.
 
         from laya import Router
@@ -182,7 +182,7 @@ class Router:
     """
 
     # Opt-in defaults so a hand-built instance (`Router.__new__` in tests) works unset.
-    hooks = ()
+    # `hooks`/`_hooks_mutex` come from HookRegistry.
     hooks_raise = True
     hooks_concurrent = True
     _hooks_lock = None
@@ -208,6 +208,7 @@ class Router:
         self.hooks_raise = bool(hooks_raise)
         self.hooks_concurrent = bool(hooks_concurrent)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
+        self._hooks_mutex = threading.Lock()
         self.models = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
         if models:
             self.models.update({normalise_name(k): v for k, v in models.items()})
@@ -494,12 +495,15 @@ class Router:
         on_predict_start=None,
         on_predict_end=None,
         hooks_raise: Optional[bool] = None,
+        max_len: Optional[int] = None,
+        head_max_len: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
 
         The result is the usual `system_one` payload plus a `routing` key recording the decision.
         Router-level `on_predict_start` / `on_predict_end` hooks wrap the whole route+infer call
-        and see `ctx.decision`; see `laya.hooks`.
+        and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
+        token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
         active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
@@ -509,11 +513,19 @@ class Router:
                               lang_guess=lang_guess, hooks=hooks, hooks_raise=hooks_raise)
         agent = self.load(decision["model"])
         ctx = PredictContext(states=[state], questions=questions, decision=dict(decision),
-                             model=decision["model"], agent=agent, router=self)
+                             model=decision["model"], agent=agent, router=self,
+                             max_len=max_len, head_max_len=head_max_len)
         try:
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
             if ctx.results is None:
-                result = agent.system_one(ctx.states[0], ctx.questions)
+                # Pass token-budget overrides only when set, so any Agent-like object that does
+                # not accept them still works on the default path.
+                overrides = {}
+                if ctx.max_len is not None:
+                    overrides["max_len"] = ctx.max_len
+                if ctx.head_max_len is not None:
+                    overrides["head_max_len"] = ctx.head_max_len
+                result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
                 result["routing"] = dict(decision)
                 ctx.results = [result]
             else:

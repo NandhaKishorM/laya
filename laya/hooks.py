@@ -6,9 +6,11 @@ Everything here is pure Python: importing `laya` must not start pulling torch.
 """
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 import warnings
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Union
 
@@ -33,6 +35,8 @@ class PredictContext:
     model: Optional[str] = None                     # resolved checkpoint name
     agent: Any = None
     router: Any = None
+    max_len: Optional[int] = None                   # per-call overrides; None = agent config
+    head_max_len: Optional[int] = None
     usage: Optional[Dict[str, int]] = None          # aggregated input/output tokens
     started_at: float = field(default_factory=time.perf_counter)
     elapsed_ms: Optional[float] = None
@@ -140,6 +144,62 @@ def normalise_hooks(
     for fn in _as_sequence(on_predict_end):
         result.append(_EndAdapter(fn))
     return result
+
+
+class HookRegistry:
+    """Mixin giving a runtime-mutable hook list.
+
+    `Agent`, `Router` and `ONNXAgent` use it so hooks can be added, removed or scoped after
+    construction. Mutation is guarded by `_hooks_mutex`; a call reads a snapshot of the list,
+    so adding or removing a hook never disturbs a call in flight.
+    """
+
+    hooks = ()
+    _hooks_mutex = None
+
+    def add_hook(self, hook: HookArg) -> "HookRegistry":
+        """Install one hook or a sequence of them. Returns self for chaining."""
+        self._extend_hooks(normalise_hooks(hook))
+        return self
+
+    def remove_hook(self, hook: Any) -> bool:
+        """Remove a hook by identity. Returns True if it was installed."""
+        return self._remove_hooks(lambda installed: installed is hook) > 0
+
+    @contextmanager
+    def hooks_installed(self, *hooks: HookArg):
+        """Install hooks for the duration of the `with` block, then remove them.
+
+            with agent.hooks_installed(tracer):
+                agent.system_one(state, questions)
+        """
+        added = normalise_hooks(list(hooks))
+        self._extend_hooks(added)
+        try:
+            yield self
+        finally:
+            self._remove_hooks(lambda installed: any(installed is one for one in added))
+
+    def _extend_hooks(self, hooks: Sequence[Any]) -> None:
+        if not hooks:
+            return
+        with self._hooks_mutex_for_registry():
+            self.hooks = list(self.hooks) + list(hooks)
+
+    def _remove_hooks(self, predicate: Callable[[Any], bool]) -> int:
+        with self._hooks_mutex_for_registry():
+            current = list(self.hooks)
+            remaining = [hook for hook in current if not predicate(hook)]
+            self.hooks = remaining
+            return len(current) - len(remaining)
+
+    def _hooks_mutex_for_registry(self) -> threading.Lock:
+        lock = self._hooks_mutex
+        if lock is None:
+            # Only reachable for an instance built without __init__ (tests); real instances
+            # get their mutex in the constructor.
+            lock = self._hooks_mutex = threading.Lock()
+        return lock
 
 
 def aggregate_usage(results: Sequence[Dict[str, Any]]) -> Dict[str, int]:

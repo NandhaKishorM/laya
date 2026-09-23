@@ -17,6 +17,8 @@ Copy-paste recipes. Every snippet is self-contained apart from the helpers it na
 - [Batch](#batch)
 - [HTTP server](#http-server)
 - [ONNXAgent](#onnxagent)
+- [Runtime registration](#runtime-registration)
+- [Token budget](#token-budget)
 - [Testing hooks](#testing-hooks)
 
 ## Quick start
@@ -289,6 +291,34 @@ from laya.onnx_agent import ONNXAgent
 
 agent = ONNXAgent("convaiinnovations/laya", onnx_path="laya.onnx", on_predict_end=audit)
 agent.system_one(state, questions)
+```
+
+## Runtime registration
+
+Attach, detach or scope hooks after construction.
+
+```python
+agent.add_hook(Metrics())          # attach at runtime
+agent.remove_hook(Metrics())       # by identity
+
+with agent.hooks_installed(DebugDump()):
+    agent.system_one(state, questions)   # DebugDump only here
+```
+
+## Token budget
+
+Shape the token budget for one call, from a hook or a per-call argument.
+
+```python
+def widen(ctx):
+    k = len(next(iter(ctx.questions.values())).get("criteria", {}) or {})
+    if k >= 50:
+        ctx.head_max_len = 16 + 4 * k
+
+agent = laya.load("convaiinnovations/laya", on_predict_start=widen)
+
+# or per call
+agent.system_one(state, questions, head_max_len=324, max_len=1024)
 ```
 
 ## Testing hooks

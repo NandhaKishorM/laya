@@ -23,7 +23,7 @@ from .common import (
     render_options,
     temp_bucket,
 )
-from .hooks import PredictContext, aggregate_usage, dispatch, normalise_hooks
+from .hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
 
 
 def _fix_tokenizer_config(path: str):
@@ -147,12 +147,11 @@ def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
         return tokenizer
 
 
-class Agent:
+class Agent(HookRegistry):
     """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions."""
 
-    # Hooks are opt-in. The class defaults keep a hand-built instance (`Agent.__new__` in
-    # tests) working and make an unset hook a no-op.
-    hooks = ()
+    # Hooks are opt-in. `hooks`/`_hooks_mutex` defaults come from HookRegistry; the rest keep a
+    # hand-built instance (`Agent.__new__` in tests) working and make an unset hook a no-op.
     hooks_raise = True
     hooks_concurrent = True
     _hooks_lock = None
@@ -189,6 +188,7 @@ class Agent:
         self.hooks_raise = bool(hooks_raise)
         self.hooks_concurrent = bool(hooks_concurrent)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
+        self._hooks_mutex = threading.Lock()
         self.model_id = model_id_or_path
 
         from safetensors.torch import load_file
@@ -456,10 +456,15 @@ class Agent:
             q["labels"] = qdef["labels"]
         return q
 
-    def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict]) -> List[Dict]:
-        """Tokenize one state against every (already validated + normalized) question."""
-        max_len = self.cfg.get("max_len", 512)
-        head_max_len = self.cfg.get("head_max_len", 192)
+    def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict],
+                      max_len: Optional[int] = None, head_max_len: Optional[int] = None) -> List[Dict]:
+        """Tokenize one state against every (already validated + normalized) question.
+
+        `max_len` / `head_max_len` override the agent config for this call (a start hook may set
+        `ctx.max_len` / `ctx.head_max_len`).
+        """
+        max_len = self.cfg.get("max_len", 512) if max_len is None else max_len
+        head_max_len = self.cfg.get("head_max_len", 192) if head_max_len is None else head_max_len
         # A chronological conversation list is serialized newest-last, so the default
         # right-truncation (st[:room]) would silently drop the newest turn. Truncate
         # from the left for lists so the most recent intent is preserved.
@@ -550,7 +555,9 @@ class Agent:
     def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
                       batch_size: Optional[int] = None, hooks=None,
                       on_predict_start=None, on_predict_end=None,
-                      hooks_raise: Optional[bool] = None) -> List[Dict[str, Any]]:
+                      hooks_raise: Optional[bool] = None,
+                      max_len: Optional[int] = None,
+                      head_max_len: Optional[int] = None) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, packing them into shared forward passes.
 
         This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
@@ -569,6 +576,8 @@ class Agent:
                     `ctx.skip(...)` to short-circuit inference; `on_predict_end` may rewrite the
                     results. See `laya.hooks`.
             hooks_raise: Override the Agent's `hooks_raise` for this call.
+            max_len, head_max_len: Override the agent config for this call. A start hook may also
+                    set `ctx.max_len` / `ctx.head_max_len` to shape the token budget.
 
         Returns:
             A list of per-state result dicts, each identical in shape to `system_one`'s output and
@@ -576,7 +585,8 @@ class Agent:
         """
         active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
-        ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self)
+        ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self,
+                             max_len=max_len, head_max_len=head_max_len)
         try:
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
             states, questions = ctx.states, ctx.questions
@@ -605,10 +615,17 @@ class Agent:
                         internal = {qid: self._to_internal(questions[qid]) for qid in ids}
                         chunk = batch_size if (batch_size and batch_size > 0) else len(states)
 
+                        # Per-call token-budget overrides (a start hook may have set them).
+                        overrides: Dict[str, int] = {}
+                        if ctx.max_len is not None:
+                            overrides["max_len"] = ctx.max_len
+                        if ctx.head_max_len is not None:
+                            overrides["head_max_len"] = ctx.head_max_len
+
                         results: List[Dict[str, Any]] = []
                         for start in range(0, len(states), chunk):
                             part = states[start:start + chunk]
-                            per_state_items = [self._encode_state(st, ids, internal) for st in part]
+                            per_state_items = [self._encode_state(st, ids, internal, **overrides) for st in part]
 
                             b = collate_items(per_state_items, self.tok.pad_token_id)
                             logits, act = self._forward(b)
@@ -651,7 +668,9 @@ class Agent:
     @torch.no_grad()
     def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
                    hooks=None, on_predict_start=None, on_predict_end=None,
-                   hooks_raise: Optional[bool] = None) -> Dict[str, Any]:
+                   hooks_raise: Optional[bool] = None,
+                   max_len: Optional[int] = None,
+                   head_max_len: Optional[int] = None) -> Dict[str, Any]:
         """Evaluate typed questions across state in a single, parallel forward pass.
 
         Args:
@@ -676,7 +695,8 @@ class Agent:
         """
         return self.predict_batch([state], questions, hooks=hooks,
                                   on_predict_start=on_predict_start,
-                                  on_predict_end=on_predict_end, hooks_raise=hooks_raise)[0]
+                                  on_predict_end=on_predict_end, hooks_raise=hooks_raise,
+                                  max_len=max_len, head_max_len=head_max_len)[0]
 
     def __enter__(self):
         return self

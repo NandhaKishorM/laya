@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Union
 
 import numpy as np
 
-from laya.hooks import PredictContext, aggregate_usage, dispatch, normalise_hooks
+from laya.hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
 from laya.common import (
     QTYPES,
     build_sequence,
@@ -21,11 +21,11 @@ from laya.common import (
 )
 
 
-class ONNXAgent:
+class ONNXAgent(HookRegistry):
     """System 1 decision model runtime via ONNX: fast CPU-optimized decisions."""
 
     # Opt-in hooks; defaults keep a hand-built instance working and make an unset hook a no-op.
-    hooks = ()
+    # `hooks`/`_hooks_mutex` come from HookRegistry.
     hooks_raise = True
     hooks_concurrent = True
     _hooks_lock = None
@@ -57,6 +57,7 @@ class ONNXAgent:
         self.hooks_raise = bool(hooks_raise)
         self.hooks_concurrent = bool(hooks_concurrent)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
+        self._hooks_mutex = threading.Lock()
         self.model_id = model_id_or_path
 
         import onnxruntime as ort
@@ -141,15 +142,23 @@ class ONNXAgent:
 
     def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
                    hooks=None, on_predict_start=None, on_predict_end=None,
-                   hooks_raise: Optional[bool] = None) -> Dict[str, Any]:
+                   hooks_raise: Optional[bool] = None,
+                   max_len: Optional[int] = None,
+                   head_max_len: Optional[int] = None) -> Dict[str, Any]:
         """Evaluate typed questions, running any opt-in hooks around the inference."""
         active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
-        ctx = PredictContext(states=[state], questions=questions, model=self.model_id, agent=self)
+        ctx = PredictContext(states=[state], questions=questions, model=self.model_id, agent=self,
+                             max_len=max_len, head_max_len=head_max_len)
         try:
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
             if ctx.results is None:
-                ctx.results = [self._infer(ctx.states[0], ctx.questions)]
+                overrides = {}
+                if ctx.max_len is not None:
+                    overrides["max_len"] = ctx.max_len
+                if ctx.head_max_len is not None:
+                    overrides["head_max_len"] = ctx.head_max_len
+                ctx.results = [self._infer(ctx.states[0], ctx.questions, **overrides)]
         except BaseException as exc:
             ctx.error = exc
             try:
@@ -170,11 +179,12 @@ class ONNXAgent:
                     raise
         return ctx.results[0]
 
-    def _infer(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def _infer(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
+               max_len: Optional[int] = None, head_max_len: Optional[int] = None) -> Dict[str, Any]:
         ids = list(questions.keys())
         items = []
-        max_len = self.cfg.get("max_len", 512)
-        head_max_len = self.cfg.get("head_max_len", 192)
+        max_len = self.cfg.get("max_len", 512) if max_len is None else max_len
+        head_max_len = self.cfg.get("head_max_len", 192) if head_max_len is None else head_max_len
 
         for qid in ids:
             q = self._to_internal(questions[qid])

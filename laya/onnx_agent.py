@@ -1,10 +1,13 @@
 import json
 import os
+import threading
+import time
 import warnings
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
 
+from laya.hooks import PredictContext, aggregate_usage, dispatch, normalise_hooks
 from laya.common import (
     QTYPES,
     build_sequence,
@@ -21,11 +24,22 @@ from laya.common import (
 class ONNXAgent:
     """System 1 decision model runtime via ONNX: fast CPU-optimized decisions."""
 
+    # Opt-in hooks; defaults keep a hand-built instance working and make an unset hook a no-op.
+    hooks = ()
+    hooks_raise = True
+    hooks_concurrent = True
+    _hooks_lock = None
+
     def __init__(
         self,
         model_id_or_path: str,
         onnx_path: str = "laya.onnx",
         subfolder: Optional[str] = None,
+        hooks=None,
+        on_predict_start=None,
+        on_predict_end=None,
+        hooks_raise: bool = True,
+        hooks_concurrent: bool = True,
     ):
         """Load a Laya agent backed by ONNX Runtime.
 
@@ -34,7 +48,14 @@ class ONNXAgent:
                               (used to load the tokenizer and config).
             onnx_path: Path to the exported .onnx file.
             subfolder: Optional subfolder if downloading from a repo bundle.
+            hooks, on_predict_start, on_predict_end: Opt-in prediction hooks; see `laya.hooks`.
+            hooks_raise: When False, a failing hook warns and inference continues.
+            hooks_concurrent: When False, hooks are serialised with a lock.
         """
+        self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
+        self.hooks_raise = bool(hooks_raise)
+        self._hooks_lock = threading.RLock() if not hooks_concurrent else None
+
         import onnxruntime as ort
         from transformers import AutoTokenizer
 
@@ -115,7 +136,38 @@ class ONNXAgent:
             ins = json.dumps(ins)
         return {"t": t, "ins": ins, "crit": crit}
 
-    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
+                   hooks=None, on_predict_start=None, on_predict_end=None,
+                   hooks_raise: Optional[bool] = None) -> Dict[str, Any]:
+        """Evaluate typed questions, running any opt-in hooks around the inference."""
+        active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+        raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
+        ctx = PredictContext(states=[state], questions=questions, agent=self)
+        dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+        try:
+            if ctx.results is None:
+                ctx.results = [self._infer(ctx.states[0], ctx.questions)]
+        except BaseException as exc:
+            ctx.error = exc
+            try:
+                dispatch(active, "on_error", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+            except BaseException as hook_exc:
+                exc.__context__ = hook_exc
+            raise
+        finally:
+            ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
+            if ctx.results is not None:
+                ctx.usage = aggregate_usage(ctx.results)
+            try:
+                dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+            except BaseException as hook_exc:
+                if ctx.error is not None:
+                    ctx.error.__context__ = hook_exc
+                else:
+                    raise
+        return ctx.results[0]
+
+    def _infer(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         ids = list(questions.keys())
         items = []
         max_len = self.cfg.get("max_len", 512)

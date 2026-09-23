@@ -455,6 +455,29 @@ else:
 
 ---
 
+## Prediction Hooks
+
+Hooks observe or shape every decision without forking: audit logging, PII redaction before
+inference, caching, metrics, confidence gating, routing overrides, and forwarding to an
+external service. They are opt-in, and unset hooks are a no-op.
+
+```python
+import laya
+
+def log(ctx):
+    print(ctx.model, ctx.results[0]["answers"], ctx.elapsed_ms)
+
+agent = laya.load("convaiinnovations/laya", on_predict_end=log)
+agent.system_one("I was charged twice.", {"urgent": {"type": "noul", "instructions": "Urgent?"}})
+```
+
+A hook is a plain callable, or an object implementing any of `on_predict_start`,
+`on_predict_end`, `on_route`, `on_load`, `on_evict`, `on_error`. A start hook can rewrite the
+state/questions or `ctx.skip(...)` a cached answer; an end hook can rewrite the result. See
+[**`docs/hooks.md`**](docs/hooks.md) and [`examples/hooks/`](examples/hooks/).
+
+---
+
 ## Built-in Workflow Presets
 
 Laya provides pre-tuned question schemas for immediate production use:

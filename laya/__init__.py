@@ -1,6 +1,7 @@
 """Laya: Fast, non-autoregressive System 1 decision engine with calibrated probabilities."""
 
 from .email import clean_email_body, email_state
+from .hooks import Hook, PredictContext, PredictHook
 from .lang import analyse as detect_language
 from .lang import detect_script, is_english
 from .presets import (
@@ -87,5 +88,8 @@ __all__ = [
     "LayaGuardrailError",
     "LayaTriage",
     "LayaEvaluator",
+    "PredictContext",
+    "PredictHook",
+    "Hook",
     "__version__",
 ]

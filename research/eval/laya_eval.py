@@ -159,7 +159,7 @@ def softmax_t(z, temperature: float = 1.0):
     return e / e.sum()
 
 
-def temperature_for(agent, qtype: int, k: int, unclamped: bool = False) -> float:
+def temperature_for(agent, qtype: int, k: int, lang: str = None, unclamped: bool = False) -> float:
     """The temperature to score this bucket with.
 
     By default this is what ``Agent`` applies, i.e. the checkpoint's bucket clamped
@@ -171,6 +171,11 @@ def temperature_for(agent, qtype: int, k: int, unclamped: bool = False) -> float
     if unclamped:
         return float(agent.temperature_by_options_raw.get(
             bucket, agent.temperature_raw[qtype]))
+    
+    if lang and hasattr(agent, "lang_temperatures") and lang.split("-")[0].lower() in agent.lang_temperatures:
+        l_cfg = agent.lang_temperatures[lang.split("-")[0].lower()]
+        return float(l_cfg["temperature_by_options"].get(bucket, l_cfg["temperature"][qtype]))
+
     return float(agent.temperature_by_options.get(bucket, agent.temperature[qtype]))
 
 
@@ -236,7 +241,7 @@ def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
     confidences, corrects, preds, records = [], [], [], []
     for i, z in enumerate(logits):
         k = len(z)
-        temperature = temperature_for(agent, QTYPES["choice"], k, unclamped)
+        temperature = temperature_for(agent, QTYPES["choice"], k, lang=lang, unclamped=unclamped)
         probs = softmax_t(z, temperature)
         pred = int(np.argmax(probs))
         correct = int(pred == gold[i])

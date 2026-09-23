@@ -106,6 +106,7 @@ class Agent:
         device: Optional[str] = None,
         token: Optional[str] = None,
         subfolder: Optional[str] = None,
+        lang_temperatures: Optional[Dict[str, Dict[str, Any]]] = None,
     ):
         """Load a Laya checkpoint.
 
@@ -215,6 +216,18 @@ class Agent:
         self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
         self.temperature_by_options = {k: clamp_temperature(v)
                                        for k, v in self.temperature_by_options_raw.items()}
+
+        self.lang_temperatures = {}
+        for l, cfg in (lang_temperatures or {}).items():
+            norm_l = l.split("-")[0].lower()
+            t_raw = cfg.get("temperature", self.temperature_raw)
+            if len(t_raw) != 3:
+                raise ValueError("Language override %r temperature must be a list of 3 floats" % l)
+            tbo_raw = cfg.get("temperature_by_options", {})
+            self.lang_temperatures[norm_l] = {
+                "temperature": [clamp_temperature(t) for t in t_raw],
+                "temperature_by_options": {k: clamp_temperature(v) for k, v in tbo_raw.items()}
+            }
         entries = [(k, v, self.temperature_by_options[k]) for k, v in self.temperature_by_options_raw.items()]
         entries += [("temperature[%d]" % i, t, self.temperature[i]) for i, t in enumerate(self.temperature_raw)]
         rejected = []
@@ -316,7 +329,7 @@ class Agent:
         return {"t": t, "ins": ins, "crit": crit}
 
     @torch.no_grad()
-    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]], lang: Optional[str] = None) -> Dict[str, Any]:
         """Evaluate typed questions across state in a single, parallel forward pass.
 
         Args:
@@ -325,6 +338,7 @@ class Agent:
                 - choice: {"type": "choice", "instructions": "...", "criteria": {"optA": "...", ...}}
                 - score:  {"type": "score",  "instructions": "...", "criteria": ["lvl0", "lvl1", ...]}
                 - noul:   {"type": "noul",   "instructions": "...", "criteria": {"true": "...", "false": "..."}}
+            lang: Optional language code for applying temperature overrides.
 
         Returns:
             Dictionary with answers, probabilities, calibrated confidence, and token usage.
@@ -389,6 +403,9 @@ class Agent:
             k = len(items[r]["markers"])
             qt = QTYPES[q["t"]]
             t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])
+            if lang and lang.split("-")[0].lower() in self.lang_temperatures:
+                l_cfg = self.lang_temperatures[lang.split("-")[0].lower()]
+                t_scale = l_cfg["temperature_by_options"].get(temp_bucket(qt, k), l_cfg["temperature"][qt])
             z = logits[r, :k] / t_scale
             p = np.exp(z - z.max())
             p = p / p.sum()
@@ -453,7 +470,8 @@ RLAgent = Agent
 
 
 def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,
-         token: Optional[str] = None, subfolder: Optional[str] = None) -> Agent:
+         token: Optional[str] = None, subfolder: Optional[str] = None,
+         lang_temperatures: Optional[Dict[str, Dict[str, Any]]] = None) -> Agent:
     """Load a Laya agent.
 
     `subfolder` picks one checkpoint out of a repo that bundles several:
@@ -461,4 +479,5 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
         laya.load("convaiinnovations/laya")                           # English (repo root)
         laya.load("convaiinnovations/laya", subfolder="multilingual")
     """
-    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder)
+    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder,
+                 lang_temperatures=lang_temperatures)

@@ -178,6 +178,15 @@ cases = [
     ("explicit task", {"body": "x"}, Q_GENERIC, {"task": "typed_decisions"}, "typed-decisions"),
     ("explicit lang en", {"body": "मुझसे दो बार"}, Q_GENERIC, {"lang": "en"}, "english"),
     ("explicit lang de", {"body": "hello there"}, Q_GENERIC, {"lang": "de"}, "multilingual"),
+    # POSIX/Django locale spelling: `en_US` used to be read as a non-English language
+    ("explicit lang en_US", {"body": "मुझसे दो बार"}, Q_GENERIC, {"lang": "en_US"}, "english"),
+    ("explicit lang EN_GB", {"body": "मुझसे दो बार"}, Q_GENERIC, {"lang": "EN_GB"}, "english"),
+    ("explicit lang en_US.UTF-8", {"body": "मुझसे दो बार"}, Q_GENERIC, {"lang": "en_US.UTF-8"}, "english"),
+    ("explicit lang padded", {"body": "मुझसे दो बार"}, Q_GENERIC, {"lang": " en "}, "english"),
+    ("explicit lang pt_BR", {"body": "hello there"}, Q_GENERIC, {"lang": "pt_BR"}, "multilingual"),
+    ("explicit lang pt-BR", {"body": "hello there"}, Q_GENERIC, {"lang": "pt-BR"}, "multilingual"),
+    # a language whose code merely starts with "en" is not English
+    ("explicit lang enm", {"body": "hello there"}, Q_GENERIC, {"lang": "enm"}, "multilingual"),
     ("td workflow, auto OFF", {"body": "I was charged twice"}, Q_TD, {}, "english"),
     ("empty state", {}, Q_GENERIC, {}, "english"),
     ("none state", None, Q_GENERIC, {}, "english"),

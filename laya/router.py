@@ -28,6 +28,7 @@ primary routing signal.
 synthetic workflows and should not be a silent default.
 """
 import os
+import re
 import threading
 from typing import Any, Dict, List, Optional, Union
 
@@ -284,7 +285,10 @@ class Router:
                                  detection=None, workflow=workflow)
 
         if lang is not None:
-            key = "english" if str(lang).lower().split("-")[0] in ("en", "eng", "english") else "multilingual"
+            # BCP 47 tags use "-" (en-US), POSIX locales and Django/Babel use "_" (en_US, en_US.UTF-8);
+            # splitting on "-" alone read `en_US` as a language other than English
+            primary = re.split(r"[-_.@]", str(lang).strip().lower())[0]
+            key = "english" if primary in ("en", "eng", "english") else "multilingual"
             return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
                                  detection=None, workflow=workflow)
 

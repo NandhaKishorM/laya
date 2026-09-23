@@ -189,7 +189,8 @@ jobs:
         run: laya-evals validate research/evals/fixture.jsonl
 
   # The OpenAI HTTP surface is pytest based and needs fastapi. test_serve.py now runs in the
-  # main job (#376); this job covers only tests/test_serve_openai.py.
+  # main job (#376); this job covers only tests/test_serve_openai.py. CPU torch is installed
+  # because `import laya.serve` pulls it on some paths; `--no-deps` keeps the rest out.
   serve:
     name: serve (OpenAI route pytest)
     runs-on: ubuntu-latest
@@ -202,6 +203,7 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -e . --no-deps
           pip install "fastapi>=0.110.0" "uvicorn>=0.27.0" httpx pytest
       - name: OpenAI route tests

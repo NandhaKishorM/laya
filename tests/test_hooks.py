@@ -323,6 +323,15 @@ check("defaults/unset hooks are a no-op", len(res), 3)
 check("defaults/offsets unchanged", [r["answers"]["_offset"] for r in res], [0, NQ, 2 * NQ])
 
 
+# --------------------------------------------------------------- context semantics
+from laya.hooks import PredictContext  # noqa: E402
+
+_c1 = PredictContext(states=[], questions={})
+_c2 = PredictContext(states=[], questions={})
+check_true("context/hashable by identity", isinstance(hash(_c1), int))
+check("context/two contexts are never equal", _c1 == _c2, False)
+
+
 # --------------------------------------------------------------- validation
 class NotAHook:
     pass
@@ -333,6 +342,14 @@ check_raises("validation/hooks= rejects a plain callable", TypeError,
              lambda: normalise_hooks(hooks=[lambda ctx: None]))
 check_raises("validation/on_predict_start must be callable", TypeError,
              lambda: normalise_hooks(on_predict_start=123))
+
+
+class BadMethod:
+    on_predict_start = 5
+
+
+check_raises("validation/hook method must be callable", TypeError,
+             lambda: normalise_hooks(hooks=[BadMethod()]))
 
 
 # --------------------------------------------------------------- Router
@@ -398,6 +415,13 @@ check("router/predict start sees the decision", predict_seen["decision"]["model"
 check("router/predict end sees results", len(predict_seen["results"]), 1)
 check("router/predict keeps routing", out["routing"]["model"], "english")
 
+cached = [{"model": "cached", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}]
+r = Router()
+r.attach("english", FakeAgent())
+skipped = r.predict("hello", QUESTIONS, on_predict_start=lambda c: c.skip(cached))
+check("router/skip returns the cached payload", skipped, cached[0])
+check("router/skip still adds routing", skipped.get("routing", {}).get("model"), "english")
+
 
 class PerCallRoute:
     def __init__(self):
@@ -412,6 +436,15 @@ r = Router()
 r.attach("english", FakeAgent())
 r.predict("hello", QUESTIONS, hooks=[pcr])
 check("router/per-call hooks apply to on_route", len(pcr.decisions), 1)
+
+
+# --------------------------------------------------------------- hooks_concurrent storage
+r = Router()
+check("router/hooks_concurrent default True", r.hooks_concurrent, True)
+check_true("router/hooks_concurrent default has no lock", r._hooks_lock is None)
+r = Router(hooks_concurrent=False)
+check("router/hooks_concurrent=False stored", r.hooks_concurrent, False)
+check_true("router/hooks_concurrent=False installs a lock", r._hooks_lock is not None)
 
 
 # --------------------------------------------------------------- concurrency
@@ -465,14 +498,17 @@ check("concurrency/hooks_concurrent=False serialises", conc.max_active, 1)
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 
 o = ONNXAgent.__new__(ONNXAgent)
+o.model_id = "convaiinnovations/laya-onnx"
 o._infer = lambda state, questions: {"model": "onnx", "answers": {},
                                      "usage": {"input_tokens": 0, "output_tokens": 0}}
 onnx_seen = []
+onnx_models = []
 onnx_out = o.system_one("s", QUESTIONS,
                         on_predict_start=lambda c: onnx_seen.append("start"),
-                        on_predict_end=lambda c: onnx_seen.append("end"))
+                        on_predict_end=lambda c: (onnx_seen.append("end"), onnx_models.append(c.model)))
 check("onnx/hooks fire", onnx_seen, ["start", "end"])
 check("onnx/returns the inference result", onnx_out["model"], "onnx")
+check("onnx/context model is the agent model_id", onnx_models, ["convaiinnovations/laya-onnx"])
 
 o = ONNXAgent.__new__(ONNXAgent)
 

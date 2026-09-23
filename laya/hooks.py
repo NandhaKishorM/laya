@@ -12,13 +12,16 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Union
 
 
-@dataclass
+@dataclass(eq=False)
 class PredictContext:
     """Mutable state passed to every hook for one call.
 
     `states` / `questions` may be rewritten by `on_predict_start`; `results` may be rewritten
     by `on_predict_end`. A start hook can call `skip()` to short-circuit inference with a
     cached result.
+
+    Identity semantics (`eq=False`): two contexts are never equal, and a context is hashable
+    by identity, so a hook can keep one in a set without comparing agent/router internals.
     """
 
     states: List[Any]
@@ -122,6 +125,13 @@ def normalise_hooks(
                 "callable as on_predict_start=/on_predict_end= instead."
                 % (", ".join(HOOK_EVENTS), type(hook).__name__)
             )
+        for event in HOOK_EVENTS:
+            method = getattr(hook, event, None)
+            if method is not None and not callable(method):
+                raise TypeError(
+                    "hooks entry %s.%s must be callable, got %s"
+                    % (type(hook).__name__, event, type(method).__name__)
+                )
         result.append(hook)
     for fn in _as_sequence(on_predict_start):
         result.append(_StartAdapter(fn))

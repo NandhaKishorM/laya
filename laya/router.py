@@ -206,6 +206,7 @@ class Router:
     ):
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
+        self.hooks_concurrent = bool(hooks_concurrent)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
         self.models = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
         if models:
@@ -515,6 +516,12 @@ class Router:
                 result = agent.system_one(ctx.states[0], ctx.questions)
                 result["routing"] = dict(decision)
                 ctx.results = [result]
+            else:
+                # A cache hit short-circuits inference, but Router.predict still promises a
+                # `routing` key. Add it without overwriting a routing the cached payload has.
+                for result in ctx.results:
+                    if isinstance(result, dict):
+                        result.setdefault("routing", dict(decision))
         except BaseException as exc:
             ctx.error = exc
             try:

@@ -60,6 +60,7 @@ jobs:
           python tests/test_criteria.py
           python tests/test_batch.py
           python tests/test_hooks.py
+          python tests/test_hooks_api.py
           python tests/test_download.py
           python tests/test_shortlist.py
           python tests/test_decision_model.py

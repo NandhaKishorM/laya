@@ -55,6 +55,7 @@ class ONNXAgent:
         """
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
+        self.hooks_concurrent = bool(hooks_concurrent)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
         self.model_id = model_id_or_path
 

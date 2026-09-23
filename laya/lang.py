@@ -198,6 +198,17 @@ def script_profile(text: str) -> Dict[str, float]:
 # stopword list matches it.
 NON_EN_DIACRITIC_RATE = 0.02
 
+# E-mail addresses, URLs and bare domains are not prose in any language, but `_WORD` splits them
+# into words: `user@acme.com` yields `com`, which is a Portuguese function word, so two addresses
+# in a short English ticket named it Portuguese, and a `.com.br` sender made English text look
+# Portuguese. They are removed before words are counted.
+_ADDRESS = re.compile(
+    r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"                       # e-mail addresses
+    r"|\b(?:https?://|www\.)\S+"                           # URLs
+    r"|\b(?:[\w-]+\.)+(?:com|net|org|gov|edu|io|br|pt)\b",  # bare domains: acme.com, loja.com.br
+    re.I,
+)
+
 
 def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
@@ -210,6 +221,7 @@ def latin_profile(text: str) -> Dict[str, object]:
     A non-English language is only named when it matched at least one word that no other list
     claims: shared function words alone (`la`, `e`, `o`) identify no particular language.
     """
+    text = _ADDRESS.sub(" ", text)
     words = [w.lower() for w in _WORD.findall(text)]
     lowered = text.lower()
     diac = sum(1 for ch in lowered if ch in _NON_EN_DIACRITICS)

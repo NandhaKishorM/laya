@@ -74,8 +74,16 @@ _STOP = {
            "pueden", "quiero", "necesito", "hemos", "han", "sobre", "entre", "cuando", "donde",
            "porque", "aunque", "también", "ya", "eso", "esto", "esa", "ese", "nada", "algo",
            "aquí", "hoy", "gracias"},
-    "pt": {"os", "as", "que", "em", "um", "uma", "para", "com", "não", "é", "se", "do", "da",
+    "pt": {"os", "as", "que", "em", "um", "uma", "para", "não", "é", "se", "do", "da",
            "dos", "das", "mas", "são", "está", "este", "esta", "muito", "pelo", "pela",
+           # `com` ("with") is Portuguese too, and it is also the most common domain suffix
+           # on the internet: _WORD tokenises `github.com` into `github` + `com`, so a
+           # state carrying two URLs and nothing else scored two Portuguese hits and was
+           # routed to the multilingual checkpoint on the strength of its links alone.
+           # Like `no` below, it is the same kind of collision as the `de`/`en` drops on
+           # the Spanish list: a short English state with URLs in it never carries enough
+           # real Portuguese words for the margin to read, so it must be the diacritic
+           # signal and the rest of this list that name Portuguese, not its TLD.
            # `no` is Portuguese too, and among the most frequent words it has; it is also one of the
            # most frequent English words, so it stays out and short Portuguese states that lean on it
            # alone are left to the diacritic rate, as before.

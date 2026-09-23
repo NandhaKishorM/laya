@@ -286,6 +286,28 @@ check("latin_lang/shared hits still count toward a named language",
       guess_latin_language("La factura tiene un error en el importe total"), "es")
 
 
+# A state whose only "Portuguese" evidence is domain suffixes must not be routed off English.
+# `com` was on the pt list and _WORD splits `github.com` into `github` + `com`, so two URLs in
+# a state with no English function word crossed the two-hit margin and looked Portuguese.
+for state in [
+    {"url": "github.com", "email": "user@acme.com"},
+    "github.com acme.com",
+    {"body": "see github.com and acme.com"},
+    {"body": "Please check example.com and acme.com for the invoice"},
+]:
+    check("route/domain suffix alone is not portuguese", _r_lat.route(state).model, "english")
+    check("is_english/domain suffix alone is not portuguese", is_english(state), True)
+# Real Portuguese still reads as Portuguese; `com` is one word of many, and the rest of the list
+# (`obrigado`, `ainda`, `não`, `porque`, ...) plus the diacritic rate carry it.
+for text in [
+    "Obrigado pelo envio do documento, mas ainda nao recebi a fatura",
+    "Por favor, quando vocês podem enviar? Não temos muito tempo",
+    "O cliente foi cobrado duas vezes e quer o dinheiro de volta",
+]:
+    check("latin_lang/real portuguese still detected " + text[:40], guess_latin_language(text), "pt")
+    check("route/real portuguese still multilingual " + text[:40], _r_lat.route(text).model, "multilingual")
+
+
 # --------------------------------------------------------------------- temperature clamp (#35)
 # A fitted temperature below 1 sharpens logits. The shipped `choice:11+` bucket is 0.1006, which
 # turned a 0.24 top probability into 0.99 confidence on 13-option skill routing.

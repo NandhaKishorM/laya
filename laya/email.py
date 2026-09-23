@@ -151,6 +151,12 @@ def _strip_disclaimer(paragraph: str) -> str:
 def clean_email_body(body: str, max_chars: int = 3000) -> str:
     """Remove quoted email history, signatures and disclaimers to keep input focused."""
     text = (body or "").replace("\r\n", "\n").replace("\r", "\n").replace("\\n", "\n")
+    # Bound regex work before the expensive patterns below: _DISCLAIMER uses
+    # [^.]{0,60/80/100} alternations whose cost grows with input length, and only
+    # max_chars are ever returned. Truncate lines too so one MB-long line cannot
+    # dominate matching.
+    if len(text) > max_chars * 4:
+        text = text[:max_chars * 4]
     lines = []
     src = text.split("\n")
     for i, line in enumerate(src):

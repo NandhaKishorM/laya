@@ -1,0 +1,2 @@
+# Documentation build only; not a runtime dependency of the laya package.
+zensical==0.0.64

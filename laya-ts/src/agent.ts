@@ -93,7 +93,7 @@ export function checkQuestion(qid: string, qdef: unknown): void {
   const t = q["type"];
   if (t !== "choice" && t !== "score" && t !== "noul") {
     throw new Error(
-      `question ${qidStr(qid)}: unknown type ${JSON.stringify(t)}; use one of ${JSON.stringify(sorted(QTYPES))}`,
+      `question ${qidStr(qid)}: unknown type ${JSON.stringify(t)}; use one of ${JSON.stringify(Object.keys(QTYPES).sort())}`,
     );
   }
   if (!("instructions" in q)) {
@@ -123,10 +123,6 @@ export function checkQuestion(qid: string, qdef: unknown): void {
       `question ${qidStr(qid)}: a noul question takes 'criteria' as a dict with optional 'true'/'false' descriptions, or omits it`,
     );
   }
-}
-
-function sorted(o: Record<string, number>): string[] {
-  return Object.keys(o).sort();
 }
 
 export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul"; ins: string; crit: unknown } {
@@ -235,11 +231,7 @@ export class Agent {
     ];
     const rejected: string[] = [];
     for (const [name, rawV, applied] of entries) {
-      try {
-        if (Number(rawV) === applied) continue;
-      } catch {
-        /* invalid entries already have a neutral fallback; still report */
-      }
+      if (Number(rawV) === applied) continue;
       rejected.push(`${name}=${JSON.stringify(rawV) ?? String(rawV)} -> ${applied}`);
     }
     if (rejected.length > 0) {

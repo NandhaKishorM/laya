@@ -54,6 +54,7 @@ const out = await predictShortlist(agent, state, questions, embedFn, 20);
 
 ```bash
 node laya-ts/examples/try-ml.mjs   # needs ./model-ml from the export step
+node laya-ts/examples/snake.mjs --ticks 50   # autonomous snake demo, headless smoke (live TUI without --ticks)
 ```
 
 ## Packaging

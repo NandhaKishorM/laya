@@ -1,0 +1,58 @@
+name: Docs
+
+# Builds the documentation site from docs/ and publishes it to GitHub Pages.
+# Enable Pages before deploying: Settings -> Pages -> Source: GitHub Actions.
+
+on:
+  pull_request:
+    paths: [docs/**, zensical.toml, requirements-docs.txt, .github/workflows/docs.yml]
+  push:
+    branches: [main]
+    paths: [docs/**, zensical.toml, requirements-docs.txt, .github/workflows/docs.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel outdated pull request builds; let an active deploy on main finish.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: docs (strict build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+      - run: pip install -r requirements-docs.txt
+
+      # --strict fails on every warning, including links the site cannot resolve.
+      # Use absolute GitHub URLs for files outside docs/ so links work when pages in docs/
+      # are read on GitHub or on the site.
+      - run: zensical build --strict
+
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request'
+        with:
+          path: site
+
+  deploy:
+    name: docs (deploy)
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

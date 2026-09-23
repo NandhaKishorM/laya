@@ -1,6 +1,7 @@
 """High-level inference runtime for laya System 1 decision models."""
 import json
 import os
+import tempfile
 import threading
 import warnings
 from contextlib import nullcontext
@@ -47,13 +48,30 @@ def _fix_tokenizer_config(path: str):
             tcfg["extra_special_tokens"] = {"extra_%d" % i: t for i, t in enumerate(extra)}
             changed = True
         if changed:
-            # HuggingFace snapshots are symlinks into a shared blob store. Writing through the
+            # HuggingFace snapshots are symlinks into a shared blob store, so writing through the
             # link would truncate a file shared with other revisions and processes, race
-            # concurrent loads, and desync the hub's cache metadata. Detach the local file first.
-            if os.path.islink(cfg_file):
-                os.unlink(cfg_file)
-            with open(cfg_file, "w") as f:
-                json.dump(tcfg, f, indent=2)
+            # concurrent loads, and desync the hub's cache metadata. Write to a temporary file in
+            # the same directory and `os.replace` it into place: the snapshot entry becomes a
+            # regular file and is swapped atomically, so a concurrent load never sees a missing
+            # or half-written config.
+            cfg_dir = os.path.dirname(cfg_file)
+            fd, tmp_file = tempfile.mkstemp(dir=cfg_dir, prefix=".tokenizer_config.", suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w") as f:
+                    json.dump(tcfg, f, indent=2)
+                # mkstemp creates the file 0600; keep the mode the cache file had so a shared
+                # cache stays readable to the same users as before.
+                try:
+                    os.chmod(tmp_file, os.stat(cfg_file).st_mode & 0o777)
+                except OSError:
+                    pass
+                os.replace(tmp_file, cfg_file)
+            except BaseException:
+                try:
+                    os.unlink(tmp_file)
+                except OSError:
+                    pass
+                raise
     except Exception as e:
         # Do not swallow this silently: if the patch did not apply, AutoTokenizer may fail later
         # with a confusing error and no hint that the config was the cause.
@@ -199,7 +217,7 @@ class Agent:
             # checkpoints, which an unfiltered snapshot would unnecessarily download.
             prefix = f"{subfolder}/" if subfolder else ""
             kw = {
-                "token": token or os.environ.get("HF_TOKEN"),
+                "token": token or os.environ.get("HF_TOKEN") or None,
                 "allow_patterns": [prefix + name for name in (
                     "rl_agent_config.json", "model.safetensors", "tokenizer/*", "encoder/*",
                 )],
@@ -415,6 +433,21 @@ class Agent:
         elif crit is not None and not isinstance(crit, dict):
             raise ValueError("question %r: a noul question takes 'criteria' as a dict with optional "
                              "'true'/'false' descriptions, or omits it" % (qid,))
+        elif isinstance(crit, dict):
+            # `render_options` reads these two descriptions out by name -- `crit.get("false")` and
+            # `crit.get("true")` -- so a dict keyed any other way is not a noul description at all.
+            # It used to be substituted with the default pair without a word, so a caller saw their
+            # descriptions accepted and never reach the model (#156). `labels` just below has
+            # rejected the same mistake since #163; this is the same rule on the other parameter,
+            # and a noul is a boolean question either way, so those are the only two keys it can have.
+            keys = {str(k).lower() for k in crit}
+            if not keys <= {"true", "false"}:
+                raise ValueError(
+                    "question %r: a noul question takes 'criteria' keyed only 'true'/'false' (either "
+                    "or both, and omitted is fine), got %s. Those keys are the option texts the model "
+                    "reads; any other key was silently dropped and replaced with the defaults. If you "
+                    "want the answer worded differently, keep 'criteria' keyed 'true'/'false' and set "
+                    "'labels' instead." % (qid, sorted(keys)))
         if "labels" in qdef:
             if t != "noul":
                 raise ValueError("question %r: 'labels' is only supported for noul questions" % (qid,))

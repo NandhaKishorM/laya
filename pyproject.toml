@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.3.9"
+version = "0.3.10"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -53,6 +53,11 @@ onnx = ["onnx", "onnxruntime"]
 # `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
 langchain = [
     "langchain-core>=0.2.0",
+    "langgraph>=0.1.0",
+]
+langgraph = [
+    "langchain-core>=0.2.0",
+    "langgraph>=0.1.0",
 ]
 
 [project.scripts]

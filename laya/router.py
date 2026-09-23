@@ -28,6 +28,7 @@ primary routing signal.
 synthetic workflows and should not be a silent default.
 """
 import gc
+import json
 import os
 import threading
 import time
@@ -122,6 +123,16 @@ def match_typed_decisions_workflow(questions: Dict[str, Any]) -> Optional[str]:
         if ids == sig:
             return wf
     return None
+
+
+def _question_schema(questions: Dict[str, Any]) -> str:
+    """Order-sensitive signature of a question schema, for sharing forward passes.
+
+    sort_keys=False keeps insertion order significant at every nesting level, because
+    option order is positional in render_options. default=str matches render_criterion's
+    tolerance, so schemas that render identically still share a group.
+    """
+    return json.dumps(questions, sort_keys=False, ensure_ascii=False, default=str)
 
 
 # Subtags that mean "the English checkpoint can read this". Routing needs one bit -- is this
@@ -648,18 +659,26 @@ class Router(HookRegistry):
 
             # Agent.predict_batch evaluates one shared question schema over many states.
             # Preserve Router's heterogeneous-request API by splitting each checkpoint
-            # group again whenever the question dictionaries differ.
+            # group again whenever the question schema differs. The signature must be
+            # order-sensitive at every nesting level: options are positional in
+            # render_options, so two equal schemas that arrive with different key
+            # orders render differently and must not share a group -- grouping them
+            # would make the second caller's batched answers differ from its own
+            # single-request answers. (dict == and == on items() tuples both fall
+            # back to order-insensitive dict equality on the nested criteria.)
             question_groups: List[Dict[str, Any]] = []
             for i in indices:
                 questions = requests[i]["questions"]
+                schema = _question_schema(questions)
 
                 for group in question_groups:
-                    if group["questions"] == questions:
+                    if group["schema"] == schema:
                         group["indices"].append(i)
                         break
                 else:
                     question_groups.append({
                         "questions": questions,
+                        "schema": schema,
                         "indices": [i],
                     })
 

@@ -345,6 +345,28 @@ for label, tail in [
 ]:
     check("signoff cut/" + label, clean_email_body("%s\n\n%s" % (BODY, tail)), BODY)
 
+# ------------------------------------------- closings the case rule did not reach (#132 follow-up)
+# These were cut before #132 and are not now: `warmest` is not in the alternation, `and regards`
+# is not one of its continuations, and `[A-Z]` is ASCII, so a name in any other script reads as a
+# sentence. Each leaves the signature block in the body that the sign-off rule exists to remove.
+for label, tail in [
+    ("thanks and regards", "Thanks and regards,\nAnna"),
+    ("thanks & regards", "Thanks & Regards,\nAnna"),
+    ("warmest regards", "Warmest regards,\nAnna"),
+    ("warmest wishes", "Warmest wishes,"),
+    ("non-ascii name", "Regards, Łukasz"),
+    ("non-ascii name, accented", "Thanks, José"),
+    ("cyrillic name", "Regards, Дмитрий"),
+]:
+    check("signoff cut/" + label, clean_email_body("%s\n\n%s" % (BODY, tail)), BODY)
+
+# ...and the wider closing must not swallow a sentence that merely starts the same way
+for label, body in [
+    ("and + sentence", "Hi,\n\nPlease refund 4411.\nThanks and the team will confirm it today."),
+    ("warmest + sentence", "Hi,\n\nThe room is cold.\nWarmest setting still reads 18 degrees."),
+]:
+    check("signoff kept/" + label, clean_email_body(body), body)
+
 
 # ------------------------------------------------- the word, without the disclaimer
 # `confidential` was a bare substring of `_DISCLAIMER`, so any sentence that merely

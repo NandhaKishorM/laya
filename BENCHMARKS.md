@@ -9,7 +9,19 @@ Every checkpoint answered **byte-identical questions** in each run (fixed seed).
 | Applications | the seven workflow themes + the datasets where Jev numbers exist, all three checkpoints (laya 0.2.1, CPU, 400 cases per task, seed 13, 2026-09-19) | `research/results/app_benchmark_results.json` |
 
 
-**Calibration columns in the CPU sweep predate the temperature clamp.** The 51-language ECE and mean-confidence figures were produced before #42 clamped temperatures to `[0.5, 5]`, so today's package reports different confidence for the affected buckets (`choice:11+` is now served at 0.5, not 0.1006). Accuracy columns are unaffected. A re-run with the current package is tracked in #208.
+**Calibration columns in the CPU sweep predate the temperature clamp.** The 51-language ECE and mean-confidence figures were produced before #42 clamped temperatures to `[0.5, 5]`, so today's package reports different confidence for the affected buckets. Accuracy columns are unaffected, because a temperature-scaled softmax has the same argmax at every positive temperature.
+
+The same 51 languages and 5,100 cases have now been re-run with 0.3.7 in both regimes (`research/results/cpu_51_language_sweep_clamped.json`, [#208](https://github.com/NandhaKishorM/laya/issues/208)). Macro accuracy reproduces at **0.2269** exactly, and macro ECE moves **0.7331 → 0.5709**:
+
+| | committed | re-run, raw temperatures | re-run, as served |
+|---|---|---|---|
+| macro accuracy | 0.2269 | 0.2269 | 0.2269 |
+| macro ECE | 0.7331 | **0.7331** | 0.5709 |
+| macro F1 | 0.2053 | 0.2053 | 0.2053 |
+| mean confidence, `en` | 0.9989 | **0.9989** | 0.9582 |
+| ECE, `en` | 0.1789 | **0.1789** | 0.1382 |
+
+The raw-temperature column reproduces the committed file, so the only variable left is the clamp. `choice:11+` is the sole bucket it moves, and every case in this sweep is a 20-option question, so the clamp applies to all 5,100 — and lowers ECE in all 51 languages. `acc_at_50_coverage` is the one rank-quality column that uses the confidence values: macro 0.3004 → 0.3020, and `en` 0.94 → 0.98, so the flatter distribution selects a slightly better half rather than a worse one.
 
 ---
 

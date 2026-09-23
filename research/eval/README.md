@@ -176,3 +176,25 @@ not just against this harness's own arithmetic.
   binned differently. It now matches `laya.common.ece_score`,
   `research/scripts/bench_local.py` and `research/scripts/build_benchmark_nb.py`, and
   `test_laya_eval.py` asserts that agreement.
+
+### The temperature clamp, measured both ways
+
+`research/results/cpu_51_language_sweep_clamped.json` carries the same re-run twice, once per
+regime, against the committed columns. Macro accuracy reproduces the committed file exactly
+and macro ECE is the only macro figure that moves:
+
+| | committed | `--unclamped` | default |
+|---|---|---|---|
+| `macro_accuracy` | 0.2269 | **0.2269** | 0.2269 |
+| `macro_ece` | 0.7331 | **0.7331** | 0.5709 |
+| `macro_f1` | 0.2053 | **0.2053** | 0.2053 |
+
+Per language, the unclamped run agrees with the committed file on `accuracy` and `macro_f1`
+in **51/51**, on `ece` in **48/51** and on `mean_confidence` in **49/51**. The handful that
+differ do so by `0.0001`, the last stored digit: the committed run used torch 2.8.0 and this
+one 2.14.0. The clamped run differs from the committed file on `ece` and `mean_confidence` in
+**51/51**, every one of them lower, because it is the only column the clamp can move.
+
+`accuracy`, `macro_f1` and `n` are identical in all three columns by construction: scaling
+logits by any positive temperature does not change the argmax. That is why a re-run can settle
+the calibration question without reopening the accuracy numbers.

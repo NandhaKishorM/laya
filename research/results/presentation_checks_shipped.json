@@ -1,0 +1,121 @@
+{
+ "about": "research/eval/presentation_checks.py on the shipped checkpoints; the thresholds in that file were set from the leave_one_out ranges below",
+ "revision": "convaiinnovations/laya@1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+ "environment": {
+  "device": "cpu",
+  "dtype": "float32",
+  "torch": "2.11.0",
+  "transformers": "5.17.0",
+  "python": "3.11.9"
+ },
+ "english": {
+  "config": {
+   "model": "convaiinnovations/laya",
+   "subfolder": null,
+   "device": "cpu",
+   "states": 10,
+   "instructions": "How urgent is this request?",
+   "identical_texts": ["moderate", "a request"],
+   "identical_ks": [3, 4, 5],
+   "levels": ["Not urgent", "Soon", "Work is blocked"],
+   "laya_version": "0.3.7"
+  },
+  "parity_max_abs_diff": 4.9224502247733476e-05,
+  "checks": {
+   "score_slot0_identical": {
+    "metric": 0.6638,
+    "threshold": -0.2,
+    "passed": true,
+    "leave_one_out": [0.5203, 0.7405],
+    "per_state": [0.5923, 0.656, 0.222, 1.9554, -0.0263, 0.4189, 1.0751, 0.7183, 0.828, 0.1986],
+    "per_config": {
+     "moderate/K=3": 0.0981,
+     "moderate/K=4": 0.4054,
+     "moderate/K=5": 0.8496,
+     "a request/K=3": 0.2079,
+     "a request/K=4": 0.7411,
+     "a request/K=5": 1.6808
+    },
+    "per_slot_centred": {
+     "moderate/K=3": [0.0981, 0.0789, -0.1769],
+     "moderate/K=4": [0.4054, 0.284, -0.2765, -0.4129],
+     "moderate/K=5": [0.8496, 0.6907, 0.0293, -0.5735, -0.9963],
+     "a request/K=3": [0.2079, -0.2148, 0.0069],
+     "a request/K=4": [0.7411, 0.6621, -0.73, -0.6732],
+     "a request/K=5": [1.6808, 1.4661, 0.1138, -1.3483, -1.9125]
+    }
+   },
+   "score_first_slot_permuted": {
+    "metric": 0.2167,
+    "threshold": 0.15,
+    "passed": true,
+    "leave_one_out": [0.2037, 0.2407],
+    "decisions": 60,
+    "per_state": [0.3333, 0.0, 0.3333, 0.3333, 0.3333, 0.3333, 0.1667, 0.3333, 0.0, 0.0],
+    "argmax_by_slot": [13, 18, 29],
+    "picks_by_label": {
+     "Not urgent": 34,
+     "Soon": 6,
+     "Work is blocked": 20
+    },
+    "order_invariant_states": 5
+   }
+  },
+  "passed": true
+ },
+ "multilingual": {
+  "config": {
+   "model": "convaiinnovations/laya",
+   "subfolder": "multilingual",
+   "device": "cpu",
+   "states": 10,
+   "instructions": "How urgent is this request?",
+   "identical_texts": ["moderate", "a request"],
+   "identical_ks": [3, 4, 5],
+   "levels": ["Not urgent", "Soon", "Work is blocked"],
+   "laya_version": "0.3.7"
+  },
+  "parity_max_abs_diff": 4.97927037618473e-05,
+  "checks": {
+   "score_slot0_identical": {
+    "metric": -0.4917,
+    "threshold": -0.2,
+    "passed": false,
+    "leave_one_out": [-0.563, -0.4253],
+    "per_state": [-0.2235, -0.434, -0.6344, -0.2102, -1.0894, -0.9533, 0.1498, -0.2656, -0.4718, -0.7846],
+    "per_config": {
+     "moderate/K=3": -0.7506,
+     "moderate/K=4": -0.5224,
+     "moderate/K=5": -0.2548,
+     "a request/K=3": -0.5806,
+     "a request/K=4": -0.4701,
+     "a request/K=5": -0.3717
+    },
+    "per_slot_centred": {
+     "moderate/K=3": [-0.7506, 0.7242, 0.0263],
+     "moderate/K=4": [-0.5224, 1.0311, 0.151, -0.6598],
+     "moderate/K=5": [-0.2548, 1.0529, 0.3262, -0.4503, -0.6739],
+     "a request/K=3": [-0.5806, 0.5528, 0.0278],
+     "a request/K=4": [-0.4701, 0.5605, 0.1682, -0.2586],
+     "a request/K=5": [-0.3717, 0.4884, 0.2081, -0.0723, -0.2525]
+    }
+   },
+   "score_first_slot_permuted": {
+    "metric": 0.0167,
+    "threshold": 0.15,
+    "passed": false,
+    "leave_one_out": [0.0, 0.0185],
+    "decisions": 60,
+    "per_state": [0.0, 0.0, 0.0, 0.1667, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "argmax_by_slot": [1, 28, 31],
+    "picks_by_label": {
+     "Not urgent": 19,
+     "Soon": 11,
+     "Work is blocked": 30
+    },
+    "order_invariant_states": 0
+   }
+  },
+  "passed": false
+ }
+}

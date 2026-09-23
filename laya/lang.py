@@ -64,7 +64,13 @@ _STOP = {
            "merci", "bonjour", "jour", "jours", "mois", "fois", "quand", "comment", "pourquoi",
            "alors", "donc"},
     "de": {"der", "die", "das", "und", "ist", "ein", "eine", "den", "dem", "nicht", "mit", "für",
-           "auf", "von", "zu", "sich", "auch", "werden", "wurde", "haben", "sind", "oder", "aber"},
+           "auf", "von", "zu", "sich", "auch", "werden", "wurde", "haben", "sind", "oder", "aber",
+           "ich", "wir", "mir", "mich", "dir", "dich", "uns", "mein", "meine", "meinen",
+           "meinem", "meiner", "diese", "dieser", "diesen", "dieses", "einen", "einem", "einer",
+           "wie", "wo", "wann", "welche", "im", "zum", "zur", "aus", "bei", "nach", "noch", "bitte",
+           "heute", "jetzt", "kann", "kannst", "habe", "gibt", "wird",
+           # shared with English on purpose: counted for English alone, they outvoted short German
+           "in", "was"},
     "es": {"el", "los", "las", "que", "por", "con", "para", "una", "es", "se", "del", "como",
            "pero", "son", "está", "este", "esta", "todo", "más", "muy", "hay", "sus",
            # `de`/`en` are Spanish too, but they are common English tokens as well (`de facto`,
@@ -198,7 +204,18 @@ def _iter_text(state: Union[str, dict, list, None], _depth: int = 0) -> List[str
 
 def state_text(state: Union[str, dict, list, None], max_chars: int = 4000) -> str:
     """Flatten a state into the text used for detection (keys are ignored: they are usually English)."""
-    return " ".join(_iter_text(state))[:max_chars]
+    parts: List[str] = []
+    budget = max_chars
+    for leaf in _iter_text(state):
+        if budget <= 0:
+            break
+        if len(leaf) > budget:
+            parts.append(leaf[:budget])
+            break
+        parts.append(leaf)
+        # Account for the joining space without materializing the full text first.
+        budget -= len(leaf) + 1
+    return " ".join(parts)[:max_chars]
 
 
 def detect_script(text: str) -> str:

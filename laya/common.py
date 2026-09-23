@@ -163,11 +163,35 @@ class DecisionModel(nn.Module):
         return logits, act_logits
 
 
+def _apply_rope_config(ecfg) -> None:
+    """Carry transformers>=5 per-layer RoPE settings over to the attributes 4.x reads.
+
+    A checkpoint re-saved by transformers 5 stores RoPE as
+    `rope_parameters = {"full_attention": {"rope_theta": ...}, "sliding_attention": {...}}`.
+    transformers 4.x does not know that key, so it keeps its own defaults (global 160000,
+    local 10000) and any checkpoint whose sliding-attention theta differs silently runs the
+    wrong RoPE base -- mmBERT is exactly that case, both of its thetas are 160000. Map the
+    values onto `global_rope_theta` / `local_rope_theta`, which 4.x does read. On
+    transformers 5 this is a no-op beyond re-setting the same numbers.
+    """
+    rope = getattr(ecfg, "rope_parameters", None)
+    if not isinstance(rope, dict):
+        return
+    flat = rope.get("rope_theta")
+    for layer_type, attr in (("full_attention", "global_rope_theta"),
+                             ("sliding_attention", "local_rope_theta")):
+        params = rope.get(layer_type)
+        theta = params.get("rope_theta") if isinstance(params, dict) else flat
+        if theta is not None and hasattr(ecfg, attr):
+            setattr(ecfg, attr, float(theta))
+
+
 def build_model(cfg: Dict, encoder_dir: Optional[str] = None, pretrained: bool = True) -> DecisionModel:
     from transformers import AutoConfig, AutoModel
 
     if not pretrained or (encoder_dir and os.path.exists(encoder_dir)):
         ecfg = AutoConfig.from_pretrained(encoder_dir or cfg["encoder"])
+        _apply_rope_config(ecfg)
         enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
     else:
         enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")
@@ -291,6 +315,13 @@ def collate_items(batch, pad_id: int):
         mpos[i, :k] = torch.tensor(it["markers"])
         mmask[i, :k] = True
         if has_target and "target" in it:
+            if len(it["target"]) > kmax:
+                # Otherwise this lands as "The expanded size of the tensor (k) must match the
+                # existing size (kmax)" from inside the assignment, which says nothing about the
+                # actual mistake: a target with more entries than the item has options.
+                raise ValueError(
+                    "collate_items: item %d has %d target entries but only %d marker positions; "
+                    "a target needs one entry per option" % (i, len(it["target"]), kmax))
             target[i, : len(it["target"])] = torch.tensor(it["target"], dtype=torch.float32)
 
     res = {

@@ -2,7 +2,8 @@
 
 `snapshot_download` lays snapshots out as symlinks into a shared `blobs/` store, so opening
 the snapshot file for writing truncates the shared blob. This test builds that exact layout
-and asserts the blob survives.
+and asserts the blob survives and the snapshot is swapped in atomically, with no temporary
+file left behind.
 """
 import os
 import shutil
@@ -46,6 +47,10 @@ check("blob/is untouched", open(blob).read(), ORIGINAL)
 check("snapshot/is now a regular file", os.path.islink(link), False)
 check("snapshot/carries the patch", '"PreTrainedTokenizerFast"' in open(link).read(), True)
 check("snapshot/drops backend+is_local as intended", '"backend": "x"' not in open(link).read(), True)
+check("snapshot/no temporary file left behind",
+      [n for n in os.listdir(snap_dir) if n.startswith(".tokenizer_config.")], [])
+check("snapshot/preserves the file mode",
+      os.stat(link).st_mode & 0o777, os.stat(blob).st_mode & 0o777)
 
 # a second call is a no-op and must not disturb anything either
 _fix_tokenizer_config(os.path.dirname(snap_dir))
@@ -66,6 +71,34 @@ check(
     True,
 )
 check("bad-json/file left as written", open(bad_file).read(), "{ not json")
+
+# if the atomic swap fails, the temp file must be cleaned up and the original left intact
+fail_snap = os.path.join(root, "fail", "tokenizer")
+os.makedirs(fail_snap)
+fail_link = os.path.join(fail_snap, "tokenizer_config.json")
+os.symlink(blob, fail_link)
+
+real_replace = os.replace
+
+
+def _boom(*args, **kwargs):
+    raise OSError("replace failed")
+
+
+os.replace = _boom
+try:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _fix_tokenizer_config(os.path.dirname(fail_snap))
+finally:
+    os.replace = real_replace
+
+check("replace-failure/warns instead of raising",
+      any(issubclass(w.category, RuntimeWarning) for w in caught), True)
+check("replace-failure/no temp file left behind",
+      [n for n in os.listdir(fail_snap) if n.startswith(".tokenizer_config.")], [])
+check("replace-failure/original symlink intact", os.path.islink(fail_link), True)
+check("replace-failure/blob untouched", open(blob).read(), ORIGINAL)
 
 shutil.rmtree(root, ignore_errors=True)
 

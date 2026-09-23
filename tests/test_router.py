@@ -565,9 +565,14 @@ sentinel = _Stub("already-built")
 ra.attach("english", sentinel)
 check("attach/registers under the name", ra._agents["english"], sentinel)
 check("attach/counts as resident", "english" in ra.loaded, True)
-check("attach/raises max_loaded to hold it", ra.max_loaded >= 1, True)
+# `max_loaded` starts at `max(1, max_loaded)`, so one attach to a cap-1 router cannot
+# move it and `ra.max_loaded >= 1` held before `attach` was ever called. The cap only
+# rises on the attach that would not otherwise fit.
+check("attach/first attach leaves the cap alone", ra.max_loaded, 1)
+ra.attach("multilingual", _Stub("second"))
+check("attach/raises max_loaded to hold the extra one", ra.max_loaded, 2)
+ra.unload("multilingual")
 # attaching then loading another must not evict the attached one
-ra.max_loaded = max(ra.max_loaded, 2)
 _load_stub(ra, "multilingual")
 check("attach/survives a later load", sorted(ra.loaded), ["english", "multilingual"])
 check("attach/still the same object", ra._agents["english"] is sentinel, True)

@@ -243,8 +243,8 @@ check_true("good/choice from a list",
 check("good/choice probabilities sum", round(sum(out["answers"]["choice"]["probabilities"].values()), 3), 1.0)
 check_true("good/score is in range", 0.0 <= out["answers"]["score"]["score"] <= 2.0,
            str(out["answers"]["score"]))
-check_true("good/score legend", out["answers"]["score"]["legend"],
-           {"0": "no pressure", "1": "soon", "2": "blocking"})
+check("good/score legend", out["answers"]["score"]["legend"],
+      {"0": "no pressure", "1": "soon", "2": "blocking"})
 check_true("good/noul is a probability", 0.0 <= out["answers"]["noul"]["noul"] <= 1.0,
            str(out["answers"]["noul"]))
 check_true("good/noul with criteria is a probability",

@@ -305,6 +305,14 @@ class Router:
                 # because no stopword list here covers it.
                 reason = ("Latin script, language not identified but %.0f%% non-English letters; "
                           "not safe for the English checkpoint" % (100 * float(det["diacritic_rate"])))
+        elif det["language_undecided"]:
+            # Nothing identifies the language: too short, or only content words ("Quero cancelar",
+            # "Esqueci minha senha"). That is no evidence of English either, so it takes the same
+            # `default` as a state with no letters. A deployment that serves mostly non-English
+            # traffic sets `Router(default="multilingual")`; the stock default keeps it English.
+            key = self.default
+            reason = ("Latin script, language not identified and no non-English letters; "
+                      "using default (%s)" % key)
         else:
             key = "english"
             reason = "English Latin text"

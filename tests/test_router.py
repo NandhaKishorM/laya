@@ -224,6 +224,23 @@ check("route/english still english",
       _r_lat.route("Please refund the duplicate charge on invoice 4411 today.").model, "english")
 check("route/short english still english", _r_lat.route("refund me").model, "english")
 
+# Undecided Latin text follows `default`, as a state with no letters already did. Short messages made
+# only of content words carry nothing that names their language, and hard-coding English for them
+# sent every short Portuguese message to the checkpoint that is 0.97 confident at 0.47 accuracy on
+# `pt`, whatever the router was configured with.
+_r_ml = Router(default="multilingual")
+for text in ["Quero cancelar", "Esqueci minha senha", "Fui cobrado duas vezes",
+             "Produto veio quebrado, quero trocar", "refund me"]:
+    check("route/undecided follows default " + text[:24], _r_ml.route(text).model, "multilingual")
+    check("route/undecided stock default " + text[:24], _r_lat.route(text).model, "english")
+check("route/undecided reason names the default",
+      "using default (multilingual)" in _r_ml.route("Esqueci minha senha").reason, True)
+# identified English is not undecided, so a non-English default leaves it alone
+for text in ["Please refund the duplicate charge", "Please refund the duplicate charge on invoice 4411 today."]:
+    check("route/identified english ignores default " + text[:24], _r_ml.route(text).model, "english")
+check("route/english reason unchanged",
+      _r_lat.route("Please refund the duplicate charge on invoice 4411 today.").reason, "English Latin text")
+
 
 # --------------------------------------------------------------------- plain-ASCII Romance (#172)
 # A state that lost its accents carries no diacritic rate for the non-English signal to read, and

@@ -123,6 +123,14 @@ router.route({"body": "Der Kunde wurde zweimal belastet"}, questions).reason
 # "Latin script but language looks like 'de', not English"
 ```
 
+Very short Latin-script text often carries nothing that identifies its language (`"Quero cancelar"`, `"Esqueci minha senha"`). Such text goes to `default`, which is `"english"` unless you change it. If most of your traffic is not English, set:
+
+```python
+router = Router(default="multilingual")
+router.route({"body": "Esqueci minha senha"}).model                 # -> multilingual
+router.route({"body": "Please refund the duplicate charge"}).model  # -> english
+```
+
 ### Why Route: The Evidence
 
 On a shared benchmark (17,416 questions, one T4 GPU, identical questions per model):

@@ -473,6 +473,9 @@ for text in ["trage diesen termin in meinen kalender ein",
     check("route/ascii german " + text, _r_lat.route(text).model, "multilingual")
 check("route/english control for #54",
       _r_lat.route("I would like to book a flight to Berlin tomorrow").model, "english")
+# German words that Spanish (`es`) or French (`du`) also claim would stop naming those languages
+check("latin_lang/spanish es stays evidence", guess_latin_language("que hora es en australia"), "es")
+check("latin_lang/french du stays evidence", guess_latin_language("baisse le volume du haut-parleur"), "fr")
 
 
 # --------------------------------------------------------------------- temperature clamp (#35)

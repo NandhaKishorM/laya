@@ -136,11 +136,11 @@ class DecisionModel(nn.Module):
         return logits, act_logits
 
 
-def build_model(cfg: Dict, encoder_dir: Optional[str] = None) -> DecisionModel:
+def build_model(cfg: Dict, encoder_dir: Optional[str] = None, pretrained: bool = True) -> DecisionModel:
     from transformers import AutoConfig, AutoModel
 
-    if encoder_dir and os.path.exists(encoder_dir):
-        ecfg = AutoConfig.from_pretrained(encoder_dir)
+    if not pretrained or (encoder_dir and os.path.exists(encoder_dir)):
+        ecfg = AutoConfig.from_pretrained(encoder_dir or cfg["encoder"])
         enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
     else:
         enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")

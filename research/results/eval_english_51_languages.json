@@ -1,0 +1,493 @@
+{
+ "cases_note": "per-case records omitted from this file to keep the diff reviewable; regenerate with research/eval/laya_eval.py --langs all --out <path>",
+ "config": {
+  "dataset": "mteb/amazon_massive_intent",
+  "device": "cpu",
+  "head_max_len": 192,
+  "instructions": "What is the user asking for in `utterance`?",
+  "laya_version": "0.3.6",
+  "max_len": 512,
+  "model": "convaiinnovations/laya",
+  "n_opts": 20,
+  "per_lang": 100,
+  "seed": 13,
+  "split": "test",
+  "subfolder": null,
+  "temperatures": {
+   "choice:11+": 0.5,
+   "choice:2": 1.9063563346862793,
+   "choice:3-5": 1.7601518630981445,
+   "choice:6-10": 1.0000158548355103,
+   "noul:2": 1.983399510383606,
+   "score:3-5": 1.2514300346374512
+  }
+ },
+ "report": {
+  "af": {
+   "acc_at_50_coverage": 0.42,
+   "accuracy": 0.29,
+   "ece": 0.5588,
+   "macro_f1": 0.2874,
+   "mean_confidence": 0.8488,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "am": {
+   "acc_at_50_coverage": 0.12,
+   "accuracy": 0.12,
+   "ece": 0.6804,
+   "macro_f1": 0.1122,
+   "mean_confidence": 0.7873,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ar": {
+   "acc_at_50_coverage": 0.12,
+   "accuracy": 0.11,
+   "ece": 0.5795,
+   "macro_f1": 0.093,
+   "mean_confidence": 0.6833,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "az": {
+   "acc_at_50_coverage": 0.14,
+   "accuracy": 0.1,
+   "ece": 0.5983,
+   "macro_f1": 0.0629,
+   "mean_confidence": 0.6983,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "bn": {
+   "acc_at_50_coverage": 0.12,
+   "accuracy": 0.08,
+   "ece": 0.6267,
+   "macro_f1": 0.056,
+   "mean_confidence": 0.7067,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "cy": {
+   "acc_at_50_coverage": 0.14,
+   "accuracy": 0.12,
+   "ece": 0.6452,
+   "macro_f1": 0.0906,
+   "mean_confidence": 0.7652,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "da": {
+   "acc_at_50_coverage": 0.52,
+   "accuracy": 0.35,
+   "ece": 0.526,
+   "macro_f1": 0.3082,
+   "mean_confidence": 0.876,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "de": {
+   "acc_at_50_coverage": 0.68,
+   "accuracy": 0.42,
+   "ece": 0.452,
+   "macro_f1": 0.387,
+   "mean_confidence": 0.872,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "el": {
+   "acc_at_50_coverage": 0.2,
+   "accuracy": 0.13,
+   "ece": 0.6789,
+   "macro_f1": 0.1,
+   "mean_confidence": 0.8089,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "en": {
+   "acc_at_50_coverage": 0.98,
+   "accuracy": 0.82,
+   "ece": 0.1382,
+   "macro_f1": 0.7876,
+   "mean_confidence": 0.9582,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "es": {
+   "acc_at_50_coverage": 0.62,
+   "accuracy": 0.51,
+   "ece": 0.4225,
+   "macro_f1": 0.4767,
+   "mean_confidence": 0.9245,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "fa": {
+   "acc_at_50_coverage": 0.16,
+   "accuracy": 0.14,
+   "ece": 0.6331,
+   "macro_f1": 0.1197,
+   "mean_confidence": 0.7731,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "fi": {
+   "acc_at_50_coverage": 0.16,
+   "accuracy": 0.13,
+   "ece": 0.7189,
+   "macro_f1": 0.1213,
+   "mean_confidence": 0.8489,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "fr": {
+   "acc_at_50_coverage": 0.78,
+   "accuracy": 0.59,
+   "ece": 0.2995,
+   "macro_f1": 0.5822,
+   "mean_confidence": 0.8895,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "he": {
+   "acc_at_50_coverage": 0.02,
+   "accuracy": 0.06,
+   "ece": 0.7379,
+   "macro_f1": 0.039,
+   "mean_confidence": 0.7842,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "hi": {
+   "acc_at_50_coverage": 0.08,
+   "accuracy": 0.1,
+   "ece": 0.6416,
+   "macro_f1": 0.0758,
+   "mean_confidence": 0.7416,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "hu": {
+   "acc_at_50_coverage": 0.06,
+   "accuracy": 0.09,
+   "ece": 0.6783,
+   "macro_f1": 0.0813,
+   "mean_confidence": 0.7683,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "hy": {
+   "acc_at_50_coverage": 0.04,
+   "accuracy": 0.05,
+   "ece": 0.5709,
+   "macro_f1": 0.0355,
+   "mean_confidence": 0.6209,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "id": {
+   "acc_at_50_coverage": 0.48,
+   "accuracy": 0.36,
+   "ece": 0.487,
+   "macro_f1": 0.3283,
+   "mean_confidence": 0.8304,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "is": {
+   "acc_at_50_coverage": 0.16,
+   "accuracy": 0.11,
+   "ece": 0.6641,
+   "macro_f1": 0.0893,
+   "mean_confidence": 0.7741,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "it": {
+   "acc_at_50_coverage": 0.52,
+   "accuracy": 0.34,
+   "ece": 0.5156,
+   "macro_f1": 0.3101,
+   "mean_confidence": 0.8534,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ja": {
+   "acc_at_50_coverage": 0.76,
+   "accuracy": 0.53,
+   "ece": 0.3657,
+   "macro_f1": 0.4942,
+   "mean_confidence": 0.8957,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "jv": {
+   "acc_at_50_coverage": 0.16,
+   "accuracy": 0.16,
+   "ece": 0.67,
+   "macro_f1": 0.1537,
+   "mean_confidence": 0.83,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ka": {
+   "acc_at_50_coverage": 0.1,
+   "accuracy": 0.09,
+   "ece": 0.6102,
+   "macro_f1": 0.0742,
+   "mean_confidence": 0.7002,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "km": {
+   "acc_at_50_coverage": 0.0,
+   "accuracy": 0.0,
+   "ece": 0.7051,
+   "macro_f1": 0.0,
+   "mean_confidence": 0.7051,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "kn": {
+   "acc_at_50_coverage": 0.08,
+   "accuracy": 0.11,
+   "ece": 0.5903,
+   "macro_f1": 0.0913,
+   "mean_confidence": 0.695,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ko": {
+   "acc_at_50_coverage": 0.14,
+   "accuracy": 0.11,
+   "ece": 0.6804,
+   "macro_f1": 0.0943,
+   "mean_confidence": 0.7904,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "lv": {
+   "acc_at_50_coverage": 0.1,
+   "accuracy": 0.1,
+   "ece": 0.6659,
+   "macro_f1": 0.0786,
+   "mean_confidence": 0.7659,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ml": {
+   "acc_at_50_coverage": 0.1,
+   "accuracy": 0.07,
+   "ece": 0.601,
+   "macro_f1": 0.0503,
+   "mean_confidence": 0.671,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "mn": {
+   "acc_at_50_coverage": 0.14,
+   "accuracy": 0.13,
+   "ece": 0.6704,
+   "macro_f1": 0.1213,
+   "mean_confidence": 0.7977,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ms": {
+   "acc_at_50_coverage": 0.4,
+   "accuracy": 0.27,
+   "ece": 0.5064,
+   "macro_f1": 0.2372,
+   "mean_confidence": 0.7764,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "my": {
+   "acc_at_50_coverage": 0.08,
+   "accuracy": 0.06,
+   "ece": 0.5797,
+   "macro_f1": 0.0455,
+   "mean_confidence": 0.6397,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "nb": {
+   "acc_at_50_coverage": 0.52,
+   "accuracy": 0.33,
+   "ece": 0.5179,
+   "macro_f1": 0.3025,
+   "mean_confidence": 0.8479,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "nl": {
+   "acc_at_50_coverage": 0.56,
+   "accuracy": 0.39,
+   "ece": 0.5025,
+   "macro_f1": 0.3968,
+   "mean_confidence": 0.8831,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "pl": {
+   "acc_at_50_coverage": 0.36,
+   "accuracy": 0.24,
+   "ece": 0.5695,
+   "macro_f1": 0.2033,
+   "mean_confidence": 0.7951,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "pt": {
+   "acc_at_50_coverage": 0.66,
+   "accuracy": 0.47,
+   "ece": 0.4317,
+   "macro_f1": 0.4213,
+   "mean_confidence": 0.8894,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ro": {
+   "acc_at_50_coverage": 0.48,
+   "accuracy": 0.33,
+   "ece": 0.5499,
+   "macro_f1": 0.2976,
+   "mean_confidence": 0.8668,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ru": {
+   "acc_at_50_coverage": 0.42,
+   "accuracy": 0.31,
+   "ece": 0.5946,
+   "macro_f1": 0.3084,
+   "mean_confidence": 0.9046,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "sl": {
+   "acc_at_50_coverage": 0.26,
+   "accuracy": 0.2,
+   "ece": 0.5994,
+   "macro_f1": 0.1679,
+   "mean_confidence": 0.7994,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "sq": {
+   "acc_at_50_coverage": 0.28,
+   "accuracy": 0.21,
+   "ece": 0.6031,
+   "macro_f1": 0.1667,
+   "mean_confidence": 0.8131,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "sv": {
+   "acc_at_50_coverage": 0.5,
+   "accuracy": 0.38,
+   "ece": 0.4874,
+   "macro_f1": 0.3809,
+   "mean_confidence": 0.8501,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "sw": {
+   "acc_at_50_coverage": 0.14,
+   "accuracy": 0.13,
+   "ece": 0.6318,
+   "macro_f1": 0.1149,
+   "mean_confidence": 0.7511,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ta": {
+   "acc_at_50_coverage": 0.12,
+   "accuracy": 0.12,
+   "ece": 0.5541,
+   "macro_f1": 0.0971,
+   "mean_confidence": 0.6741,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "te": {
+   "acc_at_50_coverage": 0.06,
+   "accuracy": 0.09,
+   "ece": 0.6689,
+   "macro_f1": 0.0722,
+   "mean_confidence": 0.7568,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "th": {
+   "acc_at_50_coverage": 0.1,
+   "accuracy": 0.08,
+   "ece": 0.7179,
+   "macro_f1": 0.048,
+   "mean_confidence": 0.7979,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "tl": {
+   "acc_at_50_coverage": 0.46,
+   "accuracy": 0.29,
+   "ece": 0.5121,
+   "macro_f1": 0.249,
+   "mean_confidence": 0.8021,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "tr": {
+   "acc_at_50_coverage": 0.2,
+   "accuracy": 0.14,
+   "ece": 0.5874,
+   "macro_f1": 0.0967,
+   "mean_confidence": 0.7274,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "ur": {
+   "acc_at_50_coverage": 0.08,
+   "accuracy": 0.07,
+   "ece": 0.6428,
+   "macro_f1": 0.0645,
+   "mean_confidence": 0.7128,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "vi": {
+   "acc_at_50_coverage": 0.06,
+   "accuracy": 0.06,
+   "ece": 0.69,
+   "macro_f1": 0.0498,
+   "mean_confidence": 0.75,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "zh-CN": {
+   "acc_at_50_coverage": 0.84,
+   "accuracy": 0.62,
+   "ece": 0.3198,
+   "macro_f1": 0.6175,
+   "mean_confidence": 0.9244,
+   "n": 100,
+   "temperature": 0.5
+  },
+  "zh-TW": {
+   "acc_at_50_coverage": 0.72,
+   "accuracy": 0.46,
+   "ece": 0.4344,
+   "macro_f1": 0.4294,
+   "mean_confidence": 0.8944,
+   "n": 100,
+   "temperature": 0.5
+  }
+ },
+ "summary": {
+  "languages": 51,
+  "macro_accuracy": 0.2269,
+  "macro_ece": 0.5709,
+  "macro_f1": 0.2053,
+  "seconds": 2017.8
+ }
+}

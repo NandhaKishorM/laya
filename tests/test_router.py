@@ -216,6 +216,22 @@ cases = [
      Q_GENERIC, {}, "multilingual"),
     ("english with greek symbols", {"request": "Compute the mean μ and variance σ of X, then P(|X-μ| > 2σ)."},
      Q_GENERIC, {}, "english"),
+    # English prose that names someone in their own script: the name is not the request, and a
+    # capitalised run, a lone symbol and a pronunciation are all annotation rather than content.
+    ("english prose, russian name",
+     {"body": "Anton Pavlovich Chekhov (Russian: Антон Павлович Чехов) was a playwright."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, name with IPA",
+     {"body": "Vladimir Nabokov (Russian: Влади́мир Набо́ков [vlɐˈdʲimʲɪr nɐˈbokəf]) wrote Lolita "
+              "and taught literature at Cornell for more than a decade."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, greek name",
+     {"body": "Eleftherios Venizelos (Greek: Ελευθέριος Βενιζέλος) served as prime minister."},
+     Q_GENERIC, {}, "english"),
+    ("english prose, hebrew name",
+     {"body": "Amos Oz (Hebrew: עמוס עוז), born Amos Klausner, was an Israeli writer and professor "
+              "of literature at Ben-Gurion University of the Negev in Beersheba."},
+     Q_GENERIC, {}, "english"),
     ("german text", {"body": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung "
                              "fuer die Rechnung die nicht korrekt ist"}, Q_GENERIC, {}, "multilingual"),
     ("explicit model", {"body": "anything"}, Q_GENERIC, {"model": "multilingual"}, "multilingual"),

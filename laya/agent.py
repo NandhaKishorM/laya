@@ -25,7 +25,7 @@ from .common import (
     render_options,
     temp_bucket,
 )
-from .hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
+from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
 
 
 def _fix_tokenizer_config(path: str):
@@ -629,7 +629,7 @@ class Agent(HookRegistry):
             A list of per-state result dicts, each identical in shape to `system_one`'s output and
             aligned with `states` by index.
         """
-        active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self,
                              max_len=max_len, head_max_len=head_max_len)

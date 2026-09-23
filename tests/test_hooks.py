@@ -640,6 +640,81 @@ check("onnx/skip short-circuits",
       {"model": "cached"})
 
 
+# --------------------------------------------------------------- BaseHook
+from laya import BaseHook  # noqa: E402
+
+
+class OnlyEnd(BaseHook):
+    def __init__(self, log, tag):
+        self.log = log
+        self.tag = tag
+
+    def on_predict_end(self, ctx):
+        self.log.append(self.tag)
+
+
+log = []
+f = make_fake()
+f.add_hook(OnlyEnd(log, "end"))
+f.predict_batch(["s0"], QUESTIONS)
+check("BaseHook/overridden event fires", log, ["end"])
+
+f = make_fake()
+f.add_hook(BaseHook())  # every method is a no-op
+f.predict_batch(["s0"], QUESTIONS)
+check("BaseHook/no-op instance is harmless", f._forward_calls, [2])
+
+
+# --------------------------------------------------------------- process-wide defaults
+from laya import hooks as _hooks  # noqa: E402
+
+log = []
+_hooks.set_default_hooks(on_predict_end=lambda ctx: log.append("default"))
+try:
+    f = make_fake()
+    f.add_hook(Tag(log, "installed"))
+    f.predict_batch(["s0"], QUESTIONS, on_predict_end=lambda ctx: log.append("percall"))
+    check("defaults/run before installed and per-call", log, ["default", "installed", "percall"])
+finally:
+    _hooks.clear_default_hooks()
+check("defaults/clear empties the registry", _hooks.default_hooks(), [])
+
+log = []
+_hooks.add_default_hook(Tag(log, "a"))
+_hooks.add_default_hook(Tag(log, "b"))
+try:
+    f = make_fake()
+    f.predict_batch(["s0"], QUESTIONS)
+    check("defaults/add in order", log, ["a", "b"])
+finally:
+    _hooks.clear_default_hooks()
+
+
+class LifeDefaults(BaseHook):
+    def __init__(self):
+        self.events = []
+
+    def on_load(self, ctx):
+        self.events.append(("load", ctx.model))
+
+    def on_evict(self, ctx):
+        self.events.append(("evict", ctx.model))
+
+
+ld = LifeDefaults()
+_hooks.set_default_hooks(hooks=[ld])
+try:
+    _agent_mod.Agent = BuiltAgent
+    r = Router(max_loaded=1)
+    r.load("english")
+    r.load("multilingual")  # evicts english
+finally:
+    _agent_mod.Agent = real_agent
+    _hooks.clear_default_hooks()
+check("defaults/cover router lifecycle", ld.events,
+      [("load", "english"), ("evict", "english"), ("load", "multilingual")])
+
+
 # --------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f_ in FAIL:

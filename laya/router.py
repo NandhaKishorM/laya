@@ -34,7 +34,7 @@ import time
 from collections.abc import Sequence as SequenceABC
 from typing import Any, Dict, List, Optional, Sequence, Union
 
-from .hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
+from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
 from .lang import analyse
 
 # The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
@@ -252,7 +252,7 @@ class Router(HookRegistry):
             evicted = self._evict_locked()
         # Lifecycle hooks fire after the lock is released, so a hook can safely call the Router.
         self._dispatch_lifecycle("on_evict", evicted)
-        dispatch(self.hooks, "on_load",
+        dispatch(compose_hooks(self.hooks), "on_load",
                  PredictContext(states=[], questions={}, model=key, agent=agent, router=self),
                  raise_errors=self.hooks_raise, lock=self._hooks_lock)
         return agent
@@ -295,7 +295,7 @@ class Router(HookRegistry):
 
     def _dispatch_lifecycle(self, event: str, names: List[str]) -> None:
         for name in names:
-            dispatch(self.hooks, event,
+            dispatch(compose_hooks(self.hooks), event,
                      PredictContext(states=[], questions={}, model=name, router=self),
                      raise_errors=self.hooks_raise, lock=self._hooks_lock)
 
@@ -393,7 +393,7 @@ class Router(HookRegistry):
         """
         decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
-        active = list(self.hooks) + normalise_hooks(hooks)
+        active = compose_hooks(self.hooks, hooks)
         ctx = PredictContext(states=[state], questions=questions or {}, decision=decision, router=self)
         dispatch(active, "on_route", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
         return ctx.decision
@@ -506,7 +506,7 @@ class Router(HookRegistry):
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
-        active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
 
         # Per-call hooks apply to the whole call, including on_route inside route().

@@ -146,6 +146,31 @@ from laya.common import DecisionModel  # noqa: E402
 from laya.router import Router  # noqa: E402
 
 
+# `_to_internal` serialises non-string `instructions` with json.dumps. The default
+# `ensure_ascii=True` escaped non-ASCII to literal `\uXXXX`, which the tokenizer then
+# read as escape text: on the English checkpoint one German question answered noul=0.1652
+# as a dict and noul=0.2650 as the identical plain string. Every other text path keeps
+# its characters -- see the `criterion/non-ascii kept` case above.
+_internal = Agent._to_internal(
+    {"type": "noul", "instructions": {"frage": "Bittet um eine R\u00fcckerstattung?"},
+     "criteria": None})
+check("instructions/non-ascii kept as a dict",
+      _internal["ins"], '{"frage": "Bittet um eine R\u00fcckerstattung?"}')
+check_true("instructions/no escape sequences in the prompt",
+           "\\u" not in _internal["ins"], repr(_internal["ins"]))
+check("instructions/ascii is unchanged",
+      Agent._to_internal({"type": "noul", "instructions": {"asks": "for a refund"},
+                          "criteria": None})["ins"],
+      '{"asks": "for a refund"}')
+check("instructions/plain string is untouched",
+      Agent._to_internal({"type": "noul", "instructions": "Bittet der Kunde um eine "
+                          "R\u00fcckerstattung?", "criteria": None})["ins"],
+      "Bittet der Kunde um eine R\u00fcckerstattung?")
+check("instructions/non-string still renders as json",
+      Agent._to_internal({"type": "noul", "instructions": ["a", "b"],
+                          "criteria": None})["ins"], '["a", "b"]')
+
+
 class _FakeTok:
     """The tokenizer surface `build_sequence` uses, with predictable ids."""
     cls_token_id, sep_token_id, mask_token_id, pad_token_id = 0, 1, 4, 2

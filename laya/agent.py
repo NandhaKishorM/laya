@@ -312,7 +312,12 @@ class Agent:
             crit = {str(k).lower(): v for k, v in crit.items()}
         ins = qdef["instructions"]
         if not isinstance(ins, str):
-            ins = json.dumps(ins)
+            # `ensure_ascii=False`, matching `serialize_state` and `render_criterion` in
+            # common.py and the instructions path in shortlist.py. The default escaped
+            # non-ASCII to literal `\uXXXX`, which the tokenizer then read as escape text:
+            # on the English checkpoint one German question answered noul=0.1652 as a dict
+            # and noul=0.2650 as the identical plain string.
+            ins = json.dumps(ins, ensure_ascii=False)
         return {"t": t, "ins": ins, "crit": crit}
 
     @torch.no_grad()

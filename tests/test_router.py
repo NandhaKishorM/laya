@@ -126,6 +126,26 @@ check("state_text/keys ignored",
       analyse({"subject": "नमस्ते", "body": "ग्राहक से दो बार शुल्क लिया गया"})["is_english"], False)
 
 
+# --------------------------------------------------------------------- addresses are not words
+# `user@acme.com` split into words yields `com`, a Portuguese function word: two addresses in a short
+# English ticket named it Portuguese and sent it to the multilingual checkpoint.
+for label, state in [
+    ("two .com addresses", {"email": "a@b.com", "cc": "c@d.com", "subject": "Refund", "body": "Charged twice"}),
+    ("sender and recipient", {"from": "user@acme.com", "to": "help@acme.com", "body": "Refund my order"}),
+    (".com.br addresses", {"from": "john@acme.com.br", "cc": "mary@acme.com.br", "body": "Refund my order"}),
+    ("urls", "Refund my order, see https://shop.com/orders/4411 and www.shop.com/help"),
+]:
+    check("address/english stays english: " + label, is_english(state), True)
+    check("address/routes english: " + label, Router().route(state).model, "english")
+# ...while Portuguese keeps both its addresses' surroundings and its own `com`
+for label, text in [
+    ("email inside a request", "Quero cancelar, meu email é joao@empresa.com.br"),
+    ("`com` as a word", "Estou com problema com o boleto"),
+    ("url inside a request", "Não consigo acessar https://loja.com.br/minha-conta desde ontem"),
+]:
+    check("address/portuguese stays portuguese: " + label, guess_latin_language(text), "pt")
+
+
 # --------------------------------------------------------------------- workflow signatures
 check("profile/armenian", analyse("Հայերեն")["script_profile"], {"armenian": 1.0})
 check("profile/armenian mixed with Latin", analyse("Հայերեն abc")["non_latin_fraction"], 0.7)

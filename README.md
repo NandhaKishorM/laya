@@ -964,6 +964,7 @@ result["shortlist"]["intent"]["labels"]  # the top 20 labels sent to the model
 * **[laya-Ascend](https://github.com/zzhdbw/laya-Ascend)**: Laya on Huawei Ascend NPUs through `torch-npu`, with a CPU vs NPU benchmark (34x to 71x faster at batch size 1), a setup guide, and Snake and Tetris demos.
 * **[laya-apple](https://github.com/tc3oliver/laya-apple)**: a correctness-validated Laya runtime for Apple silicon that uses the MLX GPU and the Apple Neural Engine, with automatic routing and concurrent heterogeneous serving.
 * **[stuntd](https://github.com/bladedevoff/stuntd)**: runs Laya locally behind the Jev API (`POST /v1/systemone`, no key) and trains a head per decision on the frozen encoder from your own labelled rows, with a calibrated confidence threshold (a 12-label intent task: 89.5% zero-shot to 100% trained).
+* **[cbjev](https://github.com/tomek7667/cbjev)**: a GPL-3.0 runtime and fine-tunes of the Laya checkpoints that encode the state once per call instead of once per question (the state reads every question, questions never see each other; a one-question row is exactly Laya's input), with CUDA-graph replay and option-order voting. On one RTX 4090: 11 ms vs 76 ms for 10 questions over a 500-token document, typed-decisions 0.783, and a 0.2% answer-flip rate when options are reordered. It runs the Laya checkpoints unchanged too; weights at [0010101010-1/cbjev](https://huggingface.co/0010101010-1/cbjev).
 
 ---
 

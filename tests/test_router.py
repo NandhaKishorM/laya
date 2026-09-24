@@ -254,12 +254,51 @@ cases = [
     ("explicit task", {"body": "x"}, Q_GENERIC, {"task": "typed_decisions"}, "typed-decisions"),
     ("explicit lang en", {"body": "मुझसे दो बार"}, Q_GENERIC, {"lang": "en"}, "english"),
     ("explicit lang de", {"body": "hello there"}, Q_GENERIC, {"lang": "de"}, "multilingual"),
+    # A code that identifies nothing is not an instruction. `_english_from_code`
+    # reports that as None, but the caller used to take the truthy branch on it and
+    # route to multilingual -- so an unfilled form field or an absent JSON value
+    # pinned English text to the wrong checkpoint. These fall through to detection.
+    ("blank lang detects", {"body": "The customer was billed twice and wants a refund "
+                                    "for the invoice that is not correct"},
+     Q_GENERIC, {"lang": ""}, "english"),
+    ("whitespace lang detects", {"body": "The customer was billed twice and wants a refund "
+                                         "for the invoice that is not correct"},
+     Q_GENERIC, {"lang": "   "}, "english"),
+    ("blank lang still detects non-English", {"body": "Der Kunde wurde zweimal belastet und "
+                                                      "moechte eine Rueckerstattung fuer die "
+                                                      "Rechnung die nicht korrekt ist"},
+     Q_GENERIC, {"lang": ""}, "multilingual"),
+    # An unrecognised but non-empty code is still explicit: the caller said something.
+    ("unknown lang is still explicit", {"body": "hello there"}, Q_GENERIC,
+     {"lang": "zz"}, "multilingual"),
     ("td workflow, auto OFF", {"body": "I was charged twice"}, Q_TD, {}, "english"),
     ("empty state", {}, Q_GENERIC, {}, "english"),
     ("none state", None, Q_GENERIC, {}, "english"),
 ]
 for label, state, qs, kw, want in cases:
     check("route/" + label, r.route(state, qs, **kw)["model"], want)
+
+# A blank code must not be reported as an explicit instruction. The reason string is
+# what operators read to understand a routing decision, and "explicit lang=''" named a
+# hint the caller never gave.
+_EN = {"body": "The customer was billed twice and wants a refund for the invoice"}
+for blank in ("", "   ", "\t", "."):
+    d = r.route(_EN, Q_GENERIC, lang=blank)
+    check("route/blank lang %r is not reported as explicit" % blank,
+          "explicit" in d["reason"], False)
+check("route/real lang is still reported as explicit",
+      "explicit" in r.route(_EN, Q_GENERIC, lang="de")["reason"], True)
+
+# route_batch reads `lang` straight out of a caller-supplied dict, so it is the entry
+# point most likely to see an empty value.
+_batch = r.route_batch([
+    {"state": _EN, "questions": Q_GENERIC, "lang": ""},
+    {"state": _EN, "questions": Q_GENERIC, "lang": "de"},
+    {"state": _EN, "questions": Q_GENERIC},
+])
+check("route_batch/blank lang detects", _batch[0]["model"], "english")
+check("route_batch/real lang is honoured", _batch[1]["model"], "multilingual")
+check("route_batch/absent lang detects", _batch[2]["model"], "english")
 
 # auto task detection is opt-in
 r_auto = Router(auto_task_detection=True)

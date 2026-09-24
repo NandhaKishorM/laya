@@ -435,8 +435,18 @@ class Router(HookRegistry):
                                  reason="question ids match the %r typed-decisions workflow" % workflow,
                                  detection=None, workflow=workflow)
 
-        if lang is not None:
-            key = "english" if _english_from_code(lang) else "multilingual"
+        # `_english_from_code` returns None for a code that identifies nothing -- an
+        # empty or whitespace-only string, which is what an unfilled form field or an
+        # absent JSON value looks like by the time it arrives here (route_batch reads
+        # `lang` straight out of a caller-supplied dict). Testing `lang is not None`
+        # and then taking the truthy branch collapsed that None into "multilingual",
+        # so `lang=""` pinned English text to the multilingual checkpoint and reported
+        # reason="explicit lang=''" -- a non-hint presented as an explicit instruction.
+        # Branch on the resolution instead: a blank code is not an instruction, so it
+        # falls through to `lang_guess` and detection like any other absent hint.
+        explicit_english = _english_from_code(lang)
+        if explicit_english is not None:
+            key = "english" if explicit_english else "multilingual"
             return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
                                  detection=None, workflow=workflow)
 

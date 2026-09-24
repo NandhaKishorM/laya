@@ -205,6 +205,8 @@ class Agent(HookRegistry):
     # without it (for example a hand-constructed runtime in tests).
     amp_enabled = False
     mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
+    # The stock forward is also used by lightweight runtimes built with __new__ in tests.
+    _fast = None
 
     def __init__(
         self,
@@ -598,6 +600,13 @@ class Agent(HookRegistry):
         """Run the forward pass under autocast, degrading gracefully on OOM or unsupported autocast."""
         use_amp = self._amp_enabled_for(b["input_ids"].shape[0])
 
+        if self._fast is not None and b["input_ids"].shape[1] > self._fast.max_len:
+            raise ValueError(
+                "the CUDA fast path was built for max_len=%d; this request needs %d tokens. "
+                "Use max_len <= %d or load without fast=True."
+                % (self._fast.max_len, b["input_ids"].shape[1], self._fast.max_len)
+            )
+
         def run():
             # Recomputed inside run() so a fallback that disables amp (or moves to CPU) takes
             # effect on the retry. A disabled gate never enters torch.autocast at all.
@@ -617,10 +626,16 @@ class Agent(HookRegistry):
             low = str(e).lower()
             if self.device.type != "cpu" and ("memory" in low or "cuda" in low):
                 print("Warning: GPU memory exceeded during inference. Falling back to CPU...")
+                # FastLaya keeps copied CUDA weights and replaces model.forward.  Move
+                # the model first without that replacement, or the retry would still
+                # execute on the failed CUDA fast path.
+                self.deaccelerate()
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
                 self.amp_enabled = False
                 self.model.to(self.device)
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
                 return run()
             if use_amp and self.device.type in ("mps", "cpu"):
                 # Not every MPS/CPU build implements autocast for every op. Drop to full

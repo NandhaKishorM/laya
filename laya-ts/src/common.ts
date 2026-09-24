@@ -1,11 +1,17 @@
 import type { TokenizerLike } from "./tokenizer.js";
 export type QType = "choice" | "score" | "noul";
-export interface InternalQ { t: QType; ins: string; crit: unknown }
+export interface InternalQ { t: QType; ins: string; crit: unknown; labels?: { false: string; true: string } }
 /** Python `json.dumps(v, ensure_ascii=False)` replica: separators (", ", ": "),
 unicode raw, unknown types fall back to undefined (caller applies str()). */
 function pyJson(v: unknown): string | undefined {
   if (v === null) return "null";
-  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return JSON.stringify(v);
+  if (typeof v === "string" || typeof v === "boolean") return JSON.stringify(v);
+  if (typeof v === "number") {
+    if (Number.isNaN(v)) return "NaN";
+    if (v === Infinity) return "Infinity";
+    if (v === -Infinity) return "-Infinity";
+    return JSON.stringify(v);
+  }
   if (Array.isArray(v)) return `[${v.map((x) => pyJson(x) ?? "null").join(", ")}]`;
   if (typeof v === "object") {
     const proto = Object.getPrototypeOf(v);
@@ -36,10 +42,11 @@ export function renderOptions(q: InternalQ): string[] {
     return (q.crit as unknown[]).map((c, i) => `level ${i}: ${renderCriterion(c)}`);
   }
   const crit = (q.crit ?? {}) as Record<string, unknown>;
+  const labels = q.labels ?? { false: "false", true: "true" };
   const f = crit["false"], t = crit["true"];
   return [
-    "false: " + (f !== null && f !== undefined && f !== "" ? renderCriterion(f) : "no, the statement does not hold"),
-    "true: " + (t !== null && t !== undefined && t !== "" ? renderCriterion(t) : "yes, the statement holds"),
+    labels.false + ": " + (f !== null && f !== undefined && f !== "" ? renderCriterion(f) : "no, the statement does not hold"),
+    labels.true + ": " + (t !== null && t !== undefined && t !== "" ? renderCriterion(t) : "yes, the statement holds"),
   ];
 }
 export interface QuestionPrefix {
@@ -102,6 +109,7 @@ export function confidenceFromProbs(p: number[]): number {
 }
 export const TEMP_MIN = 0.5, TEMP_MAX = 5.0;
 export function clampTemperature(t: unknown): number {
+  if (t === null || t === undefined || t === "" || typeof t === "boolean") return 1.0;
   const f = typeof t === "number" ? t : Number(t);
   if (!Number.isFinite(f)) return 1.0;
   return Math.min(TEMP_MAX, Math.max(TEMP_MIN, f));

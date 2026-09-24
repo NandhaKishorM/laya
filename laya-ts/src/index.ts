@@ -22,7 +22,20 @@ export type { EmbedFn, ShortlistMeta } from "./shortlist.js";
 export { analyse, isEnglish, guessLatinLanguage, detectScript } from "./lang.js";
 export type { AnalyseResult, LatinProfile } from "./lang.js";
 export { cleanEmailBody, emailState } from "./email.js";
-export { PredictContext, HookRegistry, normaliseHooks, dispatch, aggregateUsage, HOOK_EVENTS } from "./hooks.js";
+export {
+  PredictContext,
+  HookRegistry,
+  BaseHook,
+  normaliseHooks,
+  dispatch,
+  aggregateUsage,
+  composeHooks,
+  defaultHooks,
+  setDefaultHooks,
+  addDefaultHook,
+  clearDefaultHooks,
+  HOOK_EVENTS,
+} from "./hooks.js";
 export type { Hook, HookEvent, HookArg, PredictHook, PredictHookArg } from "./hooks.js";
 export { triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions } from "./presets.js";
 export {

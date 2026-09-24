@@ -35,6 +35,7 @@ and touches no GPU -- which is what keeps the Nix ``pythonImportsCheck`` honest.
 import hmac
 import json
 import os
+from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional
 
 # The three checkpoint names the router understands; used to decide whether a
@@ -197,9 +198,19 @@ def create_app(router: Optional[Any] = None):
     # exists (module scope, TestClient startup, a preload script).
     gate: Optional[asyncio.Lock] = None
 
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        try:
+            yield
+        finally:
+            # TestClient, embedded ASGI apps, and process supervisors all need
+            # the executor to drain when the app stops.
+            pool.shutdown(wait=True, cancel_futures=True)
+
     app = FastAPI(
         title="laya-serve",
         summary="Laya System-1 decisions over the TypeSafe Jev /v1/systemone protocol",
+        lifespan=lifespan,
     )
 
     # Compared as bytes, not str. `hmac.compare_digest` raises TypeError when a str

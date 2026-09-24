@@ -4,6 +4,7 @@ import {
   HookRegistry,
   PredictContext,
   aggregateUsage,
+  composeHooks,
   dispatch,
   normaliseHooks,
   type HookArg,
@@ -215,14 +216,14 @@ export class Router extends HookRegistry {
     // Lifecycle hooks fire after the maps settle, so a hook can safely call the Router.
     for (const victim of evicted) {
       dispatch(
-        this.hooks,
+        composeHooks(this.hooks),
         "onEvict",
         new PredictContext({ states: [], questions: {}, model: victim, router: this }),
         { raiseErrors: this.hooksRaise },
       );
     }
     dispatch(
-      this.hooks,
+      composeHooks(this.hooks),
       "onLoad",
       new PredictContext({ states: [], questions: {}, model: key, agent, router: this }),
       { raiseErrors: this.hooksRaise },
@@ -308,7 +309,7 @@ export class Router extends HookRegistry {
   ): RouteDecision {
     const decision = this._route(state, questions, opts);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
-    const active = [...this.hooks, ...normaliseHooks(opts.hooks)];
+    const active = composeHooks(this.hooks, opts.hooks);
     const ctx = new PredictContext({
       states: [state],
       questions: (questions ?? {}) as Record<string, unknown>,
@@ -432,10 +433,7 @@ export class Router extends HookRegistry {
     questions: Record<string, QuestionDef>,
     opts: RouteOptions & PredictOptions = {},
   ): Promise<RoutedResult> {
-    const active = [
-      ...this.hooks,
-      ...normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd),
-    ];
+    const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
 
     // Per-call hooks apply to the whole call, including onRoute inside route().

@@ -195,7 +195,7 @@ export async function loadNodeBundle(
     await fs.mkdir(cache, { recursive: true });
     const token =
       opts?.token ?? (typeof process !== "undefined" ? (process as any).env?.["HF_TOKEN"] : undefined);
-    for (const f of ["rl_agent_config.json", "tokenizer.json", "encoder.onnx", "head.onnx"]) {
+    for (const f of ["rl_agent_config.json", "tokenizer.json", "tokenizer/tokenizer.json", "encoder.onnx", "head.onnx"]) {
       try {
         await fs.stat(path.join(cache, f));
       } catch {
@@ -209,7 +209,9 @@ export async function loadNodeBundle(
           }
           continue;
         }
-        await fs.writeFile(path.join(cache, f), new Uint8Array(await res.arrayBuffer()));
+        const target = path.join(cache, f);
+        await fs.mkdir(path.dirname(target), { recursive: true });
+        await fs.writeFile(target, new Uint8Array(await res.arrayBuffer()));
       }
     }
     dir = cache;
@@ -223,10 +225,13 @@ export async function loadNodeBundle(
     );
   }
   let tokenizerJson: unknown | null = null;
-  try {
-    tokenizerJson = JSON.parse(await fs.readFile(path.join(dir, "tokenizer.json"), "utf8"));
-  } catch {
-    tokenizerJson = null;
+  for (const candidate of ["tokenizer.json", "tokenizer/tokenizer.json"]) {
+    try {
+      tokenizerJson = JSON.parse(await fs.readFile(path.join(dir, candidate), "utf8"));
+      break;
+    } catch {
+      // Try the next supported Hugging Face layout.
+    }
   }
   return { dir, cfg, tokenizerJson };
 }
@@ -257,10 +262,13 @@ export async function loadWebBundle(
     throw new Error(`Incompatible model: ${JSON.stringify(repoOrUrl)} does not contain 'rl_agent_config.json'.`);
   }
   let tokenizerJson: unknown | null = null;
-  try {
-    tokenizerJson = await fetchJson(`${base}/tokenizer.json`);
-  } catch {
-    tokenizerJson = null;
+  for (const candidate of ["tokenizer.json", "tokenizer/tokenizer.json"]) {
+    try {
+      tokenizerJson = await fetchJson(`${base}/${candidate}`);
+      break;
+    } catch {
+      // Try the next supported Hugging Face layout.
+    }
   }
   return { dir: base, cfg, tokenizerJson };
 }

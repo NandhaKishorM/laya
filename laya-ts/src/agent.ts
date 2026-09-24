@@ -17,6 +17,7 @@ import {
   HookRegistry,
   PredictContext,
   aggregateUsage,
+  composeHooks,
   dispatch,
   normaliseHooks,
   type HookArg,
@@ -145,10 +146,37 @@ export function checkQuestion(qid: string, qdef: unknown): void {
     throw new Error(
       `question ${qidStr(qid)}: a noul question takes 'criteria' as a dict with optional 'true'/'false' descriptions, or omits it`,
     );
+  } else if (crit && typeof crit === "object" && !Array.isArray(crit)) {
+    const invalid = Object.keys(crit as Record<string, unknown>).filter((key) => key !== "true" && key !== "false");
+    if (invalid.length > 0) {
+      throw new Error(
+        `question ${qidStr(qid)}: noul criteria may contain only 'true' and 'false'; got ${JSON.stringify(invalid)}`,
+      );
+    }
+  }
+  if ("labels" in q && t !== "noul") {
+    throw new Error(`question ${qidStr(qid)}: 'labels' is only supported for noul questions`);
+  }
+  if (t === "noul" && "labels" in q) {
+    const labels = q["labels"];
+    if (typeof labels !== "object" || labels === null || Array.isArray(labels)) {
+      throw new Error(`question ${qidStr(qid)}: noul labels must be an object with 'false' and 'true'`);
+    }
+    const entries = Object.entries(labels as Record<string, unknown>);
+    const keys = entries.map(([key]) => key).sort();
+    if (keys.length !== 2 || keys[0] !== "false" || keys[1] !== "true" ||
+        entries.some(([, value]) => typeof value !== "string" || value.trim() === "")) {
+      throw new Error(`question ${qidStr(qid)}: noul labels must map exactly 'false' and 'true' to distinct non-empty strings`);
+    }
+    const falseLabel = String((labels as Record<string, unknown>)["false"]).trim();
+    const trueLabel = String((labels as Record<string, unknown>)["true"]).trim();
+    if (falseLabel === trueLabel) {
+      throw new Error(`question ${qidStr(qid)}: noul labels must be distinct`);
+    }
   }
 }
 
-export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul"; ins: string; crit: unknown } {
+export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } } {
   const t = qdef["type"] as "choice" | "score" | "noul";
   let crit: unknown = qdef["criteria"];
   if (t === "choice" && Array.isArray(crit)) {
@@ -157,8 +185,15 @@ export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul";
     crit = Object.fromEntries(Object.entries(crit as Record<string, unknown>).map(([k, v]) => [String(k).toLowerCase(), v]));
   }
   let ins: unknown = qdef["instructions"];
-  if (typeof ins !== "string") ins = JSON.stringify(ins);
-  return { t, ins: ins as string, crit };
+  if (typeof ins !== "string") ins = serializeState(ins);
+  const out: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } } = {
+    t, ins: ins as string, crit,
+  };
+  if (t === "noul" && qdef["labels"] && typeof qdef["labels"] === "object" && !Array.isArray(qdef["labels"])) {
+    const labels = qdef["labels"] as Record<string, unknown>;
+    out.labels = { false: String(labels["false"]).trim(), true: String(labels["true"]).trim() };
+  }
+  return out;
 }
 
 export function defaultTokenizer(): TokenizerLike {
@@ -187,27 +222,6 @@ function tokenizerFromHF(tokenizerJson: unknown): TokenizerLike | null {
     padId: data.ids.pad,
     maskToken: data.maskToken,
     encode: (text: string) => encodeWithData(data, text),
-  };
-}
-
-/** Fallback when tokenizer.json is absent: ids from rl_agent_config, if present. */
-function tokenizerFromConfig(cfg: AgentCfg): TokenizerLike | null {
-  const c = cfg as Record<string, unknown>;
-  const num = (v: unknown): number | null =>
-    typeof v === "number" && Number.isFinite(v) ? v : null;
-  const cls = num(c["cls_token_id"]) ?? num(c["cls_id"]);
-  const sep = num(c["sep_token_id"]) ?? num(c["sep_id"]);
-  const mask = num(c["mask_token_id"]) ?? num(c["mask_id"]);
-  const pad = num(c["pad_token_id"]) ?? num(c["pad_id"]);
-  if (cls === null && sep === null && mask === null && pad === null) return null;
-  const d = defaultTokenizer();
-  return {
-    clsId: cls ?? d.clsId,
-    sepId: sep ?? d.sepId,
-    maskId: mask ?? d.maskId,
-    padId: pad ?? d.padId,
-    maskToken: typeof c["mask_token"] === "string" ? (c["mask_token"] as string) : d.maskToken,
-    encode: d.encode,
   };
 }
 
@@ -291,10 +305,7 @@ export class Agent extends HookRegistry {
     questions: Record<string, QuestionDef>,
     opts: PredictOptions,
   ): Promise<SystemOneResult[]> {
-    const active = [
-      ...this.hooks,
-      ...normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd),
-    ];
+    const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
     const ctx = new PredictContext({
       states,
@@ -341,7 +352,7 @@ export class Agent extends HookRegistry {
       return { model: "laya-rl-agent", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } };
     }
     const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
-    const internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown }[] = [];
+    const internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } }[] = [];
     // The state text is shared by every question and is usually the longest text in the
     // sequence — encode it once and compose the per-question prefixes onto it.
     const stAll = this.tok.encode(serializeState(state).split(this.tok.maskToken).join(" "));
@@ -350,7 +361,9 @@ export class Agent extends HookRegistry {
       const q = toInternal(questions[qid]);
       internals.push(q);
       const prefix = buildQuestionPrefix(this.tok, q, this.maxLen, this.headMaxLen);
-      const { ids: seq, markers } = sequenceWithState(prefix, stAll, this.tok.sepId, this.maxLen);
+      const { ids: seq, markers } = sequenceWithState(
+        prefix, stAll, this.tok.sepId, this.maxLen, Array.isArray(state),
+      );
       if (markers.length !== renderOptions(q).length) {
         throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${this.headMaxLen}`);
       }
@@ -362,6 +375,16 @@ export class Agent extends HookRegistry {
     const nTokens = batch.attentionMask.flat().reduce((a, b) => a + b, 0);
     const { lastHidden } = await this.provider.runEncoder(batch);
     const { logits, act } = await this.provider.runHead(lastHidden, batch);
+    if (!Array.isArray(logits) || !Array.isArray(act) || logits.length < ids.length || act.length < ids.length) {
+      throw new Error("model provider returned fewer output rows than input items");
+    }
+    for (let r = 0; r < ids.length; r++) {
+      const k = items[r].markers.length;
+      if (!Array.isArray(logits[r]) || logits[r].length < k || !Array.isArray(act[r]) || act[r].length === 0 ||
+          logits[r].some((v) => !Number.isFinite(v)) || act[r].some((v) => !Number.isFinite(v))) {
+        throw new Error(`model provider returned invalid output for question ${ids[r]}`);
+      }
+    }
 
     const answers: Record<string, SystemAnswer> = {};
     for (let r = 0; r < ids.length; r++) {
@@ -454,12 +477,21 @@ export class Agent extends HookRegistry {
       dir = bundle.dir;
       provider = await createNodeProvider(dir, { device: opts?.device, numThreads: opts?.numThreads });
     }
-    let tok: TokenizerLike | null = null;
-    try {
-      tok = tokenizerJson ? tokenizerFromHF(tokenizerJson) : tokenizerFromConfig(cfg);
-    } catch {
-      tok = null;
+    if (!tokenizerJson) {
+      throw new Error(
+        `Incompatible model: tokenizer.json is missing or invalid in ${JSON.stringify(dir)}`,
+      );
     }
-    return new Agent({ provider, tok: tok ?? defaultTokenizer(), cfg });
+    let tok: TokenizerLike;
+    try {
+      const parsed = tokenizerFromHF(tokenizerJson);
+      if (!parsed) throw new Error("unsupported tokenizer.json format");
+      tok = parsed;
+    } catch (error) {
+      throw new Error(
+        `Incompatible model: tokenizer.json is missing or invalid in ${JSON.stringify(dir)}: ${String(error)}`,
+      );
+    }
+    return new Agent({ provider, tok, cfg });
   }
 }

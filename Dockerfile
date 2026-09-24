@@ -43,6 +43,11 @@ ENV PATH="/opt/venv/bin:$PATH" \
     LAYA_DEVICE=cpu \
     HF_HOME=/home/laya/.cache/huggingface
 
+# Triton JIT compilation on CUDA requires a C compiler and development headers (#365).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc g++ libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --gid 10001 laya \
     && useradd --uid 10001 --gid laya --create-home laya \
     && mkdir -p /home/laya/.cache/huggingface \

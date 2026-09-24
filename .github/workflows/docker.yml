@@ -26,11 +26,12 @@ jobs:
       - name: Check CUDA libraries and dependencies without a GPU
         run: |
           docker run --rm --network none laya:spark python -c '
-          import platform, torch
+          import platform, shutil, torch
           from torch.backends import cusparselt
           assert platform.machine() == "aarch64"
           assert torch.version.cuda == "13.0"
           assert cusparselt.is_available()
+          assert shutil.which("gcc") is not None, "C compiler required for Triton JIT (#365)"
           print(torch.__version__, cusparselt.version())
           '
           docker run --rm --network none laya:spark pip check
@@ -61,9 +62,10 @@ jobs:
         run: |
           docker run --rm --network none -v laya-smoke-cache:/home/laya/.cache/huggingface \
             laya:smoke python -c '
-          import json, os, pathlib, torch
+          import json, os, pathlib, shutil, torch
           from laya import Router
           assert os.getuid() == 10001
+          assert shutil.which("gcc") is not None, "C compiler required for Triton JIT (#365)"
           assert torch.version.cuda is None
           cache = pathlib.Path(os.environ["HF_HOME"])
           (cache / "write-test").write_text("cache survives container replacement")

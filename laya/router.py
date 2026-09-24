@@ -37,6 +37,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
 from .lang import analyse
+from .typing import Questions, State
 
 # The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
 BUNDLE_REPO = "convaiinnovations/laya"
@@ -397,8 +398,8 @@ class Router(HookRegistry):
     # ------------------------------------------------------------------ routing
     def route(
         self,
-        state: Union[str, dict, list, None],
-        questions: Optional[Dict[str, Any]] = None,
+        state: State,
+        questions: Optional[Questions] = None,
         model: Optional[str] = None,
         task: Optional[str] = None,
         lang: Optional[str] = None,
@@ -515,8 +516,8 @@ class Router(HookRegistry):
     # ------------------------------------------------------------------ running
     def predict(
         self,
-        state: Union[str, dict, list],
-        questions: Dict[str, Any],
+        state: State,
+        questions: Questions,
         model: Optional[str] = None,
         task: Optional[str] = None,
         lang: Optional[str] = None,

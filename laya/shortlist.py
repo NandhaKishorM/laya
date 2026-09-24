@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 import numpy as np
 
 from .common import render_options, serialize_state
+from .typing import Questions, State
 
 DEFAULT_SHORTLIST_K = 20
 
@@ -50,8 +51,8 @@ def shortlist_choice(
 
 def predict_shortlist(
     agent: Any,
-    state: Any,
-    questions: Dict[str, Dict[str, Any]],
+    state: State,
+    questions: Questions,
     embed_fn: Callable[[Sequence[str]], Any],
     k: int = DEFAULT_SHORTLIST_K,
     **predict_kwargs: Any,

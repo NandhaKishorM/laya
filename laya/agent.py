@@ -6,6 +6,7 @@ import threading
 import time
 import warnings
 from contextlib import nullcontext
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -28,6 +29,94 @@ from .common import (
     temp_bucket,
 )
 from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
+
+
+# ---------------------------------------------------------------------
+# Typed answer classes with both dot and dict access
+# ---------------------------------------------------------------------
+
+class _DictCompatible:
+    """Mixin providing dict-style access to dataclass fields."""
+    def __getitem__(self, key: str) -> Any:
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        setattr(self, key, value)
+
+    def __contains__(self, key: str) -> bool:
+        return hasattr(self, key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+    def keys(self):
+        return [f for f in dir(self) if not f.startswith('_') and not callable(getattr(self, f))]
+
+    def values(self):
+        return [getattr(self, f) for f in self.keys()]
+
+    def items(self):
+        return [(f, getattr(self, f)) for f in self.keys()]
+
+    def __iter__(self):
+        return iter(self.keys())
+
+    def __len__(self):
+        return len(self.keys())
+
+    def __repr__(self):
+        cls_name = self.__class__.__name__
+        fields = ", ".join(f"{k}={getattr(self, k)!r}" for k in self.keys())
+        return f"{cls_name}({fields})"
+
+
+@dataclass
+class ChoiceAnswer(_DictCompatible):
+    """Answer for a choice question with dot and dict access."""
+    type: str = "choice"
+    choice: str = ""
+    probabilities: Dict[str, float] = field(default_factory=dict)
+    confidence: float = 0.0
+    answer_confidence: float = 0.0
+    action: Dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
+class ScoreAnswer(_DictCompatible):
+    """Answer for a score question with dot and dict access."""
+    type: str = "score"
+    score: float = 0.0
+    legend: Dict[str, str] = field(default_factory=dict)
+    probabilities: Dict[str, float] = field(default_factory=dict)
+    confidence: float = 0.0
+    answer_confidence: float = 0.0
+    action: Dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
+class NoulAnswer(_DictCompatible):
+    """Answer for a noul question with dot and dict access."""
+    type: str = "noul"
+    noul: float = 0.0
+    confidence: float = 0.0
+    answer_confidence: float = 0.0
+    action: Dict[str, float] = field(default_factory=dict)
+
+
+# Union type for any answer
+Answer = Union[ChoiceAnswer, ScoreAnswer, NoulAnswer]
+
+
+@dataclass
+class PredictResult(_DictCompatible):
+    """Main prediction result with dot and dict access."""
+    model: str = "laya-rl-agent"
+    answers: Dict[str, Answer] = field(default_factory=dict)
+    usage: Dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0})
+    routing: Optional[Dict[str, Any]] = None  # Populated by Router
 
 
 def _fix_tokenizer_config(path: str):

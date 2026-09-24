@@ -1,8 +1,10 @@
 """Ready-to-use question presets for common production decision workflows."""
 from typing import Dict, Optional
 
+from .typing import Questions
 
-def triage_questions() -> Dict:
+
+def triage_questions() -> Questions:
     """Preset questions for customer support ticket triage."""
     return {
         "intent": {
@@ -42,7 +44,7 @@ def triage_questions() -> Dict:
     }
 
 
-def email_questions(categories: Optional[Dict[str, str]] = None) -> Dict:
+def email_questions(categories: Optional[Dict[str, str]] = None) -> Questions:
     """Preset questions for inbound email triage and threat filtering."""
     categories = categories or {
         "billing": "invoices, payments, refunds",
@@ -79,7 +81,7 @@ def email_questions(categories: Optional[Dict[str, str]] = None) -> Dict:
     }
 
 
-def guard_questions() -> Dict:
+def guard_questions() -> Questions:
     """Preset questions for real-time LLM input guardrails."""
     return {
         "jailbreak": {
@@ -119,7 +121,7 @@ def guard_questions() -> Dict:
     }
 
 
-def moderation_questions() -> Dict:
+def moderation_questions() -> Questions:
     """Preset questions for content safety and moderation."""
     return {
         "toxic": {
@@ -151,7 +153,7 @@ def moderation_questions() -> Dict:
     }
 
 
-def router_questions() -> Dict:
+def router_questions() -> Questions:
     """Preset questions for intelligent model routing."""
     return {
         "difficulty": {

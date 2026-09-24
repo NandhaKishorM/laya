@@ -455,6 +455,78 @@ Three things differ from Jev when you port a client:
 * **Score levels.** Every level needs a description. A `null` level is rejected with 422 rather than scored and echoed back in `legend`.
 * **`confidence`** on `choice` and `score` answers is 1 minus normalised entropy, a measure of how concentrated the distribution is, not Jev's `(n·p_max − 1)/(n − 1)`. A threshold carried over from Jev does not transfer. For one calibrated number on every question type, gate on `answer_confidence`, the probability of the reported answer.
 
+### Custom FastAPI Integration
+
+For custom endpoints, auth, or combined APIs, embed Laya's router in your own FastAPI app:
+
+```python
+# main.py
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Dict, Union, List, Optional
+from laya.router import Router
+from laya.typing import (
+    ChoiceQuestion, ScoreQuestion, NoulQuestion,
+    PredictResult, ChoiceAnswer, ScoreAnswer, NoulAnswer
+)
+
+# Input types matching Laya's typed questions
+QuestionInput = Union[ChoiceQuestion, ScoreQuestion, NoulQuestion]
+
+class SystemOneRequest(BaseModel):
+    state: Union[str, Dict, List, None] = None
+    questions: Dict[str, QuestionInput]
+    model: Optional[str] = None
+
+class SystemOneResponse(BaseModel):
+    model: str
+    answers: Dict[str, Union[ChoiceAnswer, ScoreAnswer, NoulAnswer]]
+    usage: Dict[str, int]
+    routing: Optional[Dict] = None
+
+# Shared router instance (reuse across requests)
+router = Router(device="cuda", max_loaded=2)
+router.preload()
+
+app = FastAPI(title="My Laya API")
+
+@app.post("/v1/decisions", response_model=SystemOneResponse)
+async def decisions(req: SystemOneRequest):
+    try:
+        result: PredictResult = router.predict(
+            state=req.state,
+            questions=req.questions,
+            model=req.model
+        )
+        return result  # PredictResult matches response model
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "loaded": router.loaded}
+
+@app.on_event("shutdown")
+async def shutdown():
+    router.__exit__(None, None, None)  # Cleanup GPU memory
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+**Run with:**
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+This gives you full control over:
+- Custom authentication/authorization
+- Request/response validation with Pydantic
+- Combined APIs (Laya + other services)
+- Custom middleware, rate limiting, logging
+- Async inference with thread pools for CPU workloads
+
 ### Nix / NixOS
 
 This repo is a flake. On a machine with an NVIDIA GPU:
@@ -683,6 +755,151 @@ guard = LayaGuardrail(action="raise")  # raises LayaGuardrailError on jailbreak/
 ```
 
 See [**`docs/langchain.md`**](docs/langchain.md) for full guide, support ticket triage nodes, and remote HTTP server configuration.
+
+## Typed Question & Answer System (New in 0.3.6)
+
+Laya now includes a comprehensive **type-safe API** with full IDE autocomplete, static type checking (MyPy), and dataclass-based answer objects that support both dot and dict access.
+
+### Typed Question Definitions
+
+```python
+from laya.typing import ChoiceQuestion, ScoreQuestion, NoulQuestion, Questions
+
+questions: Questions = {
+    "department": ChoiceQuestion(
+        type="choice",
+        instructions="Route this support ticket to the correct department",
+        criteria=["billing", "technical", "account", "general"]
+    ),
+    "urgency": ScoreQuestion(
+        type="score",
+        instructions="Rate the urgency of this issue",
+        criteria=["low", "medium", "high", "critical"]
+    ),
+    "is_spam": NoulQuestion(
+        type="noul",
+        instructions="Is this message spam?",
+        criteria={"true": "clear spam", "false": "legitimate message"}
+    ),
+}
+```
+
+**Benefits:**
+- ✅ Full IDE autocomplete on `ChoiceQuestion(`, `ScoreQuestion(`, `NoulQuestion(`
+- ✅ MyPy catches type mismatches before runtime
+- ✅ Documentation built into the type definitions
+- ✅ PEP 561 compliant (`py.typed` marker included)
+
+### Typed Answer Objects (PredictResult)
+
+The new `PredictResult` dataclass and answer types provide **both dot and dict access**:
+
+```python
+from laya import Router
+from laya.typing import PredictResult
+
+router = Router(preload=True)
+result: PredictResult = router.predict(state, questions)
+
+# Dot access (IDE autocomplete)
+print(result.answers["department"].choice)        # "account"
+print(result.answers["department"].probabilities) # {"billing": 0.1, "technical": 0.2, "account": 0.6, "general": 0.1}
+print(result.answers["department"].confidence)    # 0.72
+print(result.answers["urgency"].score)            # 2.3 (expected value)
+print(result.answers["urgency"].legend)           # {"0": "low", "1": "medium", "2": "high", "3": "critical"}
+print(result.answers["is_spam"].noul)             # 0.05 (P(true))
+print(result.usage)                               # {"input_tokens": 42, "output_tokens": 0}
+print(result.routing.model)                       # "multilingual" (if using Router)
+
+# Dict access also works (backward compatible)
+print(result["answers"]["department"]["choice"])  # "account"
+print(result["routing"]["model"])                 # "multilingual"
+```
+
+### Answer Type Reference
+
+| Type | Class | Key Attributes |
+|------|-------|----------------|
+| `choice` | `ChoiceAnswer` | `.choice`, `.probabilities`, `.confidence`, `.action` |
+| `score` | `ScoreAnswer` | `.score`, `.legend`, `.probabilities`, `.confidence`, `.action` |
+| `noul` | `NoulAnswer` | `.noul`, `.confidence`, `.action` |
+
+All answer types inherit from `_DictCompatible` mixin providing:
+- `__getitem__`, `__setitem__`, `__contains__`, `get()`, `keys()`, `values()`, `items()`
+- Full iteration support: `for k, v in answer.items():`
+- `len(answer)` and `key in answer` checks
+
+### FastAPI Integration with Pydantic
+
+```python
+# models.py
+from pydantic import BaseModel
+from typing import Dict, Union, Optional
+from laya.typing import ChoiceQuestion, ScoreQuestion, NoulQuestion
+
+QuestionInput = Union[ChoiceQuestion, ScoreQuestion, NoulQuestion]
+
+class SystemOneRequest(BaseModel):
+    state: Union[str, Dict, List, None] = None
+    questions: Dict[str, QuestionInput]
+    model: Optional[str] = None
+
+class SystemOneResponse(BaseModel):
+    model: str
+    answers: Dict[str, Union[ChoiceAnswer, ScoreAnswer, NoulAnswer]]
+    usage: Dict[str, int]
+    routing: Optional[Dict] = None
+
+
+# server.py
+from fastapi import FastAPI
+from laya.router import Router
+from models import SystemOneRequest, SystemOneResponse
+
+router = Router(device="cuda", max_loaded=2)
+router.preload()
+
+app = FastAPI()
+
+@app.post("/v1/decisions", response_model=SystemOneResponse)
+async def decisions(req: SystemOneRequest):
+    result = router.predict(req.state, req.questions, model=req.model)
+    return result  # PredictResult matches response model automatically
+```
+
+### Migration Guide
+
+The new typed system is **fully backward compatible**. Existing code continues to work:
+
+```python
+# Old style (still works)
+questions = {
+    "dept": {"type": "choice", "instructions": "...", "criteria": ["a", "b"]}
+}
+result = agent.system_one(state, questions)
+print(result["answers"]["dept"]["choice"])
+
+# New style (with full typing)
+from laya.typing import ChoiceQuestion
+questions = {"dept": ChoiceQuestion(type="choice", instructions="...", criteria=["a", "b"])}
+result = agent.system_one(state, questions)
+print(result.answers["dept"].choice)  # IDE autocomplete works!
+```
+
+### Exported Types
+
+All new types are exported from `laya`:
+
+```python
+from laya import (
+    # Answer classes
+    ChoiceAnswer, ScoreAnswer, NoulAnswer, PredictResult,
+    # Question types
+    ChoiceQuestion, ScoreQuestion, NoulQuestion, Question, Questions, QType,
+    # Other
+    State, UsageDict, RouteDecisionDict
+)
+```
 
 ---
 

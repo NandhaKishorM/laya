@@ -72,3 +72,53 @@ laya-mcp-server = "laya.mcp.server:main"
 [project.urls]
 Homepage = "https://huggingface.co/convaiinnovations/laya"
 Demo = "https://huggingface.co/spaces/convaiinnovations/laya-demo"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = false
+namespace_packages = true
+
+[[tool.mypy.overrides]]
+module = "laya.*"
+warn_unused_ignores = true
+
+# Third-party libs without stubs
+[[tool.mypy.overrides]]
+module = "torch.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "transformers.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "safetensors.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "huggingface_hub.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tokenizers.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "uvicorn.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "starlette.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "numpy"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "numpy.*"
+ignore_missing_imports = true

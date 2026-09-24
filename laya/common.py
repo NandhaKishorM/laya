@@ -9,7 +9,9 @@ import torch
 import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
-QTYPES = {"choice": 0, "score": 1, "noul": 2}
+from .typing import QType
+
+QTYPES: Dict[QType, int] = {"choice": 0, "score": 1, "noul": 2}
 QTYPE_NAMES = {v: k for k, v in QTYPES.items()}
 _DEFAULT_NOUL_LABELS = {"false": "false", "true": "true"}
 

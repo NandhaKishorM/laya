@@ -20,6 +20,7 @@ from .common import (
     build_sequence,
     clamp_temperature,
     collate_items,
+    answer_confidence,
     confidence_from_probs,
     _resolve_noul_labels,
     render_options,
@@ -204,6 +205,8 @@ class Agent(HookRegistry):
     # without it (for example a hand-constructed runtime in tests).
     amp_enabled = False
     mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
+    # The stock forward is also used by lightweight runtimes built with __new__ in tests.
+    _fast = None
 
     def __init__(
         self,
@@ -213,6 +216,7 @@ class Agent(HookRegistry):
         subfolder: Optional[str] = None,
         fast: bool = False,
         compile: bool = False,
+        lang_temperatures: Optional[Dict[str, Dict[str, Any]]] = None,
         hooks=None,
         on_predict_start=None,
         on_predict_end=None,
@@ -349,6 +353,18 @@ class Agent(HookRegistry):
         self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
         self.temperature_by_options = {k: clamp_temperature(v)
                                        for k, v in self.temperature_by_options_raw.items()}
+
+        self.lang_temperatures = {}
+        for l, cfg in (lang_temperatures or {}).items():
+            norm_l = l.split("-")[0].lower()
+            t_raw = cfg.get("temperature", self.temperature_raw)
+            if len(t_raw) != 3:
+                raise ValueError("Language override %r temperature must be a list of 3 floats" % l)
+            tbo_raw = cfg.get("temperature_by_options", {})
+            self.lang_temperatures[norm_l] = {
+                "temperature": [clamp_temperature(t) for t in t_raw],
+                "temperature_by_options": {k: clamp_temperature(v) for k, v in tbo_raw.items()}
+            }
         entries = [(k, v, self.temperature_by_options[k]) for k, v in self.temperature_by_options_raw.items()]
         entries += [("temperature[%d]" % i, t, self.temperature[i]) for i, t in enumerate(self.temperature_raw)]
         rejected = []
@@ -584,6 +600,13 @@ class Agent(HookRegistry):
         """Run the forward pass under autocast, degrading gracefully on OOM or unsupported autocast."""
         use_amp = self._amp_enabled_for(b["input_ids"].shape[0])
 
+        if self._fast is not None and b["input_ids"].shape[1] > self._fast.max_len:
+            raise ValueError(
+                "the CUDA fast path was built for max_len=%d; this request needs %d tokens. "
+                "Use max_len <= %d or load without fast=True."
+                % (self._fast.max_len, b["input_ids"].shape[1], self._fast.max_len)
+            )
+
         def run():
             # Recomputed inside run() so a fallback that disables amp (or moves to CPU) takes
             # effect on the retry. A disabled gate never enters torch.autocast at all.
@@ -603,10 +626,16 @@ class Agent(HookRegistry):
             low = str(e).lower()
             if self.device.type != "cpu" and ("memory" in low or "cuda" in low):
                 print("Warning: GPU memory exceeded during inference. Falling back to CPU...")
+                # FastLaya keeps copied CUDA weights and replaces model.forward.  Move
+                # the model first without that replacement, or the retry would still
+                # execute on the failed CUDA fast path.
+                self.deaccelerate()
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
                 self.amp_enabled = False
                 self.model.to(self.device)
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
                 return run()
             if use_amp and self.device.type in ("mps", "cpu"):
                 # Not every MPS/CPU build implements autocast for every op. Drop to full
@@ -622,7 +651,7 @@ class Agent(HookRegistry):
         return logits.float().cpu().numpy(), torch.softmax(act.float(), -1).cpu().numpy()
 
     def _decode_answers(self, logits, act, items: List[Dict], ids: List[str],
-                        internal: Dict[str, Dict], offset: int) -> Dict[str, Any]:
+                        internal: Dict[str, Dict], offset: int, lang: Optional[str] = None) -> Dict[str, Any]:
         """Turn one state's logit rows (starting at `offset`) into typed answers."""
         answers = {}
         for j, qid in enumerate(ids):
@@ -631,10 +660,19 @@ class Agent(HookRegistry):
             k = len(items[j]["markers"])
             qt = QTYPES[q["t"]]
             t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])
+            if lang and lang.split("-")[0].lower() in self.lang_temperatures:
+                l_cfg = self.lang_temperatures[lang.split("-")[0].lower()]
+                t_scale = l_cfg["temperature_by_options"].get(temp_bucket(qt, k), l_cfg["temperature"][qt])
             z = logits[r, :k] / t_scale
             p = np.exp(z - z.max())
             p = p / p.sum()
 
+            # `confidence` means one thing for `noul` (max(p)) and another for `choice` and
+            # `score` (normalized entropy), and only the first is the quantity temperature
+            # scaling fits and ECE measures. Rather than change one underneath existing
+            # callers, report both: `answer_confidence` is the calibrated one, on every
+            # question type, so a caller can gate across types on a single number.
+            ans_conf = round(answer_confidence(p, k), 4)
             ext = {"act_probability": round(float(act[r, 0]), 4)}
 
             if q["t"] == "choice":
@@ -644,6 +682,7 @@ class Agent(HookRegistry):
                     "choice": keys[int(p.argmax())],
                     "probabilities": {kk: round(float(v), 4) for kk, v in zip(keys, p)},
                     "confidence": round(confidence_from_probs(p, k), 4),
+                    "answer_confidence": ans_conf,
                     "action": ext,
                 }
             elif q["t"] == "score":
@@ -654,6 +693,7 @@ class Agent(HookRegistry):
                     "legend": {str(i): c for i, c in enumerate(q["crit"])},
                     "probabilities": {str(i): round(float(v), 4) for i, v in enumerate(p)},
                     "confidence": round(confidence_from_probs(p, k), 4),
+                    "answer_confidence": ans_conf,
                     "action": ext,
                 }
             else:
@@ -661,13 +701,16 @@ class Agent(HookRegistry):
                     "type": "noul",
                     "noul": round(float(p[1]), 4),
                     "confidence": round(max(float(p[1]), 1.0 - float(p[1])), 4),
+                    # identical here: over two options max(p_true, 1 - p_true) is max(p)
+                    "answer_confidence": ans_conf,
                     "action": ext,
                 }
         return answers
 
     @torch.no_grad()
     def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
-                      batch_size: Optional[int] = None, hooks=None,
+                      batch_size: Optional[int] = None, lang: Optional[str] = None,
+                      hooks=None,
                       on_predict_start=None, on_predict_end=None,
                       hooks_raise: Optional[bool] = None,
                       max_len: Optional[int] = None,
@@ -766,7 +809,8 @@ class Agent(HookRegistry):
                                 for index, items in zip(indices, per_state_items):
                                     nrows = len(items)
                                     n_tokens = int(att[row:row + nrows].sum())
-                                    answers = self._decode_answers(logits, act, items, ids, internal, row)
+                                    answers = self._decode_answers(logits, act, items, ids, internal, row,
+                                                                  **({"lang": lang} if lang else {}))
                                     window_results[index] = {
                                         "model": "laya-rl-agent",
                                         "answers": answers,
@@ -798,7 +842,7 @@ class Agent(HookRegistry):
         return ctx.results
 
     @torch.no_grad()
-    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
+    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]], lang: Optional[str] = None,
                    hooks=None, on_predict_start=None, on_predict_end=None,
                    hooks_raise: Optional[bool] = None,
                    max_len: Optional[int] = None,
@@ -825,7 +869,7 @@ class Agent(HookRegistry):
 
         To score many states at once, see `predict_batch`, which shares forward passes across them.
         """
-        return self.predict_batch([state], questions, hooks=hooks,
+        return self.predict_batch([state], questions, lang=lang, hooks=hooks,
                                   on_predict_start=on_predict_start,
                                   on_predict_end=on_predict_end, hooks_raise=hooks_raise,
                                   max_len=max_len, head_max_len=head_max_len)[0]
@@ -847,6 +891,18 @@ class Agent(HookRegistry):
             pass
         return False
 
+    def decide(self, state: Union[str, dict, list], schema: Any = None, *,
+               questions: Optional[Dict[str, Any]] = None, return_details: bool = False,
+               **predict_kwargs) -> Any:
+        """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
+
+        See `laya.structured`. Pass exactly one of `schema` or `questions`; extra keyword arguments
+        are forwarded to `predict` / `system_one`.
+        """
+        from .structured import decide as _decide
+        return _decide(self, state, schema, questions=questions,
+                       return_details=return_details, **predict_kwargs)
+
     predict = system_one
 
 
@@ -855,6 +911,7 @@ RLAgent = Agent
 
 def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,
          token: Optional[str] = None, subfolder: Optional[str] = None, fast: bool = False,
+         lang_temperatures: Optional[Dict[str, Dict[str, Any]]] = None,
          hooks=None, on_predict_start=None, on_predict_end=None,
          hooks_raise: bool = True, hooks_concurrent: bool = True) -> Agent:
     """Load a Laya agent.
@@ -869,5 +926,6 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
     `laya.hooks`.
     """
     return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast,
+                 lang_temperatures=lang_temperatures,
                  hooks=hooks, on_predict_start=on_predict_start, on_predict_end=on_predict_end,
                  hooks_raise=hooks_raise, hooks_concurrent=hooks_concurrent)

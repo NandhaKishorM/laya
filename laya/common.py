@@ -270,8 +270,28 @@ def ece_score(conf: np.ndarray, correct: np.ndarray, bins: int = 15) -> float:
     return float(e)
 
 
+def answer_confidence(p: np.ndarray, k: int) -> float:
+    """Probability mass on the answer being reported: max(p).
+
+    This is the quantity temperature scaling fits, and the quantity every calibration figure in
+    this repository is computed on -- both benchmark harnesses take `conf = max(probs)` before
+    calling `ece_score`. It is therefore the one confidence with the property the README's
+    gating section relies on: of the answers returned at confidence c, about c of them are right.
+
+    `confidence_from_probs` below reports a different quantity on a different scale and carries
+    no such guarantee, so the two must not be compared against the same threshold.
+    """
+    if k < 1:
+        return 1.0
+    return float(np.clip(np.max(p[:k]), 0.0, 1.0))
+
+
 def confidence_from_probs(p: np.ndarray, k: int) -> float:
-    """Normalized Shannon entropy confidence: 1 - H(p) / log(k)."""
+    """Normalized Shannon entropy confidence: 1 - H(p) / log(k).
+
+    How concentrated the whole distribution is. Useful, but not calibrated: it is not what
+    temperature scaling fits and not what the reported ECE measures. See `answer_confidence`.
+    """
     if k < 2:
         return 1.0
     p = p[:k]
@@ -327,13 +347,15 @@ def collate_items(batch, pad_id: int):
         mpos[i, :k] = torch.tensor(it["markers"])
         mmask[i, :k] = True
         if has_target and "target" in it:
-            if len(it["target"]) > kmax:
+            if len(it["target"]) > k:
                 # Otherwise this lands as "The expanded size of the tensor (k) must match the
                 # existing size (kmax)" from inside the assignment, which says nothing about the
-                # actual mistake: a target with more entries than the item has options.
+                # actual mistake: a target with more entries than the item has options. The limit
+                # is this item's own marker count, not the batch-wide kmax: in a mixed-width
+                # batch a longer sibling row must not legitimise extra entries (#311).
                 raise ValueError(
                     "collate_items: item %d has %d target entries but only %d marker positions; "
-                    "a target needs one entry per option" % (i, len(it["target"]), kmax))
+                    "a target needs one entry per option" % (i, len(it["target"]), k))
             target[i, : len(it["target"])] = torch.tensor(it["target"], dtype=torch.float32)
 
     res = {

@@ -9,7 +9,9 @@ deployments (your own `laya-serve`) without requiring PyTorch on edge clients.
 from __future__ import annotations
 
 import json
+import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any, Callable, Dict, Optional, Sequence, Union
 
@@ -77,6 +79,23 @@ def _extract_from_messages_list(msgs: Sequence[Any]) -> str:
     return str(getattr(last, "content", last))
 
 
+class _SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Do not forward bearer credentials across an origin or HTTPS downgrade."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        old = urllib.parse.urlsplit(req.full_url)
+        new = urllib.parse.urlsplit(newurl)
+        old_port = old.port or (443 if old.scheme.lower() == "https" else 80)
+        new_port = new.port or (443 if new.scheme.lower() == "https" else 80)
+        if (
+            old.scheme.lower() != new.scheme.lower()
+            or (old.hostname or "").lower() != (new.hostname or "").lower()
+            or old_port != new_port
+        ):
+            raise urllib.error.URLError("refusing cross-origin or HTTPS-downgrade redirect")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def _call_remote(
     base_url: str,
     state: Any,
@@ -100,8 +119,9 @@ def _call_remote(
         headers["Authorization"] = f"Bearer {api_key}"
 
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    opener = urllib.request.build_opener(_SameOriginRedirectHandler())
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with opener.open(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -111,13 +131,16 @@ def _call_remote(
 
 
 _DEFAULT_ROUTER = None
+_DEFAULT_ROUTER_LOCK = threading.Lock()
 
 
 def _get_default_router():
     global _DEFAULT_ROUTER
     if _DEFAULT_ROUTER is None:
-        from ..router import Router
-        _DEFAULT_ROUTER = Router()
+        with _DEFAULT_ROUTER_LOCK:
+            if _DEFAULT_ROUTER is None:
+                from ..router import Router
+                _DEFAULT_ROUTER = Router()
     return _DEFAULT_ROUTER
 
 

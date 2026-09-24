@@ -100,7 +100,11 @@ class ONNXAgent(HookRegistry):
                 f"ONNX model not found at {onnx_path!r}. Please run export_onnx.py first."
             )
 
-        # Load Tokenizer
+        # Load Tokenizer.  Keep this compatibility fix in sync with Agent: checkpoints
+        # produced by newer Transformers versions can contain TokenizersBackend or a list-valued
+        # extra_special_tokens field that older loaders cannot parse.
+        from .agent import _fix_tokenizer_config
+        _fix_tokenizer_config(model_dir)
         tok_dir = os.path.join(model_dir, "tokenizer")
         self.tok = AutoTokenizer.from_pretrained(tok_dir if os.path.exists(tok_dir) else self.cfg.get("encoder"))
 
@@ -111,7 +115,19 @@ class ONNXAgent(HookRegistry):
             if "CUDAExecutionProvider" in available
             else ["CPUExecutionProvider"]
         )
-        self.session = ort.InferenceSession(onnx_path, providers=providers)
+        try:
+            self.session = ort.InferenceSession(onnx_path, providers=providers)
+        except Exception:
+            # A provider can be listed by onnxruntime yet still fail to initialize
+            # (missing CUDA libraries, unsupported driver, mismatched DLLs).  Keep
+            # the CPU runtime usable instead of making model construction fail.
+            if providers == ["CPUExecutionProvider"]:
+                raise
+            warnings.warn(
+                "laya ONNX: CUDAExecutionProvider initialization failed; falling back to CPUExecutionProvider.",
+                RuntimeWarning, stacklevel=2,
+            )
+            self.session = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
 
         self.temperature_raw = self.cfg.get("temperature", [1.0, 1.0, 1.0])
         self.temperature_by_options_raw = self.cfg.get("temperature_by_options", {})
@@ -198,6 +214,12 @@ class ONNXAgent(HookRegistry):
         from .agent import Agent as _Agent
 
         ids = list(questions.keys())
+        if not ids:
+            return {
+                "model": "laya-rl-agent-onnx",
+                "answers": {},
+                "usage": {"input_tokens": 0, "output_tokens": 0},
+            }
         for qid in ids:
             _Agent._check_question(qid, questions[qid])
         items = []
@@ -206,7 +228,10 @@ class ONNXAgent(HookRegistry):
 
         for qid in ids:
             q = self._to_internal(questions[qid])
-            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len)
+            seq, markers = build_sequence(
+                self.tok, state, q, max_len, head_max_len,
+                truncate_left=isinstance(state, list),
+            )
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
@@ -278,5 +303,17 @@ class ONNXAgent(HookRegistry):
             "answers": answers,
             "usage": {"input_tokens": n_tokens, "output_tokens": 0},
         }
+
+    def decide(self, state: Union[str, dict, list], schema: Any = None, *,
+               questions: Optional[Dict[str, Dict[str, Any]]] = None, return_details: bool = False,
+               **predict_kwargs) -> Any:
+        """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
+
+        See `laya.structured`. Pass exactly one of `schema` or `questions`; extra keyword arguments
+        are forwarded to `predict` / `system_one`.
+        """
+        from laya.structured import decide as _decide
+        return _decide(self, state, schema, questions=questions,
+                       return_details=return_details, **predict_kwargs)
 
     predict = system_one

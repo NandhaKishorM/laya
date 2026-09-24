@@ -529,6 +529,10 @@ class Router(HookRegistry):
         decision = self.route(state, questions, model=model, task=task, lang=lang,
                               lang_guess=lang_guess, hooks=hooks, hooks_raise=hooks_raise)
         agent = self.load(decision["model"])
+        effective_lang = lang
+        if effective_lang is None and decision.get("detection") and decision["detection"].get("language"):
+            effective_lang = decision["detection"]["language"]
+
         ctx = PredictContext(states=[state], questions=questions, decision=dict(decision),
                              model=decision["model"], agent=agent, router=self,
                              max_len=max_len, head_max_len=head_max_len)
@@ -542,7 +546,14 @@ class Router(HookRegistry):
                     overrides["max_len"] = ctx.max_len
                 if ctx.head_max_len is not None:
                     overrides["head_max_len"] = ctx.head_max_len
-                result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
+                
+                try:
+                    result = agent.system_one(ctx.states[0], ctx.questions, lang=effective_lang, **overrides)
+                except TypeError as e:
+                    if "unexpected keyword argument 'lang'" in str(e):
+                        result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
+                    else:
+                        raise
                 result["routing"] = dict(decision)
                 ctx.results = [result]
             else:
@@ -570,6 +581,18 @@ class Router(HookRegistry):
                 else:
                     raise
         return ctx.results[0]
+
+    def decide(self, state: Union[str, dict, list], schema: Any = None, *,
+               questions: Optional[Dict[str, Any]] = None, return_details: bool = False,
+               **predict_kwargs) -> Any:
+        """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
+
+        See `laya.structured`. Pass exactly one of `schema` or `questions`; extra keyword arguments
+        (for example `model=`, `task=`, `hooks=`) are forwarded to `predict`.
+        """
+        from .structured import decide as _decide
+        return _decide(self, state, schema, questions=questions,
+                       return_details=return_details, **predict_kwargs)
 
     def __enter__(self):
         return self

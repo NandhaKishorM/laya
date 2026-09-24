@@ -244,11 +244,15 @@ with patch.object(_agent, "confidence_from_probs", wraps=_agent.confidence_from_
     check("decode/mixed answers retain calibrated values", decoded, {
         "pick": {"type": "choice", "choice": "right",
                  "probabilities": {"left": 0.25, "right": 0.75}, "confidence": 0.1887,
+                 "answer_confidence": 0.75,
                  "action": {"act_probability": 0.125}},
         "level": {"type": "score", "score": 0.75, "legend": {"0": "low", "1": "high"},
                   "probabilities": {"0": 0.25, "1": 0.75}, "confidence": 0.1887,
+                  "answer_confidence": 0.75,
                   "action": {"act_probability": 0.25}},
         "flag": {"type": "noul", "noul": 0.2, "confidence": 0.8,
+                 # max(p) over two options is max(p_true, 1 - p_true): the same number
+                 "answer_confidence": 0.8,
                  "action": {"act_probability": 0.75}},
     })
     check("decode/entropy only computed for choice and score", entropy.call_count, 2)
@@ -261,6 +265,7 @@ with patch.object(_agent, "confidence_from_probs", wraps=_agent.confidence_from_
         check("decode/noul confidence at p=%s" % true_probability, result["flag"], {
             "type": "noul", "noul": true_probability,
             "confidence": max(true_probability, 1.0 - true_probability),
+            "answer_confidence": max(true_probability, 1.0 - true_probability),
             "action": {"act_probability": 0.75},
         })
     check("decode/noul-only answers skip entropy", entropy.call_count, 0)

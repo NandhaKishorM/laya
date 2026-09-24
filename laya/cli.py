@@ -67,7 +67,9 @@ def show_answers(result):
         print()
     for qid, answer in result.get("answers", {}).items():
         if "choice" in answer:
-            detail = "%s (p=%.3f)" % (answer["choice"], answer.get("probability", 0.0))
+            choice = answer["choice"]
+            probability = answer.get("probabilities", {}).get(choice, 0.0)
+            detail = "%s (p=%.3f)" % (choice, probability)
         elif "score" in answer:
             detail = "%.2f" % answer["score"]
         elif "noul" in answer:

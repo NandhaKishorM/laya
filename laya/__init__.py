@@ -12,8 +12,9 @@ from .presets import (
     triage_questions,
 )
 from .router import DEFAULT_MODELS, RouteDecision, Router
+from .structured import DecisionResult, decide
 
-__version__ = "0.3.11"
+__version__ = "0.3.12"
 
 # Routing, language detection and email cleaning are pure Python. The torch-backed names are
 # resolved lazily so that `import laya` -- and therefore `from laya import Router` or
@@ -25,6 +26,7 @@ _LAZY_ATTRS = {
     "proper_reward": (".common", "proper_reward"),
     "td_lambda_targets": (".common", "td_lambda_targets"),
     "ece_score": (".common", "ece_score"),
+    "answer_confidence": (".common", "answer_confidence"),
     "confidence_from_probs": (".common", "confidence_from_probs"),
     "render_options": (".common", "render_options"),
     "QTYPES": (".common", "QTYPES"),
@@ -79,6 +81,7 @@ __all__ = [
     "proper_reward",
     "td_lambda_targets",
     "ece_score",
+    "answer_confidence",
     "confidence_from_probs",
     "render_options",
     "QTYPES",
@@ -92,5 +95,7 @@ __all__ = [
     "PredictHook",
     "Hook",
     "BaseHook",
+    "decide",
+    "DecisionResult",
     "__version__",
 ]

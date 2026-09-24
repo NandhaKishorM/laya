@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 from importlib import metadata as _metadata
 from typing import Any
 
@@ -54,6 +55,7 @@ except Exception:  # running from a source checkout without install metadata
 server = MCPServer("laya", version=_LAYA_VERSION)
 
 _ROUTER: Any = None
+_ROUTER_LOCK = threading.Lock()
 
 # MCP default preload list. laya.serve preloads every checkpoint when LAYA_MODELS
 # is empty; MCP keeps typed-decisions lazy on purpose (it is ~as big as the other
@@ -95,19 +97,22 @@ def _ensure_router() -> Any:
     global _ROUTER
     if _ROUTER is not None:
         return _ROUTER
-    try:
-        from laya import Router
-    except Exception as exc:
-        raise ToolError("internal_error", f"cannot import laya: {exc}") from exc
-    try:
-        _apply_thread_limit()
-        router = Router(device=env_device())
-        if _env_bool("LAYA_PRELOAD", True):
-            router.preload(_models_from_env())
-    except Exception as exc:
-        raise ToolError("internal_error", f"router construction failed: {exc}") from exc
-    _ROUTER = router
-    return router
+    with _ROUTER_LOCK:
+        if _ROUTER is not None:
+            return _ROUTER
+        try:
+            from laya import Router
+        except Exception as exc:
+            raise ToolError("internal_error", f"cannot import laya: {exc}") from exc
+        try:
+            _apply_thread_limit()
+            router = Router(device=env_device())
+            if _env_bool("LAYA_PRELOAD", True):
+                router.preload(_models_from_env())
+        except Exception as exc:
+            raise ToolError("internal_error", f"router construction failed: {exc}") from exc
+        _ROUTER = router
+        return router
 
 
 def _dump(payload: Any) -> str:

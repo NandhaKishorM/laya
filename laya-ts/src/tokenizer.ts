@@ -73,11 +73,12 @@ function bpeWord(chars: string[], rank: Map<string, number>): string[] {
 }
 
 /** Byte-level BPE encode: NFC-normalize, NO lowercasing, GPT-2 byte map + rank-order merges. */
+let sharedEncoder: TextEncoder | null = null;
 export function bpeEncode(vocab: Map<string, number>, merges: Map<string, number>, text: string): number[] {
   const { b2u } = maps();
   const unkId = vocab.get("[UNK]") ?? CHECKPOINT_IDS.unk;
   const out: number[] = [];
-  const enc = new TextEncoder();
+  const enc = (sharedEncoder ??= new TextEncoder());
   const parts = text.normalize("NFC").match(GPT2_SPLIT);
   if (!parts) return out;
   for (const piece of parts) {

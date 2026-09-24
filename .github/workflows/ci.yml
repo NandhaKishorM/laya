@@ -17,6 +17,29 @@ env:
   TOKENIZERS_PARALLELISM: "false"
 
 jobs:
+  typescript:
+    name: TypeScript (node${{ matrix.node }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: laya-ts
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: laya-ts/package-lock.json
+      - run: npm ci
+      - name: Unit tests
+        run: npm test -- --run
+      - name: Packed package end-to-end test
+        run: npm run test:package
+
   feishu-benchmark:
     name: Chinese benchmark audit (no models or API)
     runs-on: ubuntu-latest
@@ -66,8 +89,10 @@ jobs:
           python tests/test_decision_model.py
           python tests/test_head_checkpointing.py
           python tests/test_packaging.py
+          python tests/test_doc_tables.py
           python tests/test_tokenizer_cache.py
           python tests/test_lazy_import.py
+          python tests/test_runtime_fixes.py
           python tests/test_lang_guess.py
           python tests/test_calibration_persistence.py
           python tests/test_context_manager.py
@@ -141,6 +166,12 @@ jobs:
             fi
             if [ -f "tests/$t.py" ]; then python "tests/$t.py"; fi
           done
+        shell: bash
+
+      - name: Prediction hook tests
+        run: |
+          python tests/test_hooks.py
+          python tests/test_hooks_api.py
         shell: bash
 
       - name: Email cleaning tests

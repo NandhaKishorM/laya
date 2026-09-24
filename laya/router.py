@@ -28,13 +28,14 @@ primary routing signal.
 synthetic workflows and should not be a silent default.
 """
 import gc
+import json
 import os
 import threading
 import time
 from collections.abc import Sequence as SequenceABC
 from typing import Any, Dict, List, Optional, Sequence, Union
 
-from .hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
+from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
 from .lang import analyse
 
 # The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
@@ -122,6 +123,16 @@ def match_typed_decisions_workflow(questions: Dict[str, Any]) -> Optional[str]:
         if ids == sig:
             return wf
     return None
+
+
+def _question_schema(questions: Dict[str, Any]) -> str:
+    """Order-sensitive signature of a question schema, for sharing forward passes.
+
+    sort_keys=False keeps insertion order significant at every nesting level, because
+    option order is positional in render_options. default=str matches render_criterion's
+    tolerance, so schemas that render identically still share a group.
+    """
+    return json.dumps(questions, sort_keys=False, ensure_ascii=False, default=str)
 
 
 # Subtags that mean "the English checkpoint can read this". Routing needs one bit -- is this
@@ -252,7 +263,7 @@ class Router(HookRegistry):
             evicted = self._evict_locked()
         # Lifecycle hooks fire after the lock is released, so a hook can safely call the Router.
         self._dispatch_lifecycle("on_evict", evicted)
-        dispatch(self.hooks, "on_load",
+        dispatch(compose_hooks(self.hooks), "on_load",
                  PredictContext(states=[], questions={}, model=key, agent=agent, router=self),
                  raise_errors=self.hooks_raise, lock=self._hooks_lock)
         return agent
@@ -295,7 +306,7 @@ class Router(HookRegistry):
 
     def _dispatch_lifecycle(self, event: str, names: List[str]) -> None:
         for name in names:
-            dispatch(self.hooks, event,
+            dispatch(compose_hooks(self.hooks), event,
                      PredictContext(states=[], questions={}, model=name, router=self),
                      raise_errors=self.hooks_raise, lock=self._hooks_lock)
 
@@ -393,7 +404,7 @@ class Router(HookRegistry):
         """
         decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
-        active = list(self.hooks) + normalise_hooks(hooks)
+        active = compose_hooks(self.hooks, hooks)
         ctx = PredictContext(states=[state], questions=questions or {}, decision=decision, router=self)
         dispatch(active, "on_route", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
         return ctx.decision
@@ -436,9 +447,14 @@ class Router(HookRegistry):
                                  detection=None, workflow=workflow)
 
         if lang is not None:
-            key = "english" if _english_from_code(lang) else "multilingual"
-            return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
-                                 detection=None, workflow=workflow)
+            # An explicit `lang` is decisive only when the code names a language. Blank or
+            # whitespace resolves to no usable hint, so it falls through to lang_guess/detection
+            # exactly as an abstaining hint does; real English/non-English codes still route now.
+            resolved = _english_from_code(lang)
+            if resolved is not None:
+                key = "english" if resolved else "multilingual"
+                return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
+                                     detection=None, workflow=workflow)
 
         # Caller-supplied hint, per-call first then the one installed on the Router. Only a hint
         # that actually answers the question routes here; anything else falls through.
@@ -506,7 +522,7 @@ class Router(HookRegistry):
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
-        active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
 
         # Per-call hooks apply to the whole call, including on_route inside route().
@@ -632,6 +648,14 @@ class Router(HookRegistry):
         Requests may independently specify ``model``, ``task``, ``lang`` or
         ``lang_guess`` and may use different question schemas.
 
+        Router-level predict hooks run per request, as ``predict`` runs them: each request
+        gets its own ``PredictContext``, so ``on_predict_start`` can replace that request's
+        state, questions or token budget, or ``ctx.skip(...)`` it, and ``on_predict_end``
+        sees and may replace its result. Requests are grouped for the forward pass after
+        their start hooks have run. If the batch fails, every request whose start hook ran
+        and that has no result gets ``on_error``, then every started request gets
+        ``on_predict_end``, before the exception propagates.
+
         Args:
             requests: Sequence of request dictionaries. Every item requires ``state`` and
                 ``questions`` and may include ``model``, ``task``, ``lang`` or
@@ -650,49 +674,98 @@ class Router(HookRegistry):
         # workload to at most one load per routed checkpoint for this call.
         groups: Dict[str, List[int]] = {}
         for i, decision in enumerate(decisions):
-            groups.setdefault(decision.model, []).append(i)
+            # Indexed, not `.model`: an on_route hook may replace the decision with a plain dict,
+            # which `predict` accepts too.
+            groups.setdefault(decision["model"], []).append(i)
 
         results: List[Optional[Dict[str, Any]]] = [None] * len(requests)
+        active = list(self.hooks)
+        raise_errors = self.hooks_raise
 
         for model_name, indices in groups.items():
             agent = self.load(model_name)
+            started: List[PredictContext] = []
+            try:
+                # One context per request, built and started the way `predict` does it, so a
+                # start hook sees -- and can redact, rewrite or skip -- each request before it
+                # joins a shared forward pass.
+                for i in indices:
+                    ctx = PredictContext(states=[requests[i]["state"]], questions=requests[i]["questions"],
+                                         decision=dict(decisions[i]), model=model_name, agent=agent,
+                                         router=self)
+                    started.append(ctx)
+                    dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
 
-            # Agent.predict_batch evaluates one shared question schema over many states.
-            # Preserve Router's heterogeneous-request API by splitting each checkpoint
-            # group again whenever the question dictionaries differ.
-            question_groups: List[Dict[str, Any]] = []
-            for i in indices:
-                questions = requests[i]["questions"]
+                # Agent.predict_batch evaluates one shared question schema and token budget over
+                # many states. Preserve Router's heterogeneous-request API by splitting each
+                # checkpoint group again on what the start hooks left, so a rewritten question
+                # set or `ctx.max_len` only applies to its own request.
+                question_groups: List[Dict[str, Any]] = []
+                for i, ctx in zip(indices, started):
+                    if ctx.results is not None:
+                        # A cache hit short-circuits inference; keep the `routing` key predict adds.
+                        for result in ctx.results:
+                            if isinstance(result, dict):
+                                result.setdefault("routing", dict(decisions[i]))
+                        continue
+                    # Pass token-budget overrides only when set, as `predict` does, so an
+                    # Agent-like object that does not accept them still works.
+                    overrides = {key: value for key, value in (("max_len", ctx.max_len),
+                                                               ("head_max_len", ctx.head_max_len))
+                                 if value is not None}
+                    # Order-sensitive at every nesting level (#166): options are positional, so two
+                    # equal schemas with different key orders must not share a group.
+                    schema = _question_schema(ctx.questions)
+                    for group in question_groups:
+                        if group["schema"] == schema and group["overrides"] == overrides:
+                            group["items"].append((i, ctx))
+                            break
+                    else:
+                        question_groups.append({
+                            "questions": ctx.questions,
+                            "schema": schema,
+                            "overrides": overrides,
+                            "items": [(i, ctx)],
+                        })
 
                 for group in question_groups:
-                    if group["questions"] == questions:
-                        group["indices"].append(i)
-                        break
-                else:
-                    question_groups.append({
-                        "questions": questions,
-                        "indices": [i],
-                    })
-
-            for group in question_groups:
-                group_indices = group["indices"]
-                states = [requests[i]["state"] for i in group_indices]
-
-                batch_results = agent.predict_batch(
-                    states,
-                    group["questions"],
-                    batch_size=batch_size,
-                )
-
-                if len(batch_results) != len(group_indices):
-                    raise RuntimeError(
-                        "internal error: Agent.predict_batch returned %d results for %d states"
-                        % (len(batch_results), len(group_indices))
+                    items = group["items"]
+                    batch_results = agent.predict_batch(
+                        [ctx.states[0] for _, ctx in items],
+                        group["questions"],
+                        batch_size=batch_size,
+                        **group["overrides"],
                     )
 
-                for i, result in zip(group_indices, batch_results):
-                    result["routing"] = dict(decisions[i])
-                    results[i] = result
+                    if len(batch_results) != len(items):
+                        raise RuntimeError(
+                            "internal error: Agent.predict_batch returned %d results for %d states"
+                            % (len(batch_results), len(items))
+                        )
+
+                    for (i, ctx), result in zip(items, batch_results):
+                        result["routing"] = dict(decisions[i])
+                        ctx.results = [result]
+            except BaseException as exc:
+                # Every started request is ended, so a hook that opens something in start (a
+                # span, an in-flight count) always sees the matching end. A request that already
+                # has its result keeps it; the rest failed with the batch.
+                for ctx in started:
+                    if ctx.results is None:
+                        ctx.error = exc
+                        try:
+                            dispatch(active, "on_error", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+                        except BaseException as hook_exc:
+                            exc.__context__ = hook_exc
+                try:
+                    self._end_contexts(active, started, raise_errors)
+                except BaseException as hook_exc:
+                    exc.__context__ = hook_exc
+                raise
+
+            self._end_contexts(active, started, raise_errors)
+            for i, ctx in zip(indices, started):
+                results[i] = ctx.results[0]
 
         # Every input index is assigned exactly once by construction. Keep this assertion local
         # so a future refactor cannot silently return a partially-filled batch.
@@ -702,6 +775,31 @@ class Router(HookRegistry):
         return [result for result in results if result is not None]
 
     predict_many = predict_batch
+
+    def _end_contexts(self, active: List[Any], contexts: List[PredictContext], raise_errors: bool) -> None:
+        """Finish each request of a batch the way `predict`'s `finally` finishes one.
+
+        Every context gets its `on_predict_end` even if an earlier one's end hook raises; the
+        first such failure is raised afterwards. On a context that already failed, a raising
+        end hook is chained onto its error instead, as in `predict`. Timing and usage are set on
+        all of them first, so one request's `elapsed_ms` never includes another's end hooks.
+        """
+        now = time.perf_counter()
+        for ctx in contexts:
+            ctx.elapsed_ms = (now - ctx.started_at) * 1000.0
+            if ctx.results is not None:
+                ctx.usage = aggregate_usage(ctx.results)
+        first_error: Optional[BaseException] = None
+        for ctx in contexts:
+            try:
+                dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+            except BaseException as hook_exc:
+                if ctx.error is not None:
+                    ctx.error.__context__ = hook_exc
+                elif first_error is None:
+                    first_error = hook_exc
+        if first_error is not None:
+            raise first_error
 
     def __repr__(self):
         return "Router(loaded=%s, max_loaded=%d, default=%r)" % (self.loaded, self.max_loaded, self.default)

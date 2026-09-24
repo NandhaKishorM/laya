@@ -26,6 +26,8 @@ export {
   renderOptions,
   serializeState,
   buildSequence,
+  buildQuestionPrefix,
+  sequenceWithState,
   softmax,
   confidenceFromProbs,
   clampTemperature,
@@ -34,6 +36,6 @@ export {
   TEMP_MIN,
   TEMP_MAX,
 } from "./common.js";
-export type { QType, InternalQ, CollateItem, CollatedBatch } from "./common.js";
+export type { QType, InternalQ, CollateItem, CollatedBatch, QuestionPrefix } from "./common.js";
 export { bpeEncode, metaspaceEncode, encodeWithData, parseTokenizerJson, loadTokenizerJson, CHECKPOINT_IDS, SPECIAL_ALIASES, METASPACE_REPLACEMENT } from "./tokenizer.js";
 export type { TokenizerLike, TokenizerData, TokenizerIds, PreTokenizerKind } from "./tokenizer.js";

@@ -1,11 +1,13 @@
 import {
   TEMP_MAX,
   TEMP_MIN,
-  buildSequence,
+  buildQuestionPrefix,
   clampTemperature,
   collateItems,
   confidenceFromProbs,
   renderOptions,
+  sequenceWithState,
+  serializeState,
   softmax,
   tempBucket,
 } from "./common.js";
@@ -249,11 +251,15 @@ export class Agent {
     }
     const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
     const internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown }[] = [];
+    // The state text is shared by every question and is usually the longest text in the
+    // sequence — encode it once and compose the per-question prefixes onto it.
+    const stAll = this.tok.encode(serializeState(state).split(this.tok.maskToken).join(" "));
     for (const qid of ids) {
       checkQuestion(qid, questions[qid]);
       const q = toInternal(questions[qid]);
       internals.push(q);
-      const { ids: seq, markers } = buildSequence(this.tok, state, q, this.maxLen, this.headMaxLen);
+      const prefix = buildQuestionPrefix(this.tok, q, this.maxLen, this.headMaxLen);
+      const { ids: seq, markers } = sequenceWithState(prefix, stAll, this.tok.sepId, this.maxLen);
       if (markers.length !== renderOptions(q).length) {
         throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${this.headMaxLen}`);
       }

@@ -1,4 +1,4 @@
-import { renderOptions, serializeState } from "./common.js";
+import { maxOf, renderOptions, serializeState } from "./common.js";
 import type { Batch } from "./providers.js";
 import type { QuestionDef, SystemOneResult } from "./agent.js";
 
@@ -189,7 +189,7 @@ export function embedFnFromAgent(agent: unknown, maxLength = 512, batchSize = 32
     for (let s = 0; s < rows.length; s += batchSize) {
       const chunk = rows.slice(s, s + batchSize);
       const ids = chunk.map((t) => tok.encode(t).slice(0, maxLength));
-      const L = Math.max(1, ...ids.map((r) => r.length));
+      const L = maxOf(ids.map((r) => r.length), 1);
       const pad = tok.padId ?? 0;
       const batch: Batch = {
         inputIds: ids.map((r) => [...r, ...Array(L - r.length).fill(pad)]),

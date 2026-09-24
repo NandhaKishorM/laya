@@ -118,6 +118,12 @@ export function tempBucket(qtype: number, k: number): string {
   const size = k <= 2 ? "2" : k <= 5 ? "3-5" : k <= 10 ? "6-10" : "11+";
   return `${["choice", "score", "noul"][qtype]}:${size}`;
 }
+/** Max of a length list without spread (Math.max(...arr) throws RangeError past ~100k args). */
+export function maxOf(values: ArrayLike<number>, fallback = 0): number {
+  let m = fallback;
+  for (let i = 0; i < values.length; i++) if (values[i] > m) m = values[i];
+  return m;
+}
 export interface CollateItem {
   ids: number[];
   markers: number[];
@@ -140,8 +146,12 @@ export interface CollatedBatch {
 export function collateItems(batch: CollateItem[][], padId: number): CollatedBatch | null {
   const items = (batch ?? []).flat();
   if (items.length === 0) return null;
-  const L = Math.max(...items.map((it) => it.ids.length));
-  const K = Math.max(...items.map((it) => it.markers.length));
+  let L = 0;
+  let K = 0;
+  for (const it of items) {
+    if (it.ids.length > L) L = it.ids.length;
+    if (it.markers.length > K) K = it.markers.length;
+  }
   const hasTarget = items.some((it) => "target" in it);
   const inputIds = items.map((it) => [...it.ids, ...Array(L - it.ids.length).fill(padId)]);
   const attentionMask = items.map((it) => [...Array(it.ids.length).fill(1), ...Array(L - it.ids.length).fill(0)]);

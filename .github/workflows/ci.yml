@@ -134,7 +134,7 @@ jobs:
           pip install -e ".[serve]" pytest httpx
 
       - name: Serving tests
-        run: python -m pytest tests/test_serve.py tests/test_serve_batching.py tests/test_serve_ops.py tests/test_router_batch.py -q
+        run: python -m pytest tests/test_serve*.py tests/test_router_batch.py -q
 
   # Every workflow in this repo ran on ubuntu-latest only, so a test that fails off Linux was
   # invisible until a user hit it -- which is what happened to tests/test_download.py (#140).

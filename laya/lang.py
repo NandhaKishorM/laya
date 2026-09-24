@@ -172,6 +172,9 @@ _NON_EN_DIACRITICS = set(
 # way), though it still counts toward the total of a language that also matched a word of its own.
 _SHARED_WORDS = {w for w in {word for words in _STOP.values() for word in words}
                  if sum(w in words for words in _STOP.values()) > 1}
+# Every word a non-English list holds. In text with no English function word, one of them is evidence
+# the text is not English, even when it is too thin to say which language (#54).
+_OTHER_WORDS = frozenset(w for lg, words in _STOP.items() if lg != "en" for w in words)
 
 _WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
 # A token whose dot or @ joins word characters is an identifier, not prose: `github.com`,
@@ -326,10 +329,10 @@ def _non_latin_words(text: str) -> List[str]:
 def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
 
-    Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate` and
-    `looks_non_english`. `analyse` needs the evidence and not just the verdict, because
-    "undecided" and "English" are different answers and only one of them is safe to send to the
-    English checkpoint.
+    Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate`,
+    `looks_non_english` and `other_evidence`. `analyse` needs the evidence and not just the
+    verdict, because "undecided" and "English" are different answers and only one of them is safe
+    to send to the English checkpoint.
 
     A non-English language is only named when it matched at least one word that no other list
     claims: shared function words alone (`la`, `e`, `o`) identify no particular language.
@@ -342,7 +345,7 @@ def latin_profile(text: str) -> Dict[str, object]:
     non_english = diac_rate >= NON_EN_DIACRITIC_RATE
     if len(words) < 4:
         return {"language": None, "english_hits": 0, "diacritic_rate": diac_rate,
-                "looks_non_english": non_english}
+                "looks_non_english": non_english, "other_evidence": False}
 
     scores = {lg: sum(1 for w in words if w in sw) for lg, sw in _STOP.items()}
     en = scores.get("en", 0)
@@ -365,8 +368,10 @@ def latin_profile(text: str) -> Dict[str, object]:
         lang = best_lg
     elif en and not non_english:
         lang = "en"
+    # a non-English letter too rare for the rate counts as evidence too
+    other = diac > 0 or not _OTHER_WORDS.isdisjoint(words)
     return {"language": lang, "english_hits": en, "diacritic_rate": diac_rate,
-            "looks_non_english": non_english}
+            "looks_non_english": non_english, "other_evidence": other}
 
 
 def guess_latin_language(text: str) -> Optional[str]:
@@ -407,10 +412,13 @@ def analyse(state: Union[str, dict, list, None]) -> Dict[str, object]:
     lang = prof_lat["language"]
     # Undecided is not English. Treating it as English sent every Latin-script language we hold no
     # stopwords for to the checkpoint that cannot read it, silently. When nothing identifies the
-    # language, non-English letters are enough to prefer the multilingual checkpoint; text with no
-    # such letters (including short English) still goes to the English one.
+    # language, non-English letters are enough to prefer the multilingual checkpoint. So is weaker
+    # evidence of another language at four or more words, where text left undecided has no English
+    # function word, since one would have named it `en` (#54). Text with neither, like short English
+    # and English commands without a function word, still goes to the English one.
     undecided = lang is None
-    english = lang == "en" or (undecided and not prof_lat["looks_non_english"])
+    english = lang == "en" or (undecided and not prof_lat["looks_non_english"]
+                               and not prof_lat["other_evidence"])
     return {"script": "latin", "script_profile": prof, "language": lang,
             "is_english": english, "language_undecided": undecided,
             "diacritic_rate": round(float(prof_lat["diacritic_rate"]), 4),

@@ -318,6 +318,8 @@ _r_ml = Router(default="multilingual")
 for text in ["Quero cancelar", "Esqueci minha senha", "Fui cobrado duas vezes",
              "Produto veio quebrado, quero trocar", "refund me"]:
     check("route/undecided follows default " + text[:24], _r_ml.route(text).model, "multilingual")
+# `quero` is Portuguese evidence at five words, so that one leaves `default` (#54, below)
+for text in ["Quero cancelar", "Esqueci minha senha", "Fui cobrado duas vezes", "refund me"]:
     check("route/undecided stock default " + text[:24], _r_lat.route(text).model, "english")
 check("route/undecided reason names the default",
       "using default (multilingual)" in _r_ml.route("Esqueci minha senha").reason, True)
@@ -481,6 +483,30 @@ for text in ["turn off smart lamp in den", "im so sorry, am an hour late, stuck 
 # German words that Spanish (`es`) or French (`du`) also claim would stop naming those languages
 check("latin_lang/spanish es stays evidence", guess_latin_language("que hora es en australia"), "es")
 check("latin_lang/french du stays evidence", guess_latin_language("baisse le volume du haut-parleur"), "fr")
+# Undecided at four or more words (#54). Such text has no English function word, since one would name
+# it `en`. With a word from another language's list, or a non-English letter too rare for the rate, that
+# is evidence it is not English even when too thin to say which language. MASSIVE test utterances:
+for text in ["streiche alle meine geplanten termine",                      # de, `meine`
+             "vertel me wat er gebeurt op instagram",                      # nl, `op`
+             "verificar qualquer email da amazon",                         # pt, `da`
+             "me gustaría escuchar algunos buenos chistes divertidos"]:    # es, one `í`
+    check("latin_lang/undecided with evidence " + text, guess_latin_language(text), None)
+    check("route/undecided with evidence " + text, _r_lat.route(text).model, "multilingual")
+check("route/undecided evidence reason names the word", "function word of another language" in
+      _r_lat.route("streiche alle meine geplanten termine").reason, True)
+check("route/undecided evidence reason names the letter", "a non-English letter" in
+      _r_lat.route("me gustaría escuchar algunos buenos chistes divertidos").reason, True)
+# Under four words the text is not scored, so the same word is no evidence yet
+check("route/undecided three words follow default", _r_lat.route("beginne eine email").model, "english")
+# No evidence, no move: English with no function word stays English (the first three are from the 20,000
+# English texts checked on #54, the last from en-US MASSIVE) ...
+for text in ["tell me my current savings account's interest rate", "play recently added music",
+             "how many days before my credit card arrives", "turn off lobby light"]:
+    check("route/english without a function word " + text, _r_lat.route(text).model, "english")
+# ... and so, kept visible on purpose, does a language with no list here and no accents to show for it.
+# `lang_guess=` or `Router(default="multilingual")` is the way round it.
+check("route/KNOWN GAP indonesian without evidence",
+      _r_lat.route("tolong mainkan lagu dari bruno mars").model, "english")
 
 
 # --------------------------------------------------------------------- temperature clamp (#35)

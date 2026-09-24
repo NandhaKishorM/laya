@@ -164,3 +164,17 @@ def test_malformed_json_is_400(monkeypatch):
     client, _ = _client(monkeypatch)
     r = client.post("/v1/chat/completions", content="{not json", headers={"content-type": "application/json"})
     assert r.status_code == 400
+
+
+def test_deeply_nested_json_is_400(monkeypatch):
+    client, _ = _client(monkeypatch)
+    deep = "[" * 2000 + "]" * 2000
+    r = client.post("/v1/responses", content=deep, headers={"content-type": "application/json"})
+    assert r.status_code == 400
+
+
+def test_moderation_rejects_too_many_inputs(monkeypatch):
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/moderations", json={"input": ["text"] * 65})
+    assert r.status_code == 413
+    assert client.post("/v1/moderations", json={"input": ["text"] * 64}).status_code == 200

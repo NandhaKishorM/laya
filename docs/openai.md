@@ -20,7 +20,7 @@ The Jev-compatible `POST /v1/systemone` route stays as it is.
 
 ```bash
 pip install "laya[serve]"
-laya-serve            # http://127.0.0.1:8000
+laya-serve            # binds 0.0.0.0:8000 by default; the client reaches it at 127.0.0.1:8000
 ```
 
 Set `LAYA_API_KEY` to require a bearer token, exactly as the chat clients send it.

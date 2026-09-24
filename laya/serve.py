@@ -71,6 +71,8 @@ MAX_TOTAL_OPTIONS = 512
 # before inference, so without a bound many concurrent near-cap requests OOM
 # the worker even though every request is individually valid (#330).
 DEFAULT_MAX_CONCURRENT = 16
+# A moderation request may carry many inputs; cap the batch like the other batch limits.
+MAX_MODERATION_INPUTS = 64
 # Public Hugging Face ids, accepted so a client can name a checkpoint. The root bundle is
 # deliberately absent: the documented ``convaiinnovations/laya`` value means
 # "let the Router choose", rather than pinning the English checkpoint.
@@ -209,6 +211,28 @@ async def _read_body_capped(request: Any) -> bytes:
             raise HTTPException(status_code=413, detail="request body too large")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+async def _read_json(request: Any) -> Any:
+    """Read a JSON body with the same guards ``/v1/systemone`` uses, for the OpenAI routes.
+
+    The declared length is a fast reject; the streamed cap is what enforces the limit for every
+    framing. ``RecursionError`` is caught alongside ``ValueError`` so a deeply nested body is a
+    400 rather than a 500, matching the fix in #401.
+    """
+    from fastapi import HTTPException
+
+    if request.headers.get("content-length"):
+        try:
+            if int(request.headers["content-length"]) > MAX_BODY_BYTES:
+                raise HTTPException(status_code=413, detail="request body too large")
+        except ValueError:
+            pass
+    raw = await _read_body_capped(request)
+    try:
+        return json.loads(raw)
+    except (ValueError, RecursionError):
+        raise HTTPException(status_code=400, detail="request body must be valid JSON")
 
 
 def _apply_thread_limit():
@@ -407,14 +431,6 @@ def create_app(router: Optional[Any] = None):
         parse_responses_request,
     )
 
-    def _check_body_size(request: Request) -> None:
-        if request.headers.get("content-length"):
-            try:
-                if int(request.headers["content-length"]) > MAX_BODY_BYTES:
-                    raise HTTPException(status_code=413, detail="request body too large")
-            except ValueError:
-                pass
-
     async def _infer(fn):
         nonlocal gate
         if gate is None:
@@ -440,12 +456,9 @@ def create_app(router: Optional[Any] = None):
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Request, authorization: Optional[str] = Header(default=None)):
         _check_auth(authorization)
-        _check_body_size(request)
-        try:
-            body = await request.json()
-        except ValueError:
-            raise HTTPException(status_code=400, detail="request body must be valid JSON")
+        body = await _read_json(request)
         plan = _plan_or_http(parse_chat_request, body)
+        _check_request_limits(plan.state, plan.questions)
         model = _resolve_model(plan.model)
         try:
             result = await _infer(lambda: router.predict(plan.state, plan.questions, model=model))
@@ -460,12 +473,9 @@ def create_app(router: Optional[Any] = None):
     @app.post("/v1/responses")
     async def responses(request: Request, authorization: Optional[str] = Header(default=None)):
         _check_auth(authorization)
-        _check_body_size(request)
-        try:
-            body = await request.json()
-        except ValueError:
-            raise HTTPException(status_code=400, detail="request body must be valid JSON")
+        body = await _read_json(request)
         plan = _plan_or_http(parse_responses_request, body)
+        _check_request_limits(plan.state, plan.questions)
         model = _resolve_model(plan.model)
         try:
             result = await _infer(lambda: router.predict(plan.state, plan.questions, model=model))
@@ -480,16 +490,18 @@ def create_app(router: Optional[Any] = None):
     @app.post("/v1/moderations")
     async def moderations(request: Request, authorization: Optional[str] = Header(default=None)):
         _check_auth(authorization)
-        _check_body_size(request)
-        try:
-            body = await request.json()
-        except ValueError:
-            raise HTTPException(status_code=400, detail="request body must be valid JSON")
+        body = await _read_json(request)
         try:
             states = parse_moderation_request(body)
         except UnsupportedRequest as exc:
             raise HTTPException(status_code=400, detail=str(exc))
+        if len(states) > MAX_MODERATION_INPUTS:
+            raise HTTPException(status_code=413,
+                                detail="too many moderation inputs (%d > %d)"
+                                % (len(states), MAX_MODERATION_INPUTS))
         questions = moderation_questions_preset()
+        for state in states:
+            _check_request_limits(state, questions)
 
         async def _score(state):
             return await _infer(lambda: router.predict(state, questions))

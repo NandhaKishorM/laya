@@ -151,7 +151,15 @@ def laya_predict(
     # Router.predict and Agent.system_one both return the system_one payload,
     # which always carries an "answers" object (empty for empty questions).
     answers = _normalize_answers(result["answers"])
-    routing = result.get("routing") or {"model": model_name, "repo": None, "reason": "explicit model"}
+    routing = result.get("routing")
+    if not routing:
+        # Agent.predict() doesn't return routing info; Router.predict() always does.
+        # When model_name is "auto" (routing directive, not a checkpoint), we cannot
+        # use it as the model name in the fallback.
+        if model_name == "auto":
+            routing = {"model": None, "repo": None, "reason": "auto routing without router"}
+        else:
+            routing = {"model": model_name, "repo": None, "reason": "explicit model"}
     # Real device of the checkpoint that answered: Agent.device reflects a
     # silent GPU -> CPU fallback. Omitted when it cannot be read, rather than
     # guessed.

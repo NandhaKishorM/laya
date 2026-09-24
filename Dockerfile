@@ -43,10 +43,15 @@ ENV PATH="/opt/venv/bin:$PATH" \
     LAYA_DEVICE=cpu \
     HF_HOME=/home/laya/.cache/huggingface
 
-# Triton JIT compilation on CUDA requires a C compiler and development headers (#365).
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc g++ libc6-dev \
-    && rm -rf /var/lib/apt/lists/*
+# triton JIT-compiles on the first inference, so a GPU image with no compiler starts healthy
+# and then fails every request (#365). A cpu wheel never gets there, so it stays slim.
+ARG TORCH_INDEX=cpu
+RUN set -eu; \
+    if [ "${TORCH_INDEX}" != "cpu" ]; then \
+        apt-get update; \
+        apt-get install -y --no-install-recommends gcc g++ libc6-dev; \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
 
 RUN groupadd --gid 10001 laya \
     && useradd --uid 10001 --gid laya --create-home laya \

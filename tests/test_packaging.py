@@ -184,6 +184,15 @@ check_true("compose.http/leaves the quickstart service alone",
 check_true("Dockerfile/installs the serve extra", '".[serve]"' in dockerfile, dockerfile[:400])
 check_true("Dockerfile/still runs pip check", "pip check" in dockerfile)
 
+# Without a compiler in the runtime stage a GPU image serves 500s while /health stays green (#365).
+runtime_stage = dockerfile.partition("AS runtime")[2]
+check_true("Dockerfile/runtime stage declares TORCH_INDEX",
+           re.search(r"^ARG TORCH_INDEX=", runtime_stage, re.M) is not None,
+           "the build arg does not cross the FROM, so the stage cannot tell CPU from CUDA")
+check_true("Dockerfile/runtime stage installs a C compiler for triton",
+           re.search(r"apt-get install\b[^\n]*\bgcc\b", runtime_stage) is not None,
+           "GPU images have no compiler, so every inference fails")
+
 # Overrides for `laya` never reach `laya-serve`, a separate service. If the CUDA override does
 # not repeat the args for laya-serve, that service silently serves on CPU.
 check_true("compose.cuda/covers laya-serve too",

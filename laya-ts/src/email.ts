@@ -12,11 +12,29 @@ const ATTRIBUTION_TAIL = /^.{0,120}\S@\S+\s+(wrote|escreveu|escribi[óo]):\s*$/i
 const ATTRIBUTION_HEAD = /^\s*(On|Em|El) (?=.*\d)/i;
 const HEADER_FROM_NAME = /^\s*De:\s+\S/i;
 const HEADER_NEXT = /^\s*(Enviad[oa]( em| el)?:\s|(Data|Fecha):\s.*\d{4})/i;
-const SIGNATURE_MARKERS: RegExp[] = [
-  /^\s*--\s*$/,
-  /^\s*(best|kind|warm|many thanks|thanks|thank you|regards|cheers|sincerely)[\w ,!.]*$/i,
-  /^\s*sent from my (iphone|android|mobile|ipad)/i,
-  /^\s*(atenciosamente|att|abraços?|abs|um abraço|cordialmente|grat[oa]|(muito )?obrigad[oa]s?( desde já| pela atenção)?|(com os melhores )?cumprimentos|saudações|(un )?saludos?( cordiales)?|atentamente|(muchas )?gracias( de antemano)?)[\s,!.]*$/i,
+// A closing line is the closing word plus punctuation and at most a name. Anything else on
+// the line is a sentence, and the case of the next word is what separates the two: a name is
+// capitalised, "for" in "Thanks for the quick reply." is not. JS regexes have no scoped
+// case-insensitive groups like Python's (?i:...), so the closing words are matched
+// case-insensitively here and the name is checked case-sensitively by SIGNOFF_TAIL.
+const SIGNOFF_HEAD =
+  /^\s*(?:best|kind|warmest|warm|many thanks|thanks|thank you|regards|cheers|sincerely)(?:\s+(?:and|&)\s+regards|\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?/i;
+// Python's name class [^\W\d_a-zß-öø-ÿ] is "a word char that is not a digit, underscore or
+// lowercase letter"; \p{Lu}/\p{Lt}/\p{Lo} is the same intent: a name is capitalised in any
+// script (Regards, Łukasz) or written in a script without case (山田).
+const SIGNOFF_TAIL = /^[\s,;:!.]*(?:[\p{Lu}\p{Lt}\p{Lo}][\p{L}\p{M}\p{N}_'-]*[\s,.]*){0,3}$/u;
+function isEnglishSignoff(line: string): boolean {
+  const m = SIGNOFF_HEAD.exec(line);
+  return m !== null && SIGNOFF_TAIL.test(line.slice(m[0].length));
+}
+const SIGNATURE_MARKERS: Array<(line: string) => boolean> = [
+  (l) => /^\s*--\s*$/.test(l),
+  isEnglishSignoff,
+  (l) => /^\s*sent from my (iphone|android|mobile|ipad)/i.test(l),
+  (l) =>
+    /^\s*(atenciosamente|att|abraços?|abs|um abraço|cordialmente|grat[oa]|(muito )?obrigad[oa]s?( desde já| pela atenção)?|(com os melhores )?cumprimentos|saudações|(un )?saludos?( cordiales)?|atentamente|(muchas )?gracias( de antemano)?)[\s,!.]*$/i.test(
+      l,
+    ),
 ];
 const DEVICE =
   "iphone|ipad|android|ios|celular|telemóvel|móvil|galaxy|smartphone|samsung|tablet|" +
@@ -76,7 +94,10 @@ function stripDisclaimer(paragraph: string): string {
 }
 
 export function cleanEmailBody(body: string, maxChars = 3000): string {
-  const text = (body ?? "").replace(/\r\n?/g, "\n").replace(/\\n/g, "\n");
+  let text = (body ?? "").replace(/\r\n?/g, "\n").replace(/\\n/g, "\n");
+  // Bound regex work before the expensive patterns below (Python does the same): only
+  // maxChars are ever returned, so nothing past 4x can survive cleaning.
+  if (text.length > maxChars * 4) text = text.slice(0, maxChars * 4);
   const lines: string[] = [];
   const src = text.split("\n");
   for (let i = 0; i < src.length; i++) {
@@ -95,7 +116,7 @@ export function cleanEmailBody(body: string, maxChars = 3000): string {
   for (let i = start; i < lines.length; i++) {
     const n = lines[i].trim().length;
     if (
-      (n <= 40 && SIGNATURE_MARKERS.some((p) => p.test(lines[i]))) ||
+      (n <= 40 && SIGNATURE_MARKERS.some((p) => p(lines[i]))) ||
       (n <= 60 && DEVICE_FOOTER.test(lines[i]))
     ) {
       cut = i;

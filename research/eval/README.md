@@ -160,14 +160,44 @@ Related: **`head_max_len` is load-bearing for accuracy**, not just for option
 truncation. The english checkpoint at its shipped `head_max_len=192` scores 0.82;
 forcing 256 or 512 drops it to 0.79.
 
+## Checking a run against committed results (`verify_results.py`)
+
+`laya_eval.py` produces numbers; `verify_results.py` answers the follow-up without
+anyone writing their own differ: does this run match the file it is compared
+against, cell by cell? It reads all three per-language JSON shapes in this
+repository — a fresh `laya_eval --out` report, `cpu_51_language_sweep.json`
+(`--model-key english|multilingual`), and `cpu_51_language_sweep_clamped.json`
+(`--branch committed|unclamped_rerun|clamped_rerun`) — and also compares two fresh
+runs against each other, which is how device parity is checked:
+
+```bash
+# fresh run vs the clamped re-run
+python research/eval/verify_results.py my_run.json \
+    research/results/cpu_51_language_sweep_clamped.json
+
+# device parity: one fresh run against another
+python research/eval/verify_results.py sweep_mps.json sweep_cpu.json
+```
+
+Per metric it prints exact-match counts and the worst cell; the exit code is 0
+when every compared cell is within tolerance (default `5e-5`, half the last stored
+digit) and 1 otherwise, so it can gate a release checklist
+([#285](https://github.com/NandhaKishorM/laya/issues/285)).
+
+
 ## Tests
 
 `research/eval/test_laya_eval.py` covers the pure functions and runs offline — no
 checkpoint, no network:
 
 ```bash
-python research/eval/test_laya_eval.py     # 64 passed, 0 failed
+python research/eval/test_laya_eval.py        # 64 passed, 0 failed
+python research/eval/test_verify_results.py   # 21 passed, 0 failed
 ```
+
+`test_verify_results.py` covers the checker the same way — offline, with synthetic
+documents: format detection for all three results shapes, branch and model-key
+selection, tolerance and exit codes, and language-set mismatch reporting.
 
 It pins the upstream constants (seed 13, 20 options, the exact instruction string),
 the determinism of the sampler, that a fresh RNG per language is used, and the

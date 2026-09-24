@@ -82,7 +82,17 @@ const out = await predictShortlist(agent, state, questions, embedFn, 20);
 
 ```bash
 node laya-ts/examples/try-ml.mjs   # needs ./model-ml from the export step
+node laya-ts/examples/try-batch.mjs   # bulk predictMany over 3 states, one forward pass per model
 node laya-ts/examples/snake.mjs --ticks 50   # autonomous snake demo, headless smoke (live TUI without --ticks)
+```
+
+## Batch (one forward pass for N states)
+
+```ts
+const out = await agent.predictMany(states, questions); // SystemOneResult[]
+const routed = await router.predictMany(states, questions); // + routing per state
+import { q, best, topK } from "laya-ts";
+const qq = { d: q.choice("pick", { refund: "money back", other: "rest" }) };
 ```
 
 ## Packaging

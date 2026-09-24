@@ -1,6 +1,16 @@
 import { Agent, Router } from "../dist/index.js";
+import { existsSync } from "node:fs";
 
-const agent = await Agent.load("./model-ml"); // run as: node laya-ts/examples/try-ml.mjs (repo root)
+// run as: node laya-ts/examples/try-ml.mjs (repo root) or node examples/try-ml.mjs (laya-ts dir)
+// --model overrides; otherwise first existing dir wins (repo ships weights at laya-ts/examples/model-ml)
+const args = process.argv.slice(2);
+const flag = (name) => {
+  const i = args.indexOf(name);
+  return i === -1 || i + 1 >= args.length ? null : args[i + 1];
+};
+const MODEL_DIR = flag("--model") ??
+  ["./model-ml", "laya-ts/examples/model-ml", "./examples/model-ml"].find((d) => existsSync(d)) ?? "./model-ml";
+const agent = await Agent.load(MODEL_DIR);
 console.log("loaded:", agent.cfg.encoder ?? "multilingual");
 
 // Direct predict (Hindi -> multilingual weights)

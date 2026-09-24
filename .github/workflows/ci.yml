@@ -114,6 +114,28 @@ jobs:
       - name: Email cleaning tests
         run: python tests/test_email.py
 
+  # The serving layer pulls fastapi/uvicorn/prometheus-client, so it lives in its own job with the
+  # `serve` extra rather than bloating every `test` matrix cell. It also runs the two suites the
+  # main job never listed (test_router_batch, test_serve), which is how batching went uncovered.
+  serve:
+    name: serve (batching, metrics, ops)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[serve]" pytest httpx
+
+      - name: Serving tests
+        run: python -m pytest tests/test_serve.py tests/test_serve_batching.py tests/test_serve_ops.py tests/test_router_batch.py -q
+
   # Every workflow in this repo ran on ubuntu-latest only, so a test that fails off Linux was
   # invisible until a user hit it -- which is what happened to tests/test_download.py (#140).
   #

@@ -34,6 +34,17 @@ Three checkpoints, and a `Router` that picks between them per request:
 | [`laya-multilingual`](https://huggingface.co/convaiinnovations/laya-multilingual) | mmBERT-base | 322M | 1024 | 100+ languages, 2x faster |
 | [`laya-typed-decisions`](https://huggingface.co/convaiinnovations/laya-typed-decisions) | ModernBERT-large | 421M | 1024 | the typed-decisions workflows |
 
+### What's new in 0.3.12
+
+* **Correct routed batches.** `Router.predict_batch` now keeps two requests apart when their `choice` options are the same but in a different order, so every request gets the same answer as its own `predict` call (#166). The Router's predict hooks now run for every request in a batch, so a redaction hook also covers batched traffic.
+* **Schema-driven decisions.** `agent.decide(state, schema=...)` takes a JSON schema or pydantic model and returns typed values in one forward pass.
+* **Faster, same answers.** The state is tokenized once per call instead of once per question, `predict_batch(..., sort_by_length=True)` cuts padding work on mixed-length batches, and Apple GPUs use fp16 once a call has enough question rows.
+* **More hooks.** `BaseHook` to subclass, and process-wide default hooks for tracers and metrics.
+* **Per-language calibration.** `lang_temperatures=` lets you apply your own per-language temperatures, and the Router passes the detected language through. Nothing ships with values, so defaults are unchanged.
+* **`answer_confidence`.** Every answer also reports `max(p)`, next to the existing `confidence`, which is unchanged.
+* **Fixes.** A blank `lang=` now falls through to detection instead of pinning the multilingual checkpoint, `laya-serve` enforces its body-size limit on chunked uploads, and mixed-width training batches reject targets longer than their own options.
+* **CLI, TypeScript and docs.** `laya "..." --preset triage`; `laya-ts` gains hooks, one-pass state tokenization, and routing and e-mail parity with Python; CONTRIBUTING, a code of conduct and issue templates; an API reference generated from docstrings.
+
 ### What's new in 0.3.11
 
 * **Routed batches.** `Router.predict_batch(requests)` routes each request, groups them by checkpoint and question set, and scores each group in shared forward passes, with answers identical to one `predict` call per request. Each request can set its own `model`, `task`, `lang` or `lang_guess`. See [Heterogeneous routed batches](#heterogeneous-routed-batches).

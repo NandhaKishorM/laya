@@ -65,7 +65,6 @@ export {
   TEMP_MAX,
 } from "./common.js";
 export type { QType, InternalQ, CollateItem, CollatedBatch, QuestionPrefix } from "./common.js";
-export { maxOf } from "./common.js";
 export { q, best, topK, isConfident } from "./dx.js";
 export { bpeEncode, metaspaceEncode, encodeWithData, parseTokenizerJson, loadTokenizerJson, CHECKPOINT_IDS, SPECIAL_ALIASES, METASPACE_REPLACEMENT } from "./tokenizer.js";
 export type { TokenizerLike, TokenizerData, TokenizerIds, PreTokenizerKind } from "./tokenizer.js";

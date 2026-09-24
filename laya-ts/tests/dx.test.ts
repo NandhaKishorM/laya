@@ -27,6 +27,10 @@ describe("result helpers", () => {
     expect(isConfident({ confidence: 0.9 } as any, 0.8)).toBe(true);
     expect(isConfident({ confidence: 0.5 } as any, 0.8)).toBe(false);
   });
+  it("prefers answer_confidence over entropy confidence", () => {
+    expect(isConfident({ confidence: 0.5, answer_confidence: 0.9 } as any, 0.8)).toBe(true);
+    expect(isConfident({ confidence: 0.9, answer_confidence: 0.5 } as any, 0.8)).toBe(false);
+  });
 });
 
 describe("predictShortlist auto-embed", () => {

@@ -60,13 +60,24 @@ check("code/POSIX with encoding is read",
 check("code/hyphen subtag is read", r0.route(ROMANIAN, GENERIC, lang_guess="de-DE")["model"], "multilingual")
 check("code/case is ignored", r0.route(ROMANIAN, GENERIC, lang_guess="RO")["model"], "multilingual")
 check("code/whitespace is ignored", r0.route(ROMANIAN, GENERIC, lang_guess="  en  ")["model"], "english")
-check("code/unknown code still means non-English",
-      r0.route(ROMANIAN, GENERIC, lang_guess="qq")["model"], "multilingual")
 
 # an abstaining hint must fall through to detection, not force a checkpoint
 for empty in (None, "", "   "):
     d = r0.route(ROMANIAN, GENERIC, lang_guess=empty)
     check("abstain/%r falls through to detection" % (empty,), d["detection"] is not None, True)
+
+# the POSIX/C locale is the default $LANG in the official Python Docker images and many
+# minimal containers; like the ISO 639 neutral codes it names no language, so it must
+# abstain exactly like a blank hint instead of pinning the multilingual checkpoint (#359).
+ENGLISH_STATE = "Please refund the duplicate charge on invoice 4411"
+for code in ("C", "POSIX", "C.UTF-8", "c", "posix", "und", "zxx", "mul"):
+    d = r0.route(ENGLISH_STATE, GENERIC, lang_guess=code)
+    check("abstain/%s helpers returns None" % code, _english_from_code(code), None)
+    check("abstain/%s falls through to detection" % code, d["detection"] is not None, True)
+    check("abstain/%s keeps English on English text" % code, d["model"], "english")
+# unknown codes still mean "not English" (a real LID answer), not "no hint"
+check("code/unknown code still means non-English",
+      r0.route(ROMANIAN, GENERIC, lang_guess="qq")["model"], "multilingual")
 
 # ------------------------------------------------------------------ callables
 check("callable/code is used",

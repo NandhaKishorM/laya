@@ -77,6 +77,11 @@ export function matchTypedDecisionsWorkflow(
 
 const ENGLISH_SUBTAGS = new Set(["en", "eng", "english"]);
 
+// Codes that name no language: the POSIX/C locale (the default $LANG in the official
+// Python Docker images and many minimal containers) and the ISO 639 neutral codes.
+// These abstain (null) so routing falls through to detection instead of pinning a checkpoint.
+const ABSTAIN_SUBTAGS = new Set(["c", "posix", "und", "zxx", "mul"]);
+
 export function englishFromCode(value: unknown): boolean | null {
   if (value === null || value === undefined) return null;
   let code = String(value).trim().toLowerCase();
@@ -84,6 +89,7 @@ export function englishFromCode(value: unknown): boolean | null {
   code = code.split(".", 1)[0]; // en_US.UTF-8 -> en_US
   const primary = code.replace(/_/g, "-").split("-", 1)[0]; // en_US -> en
   if (!primary) return null;
+  if (ABSTAIN_SUBTAGS.has(primary)) return null;
   return ENGLISH_SUBTAGS.has(primary);
 }
 

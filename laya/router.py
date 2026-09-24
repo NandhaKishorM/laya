@@ -140,6 +140,11 @@ def _question_schema(questions: Dict[str, Any]) -> str:
 # every other code resolves to the multilingual checkpoint.
 _ENGLISH_SUBTAGS = ("en", "eng", "english")
 
+# Codes that name no language, so routing must abstain (None) and fall through to detection
+# instead of pinning a checkpoint: the POSIX/C locale (the default $LANG in the official
+# Python Docker images and many minimal containers) and the ISO 639 neutral codes.
+_ABSTAIN_SUBTAGS = ("c", "posix", "und", "zxx", "mul")
+
 
 def _english_from_code(value: Any) -> Optional[bool]:
     """True/False for a language code, or None when the code identifies nothing.
@@ -156,6 +161,8 @@ def _english_from_code(value: Any) -> Optional[bool]:
     code = code.split(".", 1)[0]                       # en_US.UTF-8 -> en_US
     primary = code.replace("_", "-").split("-", 1)[0]  # en_US -> en
     if not primary:
+        return None
+    if primary in _ABSTAIN_SUBTAGS:
         return None
     return primary in _ENGLISH_SUBTAGS
 

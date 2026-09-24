@@ -783,7 +783,8 @@ class Agent(HookRegistry):
                                 for index, items in zip(indices, per_state_items):
                                     nrows = len(items)
                                     n_tokens = int(att[row:row + nrows].sum())
-                                    answers = self._decode_answers(logits, act, items, ids, internal, row, lang)
+                                    answers = self._decode_answers(logits, act, items, ids, internal, row,
+                                                                  **({"lang": lang} if lang else {}))
                                     window_results[index] = {
                                         "model": "laya-rl-agent",
                                         "answers": answers,

@@ -12,7 +12,7 @@ class DummyAgent(Agent):
         self.cfg = {"max_len": 512, "head_max_len": 192}
 
     def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
-                      batch_size: int = None, lang: str = None) -> List[Dict[str, Any]]:
+                      batch_size: int = None, lang: str = None, **kwargs) -> List[Dict[str, Any]]:
         # Mock predict_batch to just return the lang it was given so we can test the pass-through
         return [{"lang_passed_down": lang}]
 

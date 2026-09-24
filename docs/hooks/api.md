@@ -101,6 +101,22 @@ A hook is free to define extra attributes and methods; only the six event names 
 If a hook defines one of the six as a non-callable, configuration fails fast (see
 [Validation](#validation)).
 
+### BaseHook
+
+`BaseHook` is the concrete counterpart to the protocol: a class with a no-op body for every event.
+Subclass it and override only the events you need.
+
+```python
+from laya import BaseHook
+
+class Audit(BaseHook):
+    def on_predict_end(self, ctx):
+        ship(ctx.run_id, ctx.results)
+```
+
+`Hook` is best when you want structural typing (any object with the right methods); `BaseHook` is
+best when you want an explicit base to subclass and call `super()` on.
+
 ## Convenience types
 
 ```python
@@ -127,6 +143,27 @@ with agent.hooks_installed(debug):  # installed for the block, removed on exit
 `add_hook` accepts the same objects as `hooks=` (not plain callables). `hooks_installed` takes
 any number of hook objects or sequences and restores the previous list on exit, including when
 the block raises.
+
+## Process-wide defaults
+
+`laya.hooks` keeps a small process-wide registry, so a tracer, metrics hook or tenant tagger does
+not have to be threaded through every `Agent` and `Router`. Defaults run **first**, then the
+hooks installed on the instance, then per-call hooks.
+
+```python
+from laya import hooks
+
+hooks.set_default_hooks(hooks=[Tracer()])          # replaces the set, accepts the hooks= arguments
+hooks.add_default_hook(Metrics())                  # appends
+hooks.clear_default_hooks()                        # removes everything
+hooks.default_hooks()                              # a copy of the current list
+
+hooks.compose_hooks(agent.hooks)                   # defaults + installed (advanced)
+```
+
+Defaults apply to every event, including the Router lifecycle events `on_load` and `on_evict`.
+The registry is read at call time, so hooks set after an `Agent` or `Router` is built still apply.
+There is no per-instance opt-out; call `clear_default_hooks()` to turn the process-wide set off.
 
 ## Configuration surface
 
@@ -156,7 +193,7 @@ load(..., hooks=None, on_predict_start=None, on_predict_end=None,
 
 agent.predict_batch(states, questions, batch_size=None,
                     hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
-                    max_len=None, head_max_len=None)
+                    max_len=None, head_max_len=None, sort_by_length=False)
 
 agent.system_one(state, questions,
                  hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,

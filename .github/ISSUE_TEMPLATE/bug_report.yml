@@ -1,0 +1,93 @@
+name: Bug report
+description: Something is not working as expected.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. A short, runnable reproduction is the fastest
+        path to a fix. Please write in English if you can.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what did you get instead?
+      placeholder: I expected X, but I got Y.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: The smallest script or sequence that shows the problem.
+      render: python
+      placeholder: |
+        import laya
+
+        agent = laya.load("convaiinnovations/laya")
+        print(agent.system_one("...", {"q": {"type": "noul", "instructions": "?"}}))
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or traceback
+      description: Paste the full traceback if there is one.
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: laya-version
+    attributes:
+      label: Laya version
+      description: The output of `python -c "import laya; print(laya.__version__)"`.
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "3.12.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Device or backend
+      options:
+        - CPU
+        - CUDA
+        - MPS (Apple silicon)
+        - ONNX Runtime
+        - Other
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I reproduced this on the latest `main`.
+          required: false

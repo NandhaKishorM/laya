@@ -168,7 +168,7 @@ check("standalone/hint still uses the standalone repo",
 # `Router().route(...)` cannot fail, because both sides are the same pure call on an
 # equally configured router -- a regression would move both together.
 BEFORE = [("plain english", "I was charged twice and want a refund", "english"),
-          ("German with umlauts", "Mein Konto wurde zweimal belastet, bitte erstatten Sie", "english"),
+          ("German with umlauts", "Mein Konto wurde zweimal belastet, bitte erstatten Sie", "multilingual"),
           ("Hindi", "यह एक हिंदी वाक्य है", "multilingual"),
           ("empty", "", "english"),
           ("digits", "12345", "english")]

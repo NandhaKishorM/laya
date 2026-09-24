@@ -1,16 +1,18 @@
 """Batch inference: predict_batch packs many states into shared forward passes.
 
-These tests need no model weights. They cover two things:
+These tests need no model weights. They cover:
   1. Contract — predict_batch exists and system_one is defined in terms of it, so the single-state
      and batched paths can never numerically drift apart.
   2. Orchestration — empty input, bad input, per-state row mapping, and batch_size chunking, all
      exercised against a fake whose forward is stubbed. The numerical equivalence of the real
      model path (predict_batch(states) == [system_one(s) for s in states]) is checked with weights
      in tests/test_local_e2e.py.
+  3. Decoding — calibrated answer values and confidence, including mixed question types.
 """
 import inspect
 import os
 import sys
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -116,6 +118,55 @@ f = make_fake()
 check_raises("orchestration/bare string rejected", TypeError, lambda: f.predict_batch("just a string", QUESTIONS))
 f = make_fake()
 check_raises("orchestration/bare dict rejected", TypeError, lambda: f.predict_batch({"body": "x"}, QUESTIONS))
+
+
+# --------------------------------------------------------------- real answer decoding (no weights)
+# Exercise the real decoder with a row offset and distinct per-type/bucket temperatures.
+# Noul uses top probability for confidence; its unused entropy calculation can be skipped.
+decoder = Agent.__new__(Agent)
+decoder.temperature = {0: 1.0, 1: 2.0, 2: 3.0}
+decoder.temperature_by_options = {"choice:2": 0.5}
+decode_ids = ["pick", "level", "flag"]
+decode_internal = {
+    "pick": {"t": "choice", "crit": {"left": "left", "right": "right"}},
+    "level": {"t": "score", "crit": ["low", "high"]},
+    "flag": {"t": "noul", "crit": None},
+}
+decode_items = [{"markers": [0, 1]} for _ in decode_ids]
+decode_logits = np.array([
+    [99.0, -99.0],  # preceding state: must not be decoded
+    np.log([0.25, 0.75]) * 0.5,
+    np.log([0.25, 0.75]) * 2.0,
+    np.log([0.8, 0.2]) * 3.0,
+])
+decode_act = np.array([[0.0, 1.0], [0.125, 0.875], [0.25, 0.75], [0.75, 0.25]])
+with patch.object(_agent, "confidence_from_probs", wraps=_agent.confidence_from_probs) as entropy:
+    decoded = decoder._decode_answers(
+        decode_logits, decode_act, decode_items, decode_ids, decode_internal, 1
+    )
+    check("decode/mixed answers retain calibrated values", decoded, {
+        "pick": {"type": "choice", "choice": "right",
+                 "probabilities": {"left": 0.25, "right": 0.75}, "confidence": 0.1887,
+                 "action": {"act_probability": 0.125}},
+        "level": {"type": "score", "score": 0.75, "legend": {"0": "low", "1": "high"},
+                  "probabilities": {"0": 0.25, "1": 0.75}, "confidence": 0.1887,
+                  "action": {"act_probability": 0.25}},
+        "flag": {"type": "noul", "noul": 0.2, "confidence": 0.8,
+                 "action": {"act_probability": 0.75}},
+    })
+    check("decode/entropy only computed for choice and score", entropy.call_count, 2)
+    entropy.reset_mock()
+    for true_probability in (0.1, 0.5, 0.9):
+        logits = np.log([[1.0 - true_probability, true_probability]]) * 3.0
+        result = decoder._decode_answers(
+            logits, decode_act[-1:], decode_items[-1:], ["flag"], decode_internal, 0
+        )
+        check("decode/noul confidence at p=%s" % true_probability, result["flag"], {
+            "type": "noul", "noul": true_probability,
+            "confidence": max(true_probability, 1.0 - true_probability),
+            "action": {"act_probability": 0.75},
+        })
+    check("decode/noul-only answers skip entropy", entropy.call_count, 0)
 
 
 # --------------------------------------------------------------------------- report

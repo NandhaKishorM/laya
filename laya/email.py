@@ -41,10 +41,13 @@ _SIGNATURE_MARKERS = [
     # the line is a sentence, and the case of the next word is what separates the two: a name is
     # capitalised, "for" in "Thanks for the quick reply." is not. The closing words are matched
     # case-insensitively, the name is not, so the flag is scoped instead of global.
+    # `warmest` and `and/& regards` are closings the alternation did not reach, and a name is
+    # capitalised in any script, so the name class excludes the lowercase letters instead of
+    # listing the uppercase ones: `Regards, Łukasz` is a sign-off, `Thanks for the reply` is not.
     re.compile(
-        r"^\s*(?i:best|kind|warm|many thanks|thanks|thank you|regards|cheers|sincerely)"
-        r"(?i:\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?"
-        r"[\s,;:!.]*(?:[A-Z][\w'-]*[\s,.]*){0,3}$"
+        r"^\s*(?i:best|kind|warmest|warm|many thanks|thanks|thank you|regards|cheers|sincerely)"
+        r"(?i:\s+(?:and|&)\s+regards|\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?"
+        r"[\s,;:!.]*(?:[^\W\d_a-zß-öø-ÿ][\w'-]*[\s,.]*){0,3}$"
     ),
     re.compile(r"^\s*sent from my (iphone|android|mobile|ipad)", re.I),
     # Portuguese/Spanish sign-offs match only on their own: "Obrigado pelo retorno, mas ..." is a
@@ -148,6 +151,12 @@ def _strip_disclaimer(paragraph: str) -> str:
 def clean_email_body(body: str, max_chars: int = 3000) -> str:
     """Remove quoted email history, signatures and disclaimers to keep input focused."""
     text = (body or "").replace("\r\n", "\n").replace("\r", "\n").replace("\\n", "\n")
+    # Bound regex work before the expensive patterns below: _DISCLAIMER uses
+    # [^.]{0,60/80/100} alternations whose cost grows with input length, and only
+    # max_chars are ever returned. Truncate lines too so one MB-long line cannot
+    # dominate matching.
+    if len(text) > max_chars * 4:
+        text = text[:max_chars * 4]
     lines = []
     src = text.split("\n")
     for i, line in enumerate(src):

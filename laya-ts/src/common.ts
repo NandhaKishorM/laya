@@ -122,10 +122,7 @@ export function collateItems(batch: CollateItem[][], padId: number): CollatedBat
   const qtype = items.map((it) => it.qtype);
   const label = items.map((it) => (typeof it.label === "number" ? it.label : -1));
   const meta = items.map((it) => {
-    const m: Record<string, unknown> = {};
-    for (const k of Object.keys(it)) {
-      if (k !== "ids" && k !== "markers" && k !== "target") m[k] = (it as Record<string, unknown>)[k];
-    }
+    const { ids: _ids, markers: _markers, target: _target, ...m } = it;
     return m;
   });
   const out: CollatedBatch = { inputIds, attentionMask, markerPos, markerMask, qtype, label, meta };

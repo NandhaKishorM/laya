@@ -60,15 +60,7 @@ export function matchTypedDecisionsWorkflow(
 ): string | null {
   const ids = new Set(Object.keys(questions ?? {}));
   for (const [wf, sig] of Object.entries(TYPED_DECISION_WORKFLOWS)) {
-    if (ids.size !== sig.size) continue;
-    let same = true;
-    for (const id of sig) {
-      if (!ids.has(id)) {
-        same = false;
-        break;
-      }
-    }
-    if (same) return wf;
+    if (sig.size === ids.size && [...sig].every((id) => ids.has(id))) return wf;
   }
   return null;
 }
@@ -280,8 +272,7 @@ export class Router {
     }
 
     if (task !== null && task !== undefined) {
-      const t = String(task).toLowerCase().replace(/-/g, "_") === "typed_decisions" ? "typed-decisions" : task;
-      const key = normaliseName(t);
+      const key = normaliseName(task);
       return {
         model: key,
         repo: repoStr(this.models[key]),

@@ -45,7 +45,7 @@ Every step is a script in `code/finetune/` of the Hub repo; `run_v10.sh` / `run_
    as the field's current value.
 6. **On-policy corrections** (DAgger, 177): run real tasks with the current model, ask a local LLM at
    each step, keep its verdict with the model's own state.
-7. **Build → train → calibrate → eval**: Laya's RLCD recipe (noisy-logit policy gradient + soft CE),
+7. **Build → train → calibrate → eval**: Laya's RLCD recipe (gold-distribution soft targets + noisy-logit policy gradient + soft CE),
    single GPU, no gradient checkpointing, 4 epochs (~2 h for 421M, ~1 h for 322M), post-hoc
    temperature, held-out pages / websites for eval.
 

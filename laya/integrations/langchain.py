@@ -4,7 +4,7 @@ Provides fast (~33 ms), non-autoregressive routing, real-time guardrails, and
 state evaluation nodes for LangChain Expression Language (LCEL) and LangGraph.
 
 Supports both local in-process models (`Agent` / `Router`) and remote HTTP
-deployments (`laya-serve` or hosted API) without requiring PyTorch on edge clients.
+deployments (your own `laya-serve`) without requiring PyTorch on edge clients.
 """
 from __future__ import annotations
 

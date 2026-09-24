@@ -566,7 +566,6 @@ class Agent(HookRegistry):
             p = np.exp(z - z.max())
             p = p / p.sum()
 
-            conf_score = round(confidence_from_probs(p, k), 4)
             ext = {"act_probability": round(float(act[r, 0]), 4)}
 
             if q["t"] == "choice":
@@ -575,7 +574,7 @@ class Agent(HookRegistry):
                     "type": "choice",
                     "choice": keys[int(p.argmax())],
                     "probabilities": {kk: round(float(v), 4) for kk, v in zip(keys, p)},
-                    "confidence": conf_score,
+                    "confidence": round(confidence_from_probs(p, k), 4),
                     "action": ext,
                 }
             elif q["t"] == "score":
@@ -585,7 +584,7 @@ class Agent(HookRegistry):
                     "score": round(exp_score, 4),
                     "legend": {str(i): c for i, c in enumerate(q["crit"])},
                     "probabilities": {str(i): round(float(v), 4) for i, v in enumerate(p)},
-                    "confidence": conf_score,
+                    "confidence": round(confidence_from_probs(p, k), 4),
                     "action": ext,
                 }
             else:
@@ -603,7 +602,8 @@ class Agent(HookRegistry):
                       on_predict_start=None, on_predict_end=None,
                       hooks_raise: Optional[bool] = None,
                       max_len: Optional[int] = None,
-                      head_max_len: Optional[int] = None) -> List[Dict[str, Any]]:
+                      head_max_len: Optional[int] = None,
+                      sort_by_length: bool = False) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, packing them into shared forward passes.
 
         This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
@@ -624,6 +624,11 @@ class Agent(HookRegistry):
             hooks_raise: Override the Agent's `hooks_raise` for this call.
             max_len, head_max_len: Override the agent config for this call. A start hook may also
                     set `ctx.max_len` / `ctx.head_max_len` to shape the token budget.
+            sort_by_length: Group similarly sized encoded states within windows of eight batches
+                    to reduce padding. Requires an explicit `batch_size` greater than one and
+                    smaller than the number of states; otherwise it has no effect. Results retain
+                    input order. This buffers up to eight batches of tokenized states instead of
+                    one. Changing batch shapes can slightly change floating-point predictions.
 
         Returns:
             A list of per-state result dicts, each identical in shape to `system_one`'s output and
@@ -669,25 +674,37 @@ class Agent(HookRegistry):
                             overrides["head_max_len"] = ctx.head_max_len
 
                         results: List[Dict[str, Any]] = []
-                        for start in range(0, len(states), chunk):
-                            part = states[start:start + chunk]
-                            per_state_items = [self._encode_state(st, ids, internal, **overrides) for st in part]
+                        reorder = sort_by_length and 1 < chunk < len(states)
+                        # Bound tokenized lookahead independently of the full input size. Use
+                        # actual post-truncation lengths, with each state's questions kept together.
+                        window = chunk * 8 if reorder else chunk
+                        for start in range(0, len(states), window):
+                            part = states[start:start + window]
+                            encoded = [self._encode_state(st, ids, internal, **overrides) for st in part]
+                            order = list(range(len(encoded)))
+                            if reorder:
+                                order.sort(key=lambda i: max(len(item["ids"]) for item in encoded[i]))
+                            window_results = [None] * len(encoded)
+                            for offset in range(0, len(order), chunk):
+                                indices = order[offset:offset + chunk]
+                                per_state_items = [encoded[i] for i in indices]
 
-                            b = collate_items(per_state_items, self.tok.pad_token_id)
-                            logits, act = self._forward(b)
-                            att = b["attention_mask"]
+                                b = collate_items(per_state_items, self.tok.pad_token_id)
+                                logits, act = self._forward(b)
+                                att = b["attention_mask"]
 
-                            row = 0
-                            for items in per_state_items:
-                                nrows = len(items)
-                                n_tokens = int(att[row:row + nrows].sum())
-                                answers = self._decode_answers(logits, act, items, ids, internal, row)
-                                results.append({
-                                    "model": "laya-rl-agent",
-                                    "answers": answers,
-                                    "usage": {"input_tokens": n_tokens, "output_tokens": 0},
-                                })
-                                row += nrows
+                                row = 0
+                                for index, items in zip(indices, per_state_items):
+                                    nrows = len(items)
+                                    n_tokens = int(att[row:row + nrows].sum())
+                                    answers = self._decode_answers(logits, act, items, ids, internal, row)
+                                    window_results[index] = {
+                                        "model": "laya-rl-agent",
+                                        "answers": answers,
+                                        "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+                                    }
+                                    row += nrows
+                            results.extend(window_results)
                         ctx.results = results
         except BaseException as exc:
             ctx.error = exc

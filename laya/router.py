@@ -28,6 +28,7 @@ primary routing signal.
 synthetic workflows and should not be a silent default.
 """
 import gc
+import json
 import os
 import threading
 import time
@@ -122,6 +123,16 @@ def match_typed_decisions_workflow(questions: Dict[str, Any]) -> Optional[str]:
         if ids == sig:
             return wf
     return None
+
+
+def _question_schema(questions: Dict[str, Any]) -> str:
+    """Order-sensitive signature of a question schema, for sharing forward passes.
+
+    sort_keys=False keeps insertion order significant at every nesting level, because
+    option order is positional in render_options. default=str matches render_criterion's
+    tolerance, so schemas that render identically still share a group.
+    """
+    return json.dumps(questions, sort_keys=False, ensure_ascii=False, default=str)
 
 
 # Subtags that mean "the English checkpoint can read this". Routing needs one bit -- is this
@@ -436,9 +447,14 @@ class Router(HookRegistry):
                                  detection=None, workflow=workflow)
 
         if lang is not None:
-            key = "english" if _english_from_code(lang) else "multilingual"
-            return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
-                                 detection=None, workflow=workflow)
+            # An explicit `lang` is decisive only when the code names a language. Blank or
+            # whitespace resolves to no usable hint, so it falls through to lang_guess/detection
+            # exactly as an abstaining hint does; real English/non-English codes still route now.
+            resolved = _english_from_code(lang)
+            if resolved is not None:
+                key = "english" if resolved else "multilingual"
+                return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
+                                     detection=None, workflow=workflow)
 
         # Caller-supplied hint, per-call first then the one installed on the Router. Only a hint
         # that actually answers the question routes here; anything else falls through.
@@ -686,13 +702,17 @@ class Router(HookRegistry):
                     overrides = {key: value for key, value in (("max_len", ctx.max_len),
                                                                ("head_max_len", ctx.head_max_len))
                                  if value is not None}
+                    # Order-sensitive at every nesting level (#166): options are positional, so two
+                    # equal schemas with different key orders must not share a group.
+                    schema = _question_schema(ctx.questions)
                     for group in question_groups:
-                        if group["questions"] == ctx.questions and group["overrides"] == overrides:
+                        if group["schema"] == schema and group["overrides"] == overrides:
                             group["items"].append((i, ctx))
                             break
                     else:
                         question_groups.append({
                             "questions": ctx.questions,
+                            "schema": schema,
                             "overrides": overrides,
                             "items": [(i, ctx)],
                         })

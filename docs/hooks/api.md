@@ -156,7 +156,7 @@ load(..., hooks=None, on_predict_start=None, on_predict_end=None,
 
 agent.predict_batch(states, questions, batch_size=None,
                     hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
-                    max_len=None, head_max_len=None)
+                    max_len=None, head_max_len=None, sort_by_length=False)
 
 agent.system_one(state, questions,
                  hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,

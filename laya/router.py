@@ -36,7 +36,7 @@ from collections.abc import Sequence as SequenceABC
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
-from .lang import analyse
+from .lang import NON_EN_DIACRITIC_RATE, analyse
 
 # The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
 BUNDLE_REPO = "convaiinnovations/laya"
@@ -480,6 +480,13 @@ class Router(HookRegistry):
             key = "multilingual"
             if det["language"]:
                 reason = "Latin script but language looks like %r, not English" % det["language"]
+            elif float(det["diacritic_rate"]) < NON_EN_DIACRITIC_RATE:
+                # Too few non-English letters to count alone: `analyse` routed it on four or more
+                # words with no English function word and some evidence of another language (#54).
+                evidence = ("a non-English letter" if det["diacritic_rate"]
+                            else "a function word of another language")
+                reason = ("Latin script, language not identified; no English function word, but %s; "
+                          "not safe for the English checkpoint" % evidence)
             else:
                 # Unidentified Latin-script language: routed on the non-English letters alone,
                 # because no stopword list here covers it.

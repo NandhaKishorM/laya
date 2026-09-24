@@ -23,9 +23,10 @@ from .common import (
     confidence_from_probs,
     _resolve_noul_labels,
     render_options,
+    serialize_state,
     temp_bucket,
 )
-from .hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
+from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
 
 
 def _fix_tokenizer_config(path: str):
@@ -166,17 +167,28 @@ def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
         return tokenizer
 
 
-def _amp_context(device, dtype):
+def _amp_context(device, dtype, enabled: bool):
     """Autocast context for the forward pass, or a no-op when mixed precision is not in use.
 
-    Autocast is a CUDA-only win here. Entering `torch.autocast` on a device torch has no
-    autocast backend for raises even with `enabled=False` ('User specified an unsupported
-    autocast device_type mps'), which broke every `predict()` call on the MPS GPU that torch
-    selects automatically on Apple/AMD machines. Only wrap the forward pass when we use it.
+    Entering `torch.autocast` on a device torch has no autocast backend for raises even with
+    `enabled=False` ("User specified an unsupported autocast device_type mps"), which broke
+    every `predict()` on Apple Silicon on some torch builds. Only enter it when we use it.
     """
-    if device.type == "cuda":
-        return torch.autocast(device_type="cuda", dtype=dtype)
-    return nullcontext()
+    if not enabled:
+        return nullcontext()
+    return torch.autocast(device_type=device.type, dtype=dtype)
+
+
+MPS_AMP_MIN_ROWS_DEFAULT = 5
+
+
+def _mps_amp_min_rows() -> int:
+    """Rows at which MPS fp16 autocast starts to pay off. Override with LAYA_MPS_AMP_MIN_ROWS."""
+    raw = os.environ.get("LAYA_MPS_AMP_MIN_ROWS", "")
+    try:
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return MPS_AMP_MIN_ROWS_DEFAULT
 
 
 class Agent(HookRegistry):
@@ -188,6 +200,10 @@ class Agent(HookRegistry):
     hooks_concurrent = True
     _hooks_lock = None
     model_id = None
+    # Autocast is chosen per device in __init__; this default covers instances built
+    # without it (for example a hand-constructed runtime in tests).
+    amp_enabled = False
+    mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
 
     def __init__(
         self,
@@ -197,6 +213,7 @@ class Agent(HookRegistry):
         subfolder: Optional[str] = None,
         fast: bool = False,
         compile: bool = False,
+        lang_temperatures: Optional[Dict[str, Dict[str, Any]]] = None,
         hooks=None,
         on_predict_start=None,
         on_predict_end=None,
@@ -333,6 +350,18 @@ class Agent(HookRegistry):
         self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
         self.temperature_by_options = {k: clamp_temperature(v)
                                        for k, v in self.temperature_by_options_raw.items()}
+
+        self.lang_temperatures = {}
+        for l, cfg in (lang_temperatures or {}).items():
+            norm_l = l.split("-")[0].lower()
+            t_raw = cfg.get("temperature", self.temperature_raw)
+            if len(t_raw) != 3:
+                raise ValueError("Language override %r temperature must be a list of 3 floats" % l)
+            tbo_raw = cfg.get("temperature_by_options", {})
+            self.lang_temperatures[norm_l] = {
+                "temperature": [clamp_temperature(t) for t in t_raw],
+                "temperature_by_options": {k: clamp_temperature(v) for k, v in tbo_raw.items()}
+            }
         entries = [(k, v, self.temperature_by_options[k]) for k, v in self.temperature_by_options_raw.items()]
         entries += [("temperature[%d]" % i, t, self.temperature[i]) for i, t in enumerate(self.temperature_raw)]
         rejected = []
@@ -351,13 +380,30 @@ class Agent(HookRegistry):
                 "using %s. Treat confidence from the affected entries as uncalibrated."
                 % (TEMP_MIN, TEMP_MAX, ", ".join(rejected)),
                 RuntimeWarning, stacklevel=2)
-        self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+        # Autocast policy. CUDA and MPS both support fp16/bf16 autocast and the shipped
+        # checkpoints are trained in reduced precision. CPU bf16 is only a win on hardware with
+        # native BF16, so it stays opt-in via LAYA_CPU_AMP=bf16. MPS fp16 is slower than fp32 on
+        # a single small row (autocast overhead dominates) and only wins once the batch has
+        # several rows, so it is gated per call by `mps_amp_min_rows` (default 5, override with
+        # LAYA_MPS_AMP_MIN_ROWS) rather than enabled unconditionally.
+        self.dtype = torch.float32
+        self.amp_enabled = False
+        self.mps_amp_min_rows = _mps_amp_min_rows()
+        if self.device.type == "cuda":
+            self.amp_enabled = True
+            if torch.cuda.get_device_capability(self.device)[0] < 8:
+                self.dtype = torch.float16
+            else:
+                self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+        elif self.device.type == "mps":
+            self.amp_enabled = True
+            self.dtype = torch.float16
+        elif self.device.type == "cpu":
+            if os.environ.get("LAYA_CPU_AMP", "").lower() in ("bf16", "bfloat16"):
+                self.amp_enabled = True
+                self.dtype = torch.bfloat16
 
         self._fast = None
-        if self.device.type == "cuda" and torch.cuda.get_device_capability(self.device)[0] < 8:
-            self.dtype = torch.float16
-        elif self.device.type in ("cpu", "mps", "xpu"):
-            self.dtype = torch.float32
 
         # 2. Place on device with graceful fallback to CPU on memory error
         fell_back_from = fell_back_why = None
@@ -370,6 +416,7 @@ class Agent(HookRegistry):
                 fell_back_from, fell_back_why = self.device, e
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
+                self.amp_enabled = False
                 self.model.to(self.device).eval()
             else:
                 raise e
@@ -516,20 +563,45 @@ class Agent(HookRegistry):
         # right-truncation (st[:room]) would silently drop the newest turn. Truncate
         # from the left for lists so the most recent intent is preserved.
         truncate_left = isinstance(state, list)
+        # Tokenize the shared state once. The ids are identical for every question, so
+        # re-serializing and re-tokenizing it inside build_sequence per question was pure
+        # duplicated work. Tokenize in full and let build_sequence slice per question, so
+        # left-truncation for conversation lists keeps its meaning.
+        state_ids = self.tok(
+            serialize_state(state).replace(self.tok.mask_token, " "),
+            add_special_tokens=False,
+        )["input_ids"]
         items = []
         for qid in ids:
             q = internal[qid]
             seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len,
-                                          truncate_left=truncate_left)
+                                          truncate_left=truncate_left, state_ids=state_ids)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
         return items
 
-    def _forward(self, b: Dict):
-        """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""
+    def _amp_enabled_for(self, rows: int) -> bool:
+        """Whether to autocast a forward with `rows` question rows.
+
+        MPS fp16 loses to fp32 on a single small row and wins once the batch grows, so it is
+        only enabled at or above `mps_amp_min_rows`. Other devices are unaffected.
+        """
+        if not self.amp_enabled:
+            return False
+        if self.device.type == "mps" and rows < self.mps_amp_min_rows:
+            return False
+        return True
+
+    def _infer(self, b: Dict):
+        """Run the forward pass under autocast, degrading gracefully on OOM or unsupported autocast."""
+        use_amp = self._amp_enabled_for(b["input_ids"].shape[0])
+
         def run():
-            with _amp_context(self.device, self.dtype):
+            # Recomputed inside run() so a fallback that disables amp (or moves to CPU) takes
+            # effect on the retry. A disabled gate never enters torch.autocast at all.
+            enabled = self._amp_enabled_for(b["input_ids"].shape[0])
+            with _amp_context(self.device, self.dtype, enabled):
                 return self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),
@@ -539,21 +611,31 @@ class Agent(HookRegistry):
                 )
 
         try:
-            logits, act = run()
+            return run()
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
-            if self.device.type != "cpu" and ("memory" in str(e).lower() or "cuda" in str(e).lower()):
+            low = str(e).lower()
+            if self.device.type != "cpu" and ("memory" in low or "cuda" in low):
                 print("Warning: GPU memory exceeded during inference. Falling back to CPU...")
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
+                self.amp_enabled = False
                 self.model.to(self.device)
-                logits, act = run()
-            else:
-                raise e
+                return run()
+            if use_amp and self.device.type in ("mps", "cpu"):
+                # Not every MPS/CPU build implements autocast for every op. Drop to full
+                # precision once rather than failing the request.
+                self.amp_enabled = False
+                self.dtype = torch.float32
+                return run()
+            raise
 
+    def _forward(self, b: Dict):
+        """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""
+        logits, act = self._infer(b)
         return logits.float().cpu().numpy(), torch.softmax(act.float(), -1).cpu().numpy()
 
     def _decode_answers(self, logits, act, items: List[Dict], ids: List[str],
-                        internal: Dict[str, Dict], offset: int) -> Dict[str, Any]:
+                        internal: Dict[str, Dict], offset: int, lang: Optional[str] = None) -> Dict[str, Any]:
         """Turn one state's logit rows (starting at `offset`) into typed answers."""
         answers = {}
         for j, qid in enumerate(ids):
@@ -562,11 +644,13 @@ class Agent(HookRegistry):
             k = len(items[j]["markers"])
             qt = QTYPES[q["t"]]
             t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])
+            if lang and lang.split("-")[0].lower() in self.lang_temperatures:
+                l_cfg = self.lang_temperatures[lang.split("-")[0].lower()]
+                t_scale = l_cfg["temperature_by_options"].get(temp_bucket(qt, k), l_cfg["temperature"][qt])
             z = logits[r, :k] / t_scale
             p = np.exp(z - z.max())
             p = p / p.sum()
 
-            conf_score = round(confidence_from_probs(p, k), 4)
             ext = {"act_probability": round(float(act[r, 0]), 4)}
 
             if q["t"] == "choice":
@@ -575,7 +659,7 @@ class Agent(HookRegistry):
                     "type": "choice",
                     "choice": keys[int(p.argmax())],
                     "probabilities": {kk: round(float(v), 4) for kk, v in zip(keys, p)},
-                    "confidence": conf_score,
+                    "confidence": round(confidence_from_probs(p, k), 4),
                     "action": ext,
                 }
             elif q["t"] == "score":
@@ -585,7 +669,7 @@ class Agent(HookRegistry):
                     "score": round(exp_score, 4),
                     "legend": {str(i): c for i, c in enumerate(q["crit"])},
                     "probabilities": {str(i): round(float(v), 4) for i, v in enumerate(p)},
-                    "confidence": conf_score,
+                    "confidence": round(confidence_from_probs(p, k), 4),
                     "action": ext,
                 }
             else:
@@ -599,11 +683,13 @@ class Agent(HookRegistry):
 
     @torch.no_grad()
     def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
-                      batch_size: Optional[int] = None, hooks=None,
+                      batch_size: Optional[int] = None, lang: Optional[str] = None,
+                      hooks=None,
                       on_predict_start=None, on_predict_end=None,
                       hooks_raise: Optional[bool] = None,
                       max_len: Optional[int] = None,
-                      head_max_len: Optional[int] = None) -> List[Dict[str, Any]]:
+                      head_max_len: Optional[int] = None,
+                      sort_by_length: bool = False) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, packing them into shared forward passes.
 
         This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
@@ -624,12 +710,17 @@ class Agent(HookRegistry):
             hooks_raise: Override the Agent's `hooks_raise` for this call.
             max_len, head_max_len: Override the agent config for this call. A start hook may also
                     set `ctx.max_len` / `ctx.head_max_len` to shape the token budget.
+            sort_by_length: Group similarly sized encoded states within windows of eight batches
+                    to reduce padding. Requires an explicit `batch_size` greater than one and
+                    smaller than the number of states; otherwise it has no effect. Results retain
+                    input order. This buffers up to eight batches of tokenized states instead of
+                    one. Changing batch shapes can slightly change floating-point predictions.
 
         Returns:
             A list of per-state result dicts, each identical in shape to `system_one`'s output and
             aligned with `states` by index.
         """
-        active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self,
                              max_len=max_len, head_max_len=head_max_len)
@@ -669,25 +760,38 @@ class Agent(HookRegistry):
                             overrides["head_max_len"] = ctx.head_max_len
 
                         results: List[Dict[str, Any]] = []
-                        for start in range(0, len(states), chunk):
-                            part = states[start:start + chunk]
-                            per_state_items = [self._encode_state(st, ids, internal, **overrides) for st in part]
+                        reorder = sort_by_length and 1 < chunk < len(states)
+                        # Bound tokenized lookahead independently of the full input size. Use
+                        # actual post-truncation lengths, with each state's questions kept together.
+                        window = chunk * 8 if reorder else chunk
+                        for start in range(0, len(states), window):
+                            part = states[start:start + window]
+                            encoded = [self._encode_state(st, ids, internal, **overrides) for st in part]
+                            order = list(range(len(encoded)))
+                            if reorder:
+                                order.sort(key=lambda i: max(len(item["ids"]) for item in encoded[i]))
+                            window_results = [None] * len(encoded)
+                            for offset in range(0, len(order), chunk):
+                                indices = order[offset:offset + chunk]
+                                per_state_items = [encoded[i] for i in indices]
 
-                            b = collate_items(per_state_items, self.tok.pad_token_id)
-                            logits, act = self._forward(b)
-                            att = b["attention_mask"]
+                                b = collate_items(per_state_items, self.tok.pad_token_id)
+                                logits, act = self._forward(b)
+                                att = b["attention_mask"]
 
-                            row = 0
-                            for items in per_state_items:
-                                nrows = len(items)
-                                n_tokens = int(att[row:row + nrows].sum())
-                                answers = self._decode_answers(logits, act, items, ids, internal, row)
-                                results.append({
-                                    "model": "laya-rl-agent",
-                                    "answers": answers,
-                                    "usage": {"input_tokens": n_tokens, "output_tokens": 0},
-                                })
-                                row += nrows
+                                row = 0
+                                for index, items in zip(indices, per_state_items):
+                                    nrows = len(items)
+                                    n_tokens = int(att[row:row + nrows].sum())
+                                    answers = self._decode_answers(logits, act, items, ids, internal, row,
+                                                                  **({"lang": lang} if lang else {}))
+                                    window_results[index] = {
+                                        "model": "laya-rl-agent",
+                                        "answers": answers,
+                                        "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+                                    }
+                                    row += nrows
+                            results.extend(window_results)
                         ctx.results = results
         except BaseException as exc:
             ctx.error = exc
@@ -712,7 +816,7 @@ class Agent(HookRegistry):
         return ctx.results
 
     @torch.no_grad()
-    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
+    def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]], lang: Optional[str] = None,
                    hooks=None, on_predict_start=None, on_predict_end=None,
                    hooks_raise: Optional[bool] = None,
                    max_len: Optional[int] = None,
@@ -739,7 +843,7 @@ class Agent(HookRegistry):
 
         To score many states at once, see `predict_batch`, which shares forward passes across them.
         """
-        return self.predict_batch([state], questions, hooks=hooks,
+        return self.predict_batch([state], questions, lang=lang, hooks=hooks,
                                   on_predict_start=on_predict_start,
                                   on_predict_end=on_predict_end, hooks_raise=hooks_raise,
                                   max_len=max_len, head_max_len=head_max_len)[0]
@@ -781,6 +885,7 @@ RLAgent = Agent
 
 def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,
          token: Optional[str] = None, subfolder: Optional[str] = None, fast: bool = False,
+         lang_temperatures: Optional[Dict[str, Dict[str, Any]]] = None,
          hooks=None, on_predict_start=None, on_predict_end=None,
          hooks_raise: bool = True, hooks_concurrent: bool = True) -> Agent:
     """Load a Laya agent.
@@ -795,5 +900,6 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
     `laya.hooks`.
     """
     return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast,
+                 lang_temperatures=lang_temperatures,
                  hooks=hooks, on_predict_start=on_predict_start, on_predict_end=on_predict_end,
                  hooks_raise=hooks_raise, hooks_concurrent=hooks_concurrent)

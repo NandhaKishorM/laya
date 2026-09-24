@@ -40,6 +40,8 @@
 
 ::: laya.common.confidence_from_probs
 
+::: laya.common.answer_confidence
+
 ::: laya.common.ece_score
 
 ::: laya.common.render_options

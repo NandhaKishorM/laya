@@ -388,6 +388,59 @@ def test_validation_errors_are_not_logged_as_failures(monkeypatch, caplog):
     assert not [r for r in caplog.records if r.levelno >= logging.ERROR], caplog.records
 
 
+def test_ready_without_preload(monkeypatch):
+    client, _ = _client(monkeypatch)
+    with client:
+        assert client.get("/health").status_code == 200
+        assert client.get("/ready").status_code == 200
+
+
+def test_ready_gates_on_background_preload(monkeypatch):
+    import time
+
+    import laya.serve as serve_module
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_PRELOAD", "1")
+
+    class PreloadRouter(FakeRouter):
+        def preload(self, names=None):
+            time.sleep(0.4)
+            self.loaded = ["english"]
+
+    monkeypatch.setattr(serve_module, "build_router", lambda preload=True: PreloadRouter())
+    with TestClient(serve_module.create_app()) as client:
+        assert client.get("/health").status_code == 200, "liveness answers during the preload"
+        assert client.get("/ready").status_code == 503, "readiness gates on the preload"
+        deadline = time.time() + 3
+        while client.get("/ready").status_code != 200 and time.time() < deadline:
+            time.sleep(0.05)
+        assert client.get("/ready").status_code == 200
+
+
+def test_ready_reports_a_failed_preload(monkeypatch):
+    import time
+
+    import laya.serve as serve_module
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_PRELOAD", "1")
+
+    class BrokenRouter(FakeRouter):
+        def preload(self, names=None):
+            raise RuntimeError("weights missing")
+
+    monkeypatch.setattr(serve_module, "build_router", lambda preload=True: BrokenRouter())
+    with TestClient(serve_module.create_app()) as client:
+        deadline = time.time() + 3
+        while "weights missing" not in client.get("/ready").text and time.time() < deadline:
+            time.sleep(0.05)
+        response = client.get("/ready")
+        assert response.status_code == 503
+        assert "weights missing" in response.text
+        assert client.get("/health").status_code == 200, "liveness stays up for the operator"
+
+
 def test_inference_timing_headers():
     """POST /v1/systemone returns Server-Timing and X-Inference-Time-Ms headers."""
     router = FakeRouter()

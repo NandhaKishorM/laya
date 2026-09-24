@@ -57,10 +57,11 @@ services:
       # - ${LAYA_API_KEY_PATH:?Set LAYA_API_KEY_PATH}:/run/secrets/laya_api_key:ro
     init: true
     restart: unless-stopped
-    # The server preloads before it binds, so /health answers once the preloaded
-    # checkpoints are ready. `up --wait` therefore waits for a usable server.
+    # /health is liveness and answers as soon as the process is up; /ready is readiness and
+    # stays 503 until the preloaded checkpoints are resident. `up --wait` on /ready therefore
+    # waits for a usable server rather than a live process.
     healthcheck:
-      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['LAYA_PORT'] + '/health', timeout=4)"]
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['LAYA_PORT'] + '/ready', timeout=4)"]
       interval: 30s
       timeout: 5s
       retries: 3

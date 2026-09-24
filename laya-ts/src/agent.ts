@@ -1,16 +1,27 @@
 import {
   TEMP_MAX,
   TEMP_MIN,
-  buildSequence,
+  buildQuestionPrefix,
   clampTemperature,
   collateItems,
   confidenceFromProbs,
   renderOptions,
+  sequenceWithState,
+  serializeState,
   softmax,
   tempBucket,
 } from "./common.js";
 import type { Batch, SessionProvider } from "./providers.js";
 import { encodeWithData, parseTokenizerJson, type TokenizerLike } from "./tokenizer.js";
+import {
+  HookRegistry,
+  PredictContext,
+  aggregateUsage,
+  dispatch,
+  normaliseHooks,
+  type HookArg,
+  type PredictHook,
+} from "./hooks.js";
 
 export const QTYPES: Record<string, number> = { choice: 0, score: 1, noul: 2 };
 
@@ -78,6 +89,18 @@ export interface AgentOptions {
   head_max_len?: number;
   temperature?: unknown;
   temperature_by_options?: Record<string, unknown>;
+  hooks?: HookArg;
+  onPredictStart?: PredictHook;
+  onPredictEnd?: PredictHook;
+  hooksRaise?: boolean;
+}
+
+/** Per-call hook options shared by Agent.systemOne/predict and Router.predict. */
+export interface PredictOptions {
+  hooks?: HookArg;
+  onPredictStart?: PredictHook;
+  onPredictEnd?: PredictHook;
+  hooksRaise?: boolean;
 }
 
 function qidStr(qid: string): string {
@@ -93,7 +116,7 @@ export function checkQuestion(qid: string, qdef: unknown): void {
   const t = q["type"];
   if (t !== "choice" && t !== "score" && t !== "noul") {
     throw new Error(
-      `question ${qidStr(qid)}: unknown type ${JSON.stringify(t)}; use one of ${JSON.stringify(sorted(QTYPES))}`,
+      `question ${qidStr(qid)}: unknown type ${JSON.stringify(t)}; use one of ${JSON.stringify(Object.keys(QTYPES).sort())}`,
     );
   }
   if (!("instructions" in q)) {
@@ -123,10 +146,6 @@ export function checkQuestion(qid: string, qdef: unknown): void {
       `question ${qidStr(qid)}: a noul question takes 'criteria' as a dict with optional 'true'/'false' descriptions, or omits it`,
     );
   }
-}
-
-function sorted(o: Record<string, number>): string[] {
-  return Object.keys(o).sort();
 }
 
 export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul"; ins: string; crit: unknown } {
@@ -194,7 +213,8 @@ function tokenizerFromConfig(cfg: AgentCfg): TokenizerLike | null {
 
 const r4 = (v: number): number => Math.round(v * 1e4) / 1e4;
 
-export class Agent {
+export class Agent extends HookRegistry {
+  hooksRaise: boolean;
   cfg: AgentCfg;
   provider: SessionProvider;
   tok: TokenizerLike;
@@ -206,8 +226,12 @@ export class Agent {
   temperatureByOptions: Record<string, number>;
 
   constructor(opts: AgentOptions) {
+    super();
     if (!opts || !opts.provider) throw new Error("Agent needs a provider");
     this.provider = opts.provider;
+    // Hooks are opt-in; an unset hook list is a no-op. See hooks.ts.
+    this.hooks = normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd);
+    this.hooksRaise = opts.hooksRaise ?? true;
     const cfg = { ...(opts.cfg ?? {}) } as AgentCfg;
     if (opts.max_len !== undefined) cfg.max_len = opts.max_len;
     if (opts.head_max_len !== undefined) cfg.head_max_len = opts.head_max_len;
@@ -235,11 +259,7 @@ export class Agent {
     ];
     const rejected: string[] = [];
     for (const [name, rawV, applied] of entries) {
-      try {
-        if (Number(rawV) === applied) continue;
-      } catch {
-        /* invalid entries already have a neutral fallback; still report */
-      }
+      if (Number(rawV) === applied) continue;
       rejected.push(`${name}=${JSON.stringify(rawV) ?? String(rawV)} -> ${applied}`);
     }
     if (rejected.length > 0) {
@@ -250,18 +270,87 @@ export class Agent {
     }
   }
 
-  async systemOne(state: unknown, questions: Record<string, QuestionDef>): Promise<SystemOneResult> {
+  /**
+   * Evaluate typed questions across one state in a single forward pass.
+   *
+   * `hooks` / `onPredictStart` / `onPredictEnd` observe or shape the prediction, appended
+   * after any hooks installed on the Agent; a start hook may rewrite the state/questions or
+   * call `ctx.skip(...)` to short-circuit inference, an end hook may rewrite the results.
+   * See hooks.ts. `hooksRaise` overrides the Agent's setting for this call.
+   */
+  async systemOne(
+    state: unknown,
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions = {},
+  ): Promise<SystemOneResult> {
+    return (await this._predictHooked([state], questions, opts))[0];
+  }
+
+  private async _predictHooked(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions,
+  ): Promise<SystemOneResult[]> {
+    const active = [
+      ...this.hooks,
+      ...normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd),
+    ];
+    const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
+    const ctx = new PredictContext({
+      states,
+      questions: questions as Record<string, unknown>,
+      agent: this,
+    });
+    try {
+      dispatch(active, "onPredictStart", ctx, { raiseErrors });
+      if (ctx.results === null) {
+        const out: SystemOneResult[] = [];
+        for (const st of ctx.states) {
+          out.push(await this._systemOneCore(st, ctx.questions as Record<string, QuestionDef>));
+        }
+        ctx.results = out as unknown as Record<string, unknown>[];
+        ctx.model ??= out[0]?.model ?? null;
+      }
+    } catch (err) {
+      ctx.error = err;
+      try {
+        dispatch(active, "onError", ctx, { raiseErrors });
+      } catch {
+        // A failing onError hook must not hide the failure that triggered it.
+      }
+      throw err;
+    } finally {
+      ctx.markElapsed();
+      if (ctx.results !== null) ctx.usage = aggregateUsage(ctx.results);
+      try {
+        dispatch(active, "onPredictEnd", ctx, { raiseErrors });
+      } catch (hookErr) {
+        // End hooks run on the failure path too; do not let one mask the real error.
+        if (ctx.error === null) throw hookErr;
+      }
+    }
+    return ctx.results as unknown as SystemOneResult[];
+  }
+
+  private async _systemOneCore(
+    state: unknown,
+    questions: Record<string, QuestionDef>,
+  ): Promise<SystemOneResult> {
     const ids = Object.keys(questions ?? {});
     if (ids.length === 0) {
       return { model: "laya-rl-agent", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } };
     }
     const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
     const internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown }[] = [];
+    // The state text is shared by every question and is usually the longest text in the
+    // sequence — encode it once and compose the per-question prefixes onto it.
+    const stAll = this.tok.encode(serializeState(state).split(this.tok.maskToken).join(" "));
     for (const qid of ids) {
       checkQuestion(qid, questions[qid]);
       const q = toInternal(questions[qid]);
       internals.push(q);
-      const { ids: seq, markers } = buildSequence(this.tok, state, q, this.maxLen, this.headMaxLen);
+      const prefix = buildQuestionPrefix(this.tok, q, this.maxLen, this.headMaxLen);
+      const { ids: seq, markers } = sequenceWithState(prefix, stAll, this.tok.sepId, this.maxLen);
       if (markers.length !== renderOptions(q).length) {
         throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${this.headMaxLen}`);
       }
@@ -321,8 +410,12 @@ export class Agent {
     return { model: "laya-rl-agent", answers, usage: { input_tokens: nTokens, output_tokens: 0 } };
   }
 
-  async predict(state: unknown, questions: Record<string, QuestionDef>): Promise<SystemOneResult> {
-    return this.systemOne(state, questions);
+  async predict(
+    state: unknown,
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions = {},
+  ): Promise<SystemOneResult> {
+    return this.systemOne(state, questions, opts);
   }
 
   static async load(

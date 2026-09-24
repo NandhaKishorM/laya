@@ -42,8 +42,17 @@ export function renderOptions(q: InternalQ): string[] {
     "true: " + (t !== null && t !== undefined && t !== "" ? renderCriterion(t) : "yes, the statement holds"),
   ];
 }
-export function buildSequence(tok: TokenizerLike, state: unknown, q: InternalQ,
-    maxLen = 512, headMaxLen = 192, optionOrder?: number[], truncateLeft = false): { ids: number[]; markers: number[] } {
+export interface QuestionPrefix {
+  /** [CLS] head [SEP] options [SEP] — the state-independent part of the sequence. */
+  ids: number[];
+  /** Mask-marker positions (absolute; the prefix sits at the start of the final sequence). */
+  markers: number[];
+  nOptions: number;
+}
+/** The question half of `buildSequence`: everything before the state tokens. Hoisted out so
+ * callers asking several questions about the same state can encode the state text only once. */
+export function buildQuestionPrefix(tok: TokenizerLike, q: InternalQ,
+    maxLen = 512, headMaxLen = 192, optionOrder?: number[]): QuestionPrefix {
   const maskTok = tok.maskToken;
   const opts = renderOptions(q);
   const order = optionOrder ?? opts.map((_, i) => i);
@@ -58,15 +67,26 @@ export function buildSequence(tok: TokenizerLike, state: unknown, q: InternalQ,
     budget = headMaxLen - optIds.reduce((a, o) => a + o.length, 0);
   }
   headIds = headIds.slice(0, Math.max(8, budget));
-  let ids = [tok.clsId, ...headIds, tok.sepId];
+  const ids = [tok.clsId, ...headIds, tok.sepId];
   const markers: number[] = [];
   for (const o of optIds) { markers.push(ids.length); ids.push(...o); }
   ids.push(tok.sepId);
-  const room = Math.max(0, maxLen - ids.length - 1);
-  const stAll = tok.encode(serializeState(state).split(maskTok).join(" "));
-  const st = truncateLeft ? stAll.slice(-room) : stAll.slice(0, room);
-  ids = [...ids, ...st, tok.sepId].slice(0, maxLen);
-  return { ids, markers: markers.filter((m) => m < maxLen) };
+  return { ids, markers, nOptions: opts.length };
+}
+/** Append pre-encoded state tokens to a question prefix. Identical output to building the
+ * whole sequence in one pass, but the state only needs encoding once per state, not once
+ * per (state, question) pair. */
+export function sequenceWithState(prefix: QuestionPrefix, stateIds: number[], sepId: number,
+    maxLen = 512, truncateLeft = false): { ids: number[]; markers: number[] } {
+  const room = Math.max(0, maxLen - prefix.ids.length - 1);
+  const st = truncateLeft ? stateIds.slice(-room) : stateIds.slice(0, room);
+  const ids = [...prefix.ids, ...st, sepId].slice(0, maxLen);
+  return { ids, markers: prefix.markers.filter((m) => m < maxLen) };
+}
+export function buildSequence(tok: TokenizerLike, state: unknown, q: InternalQ,
+    maxLen = 512, headMaxLen = 192, optionOrder?: number[], truncateLeft = false): { ids: number[]; markers: number[] } {
+  const stAll = tok.encode(serializeState(state).split(tok.maskToken).join(" "));
+  return sequenceWithState(buildQuestionPrefix(tok, q, maxLen, headMaxLen, optionOrder), stAll, tok.sepId, maxLen, truncateLeft);
 }
 export function softmax(z: number[]): number[] {
   const m = Math.max(...z);
@@ -122,10 +142,7 @@ export function collateItems(batch: CollateItem[][], padId: number): CollatedBat
   const qtype = items.map((it) => it.qtype);
   const label = items.map((it) => (typeof it.label === "number" ? it.label : -1));
   const meta = items.map((it) => {
-    const m: Record<string, unknown> = {};
-    for (const k of Object.keys(it)) {
-      if (k !== "ids" && k !== "markers" && k !== "target") m[k] = (it as Record<string, unknown>)[k];
-    }
+    const { ids: _ids, markers: _markers, target: _target, ...m } = it;
     return m;
   });
   const out: CollatedBatch = { inputIds, attentionMask, markerPos, markerMask, qtype, label, meta };

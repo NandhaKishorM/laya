@@ -9,17 +9,48 @@ permissions:
   contents: read
 
 jobs:
+  spark-build:
+    # Builds the DGX Spark image (ARM64, CUDA 13.0) and checks its libraries load.
+    # No GPU here, so this proves installation, not inference.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ARM64 CUDA 13.0 image
+        run: docker build --pull --build-arg TORCH_INDEX=cu130 -t laya:spark .
+      - name: Check CUDA libraries and dependencies without a GPU
+        run: |
+          docker run --rm --network none laya:spark python -c '
+          import platform, torch
+          from torch.backends import cusparselt
+          assert platform.machine() == "aarch64"
+          assert torch.version.cuda == "13.0"
+          assert cusparselt.is_available()
+          print(torch.__version__, cusparselt.version())
+          '
+          docker run --rm --network none laya:spark pip check
+
   smoke:
-    runs-on: ubuntu-latest
+    # Native runners for both architectures; torch wheels install for the target, so
+    # an emulated cross-build would be slow and would not prove the ARM64 wheels.
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Validate Compose and build CPU image
         run: |
+          docker compose -f compose.yaml -f compose.spark.yaml config --quiet
+          docker compose -f compose.yaml -f compose.http.yaml -f compose.spark.yaml config --quiet
           docker compose config --quiet
           docker compose -f compose.yaml -f compose.example.yml config --quiet
           docker compose -f compose.yaml -f compose.example.yml -f compose.cuda.yaml config --quiet
           docker compose -f compose.yaml -f compose.cuda.yaml config --quiet
+          docker compose -f compose.yaml -f compose.http.yaml config --quiet
+          docker compose -f compose.yaml -f compose.http.yaml -f compose.cuda.yaml config --quiet
           docker build --pull -t laya:smoke .
       - name: Check installed runtime and fresh cache permissions
         run: |
@@ -53,6 +84,8 @@ jobs:
         run: |
           docker run --rm --network none -v "$PWD:/workspace:ro" -w /workspace \
             laya:smoke python tests/test_docker_entrypoint.py
+          docker run --rm --network none -v "$PWD:/workspace:ro" -w /workspace \
+            laya:smoke python tests/test_docker_torch.py
       - name: Reject unavailable CUDA before downloading models
         run: |
           docker run --rm --network none -e LAYA_DEVICE=cuda laya:smoke python -c '
@@ -67,3 +100,30 @@ jobs:
       - name: Remove test cache
         if: always()
         run: docker volume rm laya-smoke-cache || true
+
+  http:
+    # Start laya-serve the way the docs do and wait for its healthcheck. No preload,
+    # so no weights download; the key is a throwaway written for this job.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_FILE: compose.yaml:compose.http.yaml
+      LAYA_PRELOAD: "0"
+      LAYA_API_KEY: ci-test-key
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start laya-serve and wait until healthy
+        run: docker compose up --build -d --wait --wait-timeout 300 laya-serve
+      - name: Check binding, health and bearer auth
+        run: |
+          docker compose port laya-serve 8000 | grep -q '^127.0.0.1:'
+          curl -fsS localhost:8000/health
+          code() { curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8000/v1/systemone \
+            -H 'content-type: application/json' -d '{}' "$@"; }
+          test "$(code)" = 401
+          test "$(code -H 'authorization: Bearer wrong')" = 401
+      - name: Stop
+        if: always()
+        run: |
+          docker compose logs laya-serve || true
+          docker compose down --volumes || true

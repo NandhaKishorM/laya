@@ -75,8 +75,13 @@ def build_sequence(
     head_max_len: int = 192,
     option_order: Optional[List[int]] = None,
     truncate_left: bool = False,
+    state_ids: Optional[List[int]] = None,
 ):
-    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP]."""
+    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP].
+
+    `state_ids` lets a caller tokenize the shared state once and reuse it across every question,
+    instead of re-serializing and re-tokenizing the same document per question.
+    """
     mask_tok = tok.mask_token
     opts = render_options(q)
     order = option_order if option_order is not None else list(range(len(opts)))
@@ -84,10 +89,16 @@ def build_sequence(
     head_ids = tok("%s question: %s" % (q["t"], ins), add_special_tokens=False)["input_ids"]
     opt_ids = []
     for i in order:
-        opt_ids.append(
-            [tok.mask_token_id]
-            + tok(" " + opts[i].replace(mask_tok, " "), add_special_tokens=False)["input_ids"][:48]
-        )
+        # Cap at the tokenizer, not after the fact: `[:48]` still makes the tokenizer process the
+        # whole (possibly long) description. truncation=True, max_length=48 keeps the first 48
+        # tokens, which is exactly what the previous slice produced.
+        opt_tokens = tok(
+            " " + opts[i].replace(mask_tok, " "),
+            add_special_tokens=False,
+            truncation=True,
+            max_length=48,
+        )["input_ids"]
+        opt_ids.append([tok.mask_token_id] + opt_tokens)
     opt_budget = head_max_len - sum(len(o) for o in opt_ids)
     if opt_budget < 16:
         per = max(4, (head_max_len - 16) // max(1, len(opt_ids)))
@@ -101,9 +112,10 @@ def build_sequence(
         ids.extend(o)
     ids.append(tok.sep_token_id)
     room = max(0, max_len - len(ids) - 1)
-    st = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
-    # not st[-room:]: with no room left, st[-0:] is the whole state rather than none of it
-    st = st[max(0, len(st) - room):] if truncate_left else st[:room]
+    if state_ids is None:
+        state_ids = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
+    # not state_ids[-room:]: with no room left, state_ids[-0:] is the whole state rather than none of it
+    st = state_ids[max(0, len(state_ids) - room):] if truncate_left else state_ids[:room]
     ids = ids + st + [tok.sep_token_id]
     return ids[:max_len], [m for m in markers if m < max_len]
 
@@ -163,11 +175,35 @@ class DecisionModel(nn.Module):
         return logits, act_logits
 
 
+def _apply_rope_config(ecfg) -> None:
+    """Carry transformers>=5 per-layer RoPE settings over to the attributes 4.x reads.
+
+    A checkpoint re-saved by transformers 5 stores RoPE as
+    `rope_parameters = {"full_attention": {"rope_theta": ...}, "sliding_attention": {...}}`.
+    transformers 4.x does not know that key, so it keeps its own defaults (global 160000,
+    local 10000) and any checkpoint whose sliding-attention theta differs silently runs the
+    wrong RoPE base -- mmBERT is exactly that case, both of its thetas are 160000. Map the
+    values onto `global_rope_theta` / `local_rope_theta`, which 4.x does read. On
+    transformers 5 this is a no-op beyond re-setting the same numbers.
+    """
+    rope = getattr(ecfg, "rope_parameters", None)
+    if not isinstance(rope, dict):
+        return
+    flat = rope.get("rope_theta")
+    for layer_type, attr in (("full_attention", "global_rope_theta"),
+                             ("sliding_attention", "local_rope_theta")):
+        params = rope.get(layer_type)
+        theta = params.get("rope_theta") if isinstance(params, dict) else flat
+        if theta is not None and hasattr(ecfg, attr):
+            setattr(ecfg, attr, float(theta))
+
+
 def build_model(cfg: Dict, encoder_dir: Optional[str] = None, pretrained: bool = True) -> DecisionModel:
     from transformers import AutoConfig, AutoModel
 
     if not pretrained or (encoder_dir and os.path.exists(encoder_dir)):
         ecfg = AutoConfig.from_pretrained(encoder_dir or cfg["encoder"])
+        _apply_rope_config(ecfg)
         enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
     else:
         enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")
@@ -291,6 +327,13 @@ def collate_items(batch, pad_id: int):
         mpos[i, :k] = torch.tensor(it["markers"])
         mmask[i, :k] = True
         if has_target and "target" in it:
+            if len(it["target"]) > kmax:
+                # Otherwise this lands as "The expanded size of the tensor (k) must match the
+                # existing size (kmax)" from inside the assignment, which says nothing about the
+                # actual mistake: a target with more entries than the item has options.
+                raise ValueError(
+                    "collate_items: item %d has %d target entries but only %d marker positions; "
+                    "a target needs one entry per option" % (i, len(it["target"]), kmax))
             target[i, : len(it["target"])] = torch.tensor(it["target"], dtype=torch.float32)
 
     res = {

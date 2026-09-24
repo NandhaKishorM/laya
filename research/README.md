@@ -16,10 +16,50 @@ the numbers quoted in the main README — nothing here is imported by the `laya`
 | `scripts/bench_local.py` | CPU sweep: MASSIVE intent across **all 51 languages**, plus typed-decisions on all three checkpoints |
 | `scripts/bench_apps.py` | the six application workflows (support triage, email + phishing, guardrails, RAG relevance, moderation, model routing) plus the datasets where public Jev numbers exist |
 | `scripts/bench_latency.py` | inference speed including what routing costs: detection overhead, hot path, cold-swap, mixed-language throughput at several `max_loaded` settings |
+| `scripts/bench_length_batching.py` | compare upstream contiguous batches with optional length sorting on synthetic tickets, including output consistency and optional fresh-process memory profiles (`psutil` required for memory mode) |
 | `scripts/make_plots.py` | renders `assets/laya_benchmark.png` from the result JSONs |
 
 Everything runs with `USE_TF=0` — `transformers` probes for TensorFlow at import, and when TF is
 installed its abseil runtime can deadlock model construction on macOS/Python 3.9.
+
+## Length batching
+
+[Local CPU measurements](results/length_batching_cpu_20260924.json) compare the original
+`predict_batch` method at `1e28ac20c0896b1c37a744cd11f740eb98f8b178` with `sort_by_length=True`.
+On 10,000 synthetic English support tickets, the multilingual checkpoint took **1775.71 s
+before and 825.09 s after (2.15x)**, including tokenization, collation, inference and decoding.
+There were zero choice/action decision changes, zero usage mismatches, and a maximum returned
+numeric difference of **0.0001**. This is a throughput workload, not a labeled accuracy test.
+
+The machine was a Ryzen 9 5950X with 64 GiB RAM, Windows 11, CPU float32 and 16 Torch threads.
+An unrelated adaptation experiment was running on the GPU. Small tests alternate execution
+order over repeated rounds; the 1,000 and 10,000 input tests each have one full timing pair.
+The similar-length control showed no regression. GPU, MPS, compiled and TileLang performance
+were not measured. Results depend on input lengths, checkpoint, batch size and hardware.
+
+To reproduce, use a fresh Python 3.12 environment and the pinned model snapshot:
+
+```sh
+python -m pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu
+python -m pip install transformers==4.57.1 huggingface_hub==0.36.2 numpy==2.3.5 psutil==7.2.2
+python -c "from huggingface_hub import snapshot_download; print(snapshot_download('convaiinnovations/laya', revision='aa8c91ca088ec597df95a0d1c76b3063cb2ae5e8', allow_patterns=['multilingual/*']) + '/multilingual')"
+```
+
+Replace `MODEL_DIR` below with the printed checkpoint directory. Start with `--count 16
+--rounds 2 --questions 3`, then increase the count. The full CPU comparison takes tens of minutes:
+
+```sh
+python research/scripts/bench_length_batching.py MODEL_DIR --count 10000 --batch-size 8 --threads 16 --rounds 1 --output length-10000.json
+```
+
+Memory measurements run each mode in a separate process after model warm-up. They sample
+process RSS every 10 ms during 64-input inference, excluding model-load transients; short
+allocation peaks can be missed. They do not measure the peak memory of the 10,000-input run:
+
+```sh
+python research/scripts/bench_length_batching.py MODEL_DIR --count 64 --batch-size 8 --threads 16 --memory-mode original --output memory-original.json
+python research/scripts/bench_length_batching.py MODEL_DIR --count 64 --batch-size 8 --threads 16 --memory-mode grouped --output memory-grouped.json
+```
 
 ## Results
 
@@ -27,7 +67,7 @@ installed its abseil runtime can deadlock model construction on macOS/Python 3.9
 |---|---|
 | `results/t4_colab_benchmark.json` | 17,416 questions on one T4, both checkpoints, identical questions per model |
 | `results/cpu_51_language_sweep.json` | 51 languages x 2 checkpoints, MASSIVE intent, 20 options |
-| `results/cpu_51_language_sweep_clamped.json` | the same 51 languages and 5,100 cases re-run with 0.3.7, raw temperatures and served temperatures side by side ([#208](https://github.com/NandhaKishorM/laya/issues/208)) |
+| `results/cpu_51_language_sweep_clamped.json` | the same 51 languages and 5,100 cases re-run after the temperature clamp, raw temperatures and served temperatures side by side ([#208](https://github.com/NandhaKishorM/laya/issues/208)) |
 
 ## Headline findings
 

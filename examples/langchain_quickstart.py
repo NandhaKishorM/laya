@@ -91,3 +91,41 @@ print(f"Churn Risk: {enriched_state['triage']['churn_risk']}")
 #     api_key="optional-secret-key",
 #     criteria={...}
 # )
+
+
+# =====================================================================
+# 5. Compiled LangGraph StateGraph Workflow
+# =====================================================================
+try:
+    from langgraph.graph import StateGraph, END
+
+    class AgentState(TypedDict):
+        input: str
+        response: str
+
+    workflow = StateGraph(AgentState)
+    workflow.add_node("billing_agent", lambda state: {"response": "Routing to Billing Specialist."})
+    workflow.add_node("technical_agent", lambda state: {"response": "Routing to Technical Support Specialist."})
+    workflow.add_node("sales_agent", lambda state: {"response": "Routing to Enterprise Sales Representative."})
+    workflow.add_node("human_agent", lambda state: {"response": "Routing to Human Escalation Tier."})
+
+    workflow.set_conditional_entry_point(
+        router_node,
+        {
+            "billing_agent": "billing_agent",
+            "technical_agent": "technical_agent",
+            "sales_agent": "sales_agent",
+            "human_agent": "human_agent",
+        }
+    )
+    workflow.add_edge("billing_agent", END)
+    workflow.add_edge("technical_agent", END)
+    workflow.add_edge("sales_agent", END)
+    workflow.add_edge("human_agent", END)
+
+    app = workflow.compile()
+    graph_res = app.invoke({"input": "I was charged twice on invoice #9821."})
+    print("\nLangGraph StateGraph Result:", graph_res["response"])
+except (ImportError, Exception) as e:
+    print(f"\nNote: To run the compiled LangGraph StateGraph workflow, install 'laya[langchain]': {e}")
+

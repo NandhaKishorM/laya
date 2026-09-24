@@ -66,3 +66,10 @@ credentials.json
 # terminal transcripts dumped by the CLI (they quote whatever was pasted, including tokens)
 [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*-local-command-*.txt
 *-local-command-*.txt
+
+# Documentation site build output (zensical build)
+site/
+
+# ruff's cache, and the JSON the research harnesses write on every run
+.ruff_cache/
+research/*_benchmark_results.json

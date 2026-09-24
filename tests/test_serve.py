@@ -3,12 +3,20 @@
 A fake Router is injected so nothing loads a checkpoint; we only assert that the
 HTTP layer maps requests/responses and enforces auth as hs-jev expects.
 """
+import json
+
 import pytest
 
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-from laya.serve import _apply_thread_limit, _env_bool, _resolve_model, create_app  # noqa: E402
+from laya.serve import (  # noqa: E402
+    MAX_BODY_BYTES,
+    _apply_thread_limit,
+    _env_bool,
+    _resolve_model,
+    create_app,
+)
 
 
 class FakeRouter:
@@ -84,11 +92,111 @@ def test_missing_questions_is_400(monkeypatch):
     assert r.status_code == 400
 
 
+@pytest.mark.parametrize("payload", [
+    b"not json",
+    b"",                    # empty body
+    b"\xff\xfe\x00bad",     # invalid UTF-8
+    b'{"questions": ',      # truncated
+])
+def test_malformed_json_body_is_400(monkeypatch, payload):
+    """A body that isn't valid JSON must not fall through to an unstyled 500."""
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/systemone", content=payload,
+                    headers={"content-type": "application/json"})
+    assert r.status_code == 400
+    # pin which 400: the other branch below also answers 400, so the status alone
+    # would not notice the parse guard disappearing.
+    assert r.json()["detail"] == "request body must be valid JSON"
+
+
+@pytest.mark.parametrize("payload", [b"[1,2,3]", b'"hello"', b"null"])
+def test_json_that_is_not_an_object_is_400(monkeypatch, payload):
+    """Valid JSON that isn't an object is the other 400, not a parse failure."""
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/systemone", content=payload,
+                    headers={"content-type": "application/json"})
+    assert r.status_code == 400
+    assert "questions" in r.json()["detail"]
+
+
 def test_auth_required_when_key_set(monkeypatch):
     client, _ = _client(monkeypatch, api_key="s3cret")
     assert client.post("/v1/systemone", json=REQ).status_code == 401
     ok = client.post("/v1/systemone", json=REQ, headers={"Authorization": "Bearer s3cret"})
     assert ok.status_code == 200
+
+
+def test_auth_rejects_a_non_ascii_header(monkeypatch):
+    """A hostile Authorization header must answer 401, not raise.
+
+    `hmac.compare_digest` raises TypeError when a str operand holds a non-ASCII
+    character, and Starlette decodes request headers as latin-1. So
+    `Authorization: Bearer s\xe9cret` -- legal on the wire -- used to make the
+    comparison itself raise, which FastAPI turned into HTTP 500 with a traceback
+    in the log, reachable by any unauthenticated client.
+    """
+    client, _ = _client(monkeypatch, api_key="s3cret")
+    for header in (
+        "Bearer s\u00e9cret".encode("latin-1"),   # non-ASCII inside the token
+        "B\u00ebarer s3cret".encode("latin-1"),   # non-ASCII in the scheme
+        b"Bearer \xff\xfe",                      # bytes that are not valid UTF-8
+    ):
+        r = client.post("/v1/systemone", json=REQ, headers={"Authorization": header})
+        assert r.status_code == 401, (header, r.status_code)
+
+
+def _chunked(payload: bytes):
+    """Send `payload` with no Content-Length, i.e. Transfer-Encoding: chunked."""
+    yield payload
+
+
+def test_body_limit_holds_without_content_length(monkeypatch):
+    """The body cap must not depend on the client declaring its length.
+
+    Content-Length is a value the client chooses and chunked transfer-encoding
+    omits it entirely (HTTP/2 and /3 have no such header), so checking only the
+    header let a request of any size be read into memory in full. The state and
+    question-count guards do not cover this: state stays tiny and there is one
+    question -- the payload is large because the question's own text is.
+    """
+    client, fake = _client(monkeypatch)
+    oversized = json.dumps({
+        "state": "ok",
+        "questions": {"a": {"type": "choice",
+                            "instructions": "A" * (MAX_BODY_BYTES + 1024),
+                            "criteria": {"y": None, "z": None}}},
+    }).encode()
+    assert len(oversized) > MAX_BODY_BYTES
+
+    declared = client.post("/v1/systemone", content=oversized,
+                           headers={"content-type": "application/json"})
+    assert declared.status_code == 413
+
+    undeclared = client.post("/v1/systemone", content=_chunked(oversized),
+                             headers={"content-type": "application/json"})
+    assert undeclared.status_code == 413
+    # And it was refused before reaching inference, which is the point: the pool
+    # is one worker wide, so a body that gets that far blocks every other client.
+    assert fake.calls == []
+
+
+def test_a_request_within_the_limit_still_works_without_content_length(monkeypatch):
+    """The cap must not break legitimate chunked clients."""
+    client, fake = _client(monkeypatch)
+    body = json.dumps(REQ).encode()
+    r = client.post("/v1/systemone", content=_chunked(body),
+                    headers={"content-type": "application/json"})
+    assert r.status_code == 200
+    assert len(fake.calls) == 1
+
+
+def test_body_read_preserves_parse_error_codes(monkeypatch):
+    """Reading the body ourselves must keep 400 for anything unparseable."""
+    client, _ = _client(monkeypatch)
+    for payload in (b"", b"{not json", b'{"questions":{},"state":"\xff\xfe"}'):
+        r = client.post("/v1/systemone", content=payload,
+                        headers={"content-type": "application/json"})
+        assert r.status_code == 400, (payload, r.status_code)
 
 
 def test_health(monkeypatch):

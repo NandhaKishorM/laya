@@ -114,6 +114,11 @@ check("router/fallback_on_low_confidence", router.invoke("lowconf question"), "h
 # LangGraph callable protocol
 check("router/callable_protocol", router({"messages": [DummyMessage("human", "refund please")]}), "billing")
 
+# LangGraph conditional edge mapping simulation
+mapping = {"billing": "BillingNode", "technical": "TechNode", "human_agent": "HumanNode"}
+check("router/langgraph_edge_routing", mapping[router({"input": "I need an invoice refund"})], "BillingNode")
+check("router/langgraph_edge_fallback", mapping[router({"input": "lowconf question"})], "HumanNode")
+
 
 # --------------------------------------------------------------- 3. LayaGuardrail
 def mock_guard_response(state, questions):

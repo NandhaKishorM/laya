@@ -32,6 +32,8 @@ Imports of heavy dependencies (fastapi, uvicorn, torch via Router) are all
 deferred into the functions that need them, so ``import laya.serve`` stays cheap
 and touches no GPU -- which is what keeps the Nix ``pythonImportsCheck`` honest.
 """
+import hmac
+import json
 import os
 from typing import Any, Dict, Optional
 
@@ -40,6 +42,12 @@ from typing import Any, Dict, Optional
 # Jev model id (ignore it and let the router auto-select).
 _KNOWN_MODELS = {"english", "multilingual", "typed-decisions"}
 
+# Guardrails for unauthenticated remote input. The state is tokenized once per
+# question and collated into one tensor, so an unbounded body can OOM the worker;
+# the single-worker pool means one large request would also starve /health.
+MAX_QUESTIONS = 64
+MAX_STATE_CHARS = 50000
+MAX_BODY_BYTES = 2 * 1024 * 1024
 # Public Hugging Face ids, accepted so a client can name a checkpoint. The root bundle is
 # deliberately absent: the documented ``convaiinnovations/laya`` value means
 # "let the Router choose", rather than pinning the English checkpoint.
@@ -73,6 +81,62 @@ def _resolve_model(model: Optional[str]) -> Optional[str]:
     except Exception:
         return None
     return key if key in _KNOWN_MODELS else None
+
+
+def _resolve_port() -> int:
+    """Port from LAYA_PORT, validated. Exits with a message instead of a traceback."""
+    raw = os.environ.get("LAYA_PORT", "8000")
+    try:
+        port = int(str(raw).strip())
+    except (TypeError, ValueError):
+        raise SystemExit("invalid LAYA_PORT %r: must be an integer 1-65535" % (raw,))
+    if not 1 <= port <= 65535:
+        raise SystemExit("invalid LAYA_PORT %r: must be an integer 1-65535" % (raw,))
+    return port
+
+
+def _check_request_limits(state: Any, questions: Any) -> None:
+    """Reject oversized inference requests before tokenization (413)."""
+    from fastapi import HTTPException
+
+    if not isinstance(questions, dict):
+        raise HTTPException(status_code=400, detail="'questions' must be an object")
+    if len(questions) > MAX_QUESTIONS:
+        raise HTTPException(status_code=413,
+                            detail="too many questions (%d > %d)" % (len(questions), MAX_QUESTIONS))
+    try:
+        state_len = len(state) if isinstance(state, str) else len(str(state))
+    except Exception:
+        state_len = MAX_STATE_CHARS + 1
+    if state_len > MAX_STATE_CHARS:
+        raise HTTPException(status_code=413,
+                            detail="state too large (%d > %d chars)" % (state_len, MAX_STATE_CHARS))
+
+
+async def _read_body_capped(request: Any) -> bytes:
+    """Read the request body, refusing to buffer more than ``MAX_BODY_BYTES``.
+
+    ``Content-Length`` cannot be the only gate. It is a value the client chooses,
+    and under ``Transfer-Encoding: chunked`` it is absent altogether -- HTTP/2 and
+    HTTP/3 have no such header at all -- so a request that simply omits it was
+    read into memory in full, whatever its size. The body is streamed here and
+    abandoned as soon as it exceeds the cap, so the limit holds for every framing
+    rather than only for clients that announce their length honestly.
+    """
+    from fastapi import HTTPException
+
+    total = 0
+    chunks = []
+    async for chunk in request.stream():
+        if not chunk:
+            continue
+        total += len(chunk)
+        if total > MAX_BODY_BYTES:
+            # Stop reading rather than draining the rest: the peer is already over
+            # the limit and nothing further can make the request acceptable.
+            raise HTTPException(status_code=413, detail="request body too large")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _apply_thread_limit():
@@ -138,10 +202,20 @@ def create_app(router: Optional[Any] = None):
         summary="Laya System-1 decisions over the TypeSafe Jev /v1/systemone protocol",
     )
 
+    # Compared as bytes, not str. `hmac.compare_digest` raises TypeError when a str
+    # operand holds a non-ASCII character, and Starlette decodes request headers as
+    # latin-1 -- so `Authorization: Bearer s\xe9cret`, which is legal on the wire,
+    # made the comparison itself raise. That surfaced as HTTP 500 plus a traceback
+    # in the log, reachable by any unauthenticated client with one byte. Encoding
+    # both sides first keeps the comparison constant-time and total: every header a
+    # client can send now answers 401.
+    expected_auth = ("Bearer " + api_key).encode("utf-8", "surrogateescape") if api_key else b""
+
     def _check_auth(authorization: Optional[str]) -> None:
         if api_key is None:
             return
-        if authorization != "Bearer " + api_key:
+        supplied = (authorization or "").encode("utf-8", "surrogateescape")
+        if not hmac.compare_digest(supplied, expected_auth):
             raise HTTPException(status_code=401, detail="invalid or missing bearer token")
 
     @app.get("/health")
@@ -156,11 +230,29 @@ def create_app(router: Optional[Any] = None):
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):
         nonlocal gate
         _check_auth(authorization)
-        body = await request.json()
+        # A declared length over the cap is rejected before anything is read; the
+        # streaming cap below is what actually enforces it, for bodies that declare
+        # no length or understate it.
+        if request.headers.get("content-length"):
+            try:
+                if int(request.headers["content-length"]) > MAX_BODY_BYTES:
+                    raise HTTPException(status_code=413, detail="request body too large")
+            except ValueError:
+                pass
+        raw = await _read_body_capped(request)
+        try:
+            # Every parse failure a client can cause is a ValueError: JSONDecodeError for
+            # malformed/empty/truncated bodies, UnicodeDecodeError for invalid UTF-8. A
+            # broader catch would also swallow ClientDisconnect and Starlette's own
+            # stream errors, reporting a transport or server fault as the client's.
+            body = json.loads(raw)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="request body must be valid JSON")
         if not isinstance(body, dict) or "questions" not in body:
             raise HTTPException(status_code=400, detail="request body must be an object with a 'questions' field")
         state = body.get("state")
         questions = body["questions"]
+        _check_request_limits(state, questions)
         model = _resolve_model(body.get("model"))
         if gate is None:
             gate = asyncio.Lock()
@@ -173,8 +265,11 @@ def create_app(router: Optional[Any] = None):
                     pool, lambda: router.predict(state, questions, model=model))
         except HTTPException:
             raise
-        except Exception as e:  # noqa: BLE001 -- surface model/tokenizer errors as 422
+        except ValueError as e:
+            # Question validation errors name the question and what to fix: safe for clients.
             raise HTTPException(status_code=422, detail=str(e))
+        except Exception:  # noqa: BLE001 -- never leak paths/weights/OOM text to clients
+            raise HTTPException(status_code=500, detail="inference failed")
 
     return app
 
@@ -185,7 +280,7 @@ def main() -> None:
     uvicorn.run(
         create_app(),
         host=os.environ.get("LAYA_HOST", "0.0.0.0"),
-        port=int(os.environ.get("LAYA_PORT", "8000")),
+        port=_resolve_port(),
         log_level=os.environ.get("LAYA_LOG_LEVEL", "info"),
     )
 

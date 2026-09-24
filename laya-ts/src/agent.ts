@@ -491,6 +491,8 @@ export class Agent extends HookRegistry {
       localDir?: string;
       token?: string | null;
       numThreads?: number;
+      signal?: AbortSignal | null;
+      onProgress?: ((done: number, total: number, file: string) => void) | null;
     },
   ): Promise<Agent> {
     const sub = opts?.subfolder ?? null;
@@ -502,7 +504,7 @@ export class Agent extends HookRegistry {
     let provider: SessionProvider;
     if (isBrowser) {
       const { loadWebBundle, createWebProvider } = await import("./providers.js");
-      const bundle = await loadWebBundle(modelDirOrRepo, { subfolder: sub });
+      const bundle = await loadWebBundle(modelDirOrRepo, { subfolder: sub, signal: opts?.signal, onProgress: opts?.onProgress });
       cfg = bundle.cfg;
       tokenizerJson = bundle.tokenizerJson;
       dir = bundle.dir;
@@ -513,6 +515,8 @@ export class Agent extends HookRegistry {
         subfolder: sub,
         localDir: opts?.localDir,
         token: opts?.token,
+        signal: opts?.signal,
+        onProgress: opts?.onProgress,
       });
       cfg = bundle.cfg;
       tokenizerJson = bundle.tokenizerJson;

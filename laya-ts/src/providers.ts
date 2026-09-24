@@ -134,15 +134,54 @@ function isOomError(e: unknown): boolean {
   return m.includes("memory") || m.includes("cuda") || m.includes("out of memory") || m.includes("oom");
 }
 
+export interface LoadOptions {
+  subfolder?: string | null;
+  signal?: AbortSignal | null;
+  onProgress?: ((done: number, total: number, file: string) => void) | null;
+}
+
+const CACHE_KEY = "laya-ts-v1";
+const TOKENIZER_CANDIDATES = ["tokenizer.json", "tokenizer/tokenizer.json"];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** fetch with 2 retries on network errors + 429/5xx; 404s fail fast. */
+async function fetchWithRetry(url: string, init?: RequestInit, retries = 2): Promise<Response> {
+  let last: unknown = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (init?.signal?.aborted) throw new DOMException("aborted", "AbortError");
+    try {
+      const res = await fetch(url, init);
+      if (res.ok) return res;
+      if ((res.status === 429 || res.status >= 500) && attempt < retries) {
+        await sleep(100 * (attempt + 1));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      last = e;
+      if ((e as any)?.name === "AbortError") throw e;
+      if (attempt < retries) {
+        await sleep(100 * (attempt + 1));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw last instanceof Error ? last : new Error(`fetch failed for ${url}`);
+}
+
 /** Online-first fetch: try network, cache on success, fall back to CacheStorage. */
-async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
+async function fetchArrayBuffer(url: string, opts?: { signal?: AbortSignal | null }): Promise<ArrayBuffer> {
   const g = globalThis as unknown as { caches?: any };
   let cache: any = null;
   let hit: any = null;
   try {
     if (g.caches && typeof g.caches.open === "function") {
       try {
-        cache = await g.caches.open("laya-ts");
+        cache = await g.caches.open(CACHE_KEY);
         try {
           hit = await cache.match(url);
         } catch {
@@ -157,7 +196,7 @@ async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
   }
   if (cache) {
     try {
-      const res = await fetch(url);
+      const res = await fetchWithRetry(url, { signal: opts?.signal ?? undefined });
       if (res.ok) {
         try {
           await cache.put(url, res.clone());
@@ -185,13 +224,13 @@ async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
     }
     throw new Error(`fetch failed for ${url}`);
   }
-  const res = await fetch(url);
+  const res = await fetchWithRetry(url, { signal: opts?.signal ?? undefined });
   if (!res.ok) throw new Error(`fetch failed for ${url}: ${res.status}`);
   return await res.arrayBuffer();
 }
 
-async function fetchJson(url: string): Promise<unknown> {
-  const buf = await fetchArrayBuffer(url);
+async function fetchJson(url: string, opts?: { signal?: AbortSignal | null }): Promise<unknown> {
+  const buf = await fetchArrayBuffer(url, opts);
   return JSON.parse(new TextDecoder().decode(buf));
 }
 
@@ -203,7 +242,7 @@ export interface NodeBundle {
 
 export async function loadNodeBundle(
   modelDirOrRepo: string,
-  opts?: { subfolder?: string | null; localDir?: string; token?: string | null },
+  opts?: { subfolder?: string | null; localDir?: string; token?: string | null; signal?: AbortSignal | null; onProgress?: ((done: number, total: number, file: string) => void) | null },
 ): Promise<NodeBundle> {
   const fs: typeof import("node:fs/promises") = await import("node:fs/promises");
   const path: typeof import("node:path") = await import("node:path");
@@ -226,12 +265,20 @@ export async function loadNodeBundle(
     await fs.mkdir(cache, { recursive: true });
     const token =
       opts?.token ?? (typeof process !== "undefined" ? (process as any).env?.["HF_TOKEN"] : undefined);
-    for (const f of ["rl_agent_config.json", "tokenizer.json", "tokenizer/tokenizer.json", "encoder.onnx", "head.onnx"]) {
+    const files = ["rl_agent_config.json", "tokenizer.json", "tokenizer/tokenizer.json", "encoder.onnx", "head.onnx"];
+    let done = 0;
+    for (const f of files) {
       try {
         await fs.stat(path.join(cache, f));
       } catch {
         const url = `https://huggingface.co/${modelDirOrRepo}/resolve/main/${sub ? sub + "/" : ""}${f}`;
-        const res = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+        const res = await fetchWithRetry(
+          url,
+          {
+            ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+            signal: opts?.signal ?? undefined,
+          },
+        );
         if (!res.ok) {
           if (f === "rl_agent_config.json") {
             throw new Error(
@@ -244,6 +291,8 @@ export async function loadNodeBundle(
         await fs.mkdir(path.dirname(target), { recursive: true });
         await fs.writeFile(target, new Uint8Array(await res.arrayBuffer()));
       }
+      done++;
+      opts?.onProgress?.(done, files.length, f);
     }
     dir = cache;
   }
@@ -256,7 +305,7 @@ export async function loadNodeBundle(
     );
   }
   let tokenizerJson: unknown | null = null;
-  for (const candidate of ["tokenizer.json", "tokenizer/tokenizer.json"]) {
+  for (const candidate of TOKENIZER_CANDIDATES) {
     try {
       tokenizerJson = JSON.parse(await fs.readFile(path.join(dir, candidate), "utf8"));
       break;
@@ -283,24 +332,27 @@ function baseUrlFor(repoOrUrl: string, subfolder?: string | null): string {
 
 export async function loadWebBundle(
   repoOrUrl: string,
-  opts?: { subfolder?: string | null },
+  opts?: { subfolder?: string | null; signal?: AbortSignal | null; onProgress?: ((done: number, total: number, file: string) => void) | null },
 ): Promise<WebBundle> {
   const base = baseUrlFor(repoOrUrl, opts?.subfolder ?? null);
+  const sig = { signal: opts?.signal ?? undefined };
   let cfg: any;
   try {
-    cfg = await fetchJson(`${base}/rl_agent_config.json`);
+    cfg = await fetchJson(`${base}/rl_agent_config.json`, sig);
   } catch {
     throw new Error(`Incompatible model: ${JSON.stringify(repoOrUrl)} does not contain 'rl_agent_config.json'.`);
   }
+  opts?.onProgress?.(1, 2, "rl_agent_config.json");
   let tokenizerJson: unknown | null = null;
-  for (const candidate of ["tokenizer.json", "tokenizer/tokenizer.json"]) {
+  for (const candidate of TOKENIZER_CANDIDATES) {
     try {
-      tokenizerJson = await fetchJson(`${base}/${candidate}`);
+      tokenizerJson = await fetchJson(`${base}/${candidate}`, sig);
       break;
     } catch {
       // Try the next supported Hugging Face layout.
     }
   }
+  opts?.onProgress?.(2, 2, "tokenizer.json");
   return { dir: base, cfg, tokenizerJson };
 }
 

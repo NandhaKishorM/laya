@@ -47,6 +47,20 @@ def check_raises(name, exc, fn):
     FAIL.append("%s: did not raise %r" % (name, exc))
 
 
+def plan_or_fail(name, model):
+    """Plan a pydantic model, recording a FAIL instead of letting the suite die.
+
+    A schema the planner rejects raises out of the module-level block below, which would end
+    the run before it prints its summary. Returning None turns that into an ordinary failure
+    so the counts stay readable.
+    """
+    try:
+        return questions_from_pydantic(model)
+    except SchemaError as exc:
+        FAIL.append("%s: %s" % (name, exc))
+        return None
+
+
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -159,7 +173,7 @@ check("decide/forwards predict kwargs", runner.calls[0]["kwargs"], {"hooks_raise
 
 # --------------------------------------------------------------- pydantic (optional)
 try:
-    from typing import Literal
+    from typing import Literal, Optional, Union
 
     import pydantic
 
@@ -180,6 +194,54 @@ try:
     })
     check("pydantic/instance", (ticket.department, ticket.urgency, ticket.needs_human),
           ("support", 1, True))
+
+    # pydantic v2 spells "optional" as a union, not as the type list a hand-written schema uses:
+    #   {"anyOf": [{"type": "boolean"}, {"type": "null"}], "default": None, "title": "..."}
+    # `_field` only understood the type-list form, so every Optional[...] field reached the final
+    # `unsupported schema` raise and the whole model was unusable (#357).
+    from typing import Optional
+
+    class OptionalTicket(pydantic.BaseModel):
+        urgent: Optional[bool] = None
+        priority: Optional[int] = pydantic.Field(default=None, ge=0, le=2)
+        channel: Optional[Literal["email", "chat"]] = pydantic.Field(
+            default=None, description="what the caller sees")
+
+    oq = plan_or_fail("pydantic-nullable/OptionalTicket plans", OptionalTicket)
+    if oq:
+        check("pydantic-nullable/Optional[bool] is a noul", oq["urgent"]["type"], "noul")
+        check("pydantic-nullable/Optional[int] keeps its bounds", oq["priority"]["criteria"], ["0", "1", "2"])
+        check("pydantic-nullable/Optional[Literal] is a choice",
+              sorted(oq["channel"]["criteria"]), ["chat", "email"])
+        check("pydantic-nullable/description beside the union survives the unwrap",
+              oq["channel"]["instructions"], "what the caller sees")
+        check("pydantic-nullable/every field is planned", sorted(oq),
+              ["channel", "priority", "urgent"])
+
+    # A required field next to optional ones must be unaffected.
+    class Mixed(pydantic.BaseModel):
+        department: Literal["billing", "support"]
+        urgent: Optional[bool] = None
+
+    mq = plan_or_fail("pydantic-nullable/Mixed plans", Mixed)
+    if mq:
+        check("pydantic-nullable/required Literal is untouched", mq["department"]["type"], "choice")
+        check("pydantic-nullable/optional next to it works", mq["urgent"]["type"], "noul")
+
+    # A union of two real variants is not a nullable field and cannot be one option set. The
+    # error must name the path and say how many variants it could not reconcile, rather than
+    # the bare "unsupported schema" the anyOf form used to produce.
+    class Ambiguous(pydantic.BaseModel):
+        value: Union[int, str, None] = None
+
+    check_raises("pydantic-nullable/Union[int,str,None] is rejected", SchemaError,
+                 lambda: questions_from_pydantic(Ambiguous))
+    try:
+        questions_from_pydantic(Ambiguous)
+        FAIL.append("pydantic-nullable/Union[int,str,None]: no error raised")
+    except SchemaError as exc:
+        check_true("pydantic-nullable/rejection names the path", "value" in str(exc))
+        check_true("pydantic-nullable/rejection counts the variants", "2 variants" in str(exc))
 except ImportError:
     PASS.append("pydantic/skipped (not installed)")
 

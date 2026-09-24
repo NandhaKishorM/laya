@@ -118,9 +118,40 @@ def _score_field(path: str, name: str, prop: Dict[str, Any],
     return _Field(name=name, kind="score", question=question, minimum=lo)
 
 
+def _unwrap_nullable(path: str, prop: Dict[str, Any]) -> Dict[str, Any]:
+    """Collapse a nullable union to the schema of the one branch that is not `null`.
+
+    JSON Schema spells "optional" two ways and the two producers differ. A hand-written schema
+    writes a type list -- `{"type": ["string", "null"]}` -- which is handled at the call site.
+    pydantic v2 writes a union -- `{"anyOf": [{"enum": [...], "type": "string"}, {"type":
+    "null"}]}`, possibly with a `default` and a sibling `description` -- and `oneOf` is the same
+    shape with the branches required to be exclusive. Only the union form needs unwrapping, so
+    the wrapping keys are dropped and the surviving branch is merged back over them: a
+    description written beside the `anyOf` belongs to the field, and keeps winning over one
+    written inside the branch.
+    """
+    branches = prop.get("anyOf", prop.get("oneOf"))
+    if not isinstance(branches, list):
+        return prop
+    keyword = "anyOf" if "anyOf" in prop else "oneOf"
+    candidates = [b for b in branches
+                  if not (isinstance(b, dict) and b.get("type") == "null")]
+    if not candidates:
+        raise SchemaError("%s: a union of only 'null' is not answerable" % path)
+    if len(candidates) > 1:
+        raise SchemaError(
+            "%s: %d variants in '%s' cannot both be honoured; a field is one option set, so "
+            "give it a single enum, boolean or bounded integer, or mark it nullable and use "
+            "one non-null variant" % (path, len(candidates), keyword))
+    merged = {k: v for k, v in prop.items() if k not in ("anyOf", "oneOf", "default")}
+    merged.update(candidates[0])
+    return merged
+
+
 def _field(path: str, name: str, prop: Dict[str, Any]) -> _Field:
     if not isinstance(prop, dict):
         raise SchemaError("%s: property must be an object, got %s" % (path, type(prop).__name__))
+    prop = _unwrap_nullable(path, prop)
     description = prop.get("description")
     if "const" in prop:
         return _enum_field(path, name, [prop["const"]], description)

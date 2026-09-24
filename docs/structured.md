@@ -46,8 +46,15 @@ The top level must be an object with `properties`. Each property becomes one que
 | `boolean` | `noul` | `true` / `false` |
 | `integer` or `number` with `minimum` and `maximum`, span up to `MAX_SCORE_LEVELS` | `score` | the highest-probability level, as an integer |
 | `string` with `enum` | `choice` | the chosen string |
+| `{"type": ["string", "null"]}` | the type list without `null` | as above |
+| `{"anyOf": [<one variant>, {"type": "null"}]}` | the single non-`null` variant | as above |
 | `description` | question instructions | |
 | `title` | option label | |
+
+Both nullable spellings are accepted because the two producers differ: a hand-written schema
+writes the type list, and pydantic v2 writes `anyOf` (also spelled `oneOf`). `Optional[bool]`,
+`Optional[int]` with bounds and `Optional[Literal[...]]` therefore plan to the same `noul`,
+`score` and `choice` questions as their required forms.
 
 Projection is exact: an `enum: [1, 2, 3]` returns `2`, not `"2"`; a bounded integer returns a
 level between `minimum` and `maximum`; a boolean is `noul >= 0.5`.
@@ -63,6 +70,8 @@ A schema that cannot be answered from a fixed option set raises `laya.structured
 | `array` | `properties.name: arrays are not supported; ask one field per element` |
 | nested `object` | `properties.name: nested objects are not supported; flatten the schema` |
 | `$ref` / recursion | `properties.name: $ref/recursion is not supported; flatten the schema` |
+| two or more non-`null` variants in one `anyOf`/`oneOf` | `properties.name: 2 variants in 'anyOf' cannot both be honoured; a field is one option set, ...` |
+| `anyOf` of only `{"type": "null"}` | `properties.name: a union of only 'null' is not answerable` |
 | unbounded number | `properties.name: a numeric field needs integer 'minimum' and 'maximum' to become a score` |
 | more than `MAX_PROPERTIES` / `MAX_OPTIONS` / `MAX_SCORE_LEVELS` | the limit is named in the message |
 

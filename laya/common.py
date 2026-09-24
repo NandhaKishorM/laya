@@ -7,9 +7,11 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.checkpoint import checkpoint
 
 QTYPES = {"choice": 0, "score": 1, "noul": 2}
 QTYPE_NAMES = {v: k for k, v in QTYPES.items()}
+_DEFAULT_NOUL_LABELS = {"false": "false", "true": "true"}
 
 
 def serialize_state(state: Union[str, dict, list]) -> str:
@@ -30,19 +32,38 @@ def render_criterion(value) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(", ", ": "), default=str)
 
 
+def _resolve_noul_labels(labels=None):
+    if labels is None:
+        labels = _DEFAULT_NOUL_LABELS
+    if not isinstance(labels, dict) or set(labels) != {"false", "true"}:
+        raise ValueError("noul labels must map exactly 'false' and 'true' to distinct non-empty strings")
+    false_label, true_label = labels["false"], labels["true"]
+    if not isinstance(false_label, str) or not isinstance(true_label, str):
+        raise ValueError("noul labels must map exactly 'false' and 'true' to distinct non-empty strings")
+    false_label, true_label = false_label.strip(), true_label.strip()
+    if not false_label or not true_label or false_label == true_label:
+        raise ValueError("noul labels must map exactly 'false' and 'true' to distinct non-empty strings")
+    return false_label, true_label
+
+
 def render_options(q: Dict) -> List[str]:
-    """Render option texts in label-index order. Noul is always [false, true]."""
+    """Render option texts in label-index order. Noul semantic order is always [false, true]."""
     t, crit = q["t"], q.get("crit")
+    if t != "noul" and "labels" in q:
+        raise ValueError("labels is only supported for noul questions")
     if t == "choice":
         # only None/"" mean "no description"; 0 and False are legitimate criterion values
         return [k if v is None or v == "" else "%s: %s" % (k, render_criterion(v)) for k, v in crit.items()]
     if t == "score":
         return ["level %d: %s" % (i, render_criterion(c)) for i, c in enumerate(crit)]
     crit = crit or {}
+    false_label, true_label = _resolve_noul_labels(q.get("labels"))
     false_crit, true_crit = crit.get("false"), crit.get("true")
     return [
-        "false: " + (render_criterion(false_crit) if false_crit not in (None, "") else "no, the statement does not hold"),
-        "true: " + (render_criterion(true_crit) if true_crit not in (None, "") else "yes, the statement holds"),
+        false_label + ": "
+        + (render_criterion(false_crit) if false_crit not in (None, "") else "no, the statement does not hold"),
+        true_label + ": "
+        + (render_criterion(true_crit) if true_crit not in (None, "") else "yes, the statement holds"),
     ]
 
 
@@ -54,8 +75,13 @@ def build_sequence(
     head_max_len: int = 192,
     option_order: Optional[List[int]] = None,
     truncate_left: bool = False,
+    state_ids: Optional[List[int]] = None,
 ):
-    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP]."""
+    """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP].
+
+    `state_ids` lets a caller tokenize the shared state once and reuse it across every question,
+    instead of re-serializing and re-tokenizing the same document per question.
+    """
     mask_tok = tok.mask_token
     opts = render_options(q)
     order = option_order if option_order is not None else list(range(len(opts)))
@@ -63,10 +89,16 @@ def build_sequence(
     head_ids = tok("%s question: %s" % (q["t"], ins), add_special_tokens=False)["input_ids"]
     opt_ids = []
     for i in order:
-        opt_ids.append(
-            [tok.mask_token_id]
-            + tok(" " + opts[i].replace(mask_tok, " "), add_special_tokens=False)["input_ids"][:48]
-        )
+        # Cap at the tokenizer, not after the fact: `[:48]` still makes the tokenizer process the
+        # whole (possibly long) description. truncation=True, max_length=48 keeps the first 48
+        # tokens, which is exactly what the previous slice produced.
+        opt_tokens = tok(
+            " " + opts[i].replace(mask_tok, " "),
+            add_special_tokens=False,
+            truncation=True,
+            max_length=48,
+        )["input_ids"]
+        opt_ids.append([tok.mask_token_id] + opt_tokens)
     opt_budget = head_max_len - sum(len(o) for o in opt_ids)
     if opt_budget < 16:
         per = max(4, (head_max_len - 16) // max(1, len(opt_ids)))
@@ -80,8 +112,10 @@ def build_sequence(
         ids.extend(o)
     ids.append(tok.sep_token_id)
     room = max(0, max_len - len(ids) - 1)
-    st = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
-    st = st[-room:] if truncate_left else st[:room]
+    if state_ids is None:
+        state_ids = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
+    # not state_ids[-room:]: with no room left, state_ids[-0:] is the whole state rather than none of it
+    st = state_ids[max(0, len(state_ids) - room):] if truncate_left else state_ids[:room]
     ids = ids + st + [tok.sep_token_id]
     return ids[:max_len], [m for m in markers if m < max_len]
 
@@ -110,7 +144,12 @@ class DecisionModel(nn.Module):
         if self.head is not None:
             pad = ~attention_mask.bool()
             for layer in self.head.layers:
-                h = layer(h, src_key_padding_mask=pad)
+                if self.head_checkpointing and self.training and torch.is_grad_enabled():
+                    # Non-reentrant checkpointing also trains the head when its input
+                    # is frozen. Default RNG preservation keeps dropout consistent.
+                    h = checkpoint(layer, h, src_key_padding_mask=pad, use_reentrant=False)
+                else:
+                    h = layer(h, src_key_padding_mask=pad)
         idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
         m = torch.gather(h, 1, idx)
         logits = self.scorer(m).squeeze(-1).float()
@@ -119,7 +158,17 @@ class DecisionModel(nn.Module):
         p = torch.softmax(logits.detach(), -1)
         k = marker_mask.sum(-1).clamp(min=2).float()
         ent = -(p * torch.log(p.clamp_min(1e-9))).sum(-1) / torch.log(k)
-        top2 = p.topk(2, -1).values
+        if p.size(-1) >= 2:
+            top2 = p.topk(2, -1).values
+        else:
+            # A single-option question has exactly one marker, so p.topk(2, ...)
+            # has nothing to select for the second slot and raises. The answer
+            # is still well-defined: softmax over one logit is 1.0 regardless of
+            # its value, so pad the missing second entry with 0.0 - that gives
+            # the act head top1 - top2 == 1.0, the same "fully decided" signal
+            # it would see for any other unambiguous top-1-vs-rest gap.
+            top1 = p.topk(1, -1).values
+            top2 = torch.cat([top1, torch.zeros_like(top1)], dim=-1)
         feats = torch.stack([top2[:, 0], top2[:, 0] - top2[:, 1], ent, k / 255.0], -1)
         pooled = h[:, 0].float()
         act_logits = self.act_head(torch.cat([pooled, feats], -1))
@@ -149,11 +198,11 @@ def _apply_rope_config(ecfg) -> None:
             setattr(ecfg, attr, float(theta))
 
 
-def build_model(cfg: Dict, encoder_dir: Optional[str] = None) -> DecisionModel:
+def build_model(cfg: Dict, encoder_dir: Optional[str] = None, pretrained: bool = True) -> DecisionModel:
     from transformers import AutoConfig, AutoModel
 
-    if encoder_dir and os.path.exists(encoder_dir):
-        ecfg = AutoConfig.from_pretrained(encoder_dir)
+    if not pretrained or (encoder_dir and os.path.exists(encoder_dir)):
+        ecfg = AutoConfig.from_pretrained(encoder_dir or cfg["encoder"])
         _apply_rope_config(ecfg)
         enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
     else:
@@ -214,15 +263,35 @@ def ece_score(conf: np.ndarray, correct: np.ndarray, bins: int = 15) -> float:
         return float("nan")
     edges = np.linspace(0, 1, bins + 1)
     e = 0.0
-    for lo, hi in zip(edges[:-1], edges[1:]):
-        sel = (conf > lo) & (conf <= hi)
+    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+        sel = (conf >= lo if i == 0 else conf > lo) & (conf <= hi)
         if sel.any():
             e += sel.mean() * abs(conf[sel].mean() - correct[sel].mean())
     return float(e)
 
 
+def answer_confidence(p: np.ndarray, k: int) -> float:
+    """Probability mass on the answer being reported: max(p).
+
+    This is the quantity temperature scaling fits, and the quantity every calibration figure in
+    this repository is computed on -- both benchmark harnesses take `conf = max(probs)` before
+    calling `ece_score`. It is therefore the one confidence with the property the README's
+    gating section relies on: of the answers returned at confidence c, about c of them are right.
+
+    `confidence_from_probs` below reports a different quantity on a different scale and carries
+    no such guarantee, so the two must not be compared against the same threshold.
+    """
+    if k < 1:
+        return 1.0
+    return float(np.clip(np.max(p[:k]), 0.0, 1.0))
+
+
 def confidence_from_probs(p: np.ndarray, k: int) -> float:
-    """Normalized Shannon entropy confidence: 1 - H(p) / log(k)."""
+    """Normalized Shannon entropy confidence: 1 - H(p) / log(k).
+
+    How concentrated the whole distribution is. Useful, but not calibrated: it is not what
+    temperature scaling fits and not what the reported ECE measures. See `answer_confidence`.
+    """
     if k < 2:
         return 1.0
     p = p[:k]
@@ -233,6 +302,25 @@ def confidence_from_probs(p: np.ndarray, k: int) -> float:
 def temp_bucket(qtype: int, k: int) -> str:
     size = "2" if k <= 2 else "3-5" if k <= 5 else "6-10" if k <= 10 else "11+"
     return "%s:%s" % (QTYPE_NAMES[int(qtype)], size)
+
+
+# A fitted temperature below 1 sharpens the logits instead of softening them. The shipped
+# `choice:11+` bucket is 0.1006, which multiplies them ~10x: a 0.24 top probability is published as
+# 0.99, so a caller gating on confidence is told a coin flip is a certainty. No honest calibration
+# needs to sharpen this hard, so refuse to apply one that does.
+TEMP_MIN = 0.5
+TEMP_MAX = 5.0
+
+
+def clamp_temperature(t, lo: float = TEMP_MIN, hi: float = TEMP_MAX) -> float:
+    """A usable temperature: `t` confined to [lo, hi], falling back to 1.0 if it is not a number."""
+    try:
+        t = float(t)
+    except (TypeError, ValueError):
+        return 1.0
+    if t != t or t in (float("inf"), float("-inf")):    # NaN / inf
+        return 1.0
+    return min(hi, max(lo, t))
 
 
 def amp_dtype(name: Optional[str]) -> torch.dtype:
@@ -259,13 +347,15 @@ def collate_items(batch, pad_id: int):
         mpos[i, :k] = torch.tensor(it["markers"])
         mmask[i, :k] = True
         if has_target and "target" in it:
-            if len(it["target"]) > kmax:
+            if len(it["target"]) > k:
                 # Otherwise this lands as "The expanded size of the tensor (k) must match the
                 # existing size (kmax)" from inside the assignment, which says nothing about the
-                # actual mistake: a target with more entries than the item has options.
+                # actual mistake: a target with more entries than the item has options. The limit
+                # is this item's own marker count, not the batch-wide kmax: in a mixed-width
+                # batch a longer sibling row must not legitimise extra entries (#311).
                 raise ValueError(
                     "collate_items: item %d has %d target entries but only %d marker positions; "
-                    "a target needs one entry per option" % (i, len(it["target"]), kmax))
+                    "a target needs one entry per option" % (i, len(it["target"]), k))
             target[i, : len(it["target"])] = torch.tensor(it["target"], dtype=torch.float32)
 
     res = {

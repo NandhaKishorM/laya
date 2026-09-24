@@ -270,7 +270,7 @@ def train_rlcd(
         pad_id = 0
 
     model = build_model(cfg, encoder_dir=os.path.join(model_dir, "encoder"))
-    from safetensors.torch import load_file
+    from safetensors.torch import load_file, save_file
 
     model.load_state_dict(load_file(os.path.join(model_dir, "model.safetensors")), strict=True)
 
@@ -295,7 +295,19 @@ def train_rlcd(
         train_model = DDP(model, device_ids=[target_device.index] if target_device.type == "cuda" else None,
                           find_unused_parameters=True)
 
-    my_items = items[rank::world_size] if world_size > 1 else list(items)
+    # Hold the calibration slice out of training before sharding. Temperatures fitted on items
+    # the run has already trained on measure the fit rather than the calibration: the model is
+    # near-certain and near-correct on them, so the optimiser has nothing to soften and returns
+    # a degenerate scale. The stride is rank-independent, so every rank withholds exactly the
+    # same items and none of them reaches a training batch.
+    if calib_every and calib_every > 0:
+        calib_idx = set(range(0, len(items), calib_every)[:calib_max])
+    else:
+        calib_idx = set()
+    calib_items = [it for i, it in enumerate(items) if i in calib_idx]
+    train_items = [it for i, it in enumerate(items) if i not in calib_idx]
+
+    my_items = train_items[rank::world_size] if world_size > 1 else list(train_items)
     micro_batch = max(1, min(micro_batch, len(my_items)))
 
     enc_params = [p for n, p in train_model.named_parameters() if "encoder." in n]
@@ -312,8 +324,10 @@ def train_rlcd(
     scaler = _grad_scaler(target_device)
 
     if rank == 0:
-        log("Training on %s | %d items (%d this rank) | %d epochs | micro_batch=%d x accum=%d"
-            % (target_device, len(items), len(my_items), epochs, micro_batch, grad_accum))
+        log("Training on %s | %d train items (%d held out for calibration) | %d this rank | "
+            "%d epochs | micro_batch=%d x accum=%d"
+            % (target_device, len(train_items), len(calib_items), len(my_items), epochs,
+               micro_batch, grad_accum))
         if target_device.type != "cuda":
             log("  fp32, no autocast and no loss scaler on %s" % target_device.type)
 
@@ -390,12 +404,31 @@ def train_rlcd(
             log("  epoch %d/%d done in %.1fs | mean loss %.4f"
                 % (epoch + 1, epochs, time.time() - t0, epoch_loss / max(1, n_batches)))
 
+        if world_size > 1:
+            import torch.distributed as dist
+            dist.barrier()
+
+        # Overwrite a single rolling checkpoint after each epoch so a crash, OOM, or session
+        # timeout does not lose all prior training.
+        if rank == 0:
+            ckpt_dir = os.path.join(output_dir, "checkpoint_latest")
+            os.makedirs(ckpt_dir, exist_ok=True)
+            save_file({k: v.half().contiguous().cpu() for k, v in model.state_dict().items()},
+                      os.path.join(ckpt_dir, "model.safetensors"))
+            model.encoder.config.save_pretrained(os.path.join(ckpt_dir, "encoder"))
+            if tokenizer is not None:
+                tokenizer.save_pretrained(os.path.join(ckpt_dir, "tokenizer"))
+            with open(os.path.join(ckpt_dir, "checkpoint_meta.json"), "w") as f:
+                json.dump({"epoch": epoch + 1, "total_epochs": epochs,
+                           "avg_loss": epoch_loss / max(1, n_batches)}, f, indent=2)
+            log("  saved rolling checkpoint (epoch %d/%d) to %s"
+                % (epoch + 1, epochs, ckpt_dir))
+
     # ---------------------------------------------------------------- save + calibrate
     temperatures = list(cfg.get("temperature", [1.0, 1.0, 1.0]))
     if rank == 0:
         model.eval()
-        log("Fitting calibration temperatures on %d held-out items..." % min(calib_max, len(items)))
-        calib_items = items[::calib_every][:calib_max]
+        log("Fitting calibration temperatures on %d held-out items..." % len(calib_items))
         preds = []
         try:
             with torch.no_grad():
@@ -423,7 +456,6 @@ def train_rlcd(
             log("Temperature fitting fallback (%s: %s)" % (type(e).__name__, e))
 
         os.makedirs(output_dir, exist_ok=True)
-        from safetensors.torch import save_file
         sd = {k: v.half().contiguous().cpu() for k, v in model.state_dict().items()}
         save_file(sd, os.path.join(output_dir, "model.safetensors"))
         model.encoder.config.save_pretrained(os.path.join(output_dir, "encoder"))
@@ -432,6 +464,8 @@ def train_rlcd(
         cfg["fine_tuned"] = True
         cfg["model_name"] = "laya-typed-decisions"
         cfg["temperature"] = temperatures
+        # This fit is per type; inherited bucket overrides would hide the new values.
+        cfg.pop("temperature_by_options", None)
         with open(os.path.join(output_dir, "rl_agent_config.json"), "w") as f:
             json.dump(cfg, f, indent=2)
         log("Saved to %s" % output_dir)
@@ -445,6 +479,8 @@ def train_rlcd(
         "device": str(target_device),
         "world_size": world_size,
         "items": len(items),
+        "train_items": len(train_items),
+        "calib_items": len(calib_items),
         "epochs": epochs,
         "updates": updates,
         "seconds": round(time.time() - t0, 1),

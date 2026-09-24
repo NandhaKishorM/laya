@@ -1,0 +1,301 @@
+{
+  "selection": "One case per sorted family; within-family indices 0..7, independent of observed errors. Two cases per expected label.",
+  "weight_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+  "matches_hub_blob": true,
+  "torch": "2.14.0",
+  "cpu_dtype": "torch.float32",
+  "n": 16,
+  "same_label_count": 16,
+  "max_probability_delta": 0.0,
+  "scope": "CPU and MPS share software and weights. Agreement reduces suspicion of an MPS-specific issue, not all shared implementation bugs. Not a performance benchmark.",
+  "rows": [
+    {
+      "id": "conditional-01",
+      "mode": "choice",
+      "expected": "urgent",
+      "cpu": {
+        "predicted": "valuable",
+        "probabilities": {
+          "urgent": 0.1903,
+          "todo": 0.2356,
+          "valuable": 0.5151,
+          "noise": 0.059
+        },
+        "confidence": 0.1597
+      },
+      "mps_predicted": "valuable",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 376.98108301265165
+    },
+    {
+      "id": "conditional-01",
+      "mode": "four_noul",
+      "expected": "urgent",
+      "cpu": {
+        "predicted": "urgent",
+        "signals": {
+          "related": 0.7689,
+          "action": 0.8714,
+          "urgent": 0.9559,
+          "value": 0.9599
+        },
+        "review": false
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 1103.9909159881063
+    },
+    {
+      "id": "cross_chat-02",
+      "mode": "choice",
+      "expected": "urgent",
+      "cpu": {
+        "predicted": "urgent",
+        "probabilities": {
+          "urgent": 0.5276,
+          "todo": 0.1997,
+          "valuable": 0.2053,
+          "noise": 0.0674
+        },
+        "confidence": 0.159
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 362.3867920250632
+    },
+    {
+      "id": "cross_chat-02",
+      "mode": "four_noul",
+      "expected": "urgent",
+      "cpu": {
+        "predicted": "urgent",
+        "signals": {
+          "related": 0.7748,
+          "action": 0.8814,
+          "urgent": 0.9603,
+          "value": 0.967
+        },
+        "review": false
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 766.9208750012331
+    },
+    {
+      "id": "knowledge-03",
+      "mode": "choice",
+      "expected": "todo",
+      "cpu": {
+        "predicted": "urgent",
+        "probabilities": {
+          "urgent": 0.7491,
+          "todo": 0.1086,
+          "valuable": 0.1115,
+          "noise": 0.0308
+        },
+        "confidence": 0.4163
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 233.61474997363985
+    },
+    {
+      "id": "knowledge-03",
+      "mode": "four_noul",
+      "expected": "todo",
+      "cpu": {
+        "predicted": "urgent",
+        "signals": {
+          "related": 0.8041,
+          "action": 0.8976,
+          "urgent": 0.9629,
+          "value": 0.9802
+        },
+        "review": false
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 602.4647500016727
+    },
+    {
+      "id": "lifecycle-04",
+      "mode": "choice",
+      "expected": "todo",
+      "cpu": {
+        "predicted": "urgent",
+        "probabilities": {
+          "urgent": 0.368,
+          "todo": 0.364,
+          "valuable": 0.2052,
+          "noise": 0.0629
+        },
+        "confidence": 0.1094
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 277.6399590075016
+    },
+    {
+      "id": "lifecycle-04",
+      "mode": "four_noul",
+      "expected": "todo",
+      "cpu": {
+        "predicted": "todo",
+        "signals": {
+          "related": 0.6953,
+          "action": 0.6172,
+          "urgent": 0.7272,
+          "value": 0.8524
+        },
+        "review": true
+      },
+      "mps_predicted": "todo",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 581.7164999898523
+    },
+    {
+      "id": "ownership-05",
+      "mode": "choice",
+      "expected": "valuable",
+      "cpu": {
+        "predicted": "todo",
+        "probabilities": {
+          "urgent": 0.0628,
+          "todo": 0.6053,
+          "valuable": 0.2933,
+          "noise": 0.0386
+        },
+        "confidence": 0.3053
+      },
+      "mps_predicted": "todo",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 216.49433398852125
+    },
+    {
+      "id": "ownership-05",
+      "mode": "four_noul",
+      "expected": "valuable",
+      "cpu": {
+        "predicted": "noise",
+        "signals": {
+          "related": 0.6084,
+          "action": 0.1591,
+          "urgent": 0.9395,
+          "value": 0.1841
+        },
+        "review": true
+      },
+      "mps_predicted": "noise",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 589.6773749846034
+    },
+    {
+      "id": "thread_context-06",
+      "mode": "choice",
+      "expected": "valuable",
+      "cpu": {
+        "predicted": "todo",
+        "probabilities": {
+          "urgent": 0.0944,
+          "todo": 0.3188,
+          "valuable": 0.3046,
+          "noise": 0.2821
+        },
+        "confidence": 0.0576
+      },
+      "mps_predicted": "todo",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 231.5124159795232
+    },
+    {
+      "id": "thread_context-06",
+      "mode": "four_noul",
+      "expected": "valuable",
+      "cpu": {
+        "predicted": "urgent",
+        "signals": {
+          "related": 0.8561,
+          "action": 0.8277,
+          "urgent": 0.9105,
+          "value": 0.9706
+        },
+        "review": false
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 644.9333329801448
+    },
+    {
+      "id": "untrusted_content-07",
+      "mode": "choice",
+      "expected": "noise",
+      "cpu": {
+        "predicted": "todo",
+        "probabilities": {
+          "urgent": 0.2264,
+          "todo": 0.2984,
+          "valuable": 0.284,
+          "noise": 0.1912
+        },
+        "confidence": 0.011
+      },
+      "mps_predicted": "todo",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 200.7997499895282
+    },
+    {
+      "id": "untrusted_content-07",
+      "mode": "four_noul",
+      "expected": "noise",
+      "cpu": {
+        "predicted": "urgent",
+        "signals": {
+          "related": 0.8148,
+          "action": 0.6238,
+          "urgent": 0.9878,
+          "value": 0.9849
+        },
+        "review": true
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 479.16720900684595
+    },
+    {
+      "id": "urgency-08",
+      "mode": "choice",
+      "expected": "noise",
+      "cpu": {
+        "predicted": "valuable",
+        "probabilities": {
+          "urgent": 0.1539,
+          "todo": 0.2792,
+          "valuable": 0.3096,
+          "noise": 0.2573
+        },
+        "confidence": 0.0215
+      },
+      "mps_predicted": "valuable",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 178.76037501264364
+    },
+    {
+      "id": "urgency-08",
+      "mode": "four_noul",
+      "expected": "noise",
+      "cpu": {
+        "predicted": "urgent",
+        "signals": {
+          "related": 0.7446,
+          "action": 0.7523,
+          "urgent": 0.9083,
+          "value": 0.7554
+        },
+        "review": true
+      },
+      "mps_predicted": "urgent",
+      "max_probability_delta": 0.0,
+      "cpu_elapsed_ms": 455.19274997059256
+    }
+  ]
+}

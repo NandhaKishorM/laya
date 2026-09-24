@@ -1,0 +1,5 @@
+# Documentation build only; not a runtime dependency of the laya package.
+zensical==0.0.64
+# API reference pages (docs/reference/). Ruff formats the rendered signatures.
+mkdocstrings-python==2.0.9
+ruff==0.16.8

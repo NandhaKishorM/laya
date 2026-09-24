@@ -1,0 +1,25 @@
+{
+  "state": {
+    "body": "I was charged twice for my subscription. Please refund the duplicate charge."
+  },
+  "questions": {
+    "department": {
+      "type": "choice",
+      "instructions": "Which department should handle this request?",
+      "criteria": {
+        "billing": "invoices, payments, refunds",
+        "technical": "bugs, outages, system errors",
+        "sales": "pricing, new contracts"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": ["not urgent", "needs attention soon", "critical deadline or blocking issue"]
+    },
+    "refund_requested": {
+      "type": "noul",
+      "instructions": "Does the user explicitly request a refund?"
+    }
+  }
+}

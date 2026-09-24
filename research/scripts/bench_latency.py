@@ -7,7 +7,7 @@ Routing changes the latency picture in two ways:
 So there are two regimes -- hot (right model already loaded) and cold (swap) -- and the realistic
 number for a mixed-language workload sits between them, determined by `max_loaded`.
 
-  USE_TF=0 python3 notebooks/bench_latency.py
+  USE_TF=0 python3 research/scripts/bench_latency.py
 """
 import gc
 import json
@@ -24,13 +24,13 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(REPO))   # repository root, so `import laya` works from a checkout
+sys.path.insert(0, os.path.dirname(REPO))
 
 import laya  # noqa: E402
 from laya.lang import analyse  # noqa: E402
 from laya.router import Router  # noqa: E402
 
-ROOT = os.environ.get("LAYA_MODELS", os.path.expanduser("~/laya_models"))
+ROOT = os.path.expanduser("~/laya_models")
 MODELS = {"english": os.path.join(ROOT, "laya"),
           "multilingual": os.path.join(ROOT, "laya-multilingual"),
           "typed-decisions": os.path.join(ROOT, "laya-typed-decisions")}

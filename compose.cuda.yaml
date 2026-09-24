@@ -1,0 +1,32 @@
+# Use with compose.yaml, and with compose.http.yaml when serving over HTTP. The
+# `laya-serve` entry repeats the CUDA build args and device reservation because it is
+# a separate service: overrides for `laya` never reach it, so it would serve on CPU.
+services:
+  laya:
+    build:
+      args:
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
+    environment:
+      LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${LAYA_GPU_ID:-0}"]
+              capabilities: [gpu]
+
+  laya-serve:
+    build:
+      context: .
+      args:
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
+    environment:
+      LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${LAYA_GPU_ID:-0}"]
+              capabilities: [gpu]

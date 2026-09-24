@@ -1,9 +1,9 @@
 """Render the benchmark figure used in the GitHub and Hugging Face READMEs.
 
-  USE_TF=0 python3 notebooks/make_plots.py
+  USE_TF=0 python3 research/scripts/make_plots.py
 
-Reads local_benchmark_results.json (51-language sweep) and laya_benchmark_results.json
-(T4 latency + English suites); writes assets/laya_benchmark.png.
+Reads the published results in research/results/ (the 51-language sweep and the T4 run)
+and writes assets/laya_benchmark.png.
 """
 import json
 import os
@@ -13,7 +13,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RESEARCH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = os.path.dirname(RESEARCH)
 ASSETS = os.path.join(REPO, "assets")
 os.makedirs(ASSETS, exist_ok=True)
 
@@ -38,8 +39,8 @@ def strip(ax, keep=("bottom",)):
 
 
 def main():
-    loc = json.load(open(os.path.join(REPO, "local_benchmark_results.json")))
-    col = json.load(open(os.path.join(REPO, "laya_benchmark_results.json")))
+    loc = json.load(open(os.path.join(RESEARCH, "results", "cpu_51_language_sweep.json")))
+    col = json.load(open(os.path.join(RESEARCH, "results", "t4_colab_benchmark.json")))
 
     en = loc["part_a"]["by_model"]["english"]["per_language"]
     ml = loc["part_a"]["by_model"].get("multilingual", {}).get("per_language", {})

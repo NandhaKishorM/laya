@@ -1,0 +1,66 @@
+{
+  "backend": "laya",
+  "started_at": "2026-09-21T16:02:32.982552+00:00",
+  "cases_sha256": "c85184ee38378e1bfc79ec221aab8688a31ef1c50a3b8fb4e120d73d5fde8ebc",
+  "requests_sha256": "8bfd7879f0974a762315be87f1d62c026c94ebf8699f69cd1c806b9767ac9cb9",
+  "repeats": 3,
+  "seed": 20260921,
+  "python": "3.11.9",
+  "os": "Darwin",
+  "architecture": "arm64",
+  "warmups": [
+    {
+      "mode": "choice",
+      "elapsed_ms": 397.0819580135867,
+      "usage": {
+        "input_tokens": 327,
+        "output_tokens": 0
+      }
+    },
+    {
+      "mode": "four_noul",
+      "elapsed_ms": 233.04483300307766,
+      "usage": {
+        "input_tokens": 988,
+        "output_tokens": 0
+      }
+    }
+  ],
+  "model": "convaiinnovations/laya/multilingual",
+  "checkpoint_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "checkpoint_config": {
+    "encoder": "jhu-clsp/mmBERT-base",
+    "head_layers": 2,
+    "max_len": 1024,
+    "head_max_len": 256,
+    "max_prefixes": 6,
+    "act_costs": {
+      "escalate": 0.5
+    },
+    "cost_wrong_act": 3.0,
+    "amp_dtype": "bf16",
+    "model_name": "rl-agent",
+    "temperature": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "temperature_by_options": {},
+    "training": {
+      "updates": 15987,
+      "epochs_completed": 4,
+      "hours": 4.97,
+      "world_size": 1,
+      "fine_tuned_from_checkpoint": false
+    }
+  },
+  "load_seconds": 25.072821750014555,
+  "torch": "2.14.0",
+  "transformers": "5.17.0",
+  "device": "mps",
+  "cpu_threads": 2,
+  "hardware": "Apple M4 MacBook Air, 32 GB unified memory",
+  "laya_source_commit": "ef7d7d269e2e34c763c228144dc10fe7d421acf9",
+  "finished_at": "2026-09-21T16:04:47.471286+00:00",
+  "peak_process_rss_bytes": 4616388608
+}

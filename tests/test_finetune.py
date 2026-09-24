@@ -140,6 +140,10 @@ try:
     check("train/device reported", metrics["device"], "cpu")
     check("train/ran a single process", metrics["world_size"], 1)
     check("train/items seen", metrics["items"], len(items))
+    check("train/calibration slice is held out of training",
+          metrics["train_items"] + metrics["calib_items"], len(items))
+    check_true("train/something was held out for calibration", metrics["calib_items"] > 0,
+               "calib=%s" % metrics["calib_items"])
     check_true("train/updates happened", metrics["updates"] > 0, "updates=%s" % metrics["updates"])
     check_true("train/loss is finite", math.isfinite(metrics["final_loss"]), str(metrics["final_loss"]))
     check_true("train/reward is finite", math.isfinite(metrics["mean_reward"]), str(metrics["mean_reward"]))
@@ -155,6 +159,9 @@ try:
         saved_cfg = json.load(f)
     check("save/marked fine-tuned", saved_cfg.get("fine_tuned"), True)
     check_true("save/recorded temperatures", len(saved_cfg["temperature"]) == 3)
+    check("save/drops inherited bucket overrides", "temperature_by_options" in saved_cfg, False)
+    check_true("save/wrote a rolling checkpoint",
+               os.path.exists(os.path.join(out, "checkpoint_latest", "model.safetensors")))
 
     reloaded = build_model(saved_cfg, encoder_dir=os.path.join(out, "encoder"))
     reloaded.load_state_dict(load_file(saved), strict=True)

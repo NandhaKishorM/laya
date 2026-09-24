@@ -100,29 +100,35 @@ def _autocast_that_rejects_non_cuda(entered):
     return fake
 
 
+# A disabled context must never enter torch.autocast: on a torch build with no MPS autocast
+# backend, entering it raises. The gate (Agent._amp_enabled_for) decides `enabled`.
 for name in ("cpu", "mps", "xpu"):
     entered = []
     with mock.patch.object(_agent.torch, "autocast", _autocast_that_rejects_non_cuda(entered)):
         try:
-            ctx = _agent._amp_context(SimpleNamespace(type=name), torch.float32)
+            ctx = _agent._amp_context(SimpleNamespace(type=name), torch.float32, False)
             with ctx:
                 pass
-            check_true("amp/%s never enters autocast" % name, entered == [], "entered %s" % entered)
+            check_true("amp/%s never enters autocast when disabled" % name, entered == [],
+                       "entered %s" % entered)
         except RuntimeError as e:
             FAIL.append("amp/%s raised %s" % (name, e))
+
+check_true("amp/disabled is a no-op",
+           isinstance(_agent._amp_context(SimpleNamespace(type="mps"), torch.float16, False), nullcontext))
 
 # CUDA still gets mixed precision, with the dtype the model was configured for
 entered = []
 with mock.patch.object(_agent.torch, "autocast", _autocast_that_rejects_non_cuda(entered)):
-    with _agent._amp_context(SimpleNamespace(type="cuda"), torch.float16):
+    with _agent._amp_context(SimpleNamespace(type="cuda"), torch.float16, True):
         pass
 check("amp/cuda uses autocast", entered, ["cuda"])
 
 # the old unconditional call is what broke MPS -- make sure it cannot come back
 import inspect  # noqa: E402
 
-_src = inspect.getsource(_agent.Agent.system_one)
-check_true("amp/forward pass goes through _amp_context", "with _amp_context(self.device, self.dtype):" in _src)
+_src = inspect.getsource(_agent.Agent._infer)
+check_true("amp/infer goes through _amp_context", "with _amp_context(self.device, self.dtype, enabled)" in _src)
 check_true("amp/no unconditional autocast in the forward pass",
            "torch.autocast(device_type=self.device.type" not in _src)
 
@@ -135,8 +141,11 @@ class _FakeTok:
     cls_token_id, sep_token_id, mask_token_id, pad_token_id = 1, 2, 3, 0
     mask_token = "[M]"
 
-    def __call__(self, text, add_special_tokens=False):
-        return {"input_ids": [10 + (ord(c) % 40) for c in text]}
+    def __call__(self, text, add_special_tokens=False, truncation=False, max_length=None):
+        ids = [10 + (ord(c) % 40) for c in text]
+        if truncation and max_length:
+            ids = ids[:max_length]
+        return {"input_ids": ids}
 
 
 class _FailsOnce(torch.nn.Module):
@@ -171,26 +180,41 @@ def _bare_agent(model):
 QUESTIONS = {"q": {"type": "choice", "instructions": "Pick one",
                    "criteria": {"a": "first option", "b": "second option"}}}
 
-agent = _bare_agent(_FailsOnce("CUDA out of memory. Tried to allocate 2.00 GiB"))
-try:
-    result = agent.predict({"body": "some state"}, QUESTIONS)
-    check("fallback/answers after a memory failure", result["answers"]["q"]["choice"], "a")
-    check("fallback/forward pass retried once", agent.model.calls, 2)
-    check("fallback/device is cpu now", agent.device.type, "cpu")
-    check("fallback/dtype downgraded to fp32", agent.dtype, torch.float32)
-except Exception as e:  # noqa: BLE001
-    FAIL.append("fallback/memory failure was not survived: %s: %s" % (type(e).__name__, e))
+# Placement on the stand-in device is faked so the scenario also runs where torch has no
+# such backend compiled in (the CPU-only wheels CI installs): batch `.to(device)` calls
+# targeting the fake device become no-ops and the stand-in model supplies the failure,
+# exactly as the real device would.
+_real_tensor_to = torch.Tensor.to
 
-# a non-memory RuntimeError must still propagate: silently swallowing real bugs is worse than
-# the crash it would hide
-agent = _bare_agent(_FailsOnce("shape mismatch in attention"))
-try:
-    agent.predict({"body": "some state"}, QUESTIONS)
-    FAIL.append("fallback/non-memory error propagates (nothing raised)")
-except RuntimeError:
-    PASS.append("fallback/non-memory error propagates")
-except Exception as e:  # noqa: BLE001
-    FAIL.append("fallback/non-memory error raised %s instead of RuntimeError" % type(e).__name__)
+
+def _to_that_ignores_mps(self, *args, **kwargs):
+    target = args[0] if args else kwargs.get("device")
+    if (isinstance(target, torch.device) and target.type == "mps") or target == "mps":
+        return self
+    return _real_tensor_to(self, *args, **kwargs)
+
+
+with mock.patch.object(torch.Tensor, "to", _to_that_ignores_mps):
+    agent = _bare_agent(_FailsOnce("CUDA out of memory. Tried to allocate 2.00 GiB"))
+    try:
+        result = agent.predict({"body": "some state"}, QUESTIONS)
+        check("fallback/answers after a memory failure", result["answers"]["q"]["choice"], "a")
+        check("fallback/forward pass retried once", agent.model.calls, 2)
+        check("fallback/device is cpu now", agent.device.type, "cpu")
+        check("fallback/dtype downgraded to fp32", agent.dtype, torch.float32)
+    except Exception as e:  # noqa: BLE001
+        FAIL.append("fallback/memory failure was not survived: %s: %s" % (type(e).__name__, e))
+
+    # a non-memory RuntimeError must still propagate: silently swallowing real bugs is worse
+    # than the crash it would hide
+    agent = _bare_agent(_FailsOnce("shape mismatch in attention"))
+    try:
+        agent.predict({"body": "some state"}, QUESTIONS)
+        FAIL.append("fallback/non-memory error propagates (nothing raised)")
+    except RuntimeError:
+        PASS.append("fallback/non-memory error propagates")
+    except Exception as e:  # noqa: BLE001
+        FAIL.append("fallback/non-memory error raised %s instead of RuntimeError" % type(e).__name__)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

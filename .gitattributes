@@ -1,0 +1,8 @@
+# research/benchmarks/feishu_zh/SOURCE.json pins a sha256 of the raw bytes of the
+# frozen dataset and of every archived run, and audit.py verifies them with
+# read_bytes(). A checkout that rewrites the line endings (git's default
+# core.autocrlf=true on Windows) changes those bytes, so the archive must stay LF
+# on every platform.
+research/benchmarks/feishu_zh/SOURCE.json text eol=lf
+research/benchmarks/feishu_zh/data/** text eol=lf
+research/benchmarks/feishu_zh/results/** text eol=lf

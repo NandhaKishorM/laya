@@ -1,0 +1,194 @@
+{
+  "model": "convaiinnovations/laya",
+  "revision": "aa8c91ca088ec597df95a0d1c76b3063cb2ae5e8",
+  "upstream_baseline": "1e28ac20c0896b1c37a744cd11f740eb98f8b178",
+  "agent_source_sha256": "67b5dd563004bcc2a2413dfcc11168de070b9d16fc28eacf2eae1902618aa33b",
+  "hardware": "AMD Ryzen 9 5950X, 64 GiB RAM",
+  "device": "cpu",
+  "precision": "float32",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.10",
+  "torch": "2.9.1+cpu",
+  "transformers": "4.57.1",
+  "numpy": "2.3.5",
+  "huggingface_hub": "0.36.2",
+  "psutil": "7.2.2",
+  "method": "Warm model; elapsed prediction call includes tokenization, collation, forward and decoding. Input generation and model loading excluded. Repeated small runs alternate order; 1000 and 10000 inputs each have one full before/after pair.",
+  "workload": "Synthetic English support tickets, six templates with seeded varying context repetition and unique reference IDs. This is a padding/throughput workload, not a labeled accuracy benchmark.",
+  "host_load": "An unrelated adaptation experiment was running on the GPU; these runs used CPU only.",
+  "memory_method": "Separate fresh processes, warmed model, sampled process RSS every 10 ms during 64-input inference. Model-load transients excluded. Sampled peaks can miss short transients.",
+  "cases": [
+    {
+      "name": "english, mixed lengths",
+      "subfolder": "",
+      "states": 16,
+      "questions_per_state": 1,
+      "batch_size": 4,
+      "threads": 16,
+      "rounds": 2,
+      "workload": "mixed",
+      "before_seconds": [
+        6.145877099996142,
+        6.290177799994126
+      ],
+      "after_seconds": [
+        4.295132200000808,
+        4.140591199997289
+      ],
+      "speedup": 1.4742132132963337,
+      "parity": {
+        "decision_flips": 0,
+        "max_numeric_delta": 0.0,
+        "usage_mismatches": 0,
+        "results_equal": true
+      },
+      "before_padded_slots": 3964,
+      "after_padded_slots": 2540,
+      "before_peak_batch_slots": 1464,
+      "after_peak_batch_slots": 1464,
+      "states_sha256": "a2ed1e7467103a0850df1f80adb0ea12b82252ed7c6dfeb4ca79ec6a656f200c"
+    },
+    {
+      "name": "english, similar lengths",
+      "subfolder": "",
+      "states": 16,
+      "questions_per_state": 1,
+      "batch_size": 4,
+      "threads": 16,
+      "rounds": 3,
+      "workload": "uniform",
+      "before_seconds": [
+        2.667264800002158,
+        2.655638900003396,
+        2.6071328000034555
+      ],
+      "after_seconds": [
+        2.5969467000031727,
+        2.5523272000064026,
+        2.5502405000006547
+      ],
+      "speedup": 1.0404774513223596,
+      "parity": {
+        "decision_flips": 0,
+        "max_numeric_delta": 0.0,
+        "usage_mismatches": 0,
+        "results_equal": true
+      },
+      "before_padded_slots": 1600,
+      "after_padded_slots": 1580,
+      "before_peak_batch_slots": 404,
+      "after_peak_batch_slots": 404,
+      "states_sha256": "7e9a5edbc40f5bdfbc398dca672ec495f12401383e8a8b5ea2830fb9004a672b"
+    },
+    {
+      "name": "multilingual, three question types",
+      "subfolder": "multilingual",
+      "states": 16,
+      "questions_per_state": 3,
+      "batch_size": 4,
+      "threads": 16,
+      "rounds": 2,
+      "workload": "mixed",
+      "before_seconds": [
+        6.941053100003046,
+        7.0523381999955745
+      ],
+      "after_seconds": [
+        4.3698996000021,
+        4.389237299998058
+      ],
+      "speedup": 1.597576503228117,
+      "parity": {
+        "decision_flips": 0,
+        "max_numeric_delta": 0.0,
+        "usage_mismatches": 0,
+        "results_equal": true
+      },
+      "before_padded_slots": 11832,
+      "after_padded_slots": 7536,
+      "before_peak_batch_slots": 4380,
+      "after_peak_batch_slots": 4380,
+      "states_sha256": "a2ed1e7467103a0850df1f80adb0ea12b82252ed7c6dfeb4ca79ec6a656f200c"
+    },
+    {
+      "name": "multilingual, 1000 inputs",
+      "subfolder": "multilingual",
+      "states": 1000,
+      "questions_per_state": 1,
+      "batch_size": 8,
+      "threads": 16,
+      "rounds": 1,
+      "workload": "mixed",
+      "before_seconds": [
+        179.09358500000235
+      ],
+      "after_seconds": [
+        83.7743122000029
+      ],
+      "speedup": 2.1378102701987465,
+      "parity": {
+        "decision_flips": 0,
+        "max_numeric_delta": 0.0001000000000000445,
+        "usage_mismatches": 0,
+        "results_equal": false
+      },
+      "before_padded_slots": 305128,
+      "after_padded_slots": 149160,
+      "before_peak_batch_slots": 2968,
+      "after_peak_batch_slots": 2968,
+      "states_sha256": "c3b9032cbd29c4aec917735e8cff7916d1a96d968b780edfa2931c7d36b8888a"
+    },
+    {
+      "name": "multilingual, 10000 inputs",
+      "subfolder": "multilingual",
+      "states": 10000,
+      "questions_per_state": 1,
+      "batch_size": 8,
+      "threads": 16,
+      "rounds": 1,
+      "workload": "mixed",
+      "before_seconds": [
+        1775.7104209000026
+      ],
+      "after_seconds": [
+        825.0943344999978
+      ],
+      "speedup": 2.152130182757918,
+      "parity": {
+        "decision_flips": 0,
+        "max_numeric_delta": 0.00010000000000010001,
+        "usage_mismatches": 0,
+        "results_equal": false
+      },
+      "before_padded_slots": 3044328,
+      "after_padded_slots": 1505560,
+      "before_peak_batch_slots": 2976,
+      "after_peak_batch_slots": 2976,
+      "states_sha256": "35530c4a8e1fde6cd6256587be8f95e37f3cf8c70999268471eb6ebd39f589b4"
+    }
+  ],
+  "memory_profiles": [
+    {
+      "mode": "original",
+      "states": 64,
+      "batch_size": 8,
+      "threads": 16,
+      "sampled_peak_rss_bytes": 2028224512,
+      "start_rss_bytes": 2005831680,
+      "sample_interval_ms": 10,
+      "samples": 707,
+      "result_count": 64
+    },
+    {
+      "mode": "grouped",
+      "states": 64,
+      "batch_size": 8,
+      "threads": 16,
+      "sampled_peak_rss_bytes": 2030919680,
+      "start_rss_bytes": 2005139456,
+      "sample_interval_ms": 10,
+      "samples": 341,
+      "result_count": 64
+    }
+  ]
+}

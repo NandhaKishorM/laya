@@ -449,6 +449,19 @@ send `Authorization: Bearer <key>`). A client's `model` field is honoured when i
 names a Laya checkpoint (`english`/`multilingual`/`typed-decisions`), otherwise
 the router auto-selects by script/language.
 
+For production, the same server batches concurrent requests into shared forward
+passes, sheds load with `503` when the bounded queue is full, times out slow
+requests with `504`, drains on SIGTERM, logs JSON on request, and exposes
+`/ready` plus Prometheus `/metrics`. Batching, timeouts and queueing are tuned
+with `LAYA_BATCH_WINDOW_MS`, `LAYA_BATCH_MAX`, `LAYA_QUEUE_MAX` and
+`LAYA_REQUEST_TIMEOUT_S`; `LAYA_CLIENT_MAX_INFLIGHT` caps a single caller with
+`429`, `LAYA_BREAKER_THRESHOLD` trips a circuit breaker when inference keeps
+failing, and `LAYA_WARMUP` absorbs first-request cost at startup. For several
+replicas, `pip install "laya[serve-redis]"` and set `LAYA_STATE_URL` to share the
+admission cap and breaker cluster-wide. See
+[**`docs/serving.md`**](docs/serving.md) for the full environment reference,
+metrics and sizing.
+
 ### Nix / NixOS
 
 This repo is a flake. On a machine with an NVIDIA GPU:

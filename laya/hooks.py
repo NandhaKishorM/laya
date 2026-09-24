@@ -377,7 +377,36 @@ class HookRegistry:
         try:
             yield self
         finally:
-            self._remove_hooks(lambda installed: any(installed is one for one in added))
+            self._remove_instances(added)
+
+    def _remove_instances(self, hooks: Sequence[Any]) -> int:
+        """Remove one occurrence of each of `hooks`, the most recent match by identity.
+
+        Removing by identity alone took every copy, so a hook the application had already
+        installed was removed along with the block's own and stayed gone -- `docs/hooks/api.md`
+        promises the block "restores the previous list on exit". Restoring a snapshot instead is
+        wrong in two other ways: with two overlapping blocks the first exit reinstates its
+        snapshot and so removes the second block's hook, and a hook added with `add_hook` inside
+        the block is discarded because it is not in the snapshot either. Taking one occurrence
+        per hook the block added leaves everything else -- including anything added inside the
+        block -- in place.
+
+        The most recent match is the one to drop: `_extend_hooks` appends, so a hook that was
+        already installed sits earlier in the list than the block's copy.
+        """
+        if not hooks:
+            return 0
+        removed = 0
+        with self._hooks_mutex_for_registry():
+            current = list(self.hooks)
+            for hook in hooks:
+                for i in range(len(current) - 1, -1, -1):
+                    if current[i] is hook:
+                        del current[i]
+                        removed += 1
+                        break
+            self.hooks = current
+        return removed
 
     def _extend_hooks(self, hooks: Sequence[Any]) -> None:
         if not hooks:

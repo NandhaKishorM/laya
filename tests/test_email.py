@@ -263,7 +263,17 @@ check(
     clean_email_body("Preciso das férias.\nDe: 10/09 a 15/09\nPode aprovar?"),
     "Preciso das férias.\nDe: 10/09 a 15/09\nPode aprovar?",
 )
-
+# ------------------------------------------- From: in body is not a quote header
+check(
+    clean_email_body(
+        "Hi team\n"
+        "From: my side the integration works, but please refund the duplicate charge today.\n"
+        "Thanks"
+    ),
+    "Hi team\n"
+    "From: my side the integration works, but please refund the duplicate charge today.",
+    "en/From: prose is kept",
+)
 # --------------------------------------------------------------- Brazilian clients and footers
 BOLETO = "Preciso da segunda via do boleto."
 for label, footer in [

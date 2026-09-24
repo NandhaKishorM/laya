@@ -21,7 +21,7 @@ _QUOTE_HEADERS = [
     re.compile(r"^\s*-{2,}\s*(Original|Forwarded) Message\s*-{2,}", re.I),
     re.compile(r"^\s*-{2,}\s*(Mensagem (original|encaminhada)|Mensaje (original|reenviado))\s*-{2,}", re.I),
     re.compile(r"^\s*_{8,}\s*$"),
-    re.compile(r"^\s*From:\s.+$", re.I),
+    re.compile(r"^\s*From:\s.*[@<]", re.I),
     # `De:` also opens ordinary Portuguese/Spanish lines ("De: 10/09 a 15/09"), so the Outlook
     # header is only recognised when it carries an address
     re.compile(r"^\s*De:\s.*[@<]", re.I),

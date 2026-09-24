@@ -661,7 +661,7 @@ Full detail, including every workflow and all 51 languages: **[`BENCHMARKS.md`](
 |---|---|---|---|---|---|
 | **`laya-typed-decisions`** | **0.766** | 0.471 | **0.062** | 0.213 | **0.242** |
 | `laya` | 0.362 | 0.332 | 0.316 | 0.175 | 0.694 |
-| `laya-multilingual` | 0.342 | 0.326 | 0.439 | 0.285 | 0.687 |
+| `laya-multilingual` | 0.352 | 0.328 | 0.463 | 0.314 | 0.760 |
 | *Jev 1.13.0 (published)* | *0.727* | *0.580* | *0.148* | *0.144* | *0.391* |
 | *teacher self-agreement ceiling* | *0.735* | | | | |
 | *per-question majority class* | *0.461* | | | | |
@@ -676,7 +676,7 @@ Two places it still trails Jev: **soft accuracy** (0.471 vs 0.580 — its argmax
 its distributions match the teacher less well) and **ECE** (0.213 vs 0.144), which temperature
 fitting addresses.
 
-**The base checkpoints sit below the majority-class baseline** (0.362 and 0.342 against 0.461).
+**The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461).
 All of the capability on this benchmark comes from fine-tuning.
 
 ### Multilingual (51 languages, MASSIVE intent, 20 options, random = 0.050)

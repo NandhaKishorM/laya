@@ -17,6 +17,7 @@ import {
   HookRegistry,
   PredictContext,
   aggregateUsage,
+  composeHooks,
   dispatch,
   normaliseHooks,
   type HookArg,
@@ -291,10 +292,7 @@ export class Agent extends HookRegistry {
     questions: Record<string, QuestionDef>,
     opts: PredictOptions,
   ): Promise<SystemOneResult[]> {
-    const active = [
-      ...this.hooks,
-      ...normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd),
-    ];
+    const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
     const ctx = new PredictContext({
       states,

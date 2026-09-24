@@ -1,7 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { Agent, defaultTokenizer } from "../src/agent.js";
 import { Router } from "../src/router.js";
-import { HookRegistry, normaliseHooks, type Hook, type PredictContext } from "../src/hooks.js";
+import {
+  BaseHook,
+  HookRegistry,
+  addDefaultHook,
+  clearDefaultHooks,
+  defaultHooks,
+  normaliseHooks,
+  setDefaultHooks,
+  type Hook,
+  type PredictContext,
+} from "../src/hooks.js";
 
 const QUESTIONS = { q: { type: "noul", instructions: "?" } } as never;
 
@@ -296,5 +306,99 @@ describe("hook registry and normalisation", () => {
     });
     expect(hits).toEqual(["hit"]);
     expect(router.hooks).toHaveLength(0); // removed after the callback settles
+  });
+});
+
+describe("BaseHook and process-wide default hooks (py #276 parity)", () => {
+  it("BaseHook/overridden event fires; a no-op instance is harmless", async () => {
+    const log: string[] = [];
+    class OnlyEnd extends BaseHook {
+      override onPredictEnd(): void {
+        log.push("end");
+      }
+    }
+    const agent = makeAgent();
+    agent.addHook(new OnlyEnd());
+    await agent.predict("s0", QUESTIONS);
+    expect(log).toEqual(["end"]);
+
+    const agent2 = makeAgent();
+    agent2.addHook(new BaseHook()); // every method is a no-op
+    await expect(agent2.predict("s0", QUESTIONS)).resolves.toBeTruthy();
+  });
+
+  it("defaults/run before installed and per-call hooks", async () => {
+    const log: string[] = [];
+    setDefaultHooks(undefined, undefined, () => void log.push("default"));
+    try {
+      const agent = makeAgent();
+      agent.addHook({ onPredictEnd: () => void log.push("installed") });
+      await agent.predict("s0", QUESTIONS, { onPredictEnd: () => void log.push("percall") });
+      expect(log).toEqual(["default", "installed", "percall"]);
+    } finally {
+      clearDefaultHooks();
+    }
+    expect(defaultHooks()).toEqual([]);
+  });
+
+  it("defaults/addDefaultHook appends in order; setDefaultHooks replaces", async () => {
+    const log: string[] = [];
+    addDefaultHook({ onPredictEnd: () => void log.push("a") });
+    addDefaultHook({ onPredictEnd: () => void log.push("b") });
+    try {
+      expect(defaultHooks()).toHaveLength(2);
+      await makeAgent().predict("s0", QUESTIONS);
+      expect(log).toEqual(["a", "b"]);
+    } finally {
+      clearDefaultHooks();
+    }
+    expect(defaultHooks()).toEqual([]);
+
+    // setDefaultHooks replaces rather than appends
+    setDefaultHooks({ onPredictEnd: () => void log.push("c") });
+    setDefaultHooks({ onPredictEnd: () => void log.push("d") });
+    try {
+      await makeAgent().predict("s0", QUESTIONS);
+      expect(log).toEqual(["a", "b", "d"]);
+    } finally {
+      clearDefaultHooks();
+    }
+  });
+
+  it("defaults/read at call time, so hooks set after construction still apply", async () => {
+    const log: string[] = [];
+    const agent = makeAgent(); // constructed before the default is set
+    setDefaultHooks({ onPredictStart: () => void log.push("late") });
+    try {
+      await agent.predict("s0", QUESTIONS);
+      expect(log).toEqual(["late"]);
+    } finally {
+      clearDefaultHooks();
+    }
+  });
+
+  it("defaults/cover the router lifecycle (onLoad/onEvict)", async () => {
+    const events: [string, string | undefined][] = [];
+    class LifeDefaults extends BaseHook {
+      override onLoad(ctx: PredictContext): void {
+        events.push(["load", ctx.model]);
+      }
+      override onEvict(ctx: PredictContext): void {
+        events.push(["evict", ctx.model]);
+      }
+    }
+    setDefaultHooks([new LifeDefaults()]);
+    try {
+      const { router } = makeRouter({ maxLoaded: 1 });
+      await router.load("english");
+      await router.load("multilingual"); // evicts english
+      expect(events).toEqual([
+        ["load", "english"],
+        ["evict", "english"],
+        ["load", "multilingual"],
+      ]);
+    } finally {
+      clearDefaultHooks();
+    }
   });
 });

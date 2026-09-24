@@ -90,6 +90,21 @@ export const HOOK_EVENTS = [
 ] as const;
 export type HookEvent = (typeof HOOK_EVENTS)[number];
 
+/**
+ * No-op base class: subclass it and override only the events you need.
+ *
+ * `Hook` is the structural interface; `BaseHook` is the concrete convenience when you would
+ * rather subclass than implement methods by shape. Every method does nothing by default.
+ */
+export class BaseHook implements Hook {
+  onPredictStart(_ctx: PredictContext): void {}
+  onPredictEnd(_ctx: PredictContext): void {}
+  onRoute(_ctx: PredictContext): void {}
+  onLoad(_ctx: PredictContext): void {}
+  onEvict(_ctx: PredictContext): void {}
+  onError(_ctx: PredictContext): void {}
+}
+
 function isHookLike(item: unknown): item is Hook {
   return (
     typeof item === "object" &&
@@ -169,6 +184,54 @@ export function normaliseHooks(
     );
   }
   return out;
+}
+
+const defaultHooksList: Hook[] = [];
+
+/** The process-wide hooks, a copy, in order. Empty unless set via `setDefaultHooks`. */
+export function defaultHooks(): Hook[] {
+  return [...defaultHooksList];
+}
+
+/**
+ * Replace the process-wide default hooks.
+ *
+ * Defaults run before installed and per-call hooks for every `Agent` and `Router` in the
+ * process, so a tracer or metrics hook does not have to be threaded through every
+ * construction. Accepts the same arguments as the `hooks` option.
+ */
+export function setDefaultHooks(
+  hooks?: HookArg,
+  onPredictStart?: PredictHookArg,
+  onPredictEnd?: PredictHookArg,
+): void {
+  const normalised = normaliseHooks(hooks, onPredictStart, onPredictEnd);
+  defaultHooksList.length = 0;
+  defaultHooksList.push(...normalised);
+}
+
+/** Append one hook or a list of hooks to the process-wide defaults. */
+export function addDefaultHook(hook: HookArg): void {
+  defaultHooksList.push(...normaliseHooks(hook));
+}
+
+/** Remove every process-wide default hook. */
+export function clearDefaultHooks(): void {
+  defaultHooksList.length = 0;
+}
+
+/**
+ * Effective hook list for one call: defaults, then installed, then per-call hooks.
+ *
+ * Reads the process-wide defaults at call time, so hooks set after construction still apply.
+ */
+export function composeHooks(
+  installed: readonly Hook[],
+  hooks?: HookArg,
+  onPredictStart?: PredictHookArg,
+  onPredictEnd?: PredictHookArg,
+): Hook[] {
+  return [...defaultHooksList, ...installed, ...normaliseHooks(hooks, onPredictStart, onPredictEnd)];
 }
 
 /**

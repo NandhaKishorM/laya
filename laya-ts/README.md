@@ -56,6 +56,15 @@ await router.withHooks([auditHook], () => router.predict(state, questions)); // 
 // a start hook may rewrite ctx.states / ctx.questions, or serve a cached result:
 const cache = { onPredictStart(ctx) { const hit = lookup(ctx.states[0]); if (hit) ctx.skip([hit]); } };
 // an onRoute hook may replace ctx.decision (e.g. pin a checkpoint)
+
+// subclass BaseHook to override only the events you need:
+class MetricsHook extends BaseHook {
+  onPredictEnd(ctx) { record(ctx.usage); }
+}
+
+// process-wide defaults run before installed and per-call hooks for every Agent/Router,
+// so a tracer or metrics hook does not have to be threaded through every construction:
+setDefaultHooks([new MetricsHook()]);  // addDefaultHook(...) appends; clearDefaultHooks() resets
 ```
 
 ## Shortlist (many labels)

@@ -67,6 +67,31 @@ class MetricsHook extends BaseHook {
 setDefaultHooks([new MetricsHook()]);  // addDefaultHook(...) appends; clearDefaultHooks() resets
 ```
 
+## Batching (many states, one call)
+
+Port of `Agent.predict_batch` / `Router.route_batch` / `Router.predict_batch`. The throughput
+path: states that share a question schema are collated into one shared forward pass (or one
+per `batchSize` chunk) instead of one pass per state.
+
+```ts
+// Agent: same questions over many states; results align with `states` by index.
+const results = await agent.predictBatch(states, questions, { batchSize: 32 });
+
+// Router: heterogeneous requests — route first, then each checkpoint scores its requests
+// in as few forward passes as possible. Results keep input order and carry `routing`.
+const decisions = router.routeBatch(requests);          // validate + route, nothing loads
+const routed = await router.predictBatch(requests, 32); // == router.predictMany(...)
+
+// requests routed to the same checkpoint still split into separate batches when their
+// question schemas differ (order-sensitively) or when per-request start hooks set
+// different ctx.maxLen / ctx.headMaxLen overrides. Router-level predict hooks run once
+// per request: ctx.decision is set, ctx.skip() serves a cached result, and onPredictEnd
+// runs per request even when the batch fails.
+```
+
+Python's `sort_by_length` grouping is not ported yet.
+
+
 ## Shortlist (many labels)
 
 ```ts

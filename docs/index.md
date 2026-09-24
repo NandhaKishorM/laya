@@ -24,7 +24,8 @@ is one copy to keep current.
 | run the SDK or the `laya-serve` HTTP API in a container, on CPU or an NVIDIA GPU | [Docker quickstart](docker.md) |
 | build for ARM64 hosts or DGX Spark | [ARM64 and DGX Spark containers](docker-platforms.md) |
 | specialise a checkpoint for your own decisions | [Browser-agent fine-tuning example](finetune_browser_agent.md) and the [fine-tuning notebook](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb) |
+| understand the measured results and test Laya on your own workload | [Benchmarks and known limits](benchmarks.md) |
 | look up a class, function or parameter | [Python API reference](reference/index.md) |
 
-Routing, the HTTP API, the command line, the MCP server, confidence gating, benchmarks and known
-limits are in the [README](https://github.com/NandhaKishorM/laya#readme) for now.
+Routing, the HTTP API, the command line, the MCP server and confidence gating are in the
+[README](https://github.com/NandhaKishorM/laya#readme) for now.

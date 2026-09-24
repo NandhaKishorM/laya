@@ -224,6 +224,30 @@ curl -s localhost:8000/predict -H 'content-type: application/json' -d '{
 `--no-preload` loads checkpoints lazily instead of all three up front; `--device cuda|cpu|mps`
 pins the device. See `python examples/server.py --help` for the rest.
 
+### JavaScript / TypeScript
+
+The [TypeScript SDK](sdk/typescript/README.md) supports JavaScript and TypeScript
+apps through the existing Jev-compatible `/v1/systemone` HTTP server. It includes inferred
+answer types, all five question presets, ESM/CommonJS exports, and cancellation.
+
+```bash
+# From this checkout, install and start the Python inference service:
+pip install -e '.[serve]'
+LAYA_HOST=127.0.0.1 LAYA_MODELS=english laya-serve
+
+# In another terminal:
+cd sdk/typescript
+npm ci
+npm run build
+node examples/triage.mjs
+```
+
+The npm package is named `@laya/typescript-sdk`.
+The prediction API also accepts Jev's response format; see the SDK's
+[Jev compatibility guide](sdk/typescript/README.md#jev-compatibility-and-model-selection).
+See [installation, examples, and publishing](sdk/typescript/README.md) and the
+[repository analysis](docs/typescript-sdk.md) for architecture and scope.
+
 ---
 
 ## Quickstart: Route Mode (Recommended)

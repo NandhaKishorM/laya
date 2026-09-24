@@ -26,6 +26,9 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+node_modules/
+*.tgz
+.pytest_cache/
 .DS_Store
 .env
 .pypirc

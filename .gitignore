@@ -73,3 +73,6 @@ site/
 # ruff's cache, and the JSON the research harnesses write on every run
 .ruff_cache/
 research/*_benchmark_results.json
+
+# Local Chinese reliability runs (weights, diagnostics, optimizer state)
+/runs/

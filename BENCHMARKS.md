@@ -11,7 +11,7 @@ Every checkpoint answered **byte-identical questions** in each run (fixed seed).
 
 **Calibration columns in the CPU sweep predate the temperature clamp.** The 51-language ECE and mean-confidence figures were produced before #42 clamped temperatures to `[0.5, 5]`, so today's package reports different confidence for the affected buckets. Accuracy columns are unaffected, because a temperature-scaled softmax has the same argmax at every positive temperature.
 
-The same 51 languages and 5,100 cases have now been re-run with 0.3.7 in both regimes (`research/results/cpu_51_language_sweep_clamped.json`, [#208](https://github.com/NandhaKishorM/laya/issues/208)). Macro accuracy reproduces at **0.2269** exactly, and macro ECE moves **0.7331 → 0.5709**:
+The same 51 languages and 5,100 cases have now been re-run after the temperature clamp, in both regimes (`research/results/cpu_51_language_sweep_clamped.json`, [#208](https://github.com/NandhaKishorM/laya/issues/208)). Macro accuracy reproduces at **0.2269** exactly, and macro ECE moves **0.7331 → 0.5709**:
 
 | | committed | re-run, raw temperatures | re-run, as served |
 |---|---|---|---|
@@ -156,7 +156,7 @@ banking77 is the one clear loss, and it is architectural: a choice question's op
 |---|---|---|---|---|---|
 | `laya-typed-decisions` | **0.766** | 0.471 | 0.061 | 0.213 | 0.242 |
 | `laya` | 0.361 | 0.332 | 0.316 | 0.175 | 0.694 |
-| `laya-multilingual` | 0.342 | 0.326 | 0.439 | 0.285 | 0.687 |
+| `laya-multilingual` | 0.352 | 0.328 | 0.463 | 0.314 | 0.760 |
 | *Jev 1.13.0 (published)* | *0.727* | *0.580* | *0.148* | *0.144* | *0.391* |
 | *teacher ceiling* | *0.735* | *—* | *—* | *—* | *—* |
 | *majority class* | *0.461* | *—* | *—* | *—* | *—* |
@@ -169,7 +169,7 @@ banking77 is the one clear loss, and it is architectural: a choice question's op
 | invoice processing | 0.804 |
 | security incidents | 0.766 |
 
-**The base checkpoints sit below the majority-class baseline** (0.362 and 0.342 against 0.461). All of the capability on this benchmark comes from fine-tuning.
+**The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461). All of the capability on this benchmark comes from fine-tuning.
 
 ---
 

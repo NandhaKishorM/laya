@@ -15,6 +15,7 @@ that hold up in production and the ones that bite.
   - [Multi-tenant context](#multi-tenant-context)
   - [Composition](#composition)
   - [Scoped instrumentation](#scoped-instrumentation)
+  - [Process-wide instrumentation](#process-wide-instrumentation)
   - [Token-budget shaping](#token-budget-shaping)
 - [Anti-patterns](#anti-patterns)
   - [Blocking work](#blocking-work)
@@ -229,6 +230,24 @@ with agent.hooks_installed(DebugDump()):
 
 `add_hook`/`remove_hook` do the same without a block, for a tracer that lives as long as the
 process.
+
+### Process-wide instrumentation
+
+A tracer or metrics hook that every decision should see can be registered once, instead of being
+passed to each `Agent` and `Router`. Defaults run before the instance and per-call hooks.
+
+```python
+from laya import BaseHook, hooks
+
+class Metrics(BaseHook):
+    def on_predict_end(self, ctx):
+        record(ctx.model, ctx.elapsed_ms)
+
+hooks.set_default_hooks(hooks=[Metrics()])
+```
+
+This is global state, so scope it deliberately: set it once at startup, and `clear_default_hooks()`
+in tests so one test cannot leak a hook into the next.
 
 ### Token-budget shaping
 

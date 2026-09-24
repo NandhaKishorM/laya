@@ -9,11 +9,11 @@ This is a standalone replacement for the Kaggle 2xT4 notebook. It performs:
 5. checkpoint/model export
 
 Run without arguments:
-    python 2.py
+python notebooks/laya_finetune_typed_decisions_mps.py
 
 Useful examples:
-    python 2.py --epochs 2 --micro-batch 1 --grad-accum 32
-    python 2.py --model-dir ./laya_base --items ./train_items.pt
+    python notebooks/laya_finetune_typed_decisions_mps.py --epochs 2 --micro-batch 1 --grad-accum 32
+    python notebooks/laya_finetune_typed_decisions_mps.py --model-dir ./laya_base --items ./train_items.pt
     python 2.py --device cpu
 """
 

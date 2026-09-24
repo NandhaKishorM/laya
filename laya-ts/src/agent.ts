@@ -1,16 +1,28 @@
 import {
   TEMP_MAX,
   TEMP_MIN,
-  buildSequence,
+  buildQuestionPrefix,
   clampTemperature,
   collateItems,
   confidenceFromProbs,
   renderOptions,
+  sequenceWithState,
+  serializeState,
   softmax,
   tempBucket,
 } from "./common.js";
 import type { Batch, SessionProvider } from "./providers.js";
 import { encodeWithData, parseTokenizerJson, type TokenizerLike } from "./tokenizer.js";
+import {
+  HookRegistry,
+  PredictContext,
+  aggregateUsage,
+  composeHooks,
+  dispatch,
+  normaliseHooks,
+  type HookArg,
+  type PredictHook,
+} from "./hooks.js";
 
 export const QTYPES: Record<string, number> = { choice: 0, score: 1, noul: 2 };
 
@@ -78,6 +90,18 @@ export interface AgentOptions {
   head_max_len?: number;
   temperature?: unknown;
   temperature_by_options?: Record<string, unknown>;
+  hooks?: HookArg;
+  onPredictStart?: PredictHook;
+  onPredictEnd?: PredictHook;
+  hooksRaise?: boolean;
+}
+
+/** Per-call hook options shared by Agent.systemOne/predict and Router.predict. */
+export interface PredictOptions {
+  hooks?: HookArg;
+  onPredictStart?: PredictHook;
+  onPredictEnd?: PredictHook;
+  hooksRaise?: boolean;
 }
 
 function qidStr(qid: string): string {
@@ -122,10 +146,37 @@ export function checkQuestion(qid: string, qdef: unknown): void {
     throw new Error(
       `question ${qidStr(qid)}: a noul question takes 'criteria' as a dict with optional 'true'/'false' descriptions, or omits it`,
     );
+  } else if (crit && typeof crit === "object" && !Array.isArray(crit)) {
+    const invalid = Object.keys(crit as Record<string, unknown>).filter((key) => key !== "true" && key !== "false");
+    if (invalid.length > 0) {
+      throw new Error(
+        `question ${qidStr(qid)}: noul criteria may contain only 'true' and 'false'; got ${JSON.stringify(invalid)}`,
+      );
+    }
+  }
+  if ("labels" in q && t !== "noul") {
+    throw new Error(`question ${qidStr(qid)}: 'labels' is only supported for noul questions`);
+  }
+  if (t === "noul" && "labels" in q) {
+    const labels = q["labels"];
+    if (typeof labels !== "object" || labels === null || Array.isArray(labels)) {
+      throw new Error(`question ${qidStr(qid)}: noul labels must be an object with 'false' and 'true'`);
+    }
+    const entries = Object.entries(labels as Record<string, unknown>);
+    const keys = entries.map(([key]) => key).sort();
+    if (keys.length !== 2 || keys[0] !== "false" || keys[1] !== "true" ||
+        entries.some(([, value]) => typeof value !== "string" || value.trim() === "")) {
+      throw new Error(`question ${qidStr(qid)}: noul labels must map exactly 'false' and 'true' to distinct non-empty strings`);
+    }
+    const falseLabel = String((labels as Record<string, unknown>)["false"]).trim();
+    const trueLabel = String((labels as Record<string, unknown>)["true"]).trim();
+    if (falseLabel === trueLabel) {
+      throw new Error(`question ${qidStr(qid)}: noul labels must be distinct`);
+    }
   }
 }
 
-export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul"; ins: string; crit: unknown } {
+export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } } {
   const t = qdef["type"] as "choice" | "score" | "noul";
   let crit: unknown = qdef["criteria"];
   if (t === "choice" && Array.isArray(crit)) {
@@ -134,8 +185,15 @@ export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul";
     crit = Object.fromEntries(Object.entries(crit as Record<string, unknown>).map(([k, v]) => [String(k).toLowerCase(), v]));
   }
   let ins: unknown = qdef["instructions"];
-  if (typeof ins !== "string") ins = JSON.stringify(ins);
-  return { t, ins: ins as string, crit };
+  if (typeof ins !== "string") ins = serializeState(ins);
+  const out: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } } = {
+    t, ins: ins as string, crit,
+  };
+  if (t === "noul" && qdef["labels"] && typeof qdef["labels"] === "object" && !Array.isArray(qdef["labels"])) {
+    const labels = qdef["labels"] as Record<string, unknown>;
+    out.labels = { false: String(labels["false"]).trim(), true: String(labels["true"]).trim() };
+  }
+  return out;
 }
 
 export function defaultTokenizer(): TokenizerLike {
@@ -167,30 +225,10 @@ function tokenizerFromHF(tokenizerJson: unknown): TokenizerLike | null {
   };
 }
 
-/** Fallback when tokenizer.json is absent: ids from rl_agent_config, if present. */
-function tokenizerFromConfig(cfg: AgentCfg): TokenizerLike | null {
-  const c = cfg as Record<string, unknown>;
-  const num = (v: unknown): number | null =>
-    typeof v === "number" && Number.isFinite(v) ? v : null;
-  const cls = num(c["cls_token_id"]) ?? num(c["cls_id"]);
-  const sep = num(c["sep_token_id"]) ?? num(c["sep_id"]);
-  const mask = num(c["mask_token_id"]) ?? num(c["mask_id"]);
-  const pad = num(c["pad_token_id"]) ?? num(c["pad_id"]);
-  if (cls === null && sep === null && mask === null && pad === null) return null;
-  const d = defaultTokenizer();
-  return {
-    clsId: cls ?? d.clsId,
-    sepId: sep ?? d.sepId,
-    maskId: mask ?? d.maskId,
-    padId: pad ?? d.padId,
-    maskToken: typeof c["mask_token"] === "string" ? (c["mask_token"] as string) : d.maskToken,
-    encode: d.encode,
-  };
-}
-
 const r4 = (v: number): number => Math.round(v * 1e4) / 1e4;
 
-export class Agent {
+export class Agent extends HookRegistry {
+  hooksRaise: boolean;
   cfg: AgentCfg;
   provider: SessionProvider;
   tok: TokenizerLike;
@@ -202,8 +240,12 @@ export class Agent {
   temperatureByOptions: Record<string, number>;
 
   constructor(opts: AgentOptions) {
+    super();
     if (!opts || !opts.provider) throw new Error("Agent needs a provider");
     this.provider = opts.provider;
+    // Hooks are opt-in; an unset hook list is a no-op. See hooks.ts.
+    this.hooks = normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd);
+    this.hooksRaise = opts.hooksRaise ?? true;
     const cfg = { ...(opts.cfg ?? {}) } as AgentCfg;
     if (opts.max_len !== undefined) cfg.max_len = opts.max_len;
     if (opts.head_max_len !== undefined) cfg.head_max_len = opts.head_max_len;
@@ -242,18 +284,86 @@ export class Agent {
     }
   }
 
-  async systemOne(state: unknown, questions: Record<string, QuestionDef>): Promise<SystemOneResult> {
+  /**
+   * Evaluate typed questions across one state in a single forward pass.
+   *
+   * `hooks` / `onPredictStart` / `onPredictEnd` observe or shape the prediction, appended
+   * after any hooks installed on the Agent; a start hook may rewrite the state/questions or
+   * call `ctx.skip(...)` to short-circuit inference, an end hook may rewrite the results.
+   * See hooks.ts. `hooksRaise` overrides the Agent's setting for this call.
+   */
+  async systemOne(
+    state: unknown,
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions = {},
+  ): Promise<SystemOneResult> {
+    return (await this._predictHooked([state], questions, opts))[0];
+  }
+
+  private async _predictHooked(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions,
+  ): Promise<SystemOneResult[]> {
+    const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
+    const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
+    const ctx = new PredictContext({
+      states,
+      questions: questions as Record<string, unknown>,
+      agent: this,
+    });
+    try {
+      dispatch(active, "onPredictStart", ctx, { raiseErrors });
+      if (ctx.results === null) {
+        const out: SystemOneResult[] = [];
+        for (const st of ctx.states) {
+          out.push(await this._systemOneCore(st, ctx.questions as Record<string, QuestionDef>));
+        }
+        ctx.results = out as unknown as Record<string, unknown>[];
+        ctx.model ??= out[0]?.model ?? null;
+      }
+    } catch (err) {
+      ctx.error = err;
+      try {
+        dispatch(active, "onError", ctx, { raiseErrors });
+      } catch {
+        // A failing onError hook must not hide the failure that triggered it.
+      }
+      throw err;
+    } finally {
+      ctx.markElapsed();
+      if (ctx.results !== null) ctx.usage = aggregateUsage(ctx.results);
+      try {
+        dispatch(active, "onPredictEnd", ctx, { raiseErrors });
+      } catch (hookErr) {
+        // End hooks run on the failure path too; do not let one mask the real error.
+        if (ctx.error === null) throw hookErr;
+      }
+    }
+    return ctx.results as unknown as SystemOneResult[];
+  }
+
+  private async _systemOneCore(
+    state: unknown,
+    questions: Record<string, QuestionDef>,
+  ): Promise<SystemOneResult> {
     const ids = Object.keys(questions ?? {});
     if (ids.length === 0) {
       return { model: "laya-rl-agent", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } };
     }
     const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
-    const internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown }[] = [];
+    const internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } }[] = [];
+    // The state text is shared by every question and is usually the longest text in the
+    // sequence — encode it once and compose the per-question prefixes onto it.
+    const stAll = this.tok.encode(serializeState(state).split(this.tok.maskToken).join(" "));
     for (const qid of ids) {
       checkQuestion(qid, questions[qid]);
       const q = toInternal(questions[qid]);
       internals.push(q);
-      const { ids: seq, markers } = buildSequence(this.tok, state, q, this.maxLen, this.headMaxLen);
+      const prefix = buildQuestionPrefix(this.tok, q, this.maxLen, this.headMaxLen);
+      const { ids: seq, markers } = sequenceWithState(
+        prefix, stAll, this.tok.sepId, this.maxLen, Array.isArray(state),
+      );
       if (markers.length !== renderOptions(q).length) {
         throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${this.headMaxLen}`);
       }
@@ -265,6 +375,16 @@ export class Agent {
     const nTokens = batch.attentionMask.flat().reduce((a, b) => a + b, 0);
     const { lastHidden } = await this.provider.runEncoder(batch);
     const { logits, act } = await this.provider.runHead(lastHidden, batch);
+    if (!Array.isArray(logits) || !Array.isArray(act) || logits.length < ids.length || act.length < ids.length) {
+      throw new Error("model provider returned fewer output rows than input items");
+    }
+    for (let r = 0; r < ids.length; r++) {
+      const k = items[r].markers.length;
+      if (!Array.isArray(logits[r]) || logits[r].length < k || !Array.isArray(act[r]) || act[r].length === 0 ||
+          logits[r].some((v) => !Number.isFinite(v)) || act[r].some((v) => !Number.isFinite(v))) {
+        throw new Error(`model provider returned invalid output for question ${ids[r]}`);
+      }
+    }
 
     const answers: Record<string, SystemAnswer> = {};
     for (let r = 0; r < ids.length; r++) {
@@ -313,8 +433,12 @@ export class Agent {
     return { model: "laya-rl-agent", answers, usage: { input_tokens: nTokens, output_tokens: 0 } };
   }
 
-  async predict(state: unknown, questions: Record<string, QuestionDef>): Promise<SystemOneResult> {
-    return this.systemOne(state, questions);
+  async predict(
+    state: unknown,
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions = {},
+  ): Promise<SystemOneResult> {
+    return this.systemOne(state, questions, opts);
   }
 
   static async load(
@@ -353,12 +477,21 @@ export class Agent {
       dir = bundle.dir;
       provider = await createNodeProvider(dir, { device: opts?.device, numThreads: opts?.numThreads });
     }
-    let tok: TokenizerLike | null = null;
-    try {
-      tok = tokenizerJson ? tokenizerFromHF(tokenizerJson) : tokenizerFromConfig(cfg);
-    } catch {
-      tok = null;
+    if (!tokenizerJson) {
+      throw new Error(
+        `Incompatible model: tokenizer.json is missing or invalid in ${JSON.stringify(dir)}`,
+      );
     }
-    return new Agent({ provider, tok: tok ?? defaultTokenizer(), cfg });
+    let tok: TokenizerLike;
+    try {
+      const parsed = tokenizerFromHF(tokenizerJson);
+      if (!parsed) throw new Error("unsupported tokenizer.json format");
+      tok = parsed;
+    } catch (error) {
+      throw new Error(
+        `Incompatible model: tokenizer.json is missing or invalid in ${JSON.stringify(dir)}: ${String(error)}`,
+      );
+    }
+    return new Agent({ provider, tok, cfg });
   }
 }

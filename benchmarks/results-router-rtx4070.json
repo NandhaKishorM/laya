@@ -1,0 +1,69 @@
+{
+  "bench": [],
+  "consistency": [],
+  "router": [
+    {
+      "states": 1,
+      "looped_ms": 14.0,
+      "batched_ms": 14.2,
+      "speedup": 1.0,
+      "looped_sps": 71.5,
+      "batched_sps": 70.5
+    },
+    {
+      "states": 2,
+      "looped_ms": 21.4,
+      "batched_ms": 21.6,
+      "speedup": 1.0,
+      "looped_sps": 93.4,
+      "batched_sps": 92.5
+    },
+    {
+      "states": 4,
+      "looped_ms": 43.1,
+      "batched_ms": 25.5,
+      "speedup": 1.7,
+      "looped_sps": 92.7,
+      "batched_sps": 156.8
+    },
+    {
+      "states": 8,
+      "looped_ms": 85.7,
+      "batched_ms": 36.6,
+      "speedup": 2.3,
+      "looped_sps": 93.3,
+      "batched_sps": 218.4
+    },
+    {
+      "states": 16,
+      "looped_ms": 173.8,
+      "batched_ms": 57.8,
+      "speedup": 3.0,
+      "looped_sps": 92.1,
+      "batched_sps": 276.7
+    },
+    {
+      "states": 32,
+      "looped_ms": 342.9,
+      "batched_ms": 102.3,
+      "speedup": 3.4,
+      "looped_sps": 93.3,
+      "batched_sps": 312.9
+    },
+    {
+      "states": 64,
+      "looped_ms": 686.0,
+      "batched_ms": 210.9,
+      "speedup": 3.3,
+      "looped_sps": 93.3,
+      "batched_sps": 303.5
+    }
+  ],
+  "router_consistency": {
+    "samples": 200,
+    "compared": 600,
+    "max_delta": 0.0102,
+    "flips": 0,
+    "worst": "req#0/urgency"
+  }
+}

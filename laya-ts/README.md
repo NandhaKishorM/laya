@@ -1,6 +1,6 @@
 # laya-ts
 
-TypeScript inference for Laya (`Agent.predict`, `Router`, `lang`, `email`, `presets`, `shortlist`) on Node and the browser via split ONNX (`encoder.onnx` + `head.onnx`). ESM-only (`"type": "module"`); no CJS build — import from ESM or bundle.
+TypeScript inference for Laya (`Agent.predict`, `Router`, `lang`, `email`, `presets`, `shortlist`, `hooks`) on Node and the browser via split ONNX (`encoder.onnx` + `head.onnx`). ESM-only (`"type": "module"`); no CJS build — import from ESM or bundle.
 
 ## Export weights (once per checkpoint)
 
@@ -38,6 +38,34 @@ const out = await agent.predict("charged twice", {
 ```
 
 `onnxruntime-node` / `onnxruntime-web` are optional peer deps, imported lazily behind the provider you use.
+
+## Hooks (observe or shape every decision)
+
+Port of the Python `laya.hooks` lifecycle. A hook is a `(ctx) => void` for `onPredictStart` /
+`onPredictEnd`, or an object implementing any subset of `onPredictStart`, `onPredictEnd`,
+`onRoute`, `onLoad`, `onEvict`, `onError`:
+
+```ts
+const tracer = {
+  onPredictStart(ctx) { console.time(ctx.runId); },
+  onPredictEnd(ctx) { console.timeEnd(ctx.runId); console.log(ctx.model, ctx.usage, ctx.elapsedMs); },
+};
+const router = new Router({ hooks: [tracer], hooksRaise: false }); // telemetry must not fail a request
+await router.withHooks([auditHook], () => router.predict(state, questions)); // scoped install
+
+// a start hook may rewrite ctx.states / ctx.questions, or serve a cached result:
+const cache = { onPredictStart(ctx) { const hit = lookup(ctx.states[0]); if (hit) ctx.skip([hit]); } };
+// an onRoute hook may replace ctx.decision (e.g. pin a checkpoint)
+
+// subclass BaseHook to override only the events you need:
+class MetricsHook extends BaseHook {
+  onPredictEnd(ctx) { record(ctx.usage); }
+}
+
+// process-wide defaults run before installed and per-call hooks for every Agent/Router,
+// so a tracer or metrics hook does not have to be threaded through every construction:
+setDefaultHooks([new MetricsHook()]);  // addDefaultHook(...) appends; clearDefaultHooks() resets
+```
 
 ## Shortlist (many labels)
 

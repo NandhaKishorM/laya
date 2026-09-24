@@ -1,5 +1,15 @@
 import { analyse, type AnalyseResult } from "./lang.js";
-import type { QuestionDef, SystemOneResult } from "./agent.js";
+import type { PredictOptions, QuestionDef, SystemOneResult } from "./agent.js";
+import {
+  HookRegistry,
+  PredictContext,
+  aggregateUsage,
+  composeHooks,
+  dispatch,
+  normaliseHooks,
+  type HookArg,
+  type PredictHook,
+} from "./hooks.js";
 
 export const BUNDLE_REPO = "convaiinnovations/laya";
 
@@ -109,6 +119,10 @@ export interface RouterOptions {
   langGuess?: LangGuess;
   lang_guess?: LangGuess;
   loader?: AgentLoader;
+  hooks?: HookArg;
+  onPredictStart?: PredictHook;
+  onPredictEnd?: PredictHook;
+  hooksRaise?: boolean;
 }
 
 export interface RouteOptions {
@@ -117,6 +131,8 @@ export interface RouteOptions {
   lang?: string | null;
   langGuess?: LangGuess;
   lang_guess?: LangGuess;
+  hooks?: HookArg;
+  hooksRaise?: boolean;
 }
 
 function toSpec(spec: string | ModelSpec | [string, string | null]): ModelSpec {
@@ -132,7 +148,8 @@ function repoStr(spec: ModelSpec): string {
   return spec.subfolder ? `${spec.repo}/${spec.subfolder}` : spec.repo;
 }
 
-export class Router {
+export class Router extends HookRegistry {
+  hooksRaise: boolean;
   models: Record<string, ModelSpec>;
   device: string | null;
   token: string | null | undefined;
@@ -145,6 +162,11 @@ export class Router {
   _order: string[] = []; // least-recently-used first
 
   constructor(opts: RouterOptions = {}) {
+    super();
+    // Hooks are opt-in; an unset hook list is a no-op. Router-level onPredictStart /
+    // onPredictEnd hooks wrap the whole route+infer call and see ctx.decision; see hooks.ts.
+    this.hooks = normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd);
+    this.hooksRaise = opts.hooksRaise ?? true;
     const base: Record<string, string | ModelSpec> = opts.standaloneRepos ?? opts.standalone_repos
       ? { ...STANDALONE_MODELS }
       : Object.fromEntries(Object.entries(DEFAULT_MODELS).map(([k, v]) => [k, { ...v }]));
@@ -190,7 +212,22 @@ export class Router {
     }
     this._agents.set(key, agent);
     this._order.push(key);
-    this._evict();
+    const evicted = this._evict();
+    // Lifecycle hooks fire after the maps settle, so a hook can safely call the Router.
+    for (const victim of evicted) {
+      dispatch(
+        composeHooks(this.hooks),
+        "onEvict",
+        new PredictContext({ states: [], questions: {}, model: victim, router: this }),
+        { raiseErrors: this.hooksRaise },
+      );
+    }
+    dispatch(
+      composeHooks(this.hooks),
+      "onLoad",
+      new PredictContext({ states: [], questions: {}, model: key, agent, router: this }),
+      { raiseErrors: this.hooksRaise },
+    );
     return agent;
   }
 
@@ -200,17 +237,23 @@ export class Router {
     this._order.push(key);
   }
 
-  _evict(): void {
+  /** Drop least-recently-used agents until `maxLoaded` holds. Returns evicted names. */
+  _evict(): string[] {
+    const evicted: string[] = [];
     while (this._order.length > this.maxLoaded) {
       const victim = this._order.shift()!;
-      this._agents.delete(victim);
+      if (this._agents.delete(victim)) evicted.push(victim);
     }
     // Keep the two views consistent.
     if (this._order.length < this._agents.size) {
       for (const k of [...this._agents.keys()]) {
-        if (!this._order.includes(k)) this._agents.delete(k);
+        if (!this._order.includes(k)) {
+          this._agents.delete(k);
+          evicted.push(k);
+        }
       }
     }
+    return evicted;
   }
 
   attach(name: string, agent: unknown): unknown {
@@ -252,7 +295,33 @@ export class Router {
     return englishFromCode(value);
   }
 
+  /**
+   * Decide which checkpoint to use, then let `onRoute` hooks observe or replace the decision.
+   *
+   * `ctx.decision` is the RouteDecision; a hook may replace it (for example to pin a
+   * checkpoint) and the replacement is what gets returned and used. `opts.hooks` are
+   * per-call hooks, appended after any installed on the Router.
+   */
   route(
+    state: unknown,
+    questions: Record<string, unknown> | null = null,
+    opts: RouteOptions = {},
+  ): RouteDecision {
+    const decision = this._route(state, questions, opts);
+    const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
+    const active = composeHooks(this.hooks, opts.hooks);
+    const ctx = new PredictContext({
+      states: [state],
+      questions: (questions ?? {}) as Record<string, unknown>,
+      decision: decision as unknown as Record<string, unknown>,
+      router: this,
+    });
+    dispatch(active, "onRoute", ctx, { raiseErrors });
+    return ctx.decision as unknown as RouteDecision;
+  }
+
+  /** Decide which checkpoint to use, without loading, running, or hooking anything. */
+  _route(
     state: unknown,
     questions: Record<string, unknown> | null = null,
     opts: RouteOptions = {},
@@ -352,24 +421,77 @@ export class Router {
     return { model: key, repo: repoStr(this.models[key]), reason, detection: det, workflow };
   }
 
+  /**
+   * Route, then answer every question in one forward pass on the chosen checkpoint.
+   *
+   * The result is the usual systemOne payload plus a `routing` key recording the decision.
+   * Router-level `onPredictStart` / `onPredictEnd` hooks wrap the whole route+infer call and
+   * see `ctx.decision`; see hooks.ts.
+   */
   async predict(
     state: unknown,
     questions: Record<string, QuestionDef>,
-    opts: RouteOptions = {},
+    opts: RouteOptions & PredictOptions = {},
   ): Promise<RoutedResult> {
+    const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
+    const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
+
+    // Per-call hooks apply to the whole call, including onRoute inside route().
     const decision = this.route(state, questions, opts);
     const agent = (await this.load(decision.model)) as {
       systemOne(s: unknown, q: Record<string, QuestionDef>): Promise<SystemOneResult>;
     };
-    const result = (await agent.systemOne(state, questions)) as RoutedResult;
-    result["routing"] = { ...decision };
-    return result;
+    const ctx = new PredictContext({
+      states: [state],
+      questions: questions as Record<string, unknown>,
+      decision: { ...decision } as unknown as Record<string, unknown>,
+      model: decision.model,
+      agent,
+      router: this,
+    });
+    try {
+      dispatch(active, "onPredictStart", ctx, { raiseErrors });
+      if (ctx.results === null) {
+        const result = (await agent.systemOne(
+          ctx.states[0],
+          ctx.questions as Record<string, QuestionDef>,
+        )) as RoutedResult;
+        result["routing"] = { ...decision };
+        ctx.results = [result as unknown as Record<string, unknown>];
+      } else {
+        // A cache hit short-circuits inference, but predict still promises a `routing` key.
+        // Add it without overwriting a routing the cached payload already has.
+        for (const result of ctx.results) {
+          if (result && typeof result === "object" && !("routing" in result)) {
+            (result as unknown as RoutedResult).routing = { ...decision };
+          }
+        }
+      }
+    } catch (err) {
+      ctx.error = err;
+      try {
+        dispatch(active, "onError", ctx, { raiseErrors });
+      } catch {
+        // A failing onError hook must not hide the failure that triggered it.
+      }
+      throw err;
+    } finally {
+      ctx.markElapsed();
+      if (ctx.results !== null) ctx.usage = aggregateUsage(ctx.results);
+      try {
+        dispatch(active, "onPredictEnd", ctx, { raiseErrors });
+      } catch (hookErr) {
+        // End hooks run on the failure path too; do not let one mask the real error.
+        if (ctx.error === null) throw hookErr;
+      }
+    }
+    return (ctx.results as unknown as RoutedResult[])[0];
   }
 
   async systemOne(
     state: unknown,
     questions: Record<string, QuestionDef>,
-    opts: RouteOptions = {},
+    opts: RouteOptions & PredictOptions = {},
   ): Promise<RoutedResult> {
     return this.predict(state, questions, opts);
   }

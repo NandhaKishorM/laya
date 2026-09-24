@@ -77,4 +77,17 @@ describe("common parity", () => {
     expect(collateItems([], 0)).toBeNull();
     expect(collateItems([[]], 0)).toBeNull();
   });
+  it("collateItems rejects a target longer than its own marker count, even in mixed batches (#311)", () => {
+    // the first row's target fits the batch-wide K=4 but exceeds its own 2 markers
+    const mixed = [[
+      { ids: [1], markers: [0, 1], qtype: 1, target: [0.2, 0.3, 0.5] },
+      { ids: [2], markers: [0, 1, 2, 3], qtype: 1, target: [0.25, 0.25, 0.25, 0.25] },
+    ]];
+    expect(() => collateItems(mixed as any, 0)).toThrow(/one entry per option/);
+    const overK = [[{ ids: [1], markers: [0], qtype: 1, target: [0.0, 1.0] }]];
+    expect(() => collateItems(overK as any, 0)).toThrow(/one entry per option/);
+    // a shorter target is padded with zeros, not rejected
+    const short = collateItems([[{ ids: [1], markers: [0, 1, 2], qtype: 1, target: [1.0] }]] as any, 0)!;
+    expect(short.target).toEqual([[1.0, 0.0, 0.0]]);
+  });
 });

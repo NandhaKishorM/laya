@@ -257,6 +257,24 @@ except ValueError as e:
 except Exception as e:  # noqa: BLE001
     FAIL.append("collate/oversized target raised %s instead of ValueError: %s" % (type(e).__name__, e))
 
+# #311: in a mixed-width batch the limit is each item's own marker count, not the batch-wide max
+try:
+    collate_items([[
+        {"ids": [1], "markers": [0, 1], "qtype": 1, "target": [0.2, 0.3, 0.5]},
+        {"ids": [2], "markers": [0, 1, 2, 3], "qtype": 1, "target": [0.25, 0.25, 0.25, 0.25]},
+    ]], pad_id=0)
+    FAIL.append("collate/mixed-width oversized target raises ValueError (nothing raised)")
+except ValueError as e:
+    check_true("collate/mixed-width oversized target raises a clear ValueError",
+               "one entry per option" in str(e), str(e)[:90])
+except Exception as e:  # noqa: BLE001
+    FAIL.append("collate/mixed-width oversized target raised %s instead of ValueError: %s"
+                % (type(e).__name__, e))
+
+# a target shorter than the item's own markers is still padded with zeros, not rejected
+b3 = collate_items([[{"ids": [1], "markers": [0, 1, 2], "qtype": 1, "target": [1.0]}]], pad_id=0)
+check("collate/short target padded with zeros", b3["target"][0].tolist(), [1.0, 0.0, 0.0])
+
 
 # =============================================================== build_sequence
 class _Tok:
@@ -264,8 +282,11 @@ class _Tok:
     cls_token_id, sep_token_id, mask_token_id, pad_token_id = 1, 2, 3, 0
     mask_token = "[M]"
 
-    def __call__(self, text, add_special_tokens=False):
-        return {"input_ids": [10 + (ord(c) % 50) for c in text]}
+    def __call__(self, text, add_special_tokens=False, truncation=False, max_length=None):
+        ids = [10 + (ord(c) % 50) for c in text]
+        if truncation and max_length:
+            ids = ids[:max_length]
+        return {"input_ids": ids}
 
 
 tok = _Tok()

@@ -5,10 +5,19 @@
 Requires CUDA and `pip install laya[fast]` (tilelang).  Falls back to the stock forward otherwise.
 """
 import sys
+import threading
 import torch
 from . import tl_kernels as K
 
 BF = torch.bfloat16
+
+
+def _top_two(probs):
+    """Return two columns for confidence features, including k == 1."""
+    if probs.shape[-1] == 1:
+        top1 = probs[:, 0]
+        return torch.stack([top1, torch.zeros_like(top1)], dim=-1)
+    return probs.topk(2, -1).values
 
 
 def _bucket_n(n):
@@ -23,6 +32,10 @@ class FastLaya:
         dev = next(model.parameters()).device
         self.dev = dev
         self.use_graphs = use_graphs
+        # CUDA graphs reuse static input/output buffers.  Keep the complete
+        # forward under one lock so concurrent callers cannot overwrite those
+        # buffers between replay and head decoding.
+        self._forward_lock = threading.RLock()
         self.verbose = verbose
         self.H, self.Dh, self.D = cfg.num_attention_heads, cfg.hidden_size // cfg.num_attention_heads, cfg.hidden_size
         self.F = cfg.intermediate_size
@@ -169,6 +182,11 @@ class FastLaya:
     # ------------------------------------------------------------------ DecisionModel.forward replacement
     @torch.no_grad()
     def forward(self, input_ids, attention_mask, marker_pos, marker_mask, qtype, detach_encoder=False):
+        with self._forward_lock:
+            return self._forward_unlocked(input_ids, attention_mask, marker_pos, marker_mask, qtype, detach_encoder)
+
+    @torch.no_grad()
+    def _forward_unlocked(self, input_ids, attention_mask, marker_pos, marker_mask, qtype, detach_encoder=False):
         m = self.m
         N, L0 = input_ids.shape
         g = 16 if L0 <= self.DYNAMIC_MAX_L else self.LONG_BUCKET
@@ -190,7 +208,10 @@ class FastLaya:
         p = torch.softmax(logits, -1)
         k = marker_mask.sum(-1).clamp(min=2).float()
         ent = -(p * torch.log(p.clamp_min(1e-9))).sum(-1) / torch.log(k)
-        top2 = p.topk(2, -1).values
+        # Choice questions are allowed to contain one criterion.  The stock
+        # DecisionModel handles that case, but topk(2) raises when the marker
+        # dimension has width one.
+        top2 = _top_two(p)
         feats = torch.stack([top2[:, 0], top2[:, 0] - top2[:, 1], ent, k / 255.0], -1)
         pooled = h[:, 0].float()
         act_logits = m.act_head(torch.cat([pooled, feats], -1))

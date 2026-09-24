@@ -37,6 +37,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
@@ -1054,8 +1055,9 @@ async def gui_predict(request: Request) -> HTMLResponse:
     questions = _questions(req.questions)
     try:
         started = time.perf_counter()
-        res = _predict(
-            req.state, questions, model=req.model, task=req.task, lang=req.lang
+        res = await run_in_threadpool(
+            _predict, req.state, questions,
+            model=req.model, task=req.task, lang=req.lang,
         )
         res["_elapsed"] = time.perf_counter() - started
     except Exception as exc:

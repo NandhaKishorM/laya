@@ -315,13 +315,15 @@ def collate_items(batch, pad_id: int):
         mpos[i, :k] = torch.tensor(it["markers"])
         mmask[i, :k] = True
         if has_target and "target" in it:
-            if len(it["target"]) > kmax:
+            if len(it["target"]) > k:
                 # Otherwise this lands as "The expanded size of the tensor (k) must match the
                 # existing size (kmax)" from inside the assignment, which says nothing about the
-                # actual mistake: a target with more entries than the item has options.
+                # actual mistake: a target with more entries than the item has options. The limit
+                # is this item's own marker count, not the batch-wide kmax: in a mixed-width
+                # batch a longer sibling row must not legitimise extra entries (#311).
                 raise ValueError(
                     "collate_items: item %d has %d target entries but only %d marker positions; "
-                    "a target needs one entry per option" % (i, len(it["target"]), kmax))
+                    "a target needs one entry per option" % (i, len(it["target"]), k))
             target[i, : len(it["target"])] = torch.tensor(it["target"], dtype=torch.float32)
 
     res = {

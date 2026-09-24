@@ -127,8 +127,17 @@ export function collateItems(batch: CollateItem[][], padId: number): CollatedBat
   });
   const out: CollatedBatch = { inputIds, attentionMask, markerPos, markerMask, qtype, label, meta };
   if (hasTarget) {
-    out.target = items.map((it) => {
+    out.target = items.map((it, i) => {
       const t = Array.isArray(it.target) ? (it.target as number[]) : [];
+      const k = it.markers.length;
+      if (t.length > k) {
+        // Same guard as py collate_items: the limit is this item's own marker count, not the
+        // batch-wide K — a wider sibling row must not legitimise extra entries (#311).
+        throw new Error(
+          `collateItems: item ${i} has ${t.length} target entries but only ${k} marker positions; ` +
+            "a target needs one entry per option",
+        );
+      }
       return [...t, ...Array(K - t.length).fill(0)];
     });
   }

@@ -117,9 +117,11 @@ def _headings(path):
 
 _md = []
 for _dirpath, _dirnames, _filenames in os.walk("."):
-    # `.pytest_cache` ships a README of its own and is not part of the repository.
+    # `.pytest_cache` ships a README of its own and is not part of the repository, and
+    # `.hf-cache` holds third-party dataset cards downloaded by setup_laya.sh (gitignored).
     _dirnames[:] = [d for d in _dirnames
-                    if d not in (".git", "__pycache__", "node_modules", ".pytest_cache")]
+                    if d not in (".git", "__pycache__", "node_modules", ".pytest_cache",
+                                 ".hf-cache")]
     _md.extend(os.path.normpath(os.path.join(_dirpath, f))
                for f in _filenames if f.endswith(".md"))
 _md = sorted(_md)

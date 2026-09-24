@@ -29,21 +29,21 @@ from laya.common import DecisionModel, QTYPES  # noqa: E402
 
 
 def export_notebook_config(cfg, fitted_temps, output_dir):
-    """Execute the notebook's actual config export, without its GPU/training code."""
-    notebook = Path(__file__).resolve().parents[1] / "notebooks" / (
-        "laya_finetune_typed_decisions_2xT4_kaggle.ipynb"
-    )
-    cells = json.loads(notebook.read_text(encoding="utf-8"))["cells"]
-    script, = ["".join(c["source"]) for c in cells
-               if "".join(c["source"]).startswith("%%writefile ")]
+    """Execute the fine-tune save path's config export, without its GPU/training code.
+
+    The export used to live in the notebook's `%%writefile` cell; the fine-tuning loop moved
+    into `laya.finetune.train_rlcd`, so this guard follows the logic there instead.
+    """
+    source = Path(__file__).resolve().parents[1] / "laya" / "finetune.py"
+    script = source.read_text(encoding="utf-8")
     # This contiguous tail includes the temperature update AND the JSON write.
-    # Do not reproduce the export logic here: that would miss notebook regressions.
+    # Do not reproduce the export logic here: that would miss regressions.
     start = script.index('        cfg["fine_tuned"] = True')
-    end = script.index("\n    dist.destroy_process_group()", start)
+    end = script.index("\n    if world_size > 1:", start)
     export = ast.parse(textwrap.dedent(script[start:end]))
-    exec(compile(export, str(notebook), "exec"), {
-        "cfg": cfg, "fitted_temps": fitted_temps, "output_dir": str(output_dir),
-        "os": os, "json": json,
+    exec(compile(export, str(source), "exec"), {
+        "cfg": cfg, "temperatures": fitted_temps, "output_dir": str(output_dir),
+        "os": os, "json": json, "log": lambda *args, **kwargs: None,
     })
     return json.loads((output_dir / "rl_agent_config.json").read_text())
 

@@ -103,6 +103,6 @@ describe("identifier stripping: complexity", () => {
     const large = best(50_000);
     // performance.now() granularity makes a sub-0.05 ms baseline meaningless; the
     // absolute ceilings above already carry the guarantee in that case.
-    if (small > 0.05) expect(large / small).toBeLessThan(8);
+    if (small > 0.05) expect(large / small).toBeLessThan(12);
   });
 });

@@ -159,7 +159,7 @@ def softmax_t(z, temperature: float = 1.0):
     return e / e.sum()
 
 
-def temperature_for(agent, qtype: int, k: int, lang: str = None, unclamped: bool = False) -> float:
+def temperature_for(agent, qtype: int, k: int, unclamped: bool = False, *, lang: str = None) -> float:
     """The temperature to score this bucket with.
 
     By default this is what ``Agent`` applies, i.e. the checkpoint's bucket clamped
@@ -235,7 +235,7 @@ def summarise(confidences, corrects, golds, preds) -> Dict[str, float]:
 
 # ------------------------------------------------------------------------ runner
 def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
-                 unclamped: bool = False) -> Dict[str, Any]:
+                 unclamped: bool = False, use_lang_temperatures: bool = False) -> Dict[str, Any]:
     """Evaluate one language and return its report plus per-case records."""
     import numpy as np
     from laya.common import QTYPES
@@ -248,7 +248,7 @@ def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
     confidences, corrects, preds, records = [], [], [], []
     for i, z in enumerate(logits):
         k = len(z)
-        temperature = temperature_for(agent, QTYPES["choice"], k, lang=lang, unclamped=unclamped)
+        temperature = temperature_for(agent, QTYPES["choice"], k, unclamped=unclamped, lang=lang if use_lang_temperatures else None)
         probs = softmax_t(z, temperature)
         pred = int(np.argmax(probs))
         correct = int(pred == gold[i])
@@ -274,7 +274,7 @@ def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
 
     report = summarise(confidences, corrects, gold, preds)
     report["temperature"] = round(
-        float(temperature_for(agent, QTYPES["choice"], n_opts, unclamped)), 6)
+        float(temperature_for(agent, QTYPES["choice"], n_opts, unclamped=unclamped, lang=lang if use_lang_temperatures else None)), 6)
     return {"report": report, "cases": records}
 
 
@@ -299,6 +299,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         help="score with the checkpoint's RAW bucket temperatures instead "
                              "of the clamped ones Agent applies. This is what reproduces "
                              "the committed pre-#42 sweep")
+    parser.add_argument("--lang-temperatures", action="store_true",
+                        help="Use per-language temperature calibration if available")
     args = parser.parse_args(argv)
 
     if args.langs.strip().lower() == "all":
@@ -343,7 +345,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         t0 = time.time()
         try:
             out = run_language(agent, lang, args.per_lang, args.n_opts,
-                               args.seed, args.unclamped)
+                               args.seed, args.unclamped, args.lang_temperatures)
         except Exception as exc:
             print("  %-8s FAILED: %s" % (lang, str(exc)[:110]), file=sys.stderr)
             payload["report"][lang] = {"error": str(exc)[:200]}

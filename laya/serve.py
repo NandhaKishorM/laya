@@ -5,8 +5,10 @@ API -- ``choice`` / ``score`` / ``noul`` answers and a ``{input_tokens,
 output_tokens}`` usage block -- so a client written against Jev (for example the
 `hs-jev` Haskell client) can point its ``baseUrl`` at this server and keep
 working unchanged. All this module adds is the HTTP surface Laya itself does not
-ship: a ``POST /v1/systemone`` route, an optional bearer check, and a health
-probe.
+ship: a ``POST /v1/systemone`` route, an optional bearer check, and two probes.
+``GET /health`` is liveness and answers as soon as the process is up; ``GET
+/ready`` is readiness and stays 503 until the preloaded checkpoints are resident,
+so a load balancer routes only to a warm pod.
 
 Configuration is entirely via environment variables so the same entry point
 serves a laptop dev run and a systemd unit:
@@ -17,7 +19,8 @@ env var                 meaning                                        default
 ``LAYA_HOST``           bind address                                   0.0.0.0
 ``LAYA_PORT``           bind port                                      8000
 ``LAYA_DEVICE``         torch device for every checkpoint              (auto)
-``LAYA_PRELOAD``        build the checkpoints at startup, not lazily   1
+``LAYA_PRELOAD``        preload checkpoints in the background once the  1
+                        server is live (0 = load lazily on first use)
 ``LAYA_MODELS``         comma list to preload (english,multilingual,   (all)
                         typed-decisions); empty = every checkpoint
 ``LAYA_THREADS``        cap torch intra-op threads (CPU inference).    (torch
@@ -167,30 +170,41 @@ def _apply_thread_limit():
     return n
 
 
-def build_router():
-    """Build a Router from the environment, preloading unless told otherwise."""
+def _preload_names():
+    """Checkpoints named by ``LAYA_MODELS`` to preload; ``None`` means every checkpoint."""
+    models_env = os.environ.get("LAYA_MODELS", "").strip()
+    return [m.strip() for m in models_env.split(",") if m.strip()] or None
+
+
+def build_router(preload: bool = True):
+    """Build a Router from the environment.
+
+    ``preload=False`` lets the server bind and answer liveness while it loads checkpoints in
+    the background; callers that want the old "resident before returning" behavior keep it.
+    """
     from .router import Router
 
     _apply_thread_limit()
     device = os.environ.get("LAYA_DEVICE") or None
-    models_env = os.environ.get("LAYA_MODELS", "").strip()
-    preload_names = [m.strip() for m in models_env.split(",") if m.strip()] or None
     router = Router(device=device, auto_task_detection=_env_bool("LAYA_AUTO_TASK", False))
-    if _env_bool("LAYA_PRELOAD", True):
-        router.preload(preload_names)
+    if preload and _env_bool("LAYA_PRELOAD", True):
+        router.preload(_preload_names())
     return router
 
 
 def create_app(router: Optional[Any] = None):
-    """Build the FastAPI app. Pass a Router to inject one (tests); otherwise one
-    is built from the environment (and preloaded) at app-creation time."""
+    """Build the FastAPI app. Pass a Router to inject one (tests); otherwise one is built from
+    the environment. Checkpoints preload in the background once the server is live, so
+    ``/health`` answers during a slow load and ``/ready`` stays 503 until they are resident."""
     import asyncio
     from concurrent.futures import ThreadPoolExecutor
 
     from fastapi import FastAPI, Header, HTTPException, Request
 
+    preload_enabled = False
     if router is None:
-        router = build_router()
+        router = build_router(preload=False)
+        preload_enabled = _env_bool("LAYA_PRELOAD", True)
     api_key = os.environ.get("LAYA_API_KEY") or None
 
     # Inference is synchronous torch, and a CPU call takes hundreds of milliseconds to
@@ -205,12 +219,30 @@ def create_app(router: Optional[Any] = None):
     # running when it is first awaited, and `create_app` may be called before that loop
     # exists (module scope, TestClient startup, a preload script).
     gate: Optional[asyncio.Lock] = None
+    state: Dict[str, Any] = {"ready": not preload_enabled, "preload_error": None}
+    preload = {"task": None}
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        if preload_enabled:
+            async def _preload():
+                try:
+                    # Off the event loop: loading checkpoints is minutes of blocking work, and the
+                    # server must keep answering `/health` and `/ready` while it happens.
+                    await asyncio.get_running_loop().run_in_executor(pool, router.preload, _preload_names())
+                except Exception as exc:  # noqa: BLE001 -- surfaced on /ready for the operator
+                    state["preload_error"] = "%s: %s" % (type(exc).__name__, exc)
+                    _log.exception("preload failed; /ready stays 503")
+                    return
+                state["ready"] = True
+                _log.info("preload complete: loaded=%s", router.loaded)
+
+            preload["task"] = asyncio.create_task(_preload())
         try:
             yield
         finally:
+            if preload["task"] is not None and not preload["task"].done():
+                preload["task"].cancel()
             # TestClient, embedded ASGI apps, and process supervisors all need
             # the executor to drain when the app stops.
             pool.shutdown(wait=True, cancel_futures=True)
@@ -244,6 +276,22 @@ def create_app(router: Optional[Any] = None):
             "loaded": router.loaded,
             "device": os.environ.get("LAYA_DEVICE") or "auto",
         }
+
+    @app.get("/ready")
+    def ready():
+        """Readiness: checkpoints resident, so a load balancer routes only to a warm pod.
+
+        ``/health`` is liveness and answers as soon as the process is up; this stays 503 while
+        the background preload runs. Without ``LAYA_PRELOAD`` the checkpoints load lazily on the
+        first request, so readiness is true from the start and the first caller pays the load.
+        """
+        if state["preload_error"]:
+            raise HTTPException(status_code=503, detail={
+                "ready": False, "error": state["preload_error"], "loaded": router.loaded})
+        if not state["ready"]:
+            raise HTTPException(status_code=503, detail={"ready": False, "loaded": router.loaded})
+        return {"status": "ready", "loaded": router.loaded,
+                "device": os.environ.get("LAYA_DEVICE") or "auto"}
 
     @app.post("/v1/systemone")
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):

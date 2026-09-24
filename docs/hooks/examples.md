@@ -18,6 +18,7 @@ Copy-paste recipes. Every snippet is self-contained apart from the helpers it na
 - [HTTP server](#http-server)
 - [ONNXAgent](#onnxagent)
 - [Runtime registration](#runtime-registration)
+- [Base class and process-wide defaults](#base-class-and-process-wide-defaults)
 - [Token budget](#token-budget)
 - [Testing hooks](#testing-hooks)
 
@@ -303,6 +304,24 @@ agent.remove_hook(Metrics())       # by identity
 
 with agent.hooks_installed(DebugDump()):
     agent.system_one(state, questions)   # DebugDump only here
+```
+
+## Base class and process-wide defaults
+
+Subclass `BaseHook` to override only what you need, and register something once for the whole
+process instead of passing it to every `Agent` and `Router`.
+
+```python
+from laya import BaseHook, hooks
+
+class Audit(BaseHook):
+    def on_predict_end(self, ctx):
+        ship(ctx.run_id, ctx.results)
+
+hooks.set_default_hooks(hooks=[Audit()])   # runs for every call in the process
+
+# later, or in tests:
+hooks.clear_default_hooks()
 ```
 
 ## Token budget

@@ -238,8 +238,11 @@ class _FakeTok:
     cls_token_id, sep_token_id, mask_token_id, pad_token_id = 0, 1, 4, 2
     mask_token = "[MASK]"
 
-    def __call__(self, text, add_special_tokens=False):
-        return {"input_ids": [10 + (len(w) % 90) for w in text.split() if w]}
+    def __call__(self, text, add_special_tokens=False, truncation=False, max_length=None):
+        ids = [10 + (len(w) % 90) for w in text.split() if w]
+        if truncation and max_length:
+            ids = ids[:max_length]
+        return {"input_ids": ids}
 
 
 def _tiny_agent():
@@ -442,8 +445,11 @@ class _SeqTok:
     def __init__(self):
         self.vocab = {}
 
-    def __call__(self, text, add_special_tokens=False):
-        return {"input_ids": [self.vocab.setdefault(w, 100 + len(self.vocab)) for w in text.split()]}
+    def __call__(self, text, add_special_tokens=False, truncation=False, max_length=None):
+        ids = [self.vocab.setdefault(w, 100 + len(self.vocab)) for w in text.split()]
+        if truncation and max_length:
+            ids = ids[:max_length]
+        return {"input_ids": ids}
 
 
 _tok, _q = _SeqTok(), {"t": "noul", "ins": "Is it urgent?", "crit": None}

@@ -215,3 +215,22 @@ def test_concurrent_batch_load_deduplicates(monkeypatch):
     assert router.loaded == ["english", "multilingual"]
     assert all([r["answers"]["seen"] for r in result] == ["hello", "مرحبا"]
                for result in results)
+
+
+def test_equal_questions_with_different_option_order_score_separately(fake_agent):
+    """A question schema that arrives with a different key order must be scored with
+    its own order. Dict equality ignores insertion order, but options are positional
+    in the rendered sequence, so grouping reordered-but-equal schemas would make the
+    second request's batched answers differ from its single-request answers."""
+    built, calls = fake_agent
+    ordered = {"intent": {"type": "choice", "instructions": "Pick one",
+                          "criteria": {"zulu": "last", "alpha": "first"}}}
+    reordered = {"intent": {"type": "choice", "instructions": "Pick one",
+                            "criteria": {"alpha": "first", "zulu": "last"}}}
+    requests = [{"state": "one", "questions": ordered},
+                {"state": "two", "questions": reordered}]
+    results = Router(max_loaded=1, default="english").predict_batch(requests)
+    assert len(results) == 2
+    # separate agent calls, each carrying its own caller's option order
+    orders = [list(call[2]["intent"]["criteria"]) for call in calls]
+    assert orders == [["zulu", "alpha"], ["alpha", "zulu"]]

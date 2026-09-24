@@ -130,7 +130,7 @@ export async function predictShortlist(
   agent: unknown,
   state: unknown,
   questions: Record<string, QuestionDef>,
-  embedFn: EmbedFn,
+  embedFn?: EmbedFn | null,
   k: number = DEFAULT_SHORTLIST_K,
   predictKwargs: Record<string, unknown> = {},
 ): Promise<SystemOneResult & { shortlist: Record<string, ShortlistMeta> }> {
@@ -138,6 +138,15 @@ export async function predictShortlist(
     throw new TypeError("questions must be a dict of question id -> definition");
   }
   const checked = checkK(k);
+  const needsEmbed = Object.values(questions).some(
+    (qdef) =>
+      typeof qdef === "object" && qdef !== null && !Array.isArray(qdef) &&
+      (qdef as Record<string, unknown>)["type"] === "choice" &&
+      "criteria" in (qdef as Record<string, unknown>) &&
+      Object.keys((qdef as Record<string, unknown>)["criteria"] as object ?? {}).length > checked,
+  );
+  // Default bi-encoder is the agent itself; pass a dedicated embedFn only when it shortlists better.
+  const embed = embedFn ?? (needsEmbed ? embedFnFromAgent(agent) : null);
   const reduced: Record<string, unknown> = {};
   const meta: Record<string, ShortlistMeta> = {};
   for (const [qid, qdef] of Object.entries(questions)) {
@@ -149,7 +158,7 @@ export async function predictShortlist(
       throw new Error(`question ${JSON.stringify(qid)} is a choice but has no criteria`);
     }
     const q = qdef as Record<string, unknown>;
-    const { labels, scores, passthrough, n } = await rank(state, q["criteria"], embedFn, checked, q["instructions"]);
+    const { labels, scores, passthrough, n } = await rank(state, q["criteria"], embed as EmbedFn, checked, q["instructions"]);
     meta[qid] = { labels: [...labels], scores, k: checked, n, passthrough };
     if (passthrough) {
       reduced[qid] = qdef;

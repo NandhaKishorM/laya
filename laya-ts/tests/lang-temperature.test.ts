@@ -23,6 +23,8 @@ describe("lang_temperatures", () => {
     expect(r.answers.d.probabilities.x).toBeCloseTo(0.7311, 4);
     const regional: any = await a.systemOne("hi", CHOICE, { lang: "de-CH" });
     expect(regional.answers.d.probabilities.x).toBeCloseTo(0.7311, 4);
+    const batched: any = await a.predictBatch(["hi"], CHOICE, { lang: "de" });
+    expect(batched[0].answers.d.probabilities.x).toBeCloseTo(0.7311, 4);
   });
 
   it("no lang or an unknown lang keeps the base temperature", async () => {

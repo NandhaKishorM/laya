@@ -38,6 +38,53 @@ describe("audit regressions", () => {
     expect(rendered).toContain("refund request");
   });
 
+  it("preserves the newest conversation turn in systemOne and predictBatch", async () => {
+    const encoderBatches: any[] = [];
+    const testProvider = {
+      async runEncoder(batch: any) {
+        encoderBatches.push(batch);
+        return { lastHidden: Array(batch.inputIds.length).fill([[0, 0]]) };
+      },
+      async runHead(_hidden: any, batch: any) {
+        return {
+          logits: Array(batch.inputIds.length).fill([1, 0]),
+          act: Array(batch.inputIds.length).fill([1, 0]),
+        };
+      },
+    };
+    const agent = new Agent({
+      provider: testProvider,
+      tok: tokenizer(),
+      max_len: 64,
+      head_max_len: 32,
+    } as any);
+
+    const conv = [
+      { text: "old context that must be truncated" },
+      { text: "newest refund request" },
+    ];
+    const questions = { q: { type: "noul", instructions: "?" } };
+
+    // 1. systemOne
+    await agent.systemOne(conv, questions);
+    expect(encoderBatches.length).toBe(1);
+    const systemOneRendered = encoderBatches[0].inputIds[0]
+      .map((id: number) => String.fromCodePoint(id))
+      .join("");
+    expect(systemOneRendered).toContain("refund request");
+    expect(systemOneRendered).not.toContain("old context");
+
+    // 2. predictBatch
+    encoderBatches.length = 0;
+    await agent.predictBatch([conv], questions);
+    expect(encoderBatches.length).toBe(1);
+    const batchRendered = encoderBatches[0].inputIds[0]
+      .map((id: number) => String.fromCodePoint(id))
+      .join("");
+    expect(batchRendered).toContain("refund request");
+    expect(batchRendered).not.toContain("old context");
+  });
+
   it("renders custom noul labels and validates unsupported labels", () => {
     const q = toInternal({
       type: "noul",

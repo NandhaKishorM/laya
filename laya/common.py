@@ -2,6 +2,7 @@
 import json
 import math
 import os
+import threading
 from typing import Dict, List, Optional, Union
 
 import numpy as np
@@ -12,6 +13,20 @@ from torch.utils.checkpoint import checkpoint
 QTYPES = {"choice": 0, "score": 1, "noul": 2}
 QTYPE_NAMES = {v: k for k, v in QTYPES.items()}
 _DEFAULT_NOUL_LABELS = {"false": "false", "true": "true"}
+
+# A fast tokenizer is not read-only: `truncation=True` / `padding=True` make it call
+# `enable_truncation` / `enable_padding`, which mutates the shared Rust object. Upstream caches
+# one tokenizer per checkpoint directory and shares it across Agents, so concurrent `predict()`
+# calls -- on one Agent or on two that share the cache -- raced and raised
+# `RuntimeError: Already borrowed`. Serialise encoding instead: it is a small fraction of a call
+# next to the forward pass, and this keeps the tokenizer cache's single parse.
+_TOKENIZE_LOCK = threading.RLock()
+
+
+def encode_text(tok, text, **kwargs):
+    """Tokenize `text` while holding the lock a shared fast tokenizer needs."""
+    with _TOKENIZE_LOCK:
+        return tok(text, **kwargs)
 
 
 def serialize_state(state: Union[str, dict, list]) -> str:
@@ -86,13 +101,14 @@ def build_sequence(
     opts = render_options(q)
     order = option_order if option_order is not None else list(range(len(opts)))
     ins = str(q["ins"]).replace(mask_tok, " ")
-    head_ids = tok("%s question: %s" % (q["t"], ins), add_special_tokens=False)["input_ids"]
+    head_ids = encode_text(tok, "%s question: %s" % (q["t"], ins), add_special_tokens=False)["input_ids"]
     opt_ids = []
     for i in order:
         # Cap at the tokenizer, not after the fact: `[:48]` still makes the tokenizer process the
         # whole (possibly long) description. truncation=True, max_length=48 keeps the first 48
         # tokens, which is exactly what the previous slice produced.
-        opt_tokens = tok(
+        opt_tokens = encode_text(
+            tok,
             " " + opts[i].replace(mask_tok, " "),
             add_special_tokens=False,
             truncation=True,
@@ -113,7 +129,8 @@ def build_sequence(
     ids.append(tok.sep_token_id)
     room = max(0, max_len - len(ids) - 1)
     if state_ids is None:
-        state_ids = tok(serialize_state(state).replace(mask_tok, " "), add_special_tokens=False)["input_ids"]
+        state_ids = encode_text(tok, serialize_state(state).replace(mask_tok, " "),
+                                add_special_tokens=False)["input_ids"]
     # not state_ids[-room:]: with no room left, state_ids[-0:] is the whole state rather than none of it
     st = state_ids[max(0, len(state_ids) - room):] if truncate_left else state_ids[:room]
     ids = ids + st + [tok.sep_token_id]

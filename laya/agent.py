@@ -23,6 +23,7 @@ from .common import (
     answer_confidence,
     confidence_from_probs,
     _resolve_noul_labels,
+    encode_text,
     render_options,
     serialize_state,
     temp_bucket,
@@ -570,7 +571,8 @@ class Agent(HookRegistry):
         # re-serializing and re-tokenizing it inside build_sequence per question was pure
         # duplicated work. Tokenize in full and let build_sequence slice per question, so
         # left-truncation for conversation lists keeps its meaning.
-        state_ids = self.tok(
+        state_ids = encode_text(
+            self.tok,
             serialize_state(state).replace(self.tok.mask_token, " "),
             add_special_tokens=False,
         )["input_ids"]

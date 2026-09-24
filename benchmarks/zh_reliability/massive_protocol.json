@@ -1,0 +1,93 @@
+{
+  "version": "massive-alarm-experiment-v1",
+  "model_revision": "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67",
+  "seed": 20260924,
+  "max_len": 512,
+  "head_max_len": 192,
+  "dtype": "fp16",
+  "train_device": "TITAN RTX",
+  "evaluation_device": "RTX 2080 Ti",
+  "training": {
+    "max_successful_steps": 198,
+    "checkpoint_every": 11,
+    "selection": "minimum neutral-temperature dev NLL at steps 11,22,...,198",
+    "trainable": "head,type_emb,scorer only; encoder and action head frozen",
+    "micro_batch": 1,
+    "accumulation": 8,
+    "lr": 0.0001,
+    "weight_decay": 0.01,
+    "max_grad_norm": 1.0,
+    "epochs_note": "522 decision sequences ->66 accumulation windows/epoch; 198 successful updates is about 3 epochs. Overflow windows consume examples and may extend the final epoch."
+  },
+  "calibration": {
+    "minimum_per_type": 30,
+    "n_per_type": 64,
+    "bounds": [
+      0.5,
+      5.0
+    ],
+    "objective": "calibration partition NLL only",
+    "smoke_only": false
+  },
+  "conditions": {
+    "E0": "original checkpoint with runtime-clamped original temperatures",
+    "E1": "original checkpoint + calibration-fitted temperatures",
+    "E2": "dev-selected tuned checkpoint at T=1",
+    "E3": "same tuned checkpoint + calibration-fitted temperatures"
+  },
+  "analysis": {
+    "primary_metrics": [
+      "nll",
+      "accuracy"
+    ],
+    "secondary_metrics": [
+      "macro_f1",
+      "brier",
+      "ece"
+    ],
+    "paired_group_bootstrap": {
+      "repeats": 1000,
+      "seed": 20260924,
+      "interval": "percentile 95%",
+      "min_groups": 20
+    },
+    "comparisons": [
+      "E1-E0",
+      "E3-E2",
+      "E3-E1",
+      "E3-E0"
+    ],
+    "interpretation": "Exploratory single-seed estimates on 89 heuristic source groups; intervals conditional on the fixed fitted models and do not include training/calibration uncertainty; multiple comparisons are descriptive, not corrected significance tests.",
+    "test_access": "training and temperatures locked before E0/E1/E2/E3 test evaluations; no settings selected using test"
+  },
+  "timing": {
+    "conditions": [
+      "E0",
+      "E2"
+    ],
+    "warmup_batches": 10,
+    "measured_batches": 186,
+    "batch_decisions": 1,
+    "note": "all 186 test decisions once per timed stage; short utterances under max_len512, not 512-token stress. GPUs not exclusively reserved."
+  },
+  "limits": [
+    "public human-localized alarm subset, not naturally occurring customer-service logs",
+    "upstream intent-match evidence, no independent local human review",
+    "choice/noul share source text and group; not 942 independent utterances",
+    "base model exposure to MASSIVE/SLURP unknown",
+    "single seed, single task, no general Chinese improvement claim"
+  ],
+  "purpose": "Fixed experiment settings; the reproduction script binds actual paths, hashes and time before predictions.",
+  "expected_split_counts": {
+    "train": 522,
+    "dev": 106,
+    "calibration": 128,
+    "test": 186
+  },
+  "expected_group_counts": {
+    "train": 247,
+    "dev": 53,
+    "calibration": 62,
+    "test": 89
+  }
+}

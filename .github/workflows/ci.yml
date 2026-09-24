@@ -110,6 +110,7 @@ jobs:
           python tests/test_langchain.py
           python tests/test_portability.py
           python tests/test_training.py
+          python -m unittest discover -s tests -p 'test_zh_*.py' -v
 
       - name: Email cleaning tests
         run: python tests/test_email.py
@@ -191,9 +192,9 @@ jobs:
           python-version: "3.11"
       - run: pip install ruff
       - name: Ruff
-        run: ruff check laya/ --select=E9,F63,F7,F82,F401,F811 --line-length=120
+        run: ruff check laya/ benchmarks/zh_reliability tests/test_zh_*.py --select=E9,F63,F7,F82,F401,F811 --line-length=120
       - name: Byte-compile every module
-        run: python -m compileall -q laya/ tests/
+        run: python -m compileall -q laya/ tests/ benchmarks/zh_reliability
 
   build:
     name: package

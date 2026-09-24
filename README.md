@@ -364,11 +364,11 @@ On a shared benchmark (17,416 questions, one T4 GPU, identical questions per mod
 | MASSIVE intent, 13 other languages | 0.306 | **0.451** | **0.451** |
 | XNLI, English | **0.860** | 0.843 | **0.860** |
 | XNLI, 14 other languages | 0.521 | **0.731** | **0.731** |
-| Languages usable (>3x random) | 23 / 51 | 45 / 51 | **45 / 51** |
+| Languages usable (>3x random) | 23 / 51 | 48 / 51 | **48 / 51** |
 | Latency, 1 question (T4 GPU) | 39.5 ms | **32.8 ms** | **32.8 ms** |
 | Latency, 10 questions batched | 158.6 ms | **72.3 ms** | **72.3 ms** |
 
-The English checkpoint collapses on non-Latin scripts (Khmer scores **0.000 accuracy at 0.952 confidence**). Because the model stays confident while being wrong, confidence gating cannot save you. `Router` detects the script in <0.5 ms pure Python before the forward pass.
+The English checkpoint collapses on non-Latin scripts (Khmer scores **0.000 accuracy at 0.952 confidence**, the raw-temperature figure; **0.705** as served after the clamp). Because the model stays confident while being wrong, confidence gating cannot save you. `Router` detects the script in <0.5 ms pure Python before the forward pass.
 
 ### Production Preload & Memory
 
@@ -882,7 +882,7 @@ published, never measured here** (no TypeSafe API access), so sample sizes and p
 | Banking77 (72 vs 77 labels) | **0.870** | 0.425 | Jev leads on >20 options |
 | ECE *(lower better)* | 0.246 | **0.081** | 3× better (post-temperature) |
 | p50 latency, 1 question | 236–276 ms | **32.8 ms** | 7.8× faster |
-| Languages usable | *no published benchmark* | **45 of 51** | — |
+| Languages usable | *no published benchmark* | **48 of 51** | — |
 | Weights | closed API | **Apache 2.0** | — |
 | Cost | $0.042 / 1M tokens | **$0 self-hosted** | — |
 
@@ -933,10 +933,13 @@ All of the capability on this benchmark comes from fine-tuning.
 | XNLI, 14 other languages | 0.521 | **0.731** |
 
 Across all 51 languages the English checkpoint macro-averages **0.227** with macro ECE
-**0.733**, and only 23 of 51 languages clear 3x random. Khmer scores **0.000 at 95.2%
-confidence**. This is why [`Router`](#quickstart-route-mode-recommended) exists: the
-model's own confidence gives no warning, so the routing decision has to be made before the
-forward pass.
+**0.733** *(0.571 as served, after the temperature clamp)*, and only 23 of 51 languages clear
+3x random. `laya-multilingual` reaches **0.401** on the same 5,100 cases, clearing 3x random in
+48 of 51 — see [BENCHMARKS.md](BENCHMARKS.md) for why those multilingual numbers are a re-run
+rather than the committed file. Khmer scores **0.000 at 95.2% confidence** raw, **70.5%** as
+served, on the English checkpoint. This is why
+[`Router`](#quickstart-route-mode-recommended) exists: the model's own
+confidence gives no warning, so the routing decision has to be made before the forward pass.
 
 ### English tasks
 

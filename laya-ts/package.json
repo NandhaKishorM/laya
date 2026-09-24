@@ -1,0 +1,19 @@
+{
+  "name": "laya-ts",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "test": "vitest",
+    "test:package": "node --test tests/package-e2e.mjs",
+    "prepack": "npm run build"
+  },
+  "files": ["dist", "scripts"],
+  "devDependencies": { "typescript": "^5.6.0", "vitest": "^2.1.0" },
+  "optionalDependencies": { "onnxruntime-node": "^1.20.0", "onnxruntime-web": "^1.20.0" }
+}

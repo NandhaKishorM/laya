@@ -27,10 +27,15 @@ primary routing signal.
 `auto_task_detection=True` or pass `task="typed_decisions"`: it is fine-tuned on four specific
 synthetic workflows and should not be a silent default.
 """
+import gc
+import json
 import os
 import threading
-from typing import Any, Dict, List, Optional, Union
+import time
+from collections.abc import Sequence as SequenceABC
+from typing import Any, Dict, List, Optional, Sequence, Union
 
+from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
 from .lang import analyse
 
 # The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
@@ -120,7 +125,42 @@ def match_typed_decisions_workflow(questions: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-class Router:
+def _question_schema(questions: Dict[str, Any]) -> str:
+    """Order-sensitive signature of a question schema, for sharing forward passes.
+
+    sort_keys=False keeps insertion order significant at every nesting level, because
+    option order is positional in render_options. default=str matches render_criterion's
+    tolerance, so schemas that render identically still share a group.
+    """
+    return json.dumps(questions, sort_keys=False, ensure_ascii=False, default=str)
+
+
+# Subtags that mean "the English checkpoint can read this". Routing needs one bit -- is this
+# English Latin text, or something the English checkpoint cannot read -- not a language id, so
+# every other code resolves to the multilingual checkpoint.
+_ENGLISH_SUBTAGS = ("en", "eng", "english")
+
+
+def _english_from_code(value: Any) -> Optional[bool]:
+    """True/False for a language code, or None when the code identifies nothing.
+
+    Accepts the forms a caller is likely to have to hand: `"en"`, `"EN"`, `"en-US"`, the
+    POSIX `"en_US"` (which `$LANG` holds), and `"en_US.UTF-8"`. `None` here means "no usable
+    hint", which is what lets a language-identification model abstain.
+    """
+    if value is None:
+        return None
+    code = str(value).strip().lower()
+    if not code:
+        return None
+    code = code.split(".", 1)[0]                       # en_US.UTF-8 -> en_US
+    primary = code.replace("_", "-").split("-", 1)[0]  # en_US -> en
+    if not primary:
+        return None
+    return primary in _ENGLISH_SUBTAGS
+
+
+class Router(HookRegistry):
     """Lazily loads Laya checkpoints and sends each request to the right one.
 
         from laya import Router
@@ -133,26 +173,54 @@ class Router:
     Models are downloaded and built on first use. `max_loaded` caps how many stay resident
     (least-recently-used is evicted), because all three together are ~1.16B parameters.
 
+    The default is 2, because automatic routing only ever chooses between `english` and
+    `multilingual`: a cap of one rebuilds the checkpoint it just evicted on every script switch,
+    which is seconds per request on exactly the traffic the Router exists for. Traffic that only
+    ever sees one language never builds the second checkpoint, so the default costs it nothing.
+    Lower it to 1 for a memory-constrained host, and raise it to 3 (or preload) when
+    `auto_task_detection`, an explicit `model=` or an explicit `task=` can reach
+    `typed-decisions` as well.
+
     For a server or a demo, preload instead: a cold load costs seconds, while detection costs
-    microseconds, so anything that alternates languages at `max_loaded=1` reloads on every
-    request.
+    microseconds, so even the default still pays a load the first time a language appears.
 
         r = Router(preload=True)                    # all three resident, routing is free
         r = Router(preload=True, device="cuda")
         r.preload(["english", "multilingual"])      # or just the two you serve
+
+    Hooks are opt-in and run at the Router level: `on_route` sees the routing decision,
+    `on_load` / `on_evict` see model lifecycle, and `on_predict_start` / `on_predict_end`
+    wrap the whole route+infer call. See `laya.hooks`.
     """
+
+    # Opt-in defaults so a hand-built instance (`Router.__new__` in tests) works unset.
+    # `hooks`/`_hooks_mutex` come from HookRegistry.
+    hooks_raise = True
+    hooks_concurrent = True
+    _hooks_lock = None
 
     def __init__(
         self,
         models: Optional[Dict[str, str]] = None,
         device: Optional[str] = None,
         token: Optional[str] = None,
-        max_loaded: int = 1,
+        max_loaded: int = 2,
         default: str = "english",
         auto_task_detection: bool = False,
         standalone_repos: bool = False,
         preload: bool = False,
+        lang_guess: Optional[Any] = None,
+        hooks=None,
+        on_predict_start=None,
+        on_predict_end=None,
+        hooks_raise: bool = True,
+        hooks_concurrent: bool = True,
     ):
+        self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
+        self.hooks_raise = bool(hooks_raise)
+        self.hooks_concurrent = bool(hooks_concurrent)
+        self._hooks_lock = threading.RLock() if not hooks_concurrent else None
+        self._hooks_mutex = threading.Lock()
         self.models = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
         if models:
             self.models.update({normalise_name(k): v for k, v in models.items()})
@@ -161,6 +229,11 @@ class Router:
         self.max_loaded = max(1, int(max_loaded))
         self.default = normalise_name(default)
         self.auto_task_detection = bool(auto_task_detection)
+        # An opt-in language hint installed for every request: a code, or a callable taking the
+        # state and returning one (or None to abstain). Checked before the built-in detection,
+        # never before an explicit `model`, `task` or `lang`. The default path is unchanged, so
+        # the heuristic stays dependency-free; this is the seam for a real LID model.
+        self.lang_guess = lang_guess
         self._agents: Dict[str, Any] = {}
         self._order: List[str] = []          # least-recently-used first
         # Re-entrant lock guarding model lifecycle (load/unload/attach/preload) and the
@@ -187,8 +260,13 @@ class Router:
             agent = Agent(repo, device=self.device, token=self.token, subfolder=sub)
             self._agents[key] = agent
             self._order.append(key)
-            self._evict()
-            return agent
+            evicted = self._evict_locked()
+        # Lifecycle hooks fire after the lock is released, so a hook can safely call the Router.
+        self._dispatch_lifecycle("on_evict", evicted)
+        dispatch(compose_hooks(self.hooks), "on_load",
+                 PredictContext(states=[], questions={}, model=key, agent=agent, router=self),
+                 raise_errors=self.hooks_raise, lock=self._hooks_lock)
+        return agent
 
     def _touch(self, key: str):
         with self._lock:
@@ -196,15 +274,41 @@ class Router:
                 self._order.remove(key)
             self._order.append(key)
 
-    def _evict(self):
+    def _evict_locked(self) -> List[str]:
+        """Drop least-recently-used agents until `max_loaded` holds. Returns evicted names."""
+        evicted: List[str] = []
+        while len(self._order) > self.max_loaded:
+            victim = self._order.pop(0)
+            agent = self._agents.pop(victim, None)
+            if agent is not None:
+                evicted.append(victim)
+                del agent
+        if len(self._order) < len(self._agents):     # keep the two views consistent
+            for k in list(self._agents):
+                if k not in self._order:
+                    agent = self._agents.pop(k, None)
+                    if agent is not None:
+                        evicted.append(k)
+                        del agent
+        if evicted:
+            gc.collect()
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
+        return evicted
+
+    def _evict(self) -> List[str]:
         with self._lock:
-            while len(self._order) > self.max_loaded:
-                victim = self._order.pop(0)
-                self._agents.pop(victim, None)
-            if len(self._order) < len(self._agents):     # keep the two views consistent
-                for k in list(self._agents):
-                    if k not in self._order:
-                        self._agents.pop(k, None)
+            return self._evict_locked()
+
+    def _dispatch_lifecycle(self, event: str, names: List[str]) -> None:
+        for name in names:
+            dispatch(compose_hooks(self.hooks), event,
+                     PredictContext(states=[], questions={}, model=name, router=self),
+                     raise_errors=self.hooks_raise, lock=self._hooks_lock)
 
     def attach(self, name: str, agent: Any):
         """Register an already-built Agent under `name` instead of loading a second copy.
@@ -225,33 +329,60 @@ class Router:
 
         A cold load costs seconds; language detection costs microseconds. With every
         checkpoint resident, routing is effectively free -- which is what you want in a
-        server or a demo. `max_loaded` is raised to fit whatever is preloaded, otherwise
-        the LRU would immediately evict what this just built.
+        server or a demo. `max_loaded` is raised to fit both the requested checkpoints and
+        all already-resident agents, so incremental preloading does not evict either.
         """
-        names = [normalise_name(n) for n in (names or list(self.models))]
+        names = [normalise_name(n) for n in (list(self.models) if names is None else names)]
         with self._lock:
-            self.max_loaded = max(self.max_loaded, len(names), len(self._agents))
-            for n in names:
-                if n not in self._agents:      # an attached agent is already built
-                    self.load(n)
+            self.max_loaded = max(self.max_loaded, len(set(names) | set(self._agents)))
+        for n in names:
+            with self._lock:
+                already = n in self._agents    # an attached agent is already built
+            if not already:
+                # load() dispatches on_load outside the lock; do not hold it across the call.
+                self.load(n)
         return self
 
     def unload(self, name: Optional[str] = None):
         """Free one model, or all of them."""
         with self._lock:
             if name is None:
+                freed = list(self._order)
                 self._agents.clear()
                 self._order.clear()
             else:
                 key = normalise_name(name)
-                self._agents.pop(key, None)
+                agent = self._agents.pop(key, None)
                 if key in self._order:
                     self._order.remove(key)
+                freed = [key] if agent is not None else []
+                del agent
+            gc.collect()
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
+        self._dispatch_lifecycle("on_evict", freed)
 
     @property
     def loaded(self) -> List[str]:
         with self._lock:
             return list(self._order)
+
+    def _resolve_hint(self, hint: Any, state: Union[str, dict, list, None]) -> Optional[bool]:
+        """True/False for a hint about whether the English checkpoint can read `state`.
+
+        `hint` is either a language code or a callable taking the state. Anything the hint
+        cannot answer returns None, which makes `route` fall through to detection rather than
+        picking a checkpoint on no evidence.
+        """
+        if hint is None:
+            return None
+        if callable(hint):
+            hint = hint(state)
+        return _english_from_code(hint)
 
     # ------------------------------------------------------------------ routing
     def route(
@@ -261,11 +392,43 @@ class Router:
         model: Optional[str] = None,
         task: Optional[str] = None,
         lang: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
+        hooks=None,
+        hooks_raise: Optional[bool] = None,
+    ) -> RouteDecision:
+        """Decide which checkpoint to use, then let `on_route` hooks observe or replace it.
+
+        `ctx.decision` is the `RouteDecision`; a hook may replace it (for example to pin a
+        checkpoint) and the replacement is what gets returned and used. `hooks` are per-call
+        hooks, appended after any installed on the Router.
+        """
+        decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
+        raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
+        active = compose_hooks(self.hooks, hooks)
+        ctx = PredictContext(states=[state], questions=questions or {}, decision=decision, router=self)
+        dispatch(active, "on_route", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+        return ctx.decision
+
+    def _route(
+        self,
+        state: Union[str, dict, list, None],
+        questions: Optional[Dict[str, Any]] = None,
+        model: Optional[str] = None,
+        task: Optional[str] = None,
+        lang: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
     ) -> RouteDecision:
         """Decide which checkpoint to use, without loading or running anything.
 
         Precedence: explicit `model` > explicit `task` > detected workflow (opt-in) >
-        explicit `lang` > detected script/language > default.
+        explicit `lang` > `lang_guess` > detected script/language > default.
+
+        `lang_guess` is an opt-in hint -- a language code or a callable taking the state --
+        checked after an explicit `lang` and before the built-in detection. It only answers
+        "can the English checkpoint read this?", so any non-English code routes to the
+        multilingual checkpoint. A hint that resolves to nothing falls through to detection,
+        which lets a language-identification model abstain. Pass one here, or set
+        `Router(lang_guess=...)` to apply it to every request.
         """
         if model is not None:
             key = normalise_name(model)
@@ -279,14 +442,31 @@ class Router:
 
         workflow = match_typed_decisions_workflow(questions or {})
         if workflow and self.auto_task_detection:
-            return RouteDecision(model="typed-decisions", repo=self.models["typed-decisions"],
+            return RouteDecision(model="typed-decisions", repo=_repo_str(self.models["typed-decisions"]),
                                  reason="question ids match the %r typed-decisions workflow" % workflow,
                                  detection=None, workflow=workflow)
 
         if lang is not None:
-            key = "english" if str(lang).lower().split("-")[0] in ("en", "eng", "english") else "multilingual"
-            return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
-                                 detection=None, workflow=workflow)
+            # An explicit `lang` is decisive only when the code names a language. Blank or
+            # whitespace resolves to no usable hint, so it falls through to lang_guess/detection
+            # exactly as an abstaining hint does; real English/non-English codes still route now.
+            resolved = _english_from_code(lang)
+            if resolved is not None:
+                key = "english" if resolved else "multilingual"
+                return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit lang=%r" % lang,
+                                     detection=None, workflow=workflow)
+
+        # Caller-supplied hint, per-call first then the one installed on the Router. Only a hint
+        # that actually answers the question routes here; anything else falls through.
+        for source, hint in (("lang_guess", lang_guess), ("Router(lang_guess=...)", self.lang_guess)):
+            resolved = self._resolve_hint(hint, state)
+            if resolved is not None:
+                key = "english" if resolved else "multilingual"
+                return RouteDecision(
+                    model=key, repo=_repo_str(self.models[key]),
+                    reason="%s: the caller identified this as %s text" % (
+                        source, "English" if resolved else "non-English"),
+                    detection=None, workflow=workflow)
 
         det = analyse(state)
         if det["script"] == "unknown":
@@ -305,6 +485,14 @@ class Router:
                 # because no stopword list here covers it.
                 reason = ("Latin script, language not identified but %.0f%% non-English letters; "
                           "not safe for the English checkpoint" % (100 * float(det["diacritic_rate"])))
+        elif det["language_undecided"]:
+            # Nothing identifies the language: too short, or only content words ("Quero cancelar",
+            # "Esqueci minha senha"). That is no evidence of English either, so it takes the same
+            # `default` as a state with no letters. A deployment that serves mostly non-English
+            # traffic sets `Router(default="multilingual")`; the stock default keeps it English.
+            key = self.default
+            reason = ("Latin script, language not identified and no non-English letters; "
+                      "using default (%s)" % key)
         else:
             key = "english"
             reason = "English Latin text"
@@ -319,18 +507,311 @@ class Router:
         model: Optional[str] = None,
         task: Optional[str] = None,
         lang: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
+        hooks=None,
+        on_predict_start=None,
+        on_predict_end=None,
+        hooks_raise: Optional[bool] = None,
+        max_len: Optional[int] = None,
+        head_max_len: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
 
         The result is the usual `system_one` payload plus a `routing` key recording the decision.
+        Router-level `on_predict_start` / `on_predict_end` hooks wrap the whole route+infer call
+        and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
+        token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
-        decision = self.route(state, questions, model=model, task=task, lang=lang)
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
+        raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
+
+        # Per-call hooks apply to the whole call, including on_route inside route().
+        decision = self.route(state, questions, model=model, task=task, lang=lang,
+                              lang_guess=lang_guess, hooks=hooks, hooks_raise=hooks_raise)
         agent = self.load(decision["model"])
-        result = agent.system_one(state, questions)
-        result["routing"] = dict(decision)
-        return result
+        effective_lang = lang
+        if effective_lang is None and decision.get("detection") and decision["detection"].get("language"):
+            effective_lang = decision["detection"]["language"]
+
+        ctx = PredictContext(states=[state], questions=questions, decision=dict(decision),
+                             model=decision["model"], agent=agent, router=self,
+                             max_len=max_len, head_max_len=head_max_len)
+        try:
+            dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+            if ctx.results is None:
+                # Pass token-budget overrides only when set, so any Agent-like object that does
+                # not accept them still works on the default path.
+                overrides = {}
+                if ctx.max_len is not None:
+                    overrides["max_len"] = ctx.max_len
+                if ctx.head_max_len is not None:
+                    overrides["head_max_len"] = ctx.head_max_len
+                
+                try:
+                    result = agent.system_one(ctx.states[0], ctx.questions, lang=effective_lang, **overrides)
+                except TypeError as e:
+                    if "unexpected keyword argument 'lang'" in str(e):
+                        result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
+                    else:
+                        raise
+                result["routing"] = dict(decision)
+                ctx.results = [result]
+            else:
+                # A cache hit short-circuits inference, but Router.predict still promises a
+                # `routing` key. Add it without overwriting a routing the cached payload has.
+                for result in ctx.results:
+                    if isinstance(result, dict):
+                        result.setdefault("routing", dict(decision))
+        except BaseException as exc:
+            ctx.error = exc
+            try:
+                dispatch(active, "on_error", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+            except BaseException as hook_exc:
+                exc.__context__ = hook_exc
+            raise
+        finally:
+            ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
+            if ctx.results is not None:
+                ctx.usage = aggregate_usage(ctx.results)
+            try:
+                dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+            except BaseException as hook_exc:
+                if ctx.error is not None:
+                    ctx.error.__context__ = hook_exc
+                else:
+                    raise
+        return ctx.results[0]
+
+    def decide(self, state: Union[str, dict, list], schema: Any = None, *,
+               questions: Optional[Dict[str, Any]] = None, return_details: bool = False,
+               **predict_kwargs) -> Any:
+        """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
+
+        See `laya.structured`. Pass exactly one of `schema` or `questions`; extra keyword arguments
+        (for example `model=`, `task=`, `hooks=`) are forwarded to `predict`.
+        """
+        from .structured import decide as _decide
+        return _decide(self, state, schema, questions=questions,
+                       return_details=return_details, **predict_kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.unload()
+        return False
 
     system_one = predict
+
+    def route_batch(self, requests: Sequence[Dict[str, Any]]) -> List[RouteDecision]:
+        """Route a heterogeneous request batch without loading any checkpoints.
+
+        Each request is a mapping with ``state`` and ``questions`` plus the same optional
+        routing overrides accepted by :meth:`route`: ``model``, ``task``, ``lang`` and
+        ``lang_guess``. The returned decisions preserve input order.
+
+        This is intentionally separate from inference so callers can inspect or aggregate
+        routing decisions before paying model-load cost.
+        """
+        if not isinstance(requests, SequenceABC) or isinstance(requests, (str, bytes)):
+            raise TypeError("requests must be a sequence of request dictionaries")
+
+        decisions: List[RouteDecision] = []
+        for i, request in enumerate(requests):
+            if not isinstance(request, dict):
+                raise TypeError("request %d must be a dict, got %s" % (i, type(request).__name__))
+            if "state" not in request:
+                raise ValueError("request %d is missing required key 'state'" % i)
+            if "questions" not in request:
+                raise ValueError("request %d is missing required key 'questions'" % i)
+
+            questions = request["questions"]
+            if not isinstance(questions, dict):
+                raise TypeError(
+                    "request %d 'questions' must be a dict, got %s"
+                    % (i, type(questions).__name__)
+                )
+
+            decisions.append(
+                self.route(
+                    request["state"],
+                    questions,
+                    model=request.get("model"),
+                    task=request.get("task"),
+                    lang=request.get("lang"),
+                    lang_guess=request.get("lang_guess"),
+                )
+            )
+
+        return decisions
+
+    def predict_batch(
+        self,
+        requests: Sequence[Dict[str, Any]],
+        batch_size: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Route and execute a heterogeneous request batch with minimal model churn.
+
+        Requests are routed first and grouped by checkpoint. Within each checkpoint,
+        requests that share the same question schema are passed to
+        ``Agent.predict_batch`` so their states can share forward passes. Results are
+        then restored to the original request order.
+
+        Requests may independently specify ``model``, ``task``, ``lang`` or
+        ``lang_guess`` and may use different question schemas.
+
+        Router-level predict hooks run per request, as ``predict`` runs them: each request
+        gets its own ``PredictContext``, so ``on_predict_start`` can replace that request's
+        state, questions or token budget, or ``ctx.skip(...)`` it, and ``on_predict_end``
+        sees and may replace its result. Requests are grouped for the forward pass after
+        their start hooks have run. If the batch fails, every request whose start hook ran
+        and that has no result gets ``on_error``, then every started request gets
+        ``on_predict_end``, before the exception propagates.
+
+        Args:
+            requests: Sequence of request dictionaries. Every item requires ``state`` and
+                ``questions`` and may include ``model``, ``task``, ``lang`` or
+                ``lang_guess`` overrides.
+            batch_size: Optional maximum number of states per Agent forward-pass batch.
+
+        Returns:
+            One normal Router prediction result per request, in the same order as the input.
+        """
+        decisions = self.route_batch(requests)
+        if not decisions:
+            return []
+
+        # Dict insertion order preserves the order in which model groups first appear. This
+        # keeps cache effects deterministic while collapsing an arbitrarily interleaved
+        # workload to at most one load per routed checkpoint for this call.
+        groups: Dict[str, List[int]] = {}
+        for i, decision in enumerate(decisions):
+            # Indexed, not `.model`: an on_route hook may replace the decision with a plain dict,
+            # which `predict` accepts too.
+            groups.setdefault(decision["model"], []).append(i)
+
+        results: List[Optional[Dict[str, Any]]] = [None] * len(requests)
+        active = list(self.hooks)
+        raise_errors = self.hooks_raise
+
+        for model_name, indices in groups.items():
+            agent = self.load(model_name)
+            started: List[PredictContext] = []
+            try:
+                # One context per request, built and started the way `predict` does it, so a
+                # start hook sees -- and can redact, rewrite or skip -- each request before it
+                # joins a shared forward pass.
+                for i in indices:
+                    ctx = PredictContext(states=[requests[i]["state"]], questions=requests[i]["questions"],
+                                         decision=dict(decisions[i]), model=model_name, agent=agent,
+                                         router=self)
+                    started.append(ctx)
+                    dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+
+                # Agent.predict_batch evaluates one shared question schema and token budget over
+                # many states. Preserve Router's heterogeneous-request API by splitting each
+                # checkpoint group again on what the start hooks left, so a rewritten question
+                # set or `ctx.max_len` only applies to its own request.
+                question_groups: List[Dict[str, Any]] = []
+                for i, ctx in zip(indices, started):
+                    if ctx.results is not None:
+                        # A cache hit short-circuits inference; keep the `routing` key predict adds.
+                        for result in ctx.results:
+                            if isinstance(result, dict):
+                                result.setdefault("routing", dict(decisions[i]))
+                        continue
+                    # Pass token-budget overrides only when set, as `predict` does, so an
+                    # Agent-like object that does not accept them still works.
+                    overrides = {key: value for key, value in (("max_len", ctx.max_len),
+                                                               ("head_max_len", ctx.head_max_len))
+                                 if value is not None}
+                    # Order-sensitive at every nesting level (#166): options are positional, so two
+                    # equal schemas with different key orders must not share a group.
+                    schema = _question_schema(ctx.questions)
+                    for group in question_groups:
+                        if group["schema"] == schema and group["overrides"] == overrides:
+                            group["items"].append((i, ctx))
+                            break
+                    else:
+                        question_groups.append({
+                            "questions": ctx.questions,
+                            "schema": schema,
+                            "overrides": overrides,
+                            "items": [(i, ctx)],
+                        })
+
+                for group in question_groups:
+                    items = group["items"]
+                    batch_results = agent.predict_batch(
+                        [ctx.states[0] for _, ctx in items],
+                        group["questions"],
+                        batch_size=batch_size,
+                        **group["overrides"],
+                    )
+
+                    if len(batch_results) != len(items):
+                        raise RuntimeError(
+                            "internal error: Agent.predict_batch returned %d results for %d states"
+                            % (len(batch_results), len(items))
+                        )
+
+                    for (i, ctx), result in zip(items, batch_results):
+                        result["routing"] = dict(decisions[i])
+                        ctx.results = [result]
+            except BaseException as exc:
+                # Every started request is ended, so a hook that opens something in start (a
+                # span, an in-flight count) always sees the matching end. A request that already
+                # has its result keeps it; the rest failed with the batch.
+                for ctx in started:
+                    if ctx.results is None:
+                        ctx.error = exc
+                        try:
+                            dispatch(active, "on_error", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+                        except BaseException as hook_exc:
+                            exc.__context__ = hook_exc
+                try:
+                    self._end_contexts(active, started, raise_errors)
+                except BaseException as hook_exc:
+                    exc.__context__ = hook_exc
+                raise
+
+            self._end_contexts(active, started, raise_errors)
+            for i, ctx in zip(indices, started):
+                results[i] = ctx.results[0]
+
+        # Every input index is assigned exactly once by construction. Keep this assertion local
+        # so a future refactor cannot silently return a partially-filled batch.
+        if any(result is None for result in results):
+            raise RuntimeError("internal error: batch execution did not produce every result")
+
+        return [result for result in results if result is not None]
+
+    predict_many = predict_batch
+
+    def _end_contexts(self, active: List[Any], contexts: List[PredictContext], raise_errors: bool) -> None:
+        """Finish each request of a batch the way `predict`'s `finally` finishes one.
+
+        Every context gets its `on_predict_end` even if an earlier one's end hook raises; the
+        first such failure is raised afterwards. On a context that already failed, a raising
+        end hook is chained onto its error instead, as in `predict`. Timing and usage are set on
+        all of them first, so one request's `elapsed_ms` never includes another's end hooks.
+        """
+        now = time.perf_counter()
+        for ctx in contexts:
+            ctx.elapsed_ms = (now - ctx.started_at) * 1000.0
+            if ctx.results is not None:
+                ctx.usage = aggregate_usage(ctx.results)
+        first_error: Optional[BaseException] = None
+        for ctx in contexts:
+            try:
+                dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+            except BaseException as hook_exc:
+                if ctx.error is not None:
+                    ctx.error.__context__ = hook_exc
+                elif first_error is None:
+                    first_error = hook_exc
+        if first_error is not None:
+            raise first_error
 
     def __repr__(self):
         return "Router(loaded=%s, max_loaded=%d, default=%r)" % (self.loaded, self.max_loaded, self.default)

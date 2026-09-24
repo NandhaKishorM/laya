@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import torch  # noqa: E402
 from huggingface_hub.utils import filter_repo_objects  # noqa: E402
-from safetensors.torch import save_file  # noqa: E402
+from safetensors.torch import load_file, save_file  # noqa: E402
 from tokenizers import Tokenizer  # noqa: E402
 from tokenizers.models import WordLevel  # noqa: E402
 from transformers import BertConfig, BertModel, PreTrainedTokenizerFast  # noqa: E402
@@ -49,7 +49,9 @@ class DownloadTests(unittest.TestCase):
             "encoder": "unused/offline", "head_layers": 0, "act_costs": {"act": 0},
             "max_len": 64, "head_max_len": 32,
         }))
-        cls.runtime_files = {str(p.relative_to(cls.repo)) for p in cls.repo.rglob("*") if p.is_file()}
+        # Hub repository paths use '/' even when the fixture lives on Windows.
+        cls.runtime_files = {p.relative_to(cls.repo).as_posix()
+                             for p in cls.repo.rglob("*") if p.is_file()}
         for subfolder in ("multilingual", "typed-decisions", "variants/english"):
             for filename in cls.runtime_files:
                 target = cls.repo / subfolder / filename
@@ -112,6 +114,29 @@ class DownloadTests(unittest.TestCase):
                     agent = load(str(self.repo), device="cpu", subfolder=subfolder)
                     self.assertEqual(agent.predict("hello", self.questions), self.expected)
             download.assert_not_called()
+
+    def test_loading_skips_initialization_and_preserves_weights(self):
+        weights = load_file(self.repo / "model.safetensors")
+        for bundled_encoder in (True, False):
+            with self.subTest(bundled_encoder=bundled_encoder), tempfile.TemporaryDirectory() as destination:
+                path = Path(destination)
+                for filename in self.runtime_files:
+                    if not bundled_encoder and filename.startswith("encoder/"):
+                        continue
+                    target = path / filename
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(self.repo / filename, target)
+                cfg_path = path / "rl_agent_config.json"
+                cfg = json.loads(cfg_path.read_text())
+                cfg["encoder"] = str(self.repo / "encoder")
+                cfg_path.write_text(json.dumps(cfg))
+                rng = torch.get_rng_state()
+                with patch("transformers.AutoModel.from_pretrained", side_effect=AssertionError("Unused base weights")):
+                    agent = load(str(path), device="cpu")
+                self.assertTrue(torch.equal(torch.get_rng_state(), rng), "Loading initialized random weights")
+                for name, value in agent.model.state_dict().items():
+                    torch.testing.assert_close(value, weights[name], rtol=0, atol=0)
+                self.assertEqual(agent.predict("hello", self.questions), self.expected)
 
 
 if __name__ == "__main__":

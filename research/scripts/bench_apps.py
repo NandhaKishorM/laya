@@ -12,7 +12,7 @@ Workflows (the demo Space's tabs), each on real labelled data:
 Jev-comparable tasks (AbdelStark/jev-benchmarks published Jev accuracy on these):
   ag_news 0.910 | banking77 0.870 | dair emotion 0.480 (Brier 0.846, NLL 5.588)
 
-  USE_TF=0 python3 notebooks/bench_apps.py
+  USE_TF=0 python3 research/scripts/bench_apps.py
 """
 import gc
 import json
@@ -30,8 +30,8 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(REPO, "laya"))
-sys.path.insert(0, os.path.join(REPO, "notebooks"))
+sys.path.insert(0, os.path.dirname(REPO))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # bench_local lives here
 
 import laya  # noqa: E402
 from bench_local import load, metrics, score_cases, softmax_t, temp_for  # noqa: E402

@@ -7,7 +7,7 @@ Part B  typed-decisions (400 cases / 2,000 decisions) on all three checkpoints, 
 
 Writes local_benchmark_results.json.
 
-  USE_TF=0 python3 notebooks/bench_local.py [--langs N] [--per-lang N] [--skip-a] [--skip-b]
+  USE_TF=0 python3 research/scripts/bench_local.py [--langs N] [--per-lang N] [--skip-a] [--skip-b]
 """
 import argparse
 import gc
@@ -27,7 +27,7 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(REPO, "laya"))
+sys.path.insert(0, os.path.dirname(REPO))
 
 import laya  # noqa: E402
 from laya.common import QTYPES, build_sequence, collate_items, render_options, temp_bucket  # noqa: E402
@@ -112,8 +112,8 @@ def ece_score(conf, corr, bins=15):
     if not len(conf):
         return float("nan")
     e, edges = 0.0, np.linspace(0, 1, bins + 1)
-    for lo, hi in zip(edges[:-1], edges[1:]):
-        s = (conf > lo) & (conf <= hi)
+    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+        s = (conf >= lo if i == 0 else conf > lo) & (conf <= hi)
         if s.any():
             e += s.mean() * abs(conf[s].mean() - corr[s].mean())
     return float(e)

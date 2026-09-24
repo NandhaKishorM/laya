@@ -1,0 +1,43 @@
+{
+  "source_repository": "https://github.com/Adkid-Zephyr/chinese-workflow-decision-bench",
+  "source_commit": "b694dc6dbcba12c5bcf8d51b60ec48ff6ab87d57",
+  "scope": "Archived published benchmark only; no post-training results, weights, private chats or English pilot included.",
+  "files": [
+    {
+      "path": "data/cases.jsonl",
+      "sha256": "56bdd8cbb96fc65a07e1caf0c1ebcac03cb6a56079944a7af4bf03d71846e3ba"
+    },
+    {
+      "path": "data/manifest.json",
+      "sha256": "c5c93e043cd993f7dd0fd11a0b71f1ef7702684396c7b961df98eb51e0f62cae"
+    },
+    {
+      "path": "results/v1/jev/metadata.json",
+      "sha256": "9135a8924bb45ac0dc16b8a768540d5b6bd821e8e2dcecaa8749a3001e14f3f4"
+    },
+    {
+      "path": "results/v1/jev/raw.jsonl",
+      "sha256": "a1dfd4de1819117cbd1470a187e2e8dd8f4cce7469c9c3c98befe1a282beab23"
+    },
+    {
+      "path": "results/v1/laya/metadata.json",
+      "sha256": "999851aa84a713ebd983d3d05ca074eadc5d2fe70af6dfa0efc546582607c40a"
+    },
+    {
+      "path": "results/v1/laya/raw.jsonl",
+      "sha256": "1c8dab17062f9244888f580907b62a845cf1e7b199e7041810a9301bd55c28e0"
+    },
+    {
+      "path": "results/v1/summary.json",
+      "sha256": "ec4a60b495b6d47192f8a82a1258bcf46db1e33396b1caf3cff706f0435a934c"
+    },
+    {
+      "path": "results/v1/environment_check.json",
+      "sha256": "f8b75b7ac5fbe5b1f298542b217e5d7b6d43407b5542ff816256d8ff5c21711a"
+    },
+    {
+      "path": "results/v1/option_token_audit.json",
+      "sha256": "d9b8b97e858ed4561bea0dd9344c99d523f9c26cb8e85cfb220636cbd3a13d4a"
+    }
+  ]
+}

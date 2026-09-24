@@ -1,0 +1,23 @@
+services:
+  laya:
+    build:
+      context: .
+      args:
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cpu}"
+        TORCH_VERSION: "${LAYA_TORCH_VERSION:-2.14.0}"
+    environment:
+      LAYA_DEVICE: "${LAYA_DEVICE:-cpu}"
+      LAYA_MODEL: "${LAYA_MODEL:-auto}"
+      LAYA_MODEL_PATH: "${LAYA_MODEL_PATH:-}"
+      LAYA_REQUEST_FILE: "${LAYA_REQUEST_FILE:-/opt/laya/examples/request.json}"
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"
+      HF_TOKEN: "${HF_TOKEN:-}"
+      HF_TOKEN_FILE: "${HF_TOKEN_FILE:-}"
+      OMP_NUM_THREADS: "${OMP_NUM_THREADS:-4}"
+    volumes:
+      - model-cache:/home/laya/.cache/huggingface
+    init: true
+
+volumes:
+  model-cache:
+    name: "${LAYA_CACHE_VOLUME:-${COMPOSE_PROJECT_NAME}_model-cache}"

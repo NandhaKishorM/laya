@@ -1,0 +1,21 @@
+# Only package sources, the runnable example and build metadata belong here.
+**
+!Dockerfile
+!.dockerignore
+!pyproject.toml
+!setup.py
+!README.md
+!LICENSE
+!docker/
+!docker/entrypoint.py
+!docker/check_torch.py
+!laya/
+!laya/**
+!examples/
+!examples/docker/
+!examples/docker/quickstart.py
+!examples/docker/request.json
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*

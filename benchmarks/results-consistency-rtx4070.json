@@ -1,0 +1,27 @@
+{
+  "bench": [],
+  "consistency": [
+    {
+      "checkpoint": "english",
+      "compared": 600,
+      "max_delta": 0.022,
+      "flips": 0,
+      "worst": "english#1/urgency"
+    },
+    {
+      "checkpoint": "multilingual",
+      "compared": 600,
+      "max_delta": 0.0063,
+      "flips": 0,
+      "worst": "multilingual#0/churn_risk"
+    },
+    {
+      "checkpoint": "typed-decisions",
+      "compared": 600,
+      "max_delta": 0.0102,
+      "flips": 0,
+      "worst": "typed-decisions#4/urgency"
+    }
+  ],
+  "router": []
+}

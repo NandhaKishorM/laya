@@ -1,0 +1,32 @@
+{
+  "backend": "jev",
+  "started_at": "2026-09-21T16:00:31.901840+00:00",
+  "cases_sha256": "c85184ee38378e1bfc79ec221aab8688a31ef1c50a3b8fb4e120d73d5fde8ebc",
+  "requests_sha256": "8bfd7879f0974a762315be87f1d62c026c94ebf8699f69cd1c806b9767ac9cb9",
+  "repeats": 3,
+  "seed": 20260921,
+  "python": "3.11.9",
+  "os": "Darwin",
+  "architecture": "arm64",
+  "warmups": [
+    {
+      "mode": "choice",
+      "elapsed_ms": 608.8652079924941,
+      "usage": {
+        "input_tokens": 771,
+        "output_tokens": 46
+      }
+    },
+    {
+      "mode": "four_noul",
+      "elapsed_ms": 276.7584589892067,
+      "usage": {
+        "input_tokens": 1149,
+        "output_tokens": 68
+      }
+    }
+  ],
+  "model": "jev-1.13.0",
+  "httpx": "0.28.1",
+  "finished_at": "2026-09-21T16:02:20.270660+00:00"
+}

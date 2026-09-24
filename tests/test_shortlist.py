@@ -468,6 +468,51 @@ check_raises("encoder/bad max_length", lambda: embed_fn_from_agent(tiny, max_len
 check_raises("encoder/bad batch_size", lambda: embed_fn_from_agent(tiny, batch_size=True))
 
 
+# ---------------------------------------------------------------- device changes, simulated entirely on CPU
+class DeviceRecordingTensor:
+    def __init__(self, tensor, requests):
+        self.tensor = tensor
+        self.requests = requests
+
+    def to(self, device):
+        # Record placement requests, but never allocate a CUDA tensor in these tests.
+        self.requests.append(str(device))
+        return self.tensor
+
+
+class DeviceRecordingTok(TinyTok):
+    def __init__(self):
+        super().__init__()
+        self.requests = []
+
+    def __call__(self, *args, **kwargs):
+        encoded = super().__call__(*args, **kwargs)
+        return {key: DeviceRecordingTensor(value, self.requests) for key, value in encoded.items()}
+
+
+moving = TinyAgent()
+moving.tok = DeviceRecordingTok()
+moving.device = torch.device("cuda")
+moving_fn = embed_fn_from_agent(moving, batch_size=2)
+# A callback can outlive Agent.system_one's GPU-to-CPU fallback, even before its
+# first use. Later invocations must also follow the current device, not hardcode CPU.
+for call, target in enumerate(("cpu", "cuda:1", "cpu")):
+    moving.device = torch.device(target)
+    moving.encoder.train(call == 1)
+    moving.tok.requests.clear()
+    pooled = moving_fn(["ab", "a", "abc"])
+    check("device/call %d places both tensors in every batch" % call, moving.tok.requests, [target] * 4)
+    check("device/call %d keeps batch boundaries" % call, moving.tok.batches[-2:], [["ab", "a"], ["abc"]])
+    check("device/call %d keeps masked pooling" % call, pooled.tolist(), [[3.5, 1.0], [3.0, 1.0], [4.0, 1.0]])
+    check("device/call %d keeps output dtype" % call, pooled.dtype, np.dtype("float32"))
+    check("device/call %d preserves encoder mode" % call, moving.encoder.training, call == 1)
+
+before_empty = (len(moving.tok.batches), moving.encoder.forwards, len(moving.tok.requests))
+check("device/empty input shape", moving_fn([]).shape, (0, 2))
+check("device/empty input skips tokenization, forward and placement",
+      (len(moving.tok.batches), moving.encoder.forwards, len(moving.tok.requests)), before_empty)
+
+
 # ---------------------------------------------------------------- end-to-end helper: shortlist then the real question normalizer only
 # Confirms a reduced choice still has one criterion per kept label, which is what
 # system_one would score. No weights, no forward.

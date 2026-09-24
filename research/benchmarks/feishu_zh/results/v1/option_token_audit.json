@@ -1,0 +1,32 @@
+{
+  "option_token_lengths": {
+    "choice": [
+      [
+        24,
+        17,
+        22,
+        36
+      ]
+    ],
+    "four_noul": [
+      [
+        9,
+        7
+      ],
+      [
+        9,
+        7
+      ],
+      [
+        9,
+        7
+      ],
+      [
+        9,
+        7
+      ]
+    ]
+  },
+  "per_option_limit": 48,
+  "any_option_truncated": false
+}

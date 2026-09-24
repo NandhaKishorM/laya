@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.3.5"
+version = "0.3.20"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,7 +34,37 @@ dependencies = [
 
 [tool.setuptools]
 # assets/, research/ and notebooks/ sit in the root, so auto-discovery bails out.
-packages = ["laya"]
+packages = ["laya", "laya.mcp", "laya.integrations"]
+
+[project.optional-dependencies]
+# `pip install laya[serve]` adds the HTTP server (laya.serve / the laya-serve CLI).
+serve = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.0",
+    "python-multipart>=0.0.9",  # examples/server.py form uploads
+]
+# `pip install laya[fast]` adds the TileLang GPU fast path (laya/fast.py); everything else works without it.
+fast = ["tilelang>=0.1.14"]
+
+# `pip install laya[mcp]` adds the MCP stdio server (laya.mcp / the laya-mcp-server CLI).
+mcp = ["mcp>=2.2.0"]
+
+onnx = ["onnx", "onnxruntime"]
+
+# `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
+langchain = [
+    "langchain-core>=0.2.0",
+    "langgraph>=0.1.0",
+]
+langgraph = [
+    "langchain-core>=0.2.0",
+    "langgraph>=0.1.0",
+]
+
+[project.scripts]
+laya = "laya.cli:main"
+laya-serve = "laya.serve:main"
+laya-mcp-server = "laya.mcp.server:main"
 
 [project.urls]
 Homepage = "https://huggingface.co/convaiinnovations/laya"

@@ -277,16 +277,20 @@ can be re-checked without a GPU.
 | checkpoint | type | n | max \|p_fast - p_stock\| | max \|p_fast - p_fp32\| | max \|p_stock - p_fp32\| | argmax fast = stock | fast = fp32 |
 |---|---|---|---|---|---|---|---|
 | laya | choice | 48 | 0.031 | **0.022** | 0.024 | 47/48 | 47/48 |
-| laya | noul | 180 | 0.076 | **0.044** | 0.058 | 180/180 | 180/180 |
+| laya | noul | 180 | 0.076 | **0.043** | 0.058 | 180/180 | 180/180 |
 | laya | score | 60 | 0.015 | **0.011** | 0.017 | 59/60 | 60/60 |
 | laya-multilingual | choice | 48 | 0.049 | **0.015** | 0.039 | 47/48 | 47/48 |
-| laya-multilingual | noul | 180 | 0.037 | 0.046 | 0.045 | 180/180 | 179/180 |
+| laya-multilingual | noul | 180 | 0.037 | 0.045 | 0.045 | 180/180 | 179/180 |
 | laya-multilingual | score | 60 | 0.010 | **0.009** | 0.009 | 59/60 | 59/60 |
 
-The fast path is at least as close to the fp32 reference as the stock bf16 path is (the residual stream stays in fp32 in
-both), and the two bf16 paths differ from each other only by bf16 accumulation order; the few argmax disagreements are
-near-tie options, and on every one of them the fast path agrees with fp32. Dataset accuracy / ECE (AG News, dair-ai
-emotion, 1,000 samples each) are identical within noise; see `benchmarks/bench_fast.py --eval 1000`.
+The fast path stays close to the fp32 reference on every row — at most **0.046** away, against 0.058 for the stock
+path on the same row — and no row is more than **0.076** from stock. The residual stream stays in fp32 in both, and
+the two bf16 paths differ from each other only by bf16 accumulation order; the few argmax disagreements are near-tie
+options, and on every one of them the fast path agrees with fp32. One row is the exception to the stronger reading
+that used to be printed here: on `laya-multilingual` `noul` the stock bf16 path is marginally closer to fp32 than the
+fast path is (0.0446 against 0.0455), so this table does not show that the fast path is never further from fp32.
+Dataset accuracy / ECE (AG News, dair-ai emotion, 1,000 samples each) are identical within noise; see
+`benchmarks/bench_fast.py --eval 1000`.
 
 ### Latency, `agent.predict()` end to end (ms, incl. tokenization)
 

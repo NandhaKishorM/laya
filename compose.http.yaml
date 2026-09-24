@@ -44,6 +44,9 @@ services:
       LAYA_LOG_LEVEL: "${LAYA_LOG_LEVEL:-info}"
       LAYA_API_KEY: "${LAYA_API_KEY:-}"
       LAYA_API_KEY_FILE: "${LAYA_API_KEY_FILE:-}"
+      # Run several replicas? Add `pip install "laya[serve-redis]"` to the image and point
+      # LAYA_STATE_URL at a Redis service so the per-client cap and breaker are cluster-wide:
+      # LAYA_STATE_URL: "${LAYA_STATE_URL:-}"
       HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"
       HF_TOKEN: "${HF_TOKEN:-}"
       HF_TOKEN_FILE: "${HF_TOKEN_FILE:-}"
@@ -57,10 +60,10 @@ services:
       # - ${LAYA_API_KEY_PATH:?Set LAYA_API_KEY_PATH}:/run/secrets/laya_api_key:ro
     init: true
     restart: unless-stopped
-    # The server preloads before it binds, so /health answers once the preloaded
-    # checkpoints are ready. `up --wait` therefore waits for a usable server.
+    # /ready answers once the preloaded checkpoints are resident and the batcher is
+    # accepting work, so `up --wait` waits for a usable server rather than a live process.
     healthcheck:
-      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['LAYA_PORT'] + '/health', timeout=4)"]
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['LAYA_PORT'] + '/ready', timeout=4)"]
       interval: 30s
       timeout: 5s
       retries: 3

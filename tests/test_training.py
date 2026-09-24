@@ -257,6 +257,21 @@ except ValueError as e:
 except Exception as e:  # noqa: BLE001
     FAIL.append("collate/oversized target raised %s instead of ValueError: %s" % (type(e).__name__, e))
 
+# a target must be checked against its own item's marker count, not the batch-wide kmax:
+# a mixed-width batch must not let a too-long target hide under a wider sibling row (#311)
+try:
+    collate_items([[
+        {"ids": [1], "markers": [0, 1], "qtype": 1, "target": [0.2, 0.3, 0.5]},
+        {"ids": [2], "markers": [0, 1, 2, 3], "qtype": 1, "target": [0.25, 0.25, 0.25, 0.25]},
+    ]], pad_id=0)
+    FAIL.append("collate/oversized target in mixed-width batch raises ValueError (nothing raised)")
+except ValueError as e:
+    check_true("collate/oversized target in mixed-width batch raises a clear ValueError",
+               "one entry per option" in str(e), str(e)[:90])
+except Exception as e:  # noqa: BLE001
+    FAIL.append("collate/oversized target in mixed-width batch raised %s instead of ValueError: %s"
+                % (type(e).__name__, e))
+
 
 # =============================================================== build_sequence
 class _Tok:

@@ -20,6 +20,7 @@ from .common import (
     build_sequence,
     clamp_temperature,
     collate_items,
+    answer_confidence,
     confidence_from_probs,
     _resolve_noul_labels,
     render_options,
@@ -635,6 +636,12 @@ class Agent(HookRegistry):
             p = np.exp(z - z.max())
             p = p / p.sum()
 
+            # `confidence` means one thing for `noul` (max(p)) and another for `choice` and
+            # `score` (normalized entropy), and only the first is the quantity temperature
+            # scaling fits and ECE measures. Rather than change one underneath existing
+            # callers, report both: `answer_confidence` is the calibrated one, on every
+            # question type, so a caller can gate across types on a single number.
+            ans_conf = round(answer_confidence(p, k), 4)
             ext = {"act_probability": round(float(act[r, 0]), 4)}
 
             if q["t"] == "choice":
@@ -644,6 +651,7 @@ class Agent(HookRegistry):
                     "choice": keys[int(p.argmax())],
                     "probabilities": {kk: round(float(v), 4) for kk, v in zip(keys, p)},
                     "confidence": round(confidence_from_probs(p, k), 4),
+                    "answer_confidence": ans_conf,
                     "action": ext,
                 }
             elif q["t"] == "score":
@@ -654,6 +662,7 @@ class Agent(HookRegistry):
                     "legend": {str(i): c for i, c in enumerate(q["crit"])},
                     "probabilities": {str(i): round(float(v), 4) for i, v in enumerate(p)},
                     "confidence": round(confidence_from_probs(p, k), 4),
+                    "answer_confidence": ans_conf,
                     "action": ext,
                 }
             else:
@@ -661,6 +670,8 @@ class Agent(HookRegistry):
                     "type": "noul",
                     "noul": round(float(p[1]), 4),
                     "confidence": round(max(float(p[1]), 1.0 - float(p[1])), 4),
+                    # identical here: over two options max(p_true, 1 - p_true) is max(p)
+                    "answer_confidence": ans_conf,
                     "action": ext,
                 }
         return answers

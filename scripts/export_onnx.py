@@ -8,15 +8,22 @@ def export_to_onnx(model_id_or_path: str, output_path: str):
     print(f"Loading PyTorch Agent from: {model_id_or_path}")
     agent = Agent(model_id_or_path, compile=False, device="cpu")
     
+    # 1. Ensure model is in evaluation mode
+    # If agent.model is wrapped (e.g. OptimizedModule or custom wrapper), unwrap if necessary
+    model_to_export = getattr(agent.model, "_orig_mod", agent.model)
+    model_to_export.eval()
+
     print("Creating dummy input tensors...")
-    # 1. Dummy tensors for tracing
+    # 2. Dummy tensors for tracing
     # (batch_size=1, seq_len=16)
     dummy_input_ids = torch.randint(0, 100, (1, 16), dtype=torch.long)
     dummy_attention_mask = torch.ones((1, 16), dtype=torch.long)
     
     # (batch_size=1, num_markers=2)
     dummy_marker_pos = torch.tensor([[1, 5]], dtype=torch.long)
-    dummy_marker_mask = torch.tensor([[True, True]], dtype=torch.bool)
+    
+    # Using int64 (or int32) instead of bool for mask avoids cast/type issues in older ONNX runtimes
+    dummy_marker_mask = torch.tensor([[1, 1]], dtype=torch.long)
     
     # (batch_size=1)
     dummy_qtype = torch.tensor([0], dtype=torch.long)
@@ -29,7 +36,7 @@ def export_to_onnx(model_id_or_path: str, output_path: str):
         dummy_qtype,
     )
 
-    # 2. Define dynamic axes so the model can accept variable batch sizes and sequence lengths
+    # 3. Define dynamic axes
     dynamic_axes = {
         "input_ids": {0: "batch_size", 1: "seq_len"},
         "attention_mask": {0: "batch_size", 1: "seq_len"},
@@ -56,21 +63,19 @@ def export_to_onnx(model_id_or_path: str, output_path: str):
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
     
-    # We must detach the encoder because ONNX export runs the model in trace mode.
-    # The `detach_encoder` flag in forward() just detaches the hidden state gradient, 
-    # but we don't even need to pass it since kwargs are ignored by tracing.
-    
-    torch.onnx.export(
-        agent.model,
-        inputs,
-        output_path,
-        export_params=True,
-        opset_version=18,
-        do_constant_folding=True,
-        input_names=input_names,
-        output_names=output_names,
-        dynamic_axes=dynamic_axes,
-    )
+    # Disable gradient computation during tracing export
+    with torch.no_grad():
+        torch.onnx.export(
+            model_to_export,
+            inputs,
+            output_path,
+            export_params=True,
+            opset_version=17,  # Opset 17 offers high stability across runtimes (e.g., ONNX Runtime, TensorRT)
+            do_constant_folding=True,
+            input_names=input_names,
+            output_names=output_names,
+            dynamic_axes=dynamic_axes,
+        )
     
     print(f"Successfully exported ONNX model to: {output_path}")
 

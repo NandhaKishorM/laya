@@ -8,6 +8,7 @@ import {
   composeHooks,
   dispatch,
   normaliseHooks,
+  type Hook,
   type HookArg,
   type PredictHook,
 } from "./hooks.js";
@@ -134,6 +135,37 @@ export interface RouteOptions {
   lang_guess?: LangGuess;
   hooks?: HookArg;
   hooksRaise?: boolean;
+}
+
+export interface RouterBatchRequest {
+  state: unknown;
+  questions: Record<string, QuestionDef>;
+  model?: string | null;
+  task?: string | null;
+  lang?: string | null;
+  langGuess?: LangGuess;
+  lang_guess?: LangGuess;
+}
+
+export interface RouterBatchOptions {
+  batchSize?: number | null;
+  batch_size?: number | null;
+}
+
+export function _questionSchema(questions: Record<string, unknown>): string {
+  return JSON.stringify(questions, (_key, val) => {
+    if (typeof val === "bigint" || typeof val === "symbol") return String(val);
+    if (
+      val !== null &&
+      typeof val === "object" &&
+      !Array.isArray(val) &&
+      val.constructor &&
+      val.constructor.name !== "Object"
+    ) {
+      return String(val);
+    }
+    return val;
+  });
 }
 
 function toSpec(spec: string | ModelSpec | [string, string | null]): ModelSpec {
@@ -531,5 +563,279 @@ export class Router extends HookRegistry {
     opts: RouteOptions & PredictOptions = {},
   ): Promise<RoutedResult> {
     return this.predict(state, questions, opts);
+  }
+
+  routeBatch(requests: RouterBatchRequest[]): RouteDecision[] {
+    if (!Array.isArray(requests)) {
+      throw new TypeError("requests must be a sequence of request dictionaries");
+    }
+
+    const decisions: RouteDecision[] = [];
+    for (let i = 0; i < requests.length; i++) {
+      const request = requests[i];
+      if (request === null || typeof request !== "object" || Array.isArray(request)) {
+        throw new TypeError(
+          `request ${i} must be a dict, got ${request === null ? "NoneType" : Array.isArray(request) ? "list" : typeof request}`,
+        );
+      }
+      if (!("state" in request)) {
+        throw new Error(`request ${i} is missing required key 'state'`);
+      }
+      if (!("questions" in request)) {
+        throw new Error(`request ${i} is missing required key 'questions'`);
+      }
+      const questions = (request as unknown as Record<string, unknown>).questions;
+      if (questions === null || typeof questions !== "object" || Array.isArray(questions)) {
+        throw new TypeError(
+          `request ${i} 'questions' must be a dict, got ${questions === null ? "NoneType" : Array.isArray(questions) ? "list" : typeof questions}`,
+        );
+      }
+
+      decisions.push(
+        this.route(
+          request.state,
+          request.questions as Record<string, unknown>,
+          {
+            model: request.model,
+            task: request.task,
+            lang: request.lang,
+            langGuess: request.langGuess ?? request.lang_guess,
+          },
+        ),
+      );
+    }
+
+    return decisions;
+  }
+
+  async predictBatch(
+    requests: RouterBatchRequest[],
+    opts?: RouterBatchOptions | number | null,
+  ): Promise<RoutedResult[]> {
+    const decisions = this.routeBatch(requests);
+    if (decisions.length === 0) {
+      return [];
+    }
+
+    const batchSize = typeof opts === "number" ? opts : (opts?.batchSize ?? opts?.batch_size ?? null);
+
+    const groups = new Map<string, number[]>();
+    for (let i = 0; i < decisions.length; i++) {
+      const decision = decisions[i] as unknown as Record<string, unknown>;
+      const modelName = decision["model"] as string;
+      let idxs = groups.get(modelName);
+      if (!idxs) {
+        idxs = [];
+        groups.set(modelName, idxs);
+      }
+      idxs.push(i);
+    }
+
+    const results: Array<RoutedResult | null> = new Array(requests.length).fill(null);
+    const active = composeHooks(this.hooks);
+    const raiseErrors = this.hooksRaise;
+
+    for (const [modelName, indices] of groups.entries()) {
+      const agent = (await this.load(modelName)) as {
+        predictBatch?(
+          states: unknown[],
+          questions: Record<string, QuestionDef>,
+          opts?: { batchSize?: number | null; maxLen?: number | null; headMaxLen?: number | null },
+        ): Promise<SystemOneResult[]>;
+        predict_batch?(
+          states: unknown[],
+          questions: Record<string, QuestionDef>,
+          batch_size?: number | null,
+          overrides?: Record<string, unknown>,
+        ): Promise<SystemOneResult[]>;
+        systemOne?(
+          state: unknown,
+          questions: Record<string, QuestionDef>,
+          opts?: Record<string, unknown>,
+        ): Promise<SystemOneResult>;
+      };
+
+      const started: PredictContext[] = [];
+      try {
+        for (const i of indices) {
+          const req = requests[i];
+          const ctx = new PredictContext({
+            states: [req.state],
+            questions: req.questions as Record<string, unknown>,
+            decision: { ...(decisions[i] as unknown as Record<string, unknown>) },
+            model: modelName,
+            agent,
+            router: this,
+          });
+          started.push(ctx);
+          dispatch(active, "onPredictStart", ctx, { raiseErrors });
+        }
+
+        const questionGroups: Array<{
+          questions: Record<string, QuestionDef>;
+          schema: string;
+          maxLen: number | null;
+          headMaxLen: number | null;
+          items: Array<[number, PredictContext]>;
+        }> = [];
+
+        for (let k = 0; k < indices.length; k++) {
+          const i = indices[k];
+          const ctx = started[k];
+
+          if (ctx.results !== null) {
+            for (const res of ctx.results) {
+              if (res && typeof res === "object" && !("routing" in res)) {
+                (res as Record<string, unknown>).routing = {
+                  ...(decisions[i] as unknown as Record<string, unknown>),
+                };
+              }
+            }
+            continue;
+          }
+
+          const schema = _questionSchema(ctx.questions);
+          const maxLen = ctx.maxLen ?? null;
+          const headMaxLen = ctx.headMaxLen ?? null;
+
+          let found = false;
+          for (const g of questionGroups) {
+            if (g.schema === schema && g.maxLen === maxLen && g.headMaxLen === headMaxLen) {
+              g.items.push([i, ctx]);
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            questionGroups.push({
+              questions: ctx.questions as Record<string, QuestionDef>,
+              schema,
+              maxLen,
+              headMaxLen,
+              items: [[i, ctx]],
+            });
+          }
+        }
+
+        for (const group of questionGroups) {
+          const items = group.items;
+          const states = items.map(([, ctx]) => ctx.states[0]);
+
+          const predictOpts: {
+            batchSize?: number | null;
+            maxLen?: number | null;
+            headMaxLen?: number | null;
+          } = {};
+          if (batchSize !== null && batchSize !== undefined) {
+            predictOpts.batchSize = batchSize;
+          }
+          if (group.maxLen !== null && group.maxLen !== undefined) {
+            predictOpts.maxLen = group.maxLen;
+          }
+          if (group.headMaxLen !== null && group.headMaxLen !== undefined) {
+            predictOpts.headMaxLen = group.headMaxLen;
+          }
+
+          const hasOpts = Object.keys(predictOpts).length > 0;
+          let batchResults: SystemOneResult[];
+          if (typeof agent.predictBatch === "function") {
+            batchResults = hasOpts
+              ? await agent.predictBatch(states, group.questions, predictOpts)
+              : await agent.predictBatch(states, group.questions);
+          } else if (typeof agent.predict_batch === "function") {
+            const pyOverrides: Record<string, unknown> = {};
+            if (group.maxLen !== null) pyOverrides["max_len"] = group.maxLen;
+            if (group.headMaxLen !== null) pyOverrides["head_max_len"] = group.headMaxLen;
+            batchResults = await agent.predict_batch(
+              states,
+              group.questions,
+              batchSize,
+              pyOverrides,
+            );
+          } else if (typeof agent.systemOne === "function") {
+            batchResults = await Promise.all(
+              states.map((s) => (hasOpts ? agent.systemOne!(s, group.questions, predictOpts) : agent.systemOne!(s, group.questions))),
+            );
+          } else {
+            throw new Error(`agent for model "${modelName}" does not implement predictBatch`);
+          }
+
+          if (!Array.isArray(batchResults) || batchResults.length !== items.length) {
+            throw new Error(
+              `internal error: Agent.predict_batch returned ${batchResults?.length ?? 0} results for ${items.length} states`,
+            );
+          }
+
+          for (let m = 0; m < items.length; m++) {
+            const [i, ctx] = items[m];
+            const res = batchResults[m] as RoutedResult;
+            res.routing = { ...(decisions[i] as unknown as RouteDecision) };
+            ctx.results = [res as unknown as Record<string, unknown>];
+          }
+        }
+      } catch (exc) {
+        for (const ctx of started) {
+          if (ctx.results === null) {
+            ctx.error = exc;
+            try {
+              dispatch(active, "onError", ctx, { raiseErrors });
+            } catch {
+              // A failing onError hook must not hide the failure that triggered it.
+            }
+          }
+        }
+        try {
+          this._endContexts(active, started, raiseErrors);
+        } catch {
+          // Do not mask original failure
+        }
+        throw exc;
+      }
+
+      this._endContexts(active, started, raiseErrors);
+      for (let k = 0; k < indices.length; k++) {
+        const i = indices[k];
+        const ctx = started[k];
+        results[i] = (ctx.results as unknown as RoutedResult[])[0];
+      }
+    }
+
+    if (results.some((r) => r === null)) {
+      throw new Error("internal error: batch execution did not produce every result");
+    }
+
+    return results as RoutedResult[];
+  }
+
+  private _endContexts(
+    active: Hook[],
+    contexts: PredictContext[],
+    raiseErrors: boolean,
+  ): void {
+    const now =
+      typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+    for (const ctx of contexts) {
+      ctx.elapsedMs = now - ctx.startedAt;
+      if (ctx.results !== null) {
+        ctx.usage = aggregateUsage(ctx.results);
+      }
+    }
+    let firstError: unknown = null;
+    for (const ctx of contexts) {
+      try {
+        dispatch(active, "onPredictEnd", ctx, { raiseErrors });
+      } catch (hookErr) {
+        if (ctx.error !== null) {
+          // Hook error ignored on already-failed context so primary error is not masked
+        } else if (firstError === null) {
+          firstError = hookErr;
+        }
+      }
+    }
+    if (firstError !== null) {
+      throw firstError;
+    }
   }
 }

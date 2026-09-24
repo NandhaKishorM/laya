@@ -130,11 +130,21 @@ check_true("lang/noul is scaled too",
 
 # a malformed override is rejected up front, like the torch Agent
 try:
-    _bare_onnx_bad = ONNXAgent.__new__(ONNXAgent)
-    # the parsing lives in __init__; assert the same guard exists in its source
+    # The parsing now lives in one shared helper (`common.resolve_lang_temperatures`) rather than
+    # being written out twice, so the guard cannot be read off this `__init__`'s source any more.
+    # Asserting that both backends CALL the helper is the stronger claim anyway: the previous
+    # version passed while the two copies had already drifted, which is how ONNXAgent kept the
+    # `cfg.get(...)`-then-`len(...)` shape after Agent was fixed.
     src = inspect.getsource(ONNXAgent.__init__)
-    check_true("lang/__init__ validates the 3-float override",
-               "must be a list of 3 floats" in src)
+    check_true("lang/__init__ parses overrides through the shared validator",
+               "resolve_lang_temperatures" in src)
+    from laya.common import resolve_lang_temperatures as _resolve
+    try:
+        _resolve({"de": {"temperature": 2}}, [1.0, 1.0, 1.0])
+        check_true("lang/a scalar override is rejected", False, "no error raised")
+    except ValueError as exc:
+        check_true("lang/a scalar override is rejected with the 3-float message",
+                   "must be a list of 3 floats" in str(exc), str(exc))
 except Exception as e:  # noqa: BLE001
     FAIL.append("lang/guard check raised %r" % e)
 

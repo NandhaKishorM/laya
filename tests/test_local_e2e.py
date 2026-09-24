@@ -3,7 +3,8 @@
 Covers three integration properties:
   1. non-English input reaches a checkpoint that can actually read it
   2. the shipped application presets still behave on English
-  3. a noul label override preserves false/true polarity on the English checkpoint
+  3. a noul label override preserves false/true polarity where the checkpoint can read it
+     (multilingual: with and without criteria; English: only with criteria, see #156)
 
 Run:  python3 tests/test_local_e2e.py [model_root]
 Defaults to ~/laya_models, expecting laya/, laya-multilingual/, laya-typed-decisions/.
@@ -92,10 +93,19 @@ REVIEW_Q = {
 }
 
 
-def check_noul_label_override(agent, checkpoint):
+def check_noul_label_override(agent, checkpoint, plain=True):
+    """`labels` are the model-facing option text, and the noul result stays P(true).
+
+    `plain` is False for checkpoints that cannot answer a criteria-less `noul`: with no criteria
+    its two options are the same generic pair for every state ("no, the statement does not hold" /
+    "yes, the statement holds"), and `laya` (English) follows that text rather than the state and
+    answers "no" whatever the input (#156). `laya-multilingual` reads the state and passes both.
+    """
     for polarity, state, want_true in REVIEWS:
         answers = agent.predict(state, REVIEW_Q)["answers"]
         for qid in REVIEW_Q:
+            if qid == "plain" and not plain:
+                continue
             probability = answers[qid]["noul"]
             ok("noul labels/%s/%s/%s" % (checkpoint, polarity, qid),
                (probability > 0.5) == want_true, "P(true)=%.4f" % probability)
@@ -122,12 +132,19 @@ for label, text in BILLING:
              a["refund"]["noul"], (time.time() - t) * 1000, "OK" if hit else "<-- miss"), flush=True)
 ok("multilingual billing intent >= 6/8", correct >= 6, "got %d/8" % correct)
 
+# The label override is the fix for #156, so check it where the checkpoint can read the state:
+# on multilingual both the options-with-criteria and options-without-criteria forms discriminate.
+check_noul_label_override(ml, "multilingual")
+
 # ---------------------------------------------------------------- 3. English checkpoint contrast
 head("3. English checkpoint on the same non-English inputs (why routing matters)")
 ml_only = {l: t for l, t in BILLING if l in ("hindi", "japanese", "chinese", "russian")}
 del ml
 en = laya.load(LOCAL["english"], device=DEVICE)
-check_noul_label_override(en, "english")
+check_noul_label_override(en, "english", plain=False)
+NOTES.append("English checkpoint: a criteria-less noul renders one generic option pair for every "
+             "state and answers \"no\" regardless of input, so only the criteria-bearing label "
+             "override is asserted here (#156)")
 en_correct = 0
 for label, text in ml_only.items():
     a = en.predict({"message": text}, QD)["answers"]

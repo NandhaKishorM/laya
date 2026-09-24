@@ -10,14 +10,17 @@ From the repository root:
 docker compose run --build --rm laya
 ```
 
-This builds the checkout, runs the [sample request](../examples/docker/request.json)
+This builds the checkout, runs the [sample request](https://github.com/NandhaKishorM/laya/blob/main/examples/docker/request.json)
 on CPU and prints JSON covering `choice`, `score` and `noul`. The first request
 downloads the selected public Hugging Face checkpoint; no account is needed.
 Allow several minutes for its first download.
 Weights stay in a named volume. Subsequent runs use `docker compose run --rm laya`.
 
 Predictions and confidence still need evaluation on your workload. See the
-[benchmark limits](../BENCHMARKS.md).
+[benchmark limits](https://github.com/NandhaKishorM/laya/blob/main/BENCHMARKS.md).
+
+For ARM64 hosts, DGX Spark and Apple Silicon, see
+[ARM64 and DGX Spark containers](docker-platforms.md).
 
 ## NVIDIA GPU / CUDA
 
@@ -64,11 +67,14 @@ work with `docker run -e`; Compose-only settings are identified below.
 | `LAYA_REQUEST_FILE` | bundled request | JSON request path inside the container |
 | `OMP_NUM_THREADS` | `4` | CPU threads; keep within available cores |
 | `HF_TOKEN` / `HF_TOKEN_FILE` | unset | Optional Hugging Face credential |
+| `LAYA_API_KEY` / `LAYA_API_KEY_FILE` | unset | **`laya-serve` only:** require `Authorization: Bearer <key>` |
+| `LAYA_PORT` | `8000` | **`laya-serve` only:** container port, and the host port published for it |
 | `HF_HUB_OFFLINE` | `0` | `1` uses only cached checkpoints |
 | `HF_HOME` | `/home/laya/.cache/huggingface` | Cache path; see mount requirement below |
 | `LAYA_CACHE_VOLUME` | project model cache | **Compose only:** named cache volume |
 | `LAYA_GPU_ID` | `0` | **Compose only:** NVIDIA device index or UUID |
-| `LAYA_TORCH_INDEX` | `cpu` / `cu128` | **Compose build:** PyTorch wheel index |
+| `LAYA_TORCH_INDEX` | `cpu` / `cu128` / `cu130` | **Compose build:** PyTorch wheel index |
+| `LAYA_TORCH_VERSION` | `2.14.0` | **Compose build:** pinned PyTorch version |
 
 Compose forwards the runtime variables except `HF_HOME`, which stays aligned
 with its fixed cache mount. If overriding `HF_HOME` in `docker run` or your own
@@ -92,7 +98,7 @@ docker compose run --rm --volume "$PWD/request.json:/inputs/request.json:ro" \
 ```
 
 For a commented configuration with request, checkpoint and secret-file mounts,
-see [`compose.example.yml`](../compose.example.yml):
+see [`compose.example.yml`](https://github.com/NandhaKishorM/laya/blob/main/compose.example.yml):
 
 ```bash
 docker compose -f compose.yaml -f compose.example.yml run --build --rm laya
@@ -165,7 +171,76 @@ them again; don't remove a cache shared with another project.
 
 ## HTTP serving
 
-The base quickstart runs the SDK and publishes no ports. HTTP serving is pending
-[#3](https://github.com/NandhaKishorM/laya/pull/3) or
-[#31](https://github.com/NandhaKishorM/laya/pull/31). The server command and health
-probe can follow the interface accepted upstream.
+The image ships `laya-serve`, so the same build that runs the one-shot quickstart can
+serve the Jev-compatible API. `compose.http.yaml` adds it as a second service and leaves
+`laya` alone:
+
+```bash
+docker compose -f compose.yaml -f compose.http.yaml up --build laya-serve
+curl -s localhost:8000/health
+curl -s localhost:8000/v1/systemone -H 'content-type: application/json' \
+  --data @examples/docker/request.json
+```
+
+For NVIDIA, add the CUDA override. It repeats the build args and the device reservation
+for `laya-serve`, because `laya-serve` is a separate service and overrides for `laya`
+never reach it:
+
+```bash
+docker compose -f compose.yaml -f compose.http.yaml -f compose.cuda.yaml up --build laya-serve
+```
+
+`up` keeps the service running in the foreground; `-d` detaches. Weights go to the same
+named `model-cache` volume as the quickstart, so serving after a quickstart run starts
+with the checkpoints already on disk. Stop with `docker compose ... down`, using the same
+Compose files.
+
+The port is published on `127.0.0.1` only. The API has no authentication until
+`LAYA_API_KEY` is set, so set a key before exposing it with
+`LAYA_BIND_ADDRESS=0.0.0.0`, and put a TLS reverse proxy in front for remote clients.
+`/health` does not require authentication in either case.
+
+The service has a healthcheck on `/health`. The server preloads before it starts
+listening, so with `LAYA_PRELOAD=1` a healthy container has its checkpoints loaded.
+`docker compose ... up -d --wait laya-serve` returns once it is healthy.
+
+### Server configuration
+
+These apply to the `laya-serve` service only.
+
+| variable | default | effect |
+|---|---|---|
+| `LAYA_HOST` | `0.0.0.0` | bind address inside the container |
+| `LAYA_PORT` | `8000` | container port, and the host port published for it |
+| `LAYA_BIND_ADDRESS` | `127.0.0.1` | host address the port is published on |
+| `LAYA_PRELOAD` | `0` | `1` builds every checkpoint at startup instead of on first request |
+| `LAYA_MODELS` | (all) | comma list to preload: `english,multilingual,typed-decisions` |
+| `LAYA_THREADS` | `OMP_NUM_THREADS` | caps torch intra-op threads; keep at or below physical cores |
+| `LAYA_AUTO_TASK` | `0` | `1` lets the router reach `typed-decisions` automatically |
+| `LAYA_LOG_LEVEL` | `info` | uvicorn log level |
+| `LAYA_API_KEY` | (none) | when set, requires `Authorization: Bearer <key>` |
+
+`LAYA_PRELOAD` defaults to `0` here rather than the package default of `1`, because
+preloading makes the first boot download all three checkpoints. Set it to `1` for a
+long-running deployment so the first request does not pay for the build.
+
+`LAYA_PORT` sets both the published host port and the port the server binds, so the two
+cannot drift. Change one place to move the service:
+
+```bash
+LAYA_PORT=9000 docker compose -f compose.yaml -f compose.http.yaml up --build laya-serve
+```
+
+### Bearer token from a file
+
+`LAYA_API_KEY_FILE` is read once at startup, moved into `LAYA_API_KEY`, and the `_FILE`
+variable is removed before the server execs. Prefer this to putting the key in the
+environment:
+
+```bash
+docker compose -f compose.yaml -f compose.http.yaml run --rm \
+  --volume "$PWD/laya_api_key:/run/secrets/laya_api_key:ro" \
+  -e LAYA_API_KEY_FILE=/run/secrets/laya_api_key \
+  --service-ports laya-serve
+```
+

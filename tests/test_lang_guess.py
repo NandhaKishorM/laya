@@ -44,9 +44,10 @@ GENERIC = {"intent": {"type": "choice", "instructions": "x", "criteria": ["a", "
 r0 = Router()
 check("baseline/Romanian is not identified by the heuristic",
       r0.route(ROMANIAN, GENERIC)["detection"]["language"], "en")
-check_true("baseline/Romanian therefore reaches english",
-           r0.route(ROMANIAN, GENERIC)["model"] in ("english", "multilingual"),
-           r0.route(ROMANIAN, GENERIC)["model"])
+# pinned, not "either checkpoint": this is the defect the hint exists to fix, so the
+# assertion has to distinguish english from the correct answer to mean anything.
+check("baseline/Romanian therefore reaches english",
+      r0.route(ROMANIAN, GENERIC)["model"], "english")
 
 
 # ------------------------------------------------------------------ codes
@@ -163,13 +164,16 @@ check("standalone/hint still uses the standalone repo",
       r_alone.route(ROMANIAN, GENERIC)["repo"], "convaiinnovations/laya-multilingual")
 
 # nothing without a hint moves
-BEFORE = [("plain english", "I was charged twice and want a refund"),
-          ("German with umlauts", "Mein Konto wurde zweimal belastet, bitte erstatten Sie"),
-          ("Hindi", "यह एक हिंदी वाक्य है"),
-          ("empty", ""),
-          ("digits", "12345")]
-for label, s in BEFORE:
-    check("unchanged/" + label, r0.route(s, GENERIC)["model"], Router().route(s, GENERIC)["model"])
+# The expected model is pinned per case. Comparing `r0.route(...)` against a fresh
+# `Router().route(...)` cannot fail, because both sides are the same pure call on an
+# equally configured router -- a regression would move both together.
+BEFORE = [("plain english", "I was charged twice and want a refund", "english"),
+          ("German with umlauts", "Mein Konto wurde zweimal belastet, bitte erstatten Sie", "multilingual"),
+          ("Hindi", "यह एक हिंदी वाक्य है", "multilingual"),
+          ("empty", "", "english"),
+          ("digits", "12345", "english")]
+for label, s, want in BEFORE:
+    check("unchanged/" + label, r0.route(s, GENERIC)["model"], want)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

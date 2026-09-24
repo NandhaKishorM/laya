@@ -12,7 +12,7 @@ DPI=160; W,H=1440,1920
 FONT=next((p for p in [Path('/System/Library/Fonts/Hiragino Sans GB.ttc'),Path('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc')] if p.exists()),None)
 LANG='zh'
 NAVY='#142d40';MUTED='#61798a';BLUE='#2874c8';TEAL='#159b8e';BG='#f4f8fb'
-S=json.loads((ROOT/'results/v1/summary.json').read_text())
+S=json.loads((ROOT/'results/v1/summary.json').read_text(encoding='utf-8'))
 ROWS=[S[b][m] for b,m in [('jev','choice'),('jev','four_noul'),('laya','choice'),('laya','four_noul')]]
 NAMES=['Jev · 单选','Jev · 四问','Laya · 单选','Laya · 四问'];COLORS=[BLUE,BLUE,TEAL,TEAL]
 def canvas():

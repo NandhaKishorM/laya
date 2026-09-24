@@ -4,6 +4,7 @@ services:
       context: .
       args:
         TORCH_INDEX: "${LAYA_TORCH_INDEX:-cpu}"
+        TORCH_VERSION: "${LAYA_TORCH_VERSION:-2.14.0}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cpu}"
       LAYA_MODEL: "${LAYA_MODEL:-auto}"

@@ -10,12 +10,27 @@ footer ran on without a blank line, the request went with it:
 
 Dropping the request is silent and severe; leaving one boilerplate line behind is neither, so the
 cleaning errs towards keeping text.
+
+The same asymmetry drives the sign-off tests below. `_SIGNATURE_MARKERS` allowed a whole
+sentence behind the closing word, so an ordinary body line beginning with one of them was read
+as the start of a signature and everything after it was cut:
+
+    clean_email_body("Hi,\\n\\nThanks for the quick reply.\\nCould you refund invoice 4411?")
+    # before: 'Hi,'    <- the request was cut away
+
+The last block guards a different kind of silence. `email_questions` was defined twice, here and
+in `laya/presets.py`, and `laya/__init__.py` re-exports the `presets` one. Editing the copy in
+`laya/email.py` moved `laya.email.email_questions` and left `laya.email_questions` where it was,
+with no test and no lint failing.
 """
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import laya  # noqa: E402
+from laya import email as email_module  # noqa: E402
+from laya import presets  # noqa: E402
 from laya.email import clean_email_body, email_state  # noqa: E402
 
 PASS, FAIL = [], []
@@ -285,6 +300,146 @@ for label, body in [
     ("`get` + device word", "Hi,\nThe box is at the front desk.\nGet mail"),
 ]:
     check("pt/kept: " + label, clean_email_body(body), body)
+
+# ------------------------------------------- a sign-off word inside the body is not a sign-off
+SHORT = "Hi,\n\nThanks for the quick reply.\nCould you refund invoice 4411 as well?"
+check("signoff word/short mail keeps the request", clean_email_body(SHORT), SHORT)
+check(
+    "signoff word/thanks mid-body keeps what follows",
+    clean_email_body(
+        "Hello,\n\nWe were billed twice in March.\nThanks for looking into it.\n"
+        "The duplicate is 49 EUR on invoice 4411."
+    ),
+    "Hello,\n\nWe were billed twice in March.\nThanks for looking into it.\n"
+    "The duplicate is 49 EUR on invoice 4411.",
+)
+check(
+    "signoff word/best mid-body keeps what follows",
+    clean_email_body(
+        "Hi team,\n\nOur account is locked.\nBest practice would be a manual unlock.\n"
+        "Please unlock account 88213 today."
+    ),
+    "Hi team,\n\nOur account is locked.\nBest practice would be a manual unlock.\n"
+    "Please unlock account 88213 today.",
+)
+check(
+    "signoff word/email_state keeps the request",
+    email_state("Duplicate charge", SHORT)["body"],
+    SHORT,
+)
+
+# ------------------------------------------- real sign-offs are still cut (positive controls)
+BODY = "Hi,\n\nPlease refund invoice 4411."
+for label, tail in [
+    ("thanks comma", "Thanks,\nAnna"),
+    ("thanks bang", "Thanks!"),
+    ("best regards", "Best regards,\nAnna"),
+    ("kind regards", "Kind regards"),
+    ("cheers name", "Cheers, Anna"),
+    ("many thanks", "Many thanks,\nAnna Meier"),
+    ("thank you", "Thank you,"),
+    ("thanks in advance", "Thanks in advance,"),
+    ("sincerely", "Sincerely,\nA. Meier"),
+    ("sent from phone", "Sent from my iPhone"),
+    ("dash delimiter", "--\nAnna Meier\nSupport"),
+]:
+    check("signoff cut/" + label, clean_email_body("%s\n\n%s" % (BODY, tail)), BODY)
+
+# ------------------------------------------- closings the case rule did not reach (#132 follow-up)
+# These were cut before #132 and are not now: `warmest` is not in the alternation, `and regards`
+# is not one of its continuations, and `[A-Z]` is ASCII, so a name in any other script reads as a
+# sentence. Each leaves the signature block in the body that the sign-off rule exists to remove.
+for label, tail in [
+    ("thanks and regards", "Thanks and regards,\nAnna"),
+    ("thanks & regards", "Thanks & Regards,\nAnna"),
+    ("warmest regards", "Warmest regards,\nAnna"),
+    ("warmest wishes", "Warmest wishes,"),
+    ("non-ascii name", "Regards, Łukasz"),
+    ("non-ascii name, accented", "Thanks, José"),
+    ("cyrillic name", "Regards, Дмитрий"),
+]:
+    check("signoff cut/" + label, clean_email_body("%s\n\n%s" % (BODY, tail)), BODY)
+
+# ...and the wider closing must not swallow a sentence that merely starts the same way
+for label, body in [
+    ("and + sentence", "Hi,\n\nPlease refund 4411.\nThanks and the team will confirm it today."),
+    ("warmest + sentence", "Hi,\n\nThe room is cold.\nWarmest setting still reads 18 degrees."),
+]:
+    check("signoff kept/" + label, clean_email_body(body), body)
+
+
+# ------------------------------------------------- the word, without the disclaimer
+# `confidential` was a bare substring of `_DISCLAIMER`, so any sentence that merely
+# mentioned it was dropped. A one-sentence body that mentions it was deleted whole and
+# the model was then scored on an empty state, silently. The Portuguese branches beside
+# it were already tied to disclaimer phrasing for this reason; English now is too.
+for label, body in [
+    ("a question about the word", "Is this confidential?"),
+    ("a policy question", "What is your confidentiality policy?"),
+    ("a request containing the word", "Please keep this confidential but process my refund."),
+    ("a request about handling", "Please treat this as confidential."),
+    ("a question with a dash", "This is confidential - can you help?"),
+    ("a question about an attachment", "Is the attached document confidential?"),
+    ("a label prefix", "Confidential: I need a refund."),
+    ("a question about information", "What is the information policy for contractors?"),
+]:
+    check("word only/kept: " + label, clean_email_body(body), body)
+check_true(
+    "word only/body is never emptied",
+    clean_email_body("Is this confidential?").strip() != "",
+)
+check(
+    "word only/email_state keeps the request",
+    email_state("Question", "Is this confidential?")["body"],
+    "Is this confidential?",
+)
+
+# ...while the real footers those branches exist for are still dropped
+for label, body in [
+    ("named addressee", "This email is confidential and intended solely for the named addressee."),
+    ("the individual addressed",
+     "This message is confidential and intended solely for the use of the individual to whom it is addressed."),
+    ("may be privileged", "The information in this email is confidential and may be privileged."),
+    ("wrapped across lines",
+     "This email and any files transmitted with it are\n"
+     "confidential and intended solely for the named addressee."),
+]:
+    check_true("word only/still dropped: " + label, not clean_email_body(body).strip())
+check(
+    "word only/request before a footer survives",
+    clean_email_body("My account is locked.\n"
+                     "This email is confidential and intended solely for the named addressee.\n"
+                     "Please unlock it."),
+    "My account is locked. Please unlock it.",
+)
+check(
+    "word only/request inside one sentence survives",
+    clean_email_body("Please unlock it. This email is confidential and intended solely "
+                     "for the named addressee."),
+    "Please unlock it.",
+)
+
+
+# ------------------------------------------- email_questions has exactly one definition
+check_true(
+    "email_questions/one definition behind both module paths",
+    email_module.email_questions is presets.email_questions,
+    "laya.email.email_questions is not laya.presets.email_questions",
+)
+check_true(
+    "email_questions/the package export is that same object",
+    laya.email_questions is presets.email_questions,
+)
+check(
+    "email_questions/both paths answer the same",
+    email_module.email_questions(),
+    laya.email_questions(),
+)
+check(
+    "email_questions/a caller override reaches both paths",
+    email_module.email_questions({"legal": "contracts"})["category"]["criteria"],
+    laya.email_questions({"legal": "contracts"})["category"]["criteria"],
+)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

@@ -103,13 +103,17 @@ check("ece/normalised by count", round(ece([0.9] * 100, [1.0] * 100), 4),
       round(ece([0.9] * 1000, [1.0] * 1000), 4))
 check("ece/one sample", round(ece([1.0], [1.0]), 4), 0.0)
 
-# Known boundary: the bin test is `conf > lo`, so conf == 0.0 falls in no bin and
-# contributes nothing. `laya.common.ece_score` and `research/scripts/bench_local.py`
-# bin identically, so this harness deliberately matches them rather than diverging --
-# comparability with the published tables is the point. PR #39 addresses the same
-# boundary in `laya.common`; if it lands, this harness should follow it.
-check("ece/conf==0.0 is not binned (matches upstream)",
-      round(ece([0.0, 0.0], [1.0, 1.0]), 4), 0.0)
+# Bin boundary: the first bin is closed at the bottom, so conf == 0.0 IS counted. This
+# harness tested `conf > lo` for every bin until the divergence was found, which made it
+# the only one of the four implementations that binned differently --
+# `laya.common.ece_score`, `research/scripts/bench_local.py` and
+# `research/scripts/build_benchmark_nb.py` all settled on this boundary in #39.
+check("ece/conf==0.0 is binned (matches the other three)",
+      round(ece([0.0, 0.0], [1.0, 1.0]), 4), 1.0)
+check("ece/conf==0.0 carries its bin weight",
+      round(ece([0.0, 1.0], [1.0, 1.0]), 4), 0.5)
+check("ece/conf==0.0 and correct costs nothing",
+      round(ece([0.0, 0.0], [0.0, 0.0]), 4), 0.0)
 check_true("ece/conf slightly above 0 IS binned",
            ece([1e-9, 1e-9], [1.0, 1.0]) > 0.0)
 
@@ -154,6 +158,90 @@ check("const/n_opts matches upstream", N_OPTS, 20)
 check("const/bins", ECE_BINS, 15)
 check("const/instructions match bench_local.py",
       INSTRUCTIONS, "What is the user asking for in `utterance`?")
+
+
+# ------------------------------------------- the #208 before/after re-run file
+# research/results/cpu_51_language_sweep_clamped.json records the committed sweep,
+# the pre-clamp re-run and the served-temperature re-run side by side. It is only
+# useful if it still agrees with the committed file, so that agreement is a test.
+import json  # noqa: E402
+
+_RESULTS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                        "research", "results")
+
+
+def _load(name):
+    with open(os.path.join(_RESULTS, name), encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+_rerun = _load("cpu_51_language_sweep_clamped.json")
+_sweep = _load("cpu_51_language_sweep.json")["part_a"]["by_model"]["english"]
+_langs = _sweep["per_language"]
+
+# Both files round each per-language figure to 4 decimals (bench_local.py:138-144), so
+# agreement has to be judged at that resolution: two files can disagree by 1 in the
+# last stored digit for reasons that have nothing to do with the temperatures, and
+# three languages do (am, el, ro) because the committed run used torch 2.8.0 and this
+# one 2.14.0. The macro figures match exactly, which is why that is the headline.
+_QUANT = 1.5e-4
+
+
+def _close(a, b, tol=_QUANT):
+    return abs(a - b) <= tol
+
+check("208/one entry per language", len(_rerun["per_language"]), len(_langs))
+check("208/case count is languages x per_lang",
+      _rerun["config"]["n_cases"],
+      _rerun["config"]["languages"] * _rerun["config"]["per_lang"])
+check("208/macro accuracy copied from the committed sweep",
+      _rerun["macro"]["committed"]["accuracy"], _sweep["macro_accuracy"])
+check("208/macro ece copied from the committed sweep",
+      _rerun["macro"]["committed"]["ece"], _sweep["macro_ece"])
+
+# accuracy is argmax of a temperature-scaled softmax, so it cannot move with T
+check_true("208/accuracy identical in all three regimes",
+           all(len({_rerun["per_language"][lg][r]["accuracy"] for r in
+                    ("committed", "unclamped_rerun", "clamped_rerun")}) == 1
+               for lg in _langs))
+check_true("208/macro_f1 identical in all three regimes",
+           all(len({_rerun["per_language"][lg][r]["macro_f1"] for r in
+                    ("committed", "unclamped_rerun", "clamped_rerun")}) == 1
+               for lg in _langs))
+
+# the committed calibration columns must match the unclamped re-run, and only the
+# clamped re-run may differ -- that is the whole claim
+check_true("208/ece matches the committed file in the unclamped re-run",
+           all(_close(_rerun["per_language"][lg]["unclamped_rerun"]["ece"],
+                      _langs[lg]["ece"]) for lg in _langs))
+check_true("208/ece differs from the committed file in the clamped re-run",
+           all(not _close(_rerun["per_language"][lg]["clamped_rerun"]["ece"],
+                          _langs[lg]["ece"]) for lg in _langs))
+check_true("208/mean_confidence matches in the unclamped re-run",
+           all(_close(_rerun["per_language"][lg]["unclamped_rerun"]["mean_confidence"],
+                      _langs[lg]["mean_confidence"]) for lg in _langs))
+check_true("208/mean_confidence differs in the clamped re-run",
+           all(not _close(_rerun["per_language"][lg]["clamped_rerun"]["mean_confidence"],
+                          _langs[lg]["mean_confidence"]) for lg in _langs))
+
+# the unclamped re-run is a reproduction, not an approximation: name the tolerance
+# so a future change that widens it has to say so
+check_true("208/unclamped reproduction agrees in at least 48 of 51 languages",
+           sum(1 for lg in _langs
+               if _close(_rerun["per_language"][lg]["unclamped_rerun"]["ece"], _langs[lg]["ece"])) >= 48)
+
+# the clamp can lower ECE everywhere without lowering rank quality, so this is a
+# guard against the misleading "the clamp makes it worse" reading
+check_true("208/the clamp lowers macro ece",
+           _rerun["macro"]["clamped_rerun"]["macro_ece"]
+           < _rerun["macro"]["unclamped_rerun"]["macro_ece"])
+check_true("208/every per-language delta is reported",
+           all("delta_ece" in v and "delta_mean_confidence" in v
+               for v in _rerun["per_language"].values()))
+check("208/only choice:11+ is the clamped bucket",
+      _rerun["temperature_choice_11_plus"]["unclamped_rerun"], 0.10058280825614929)
+check("208/the served bucket is 0.5",
+      _rerun["temperature_choice_11_plus"]["clamped_rerun"], 0.5)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

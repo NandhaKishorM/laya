@@ -3,6 +3,7 @@ import json
 import math
 import os
 import threading
+from contextlib import nullcontext
 from typing import Dict, List, Optional, Union
 
 import numpy as np
@@ -140,17 +141,33 @@ def build_sequence(
 class DecisionModel(nn.Module):
     """Bidirectional transformer encoder backbone + typed decision head."""
 
-    def __init__(self, encoder: nn.Module, head_layers: int = 2, n_act: int = 2, dropout: float = 0.1):
+    def __init__(self, encoder: nn.Module, head_layers: int = 2, n_act: int = 2, dropout: float = 0.1,
+                 no_init: bool = False):
         super().__init__()
         self.encoder = encoder
         d = encoder.config.hidden_size
-        nhead = max(1, d // 64)
-        layer = nn.TransformerEncoderLayer(d, nhead, 4 * d, dropout, batch_first=True, norm_first=True)
-        self.head = nn.TransformerEncoder(layer, head_layers, enable_nested_tensor=False) if head_layers > 0 else None
-        self.type_emb = nn.Embedding(3, d)
-        self.scorer = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, d), nn.GELU(), nn.Linear(d, 1))
-        self.act_head = nn.Sequential(nn.Linear(d + 4, 256), nn.GELU(), nn.Linear(256, n_act))
-        self.register_buffer("temperature", torch.ones(3))
+        # `no_init` means the caller is about to load every parameter from a checkpoint, so the
+        # head's initial values are pure overhead -- and not just time. transformers'
+        # `no_init_weights()` patches the torch.nn.init functions, but something inside
+        # nn.TransformerEncoderLayer draws from the RNG outside them, so building it still
+        # advanced the global generator and made `load()` a visible side effect. On the meta
+        # device no initialisation kernel runs at all; the layers are materialised empty and the
+        # load fills them.
+        with torch.device("meta") if no_init else nullcontext():
+            nhead = max(1, d // 64)
+            layer = nn.TransformerEncoderLayer(d, nhead, 4 * d, dropout, batch_first=True, norm_first=True)
+            self.head = nn.TransformerEncoder(layer, head_layers, enable_nested_tensor=False) if head_layers > 0 else None
+            self.type_emb = nn.Embedding(3, d)
+            self.scorer = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, d), nn.GELU(), nn.Linear(d, 1))
+            self.act_head = nn.Sequential(nn.Linear(d + 4, 256), nn.GELU(), nn.Linear(256, n_act))
+            self.register_buffer("temperature", torch.ones(3))
+        if no_init:
+            # Only the modules created above are on the meta device; the encoder is already real
+            # and may hold non-persistent buffers (RoPE frequencies) that to_empty would wipe.
+            for module in (self.head, self.type_emb, self.scorer, self.act_head):
+                if module is not None:
+                    module.to_empty(device="cpu")
+            self.temperature = torch.empty_like(self.temperature, device="cpu")
         self.head_checkpointing = False
 
     def forward(self, input_ids, attention_mask, marker_pos, marker_mask, qtype, detach_encoder: bool = False):
@@ -215,16 +232,34 @@ def _apply_rope_config(ecfg) -> None:
             setattr(ecfg, attr, float(theta))
 
 
+def _no_init_weights():
+    """`no_init_weights` lives in different modules across transformers versions."""
+    try:
+        from transformers.initialization import no_init_weights
+    except ImportError:  # transformers 4.x
+        from transformers.modeling_utils import no_init_weights
+    return no_init_weights()
+
+
 def build_model(cfg: Dict, encoder_dir: Optional[str] = None, pretrained: bool = True) -> DecisionModel:
+    """Build the decision model described by `cfg`.
+
+    With `pretrained=False`, or when `encoder_dir` holds a saved encoder config, nothing is
+    downloaded and **no parameter is initialised**: the caller is expected to load a checkpoint
+    into the result with `load_state_dict(..., strict=True)` immediately. Skipping initialisation
+    keeps `load()` from spending time on, or consuming RNG for, weights it is about to overwrite.
+    """
     from transformers import AutoConfig, AutoModel
 
+    head_layers, n_act = cfg.get("head_layers", 2), len(cfg.get("act_costs", {})) + 1
     if not pretrained or (encoder_dir and os.path.exists(encoder_dir)):
         ecfg = AutoConfig.from_pretrained(encoder_dir or cfg["encoder"])
         _apply_rope_config(ecfg)
-        enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
-    else:
-        enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")
-    return DecisionModel(enc, cfg.get("head_layers", 2), len(cfg.get("act_costs", {})) + 1)
+        with _no_init_weights():
+            enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
+        return DecisionModel(enc, head_layers, n_act, no_init=True)
+    enc = AutoModel.from_pretrained(cfg["encoder"], attn_implementation="sdpa")
+    return DecisionModel(enc, head_layers, n_act)
 
 
 def proper_reward(

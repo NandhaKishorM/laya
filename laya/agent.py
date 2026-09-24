@@ -245,10 +245,6 @@ class Agent(HookRegistry):
         self.model_id = model_id_or_path
 
         from safetensors.torch import load_file
-        try:
-            from transformers.initialization import no_init_weights
-        except ImportError:  # Transformers 4.x
-            from transformers.modeling_utils import no_init_weights
 
         model_dir = model_id_or_path
         if not os.path.exists(model_dir):
@@ -324,10 +320,9 @@ class Agent(HookRegistry):
         self.tok = _load_tokenizer(tok_dir, self.cfg)
 
         enc_dir = os.path.join(model_dir, "encoder")
-        # The checkpoint supplies every parameter; skip random/base-model weights.
-        with no_init_weights():
-            self.model = build_model(self.cfg, encoder_dir=enc_dir if os.path.exists(enc_dir) else None,
-                                     pretrained=False)
+        # build_model skips initialisation of every parameter; the checkpoint supplies them all.
+        self.model = build_model(self.cfg, encoder_dir=enc_dir if os.path.exists(enc_dir) else None,
+                                 pretrained=False)
 
         # Load weights and verify architectural compatibility
         weights = load_file(weights_path)

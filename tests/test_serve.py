@@ -18,6 +18,7 @@ from laya.serve import (  # noqa: E402
     _resolve_model,
     create_app,
 )
+from laya.serving import ServingConfig  # noqa: E402
 
 
 class FakeRouter:
@@ -39,6 +40,9 @@ class FakeRouter:
             "usage": {"input_tokens": 42, "output_tokens": 0},
             "routing": {"model": "english", "reason": "English Latin text"},
         }
+
+    def predict_batch(self, requests, batch_size=None):
+        return [self.predict(r["state"], r["questions"], model=r.get("model")) for r in requests]
 
 
 def _client(monkeypatch, api_key=None):
@@ -402,3 +406,155 @@ def test_inference_timing_headers():
     assert "X-Inference-Time-Ms" in res.headers
     dur = float(res.headers["X-Inference-Time-Ms"])
     assert dur >= 0.0
+
+
+# ------------------------------------------------------------------ batching
+# Batching is opt-in: with the default ServingConfig each request is dispatched
+# immediately. These tests raise the window / batch size so concurrent requests share one
+# Router.predict_batch forward pass. `httpx.ASGITransport` is used because TestClient
+# serializes requests through a portal, so nothing is ever concurrently in flight.
+
+_OK = {
+    "model": "laya-rl-agent",
+    "answers": {"dept": {"type": "choice", "choice": "billing",
+                         "probabilities": {"billing": 0.94, "tech": 0.06}, "confidence": 0.94}},
+    "usage": {"input_tokens": 42, "output_tokens": 0},
+    "routing": {"model": "english", "reason": "English Latin text"},
+}
+
+
+class BatchRouter:
+    """Counts batch forward passes and answers each request; a 'poison' state fails the batch."""
+
+    loaded = ["english"]
+
+    def __init__(self, delay=0.0):
+        self.batch_calls = 0
+        self.single_calls = 0
+        self.seen_models = []
+        self._delay = delay
+
+    def predict_batch(self, requests, batch_size=None):
+        import time
+        self.batch_calls += 1
+        if self._delay:
+            time.sleep(self._delay)
+        self.seen_models.extend(r.get("model") for r in requests)
+        if any(r.get("state") == "poison" for r in requests):
+            raise RuntimeError("batch poisoned")
+        return [_OK for _ in requests]
+
+    def predict(self, state, questions, model=None, **kwargs):
+        self.single_calls += 1
+        if state == "poison":
+            raise ValueError("question 'q': bad state")
+        return _OK
+
+
+def _batching_client(fake, **config):
+    """An httpx client driving the app directly, so requests can be concurrent."""
+    import httpx
+
+    app = create_app(router=fake, config=ServingConfig(**config))
+    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t")
+
+
+def test_concurrent_requests_are_batched():
+    import asyncio
+
+    fake = BatchRouter(delay=0.05)
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=30, batch_max=16) as client:
+            return await asyncio.gather(*[client.post("/v1/systemone", json=REQ) for _ in range(8)])
+
+    responses = asyncio.run(scenario())
+    assert all(r.status_code == 200 for r in responses)
+    assert fake.batch_calls == 1, "8 concurrent requests should share one forward pass"
+    assert fake.single_calls == 0
+
+
+def test_batch_max_caps_the_batch():
+    import asyncio
+
+    fake = BatchRouter(delay=0.02)
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=50, batch_max=2) as client:
+            return await asyncio.gather(*[client.post("/v1/systemone", json=REQ) for _ in range(6)])
+
+    responses = asyncio.run(scenario())
+    assert all(r.status_code == 200 for r in responses)
+    assert fake.batch_calls >= 3, "batch_max=2 cannot serve 6 requests in one pass"
+
+
+def test_zero_window_dispatches_immediately():
+    import asyncio
+
+    fake = BatchRouter()
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=0, batch_max=16) as client:
+            return await client.post("/v1/systemone", json=REQ)
+
+    assert asyncio.run(scenario()).status_code == 200
+    assert fake.batch_calls == 1
+
+
+def test_full_queue_returns_503_with_retry_after():
+    import asyncio
+
+    fake = BatchRouter(delay=0.5)   # keep the worker busy so the bounded queue fills
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=500, batch_max=16,
+                                    queue_max=1, request_timeout_s=5) as client:
+            return await asyncio.gather(*[client.post("/v1/systemone", json=REQ) for _ in range(6)])
+
+    responses = asyncio.run(scenario())
+    rejected = [r for r in responses if r.status_code == 503]
+    assert rejected, "a full queue must reject with 503"
+    assert all("retry-after" in r.headers for r in rejected)
+
+
+def test_request_timeout_returns_504():
+    import asyncio
+
+    fake = BatchRouter(delay=0.3)
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=0, request_timeout_s=0.01) as client:
+            return await client.post("/v1/systemone", json=REQ)
+
+    assert asyncio.run(scenario()).status_code == 504
+
+
+def test_batch_failure_falls_back_per_request():
+    import asyncio
+
+    fake = BatchRouter()
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=30, batch_max=16) as client:
+            return await asyncio.gather(
+                client.post("/v1/systemone", json=REQ),
+                client.post("/v1/systemone", json={**REQ, "state": "poison"}))
+
+    good, bad = asyncio.run(scenario())
+    assert good.status_code == 200
+    # the poison request fails alone; the batch fell back to per-request calls
+    assert bad.status_code == 422
+    assert fake.single_calls == 2
+
+
+def test_model_override_survives_batching():
+    import asyncio
+
+    fake = BatchRouter()
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=30, batch_max=16) as client:
+            return await client.post("/v1/systemone", json={**REQ, "model": "multilingual"})
+
+    assert asyncio.run(scenario()).status_code == 200
+    assert fake.seen_models == ["multilingual"]

@@ -449,6 +449,14 @@ send `Authorization: Bearer <key>`). A client's `model` field is honoured when i
 names a Laya checkpoint (`english`/`multilingual`/`typed-decisions`), otherwise
 the router auto-selects by script/language.
 
+Batching is opt-in: by default each request is dispatched immediately, exactly as
+before. Set `LAYA_BATCH_WINDOW_MS` (e.g. `10`) to collect requests arriving in a
+short window and `LAYA_BATCH_MAX` (e.g. `16`) to size the forward pass, so
+concurrent `POST /v1/systemone` calls share one `Router.predict_batch`. Optionally
+bound the queue with `LAYA_QUEUE_MAX` (overflow answers `503` + `Retry-After`) and
+cap a request with `LAYA_REQUEST_TIMEOUT_S` once queue + inference exceeds it
+(`504`; `0`, the default, disables the timeout).
+
 Three things differ from Jev when you port a client:
 
 * **Options per question.** A question's options share the checkpoint's option budget, `head_max_len` (192 tokens on `laya`, 256 on the other two), not Jev's cap of 255 options. Once they overflow it, around 20 options with a short description each, every option is trimmed to fit, so long or similar labels can reach the model reading the same ([Where Jev leads](#where-jev-leads)). Once they no longer fit the window at all, the request is rejected with 422. With short labels such as `Queue 042: Tickets routed to queue 42` that happens above 126 options on `laya` and 254 on the other two; the exact point moves with the length of the instructions and labels. For more candidates, narrow them first with `predict_shortlist` ([Honest limits](#honest-limits)).

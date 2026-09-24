@@ -26,6 +26,13 @@ env var                 meaning                                        default
 ``LAYA_AUTO_TASK``      auto-route to the typed-decisions checkpoint   0
 ``LAYA_API_KEY``        if set, require ``Authorization: Bearer <it>``  (none)
 ``LAYA_LOG_LEVEL``      uvicorn log level                              info
+``LAYA_BATCH_MAX``      max requests per forward pass (batching is     1
+                        opt-in; 1 dispatches each request immediately)
+``LAYA_BATCH_WINDOW_MS``  window to collect a batch; 0 dispatches      0
+                        immediately
+``LAYA_QUEUE_MAX``      bounded queue; overflow is 503; 0 is unbounded 0
+``LAYA_REQUEST_TIMEOUT_S``  queue + inference budget per request;     0 (off)
+                        0 disables the timeout
 ======================  ============================================  =========
 
 Imports of heavy dependencies (fastapi, uvicorn, torch via Router) are all
@@ -181,16 +188,21 @@ def build_router():
     return router
 
 
-def create_app(router: Optional[Any] = None):
+def create_app(router: Optional[Any] = None, config: Optional[Any] = None):
     """Build the FastAPI app. Pass a Router to inject one (tests); otherwise one
-    is built from the environment (and preloaded) at app-creation time."""
+    is built from the environment (and preloaded) at app-creation time. ``config``
+    overrides ``ServingConfig.from_env()`` (batching and queue settings)."""
     import asyncio
     from concurrent.futures import ThreadPoolExecutor
 
     from fastapi import FastAPI, Header, HTTPException, Request
 
+    from .serving import Batcher, RequestQueueFull, ServingConfig
+
     if router is None:
         router = build_router()
+    if config is None:
+        config = ServingConfig.from_env()
     api_key = os.environ.get("LAYA_API_KEY") or None
 
     # Inference is synchronous torch, and a CPU call takes hundreds of milliseconds to
@@ -201,18 +213,21 @@ def create_app(router: Optional[Any] = None):
     # predictions can share a checkpoint -- a GPU-shaped choice this endpoint does not
     # rely on). `loop.run_in_executor` is the API the issue asked for.
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="laya-infer")
-    # Created on first request, not here: an `asyncio.Lock` binds to the loop that is
-    # running when it is first awaited, and `create_app` may be called before that loop
-    # exists (module scope, TestClient startup, a preload script).
-    gate: Optional[asyncio.Lock] = None
+    # The Batcher owns the queue and the single dispatch worker; with the default
+    # `LAYA_BATCH_MAX=1`/`LAYA_BATCH_WINDOW_MS=0` it dispatches each request immediately,
+    # so the endpoint behaves as it did before batching existed. Raising the batch size
+    # lets concurrent requests share one `Router.predict_batch` forward pass.
+    batcher = Batcher(router, config, pool)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        batcher.start()
         try:
             yield
         finally:
             # TestClient, embedded ASGI apps, and process supervisors all need
             # the executor to drain when the app stops.
+            await batcher.aclose()
             pool.shutdown(wait=True, cancel_futures=True)
 
     app = FastAPI(
@@ -247,7 +262,6 @@ def create_app(router: Optional[Any] = None):
 
     @app.post("/v1/systemone")
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):
-        nonlocal gate
         _check_auth(authorization)
         # A declared length over the cap is rejected before anything is read; the
         # streaming cap below is what actually enforces it, for bodies that declare
@@ -273,27 +287,26 @@ def create_app(router: Optional[Any] = None):
         questions = body["questions"]
         _check_request_limits(state, questions)
         model = _resolve_model(body.get("model"))
-        if gate is None:
-            gate = asyncio.Lock()
+        payload = {"state": state, "questions": questions, "model": model}
+        # `start` is idempotent and covers an app driven without a lifespan
+        # (httpx.ASGITransport in tests); with a lifespan it is already running.
+        batcher.start()
+        try:
+            pending = await batcher.submit(payload)
+        except RequestQueueFull as exc:
+            raise HTTPException(status_code=503, detail=str(exc),
+                                headers={"Retry-After": str(exc.retry_after)})
         try:
             # Laya's result is already Jev-shaped: {model, answers, usage, routing}.
             # hs-jev decodes `answers` and `usage` and ignores the rest.
-            async with gate:
-                loop = asyncio.get_running_loop()
-                t0 = time.perf_counter()
-                result = await loop.run_in_executor(
-                    pool, lambda: router.predict(state, questions, model=model))
-                infer_ms = (time.perf_counter() - t0) * 1000.0
-                from fastapi.responses import JSONResponse
-                return JSONResponse(
-                    content=result,
-                    headers={
-                        "Server-Timing": f"inference;dur={infer_ms:.2f}",
-                        "X-Inference-Time-Ms": f"{infer_ms:.2f}"
-                    }
-                )
-        except HTTPException:
-            raise
+            result = await asyncio.wait_for(
+                pending.future, timeout=(config.request_timeout_s or None))
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=504, detail="inference timed out")
+        except RequestQueueFull as exc:
+            # Resolved during shutdown: the queue was abandoned before dispatch.
+            raise HTTPException(status_code=503, detail=str(exc),
+                                headers={"Retry-After": str(exc.retry_after)})
         except ValueError as e:
             # Question validation errors name the question and what to fix: safe for clients.
             raise HTTPException(status_code=422, detail=str(e))
@@ -304,6 +317,17 @@ def create_app(router: Optional[Any] = None):
             # and has to be reproduced in-process to be diagnosed at all.
             _log.exception("inference failed for model=%s", model)
             raise HTTPException(status_code=500, detail="inference failed")
+        start = pending.started_at or pending.enqueued_at
+        end = pending.finished_at or time.perf_counter()
+        infer_ms = (end - start) * 1000.0
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            content=result,
+            headers={
+                "Server-Timing": f"inference;dur={infer_ms:.2f}",
+                "X-Inference-Time-Ms": f"{infer_ms:.2f}"
+            }
+        )
 
     return app
 

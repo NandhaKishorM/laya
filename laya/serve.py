@@ -175,10 +175,20 @@ def create_app(router: Optional[Any] = None):
         summary="Laya System-1 decisions over the TypeSafe Jev /v1/systemone protocol",
     )
 
+    # Compared as bytes, not str. `hmac.compare_digest` raises TypeError when a str
+    # operand holds a non-ASCII character, and Starlette decodes request headers as
+    # latin-1 -- so `Authorization: Bearer s\xe9cret`, which is legal on the wire,
+    # made the comparison itself raise. That surfaced as HTTP 500 plus a traceback
+    # in the log, reachable by any unauthenticated client with one byte. Encoding
+    # both sides first keeps the comparison constant-time and total: every header a
+    # client can send now answers 401.
+    expected_auth = ("Bearer " + api_key).encode("utf-8", "surrogateescape") if api_key else b""
+
     def _check_auth(authorization: Optional[str]) -> None:
         if api_key is None:
             return
-        if not hmac.compare_digest(authorization or "", "Bearer " + api_key):
+        supplied = (authorization or "").encode("utf-8", "surrogateescape")
+        if not hmac.compare_digest(supplied, expected_auth):
             raise HTTPException(status_code=401, detail="invalid or missing bearer token")
 
     @app.get("/health")

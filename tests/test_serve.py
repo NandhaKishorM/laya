@@ -118,6 +118,25 @@ def test_auth_required_when_key_set(monkeypatch):
     assert ok.status_code == 200
 
 
+def test_auth_rejects_a_non_ascii_header(monkeypatch):
+    """A hostile Authorization header must answer 401, not raise.
+
+    `hmac.compare_digest` raises TypeError when a str operand holds a non-ASCII
+    character, and Starlette decodes request headers as latin-1. So
+    `Authorization: Bearer s\xe9cret` -- legal on the wire -- used to make the
+    comparison itself raise, which FastAPI turned into HTTP 500 with a traceback
+    in the log, reachable by any unauthenticated client.
+    """
+    client, _ = _client(monkeypatch, api_key="s3cret")
+    for header in (
+        "Bearer s\u00e9cret".encode("latin-1"),   # non-ASCII inside the token
+        "B\u00ebarer s3cret".encode("latin-1"),   # non-ASCII in the scheme
+        b"Bearer \xff\xfe",                      # bytes that are not valid UTF-8
+    ):
+        r = client.post("/v1/systemone", json=REQ, headers={"Authorization": header})
+        assert r.status_code == 401, (header, r.status_code)
+
+
 def test_health(monkeypatch):
     client, _ = _client(monkeypatch)
     r = client.get("/health")

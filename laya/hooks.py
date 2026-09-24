@@ -58,6 +58,32 @@ class Hook(Protocol):
     def on_error(self, ctx: PredictContext) -> None: ...
 
 
+class BaseHook:
+    """No-op base class: subclass it and override only the events you need.
+
+    `Hook` is the structural protocol; `BaseHook` is the concrete convenience when you would
+    rather subclass than implement methods by shape. Every method does nothing by default.
+    """
+
+    def on_predict_start(self, ctx: PredictContext) -> None:
+        pass
+
+    def on_predict_end(self, ctx: PredictContext) -> None:
+        pass
+
+    def on_route(self, ctx: PredictContext) -> None:
+        pass
+
+    def on_load(self, ctx: PredictContext) -> None:
+        pass
+
+    def on_evict(self, ctx: PredictContext) -> None:
+        pass
+
+    def on_error(self, ctx: PredictContext) -> None:
+        pass
+
+
 PredictHook = Callable[[PredictContext], None]
 HookArg = Union[Hook, Sequence[Hook], None]
 PredictHookArg = Union[PredictHook, Sequence[PredictHook], None]
@@ -144,6 +170,49 @@ def normalise_hooks(
     for fn in _as_sequence(on_predict_end):
         result.append(_EndAdapter(fn))
     return result
+
+
+_DEFAULT_HOOKS: List[Any] = []
+_DEFAULT_HOOKS_LOCK = threading.Lock()
+
+
+def default_hooks() -> List[Any]:
+    """The process-wide hooks, a copy, in order. Empty unless set via `set_default_hooks`."""
+    with _DEFAULT_HOOKS_LOCK:
+        return list(_DEFAULT_HOOKS)
+
+
+def set_default_hooks(hooks=None, on_predict_start=None, on_predict_end=None) -> None:
+    """Replace the process-wide default hooks.
+
+    Defaults run before installed and per-call hooks for every `Agent`, `Router` and
+    `ONNXAgent` in the process, so a tracer or metrics hook does not have to be threaded
+    through every construction. Accepts the same arguments as the `hooks=` parameter.
+    """
+    normalised = normalise_hooks(hooks, on_predict_start, on_predict_end)
+    with _DEFAULT_HOOKS_LOCK:
+        _DEFAULT_HOOKS[:] = normalised
+
+
+def add_default_hook(hook: HookArg) -> None:
+    """Append one hook or a sequence to the process-wide defaults."""
+    normalised = normalise_hooks(hook)
+    with _DEFAULT_HOOKS_LOCK:
+        _DEFAULT_HOOKS.extend(normalised)
+
+
+def clear_default_hooks() -> None:
+    """Remove every process-wide default hook."""
+    with _DEFAULT_HOOKS_LOCK:
+        _DEFAULT_HOOKS.clear()
+
+
+def compose_hooks(installed, hooks=None, on_predict_start=None, on_predict_end=None) -> List[Any]:
+    """Effective hook list for one call: defaults, then installed, then per-call hooks.
+
+    Reads the process-wide defaults at call time, so hooks set after construction still apply.
+    """
+    return default_hooks() + list(installed) + normalise_hooks(hooks, on_predict_start, on_predict_end)
 
 
 class HookRegistry:

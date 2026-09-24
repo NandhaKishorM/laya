@@ -33,6 +33,7 @@ deferred into the functions that need them, so ``import laya.serve`` stays cheap
 and touches no GPU -- which is what keeps the Nix ``pythonImportsCheck`` honest.
 """
 import hmac
+import json
 import os
 from typing import Any, Dict, Optional
 
@@ -112,6 +113,32 @@ def _check_request_limits(state: Any, questions: Any) -> None:
                             detail="state too large (%d > %d chars)" % (state_len, MAX_STATE_CHARS))
 
 
+async def _read_body_capped(request: Any) -> bytes:
+    """Read the request body, refusing to buffer more than ``MAX_BODY_BYTES``.
+
+    ``Content-Length`` cannot be the only gate. It is a value the client chooses,
+    and under ``Transfer-Encoding: chunked`` it is absent altogether -- HTTP/2 and
+    HTTP/3 have no such header at all -- so a request that simply omits it was
+    read into memory in full, whatever its size. The body is streamed here and
+    abandoned as soon as it exceeds the cap, so the limit holds for every framing
+    rather than only for clients that announce their length honestly.
+    """
+    from fastapi import HTTPException
+
+    total = 0
+    chunks = []
+    async for chunk in request.stream():
+        if not chunk:
+            continue
+        total += len(chunk)
+        if total > MAX_BODY_BYTES:
+            # Stop reading rather than draining the rest: the peer is already over
+            # the limit and nothing further can make the request acceptable.
+            raise HTTPException(status_code=413, detail="request body too large")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def _apply_thread_limit():
     """Honour LAYA_THREADS by capping torch's intra-op thread count for CPU
     inference. Returns the value applied, or None if unset/invalid. torch is
@@ -175,10 +202,20 @@ def create_app(router: Optional[Any] = None):
         summary="Laya System-1 decisions over the TypeSafe Jev /v1/systemone protocol",
     )
 
+    # Compared as bytes, not str. `hmac.compare_digest` raises TypeError when a str
+    # operand holds a non-ASCII character, and Starlette decodes request headers as
+    # latin-1 -- so `Authorization: Bearer s\xe9cret`, which is legal on the wire,
+    # made the comparison itself raise. That surfaced as HTTP 500 plus a traceback
+    # in the log, reachable by any unauthenticated client with one byte. Encoding
+    # both sides first keeps the comparison constant-time and total: every header a
+    # client can send now answers 401.
+    expected_auth = ("Bearer " + api_key).encode("utf-8", "surrogateescape") if api_key else b""
+
     def _check_auth(authorization: Optional[str]) -> None:
         if api_key is None:
             return
-        if not hmac.compare_digest(authorization or "", "Bearer " + api_key):
+        supplied = (authorization or "").encode("utf-8", "surrogateescape")
+        if not hmac.compare_digest(supplied, expected_auth):
             raise HTTPException(status_code=401, detail="invalid or missing bearer token")
 
     @app.get("/health")
@@ -193,18 +230,22 @@ def create_app(router: Optional[Any] = None):
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):
         nonlocal gate
         _check_auth(authorization)
+        # A declared length over the cap is rejected before anything is read; the
+        # streaming cap below is what actually enforces it, for bodies that declare
+        # no length or understate it.
         if request.headers.get("content-length"):
             try:
                 if int(request.headers["content-length"]) > MAX_BODY_BYTES:
                     raise HTTPException(status_code=413, detail="request body too large")
             except ValueError:
                 pass
+        raw = await _read_body_capped(request)
         try:
             # Every parse failure a client can cause is a ValueError: JSONDecodeError for
             # malformed/empty/truncated bodies, UnicodeDecodeError for invalid UTF-8. A
             # broader catch would also swallow ClientDisconnect and Starlette's own
             # stream errors, reporting a transport or server fault as the client's.
-            body = await request.json()
+            body = json.loads(raw)
         except ValueError:
             raise HTTPException(status_code=400, detail="request body must be valid JSON")
         if not isinstance(body, dict) or "questions" not in body:

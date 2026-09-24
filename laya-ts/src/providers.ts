@@ -15,27 +15,47 @@ export interface SessionProvider {
 }
 
 function toNested(data: ArrayLike<number | bigint | boolean>, dims: number[]): any {
-  const flat = Array.from(data as any, (v: any) => (typeof v === "bigint" ? Number(v) : v));
+  // Single-pass copy + precomputed steps; no per-node slice/reduce.
+  let total = 1;
+  for (const d of dims) total *= d;
+  const flat = new Array(total);
+  for (let i = 0; i < total; i++) {
+    const v = (data as any)[i];
+    flat[i] = typeof v === "bigint" ? Number(v) : v;
+  }
   if (dims.length === 0) return flat[0];
+  const steps: number[] = new Array(dims.length);
+  for (let d = 0; d < dims.length; d++) {
+    let s = 1;
+    for (let k = d + 1; k < dims.length; k++) s *= dims[k];
+    steps[d] = s;
+  }
   const rec = (d: number, off: number): any => {
     if (d === dims.length - 1) return flat.slice(off, off + dims[d]);
-    const step = dims.slice(d + 1).reduce((a, b) => a * b, 1);
-    const out: any[] = [];
-    for (let i = 0; i < dims[d]; i++) out.push(rec(d + 1, off + i * step));
+    const out: any[] = new Array(dims[d]);
+    for (let i = 0; i < dims[d]; i++) out[i] = rec(d + 1, off + i * steps[d]);
     return out;
   };
   return rec(0, 0);
 }
 
 function i64(ort: any, arr: number[] | number[][], dims: number[]): any {
-  const flat = (arr as any).flat(Infinity).map((v: number) => BigInt(Math.trunc(v)));
-  return new ort.Tensor("int64", BigInt64Array.from(flat), dims);
+  // Rank <= 2 by construction; direct loop avoids flat(Infinity) intermediates.
+  const out = new BigInt64Array(dims.reduce((a, b) => a * b, 1));
+  let p = 0;
+  if (Array.isArray((arr as any)[0])) {
+    for (const row of arr as number[][]) for (const v of row) out[p++] = BigInt(Math.trunc(v));
+  } else {
+    for (const v of arr as number[]) out[p++] = BigInt(Math.trunc(v));
+  }
+  return new ort.Tensor("int64", out, dims);
 }
 
 /** Encoder feeds: input_ids + attention_mask (int64). */
 export function feed(ort: any, b: Batch): Record<string, any> {
   const n = b.inputIds.length;
-  const L = Math.max(1, ...b.inputIds.map((r) => r.length));
+  let L = 1;
+  for (const r of b.inputIds) if (r.length > L) L = r.length;
   return {
     input_ids: i64(ort, b.inputIds, [n, L]),
     attention_mask: i64(ort, b.attentionMask, [n, L]),
@@ -45,13 +65,22 @@ export function feed(ort: any, b: Batch): Record<string, any> {
 /** Head feeds: encoder hidden + marker_pos/mask + qtype. */
 export function feedHead(ort: any, hidden: number[][][] | any, b: Batch): Record<string, any> {
   const n = b.markerPos.length;
-  const k = Math.max(1, ...b.markerPos.map((r) => r.length));
-  const H = new ort.Tensor(
-    "float32",
-    Float32Array.from((hidden as any).flat(Infinity).map(Number)),
-    [(hidden as any).length ?? n, (hidden as any)[0]?.length ?? 1, (hidden as any)[0]?.[0]?.length ?? 1],
-  );
+  let k = 1;
+  for (const r of b.markerPos) if (r.length > k) k = r.length;
+  // Direct flatten into typed arrays; no flat(Infinity)+map intermediates.
+  const nH = (hidden as any).length ?? n;
   const S = (hidden as any)[0]?.length ?? 1;
+  const Hd = (hidden as any)[0]?.[0]?.length ?? 1;
+  const flatH = new Float32Array(nH * S * Hd);
+  let p = 0;
+  for (let i = 0; i < nH; i++) {
+    const bi = (hidden as any)[i] ?? [];
+    for (let j = 0; j < S; j++) {
+      const hj = bi[j] ?? [];
+      for (let h = 0; h < Hd; h++) flatH[p++] = Number(hj[h] ?? 0);
+    }
+  }
+  const H = new ort.Tensor("float32", flatH, [nH, S, Hd]);
   // Pad/trim mask rows to S so the mask always matches hidden_states even
   // if a caller passes unpadded rows.
   const maskRows = b.attentionMask.map((r) => {
@@ -62,11 +91,13 @@ export function feedHead(ort: any, hidden: number[][][] | any, b: Batch): Record
   return {
     hidden_states: H,
     marker_pos: i64(ort, b.markerPos, [n, k]),
-    marker_mask: new ort.Tensor(
-      "bool",
-      Uint8Array.from((b.markerMask as any).flat(Infinity).map((v: any) => (v ? 1 : 0))),
-      [n, k],
-    ),
+    marker_mask: new ort.Tensor("bool", (() => {
+      const out = new Uint8Array(n * k);
+      let q = 0;
+      for (const row of b.markerMask as unknown as boolean[][])
+        for (let j = 0; j < k; j++) out[q++] = row[j] ? 1 : 0;
+      return out;
+    })(), [n, k]),
     qtype: i64(ort, b.qtype.map((v) => [v]), [n, 1]),
     // Padding mask for the head transformer (py DecisionModel.forward).
     // Without it, batch mates of unequal length corrupt each other's markers.
@@ -103,15 +134,54 @@ function isOomError(e: unknown): boolean {
   return m.includes("memory") || m.includes("cuda") || m.includes("out of memory") || m.includes("oom");
 }
 
+export interface LoadOptions {
+  subfolder?: string | null;
+  signal?: AbortSignal | null;
+  onProgress?: ((done: number, total: number, file: string) => void) | null;
+}
+
+const CACHE_KEY = "laya-ts-v1";
+const TOKENIZER_CANDIDATES = ["tokenizer.json", "tokenizer/tokenizer.json"];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** fetch with 2 retries on network errors + 429/5xx; 404s fail fast. */
+async function fetchWithRetry(url: string, init?: RequestInit, retries = 2): Promise<Response> {
+  let last: unknown = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (init?.signal?.aborted) throw new DOMException("aborted", "AbortError");
+    try {
+      const res = await fetch(url, init);
+      if (res.ok) return res;
+      if ((res.status === 429 || res.status >= 500) && attempt < retries) {
+        await sleep(100 * (attempt + 1));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      last = e;
+      if ((e as any)?.name === "AbortError") throw e;
+      if (attempt < retries) {
+        await sleep(100 * (attempt + 1));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw last instanceof Error ? last : new Error(`fetch failed for ${url}`);
+}
+
 /** Online-first fetch: try network, cache on success, fall back to CacheStorage. */
-async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
+async function fetchArrayBuffer(url: string, opts?: { signal?: AbortSignal | null }): Promise<ArrayBuffer> {
   const g = globalThis as unknown as { caches?: any };
   let cache: any = null;
   let hit: any = null;
   try {
     if (g.caches && typeof g.caches.open === "function") {
       try {
-        cache = await g.caches.open("laya-ts");
+        cache = await g.caches.open(CACHE_KEY);
         try {
           hit = await cache.match(url);
         } catch {
@@ -126,7 +196,7 @@ async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
   }
   if (cache) {
     try {
-      const res = await fetch(url);
+      const res = await fetchWithRetry(url, { signal: opts?.signal ?? undefined });
       if (res.ok) {
         try {
           await cache.put(url, res.clone());
@@ -154,13 +224,13 @@ async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
     }
     throw new Error(`fetch failed for ${url}`);
   }
-  const res = await fetch(url);
+  const res = await fetchWithRetry(url, { signal: opts?.signal ?? undefined });
   if (!res.ok) throw new Error(`fetch failed for ${url}: ${res.status}`);
   return await res.arrayBuffer();
 }
 
-async function fetchJson(url: string): Promise<unknown> {
-  const buf = await fetchArrayBuffer(url);
+async function fetchJson(url: string, opts?: { signal?: AbortSignal | null }): Promise<unknown> {
+  const buf = await fetchArrayBuffer(url, opts);
   return JSON.parse(new TextDecoder().decode(buf));
 }
 
@@ -172,7 +242,7 @@ export interface NodeBundle {
 
 export async function loadNodeBundle(
   modelDirOrRepo: string,
-  opts?: { subfolder?: string | null; localDir?: string; token?: string | null },
+  opts?: { subfolder?: string | null; localDir?: string; token?: string | null; signal?: AbortSignal | null; onProgress?: ((done: number, total: number, file: string) => void) | null },
 ): Promise<NodeBundle> {
   const fs: typeof import("node:fs/promises") = await import("node:fs/promises");
   const path: typeof import("node:path") = await import("node:path");
@@ -195,12 +265,20 @@ export async function loadNodeBundle(
     await fs.mkdir(cache, { recursive: true });
     const token =
       opts?.token ?? (typeof process !== "undefined" ? (process as any).env?.["HF_TOKEN"] : undefined);
-    for (const f of ["rl_agent_config.json", "tokenizer.json", "tokenizer/tokenizer.json", "encoder.onnx", "head.onnx"]) {
+    const files = ["rl_agent_config.json", "tokenizer.json", "tokenizer/tokenizer.json", "encoder.onnx", "head.onnx"];
+    let done = 0;
+    for (const f of files) {
       try {
         await fs.stat(path.join(cache, f));
       } catch {
         const url = `https://huggingface.co/${modelDirOrRepo}/resolve/main/${sub ? sub + "/" : ""}${f}`;
-        const res = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+        const res = await fetchWithRetry(
+          url,
+          {
+            ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+            signal: opts?.signal ?? undefined,
+          },
+        );
         if (!res.ok) {
           if (f === "rl_agent_config.json") {
             throw new Error(
@@ -213,6 +291,8 @@ export async function loadNodeBundle(
         await fs.mkdir(path.dirname(target), { recursive: true });
         await fs.writeFile(target, new Uint8Array(await res.arrayBuffer()));
       }
+      done++;
+      opts?.onProgress?.(done, files.length, f);
     }
     dir = cache;
   }
@@ -225,7 +305,7 @@ export async function loadNodeBundle(
     );
   }
   let tokenizerJson: unknown | null = null;
-  for (const candidate of ["tokenizer.json", "tokenizer/tokenizer.json"]) {
+  for (const candidate of TOKENIZER_CANDIDATES) {
     try {
       tokenizerJson = JSON.parse(await fs.readFile(path.join(dir, candidate), "utf8"));
       break;
@@ -252,24 +332,27 @@ function baseUrlFor(repoOrUrl: string, subfolder?: string | null): string {
 
 export async function loadWebBundle(
   repoOrUrl: string,
-  opts?: { subfolder?: string | null },
+  opts?: { subfolder?: string | null; signal?: AbortSignal | null; onProgress?: ((done: number, total: number, file: string) => void) | null },
 ): Promise<WebBundle> {
   const base = baseUrlFor(repoOrUrl, opts?.subfolder ?? null);
+  const sig = { signal: opts?.signal ?? undefined };
   let cfg: any;
   try {
-    cfg = await fetchJson(`${base}/rl_agent_config.json`);
+    cfg = await fetchJson(`${base}/rl_agent_config.json`, sig);
   } catch {
     throw new Error(`Incompatible model: ${JSON.stringify(repoOrUrl)} does not contain 'rl_agent_config.json'.`);
   }
+  opts?.onProgress?.(1, 2, "rl_agent_config.json");
   let tokenizerJson: unknown | null = null;
-  for (const candidate of ["tokenizer.json", "tokenizer/tokenizer.json"]) {
+  for (const candidate of TOKENIZER_CANDIDATES) {
     try {
-      tokenizerJson = await fetchJson(`${base}/${candidate}`);
+      tokenizerJson = await fetchJson(`${base}/${candidate}`, sig);
       break;
     } catch {
       // Try the next supported Hugging Face layout.
     }
   }
+  opts?.onProgress?.(2, 2, "tokenizer.json");
   return { dir: base, cfg, tokenizerJson };
 }
 

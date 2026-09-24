@@ -300,6 +300,28 @@ export class Agent extends HookRegistry {
     return (await this._predictHooked([state], questions, opts))[0];
   }
 
+  /**
+   * Evaluate typed questions across many states in a single forward pass.
+   *
+   * Same questions for every state (bulk triage). One encoder+head run for
+   * all S*Q rows instead of S sequential runs. Hooks see all states at once.
+   */
+  async predictMany(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions = {},
+  ): Promise<SystemOneResult[]> {
+    return this._predictHooked([...(states ?? [])], questions, opts);
+  }
+
+  async systemMany(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions = {},
+  ): Promise<SystemOneResult[]> {
+    return this.predictMany(states, questions, opts);
+  }
+
   private async _predictHooked(
     states: unknown[],
     questions: Record<string, QuestionDef>,
@@ -315,10 +337,7 @@ export class Agent extends HookRegistry {
     try {
       dispatch(active, "onPredictStart", ctx, { raiseErrors });
       if (ctx.results === null) {
-        const out: SystemOneResult[] = [];
-        for (const st of ctx.states) {
-          out.push(await this._systemOneCore(st, ctx.questions as Record<string, QuestionDef>));
-        }
+        const out = await this._systemManyCore(ctx.states, ctx.questions as Record<string, QuestionDef>);
         ctx.results = out as unknown as Record<string, unknown>[];
         ctx.model ??= out[0]?.model ?? null;
       }
@@ -347,90 +366,113 @@ export class Agent extends HookRegistry {
     state: unknown,
     questions: Record<string, QuestionDef>,
   ): Promise<SystemOneResult> {
+    return (await this._systemManyCore([state], questions))[0];
+  }
+
+  // One encoder+head run for all S*Q rows; chunk upstream if GPU OOM (providers fall back to CPU).
+  private async _systemManyCore(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+  ): Promise<SystemOneResult[]> {
     const ids = Object.keys(questions ?? {});
+    if ((states ?? []).length === 0) return [];
     if (ids.length === 0) {
-      return { model: "laya-rl-agent", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } };
+      return states.map(() => ({ model: "laya-rl-agent", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } }));
     }
-    const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
-    const internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } }[] = [];
-    // The state text is shared by every question and is usually the longest text in the
-    // sequence — encode it once and compose the per-question prefixes onto it.
-    const stAll = this.tok.encode(serializeState(state).split(this.tok.maskToken).join(" "));
-    for (const qid of ids) {
+    const internals = ids.map((qid) => {
       checkQuestion(qid, questions[qid]);
-      const q = toInternal(questions[qid]);
-      internals.push(q);
-      const prefix = buildQuestionPrefix(this.tok, q, this.maxLen, this.headMaxLen);
-      const { ids: seq, markers } = sequenceWithState(
-        prefix, stAll, this.tok.sepId, this.maxLen, Array.isArray(state),
-      );
-      if (markers.length !== renderOptions(q).length) {
-        throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${this.headMaxLen}`);
+      return toInternal(questions[qid]);
+    });
+    const optCounts = internals.map((q) => renderOptions(q).length);
+    const prefixes = internals.map((q) => buildQuestionPrefix(this.tok, q, this.maxLen, this.headMaxLen));
+    const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
+    const stateOfRow: number[] = [];
+    for (let si = 0; si < states.length; si++) {
+      const state = states[si];
+      const stAll = this.tok.encode(serializeState(state).split(this.tok.maskToken).join(" "));
+      for (let qi = 0; qi < ids.length; qi++) {
+        const { ids: seq, markers } = sequenceWithState(
+          prefixes[qi], stAll, this.tok.sepId, this.maxLen, Array.isArray(state),
+        );
+        if (markers.length !== optCounts[qi]) {
+          throw new Error(`question ${qidStr(ids[qi])} options exceed head_max_len=${this.headMaxLen}`);
+        }
+        items.push({ ids: seq, markers, qtype: QTYPES[internals[qi].t] });
+        stateOfRow.push(si);
       }
-      items.push({ ids: seq, markers, qtype: QTYPES[q.t] });
     }
     const collated = collateItems([items], this.tok.padId);
     if (!collated) throw new Error("no items to collate");
     const batch: Batch = collated;
-    const nTokens = batch.attentionMask.flat().reduce((a, b) => a + b, 0);
     const { lastHidden } = await this.provider.runEncoder(batch);
     const { logits, act } = await this.provider.runHead(lastHidden, batch);
-    if (!Array.isArray(logits) || !Array.isArray(act) || logits.length < ids.length || act.length < ids.length) {
+    if (!Array.isArray(logits) || !Array.isArray(act) || logits.length < items.length || act.length < items.length) {
       throw new Error("model provider returned fewer output rows than input items");
     }
-    for (let r = 0; r < ids.length; r++) {
+    for (let r = 0; r < items.length; r++) {
       const k = items[r].markers.length;
       if (!Array.isArray(logits[r]) || logits[r].length < k || !Array.isArray(act[r]) || act[r].length === 0 ||
           logits[r].some((v) => !Number.isFinite(v)) || act[r].some((v) => !Number.isFinite(v))) {
-        throw new Error(`model provider returned invalid output for question ${ids[r]}`);
+        throw new Error(`model provider returned invalid output for question ${ids[r % ids.length]}`);
       }
     }
-
-    const answers: Record<string, SystemAnswer> = {};
-    for (let r = 0; r < ids.length; r++) {
-      const qid = ids[r];
-      const q = internals[r];
-      const k = items[r].markers.length;
-      const qt = QTYPES[q.t];
-      const bucket = tempBucket(qt, k);
-      const scale = this.temperatureByOptions[bucket] ?? this.temperature[qt] ?? 1.0;
-      const z = (logits[r] as number[]).slice(0, k).map((v) => v / scale);
-      const p = softmax(z);
-      const actRow = (act[r] as number[]) ?? [1, 0];
-      const actP = softmax(actRow.slice(0, Math.max(2, actRow.length)));
-      const ext = { act_probability: r4(actP[0]) };
-      if (q.t === "choice") {
-        const keys = Object.keys(q.crit as Record<string, unknown>);
-        let best = 0;
-        for (let i = 1; i < p.length; i++) if (p[i] > p[best]) best = i;
-        answers[qid] = {
-          type: "choice",
-          choice: keys[best],
-          probabilities: Object.fromEntries(keys.map((kk, i) => [kk, r4(p[i] ?? 0)])),
-          confidence: r4(confidenceFromProbs(p)),
-          action: ext,
-        };
-      } else if (q.t === "score") {
-        const exp = p.reduce((a, v, i) => a + i * v, 0);
-        answers[qid] = {
-          type: "score",
-          score: r4(exp),
-          legend: Object.fromEntries((q.crit as unknown[]).map((c, i) => [String(i), c])),
-          probabilities: Object.fromEntries(p.map((v, i) => [String(i), r4(v)])),
-          confidence: r4(confidenceFromProbs(p)),
-          action: ext,
-        };
-      } else {
-        const pt = p[1] ?? 0;
-        answers[qid] = {
-          type: "noul",
-          noul: r4(pt),
-          confidence: r4(Math.max(pt, 1 - pt)),
-          action: ext,
-        };
+    const mask = batch.attentionMask;
+    const tokensPerState = states.map((_, si) => {
+      let t = 0;
+      for (let qi = 0; qi < ids.length; qi++) {
+        const row = mask[si * ids.length + qi] ?? [];
+        for (const v of row) t += v;
       }
-    }
-    return { model: "laya-rl-agent", answers, usage: { input_tokens: nTokens, output_tokens: 0 } };
+      return t;
+    });
+    return states.map((_, si) => {
+      const answers: Record<string, SystemAnswer> = {};
+      for (let qi = 0; qi < ids.length; qi++) {
+        const r = si * ids.length + qi;
+        const qid = ids[qi];
+        const q = internals[qi];
+        const k = items[r].markers.length;
+        const qt = QTYPES[q.t];
+        const bucket = tempBucket(qt, k);
+        const scale = this.temperatureByOptions[bucket] ?? this.temperature[qt] ?? 1.0;
+        const z = (logits[r] as number[]).slice(0, k).map((v) => v / scale);
+        const p = softmax(z);
+        const actRow = (act[r] as number[]) ?? [1, 0];
+        const actP = softmax(actRow.slice(0, Math.max(2, actRow.length)));
+        const ext = { act_probability: r4(actP[0]) };
+        if (q.t === "choice") {
+          const keys = Object.keys(q.crit as Record<string, unknown>);
+          let best = 0;
+          for (let i = 1; i < p.length; i++) if (p[i] > p[best]) best = i;
+          answers[qid] = {
+            type: "choice",
+            choice: keys[best],
+            probabilities: Object.fromEntries(keys.map((kk, i) => [kk, r4(p[i] ?? 0)])),
+            confidence: r4(confidenceFromProbs(p)),
+            action: ext,
+          };
+        } else if (q.t === "score") {
+          const exp = p.reduce((a, v, i) => a + i * v, 0);
+          answers[qid] = {
+            type: "score",
+            score: r4(exp),
+            legend: Object.fromEntries((q.crit as unknown[]).map((c, i) => [String(i), c])),
+            probabilities: Object.fromEntries(p.map((v, i) => [String(i), r4(v)])),
+            confidence: r4(confidenceFromProbs(p)),
+            action: ext,
+          };
+        } else {
+          const pt = p[1] ?? 0;
+          answers[qid] = {
+            type: "noul",
+            noul: r4(pt),
+            confidence: r4(Math.max(pt, 1 - pt)),
+            action: ext,
+          };
+        }
+      }
+      return { model: "laya-rl-agent", answers, usage: { input_tokens: tokensPerState[si], output_tokens: 0 } };
+    });
   }
 
   async predict(
@@ -449,6 +491,8 @@ export class Agent extends HookRegistry {
       localDir?: string;
       token?: string | null;
       numThreads?: number;
+      signal?: AbortSignal | null;
+      onProgress?: ((done: number, total: number, file: string) => void) | null;
     },
   ): Promise<Agent> {
     const sub = opts?.subfolder ?? null;
@@ -460,7 +504,7 @@ export class Agent extends HookRegistry {
     let provider: SessionProvider;
     if (isBrowser) {
       const { loadWebBundle, createWebProvider } = await import("./providers.js");
-      const bundle = await loadWebBundle(modelDirOrRepo, { subfolder: sub });
+      const bundle = await loadWebBundle(modelDirOrRepo, { subfolder: sub, signal: opts?.signal, onProgress: opts?.onProgress });
       cfg = bundle.cfg;
       tokenizerJson = bundle.tokenizerJson;
       dir = bundle.dir;
@@ -471,6 +515,8 @@ export class Agent extends HookRegistry {
         subfolder: sub,
         localDir: opts?.localDir,
         token: opts?.token,
+        signal: opts?.signal,
+        onProgress: opts?.onProgress,
       });
       cfg = bundle.cfg;
       tokenizerJson = bundle.tokenizerJson;

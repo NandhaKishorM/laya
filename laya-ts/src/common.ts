@@ -58,7 +58,24 @@ export interface QuestionPrefix {
 }
 /** The question half of `buildSequence`: everything before the state tokens. Hoisted out so
  * callers asking several questions about the same state can encode the state text only once. */
+// Per-tokenizer prefix cache (cap 1k, clear on overflow); repeat triage skips re-encode.
+const prefixCache = new WeakMap<object, Map<string, QuestionPrefix>>();
 export function buildQuestionPrefix(tok: TokenizerLike, q: InternalQ,
+    maxLen = 512, headMaxLen = 192, optionOrder?: number[]): QuestionPrefix {
+  let per = prefixCache.get(tok as object);
+  if (!per) {
+    per = new Map();
+    prefixCache.set(tok as object, per);
+  }
+  const key = JSON.stringify([q.t, q.ins, q.crit, q.labels ?? null, maxLen, headMaxLen, optionOrder ?? null]);
+  const hit = per.get(key);
+  if (hit) return hit;
+  const built = buildQuestionPrefixUncached(tok, q, maxLen, headMaxLen, optionOrder);
+  if (per.size > 1000) per.clear();
+  per.set(key, built);
+  return built;
+}
+function buildQuestionPrefixUncached(tok: TokenizerLike, q: InternalQ,
     maxLen = 512, headMaxLen = 192, optionOrder?: number[]): QuestionPrefix {
   const maskTok = tok.maskToken;
   const opts = renderOptions(q);
@@ -118,6 +135,12 @@ export function tempBucket(qtype: number, k: number): string {
   const size = k <= 2 ? "2" : k <= 5 ? "3-5" : k <= 10 ? "6-10" : "11+";
   return `${["choice", "score", "noul"][qtype]}:${size}`;
 }
+/** Max of a length list without spread (Math.max(...arr) throws RangeError past ~100k args). */
+export function maxOf(values: ArrayLike<number>, fallback = 0): number {
+  let m = fallback;
+  for (let i = 0; i < values.length; i++) if (values[i] > m) m = values[i];
+  return m;
+}
 export interface CollateItem {
   ids: number[];
   markers: number[];
@@ -140,8 +163,12 @@ export interface CollatedBatch {
 export function collateItems(batch: CollateItem[][], padId: number): CollatedBatch | null {
   const items = (batch ?? []).flat();
   if (items.length === 0) return null;
-  const L = Math.max(...items.map((it) => it.ids.length));
-  const K = Math.max(...items.map((it) => it.markers.length));
+  let L = 0;
+  let K = 0;
+  for (const it of items) {
+    if (it.ids.length > L) L = it.ids.length;
+    if (it.markers.length > K) K = it.markers.length;
+  }
   const hasTarget = items.some((it) => "target" in it);
   const inputIds = items.map((it) => [...it.ids, ...Array(L - it.ids.length).fill(padId)]);
   const attentionMask = items.map((it) => [...Array(it.ids.length).fill(1), ...Array(L - it.ids.length).fill(0)]);

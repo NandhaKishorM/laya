@@ -1,4 +1,5 @@
 import { Agent } from "../dist/index.js";
+import { existsSync } from "node:fs";
 
 // ---- CLI (no deps) ----
 const args = process.argv.slice(2);
@@ -6,7 +7,7 @@ const opt = (name, def) => {
   const i = args.indexOf(name);
   return i === -1 || i + 1 >= args.length ? def : args[i + 1];
 };
-const MODEL_DIR = opt("--model", "./model-ml");
+const MODEL_DIR = opt("--model", ["./model-ml", "laya-ts/examples/model-ml", "./examples/model-ml"].find((d) => existsSync(d)) ?? "./model-ml");
 const TICK_MS = Math.max(20, Number(opt("--tick", "120")) || 120);
 const W = Math.max(10, Number(opt("--width", "20")) || 20);
 const H = Math.max(6, Number(opt("--height", "12")) || 12);

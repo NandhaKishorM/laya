@@ -58,18 +58,31 @@ function maps(): { b2u: Map<number, string>; u2b: Map<string, number> } {
 const GPT2_SPLIT = /'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu;
 
 /** Merge one word's chars greedily by merge rank (first occurrence per step). */
+// Word cache per merges map (cap 20k, clear on overflow); upgrade to LRU if hit rate matters.
+const wordCache = new WeakMap<Map<string, number>, Map<string, string[]>>();
 function bpeWord(chars: string[], rank: Map<string, number>): string[] {
+  if (chars.length <= 1) return chars.slice();
+  let per = wordCache.get(rank);
+  if (!per) {
+    per = new Map();
+    wordCache.set(rank, per);
+  }
+  const key = chars.length + ":" + chars.join("");
+  const hit = per.get(key);
+  if (hit) return hit.slice();
   let word = chars.slice();
-  if (word.length <= 1) return word;
   for (;;) {
     let best = Infinity, idx = -1;
     for (let i = 0; i < word.length - 1; i++) {
       const r = rank.get(word[i] + " " + word[i + 1]);
       if (r !== undefined && r < best) { best = r; idx = i; }
     }
-    if (idx < 0) return word;
+    if (idx < 0) break;
     word = [...word.slice(0, idx), word[idx] + word[idx + 1], ...word.slice(idx + 2)];
   }
+  if (per.size > 20000) per.clear();
+  per.set(key, word.slice());
+  return word;
 }
 
 /** Byte-level BPE encode: NFC-normalize, NO lowercasing, GPT-2 byte map + rank-order merges. */

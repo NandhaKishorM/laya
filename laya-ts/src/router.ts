@@ -495,4 +495,100 @@ export class Router extends HookRegistry {
   ): Promise<RoutedResult> {
     return this.predict(state, questions, opts);
   }
+
+  /**
+   * Route each state, then answer each model group in one forward pass.
+   *
+   * Same questions for every state. Loads each checkpoint once, keeps input
+   * order, and attaches per-state `routing`. Agents without predictMany fall
+   * back to looped systemOne.
+   */
+  async predictMany(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+    opts: RouteOptions & PredictOptions = {},
+  ): Promise<RoutedResult[]> {
+    const input = [...(states ?? [])];
+    if (input.length === 0) return [];
+    const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
+    const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
+    let decisions = input.map((s) => this.route(s, questions, opts));
+    const ctx = new PredictContext({
+      states: [...input],
+      questions: questions as Record<string, unknown>,
+      router: this,
+    });
+    try {
+      dispatch(active, "onPredictStart", ctx, { raiseErrors });
+      if (ctx.results === null) {
+        if (ctx.states.length !== decisions.length) {
+          decisions = ctx.states.map((s) => this.route(s, ctx.questions as Record<string, unknown>, opts));
+        }
+        const out = new Array<RoutedResult>(ctx.states.length);
+        const groups = new Map<string, number[]>();
+        decisions.forEach((d, i) => {
+          const list = groups.get(d.model) ?? [];
+          list.push(i);
+          groups.set(d.model, list);
+        });
+        for (const [model, idxs] of groups) {
+          const agent = (await this.load(model)) as {
+            predictMany?(s: unknown[], q: Record<string, QuestionDef>): Promise<SystemOneResult[]>;
+            systemMany?(s: unknown[], q: Record<string, QuestionDef>): Promise<SystemOneResult[]>;
+            systemOne(s: unknown, q: Record<string, QuestionDef>): Promise<SystemOneResult>;
+          };
+          const groupStates = idxs.map((i) => ctx.states[i]);
+          let results: SystemOneResult[];
+          if (typeof agent.predictMany === "function") {
+            results = await agent.predictMany(groupStates, ctx.questions as Record<string, QuestionDef>);
+          } else if (typeof agent.systemMany === "function") {
+            results = await agent.systemMany(groupStates, ctx.questions as Record<string, QuestionDef>);
+          } else {
+            results = [];
+            for (const s of groupStates) {
+              results.push(await agent.systemOne(s, ctx.questions as Record<string, QuestionDef>));
+            }
+          }
+          idxs.forEach((gi, k) => {
+            (out[gi] as RoutedResult) = { ...(results[k] as RoutedResult), routing: { ...decisions[gi] } };
+          });
+        }
+        ctx.results = out as unknown as Record<string, unknown>[];
+        ctx.model ??= decisions[0]?.model ?? null;
+      } else {
+        for (let i = 0; i < ctx.results.length; i++) {
+          const result = ctx.results[i];
+          if (result && typeof result === "object" && !("routing" in result) && decisions[i]) {
+            (result as unknown as RoutedResult).routing = { ...decisions[i] };
+          }
+        }
+      }
+    } catch (err) {
+      ctx.error = err;
+      try {
+        dispatch(active, "onError", ctx, { raiseErrors });
+      } catch {
+        // A failing onError hook must not hide the failure that triggered it.
+      }
+      throw err;
+    } finally {
+      ctx.markElapsed();
+      if (ctx.results !== null) ctx.usage = aggregateUsage(ctx.results);
+      try {
+        dispatch(active, "onPredictEnd", ctx, { raiseErrors });
+      } catch (hookErr) {
+        // End hooks run on the failure path too; do not let one mask the real error.
+        if (ctx.error === null) throw hookErr;
+      }
+    }
+    return ctx.results as unknown as RoutedResult[];
+  }
+
+  async systemMany(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+    opts: RouteOptions & PredictOptions = {},
+  ): Promise<RoutedResult[]> {
+    return this.predictMany(states, questions, opts);
+  }
 }

@@ -8,6 +8,7 @@ import {
   composeHooks,
   dispatch,
   normaliseHooks,
+  type Hook,
   type HookArg,
   type PredictHook,
 } from "./hooks.js";
@@ -134,6 +135,30 @@ export interface RouteOptions {
   lang_guess?: LangGuess;
   hooks?: HookArg;
   hooksRaise?: boolean;
+}
+
+/** One item of a Router.predictBatch/routeBatch batch: state, questions, route overrides. */
+export interface BatchRequest {
+  state: unknown;
+  questions: Record<string, QuestionDef>;
+  model?: string | null;
+  task?: string | null;
+  lang?: string | null;
+  langGuess?: LangGuess;
+  lang_guess?: LangGuess;
+}
+
+function questionSchema(questions: Record<string, unknown>): string {
+  // Python groups on json.dumps(sort_keys=False, default=str): insertion order is significant
+  // at every nesting level because options are positional in the rendered sequence, so two
+  // equal schemas with different key orders must not share a forward pass. JSON.stringify
+  // preserves insertion order for string keys; the replacer stands in for default=str on
+  // the few value types JSON cannot represent.
+  return JSON.stringify(questions, (_key, value) =>
+    typeof value === "function" || typeof value === "symbol" || typeof value === "bigint"
+      ? String(value)
+      : value,
+  );
 }
 
 function toSpec(spec: string | ModelSpec | [string, string | null]): ModelSpec {
@@ -531,5 +556,239 @@ export class Router extends HookRegistry {
     opts: RouteOptions & PredictOptions = {},
   ): Promise<RoutedResult> {
     return this.predict(state, questions, opts);
+  }
+
+  /**
+   * Route many requests in one call (Python `Router.route_batch` parity). Every request is
+   * validated before anything loads, so a malformed batch fails fast. Entries keep input
+   * order; routing is deterministic, so repeated batches route identically.
+   */
+  routeBatch(requests: BatchRequest[]): RouteDecision[] {
+    if (!Array.isArray(requests)) {
+      throw new TypeError("requests must be an array of request objects");
+    }
+    const decisions: RouteDecision[] = [];
+    for (let i = 0; i < requests.length; i++) {
+      const request = requests[i];
+      if (typeof request !== "object" || request === null || Array.isArray(request)) {
+        const got = Array.isArray(request) ? "list" : request === null ? "null" : typeof request;
+        throw new TypeError(`request ${i} must be an object, got ${got}`);
+      }
+      if (!("state" in request)) {
+        throw new Error(`request ${i} is missing required key 'state'`);
+      }
+      if (!("questions" in request)) {
+        throw new Error(`request ${i} is missing required key 'questions'`);
+      }
+      const questions = request.questions;
+      if (typeof questions !== "object" || questions === null || Array.isArray(questions)) {
+        const got =
+          Array.isArray(questions) ? "list" : questions === null ? "null" : typeof questions;
+        throw new TypeError(`request ${i} 'questions' must be an object, got ${got}`);
+      }
+      decisions.push(
+        this.route(request.state, questions, {
+          model: request.model ?? null,
+          task: request.task ?? null,
+          lang: request.lang ?? null,
+          langGuess: request.langGuess ?? request.lang_guess ?? null,
+        }),
+      );
+    }
+    return decisions;
+  }
+
+  /**
+   * Route and run many requests in one call (Python `Router.predict_batch` parity).
+   * Requests are routed first, then grouped by checkpoint so each loaded Agent scores its
+   * requests in as few forward passes as possible; results are restored to input order.
+   * Requests routed to the same checkpoint still split into separate `predictBatch` calls
+   * when their question schemas differ (order-sensitively) or when per-request start hooks
+   * set different maxLen/headMaxLen overrides.
+   *
+   * Router-level predict hooks run per request: each request gets its own PredictContext
+   * carrying `decision`; `onPredictStart` may rewrite a request or `ctx.skip()` it, and
+   * `onPredictEnd` runs once per started request even when the batch fails.
+   */
+  async predictBatch(
+    requests: BatchRequest[],
+    batchSize: number | null = null,
+  ): Promise<RoutedResult[]> {
+    const decisions = this.routeBatch(requests);
+    if (decisions.length === 0) return [];
+
+    const groups = new Map<string, number[]>();
+    for (let i = 0; i < decisions.length; i++) {
+      const model = decisions[i].model;
+      const bucket = groups.get(model);
+      if (bucket) bucket.push(i);
+      else groups.set(model, [i]);
+    }
+
+    const results: (RoutedResult | null)[] = new Array(requests.length).fill(null);
+    const active = composeHooks(this.hooks);
+    const raiseErrors = this.hooksRaise;
+
+    for (const [modelName, indices] of groups) {
+      const agent = (await this.load(modelName)) as {
+        predictBatch?(
+          states: unknown[],
+          questions: Record<string, QuestionDef>,
+          opts?: { batchSize?: number | null; maxLen?: number | null; headMaxLen?: number | null },
+        ): Promise<SystemOneResult[]>;
+        systemOne(
+          state: unknown,
+          questions: Record<string, QuestionDef>,
+        ): Promise<SystemOneResult>;
+      };
+      const started: PredictContext[] = [];
+      try {
+        for (const i of indices) {
+          const ctx = new PredictContext({
+            states: [requests[i].state],
+            questions: requests[i].questions as Record<string, unknown>,
+            decision: { ...decisions[i] } as unknown as Record<string, unknown>,
+            model: modelName,
+            agent,
+            router: this,
+          });
+          started.push(ctx);
+          dispatch(active, "onPredictStart", ctx, { raiseErrors });
+        }
+
+        // Order-sensitive at every nesting level (#166): options are positional, so two
+        // equal schemas with different key orders must not share a group.
+        const questionGroups: {
+          questions: Record<string, unknown>;
+          schema: string;
+          maxLen: number | null;
+          headMaxLen: number | null;
+          items: [number, PredictContext][];
+        }[] = [];
+        for (let s = 0; s < indices.length; s++) {
+          const i = indices[s];
+          const ctx = started[s];
+          if (ctx.results !== null) {
+            // A cache hit short-circuits inference, but predict still promises a `routing`
+            // key. Add it without overwriting a routing the cached payload already has.
+            for (const result of ctx.results) {
+              if (result && typeof result === "object" && !("routing" in result)) {
+                (result as unknown as RoutedResult).routing = { ...decisions[i] };
+              }
+            }
+            continue;
+          }
+          const schema = questionSchema(ctx.questions);
+          const found = questionGroups.find(
+            (g) => g.schema === schema && g.maxLen === ctx.maxLen && g.headMaxLen === ctx.headMaxLen,
+          );
+          if (found) found.items.push([i, ctx]);
+          else {
+            questionGroups.push({
+              questions: ctx.questions,
+              schema,
+              maxLen: ctx.maxLen,
+              headMaxLen: ctx.headMaxLen,
+              items: [[i, ctx]],
+            });
+          }
+        }
+
+        for (const group of questionGroups) {
+          const agentOpts: {
+            batchSize: number | null;
+            maxLen?: number;
+            headMaxLen?: number;
+          } = { batchSize };
+          // Only pass overrides when set, so an Agent-like object that does not accept
+          // them still works.
+          if (group.maxLen !== null) agentOpts.maxLen = group.maxLen;
+          if (group.headMaxLen !== null) agentOpts.headMaxLen = group.headMaxLen;
+          let batchResults: SystemOneResult[];
+          if (typeof agent.predictBatch === "function") {
+            batchResults = await agent.predictBatch(
+              group.items.map(([, ctx]) => ctx.states[0]),
+              group.questions as Record<string, QuestionDef>,
+              agentOpts,
+            );
+          } else {
+            // Agent-like objects that only implement systemOne (light wrappers, tests)
+            // still work; their states simply share no forward pass.
+            batchResults = [];
+            for (const [, ctx] of group.items) {
+              batchResults.push(
+                await agent.systemOne(ctx.states[0], group.questions as Record<string, QuestionDef>),
+              );
+            }
+          }
+          if (batchResults.length !== group.items.length) {
+            throw new Error(
+              `internal error: Agent.predictBatch returned ${batchResults.length} results for ${group.items.length} states`,
+            );
+          }
+          for (let s = 0; s < group.items.length; s++) {
+            const [i, ctx] = group.items[s];
+            const result = batchResults[s] as RoutedResult;
+            result.routing = { ...decisions[i] };
+            ctx.results = [result as unknown as Record<string, unknown>];
+          }
+        }
+      } catch (err) {
+        for (const ctx of started) {
+          if (ctx.results === null) {
+            ctx.error = err;
+            try {
+              dispatch(active, "onError", ctx, { raiseErrors });
+            } catch {
+              // Chained onto the batch failure, which is the one that propagates.
+            }
+          }
+        }
+        try {
+          this._endContexts(active, started, raiseErrors);
+        } catch {
+          // A failing end hook is chained onto the batch failure, not raised instead.
+        }
+        throw err;
+      }
+      this._endContexts(active, started, raiseErrors);
+      for (let s = 0; s < indices.length; s++) {
+        results[indices[s]] = started[s].results![0] as unknown as RoutedResult;
+      }
+    }
+
+    if (results.some((r) => r === null)) {
+      throw new Error("internal error: batch execution did not produce every result");
+    }
+    return results as RoutedResult[];
+  }
+
+  /** Alias of predictBatch, mirroring Python's `Router.predict_many`. */
+  async predictMany(
+    requests: BatchRequest[],
+    batchSize: number | null = null,
+  ): Promise<RoutedResult[]> {
+    return this.predictBatch(requests, batchSize);
+  }
+
+  /**
+   * Run onPredictEnd for every started per-request context and raise the first hook
+   * failure, if any. Elapsed and usage are stamped on every context before any end hook
+   * runs, so one request's end hooks never inflate another request's elapsed time.
+   */
+  private _endContexts(active: Hook[], contexts: PredictContext[], raiseErrors: boolean): void {
+    for (const ctx of contexts) {
+      ctx.markElapsed();
+      if (ctx.results !== null) ctx.usage = aggregateUsage(ctx.results);
+    }
+    let firstError: unknown = null;
+    for (const ctx of contexts) {
+      try {
+        dispatch(active, "onPredictEnd", ctx, { raiseErrors });
+      } catch (hookErr) {
+        if (ctx.error === null && firstError === null) firstError = hookErr;
+      }
+    }
+    if (firstError !== null) throw firstError;
   }
 }

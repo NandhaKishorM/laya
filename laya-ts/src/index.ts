@@ -11,6 +11,7 @@ export type {
   ActionInfo,
   AgentCfg,
   AgentOptions,
+  PredictOptions,
 } from "./agent.js";
 export { createNodeProvider, createWebProvider, feed, feedHead, loadNodeBundle, loadWebBundle } from "./providers.js";
 export type { Batch, SessionProvider, ProviderOptions, NodeBundle, WebBundle } from "./providers.js";
@@ -21,6 +22,8 @@ export type { EmbedFn, ShortlistMeta } from "./shortlist.js";
 export { analyse, isEnglish, guessLatinLanguage, detectScript } from "./lang.js";
 export type { AnalyseResult, LatinProfile } from "./lang.js";
 export { cleanEmailBody, emailState } from "./email.js";
+export { PredictContext, HookRegistry, normaliseHooks, dispatch, aggregateUsage, HOOK_EVENTS } from "./hooks.js";
+export type { Hook, HookEvent, HookArg, PredictHook, PredictHookArg } from "./hooks.js";
 export { triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions } from "./presets.js";
 export {
   renderOptions,

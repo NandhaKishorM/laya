@@ -12,11 +12,12 @@ export type {
   AgentCfg,
   AgentOptions,
   PredictOptions,
+  PredictBatchOptions,
 } from "./agent.js";
 export { createNodeProvider, createWebProvider, feed, feedHead, loadNodeBundle, loadWebBundle } from "./providers.js";
 export type { Batch, SessionProvider, ProviderOptions, NodeBundle, WebBundle } from "./providers.js";
 export { Router, normaliseName, DEFAULT_MODELS } from "./router.js";
-export type { RoutedResult, RouteDecision, ModelName, ModelSpec } from "./router.js";
+export type { RoutedResult, RouteDecision, ModelName, ModelSpec, RouterBatchRequest, RouterBatchOptions } from "./router.js";
 export { shortlistChoice, predictShortlist, embedFnFromAgent, DEFAULT_SHORTLIST_K } from "./shortlist.js";
 export type { EmbedFn, ShortlistMeta } from "./shortlist.js";
 export { analyse, isEnglish, guessLatinLanguage, detectScript } from "./lang.js";

@@ -50,7 +50,7 @@ Three checkpoints, and a `Router` that picks between them per request:
 
 * **About 10x faster loading.** Checkpoints are built without the throwaway random weight initialisation, so `laya.load()` drops from about 22 s to about 2 s on CPU with bit-identical answers. This also skips the pass that crashed on Windows with Python 3.14 (#123). A second `Agent` for the same checkpoint reuses its parsed tokenizer and loads in about 0.5 s.
 * **`import laya` no longer loads torch.** Routing, language detection and e-mail cleaning work in lightweight processes; torch loads on first use of a model.
-* **Batch scoring.** `agent.predict_batch(states, questions)` scores many states in shared forward passes, with answers identical to calling `predict` one state at a time. See [Batch Mode](#batch-mode-score-many-states-in-one-forward-pass).
+* **Batch scoring.** `agent.predict_batch(states, questions)` scores many states in shared forward passes and returns results in input order. See [Batch Mode](#batch-mode-score-many-states-in-one-forward-pass).
 * **Faster paths, all opt-in.** `laya.load(..., fast=True)` uses a TileLang GPU fast path that matches the stock bf16 forward within rounding (see [GPU Fast Path](#gpu-fast-path-tilelang)). `Agent(compile=True)` enables `torch.compile`, and `laya.onnx_agent.ONNXAgent` runs an exported model on ONNX Runtime.
 * **Run it your way, locally.** A self-hosted Jev-compatible HTTP server (`pip install "laya[serve]"`, then `laya-serve`, see [Self-Hosting](#self-hosting-http-server-jev-compatible)), a `laya` [command](#command-line) for quick local tests, an optional [MCP server](#mcp-server-optional) (`pip install "laya[mcp]"`), [LangChain and LangGraph](#langchain-and-langgraph-integration) routing, guardrails, triage and evaluation (`pip install "laya[langchain]"`), a Docker quickstart under `docs/docker.md`, and `laya-ts/`, a TypeScript package for Node and the browser that gives the same answers as the Python package.
 * **Better routing.** Plain-ASCII Spanish, Italian, Portuguese and French, Brazilian Portuguese support text, CJK text containing Latin brand names, romanized Bangla and Azerbaijani now reach the multilingual checkpoint. Scripts the router has no range for no longer fall through to English, and URLs, e-mail addresses and dotted names no longer count as words. Checked on 20,000 English texts: at most 5 English sentences move, all quoting long native-script names.
@@ -129,6 +129,7 @@ Installing the package also installs a `laya` command for quick local testing, n
 laya "I was charged twice, please refund"            # routing decision only; works offline, no download
 laya "Refactor this service" --predict               # full answers (downloads the checkpoint on first use)
 laya "Mein Konto wurde zweimal belastet" --lang de   # force a language instead of detecting it
+laya "My payment failed twice" --preset triage       # answer a ready-made preset (triage, email, guard, moderation, router)
 laya                                                 # interactive mode
 ```
 
@@ -275,6 +276,8 @@ results = Router(max_loaded=1).predict_batch(requests)
 Each item can independently set `model`, `task`, `lang`, or `lang_guess`. Use `route_batch(requests)` when you only want the ordered routing decisions without loading any checkpoint. `predict_many` is an alias for `predict_batch`.
 
 Requests are validated before model loading. Different requests may use different question schemas; requests sharing both a checkpoint and question schema are passed together to `Agent.predict_batch()`.
+
+[Prediction hooks](#prediction-hooks) installed on the `Router` run once per request, as they do for `predict()`, so a redaction hook rewrites every state before the model sees it. Requests that share a checkpoint run all their start hooks before their shared forward pass; see [`docs/hooks/lifecycle.md`](docs/hooks/lifecycle.md#routerpredict_batch).
 
 You can also bound the Agent-level forward-pass batch size:
 ```python
@@ -457,18 +460,29 @@ a log slice — `predict_batch` packs them into shared forward passes:
 states = [{"body": t} for t in ticket_texts]           # a list of states
 
 results = agent.predict_batch(states, questions)       # one forward pass for the whole list
-# results[i] is exactly what agent.predict(states[i], questions) would return
+# results[i] corresponds to states[i], with the same output shape as predict
 
 # Bound peak memory when the list (or the texts) are large — chunk into passes of N:
 results = agent.predict_batch(states, questions, batch_size=64)
+
+# Reduce padding when input lengths vary; results still follow the original state order:
+results = agent.predict_batch(states, questions, batch_size=64, sort_by_length=True)
 ```
 
-Results are aligned with `states` by index and identical in shape to `predict`. Decisions match the
-one-at-a-time path exactly (numbers are bit-identical on CPU; on GPU they can differ in the 4th
-decimal because fp16 autocast reorders reductions across padding widths). Batching is a **GPU
+`sort_by_length=True` groups states by their longest encoded question row, after truncation.
+It looks ahead at most eight batches and reuses the encoded rows for sorting. This uses more temporary
+CPU memory for tokenized inputs, and takes effect only when `1 < batch_size < len(states)`.
+Benchmark it on your workload and backend: uniform lengths offer little benefit, and changed
+batch shapes can cause small floating-point differences, including near decision thresholds.
+Hooks still see states and final results in input order. The option is available on `Agent`.
+
+Results are aligned with `states` by index and identical in shape to `predict`. Changing batch
+shapes can introduce floating-point differences on CPU and GPU; check decision thresholds on
+your workload, particularly with mixed precision. Batching is a **GPU
 throughput win** — on an RTX 5060 Ti, per-decision latency drops from ~10 ms one-by-one to ~1 ms
-batched (measured ~9–10×). On CPU the model is already compute-bound, so batching does not speed it
-up; use it there only for API convenience.
+batched (measured ~9–10×). On CPU, increasing batch size alone may not speed up inference;
+length grouping can help by reducing the padded work in a mixed-length workload. See the
+[CPU measurements and reproduction commands](research/README.md#length-batching).
 
 ---
 
@@ -485,8 +499,8 @@ agent = laya.load("convaiinnovations/laya", fast=True)   # or: agent.accelerate(
 agent.predict(state, questions)                            # same API, same answers
 ```
 
-Numerics: on a fixed set of 60 states the fast path is at least as close to an fp32 forward as the stock bf16
-path is (max |Δp| ≤ 0.05 vs fp32 on both checkpoints, argmax agreement ≥ 47/48 per question type; every per-option
+Numerics: on a fixed set of 60 states the fast path stays within 0.046 of an fp32 forward and within 0.076 of the stock
+bf16 path (max |Δp| ≤ 0.05 vs fp32 on both checkpoints, argmax agreement ≥ 47/48 per question type; every per-option
 probability is in `benchmarks/results/parity_*.json`) — see `benchmarks/parity_fast.py` and [BENCHMARKS.md](BENCHMARKS.md#gpu-fast-path).
 Falls back to the stock forward on CPU/MPS or when `tilelang` is not installed; `agent.deaccelerate()`
 restores it. Kernels compile once per shape bucket on first use (a few seconds, cached on disk).
@@ -531,6 +545,34 @@ A hook is a plain callable, or an object implementing any of `on_predict_start`,
 `on_predict_end`, `on_route`, `on_load`, `on_evict`, `on_error`. A start hook can rewrite the
 state/questions or `ctx.skip(...)` a cached answer; an end hook can rewrite the result. See
 [**`docs/hooks/`**](docs/hooks/index.md) and [`examples/hooks/`](examples/hooks/).
+
+---
+
+## Schema-driven decisions
+
+Describe the shape you want with a JSON schema or a pydantic model, and Laya answers it in one
+forward pass, with typed values and calibrated confidence.
+
+```python
+import laya
+
+schema = {
+    "type": "object",
+    "properties": {
+        "department": {"type": "string", "enum": ["billing", "support", "sales"],
+                       "description": "Which team should handle this?"},
+        "urgency": {"type": "integer", "minimum": 0, "maximum": 2},
+        "needs_human": {"type": "boolean"},
+    },
+}
+
+agent = laya.load("convaiinnovations/laya")
+agent.decide("I was charged twice, refund me.", schema=schema)
+# {"department": "billing", "urgency": 2, "needs_human": True}
+```
+
+`decide` also works on a `Router`, accepts a pydantic model (install `laya[structured]`), and can
+return per-field confidence with `return_details=True`. See [`docs/structured.md`](docs/structured.md).
 
 ---
 
@@ -725,7 +767,7 @@ Full detail, including every workflow and all 51 languages: **[`BENCHMARKS.md`](
 |---|---|---|---|---|---|
 | **`laya-typed-decisions`** | **0.766** | 0.471 | **0.062** | 0.213 | **0.242** |
 | `laya` | 0.362 | 0.332 | 0.316 | 0.175 | 0.694 |
-| `laya-multilingual` | 0.342 | 0.326 | 0.439 | 0.285 | 0.687 |
+| `laya-multilingual` | 0.352 | 0.328 | 0.463 | 0.314 | 0.760 |
 | *Jev 1.13.0 (published)* | *0.727* | *0.580* | *0.148* | *0.144* | *0.391* |
 | *teacher self-agreement ceiling* | *0.735* | | | | |
 | *per-question majority class* | *0.461* | | | | |
@@ -740,7 +782,7 @@ Two places it still trails Jev: **soft accuracy** (0.471 vs 0.580 — its argmax
 its distributions match the teacher less well) and **ECE** (0.213 vs 0.144), which temperature
 fitting addresses.
 
-**The base checkpoints sit below the majority-class baseline** (0.362 and 0.342 against 0.461).
+**The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461).
 All of the capability on this benchmark comes from fine-tuning.
 
 ### Multilingual (51 languages, MASSIVE intent, 20 options, random = 0.050)

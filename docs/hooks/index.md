@@ -54,7 +54,15 @@ with agent.hooks_installed(debug):   # installed for the block, removed on exit
     agent.system_one(state, questions)
 ```
 
-See [runtime registration](api.md#runtime-registration).
+See [runtime registration](api.md#runtime-registration). For a hook that should apply everywhere
+without threading it through every call, register it once with
+[process-wide defaults](api.md#process-wide-defaults):
+
+```python
+from laya import hooks
+
+hooks.set_default_hooks(hooks=[Tracer()])
+```
 
 ## The mental model
 

@@ -4,10 +4,12 @@
     laya "Refactor this service" --predict              # full answers, loads the checkpoint
     laya                                                # interactive mode
     laya "Mein Konto wurde zweimal belastet" --lang de  # explicit language
+    laya "My payment failed twice" --preset triage      # a ready-made question preset
 
 Routing (the default) never downloads a checkpoint, so it works offline and
 returns in milliseconds. --predict loads the routed checkpoint on first use,
-which needs network access to the Hugging Face hub.
+which needs network access to the Hugging Face hub. --preset answers one of the
+ready-made question presets from laya.presets and implies --predict.
 """
 
 import argparse
@@ -15,6 +17,15 @@ import json
 import sys
 
 import laya
+
+# Ready-made question presets a prediction can run instead of router_questions().
+PRESETS = {
+    "email": laya.email_questions,
+    "guard": laya.guard_questions,
+    "moderation": laya.moderation_questions,
+    "router": laya.router_questions,
+    "triage": laya.triage_questions,
+}
 
 
 def build_parser():
@@ -29,6 +40,9 @@ def build_parser():
                         help="force a checkpoint instead of auto-routing")
     parser.add_argument("--lang", help="force a language, e.g. en or de, instead of detecting it")
     parser.add_argument("--task", help="force a typed-decisions workflow instead of detecting it")
+    parser.add_argument("--preset", choices=sorted(PRESETS), metavar="NAME",
+                        help="answer a ready-made question preset (%s) instead of the router questions; implies --predict"
+                        % ", ".join(sorted(PRESETS)))
     parser.add_argument("--device", help="torch device, e.g. cpu or cuda")
     parser.add_argument("--json", action="store_true", help="print the raw result as JSON")
     return parser
@@ -68,8 +82,9 @@ def run(text, args, router=None):
     router = router or make_router(args)
     state = {"text": text}
     try:
-        if args.predict:
-            result = router.predict(state, laya.router_questions(),
+        if args.predict or args.preset:
+            questions = PRESETS[args.preset]() if args.preset else laya.router_questions()
+            result = router.predict(state, questions,
                                     model=args.model, task=args.task, lang=args.lang)
             if args.json:
                 print(json.dumps(result, ensure_ascii=False, indent=2, default=str))

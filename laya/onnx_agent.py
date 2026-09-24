@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Union
 
 import numpy as np
 
-from laya.hooks import HookRegistry, PredictContext, aggregate_usage, dispatch, normalise_hooks
+from laya.hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
 from laya.common import (
     QTYPES,
     build_sequence,
@@ -160,7 +160,7 @@ class ONNXAgent(HookRegistry):
                    max_len: Optional[int] = None,
                    head_max_len: Optional[int] = None) -> Dict[str, Any]:
         """Evaluate typed questions, running any opt-in hooks around the inference."""
-        active = list(self.hooks) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         ctx = PredictContext(states=[state], questions=questions, model=self.model_id, agent=self,
                              max_len=max_len, head_max_len=head_max_len)
@@ -278,5 +278,17 @@ class ONNXAgent(HookRegistry):
             "answers": answers,
             "usage": {"input_tokens": n_tokens, "output_tokens": 0},
         }
+
+    def decide(self, state: Union[str, dict, list], schema: Any = None, *,
+               questions: Optional[Dict[str, Dict[str, Any]]] = None, return_details: bool = False,
+               **predict_kwargs) -> Any:
+        """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
+
+        See `laya.structured`. Pass exactly one of `schema` or `questions`; extra keyword arguments
+        are forwarded to `predict` / `system_one`.
+        """
+        from laya.structured import decide as _decide
+        return _decide(self, state, schema, questions=questions,
+                       return_details=return_details, **predict_kwargs)
 
     predict = system_one

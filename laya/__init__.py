@@ -1,7 +1,7 @@
 """Laya: Fast, non-autoregressive System 1 decision engine with calibrated probabilities."""
 
 from .email import clean_email_body, email_state
-from .hooks import Hook, PredictContext, PredictHook
+from .hooks import BaseHook, Hook, PredictContext, PredictHook
 from .lang import analyse as detect_language
 from .lang import detect_script, is_english
 from .presets import (
@@ -12,6 +12,7 @@ from .presets import (
     triage_questions,
 )
 from .router import DEFAULT_MODELS, RouteDecision, Router
+from .structured import DecisionResult, decide
 
 __version__ = "0.3.11"
 
@@ -91,5 +92,8 @@ __all__ = [
     "PredictContext",
     "PredictHook",
     "Hook",
+    "BaseHook",
+    "decide",
+    "DecisionResult",
     "__version__",
 ]

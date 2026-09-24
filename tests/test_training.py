@@ -282,8 +282,11 @@ class _Tok:
     cls_token_id, sep_token_id, mask_token_id, pad_token_id = 1, 2, 3, 0
     mask_token = "[M]"
 
-    def __call__(self, text, add_special_tokens=False):
-        return {"input_ids": [10 + (ord(c) % 50) for c in text]}
+    def __call__(self, text, add_special_tokens=False, truncation=False, max_length=None):
+        ids = [10 + (ord(c) % 50) for c in text]
+        if truncation and max_length:
+            ids = ids[:max_length]
+        return {"input_ids": ids}
 
 
 tok = _Tok()

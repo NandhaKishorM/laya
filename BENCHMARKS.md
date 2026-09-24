@@ -156,7 +156,7 @@ banking77 is the one clear loss, and it is architectural: a choice question's op
 |---|---|---|---|---|---|
 | `laya-typed-decisions` | **0.766** | 0.471 | 0.061 | 0.213 | 0.242 |
 | `laya` | 0.361 | 0.332 | 0.316 | 0.175 | 0.694 |
-| `laya-multilingual` | 0.342 | 0.326 | 0.439 | 0.285 | 0.687 |
+| `laya-multilingual` | 0.352 | 0.328 | 0.463 | 0.314 | 0.760 |
 | *Jev 1.13.0 (published)* | *0.727* | *0.580* | *0.148* | *0.144* | *0.391* |
 | *teacher ceiling* | *0.735* | *—* | *—* | *—* | *—* |
 | *majority class* | *0.461* | *—* | *—* | *—* | *—* |
@@ -169,7 +169,7 @@ banking77 is the one clear loss, and it is architectural: a choice question's op
 | invoice processing | 0.804 |
 | security incidents | 0.766 |
 
-**The base checkpoints sit below the majority-class baseline** (0.362 and 0.342 against 0.461). All of the capability on this benchmark comes from fine-tuning.
+**The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461). All of the capability on this benchmark comes from fine-tuning.
 
 ---
 

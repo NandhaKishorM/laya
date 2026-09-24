@@ -118,6 +118,43 @@ check_raises("reject/too many options", SchemaError,
 check_raises("reject/non-object root", SchemaError, _bad({"type": "array"}))
 check_raises("reject/empty properties", SchemaError, _bad({"type": "object", "properties": {}}))
 
+# Type-list nullability is already accepted (`["string", "null"]` etc.). pydantic v2
+# Optional[T] emits anyOf/oneOf instead; both spellings must plan the same questions.
+nullable_enum = questions_from_json_schema({"type": "object", "properties": {
+    "dept": {"type": ["string", "null"], "enum": ["billing", "support"]}}})
+check("nullable/type-list enum is a choice", nullable_enum["dept"]["type"], "choice")
+check("nullable/type-list enum labels", list(nullable_enum["dept"]["criteria"]), ["billing", "support"])
+
+anyof_enum = questions_from_json_schema({"type": "object", "properties": {
+    "dept": {"anyOf": [{"enum": ["billing", "support"], "type": "string"}, {"type": "null"}],
+             "default": None, "title": "Dept"}}})
+check("nullable/anyOf enum is a choice", anyof_enum["dept"]["type"], "choice")
+check("nullable/anyOf enum matches type-list", anyof_enum, nullable_enum)
+
+anyof_bool = questions_from_json_schema({"type": "object", "properties": {
+    "urgent": {"anyOf": [{"type": "boolean"}, {"type": "null"}]}}})
+check("nullable/anyOf bool is noul", anyof_bool["urgent"]["type"], "noul")
+
+anyof_score = questions_from_json_schema({"type": "object", "properties": {
+    "level": {"anyOf": [{"type": "integer", "minimum": 0, "maximum": 2}, {"type": "null"}]}}})
+check("nullable/anyOf integer is a score", anyof_score["level"]["type"], "score")
+check("nullable/anyOf score levels", anyof_score["level"]["criteria"], ["0", "1", "2"])
+
+oneof_enum = questions_from_json_schema({"type": "object", "properties": {
+    "dept": {"oneOf": [{"enum": ["billing", "support"], "type": "string"}, {"type": "null"}]}}})
+check("nullable/oneOf enum is a choice", oneof_enum["dept"]["type"], "choice")
+
+parent_desc = questions_from_json_schema({"type": "object", "properties": {
+    "dept": {"anyOf": [{"enum": ["billing", "support"], "type": "string"}, {"type": "null"}],
+             "description": "Which team?"}}})
+check("nullable/parent description is kept", parent_desc["dept"]["instructions"], "Which team?")
+
+check_raises("reject/anyOf two real alternatives", SchemaError,
+             _bad({"type": "object", "properties": {
+                 "x": {"anyOf": [{"type": "boolean"}, {"type": "integer", "minimum": 0, "maximum": 1}]}}}))
+check_raises("reject/anyOf only null", SchemaError,
+             _bad({"type": "object", "properties": {"x": {"anyOf": [{"type": "null"}]}}}))
+
 
 # --------------------------------------------------------------- decide
 class FakeRunner:
@@ -159,7 +196,7 @@ check("decide/forwards predict kwargs", runner.calls[0]["kwargs"], {"hooks_raise
 
 # --------------------------------------------------------------- pydantic (optional)
 try:
-    from typing import Literal
+    from typing import Literal, Optional
 
     import pydantic
 
@@ -172,6 +209,22 @@ try:
     check("pydantic/choice", pq["department"]["type"], "choice")
     check("pydantic/int literal choice", pq["urgency"]["type"], "choice")
     check("pydantic/bool noul", pq["needs_human"]["type"], "noul")
+
+    class OptionalTicket(pydantic.BaseModel):
+        department: Optional[Literal["billing", "support"]] = None
+        urgent: Optional[bool] = None
+        level: Optional[int] = pydantic.Field(default=None, ge=0, le=2)
+
+    oq = questions_from_pydantic(OptionalTicket)
+    check("pydantic/optional enum is a choice", oq["department"]["type"], "choice")
+    check("pydantic/optional bool is noul", oq["urgent"]["type"], "noul")
+    check("pydantic/optional bounded int is a score", oq["level"]["type"], "score")
+
+    class UnboundedOptional(pydantic.BaseModel):
+        level: Optional[int] = None
+
+    check_raises("pydantic/optional unbounded int is still rejected", SchemaError,
+                 lambda: questions_from_pydantic(UnboundedOptional))
 
     ticket = answer_to_pydantic(Ticket, {
         "department": {"type": "choice", "choice": "support", "confidence": 0.9, "probabilities": {}},

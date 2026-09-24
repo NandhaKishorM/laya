@@ -118,9 +118,39 @@ def _score_field(path: str, name: str, prop: Dict[str, Any],
     return _Field(name=name, kind="score", question=question, minimum=lo)
 
 
+def _is_null_schema(prop: Any) -> bool:
+    return isinstance(prop, dict) and prop.get("type") == "null"
+
+
+def _unwrap_nullable_union(prop: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """If anyOf/oneOf is one non-null schema plus null, return the non-null member.
+
+    pydantic v2 `Optional[T]` emits this form. The type-list spelling
+    `{"type": ["string", "null"]}` is handled in `_field`. Two real alternatives
+    stay wrapped so `_field` can reject them as an unsupported union.
+    """
+    for key in ("anyOf", "oneOf"):
+        members = prop.get(key)
+        if not isinstance(members, list) or not members:
+            continue
+        non_null = [m for m in members if not _is_null_schema(m)]
+        if len(non_null) != 1 or len(non_null) == len(members):
+            return None
+        inner = dict(non_null[0]) if isinstance(non_null[0], dict) else None
+        if inner is None:
+            return None
+        if "description" not in inner and prop.get("description"):
+            inner["description"] = prop["description"]
+        return inner
+    return None
+
+
 def _field(path: str, name: str, prop: Dict[str, Any]) -> _Field:
     if not isinstance(prop, dict):
         raise SchemaError("%s: property must be an object, got %s" % (path, type(prop).__name__))
+    unwrapped = _unwrap_nullable_union(prop)
+    if unwrapped is not None:
+        return _field(path, name, unwrapped)
     description = prop.get("description")
     if "const" in prop:
         return _enum_field(path, name, [prop["const"]], description)

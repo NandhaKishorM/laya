@@ -46,6 +46,7 @@ The top level must be an object with `properties`. Each property becomes one que
 | `boolean` | `noul` | `true` / `false` |
 | `integer` or `number` with `minimum` and `maximum`, span up to `MAX_SCORE_LEVELS` | `score` | the highest-probability level, as an integer |
 | `string` with `enum` | `choice` | the chosen string |
+| `Optional[T]`, `anyOf`/`oneOf` of `T` plus `null`, or `type: [T, "null"]` | same as `T` | same as `T` (`null` is not an option) |
 | `description` | question instructions | |
 | `title` | option label | |
 

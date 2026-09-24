@@ -67,7 +67,24 @@ export interface QuestionPrefix {
 }
 /** The question half of `buildSequence`: everything before the state tokens. Hoisted out so
  * callers asking several questions about the same state can encode the state text only once. */
+// Per-tokenizer prefix cache (cap 1k, clear on overflow); repeat triage skips re-encode.
+const prefixCache = new WeakMap<object, Map<string, QuestionPrefix>>();
 export function buildQuestionPrefix(tok: TokenizerLike, q: InternalQ,
+    maxLen = 512, headMaxLen = 192, optionOrder?: number[]): QuestionPrefix {
+  let per = prefixCache.get(tok as object);
+  if (!per) {
+    per = new Map();
+    prefixCache.set(tok as object, per);
+  }
+  const key = JSON.stringify([q.t, q.ins, q.crit, q.labels ?? null, maxLen, headMaxLen, optionOrder ?? null]);
+  const hit = per.get(key);
+  if (hit) return hit;
+  const built = buildQuestionPrefixUncached(tok, q, maxLen, headMaxLen, optionOrder);
+  if (per.size > 1000) per.clear();
+  per.set(key, built);
+  return built;
+}
+function buildQuestionPrefixUncached(tok: TokenizerLike, q: InternalQ,
     maxLen = 512, headMaxLen = 192, optionOrder?: number[]): QuestionPrefix {
   const maskTok = tok.maskToken;
   const opts = renderOptions(q);

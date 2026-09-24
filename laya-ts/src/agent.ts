@@ -11,6 +11,7 @@ import {
   softmax,
   tempBucket,
 } from "./common.js";
+import type { SequenceStats } from "./common.js";
 import type { Batch, SessionProvider } from "./providers.js";
 import { encodeWithData, parseTokenizerJson, type TokenizerLike } from "./tokenizer.js";
 import {
@@ -66,6 +67,13 @@ export type SystemAnswer = ChoiceAnswer | ScoreAnswer | NoulAnswer;
 export interface SystemUsage {
   input_tokens: number;
   output_tokens: number;
+  /** State-fit reporting (issue #174, mirrors Python #181). Present on inference results;
+   * absent on hook-supplied (skipped) results and empty-question early returns. */
+  state_tokens?: number;
+  /** Worst case across the questions, which share one state but not one head budget. */
+  state_tokens_dropped?: number;
+  truncated?: boolean;
+  truncated_questions?: string[];
 }
 
 export interface SystemOneResult {
@@ -358,22 +366,24 @@ export class Agent extends HookRegistry {
     internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown }[],
     maxLen: number,
     headMaxLen: number,
-  ): { items: { ids: number[]; markers: number[]; qtype: number }[]; nTokens: number } {
+  ): { items: { ids: number[]; markers: number[]; qtype: number }[]; nTokens: number; stats: SequenceStats[] } {
     // The state text is shared by every question and is usually the longest text in the
     // sequence — encode it once and compose the per-question prefixes onto it.
     const stAll = this.tok.encode(serializeState(state).split(this.tok.maskToken).join(" "));
     const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
+    const stats: SequenceStats[] = [];
     for (let qi = 0; qi < ids.length; qi++) {
       const qid = ids[qi];
       const q = internals[qi];
       const prefix = buildQuestionPrefix(this.tok, q, maxLen, headMaxLen);
-      const { ids: seq, markers } = sequenceWithState(prefix, stAll, this.tok.sepId, maxLen);
-      if (markers.length !== renderOptions(q).length) {
+      const seq = sequenceWithState(prefix, stAll, this.tok.sepId, maxLen);
+      if (seq.markers.length !== renderOptions(q).length) {
         throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${headMaxLen}`);
       }
-      items.push({ ids: seq, markers, qtype: QTYPES[q.t] });
+      items.push({ ids: seq.ids, markers: seq.markers, qtype: QTYPES[q.t] });
+      stats.push(seq.stats);
     }
-    return { items, nTokens: items.reduce((a, it) => a + it.ids.length, 0) };
+    return { items, nTokens: items.reduce((a, it) => a + it.ids.length, 0), stats };
   }
 
   /**
@@ -444,10 +454,22 @@ export class Agent extends HookRegistry {
           );
           row++;
         }
+        // How much of the state actually reached the encoder. Truncation is a token budget, so it
+        // moves with maxLen, headMaxLen and each question's rendered head — a caller cannot infer
+        // it from the length of the state it sent (issue #174, Python #181 parity).
+        const st = built[s].stats;
+        const dropped = st.reduce((a, x) => Math.max(a, x.state_tokens_dropped), 0);
         out.push({
           model: "laya-rl-agent",
           answers,
-          usage: { input_tokens: built[s].nTokens, output_tokens: 0 },
+          usage: {
+            input_tokens: built[s].nTokens,
+            output_tokens: 0,
+            state_tokens: st[0]?.state_tokens ?? 0,
+            state_tokens_dropped: dropped,
+            truncated: dropped > 0,
+            truncated_questions: ids.filter((_, qi) => st[qi].truncated),
+          },
         });
       }
     }

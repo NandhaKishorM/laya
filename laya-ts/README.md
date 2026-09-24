@@ -67,6 +67,24 @@ class MetricsHook extends BaseHook {
 setDefaultHooks([new MetricsHook()]);  // addDefaultHook(...) appends; clearDefaultHooks() resets
 ```
 
+## Truncation reporting
+
+The state is clamped to whatever token room a question's head leaves, and that budget moves
+with `max_len`, `head_max_len` and the rendered head — so `usage` reports it instead of letting
+you guess from character counts (issue #174; mirrors Python #181):
+
+```ts
+const out = await agent.predict(longState, questions);
+out.usage.truncated;             // true when any state token was dropped
+out.usage.state_tokens;          // encoded length of the full state
+out.usage.state_tokens_dropped;  // worst case across the questions
+out.usage.truncated_questions;   // ids of the questions whose head left too little room
+```
+
+The fields are absent only where no state was ever encoded (empty question schema, or a
+start hook that supplied the result).
+
+## Batching (many states, one call)
 ## Batching (many states, one call)
 
 Port of `Agent.predict_batch` / `Router.route_batch` / `Router.predict_batch`. The throughput

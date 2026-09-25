@@ -2,7 +2,8 @@
 
 Launches ``python -m laya.mcp.server`` as a subprocess and speaks MCP over
 stdin/stdout (newline-delimited JSON-RPC), exactly like a real MCP client.
-Exercises laya_predict, laya_preset, laya_route, laya_shortlist and laya_status against the
+Exercises laya_predict, laya_predict_batch, laya_route, laya_route_batch,
+laya_preset, laya_shortlist and laya_status against the
 live checkpoints (downloaded via huggingface_hub on first run, cached
 afterwards).
 
@@ -115,7 +116,9 @@ def main():
 
         tools = client.request("tools/list", {})
         names = sorted(t["name"] for t in tools.get("tools", []))
-        ok("e2e/tool_names", names == ["laya_predict", "laya_preset", "laya_route", "laya_shortlist", "laya_status"], repr(names))
+        ok("e2e/tool_names", names == ["laya_predict", "laya_predict_batch", "laya_preset",
+                                       "laya_route", "laya_route_batch", "laya_shortlist",
+                                       "laya_status"], repr(names))
 
         ticket = {
             "state": {
@@ -159,6 +162,50 @@ def main():
                    repr(payload.get("device")))
             ok("e2e/predict_latency", 0 < payload.get("latency_ms", -1) < 60_000, repr(payload.get("latency_ms")))
             ok("e2e/predict_billing_wins", ans["choice"] == "billing", "ambiguous ticket -> expect billing")
+            solo_routing = payload["routing"]["model"]
+
+            # laya_predict_batch: the same English ticket plus a German one
+            # with an explicit `lang` override, answered in one call. The
+            # English answer must be decision-identical to the solo
+            # laya_predict above -- batching groups and shares forward passes,
+            # it must not change what the model decides.
+            batch_arguments = {
+                "requests": [
+                    {"state": ticket["state"], "questions": ticket["questions"]},
+                    {"state": {"body": "Mein Konto wurde zweimal belastet, bitte erstatten Sie das."},
+                     "questions": ticket["questions"], "lang": "de"},
+                ],
+            }
+            result = client.request("tools/call",
+                                    {"name": "laya_predict_batch", "arguments": batch_arguments})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/batch_not_error", not result.get("isError"), repr(result.get("isError")))
+            entries = payload.get("requests") or []
+            # Entry 0 is the English ticket, so its routing must equal the solo
+            # laya_predict decision made for the same state above: one call per
+            # request, input order preserved.
+            ok("e2e/batch_input_order", len(entries) == 2, repr([e.get("routing") for e in entries]))
+            ok("e2e/batch_routes_like_solo",
+               (entries[0].get("routing") or {}).get("model") == solo_routing,
+               "solo=%r batch=%r" % (solo_routing, (entries[0].get("routing") or {}).get("model")))
+            ok("e2e/batch_decision_parity",
+               (entries[0].get("answers") or {}).get("department", {}).get("choice") == ans["choice"],
+               "solo=%r batch=%r" % (ans.get("choice"),
+                                     (entries[0].get("answers") or {}).get("department", {}).get("choice")))
+            ok("e2e/batch_counts", sum((payload.get("model_counts") or {}).values()) == 2,
+               repr(payload.get("model_counts")))
+            ok("e2e/batch_latency", 0 < payload.get("total_latency_ms", -1) < 60_000
+               and 0 < payload.get("per_request_latency_ms", -1) <= payload["total_latency_ms"],
+               repr(payload.get("total_latency_ms")))
+
+            result = client.request("tools/call",
+                                    {"name": "laya_route_batch", "arguments": batch_arguments})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/route_batch_not_error", not result.get("isError"), repr(result.get("isError")))
+            decisions = payload.get("decisions") or []
+            ok("e2e/route_batch_shape", len(decisions) == 2
+               and all(d.get("model") in ("english", "multilingual", "typed-decisions") and d.get("reason")
+                       for d in decisions), repr(decisions))
 
             result = client.request("tools/call", {"name": "laya_route", "arguments": ticket})
             payload = json.loads(result["content"][0]["text"])

@@ -30,10 +30,13 @@ from laya.mcp.server import _models_from_env, server as mcp_server  # noqa: E402
 from laya.mcp.tools import (  # noqa: E402
     ToolError,
     laya_predict,
+    laya_predict_batch,
     laya_preset,
     laya_route,
+    laya_route_batch,
     laya_shortlist,
     laya_status,
+    validate_batch_requests,
     validate_model,
     validate_preset,
     validate_questions,
@@ -505,6 +508,168 @@ def test_shortlist():
        and out["routing"]["reason"] == "explicit model", repr(out["routing"]))
 
 
+# --- batch tools (mocked router, no weights) ----------------------------------
+
+class BatchRouter(FakeRouter):
+    """Records each batch call; returns one result per request, input order."""
+
+    def __init__(self):
+        self.predict_batch_calls = []
+        self.route_batch_calls = []
+
+    def _answer_for(self, request):
+        answers = {}
+        for name, spec in request["questions"].items():
+            if spec["type"] == "choice":
+                answers[name] = {"choice": "billing", "confidence": 0.9}
+            elif spec["type"] == "score":
+                answers[name] = {"score": 1.5, "confidence": 0.8}
+            else:
+                answers[name] = {"noul": 0.7, "confidence": 0.9}
+        return {"answers": answers,
+                "routing": {"model": request.get("model") or "english",
+                            "repo": "fake/laya", "reason": "batch route"}}
+
+    def predict_batch(self, requests, batch_size=None):
+        self.predict_batch_calls.append((list(requests), batch_size))
+        return [self._answer_for(request) for request in requests]
+
+    def route_batch(self, requests):
+        self.route_batch_calls.append(list(requests))
+        return [{"model": request.get("model") or "english", "repo": "fake/laya",
+                 "reason": "batch route"} for request in requests]
+
+
+class ShortRouter:
+    """Router whose batches misreport their own size."""
+
+    def predict_batch(self, requests, batch_size=None):
+        return []
+
+    def route_batch(self, requests):
+        return []
+
+
+BATCH_REQUESTS = [
+    {"state": {"body": "refund please"}, "questions": QUESTIONS},
+    {"state": {"body": "please refund invoice 2"}, "questions": QUESTIONS,
+     "model": "english", "task": "massive", "lang": "en"},
+    {"state": {"body": "mera account double charge hua"},
+     "questions": {"triage": {"type": "noul", "instructions": "Leaving?"}},
+     "lang": "hi"},
+]
+
+
+def test_batch_validation():
+    for bad in (None, {}, "x", {"state": STATE, "questions": QUESTIONS}):
+        expect_tool_error("batch/requests_bad_%r" % (type(bad).__name__,),
+                          lambda b=bad: validate_batch_requests(b), "invalid_request")
+    expect_tool_error("batch/requests_empty",
+                      lambda: validate_batch_requests([]), "invalid_request")
+    expect_tool_error("batch/item_not_object",
+                      lambda: validate_batch_requests(["x"]), "invalid_request")
+    expect_tool_error("batch/item_missing_state",
+                      lambda: validate_batch_requests([{"questions": QUESTIONS}]), "invalid_state")
+    expect_tool_error("batch/item_missing_questions",
+                      lambda: validate_batch_requests([{"state": STATE}]), "invalid_questions")
+    expect_tool_error("batch/item_bad_questions",
+                      lambda: validate_batch_requests([{"state": STATE, "questions": {}}]),
+                      "invalid_questions")
+    expect_tool_error("batch/item_bad_model",
+                      lambda: validate_batch_requests(
+                          [{"state": STATE, "questions": QUESTIONS, "model": "gpt4"}]),
+                      "invalid_model")
+    for key, value in (("task", 3), ("lang", ""), ("lang", [])):
+        expect_tool_error("batch/item_bad_%s" % key,
+                          lambda k=key, v=value: validate_batch_requests(
+                              [{"state": STATE, "questions": QUESTIONS, k: v}]),
+                          "invalid_request")
+
+    out = validate_batch_requests(BATCH_REQUESTS)
+    ok("batch/validation_preserves_order", [item["state"] for item in out]
+       == [request["state"] for request in BATCH_REQUESTS])
+    ok("batch/validation_keeps_overrides",
+       out[1].get("model") == "english" and out[1].get("task") == "massive"
+       and out[1].get("lang") == "en" and out[2].get("lang") == "hi", repr(out[1]))
+    # "auto" is the same thing as absent: Router.route resolves the checkpoint.
+    out = validate_batch_requests([{"state": STATE, "questions": QUESTIONS, "model": "auto"}])
+    ok("batch/validation_auto_dropped", "model" not in out[0], repr(out[0]))
+    # Keys the Router would never expect are dropped, not forwarded.
+    out = validate_batch_requests([{"state": STATE, "questions": QUESTIONS, "temperature": 0}])
+    ok("batch/validation_unknown_key_dropped", set(out[0]) == {"state", "questions"}, repr(out[0]))
+
+
+def test_batch_predict():
+    expect_tool_error("batch/predict_no_router",
+                      lambda: laya_predict_batch(BATCH_REQUESTS, router=None), "models_not_ready")
+    expect_tool_error("batch/predict_no_method",
+                      lambda: laya_predict_batch(BATCH_REQUESTS, router=FakeRouter()),
+                      "internal_error")
+    for bad_size in (True, 0, -2, 2.5, "3"):
+        expect_tool_error("batch/predict_bad_size_%r" % (bad_size,),
+                          lambda s=bad_size: laya_predict_batch(
+                              BATCH_REQUESTS, batch_size=s, router=BatchRouter()),
+                          "invalid_batch_size")
+    # Validation runs before the router is touched: one bad item, no partial batch.
+    router = BatchRouter()
+    expect_tool_error("batch/predict_validates_first",
+                      lambda: laya_predict_batch([{"state": STATE}, {"state": STATE, "questions": QUESTIONS}],
+                                                 router=router),
+                      "invalid_questions")
+    ok("batch/predict_not_called_on_bad_input", router.predict_batch_calls == [])
+
+    router = BatchRouter()
+    out = laya_predict_batch(BATCH_REQUESTS, batch_size=8, router=router)
+    ok("batch/predict_one_call", len(router.predict_batch_calls) == 1,
+       repr(len(router.predict_batch_calls)))
+    forwarded, size = router.predict_batch_calls[0]
+    ok("batch/predict_size_forwarded", size == 8, repr(size))
+    ok("batch/predict_items_forwarded", [item["state"] for item in forwarded]
+       == [request["state"] for request in BATCH_REQUESTS])
+
+    ok("batch/predict_keys", set(out) == {"requests", "model_counts",
+                                          "total_latency_ms", "per_request_latency_ms"}, repr(sorted(out)))
+    ok("batch/predict_input_order", [entry["answers"].get("triage", {}).get("noul")
+                                     for entry in out["requests"]] == [None, None, 0.7],
+       repr(out["requests"]))
+    ok("batch/predict_department", out["requests"][0]["answers"]["department"]["choice"] == "billing")
+    ok("batch/predict_routing", out["requests"][1]["routing"]["model"] == "english")
+    ok("batch/predict_device_resident", out["requests"][0].get("device") == "cpu",
+       repr(out["requests"][0].get("device")))
+    ok("batch/predict_counts", out["model_counts"] == {"english": 3}, repr(out["model_counts"]))
+    ok("batch/predict_latency", out["total_latency_ms"] >= 0
+       and abs(out["per_request_latency_ms"] - out["total_latency_ms"] / 3) < 0.01,
+       repr(out["per_request_latency_ms"]))
+
+    # batch_size unset must not be forwarded as None (strict old stubs included).
+    router = BatchRouter()
+    laya_predict_batch(BATCH_REQUESTS, router=router)
+    ok("batch/predict_size_default", router.predict_batch_calls[0][1] is None)
+
+    expect_tool_error("batch/predict_count_mismatch",
+                      lambda: laya_predict_batch(BATCH_REQUESTS, router=ShortRouter()),
+                      "internal_error")
+
+
+def test_batch_route():
+    expect_tool_error("batch/route_no_router",
+                      lambda: laya_route_batch(BATCH_REQUESTS, router=None), "models_not_ready")
+    expect_tool_error("batch/route_no_method",
+                      lambda: laya_route_batch(BATCH_REQUESTS, router=FakeRouter()),
+                      "internal_error")
+    router = BatchRouter()
+    out = laya_route_batch(BATCH_REQUESTS, router=router)
+    ok("batch/route_one_call", len(router.route_batch_calls) == 1)
+    ok("batch/route_decisions", len(out["decisions"]) == 3
+       and set(out["decisions"][0]) == {"model", "repo", "reason"}, repr(out["decisions"][0]))
+    ok("batch/route_counts", out["model_counts"] == {"english": 3}, repr(out["model_counts"]))
+    # Route-only never predicts.
+    ok("batch/route_no_forward", router.predict_batch_calls == [])
+    expect_tool_error("batch/route_count_mismatch",
+                      lambda: laya_route_batch(BATCH_REQUESTS, router=ShortRouter()),
+                      "internal_error")
+
+
 def test_timeout_removed():
     # The per-call timeout was removed: a ThreadPoolExecutor shutdown waits for
     # the work anyway, and MCP clients apply their own request timeout. The tool
@@ -513,7 +678,8 @@ def test_timeout_removed():
 
     import laya.mcp.tools as tools_mod
 
-    for fn in (laya_predict, laya_route, laya_preset, laya_shortlist):
+    for fn in (laya_predict, laya_route, laya_preset, laya_shortlist,
+               laya_predict_batch, laya_route_batch):
         ok("timeout/param_absent_%s" % fn.__name__, "timeout" not in inspect.signature(fn).parameters)
     ok("timeout/executor_absent", "ThreadPoolExecutor" not in inspect.getsource(tools_mod))
 
@@ -543,17 +709,22 @@ def test_models_from_env():
 def test_server_registration():
     tools = asyncio.run(mcp_server.list_tools())
     names = sorted(t.name for t in tools)
-    ok("server/tool_names", names == ["laya_predict", "laya_preset", "laya_route", "laya_shortlist", "laya_status"], repr(names))
-    decision = {"laya_predict", "laya_route", "laya_preset", "laya_shortlist"}
+    ok("server/tool_names", names == ["laya_predict", "laya_predict_batch", "laya_preset",
+                                      "laya_route", "laya_route_batch", "laya_shortlist",
+                                      "laya_status"], repr(names))
+    decision = {"laya_predict", "laya_route", "laya_preset", "laya_shortlist",
+                "laya_predict_batch", "laya_route_batch"}
     for t in tools:
         desc = (t.description or "").lower()
         ok("server/desc_%s_nonempty" % t.name, bool(desc.strip()), repr(desc))
-        # The guardrails constant is on the three decision tools only;
+        # The guardrails constant is on the decision tools only;
         # laya_status reports instead of deciding.
         if t.name in decision:
             ok("server/desc_%s_guardrail" % t.name, "do not use" in desc)
         if t.name == "laya_predict":
             ok("server/desc_noul_labels", "optional labels" in desc)
+        if t.name.endswith("_batch"):
+            ok("server/desc_%s_requests" % t.name, "non-empty array" in desc)
 
 
 test_device()
@@ -563,6 +734,9 @@ test_schema()
 test_shape()
 test_question_forwarding()
 test_shortlist()
+test_batch_validation()
+test_batch_predict()
+test_batch_route()
 test_timeout_removed()
 test_models_from_env()
 test_server_registration()

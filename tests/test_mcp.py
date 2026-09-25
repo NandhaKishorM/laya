@@ -153,6 +153,28 @@ class FakeAgent:
     device = "cpu"
 
 
+class FakeAgentDirect:
+    """An Agent used for model='auto' with no Router present (#444).
+
+    Agent.predict / system_one return the system_one payload but carry no
+    'routing' key, because the Agent itself does no routing.
+    """
+
+    device = "cpu"
+
+    def predict(self, state, questions, **kwargs):
+        answers = {}
+        for name, spec in questions.items():
+            if spec["type"] == "choice":
+                answers[name] = {"choice": "billing", "confidence": 0.94, "probs": {"billing": 0.94}}
+            elif spec["type"] == "score":
+                answers[name] = {"score": 1.84, "confidence": 0.8, "distribution": [0.1, 0.3, 0.6]}
+            else:
+                answers[name] = {"noul": 0.892, "confidence": 0.89}
+        # Note: no "routing" key -- an Agent does not route.
+        return {"answers": answers}
+
+
 class FakeRouter:
     _agents = {"english": FakeAgent()}
 
@@ -173,6 +195,15 @@ class FakeRouter:
             reason = "non-Latin script (devanagari)"
             repo = "fake/repo"
         return D()
+
+
+class FakeRouterNoRouting(FakeRouter):
+    """A router whose predict returns an Agent-shaped payload (no 'routing' key)."""
+
+    def predict(self, state, questions, **kwargs):
+        result = super().predict(state, questions, **kwargs)
+        result.pop("routing", None)
+        return result
 
 
 def test_shape():
@@ -224,6 +255,30 @@ def test_shape():
     expect_tool_error("shape/predict_bad_questions",
                       lambda: laya_predict(STATE, {}, model="auto", router=FakeRouter()),
                       "invalid_questions")
+
+    # #444: model='auto' with an Agent and no Router runs the Agent directly and
+    # reports a null model -- 'auto' is a routing directive, not a checkpoint name.
+    out = laya_predict(STATE, QUESTIONS, model="auto", agent=FakeAgentDirect())
+    ok("shape/predict_auto_agent_model_null",
+       out["routing"] == {"model": None, "repo": None, "reason": "auto routing without router"},
+       repr(out.get("routing")))
+    ok("shape/predict_auto_agent_answers", out["answers"]["department"]["choice"] == "billing")
+    ok("shape/predict_auto_agent_no_device", "device" not in out, repr(set(out)))
+    # auto with neither Router nor Agent still errors, as before.
+    expect_tool_error("shape/predict_auto_needs_router_or_agent",
+                      lambda: laya_predict(STATE, QUESTIONS, model="auto"),
+                      "models_not_ready")
+    # a Router payload without a 'routing' key hits the same null-model fallback.
+    out = laya_predict(STATE, QUESTIONS, model="auto", router=FakeRouterNoRouting())
+    ok("shape/predict_auto_fallback_model_null",
+       out["routing"] == {"model": None, "repo": None, "reason": "auto routing without router"},
+       repr(out.get("routing")))
+    ok("shape/predict_auto_fallback_answers", out["answers"]["department"]["choice"] == "billing")
+    # an explicit checkpoint still names itself in the same fallback.
+    out = laya_predict(STATE, QUESTIONS, model="english", router=FakeRouterNoRouting())
+    ok("shape/predict_explicit_fallback_names_checkpoint",
+       out["routing"] == {"model": "english", "repo": None, "reason": "explicit model"},
+       repr(out.get("routing")))
 
 
 def test_question_forwarding():

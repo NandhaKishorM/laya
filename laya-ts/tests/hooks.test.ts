@@ -377,6 +377,40 @@ describe("BaseHook and process-wide default hooks (py #276 parity)", () => {
     }
   });
 
+  it("defaults/fire once per Router.predict, not again inside the Agent", async () => {
+    const events: string[] = [];
+    const tag = (ctx: PredictContext) => (ctx.router ? "router" : "agent");
+    setDefaultHooks({
+      onPredictStart: (ctx: PredictContext) => void events.push(`start:${tag(ctx)}`),
+      onPredictEnd: (ctx: PredictContext) => void events.push(`end:${tag(ctx)}`),
+    });
+    try {
+      const router = new Router();
+      router.attach("english", makeAgent() as never);
+      await router.predict("s0", QUESTIONS, { model: "english" });
+      expect(events).toEqual(["start:router", "end:router"]);
+    } finally {
+      clearDefaultHooks();
+    }
+  });
+
+  it("defaults/still fire for a direct Agent call made while a Router request is in flight", async () => {
+    const events: string[] = [];
+    setDefaultHooks({ onPredictEnd: (ctx: PredictContext) => void events.push(ctx.router ? "router" : "agent") });
+    try {
+      const router = new Router();
+      router.attach("english", makeAgent() as never);
+      await Promise.all([
+        router.predict("s0", QUESTIONS, { model: "english" }),
+        makeAgent().predict("s1", QUESTIONS),
+      ]);
+      expect(events.filter((e) => e === "router")).toHaveLength(1);
+      expect(events.filter((e) => e === "agent")).toHaveLength(1);
+    } finally {
+      clearDefaultHooks();
+    }
+  });
+
   it("defaults/cover the router lifecycle (onLoad/onEvict)", async () => {
     const events: [string, string | undefined][] = [];
     class LifeDefaults extends BaseHook {

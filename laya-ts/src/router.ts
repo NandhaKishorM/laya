@@ -7,6 +7,7 @@ import {
   aggregateUsage,
   composeHooks,
   dispatch,
+  markDefaultsRan,
   normaliseHooks,
   type HookArg,
   type PredictHook,
@@ -504,10 +505,12 @@ export class Router extends HookRegistry {
         // explicit lang="en" can select an "en" override.
         const detected = decision.detection?.language;
         const effectiveLang = opts.lang ?? (detected && detected !== "en" ? detected : null);
+        const agentOpts = { lang: effectiveLang };
+        markDefaultsRan(agentOpts);
         const result = (await agent.systemOne(
           ctx.states[0],
           ctx.questions as Record<string, QuestionDef>,
-          { lang: effectiveLang },
+          agentOpts,
         )) as RoutedResult;
         result["routing"] = { ...decision };
         ctx.results = [result as unknown as Record<string, unknown>];

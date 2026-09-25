@@ -220,6 +220,18 @@ export function clearDefaultHooks(): void {
   defaultHooksList.length = 0;
 }
 
+const defaultsRan = new WeakSet<object>();
+
+/** `Router.predict` marks the options of its Agent call: the Router already ran the defaults for this request. */
+export function markDefaultsRan(opts: object): void {
+  defaultsRan.add(opts);
+}
+
+/** Whether `opts` was marked by `markDefaultsRan`, so the Agent must not run the defaults a second time. */
+export function defaultsAlreadyRan(opts: object): boolean {
+  return defaultsRan.has(opts);
+}
+
 /**
  * Effective hook list for one call: defaults, then installed, then per-call hooks.
  *

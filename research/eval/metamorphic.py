@@ -237,13 +237,13 @@ def _report(records):
     return report
 
 
-def model_scorer(agent, unclamped=False):
+def model_scorer(agent, unclamped=False, lang=None):
     """Reuse the harness's raw logits and per-option-count temperatures."""
     from laya.common import QTYPES
 
     def score(cases):
         return [harness.softmax_t(z, harness.temperature_for(
-            agent, QTYPES["choice"], len(z), unclamped))
+            agent, QTYPES["choice"], len(z), unclamped=unclamped, lang=lang))
                 for z in harness.score_cases(agent, cases)]
     return score
 
@@ -294,6 +294,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=harness.SEED)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--unclamped", action="store_true")
+    parser.add_argument("--lang-temperatures", type=str, default=None, help="Path to JSON file with per-language temperature calibration if available")
     parser.add_argument("--out", required=True, help="JSON report path")
     args = parser.parse_args(argv)
     if args.per_lang < 1 or args.n_opts < 2 or args.batch_size < 1:
@@ -304,11 +305,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("no languages selected")
     import laya
 
-    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder)
+    if args.lang_temperatures:
+        with open(args.lang_temperatures, "r") as f:
+            lang_temperatures = json.load(f)
+    else:
+        lang_temperatures = None
+
+    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder, lang_temperatures=lang_temperatures)
     agent.model.eval()
     payload: dict[str, Any] = {
         "config": {**vars(args), "dataset": harness.DATASET, "split": "test",
                    "device": str(agent.device), "laya_version": laya.__version__,
+                   "lang_temperatures": lang_temperatures,
                    "max_len": agent.cfg.get("max_len"),
                    "head_max_len": agent.cfg.get("head_max_len"),
                    "temperature": list(agent.temperature_raw if args.unclamped else agent.temperature),
@@ -325,7 +333,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 rows, sorted({r["label_text"] for r in rows}), args.per_lang, args.n_opts, args.seed)
             if not cases:
                 raise ValueError("dataset returned no cases")
-            result = evaluate(cases, model_scorer(agent, args.unclamped), gold,
+            result = evaluate(cases, model_scorer(agent, args.unclamped, lang if args.lang_temperatures else None), gold,
                               args.seed, args.batch_size)
             payload["report"][lang] = result["report"]
             payload["cases"].extend({"lang": lang, **r} for r in result["cases"])

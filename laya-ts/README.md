@@ -138,6 +138,24 @@ node laya-ts/examples/try-ml.mjs   # needs ./model-ml from the export step
 node laya-ts/examples/snake.mjs --ticks 50   # autonomous snake demo, headless smoke (live TUI without --ticks)
 ```
 
+## Web demo (browser, WebGPU → WASM)
+
+No build step — serve the repo root over HTTP and open the page
+(`localhost` counts as a secure context for WebGPU):
+
+```bash
+python -m http.server 8000   # run at the repo root
+# open http://localhost:8000/laya-ts/examples/web/
+```
+
+The page loads `laya-ts/dist` (run `npm run build` inside `laya-ts/`
+first), pulls `onnxruntime-web` from a pinned CDN import map, and
+fetches the model from the URL in the box (default `../../model-ml`,
+i.e. the exported `./model-ml`). First load transfers ~1.3GB and is
+cached in CacheStorage afterwards; the encoder tries WebGPU and falls
+back to WASM automatically. Chrome/Edge for WebGPU, any modern
+browser for WASM.
+
 ## Packaging
 
 ponytail: CJS/browser-field dual build + tsconfig tests-include deferred — Task 7 verified ESM-only; CJS needs second tsc config + export-map change, untested. Add when a CJS consumer or browser-field swap is requested.

@@ -189,8 +189,8 @@ def serve(args):
         await q.put(((body.get("state", ""), body["questions"]), fut))
         try:
             return web.json_response(await fut)
-        except ValueError as e:
-            raise web.HTTPBadRequest(text=str(e))
+        except ValueError:  # a question the checkpoint cannot encode; the reason stays server-side
+            raise web.HTTPBadRequest(text="question cannot be encoded (options exceed head_max_len?)") from None
 
     async def healthz(_):
         return web.json_response({"ok": True})

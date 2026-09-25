@@ -46,6 +46,17 @@ TOOLS = [{"type": "function", "function": {
     "parameters": {"type": "object", "properties": {
         "department": {"type": "string", "enum": ["billing", "support"]}}}}}]
 
+# The Responses API flattens the function (name/parameters at the top level), unlike Chat
+# Completions which nests them under `function`.
+FLAT_TOOLS = [
+    {"type": "function", "name": "route", "description": "Route a ticket",
+     "parameters": {"type": "object", "properties": {
+         "department": {"type": "string", "enum": ["billing", "support"]}}}},
+    {"type": "function", "name": "escalate", "description": "Escalate to a human",
+     "parameters": {"type": "object", "properties": {
+         "reason": {"type": "string", "enum": ["anger", "sla"]}}}},
+]
+
 
 def _client(monkeypatch, api_key=None):
     if api_key is None:
@@ -122,7 +133,31 @@ def test_responses_json_schema(monkeypatch):
     assert body["usage"] == {"input_tokens": 4, "output_tokens": 0, "total_tokens": 4}
 
 
-def test_responses_tools(monkeypatch):
+def test_responses_tools_flat(monkeypatch):
+    """A spec-compliant Responses request uses the flat function shape."""
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/responses", json={"input": "hi", "tools": FLAT_TOOLS})
+    assert r.status_code == 200, r.text
+    item = r.json()["output"][0]
+    assert item["type"] == "function_call"
+    assert item["name"] == "route"
+    assert json.loads(item["arguments"]) == {"department": "billing"}
+
+
+def test_responses_forced_tool(monkeypatch):
+    """A named tool_choice selects that tool without a selection question."""
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/responses", json={
+        "input": "hi", "tools": FLAT_TOOLS,
+        "tool_choice": {"type": "function", "name": "escalate"}})
+    assert r.status_code == 200, r.text
+    item = r.json()["output"][0]
+    assert item["name"] == "escalate"
+    assert json.loads(item["arguments"]) == {"reason": "anger"}
+
+
+def test_responses_tools_nested_still_accepted(monkeypatch):
+    """The nested Chat shape stays tolerated on the Responses route."""
     client, _ = _client(monkeypatch)
     r = client.post("/v1/responses", json={"input": "hi", "tools": TOOLS})
     assert r.status_code == 200

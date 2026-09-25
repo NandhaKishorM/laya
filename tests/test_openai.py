@@ -63,6 +63,17 @@ TOOLS = [
             "reason": {"type": "string", "enum": ["anger", "sla"]}}}}} ,
 ]
 
+# The Responses API flattens the function: name/parameters sit at the top level, not under
+# `function`. A spec-compliant Responses request uses this shape.
+FLAT_TOOLS = [
+    {"type": "function", "name": "route", "description": "Route a ticket",
+     "parameters": {"type": "object", "properties": {
+         "department": {"type": "string", "enum": ["billing", "support"]}}}},
+    {"type": "function", "name": "escalate", "description": "Escalate to a human",
+     "parameters": {"type": "object", "properties": {
+         "reason": {"type": "string", "enum": ["anger", "sla"]}}}},
+]
+
 
 # --------------------------------------------------------------- schema mode
 plan = parse_chat_request({
@@ -153,6 +164,16 @@ check("responses/tools turn list", rtools.state, [{"role": "user", "content": "a
 rout = format_responses_response(rtools, tresult)
 check("responses/tools function_call", rout["output"][0]["type"], "function_call")
 check("responses/tools name", rout["output"][0]["name"], "escalate")
+
+# the same plan from the flat Responses tool shape, which is what the API actually sends
+rflat = parse_responses_request({"input": ["a", "b"], "tools": FLAT_TOOLS})
+check("responses/flat tools names", rflat.tool_names, ["route", "escalate"])
+check("responses/flat namespaced question", "route__department" in rflat.questions, True)
+check("responses/flat selection question", TOOL_QUESTION in rflat.questions, True)
+rforced = parse_responses_request({"input": "hi", "tools": FLAT_TOOLS,
+                                   "tool_choice": {"type": "function", "name": "route"}})
+check("responses/flat forced tool", rforced.forced_tool, "route")
+check("responses/flat forced skips selection", TOOL_QUESTION in rforced.questions, False)
 
 
 # --------------------------------------------------------------- unsupported

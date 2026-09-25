@@ -98,6 +98,23 @@ curl -s localhost:8000/v1/responses -H 'content-type: application/json' -d '{
 The output is a `message` item with an `output_text` part, or a `function_call` item when `tools`
 are sent. `usage` uses the `input_tokens` / `output_tokens` / `total_tokens` names.
 
+The Responses API flattens the function, unlike Chat Completions: `name` and `parameters` sit at
+the top level of the tool, and a named `tool_choice` is `{"type": "function", "name": ...}`.
+
+```bash
+curl -s localhost:8000/v1/responses -H 'content-type: application/json' -d '{
+  "input": "The site is down, this is urgent",
+  "tools": [{"type": "function", "name": "route_ticket",
+    "description": "Route a support ticket",
+    "parameters": {"type": "object", "properties": {
+      "department": {"type": "string", "enum": ["billing", "support"]},
+      "urgent": {"type": "boolean"}}}}]
+}'
+```
+
+The output is a `function_call` item with `name` and `arguments`. The nested Chat shape is also
+accepted on this route, so a client that sends it keeps working.
+
 ## Moderations
 
 ```bash

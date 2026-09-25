@@ -136,6 +136,41 @@ def _forced_tool(tool_choice: Any, names: Sequence[str]) -> Optional[str]:
     return name
 
 
+def _responses_tools(tools: Any) -> Any:
+    """Map the Responses tool shape onto the nested Chat shape `_tool_questions` reads.
+
+    Responses uses a flat function object (``{"type": "function", "name": ..., "parameters":
+    ...}``); Chat Completions nests it under ``function``. An already-nested entry is passed
+    through, and anything else is left for `_tool_questions` to reject with its own message.
+    """
+    if not isinstance(tools, list):
+        return tools
+    normalised = []
+    for tool in tools:
+        if (isinstance(tool, dict) and "function" not in tool
+                and tool.get("type", "function") == "function" and isinstance(tool.get("name"), str)):
+            normalised.append({"type": "function", "function": {
+                "name": tool["name"],
+                "description": tool.get("description"),
+                "parameters": tool.get("parameters") or {},
+            }})
+        else:
+            normalised.append(tool)
+    return normalised
+
+
+def _responses_tool_choice(tool_choice: Any) -> Any:
+    """Map the Responses named tool_choice onto the nested Chat shape `_forced_tool` reads.
+
+    ``{"type": "function", "name": "x"}`` becomes ``{"type": "function", "function": {"name":
+    "x"}}``; ``"auto"`` / ``"none"`` / ``"required"`` are strings and pass through.
+    """
+    if (isinstance(tool_choice, dict) and "function" not in tool_choice
+            and tool_choice.get("type", "function") == "function" and isinstance(tool_choice.get("name"), str)):
+        return {"type": "function", "function": {"name": tool_choice["name"]}}
+    return tool_choice
+
+
 def _tool_questions(tools: Any, tool_choice: Any) -> Tuple[List[str], Dict[str, Dict[str, Any]], Dict[str, Any], Optional[str]]:
     if not isinstance(tools, list) or not tools:
         raise UnsupportedRequest("'tools' must be a non-empty list")
@@ -215,7 +250,8 @@ def parse_responses_request(body: Dict[str, Any]) -> ChatPlan:
     if tools and fmt:
         raise UnsupportedRequest("send either tools or text.format, not both")
     if tools:
-        names, schemas, questions, forced = _tool_questions(tools, body.get("tool_choice"))
+        names, schemas, questions, forced = _tool_questions(
+            _responses_tools(tools), _responses_tool_choice(body.get("tool_choice")))
         return _plan("tools", state, model, questions, tool_names=names,
                      tool_schemas=schemas, forced_tool=forced)
     if fmt is not None:

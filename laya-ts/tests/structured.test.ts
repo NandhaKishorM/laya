@@ -236,3 +236,53 @@ describe("structured/methods", () => {
   });
 });
 
+describe("structured/nullable-anyof", () => {
+  const NULLABLE = {
+    type: "object",
+    properties: {
+      dept: {
+        anyOf: [{ type: "string", enum: ["billing", "sales"] }, { type: "null" }],
+        description: "Which team?",
+      },
+      score: { anyOf: [{ type: "integer", minimum: 0, maximum: 2 }, { type: "null" }] },
+      flag: { anyOf: [{ type: "boolean" }, { type: "null" }] },
+    },
+  };
+
+  it("unwraps anyOf nullable enum as choice and preserves description", () => {
+    const nq = questionsFromJsonSchema(NULLABLE);
+    expect(nq.dept.type).toBe("choice");
+    expect(nq.dept.instructions).toBe("Which team?");
+    expect(Object.keys(nq.dept.criteria as object)).toEqual(["billing", "sales"]);
+  });
+
+  it("unwraps anyOf nullable bounded integer as score", () => {
+    const nq = questionsFromJsonSchema(NULLABLE);
+    expect(nq.score.type).toBe("score");
+    expect(nq.score.criteria).toEqual(["0", "1", "2"]);
+  });
+
+  it("unwraps anyOf nullable boolean as noul", () => {
+    const nq = questionsFromJsonSchema(NULLABLE);
+    expect(nq.flag.type).toBe("noul");
+  });
+
+  it("accepts oneOf nullable enum as choice", () => {
+    const q = questionsFromJsonSchema({
+      type: "object",
+      properties: { a: { oneOf: [{ enum: ["x", "y"] }, { type: "null" }] } },
+    });
+    expect(q.a.type).toBe("choice");
+    expect(Object.keys(q.a.criteria as object)).toEqual(["x", "y"]);
+  });
+
+  it("rejects unions of two real types as ambiguous", () => {
+    expect(() =>
+      questionsFromJsonSchema({
+        type: "object",
+        properties: { a: { anyOf: [{ type: "boolean" }, { type: "integer" }] } },
+      }),
+    ).toThrowError(/only 'Optional\[\.\.\.\]' unions \(one non-null branch\) are supported/);
+  });
+});
+

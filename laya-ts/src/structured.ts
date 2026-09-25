@@ -163,6 +163,24 @@ function fieldFor(path: string, name: string, prop: unknown): PlannedField {
   }
   const p = prop as Record<string, unknown>;
   const description = p.description;
+  if (!("const" in p || "enum" in p || "type" in p)) {
+    const union = (p.anyOf ?? p.oneOf) as unknown[] | undefined;
+    if (union !== undefined && Array.isArray(union)) {
+      const branches = union.filter(
+        (b) => b !== null && typeof b === "object" && !Array.isArray(b) && (b as Record<string, unknown>).type !== "null",
+      ) as Record<string, unknown>[];
+      if (branches.length !== 1) {
+        throw new SchemaError(
+          `${path}: only 'Optional[...]' unions (one non-null branch) are supported, got ${branches.length}`,
+        );
+      }
+      const branch: Record<string, unknown> = { ...branches[0] };
+      if (branch.description === undefined && description !== undefined) {
+        branch.description = description;
+      }
+      return fieldFor(path, name, branch);
+    }
+  }
   if ("const" in p) return enumField(path, name, [p.const], description);
   if ("enum" in p) {
     if (!Array.isArray(p.enum)) throw new SchemaError(`${path}: 'enum' must be a list, got ${pyType(p.enum)}`);

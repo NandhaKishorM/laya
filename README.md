@@ -873,6 +873,7 @@ question roughly **6-7x faster**.
 Every Laya figure is what `Router().predict(...)` actually returns — the checkpoint the router
 selects for that input, not a hand-picked best of three. Jev figures are **third-party
 published, never measured here** (no TypeSafe API access), so sample sizes and prompts differ.
+The Laya column here comes from the Applications run (`research/scripts/bench_apps.py`, N=400 per task; `research/results/app_benchmark_results.json`), so AG News / DAIR Emotion read 0.950 / 0.595 here versus 0.947 / 0.573 in the committed T4 English suites (N=600) below.
 
 | | Jev 1.13.0 | Laya (routed) | |
 |---|---|---|---|
@@ -921,7 +922,7 @@ its distributions match the teacher less well) and **ECE** (0.213 vs 0.144), whi
 fitting addresses.
 
 **The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461).
-All of the capability on this benchmark comes from fine-tuning.
+All of the capability on this benchmark comes from fine-tuning. Base rows match the committed runs (`suites.typed_decisions` in `research/results/t4_colab_benchmark.json`: 0.3620 / 0.3515; CPU sweep `part_b`: 0.3615 for English). The `laya-typed-decisions` row and its four per-workflow scores are from the fine-tuning run and have no committed result file behind them yet.
 
 ### Multilingual (51 languages, MASSIVE intent, 20 options, random = 0.050)
 

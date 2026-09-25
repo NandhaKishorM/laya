@@ -29,14 +29,15 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(REPO))
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # bench_local lives here
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+RESULTS_DIR = os.path.join(REPO, "research", "results")
+sys.path.insert(0, REPO)   # `import laya` works without an installed package
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import laya  # noqa: E402
 from bench_local import load, metrics, score_cases, softmax_t, temp_for  # noqa: E402
 
-OUT = os.path.join(REPO, "app_benchmark_results.json")
+OUT = os.path.join(RESULTS_DIR, "app_benchmark_results.json")
 SEED = 13
 N = int(os.environ.get("BENCH_N", "400"))
 

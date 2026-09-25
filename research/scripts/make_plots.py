@@ -103,7 +103,8 @@ def main():
     names = ["AG News\n(4 labels)", "DAIR Emotion\n(6 labels)", "typed-decisions\n(2,000 dec.)"]
     jev = [0.910, 0.480, 0.727]
     lay = [col["suites"]["en.ag_news"]["laya"]["calibrated"]["accuracy"],
-           col["suites"]["en.emotion"]["laya"]["calibrated"]["accuracy"], 0.766]
+           col["suites"]["en.emotion"]["laya"]["calibrated"]["accuracy"],
+           0.766]  # fine-tuned checkpoint; uncommitted run (no committed result file yet)
     x = np.arange(3)
     axC.bar(x - w / 2 - 0.01, jev, w, color=INK3, label="Jev (published)", zorder=3)
     axC.bar(x + w / 2 + 0.01, lay, w, color=BLUE, label="Laya (measured)", zorder=3)

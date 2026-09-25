@@ -2,7 +2,8 @@
 convaiinnovations/laya (ModernBERT-large, English) vs convaiinnovations/laya-multilingual
 (mmBERT-base, 100+ languages), on a Colab T4.
 
-Writes one laya_benchmark_results.json that can be handed back for analysis.
+Writes one laya_benchmark_results.json on Colab that is committed as
+research/results/t4_colab_benchmark.json.
 """
 import json
 import os
@@ -24,7 +25,8 @@ CELLS = [
 # Laya vs Laya-Multilingual — extensive head-to-head benchmark
 
 Runs both open checkpoints over the same questions and writes a single
-`laya_benchmark_results.json`.
+`laya_benchmark_results.json` on Colab (committed as
+`research/results/t4_colab_benchmark.json`).
 
 | | `convaiinnovations/laya` | `convaiinnovations/laya-multilingual` |
 |---|---|---|

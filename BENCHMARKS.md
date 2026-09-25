@@ -35,6 +35,8 @@ The raw-temperature column reproduces the committed file, so the only variable l
 | ECE after temperature fitting | **0.081** | 0.246 |
 | p50 latency, 1 question (T4) | **32.8 ms** | 236-276 ms |
 
+Headline Laya cells for AG News and DAIR Emotion are the Applications-run numbers (`research/results/app_benchmark_results.json`); typed-decisions 0.766 is the fine-tuned checkpoint (no committed result file behind it yet). The committed T4 English suites give 0.947 (AG News) and 0.573 (DAIR Emotion) for `laya`.
+
 ---
 
 ## Languages
@@ -122,7 +124,7 @@ The English checkpoint does not degrade gracefully outside English — it collap
 
 ## Themes — the application workflows
 
-Each is real labelled data, 400 cases, all three checkpoints. *held out* means the source was **not** in Laya's training mix.
+Each is real labelled data, 400 cases, all three checkpoints. *held out* means the source was **not** in Laya's training mix. Source: the Applications run (`research/scripts/bench_apps.py`, N=400 per task) — `research/results/app_benchmark_results.json`.
 
 | theme | laya | laya-multilingual | laya-typed-decisions | data |
 |---|---|---|---|---|
@@ -140,6 +142,8 @@ Each is real labelled data, 400 cases, all three checkpoints. *held out* means t
 
 ### On the public datasets where Jev numbers exist
 
+Laya columns are from the same Applications run (`research/results/app_benchmark_results.json`, N=400 per task), so AG News / DAIR Emotion differ slightly from the committed T4 English suites below (N=600: 0.947 / 0.573 for `laya`).
+
 | dataset | laya | laya-multilingual | laya-typed-decisions | Jev (published) |
 |---|---|---|---|---|
 | AG News (4 labels) | 0.950 | 0.930 | **0.953** | 0.910 |
@@ -155,7 +159,7 @@ banking77 is the one clear loss, and it is architectural: a choice question's op
 | model | accuracy | soft acc | Brier | ECE | score MAE |
 |---|---|---|---|---|---|
 | `laya-typed-decisions` | **0.766** | 0.471 | 0.061 | 0.213 | 0.242 |
-| `laya` | 0.361 | 0.332 | 0.316 | 0.175 | 0.694 |
+| `laya` | 0.362 | 0.332 | 0.316 | 0.175 | 0.694 |
 | `laya-multilingual` | 0.352 | 0.328 | 0.463 | 0.314 | 0.760 |
 | *Jev 1.13.0 (published)* | *0.727* | *0.580* | *0.148* | *0.144* | *0.391* |
 | *teacher ceiling* | *0.735* | *—* | *—* | *—* | *—* |
@@ -169,7 +173,7 @@ banking77 is the one clear loss, and it is architectural: a choice question's op
 | invoice processing | 0.804 |
 | security incidents | 0.766 |
 
-**The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461). All of the capability on this benchmark comes from fine-tuning.
+**The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461). All of the capability on this benchmark comes from fine-tuning. Base rows: `suites.typed_decisions` in `research/results/t4_colab_benchmark.json` (0.3620 / 0.3515; CPU sweep `part_b` gives 0.3615 for English). The `laya-typed-decisions` row and the four per-workflow scores are from the fine-tuning run and have no committed result file behind them yet.
 
 ---
 

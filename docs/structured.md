@@ -75,6 +75,7 @@ Limits: `MAX_PROPERTIES = 32`, `MAX_OPTIONS = 32`, `MAX_SCORE_LEVELS = 10`.
 |---|---|
 | `laya.decide(runner, state, schema=..., *, questions=..., return_details=..., **predict_kwargs)` | the free function, works for `Agent` and `Router` |
 | `agent.decide(state, schema=..., ...)` / `router.decide(state, schema=..., ...)` | convenience methods |
+| `laya.decide_batch(runner, states, schema=..., ...)` / `runner.decide_batch(...)` | the same over many states, one batched call |
 | `questions_from_json_schema(schema)` | schema to Laya questions |
 | `questions_from_pydantic(model)` | pydantic model to questions (requires pydantic) |
 | `answers_to_json(answers, schema)` | project raw answers onto schema values |
@@ -88,6 +89,24 @@ instead of projecting. Extra keyword arguments are forwarded to `predict`, so ho
 ```python
 router.decide(state, schema=Ticket, model="multilingual", hooks=[Metrics()])
 ```
+
+## Scoring many states
+
+`decide_batch` is the throughput form: the schema is planned once and its questions run over every
+state through `predict_batch`, so states share forward passes instead of one per call. Results come
+back in input order, projected exactly as `decide` projects, and `return_details=True` gives one
+`DecisionResult` per state:
+
+```python
+values = agent.decide_batch(ticket_texts, schema=Ticket)          # values[i] matches ticket_texts[i]
+results = router.decide_batch(states, schema=Ticket, return_details=True, batch_size=64)
+```
+
+On a `Router` each state is still routed on its own, so one call can span checkpoints. Keyword
+arguments reach `predict_batch`, so `batch_size=`, `model=` and hooks work as they do for `decide`.
+A runner without `predict_batch` (such as `ONNXAgent`) raises `TypeError` rather than silently
+falling back to a loop — call `decide` per state there. Batching can shift borderline argmaxes the
+same way `predict_batch` does; the README records the measured speedups for both devices.
 
 ## Confidence and probabilities
 

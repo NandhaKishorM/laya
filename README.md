@@ -686,6 +686,25 @@ agent.decide("I was charged twice, refund me.", schema=schema)
 `decide` also works on a `Router`, accepts a pydantic model (install `laya[structured]`), and can
 return per-field confidence with `return_details=True`. See [`docs/structured.md`](docs/structured.md).
 
+For throughput, `decide_batch` answers a list of states against the *same* schema through
+`predict_batch` (see [Batch Mode](#batch-mode-score-many-states-in-one-forward-pass)), so the schema
+is planned once and the states share forward passes:
+
+```python
+values = agent.decide_batch(ticket_texts, schema=schema)   # values[i] matches ticket_texts[i]
+
+# On a Router the states may land on different checkpoints; keywords reach predict_batch:
+details = router.decide_batch(states, schema=schema, return_details=True, batch_size=64)
+```
+
+Measured on an Apple M-series (MPS), 8 English tickets through one checkpoint: 2624 ms one-by-one
+vs 723 ms batched (**3.6×**); 16 mixed English/German states through a `Router`: 2977 ms vs
+1903 ms (**1.6×**). On CPU the same workloads gave **1.6×** and **2.0×**. Projected values matched
+the one-by-one loop 8/8 and 16/16 on both devices, as expected wherever argmax is not at a
+threshold — verify against your own decision boundaries. `laya.decide_batch(runner, states, ...)`
+is the function form. `ONNXAgent` has no `predict_batch` yet, so it raises `TypeError` instead of
+silently looping.
+
 ---
 
 ## Built-in Workflow Presets

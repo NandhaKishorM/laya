@@ -286,6 +286,40 @@ jobs:
       - name: Byte-compile every module
         run: python -m compileall -q laya/ tests/
 
+  typescript-sdk:
+    name: TypeScript SDK (node${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install server and SDK
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e '.[serve]' httpx pytest
+          npm ci --prefix sdk/typescript
+      - name: Server contract and generated presets
+        run: |
+          python -m pytest tests/test_serve.py
+          python sdk/typescript/scripts/sync_presets.py --check
+      - name: SDK types, transport, packaging and live inference
+        working-directory: sdk/typescript
+        run: |
+          npm test
+          npm run test:integration
+          npm pack --dry-run
+
   build:
     name: package
     runs-on: ubuntu-latest

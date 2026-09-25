@@ -156,6 +156,111 @@ except SystemExit as exit_:
     code = exit_.code
 check("preset: unknown name rejected by argparse", code == 2, "got %r" % code)
 
+# --------------------------------------------------------------------- batch mode
+import json  # noqa: E402
+import tempfile  # noqa: E402
+
+
+class BatchRouter:
+    """Records whole-batch calls; any single-state call is a bug in batch mode."""
+
+    def __init__(self):
+        self.predict_batch_calls = []
+        self.route_batch_calls = []
+
+    def predict_batch(self, requests, batch_size=None):
+        self.predict_batch_calls.append((requests, batch_size))
+        return [{"model": "laya-rl", "answers": {"difficulty": {"score": float(i)}}, "usage": {}}
+                for i in range(len(requests))]
+
+    def route_batch(self, requests):
+        self.route_batch_calls.append(requests)
+        return [StubDecision() for _ in requests]
+
+    def route(self, state, **kwargs):
+        raise AssertionError("single route() called in batch mode")
+
+    def predict(self, state, questions, **kwargs):
+        raise AssertionError("single predict() called in batch mode")
+
+
+def run_batch_cli(argv, router=None):
+    stub = router or BatchRouter()
+    original = cli.make_router
+    cli.make_router = lambda args: stub
+    out, err = io.StringIO(), io.StringIO()
+    try:
+        with redirect_stdout(out), redirect_stderr(err):
+            code = cli.main(argv)
+    finally:
+        cli.make_router = original
+    return code, out.getvalue(), err.getvalue(), stub
+
+
+tmp = tempfile.mkdtemp()
+path = os.path.join(tmp, "requests.txt")
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write("first ticket\n\n  second ticket  \n")
+
+code, out, err, stub = run_batch_cli(["--batch", path, "--predict", "--batch-size", "8"])
+check("batch predict: exit code", code == 0, "got %r %s" % (code, err))
+requests, batch_size = stub.predict_batch_calls[0]
+check("batch predict: exactly one predict_batch call", len(stub.predict_batch_calls) == 1)
+check("batch predict: blank lines skipped, lines stripped",
+      [r["state"]["request"] for r in requests] == ["first ticket", "second ticket"],
+      str([r["state"] for r in requests]))
+check("batch predict: --batch-size forwarded", batch_size == 8, str(batch_size))
+check("batch predict: router questions on every request",
+      sorted(requests[0]["questions"]) == sorted(cli.PRESETS["router"]()),
+      str(sorted(requests[0]["questions"])))
+check("batch predict: answers printed for both states", out.count("difficulty") == 2, out)
+
+code, out, err, stub = run_batch_cli(["--batch", path, "--predict", "--json"])
+parsed = [json.loads(line) for line in out.splitlines() if line.strip()]
+check("batch --json: one JSONL record per state", len(parsed) == 2
+      and all("answers" in p for p in parsed), out)
+
+code, out, err, stub = run_batch_cli(["--batch", path])
+check("batch route: one route_batch call, no checkpoint",
+      len(stub.route_batch_calls) == 1 and stub.predict_batch_calls == [])
+check("batch route: one line per state", out.count("multilingual") == 2, out)
+
+code, out, err, stub = run_batch_cli(["--batch", path, "--preset", "triage"])
+requests = stub.predict_batch_calls[0][0]
+check("batch preset: state key follows the preset",
+      all(set(r["state"]) == {"message"} for r in requests), str([r["state"] for r in requests]))
+
+code, out, err, stub = run_batch_cli(["--batch", path, "--predict", "--model", "english",
+                                      "--lang", "de"])
+first = stub.predict_batch_calls[0][0][0]
+check("batch flags: model/lang forwarded onto every request",
+      first.get("model") == "english" and first.get("lang") == "de", str(first))
+
+code, out, err, stub = run_batch_cli(["--batch", os.path.join(tmp, "missing.txt")])
+check("batch missing file: exit 2 with a named failure",
+      code == 2 and "could not read" in err, "code %r err %r" % (code, err))
+
+code, out, err, stub = run_batch_cli(["--batch", path, "inline text"])
+check("batch: text and --batch are mutually exclusive",
+      code == 2 and "not both" in err, "code %r err %r" % (code, err))
+
+empty = os.path.join(tmp, "empty.txt")
+open(empty, "w").close()
+code, out, err, stub = run_batch_cli(["--batch", empty, "--predict"])
+check("batch empty file: exit 2, no calls",
+      code == 2 and "no requests" in err and stub.predict_batch_calls == [],
+      "code %r err %r" % (code, err))
+
+_original_stdin = sys.stdin
+sys.stdin = io.StringIO("piped one\npiped two\n")
+try:
+    code, out, err, stub = run_batch_cli(["--batch", "-", "--predict", "--json"])
+finally:
+    sys.stdin = _original_stdin
+check("batch -: reads stdin", code == 0
+      and len(stub.predict_batch_calls[0][0]) == 2
+      and len([l for l in out.splitlines() if l.strip()]) == 2, "code %r err %r" % (code, err))
+
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

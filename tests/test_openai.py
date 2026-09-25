@@ -200,6 +200,24 @@ check_raises("unsupported/bad tool_choice", UnsupportedRequest,
                                          "tool_choice": {"function": {"name": "nope"}}}))
 check_raises("unsupported/responses without format", UnsupportedRequest,
              lambda: parse_responses_request({"input": "hi"}))
+check_raises("unsupported/chat stream", UnsupportedRequest,
+             lambda: parse_chat_request({"messages": [{"role": "user", "content": "hi"}],
+                                         "response_format": {"type": "json_schema",
+                                                             "json_schema": {"schema": SCHEMA}},
+                                         "stream": True}))
+check_raises("unsupported/chat n", UnsupportedRequest,
+             lambda: parse_chat_request({"messages": [{"role": "user", "content": "hi"}],
+                                         "response_format": {"type": "json_schema",
+                                                             "json_schema": {"schema": SCHEMA}},
+                                         "n": 3}))
+check_raises("unsupported/responses stream", UnsupportedRequest,
+             lambda: parse_responses_request({"input": "hi", "stream": True,
+                                              "text": {"format": {"type": "json_schema",
+                                                                  "schema": SCHEMA}}}))
+check_raises("unsupported/responses n", UnsupportedRequest,
+             lambda: parse_responses_request({"input": "hi", "n": 2,
+                                              "text": {"format": {"type": "json_schema",
+                                                                  "schema": SCHEMA}}}))
 
 
 # --------------------------------------------------------------- models and moderations

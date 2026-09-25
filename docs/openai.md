@@ -159,6 +159,7 @@ See [`examples/openai_client.py`](../examples/openai_client.py) for a runnable v
 | no `tools` and no schema | 400, the message says to send one |
 | `response_format` type `json_object` | 400, Laya needs options, not free JSON |
 | both `tools` and a schema | 400, send one |
+| `stream: true`, or `n` other than 1 | 400, Laya does not stream and returns one choice |
 | more than `MAX_TOOLS = 8` tools, duplicate or non-function tools | 400 |
 | a schema the structured layer cannot express | 422, naming the path |
 | body larger than `MAX_BODY_BYTES` | 413 |
@@ -167,7 +168,8 @@ See [`examples/openai_client.py`](../examples/openai_client.py) for a runnable v
 ## Honest limits
 
 - Not a chat model: no free text, no reasoning chains, no variable-length or nested output.
-- No streaming, no `n`, no sampling parameters; they are ignored or rejected.
+- No streaming and no `n`: `stream: true` or `n` other than 1 is rejected with a 400. Sampling
+  parameters are ignored.
 - Inference is serialized on one worker, like the rest of `laya-serve`, so throughput is one
   decision at a time per process.
 

@@ -119,6 +119,19 @@ def test_chat_bad_schema_is_422(monkeypatch):
     assert "properties.note" in r.json()["detail"]
 
 
+def test_chat_stream_and_n_are_400(monkeypatch):
+    client, _ = _client(monkeypatch)
+    fmt = {"type": "json_schema", "json_schema": {"name": "t", "schema": SCHEMA}}
+    stream = client.post("/v1/chat/completions", json={
+        "messages": [{"role": "user", "content": "hi"}], "response_format": fmt, "stream": True})
+    assert stream.status_code == 400
+    assert "stream" in stream.json()["detail"]
+    n = client.post("/v1/chat/completions", json={
+        "messages": [{"role": "user", "content": "hi"}], "response_format": fmt, "n": 3})
+    assert n.status_code == 400
+    assert "n" in n.json()["detail"]
+
+
 def test_responses_json_schema(monkeypatch):
     client, _ = _client(monkeypatch)
     r = client.post("/v1/responses", json={
@@ -131,6 +144,15 @@ def test_responses_json_schema(monkeypatch):
     assert item["type"] == "message"
     assert json.loads(item["content"][0]["text"]) == {"department": "billing", "urgent": True}
     assert body["usage"] == {"input_tokens": 4, "output_tokens": 0, "total_tokens": 4}
+
+
+def test_responses_stream_is_400(monkeypatch):
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/responses", json={
+        "input": "hi", "stream": True,
+        "text": {"format": {"type": "json_schema", "schema": SCHEMA}}})
+    assert r.status_code == 400
+    assert "stream" in r.json()["detail"]
 
 
 def test_responses_tools_flat(monkeypatch):

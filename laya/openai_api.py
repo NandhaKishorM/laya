@@ -218,9 +218,24 @@ def _plan(mode: str, state: Any, model: Optional[str], questions: Dict[str, Any]
                     forced_tool=forced_tool)
 
 
+def _reject_stream_and_n(body: Dict[str, Any]) -> None:
+    """Reject the bits of the OpenAI surface a decision engine cannot honour.
+
+    Both are documented as unsupported, but silently answering a `stream: true` request with one
+    non-streamed body leaves the client waiting for `data:` chunks that never arrive, and `n`
+    other than 1 would silently return fewer choices than asked for.
+    """
+    if body.get("stream"):
+        raise UnsupportedRequest("streaming is not supported; resend without 'stream'")
+    n = body.get("n")
+    if n is not None and n != 1:
+        raise UnsupportedRequest("'n' is not supported; Laya returns a single choice")
+
+
 def parse_chat_request(body: Dict[str, Any]) -> ChatPlan:
     if not isinstance(body, dict):
         raise UnsupportedRequest("request body must be an object")
+    _reject_stream_and_n(body)
     state = _state_from_messages(body.get("messages"))
     model = body.get("model")
     tools = body.get("tools")
@@ -242,6 +257,7 @@ def parse_chat_request(body: Dict[str, Any]) -> ChatPlan:
 def parse_responses_request(body: Dict[str, Any]) -> ChatPlan:
     if not isinstance(body, dict):
         raise UnsupportedRequest("request body must be an object")
+    _reject_stream_and_n(body)
     state = _state_from_input(body.get("input"))
     model = body.get("model")
     tools = body.get("tools")

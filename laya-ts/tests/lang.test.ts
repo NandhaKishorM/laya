@@ -110,4 +110,86 @@ describe("lang", () => {
     expect(buried.isEnglish).toBe(false);
     expect(buried.language).toBe("de");
   });
+
+  // mixed-segment detection (port of Python's _non_english_segment)
+  // A foreign line embedded in an English ticket must flip isEnglish and record the segment.
+  const TRACE = "I checked the refund status and here is what I found for the customer.\n" +
+    "The charge cleared last Tuesday and the bank confirmed it went through.\n" +
+    "Quero o meu dinheiro de volta agora mesmo porque já esperei demais\n" +
+    "Please escalate to the billing manager if the refund has not been issued by Friday.";
+
+  it("mixed-segment: Portuguese line in English ticket is not english", () => {
+    const a = analyse(TRACE);
+    expect(a.isEnglish).toBe(false);
+    expect(a.language).toBe("pt");
+    expect(a.mixedSegment).toBe(
+      "Quero o meu dinheiro de volta agora mesmo porque já esperei demais",
+    );
+  });
+
+  it("mixed-segment: German error payload in English ticket", () => {
+    const state = "The integration test failed with this error on the staging server " +
+      "and I am not sure whether it is a data issue or a code regression.\n" +
+      "Fehler: Die Verbindung zum Server wurde unterbrochen, bitte versuchen Sie es spaeter noch einmal";
+    const a = analyse(state);
+    expect(a.isEnglish).toBe(false);
+    expect(a.mixedSegment).toContain("Verbindung");
+  });
+
+  it("mixed-segment: Spanish error in structured state", () => {
+    const state = {
+      subject: "Payment failed for a customer in Madrid",
+      description: "The customer tried three times with the same card and each attempt was declined by " +
+        "the gateway, so we would like to know whether the problem is on our side or with the bank.",
+      error: {
+        code: "card_declined",
+        message: "La tarjeta fue rechazada por el banco emisor, contacte con su banco",
+      },
+    };
+    const a = analyse(state);
+    expect(a.isEnglish).toBe(false);
+    expect(a.mixedSegment).toContain("tarjeta");
+  });
+
+  it("mixed-segment: all-caps Portuguese line", () => {
+    const state =
+      "This is the fourth email I have sent about the same order and nobody has answered any of them.\n" +
+      "The customer wrote this in the chat and then closed the window:\n" +
+      "QUERO MEU DINHEIRO DE VOLTA AGORA\n" +
+      "Could someone from the billing team look at order 5512 today?";
+    const a = analyse(state);
+    expect(a.isEnglish).toBe(false);
+    expect(a.mixedSegment).toBe("QUERO MEU DINHEIRO DE VOLTA AGORA");
+  });
+
+  // English stays English: multi-line, short foreign sign-off, code lines
+  it.each([
+    ["multi-line english", "Hi team,\nThe export failed again last night.\nCan you check the logs?\nThanks"],
+    ["short portuguese sign-off", "Please resend the invoice for March, the amount is wrong.\nAtenciosamente, Joao"],
+    ["os.path", "The build broke after the refactor.\nREPO = os.path.dirname(os.path.dirname(__file__))\n" +
+      "Please take a look at the import paths when you can."],
+    ["round(el)", "The latency script crashes on large runs.\nmix[key] = {\"total_s\": round(el, 2)}\n" +
+      "Can you check why the stream is empty?"],
+    ["same word twice (Nav/Com)", "I'm looking for good deals on the following (used or new):\n" +
+      "Aviation Headsets (with mic).\n" +
+      "Handheld Nav/Com tranciever (may consider COM only).\nPortable GPS or Loran Navigator."],
+    ["team codes", "Round two predictions for the pool, as promised.\nQUE  vs MON:  MON  in 7.\n" +
+      "PIT  vs NYI:  PIT  in 5."],
+    ["slash compound", "I need a converter for these image formats.\n" +
+      "DOS, OS/2 or platform independent programs if possible.\nThanks in advance."],
+    ["backslash path", "My modem stopped answering after the upgrade.\nC:\\DOS\\mode COM1:9600,n,8,1,p\n" +
+      "Is that the right line for a 9600 baud connection?"],
+  ])("mixed-segment english stays english: %s", (_label, state) => {
+    expect(analyse(state).isEnglish).toBe(true);
+    expect(analyse(state).mixedSegment).toBeNull();
+  });
+
+  // The segment check reads at most 4000 chars, so a foreign line past that cap is not seen.
+  it("mixed-segment: segment check reads at most the cap", () => {
+    const state = {
+      log: "The export failed again last night for the whole region. ".repeat(80),
+      body: "Quero cancelar meu plano agora mesmo",
+    };
+    expect(analyse(state).mixedSegment).toBeNull();
+  });
 });

@@ -444,7 +444,11 @@ export class Router extends HookRegistry {
         "the English checkpoint cannot read it";
     } else if (!det.isEnglish) {
       key = "multilingual";
-      if (det.language) {
+      if (det.mixedSegment) {
+        reason =
+          `Latin script, mostly English, but a line or field reads as ${JSON.stringify(det.language)} ` +
+          `(${JSON.stringify(det.mixedSegment.slice(0, 60))}); the English checkpoint cannot read it`;
+      } else if (det.language) {
         reason = `Latin script but language looks like ${JSON.stringify(det.language)}, not English`;
       } else {
         reason =

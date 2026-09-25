@@ -51,7 +51,7 @@ export interface ChoiceAnswer {
 export interface ScoreAnswer {
   type: "score";
   score: number;
-  legend: Record<string, unknown>;
+  legend: Record<string, string>;
   probabilities: Record<string, number>;
   confidence: number;
   answer_confidence: number;
@@ -487,7 +487,7 @@ export class Agent extends HookRegistry {
         answers[qid] = {
           type: "score",
           score: r4(exp),
-          legend: Object.fromEntries((q.crit as unknown[]).map((c, i) => [String(i), c])),
+          legend: Object.fromEntries((q.crit as unknown[]).map((c, i) => [String(i), String(c)])),
           probabilities: Object.fromEntries(p.map((v, i) => [String(i), r4(v)])),
           confidence: r4(confidenceFromProbs(p)),
           answer_confidence: ansConf,

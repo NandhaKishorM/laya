@@ -27,6 +27,8 @@ export interface TokenizerData {
   maskToken: string;
   /** Normalizer Replace rules (pattern -> content) applied in order before pre-tokenizing. */
   replaces: Array<[string, string]>;
+  /** A character the vocab lacks becomes its `<0xNN>` byte tokens instead of unk (HF byte_fallback). */
+  byteFallback?: boolean;
 }
 
 /** Metaspace word-boundary marker (HF SentencePiece-style replacement for ' '). */
@@ -258,6 +260,7 @@ export function metaspaceEncode(
   text: string,
   unkId?: number,
   replaces: ReadonlyArray<readonly [string, string]> = [[" ", METASPACE_REPLACEMENT]],
+  byteFallback = false,
 ): number[] {
   const unk = unkId ?? vocab.get("<unk>") ?? vocab.get("[UNK]") ?? CHECKPOINT_IDS.unk;
   if (!text) return [];
@@ -265,7 +268,18 @@ export function metaspaceEncode(
   for (const [from, to] of replaces) t = t.split(from).join(to);
   const out: number[] = [];
   const push = (piece: string): void => {
-    for (const tok of bpeWord(Array.from(piece), merges)) out.push(vocab.get(tok) ?? unk);
+    for (const tok of bpeWord(Array.from(piece), merges)) {
+      const id = vocab.get(tok);
+      if (id !== undefined) {
+        out.push(id);
+        continue;
+      }
+      const bytes = byteFallback
+        ? Array.from((sharedEncoder ??= new TextEncoder()).encode(tok), (b) => vocab.get(`<0x${b.toString(16).toUpperCase().padStart(2, "0")}>`))
+        : [];
+      if (bytes.length > 0 && bytes.every((b) => b !== undefined)) out.push(...(bytes as number[]));
+      else out.push(unk);
+    }
   };
   for (const seg of t.split(/(\n+)/)) {
     if (!seg) continue;
@@ -284,7 +298,7 @@ export function metaspaceEncode(
 /** Dispatch to the Metaspace or GPT-2/ByteLevel encoder based on the parsed pre-tokenizer. */
 export function encodeWithData(data: TokenizerData, text: string): number[] {
   return data.kind === "metaspace"
-    ? metaspaceEncode(data.vocab, data.merges, text, data.ids.unk, data.replaces)
+    ? metaspaceEncode(data.vocab, data.merges, text, data.ids.unk, data.replaces, data.byteFallback)
     : bpeEncode(data.vocab, data.merges, text);
 }
 
@@ -323,7 +337,7 @@ function collectReplaces(node: unknown, out: Array<[string, string]>): void {
 export function parseTokenizerJson(raw: unknown): TokenizerData | null {
   try {
     const r = raw as {
-      model?: { vocab?: Record<string, number>; merges?: Array<string | [string, string]> };
+      model?: { vocab?: Record<string, number>; merges?: Array<string | [string, string]>; byte_fallback?: boolean };
       normalizer?: unknown;
       pre_tokenizer?: unknown;
       added_tokens?: Array<{ id?: number; content?: string }>;
@@ -362,6 +376,7 @@ export function parseTokenizerJson(raw: unknown): TokenizerData | null {
       kind,
       maskToken: mask.token,
       replaces,
+      byteFallback: r.model?.byte_fallback === true,
     };
   } catch {
     return null;

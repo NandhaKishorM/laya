@@ -65,6 +65,49 @@ describe("parseTokenizerJson specials aliases", () => {
   });
 });
 
+// Expected ids are what Hugging Face `tokenizers` returns for the same JSON (add_special_tokens=False).
+// With byte_fallback a character the vocab lacks becomes its UTF-8 `<0xNN>` tokens, or <unk> if any of
+// those tokens is missing too. The Gemma checkpoint sets it: a Hangul syllable or CJK ideograph outside
+// the 256k vocab reached the model as <unk> here.
+describe("byte_fallback (HF parity)", () => {
+  const make = (byteFallback: boolean) => parseTokenizerJson({
+    normalizer: { type: "Replace", pattern: { String: " " }, content: "▁" },
+    pre_tokenizer: { type: "Metaspace", replacement: "▁", prepend_scheme: "always", split: true },
+    model: {
+      byte_fallback: byteFallback,
+      vocab: {
+        "▁": 0, a: 1, b: 2, "▁a": 3, "<unk>": 4,
+        "<0xC7>": 5, "<0x85>": 6, "<0xF0>": 7, "<0x9F>": 8, "<0x98>": 9, "<0x80>": 10, "<0xE4>": 11,
+      },
+      merges: ["▁ a"],
+    },
+  })!;
+
+  it.each<[string, number[]]>([
+    ["ǅ", [0, 5, 6]],
+    ["aǅb", [3, 5, 6, 2]],
+    ["ǅǅ", [0, 5, 6, 5, 6]],
+    ["a ǅ", [3, 0, 5, 6]],
+    ["😀", [0, 7, 8, 9, 10]],
+    ["a😀b", [3, 7, 8, 9, 10, 2]],
+    ["é", [0, 4]],
+    ["aéb", [3, 4, 2]],
+    ["中", [0, 4]],
+    ["a b", [3, 0, 2]],
+  ])("byte_fallback on: %j", (text, ids) => {
+    expect(encodeWithData(make(true), text)).toEqual(ids);
+  });
+
+  it.each<[string, number[]]>([
+    ["ǅ", [0, 4]],
+    ["ǅǅ", [0, 4, 4]],
+    ["😀", [0, 4]],
+    ["a b", [3, 0, 2]],
+  ])("byte_fallback off keeps <unk>: %j", (text, ids) => {
+    expect(encodeWithData(make(false), text)).toEqual(ids);
+  });
+});
+
 describe("model-ml/tokenizer.json parity (gated on file presence)", () => {
   it("reproduces reference id-sequences byte-identical", () => {
     if (!existsSync(mlPath)) return;

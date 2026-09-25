@@ -6,6 +6,7 @@ Laya provides fast, non-autoregressive decision components for **LangChain** and
 * **`LayaGuardrail`**: Sub-40ms inline screening for prompt injections, jailbreaks, and sensitive data.
 * **`LayaTriage`**: Support ticket triage node evaluating intent, urgency, frustration, and churn risk in one forward pass.
 * **`LayaEvaluator`**: Rubric-based output grading and hallucination evaluation.
+* **`LayaDecision`**: Schema-driven decisions -- a JSON schema or pydantic model in, schema-shaped values out.
 
 Supports both **local in-process inference** (`Agent` or `Router`) and **remote HTTP inference** against your own `laya-serve` without requiring PyTorch on edge clients.
 
@@ -175,4 +176,81 @@ router = LayaRouter(
 )
 ```
 
-No local PyTorch or checkpoint downloads are required in remote mode.
+No local PyTorch or checkpoint downloads are required in remote mode. `LayaDecision` reaches the
+same endpoint from a schema, so remote clients get typed decisions too.
+
+---
+
+## 5. Schema-Driven Decisions
+
+`LayaRouter`, `LayaGuardrail`, `LayaTriage` and `LayaEvaluator` each answer one question set you
+write by hand. `LayaDecision` is the LCEL form of [`laya.decide`](structured.md): hand it a JSON
+schema or a pydantic model, and it plans each property into a Laya question and returns the
+answer in the schema's own shape -- an enum choice, an integer level, a boolean -- with no token
+generation and no structured-output parser downstream.
+
+```python
+from typing import Literal
+from pydantic import BaseModel
+from laya.integrations.langchain import LayaDecision
+
+class Ticket(BaseModel):
+    department: Literal["billing", "technical", "sales", "other"]
+    urgency: Literal[0, 1, 2, 3]
+    needs_human: bool
+
+decide = LayaDecision(Ticket, state_key="input")
+
+decide.invoke({"input": "I was charged twice and nothing works, fix this today."})
+# {'department': 'billing', 'urgency': 1, 'needs_human': False}
+```
+
+The same node takes a bare JSON schema, so a chain does not need pydantic to describe its output:
+
+```python
+decide = LayaDecision({
+    "type": "object",
+    "properties": {
+        "department": {"type": "string", "enum": ["billing", "technical", "sales", "other"]},
+        "urgency": {"type": "integer", "minimum": 0, "maximum": 3},
+        "needs_human": {"type": "boolean"},
+    },
+})
+
+decide.invoke("The dashboard throws a 500 for everyone on our team.")
+# {'department': 'technical', 'urgency': 3, 'needs_human': True}
+```
+
+Pass `return_details=True` for a `DecisionResult` carrying per-field confidence and the raw
+answers, which is what you want when a later branch gates on how sure the decision was:
+
+```python
+decide = LayaDecision(Ticket, return_details=True)
+result = decide.invoke("How do I export my data?")
+result.values["department"]       # "technical"
+result.confidence["department"]   # 0.203 -- a low-confidence pick on an ambiguous request
+```
+
+(The outputs above are from the `laya` checkpoint on Apple silicon; a checkpoint can answer
+differently for your own wording and descriptions.)
+
+**The schema is validated when you build the node.** A property Laya cannot answer from a fixed
+option set -- a free string, an array, a nested object -- raises `SchemaError` from the
+constructor, not on the first request after the chain has paid for every earlier step.
+
+**It costs the same as writing the questions yourself.** The node adds only the schema plan and
+the projection back, and measured against a hand-built question set on the same checkpoint
+(`convaiinnovations/laya`, 6 support tickets, median of 3 runs of 6 `invoke()` calls) the two are
+within noise of each other and agree on every field:
+
+| Device | Hand-written questions | `LayaDecision` | Overhead | Decision mismatches |
+|---|---|---|---|---|
+| Apple M-series GPU (MPS) | 71.2 ms/state | 69.7 ms/state | -2.0% | 0 of 18 fields |
+| CPU | 142.1 ms/state | 143.7 ms/state | +1.1% | 0 of 18 fields |
+
+The plan itself is 0.003 ms per call -- roughly 0.004% of one decision on MPS. Repeat MPS runs
+landed between -3.9% and +2.1%, so treat the overhead as unmeasurable rather than a speedup.
+
+`invoke()` answers one state, so `batch()` runs LangChain's default per-input loop. On Apple
+silicon that loop can overlap forwards on a thread pool, and concurrent MPS forwards abort the
+process; pass `max_concurrency=1` there, or call `invoke()` in a loop.

@@ -1,5 +1,6 @@
 """Third-party agent and framework integrations for Laya."""
 from .langchain import (
+    LayaDecision,
     LayaEvaluator,
     LayaGuardrail,
     LayaGuardrailError,
@@ -13,4 +14,5 @@ __all__ = [
     "LayaGuardrailError",
     "LayaTriage",
     "LayaEvaluator",
+    "LayaDecision",
 ]

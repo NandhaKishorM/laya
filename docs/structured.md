@@ -125,3 +125,4 @@ if result.confidence["department"] < 0.6:
 
 - [Prediction hooks](hooks/index.md): observe, shape, cache or gate the decisions this produces.
 - [Decision primitives](index.md): `choice`, `score` and `noul` in depth.
+- [LangChain and LangGraph](langchain.md): `LayaDecision` is this call as a runnable in a chain.

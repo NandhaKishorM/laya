@@ -1,7 +1,8 @@
 """Unit tests for Laya LangChain and LangGraph integration.
 
 Tests verify routing logic, confidence threshold fallback gating, guardrail filtering/raising,
-state extraction, and LangGraph callable conventions without requiring model downloads or GPU.
+state extraction, schema-driven decisions, and LangGraph callable conventions without requiring
+model downloads or GPU.
 """
 import os
 import sys
@@ -270,6 +271,175 @@ eval_res = evaluator.evaluate_strings(
 )
 check("evaluator/faithfulness", eval_res["faithfulness"]["noul"], 0.98)
 check("evaluator/hallucination", eval_res["hallucination"]["noul"], 0.02)
+
+
+# --------------------------------------------------------------- 6. LayaDecision
+from laya.integrations import langchain as langchain_module  # noqa: E402
+from laya.integrations.langchain import LayaDecision  # noqa: E402
+from laya.structured import DecisionResult, SchemaError, decide  # noqa: E402
+
+DECISION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "department": {"type": "string", "enum": ["billing", "support", "sales"]},
+        "urgency": {"type": "integer", "minimum": 0, "maximum": 2},
+        "needs_human": {"type": "boolean"},
+    },
+}
+
+DECISION_ANSWERS = {
+    "department": {"type": "choice", "choice": "billing", "confidence": 0.9,
+                   "probabilities": {"billing": 0.9, "support": 0.1, "sales": 0.0}},
+    "urgency": {"type": "score", "score": 1.2, "confidence": 0.6,
+                "probabilities": {"0": 0.1, "1": 0.2, "2": 0.7}},
+    "needs_human": {"type": "noul", "noul": 0.8, "confidence": 0.75},
+}
+
+
+class RecordingAgent:
+    """Answers every question set with DECISION_ANSWERS and records each predict() call."""
+
+    def __init__(self, answers=None):
+        self.answers = DECISION_ANSWERS if answers is None else answers
+        self.calls = []
+
+    def predict(self, state, questions, **kwargs):
+        self.calls.append({"state": state, "questions": questions, "kwargs": kwargs})
+        return {"model": "mock", "answers": dict(self.answers),
+                "usage": {"input_tokens": 1, "output_tokens": 0}}
+
+
+decision_agent = RecordingAgent()
+decision = LayaDecision(DECISION_SCHEMA, agent=decision_agent)
+
+values = decision.invoke({"input": "I was billed twice, is anyone going to help?"})
+check("decision/choice keeps its schema value", values["department"], "billing")
+check("decision/score becomes the argmax level", values["urgency"], 2)
+check("decision/boolean is a bool", values["needs_human"], True)
+
+# Every property of the schema reaches the agent as a Laya question of the right kind.
+asked = decision_agent.calls[0]["questions"]
+check("decision/one question per property", sorted(asked), ["department", "needs_human", "urgency"])
+check("decision/enum planned as choice", asked["department"]["type"], "choice")
+check("decision/enum labels", list(asked["department"]["criteria"]), ["billing", "support", "sales"])
+check("decision/boolean planned as noul", asked["needs_human"]["type"], "noul")
+check("decision/state extracted", decision_agent.calls[0]["state"],
+      "I was billed twice, is anyone going to help?")
+
+# The runnable is `laya.decide` over the same runner: byte-identical output is the contract.
+check("decision/parity with laya.decide", decision.invoke("some text"),
+      decide(decision_agent, "some text", schema=DECISION_SCHEMA))
+
+details = LayaDecision(DECISION_SCHEMA, return_details=True, agent=RecordingAgent()).invoke("x")
+check_true("decision/details type", isinstance(details, DecisionResult))
+check("decision/details confidence", details.confidence["urgency"], 0.6)
+check("decision/details usage", details.usage, {"input_tokens": 1, "output_tokens": 0})
+
+# model= and the extra predict kwargs go through to the runner, as core does.
+kw_agent = RecordingAgent()
+LayaDecision(DECISION_SCHEMA, agent=kw_agent, model="laya-multilingual").invoke("x")
+check("decision/model forwarded", kw_agent.calls[0]["kwargs"], {"model": "laya-multilingual"})
+
+# A property the engine did not answer is absent, not guessed.
+partial = LayaDecision(DECISION_SCHEMA, agent=RecordingAgent({"department": DECISION_ANSWERS["department"]})).invoke("x")
+check("decision/unanswered property omitted", partial, {"department": "billing"})
+
+# A schema Laya cannot answer fails here, not on the first request through the chain.
+for label, bad in (
+    ("free string", {"type": "object", "properties": {"a": {"type": "string"}}}),
+    ("no properties", {"type": "object", "properties": {}}),
+    ("not a schema", "billing|support"),
+):
+    raised = False
+    try:
+        LayaDecision(bad, agent=decision_agent)
+    except SchemaError:
+        raised = True
+    check_true("decision/rejects %s at construction" % label, raised)
+
+# Remote mode goes through the same projection with one HTTP call per input.
+remote_calls = []
+
+
+def fake_call_remote(base_url, state, questions, api_key=None, model=None):
+    remote_calls.append({"base_url": base_url, "state": state, "questions": questions,
+                         "api_key": api_key, "model": model})
+    return {"model": "mock", "answers": dict(DECISION_ANSWERS)}
+
+
+_real_call_remote = langchain_module._call_remote
+langchain_module._call_remote = fake_call_remote
+try:
+    remote_decision = LayaDecision(DECISION_SCHEMA, base_url="http://laya:8000", api_key="k", model="laya")
+    check("decision/remote values", remote_decision.invoke({"query": "billed twice"}), values)
+    check("decision/remote one call", len(remote_calls), 1)
+    check("decision/remote endpoint", remote_calls[0]["base_url"], "http://laya:8000")
+    check("decision/remote credentials", remote_calls[0]["api_key"], "k")
+    check("decision/remote model", remote_calls[0]["model"], "laya")
+    check("decision/remote questions", sorted(remote_calls[0]["questions"]),
+          ["department", "needs_human", "urgency"])
+finally:
+    langchain_module._call_remote = _real_call_remote
+
+# With no agent and no base_url the node uses the shared default Router, like its siblings.
+default_agent = RecordingAgent()
+_real_default_router = langchain_module._get_default_router
+langchain_module._get_default_router = lambda: default_agent
+try:
+    check("decision/default runner", LayaDecision(DECISION_SCHEMA).invoke("x"), values)
+    check("decision/default runner used once", len(default_agent.calls), 1)
+finally:
+    langchain_module._get_default_router = _real_default_router
+
+# A pydantic model is a schema too, so the same class can type a chain and a call site. Note
+# `Literal[0, 1, 2]` plans as an enum choice rather than a score scale, so the answer carries a
+# label and the value comes back as the schema's own int.
+try:
+    from typing import Literal
+
+    import pydantic
+
+    class Ticket(pydantic.BaseModel):
+        department: Literal["billing", "support", "sales"]
+        urgency: Literal[0, 1, 2]
+        needs_human: bool
+
+    ticket_agent = RecordingAgent({
+        "department": DECISION_ANSWERS["department"],
+        "urgency": {"type": "choice", "choice": "2", "confidence": 0.6,
+                    "probabilities": {"0": 0.1, "1": 0.2, "2": 0.7}},
+        "needs_human": DECISION_ANSWERS["needs_human"],
+    })
+    model_decision = LayaDecision(Ticket, agent=ticket_agent)
+    check("decision/pydantic values", model_decision.invoke("billed twice"),
+          {"department": "billing", "urgency": 2, "needs_human": True})
+    check_true("decision/pydantic integer enum stays an int",
+               isinstance(model_decision.invoke("billed twice")["urgency"], int))
+    check("decision/pydantic parity",
+          model_decision.invoke("y"), decide(ticket_agent, "y", schema=Ticket))
+except ImportError:
+    PASS.append("decision/pydantic skipped (not installed)")
+
+# Composes with the rest of LCEL: a decision feeds a downstream step as plain values.
+try:
+    from langchain_core.runnables import RunnableLambda
+
+    decide_then_label = LayaDecision(DECISION_SCHEMA, agent=RecordingAgent()) | RunnableLambda(
+        lambda v: "%s/%s" % (v["department"], v["urgency"])
+    )
+    check("decision/lcel chain", decide_then_label.invoke({"input": "billed twice"}), "billing/2")
+    check("decision/lcel batch", LayaDecision(DECISION_SCHEMA, agent=RecordingAgent()).batch(
+        [{"input": "a"}, {"input": "b"}], config={"max_concurrency": 1}), [values, values])
+except ImportError:
+    PASS.append("decision/lcel skipped (langchain-core not installed)")
+
+# Exported from the package the way the other integration nodes are.
+import laya  # noqa: E402
+from laya.integrations import __all__ as integrations_all  # noqa: E402
+
+check("decision/laya attribute", laya.LayaDecision, LayaDecision)
+check_true("decision/in laya.__all__", "LayaDecision" in laya.__all__)
+check_true("decision/in integrations.__all__", "LayaDecision" in integrations_all)
 
 
 # --------------------------------------------------------------- Summary

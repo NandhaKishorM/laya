@@ -157,6 +157,23 @@ for label, cls in (("Agent", Agent), ("Router", Router), ("ONNXAgent", ONNXAgent
     for method in ("add_hook", "remove_hook", "hooks_installed"):
         check_true("%s/%s exists" % (label, method), callable(getattr(cls, method, None)))
 
+# --------------------------------------------------------------- LangChain decision node
+# `LayaDecision` is the LCEL form of `laya.decide`, so its constructor has to keep accepting the
+# same schema argument and runner overrides. The module imports without langchain-core installed
+# (the runnable base falls back to plain object), so these checks hold in every CI lane.
+from laya.integrations.langchain import LayaDecision  # noqa: E402
+
+for param, default in (("return_details", False), ("state_key", None), ("agent", None),
+                       ("base_url", None), ("api_key", None), ("model", None)):
+    check_param("LayaDecision.__init__", LayaDecision.__init__, param, default)
+check_param("LayaDecision.__init__", LayaDecision.__init__, "decision_schema",
+            inspect.Parameter.empty, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+check_true("LayaDecision/invoke exists", callable(getattr(LayaDecision, "invoke", None)))
+check_true("LayaDecision/__all__", "LayaDecision" in laya.__all__)
+check_true("LayaDecision/laya attribute", hasattr(laya, "LayaDecision"))
+check_true("LayaDecision/integrations export",
+           "LayaDecision" in __import__("laya.integrations", fromlist=["__all__"]).__all__)
+
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

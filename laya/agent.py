@@ -21,15 +21,14 @@ from .common import (
     clamp_temperature,
     collate_items,
     answer_confidence,
-    check_min_confidence,
     confidence_from_probs,
-    flag_low_confidence,
     _resolve_noul_labels,
     encode_text,
     render_options,
     serialize_state,
     temp_bucket,
 )
+from .confidence import check_min_confidence, flag_low_confidence
 from .hooks import (
     HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks,
     validate_timeout,

@@ -388,8 +388,6 @@ def clamp_temperature(t, lo: float = TEMP_MIN, hi: float = TEMP_MAX) -> float:
     return min(hi, max(lo, t))
 
 
-from .confidence import check_min_confidence, flag_low_confidence
-
 
 def amp_dtype(name: Optional[str]) -> torch.dtype:
     return torch.bfloat16 if name == "bf16" else torch.float16

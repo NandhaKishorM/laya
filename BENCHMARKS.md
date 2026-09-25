@@ -35,6 +35,18 @@ The raw-temperature column reproduces the committed file, so the only variable l
 | ECE after temperature fitting | **0.081** | 0.246 |
 | p50 latency, 1 question (T4) | **32.8 ms** | 236-276 ms |
 
+### Public Zev RS comparison
+
+The project site at https://bhubbard.github.io/zev-rs/ makes a separate public comparison claim. These are not measured in this repo; they are the public figures cited on the Zev site.
+
+| model | public accuracy | p50 latency |
+|---|---:|---:|
+| Zev-Apfel | 0.7013 | 0.469 ms |
+| Zev-Default | 0.6926 | 0.371 ms |
+| Laya (ModernBERT public snapshot) | 0.5844 | 508 ms |
+
+The Zev page claims a roughly **11.7 point accuracy lead** and a **1,369x latency speedup** over that older Laya snapshot. The artifact at `research/results/zev_rs_public_comparison.json` records the same public numbers for reproducible comparison in this repo.
+
 ---
 
 ## Languages

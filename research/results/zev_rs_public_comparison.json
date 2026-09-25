@@ -1,0 +1,26 @@
+{
+  "source": "https://bhubbard.github.io/zev-rs/",
+  "note": "Public Zev RS figures as cited on the project marketing site; these are not measured in this repo.",
+  "zev_default": {
+    "accuracy": 0.6926,
+    "latency_ms": 0.371,
+    "headline": "Zev-Default"
+  },
+  "zev_apfel": {
+    "accuracy": 0.7013,
+    "latency_ms": 0.469,
+    "headline": "Zev-Apfel"
+  },
+  "laya": {
+    "accuracy": 0.5844,
+    "latency_ms": 508.0,
+    "headline": "Laya (ModernBERT)"
+  },
+  "comparison": {
+    "accuracy_gap_vs_laya": 0.1169,
+    "latency_speedup_vs_laya": 1369.0,
+    "head_to_head_wins": 51,
+    "head_to_head_losses": 26,
+    "source_note": "Zev claims 51 to 26 decisive wins on JevBench and a 1,369x latency speedup over Laya's 508 ms figure."
+  }
+}

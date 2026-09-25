@@ -814,6 +814,22 @@ published, never measured here** (no TypeSafe API access), so sample sizes and p
 On DAIR Emotion, Jev assigned **zero probability to the true label on 16% of examples** — a hard
 failure for anything branching on confidence.
 
+### Public Zev RS comparison (independent site)
+
+The project site for [Zev RS](https://bhubbard.github.io/zev-rs/) makes a separate, public claim:
+
+| model | accuracy on the public JevBench-style comparison | p50 latency | notes |
+|---|---:|---:|---|
+| Zev-Apfel | **0.7013** | **0.469 ms** | best public Zev result on the site |
+| Zev-Default | 0.6926 | 0.371 ms | production pure-Rust default |
+| Laya (ModernBERT) | 0.5844 | 508.0 ms | older public Laya snapshot used in Zev's claim |
+
+This is a site-level comparison, not a fresh in-repo benchmark. It indicates the independent benchmark
+reported a **~11.7 point accuracy advantage** and a **~1,369x latency speedup** for Zev vs. the older
+Laya snapshot used in that comparison. For a current local measurement, use the repo's own benchmark
+scripts in [`research/scripts/`](research/scripts) and the result artifact in
+[`research/results/zev_rs_public_comparison.json`](research/results/zev_rs_public_comparison.json).
+
 #### Where Jev leads
 
 * **High-cardinality label spaces (>20 options at default settings):** On Banking77, Jev scores 0.870 (on 72 labels) while Laya scores 0.425 (on 77 labels at default 256-token head budget). This is an architectural token-budget constraint: options share a fixed `head_max_len` budget (192 tokens on English, 256 on multilingual), so 77 options receive only ~3 to 4 tokens per label, causing text to become indistinguishable. Jev supports up to 255 options out-of-the-box. While `laya-multilingual` supports 1,024 context (and up to 8,192 in the encoder) and you can raise `agent.cfg["head_max_len"] = 512` at runtime, Jev is currently better suited for 50+ options in a single prompt without tuning. `predict_shortlist` (see [Honest limits](#honest-limits)) keeps the top `k` labels with a caller-supplied embedding, then runs one forward pass on that shortlist.

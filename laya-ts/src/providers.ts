@@ -530,9 +530,17 @@ export async function createWebProvider(
   const base = modelUrl.replace(/\/+$/, "");
   const encUrl = `${base}/encoder.onnx`;
   const headUrl = `${base}/head.onnx`;
+  // (Re-)read through fetchArrayBuffer so repeat reads hit CacheStorage.
+  // Nothing pin-worthy is retained: after each create, buffers are droppable.
+  const readEncoderParts = async () => {
+    const buf = await fetchArrayBuffer(encUrl);
+    const sidecar = await fetchSidecar(encUrl);
+    return { buf, extra: sidecar ? { externalData: [sidecar] } : {} };
+  };
   let encBuf: ArrayBuffer;
+  let encExtra: Record<string, unknown>;
   try {
-    encBuf = await fetchArrayBuffer(encUrl);
+    ({ buf: encBuf, extra: encExtra } = await readEncoderParts());
   } catch {
     throw new Error(`Incompatible model: 'encoder.onnx' not found (expected ${encUrl}).`);
   }
@@ -549,9 +557,7 @@ export async function createWebProvider(
   }
   // Split ONNX references its weights relatively ("encoder.onnx.data"); buffered
   // sessions have no filesystem, so mount the sidecar via externalData.
-  const encSidecar = await fetchSidecar(encUrl);
   const headSidecar = await fetchSidecar(headUrl);
-  const encExtra = encSidecar ? { externalData: [encSidecar] } : {};
   const headExtra = headSidecar ? { externalData: [headSidecar] } : {};
   let enc: any;
   try {
@@ -599,10 +605,19 @@ export async function createWebProvider(
           console.warn(
             `laya: WebGPU encoder run failed (${String((e as Error)?.message ?? e)}); falling back to WASM.`,
           );
-          encWasm ??= await ort.InferenceSession.create(new Uint8Array(encBuf), {
-            executionProviders: ["wasm"],
-            ...encExtra,
-          });
+          if (!encWasm) {
+            // Re-read through the cache instead of pinning 1GB+ for the agent's life.
+            let parts;
+            try {
+              parts = await readEncoderParts();
+            } catch {
+              throw e;
+            }
+            encWasm = await ort.InferenceSession.create(new Uint8Array(parts.buf), {
+              executionProviders: ["wasm"],
+              ...parts.extra,
+            });
+          }
           try {
             return await runEncoderOn(encWasm, b);
           } catch (e2) {

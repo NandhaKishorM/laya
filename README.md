@@ -592,6 +592,13 @@ r = agent.predict_long(state, questions)
 r["answers"]["refund"]["window"]   # {'index': 13, 'token_start': 4680, 'token_end': 5432, 'count': 14}
 ```
 
+The same scan is reachable from the Router, which routes first and then windows the checkpoint it
+picked — the same `model=`/`task=`/`lang=` hints, hooks and `routing` key as `predict`:
+
+```python
+result = router.predict_long(state, questions, model="multilingual")
+```
+
 ---
 
 ## GPU Fast Path (TileLang)

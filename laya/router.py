@@ -174,6 +174,40 @@ def _english_from_code(value: Any) -> Optional[bool]:
     return primary in _ENGLISH_SUBTAGS
 
 
+class _ScanLong:
+    """Last start hook of `Router.predict_long`: score the routed state with the agent's
+    `predict_long` rather than leave `predict` to call `system_one` on one window of it.
+
+    It is appended after every other start hook, so a caller's hook has already had its say: one
+    that answered (`ctx.skip(...)`) or rewrote the state/questions wins, and only what is left is
+    scanned. The `lang` rule is `predict`'s -- an explicit `lang=`, else the language routing
+    detected -- repeated here because `predict` computes it locally for its own call.
+    """
+
+    def __init__(self, window, stride, aggregate, batch_size, lang):
+        self.window = window
+        self.stride = stride
+        self.aggregate = aggregate
+        self.batch_size = batch_size
+        self.lang = lang
+
+    def on_predict_start(self, ctx):
+        if ctx.results is not None:
+            return
+        if not hasattr(ctx.agent, "predict_long"):
+            raise TypeError(
+                "%s has no predict_long, so a state longer than its window cannot be scanned; "
+                "the PyTorch Agent implements it, and an ONNX or hand-attached agent needs it too"
+                % type(ctx.agent).__name__
+            )
+        lang = self.lang
+        if lang is None:
+            lang = (ctx.decision.get("detection") or {}).get("language")
+        ctx.results = [ctx.agent.predict_long(
+            ctx.states[0], ctx.questions, window=self.window, stride=self.stride,
+            aggregate=self.aggregate, batch_size=self.batch_size, lang=lang)]
+
+
 class Router(HookRegistry):
     """Lazily loads Laya checkpoints and sends each request to the right one.
 
@@ -635,6 +669,52 @@ class Router(HookRegistry):
                 else:
                     raise
         return ctx.results[0]
+
+    def predict_long(self, state: Union[str, dict, list], questions: Dict[str, Any],
+                     model: Optional[str] = None, task: Optional[str] = None,
+                     lang: Optional[str] = None, lang_guess: Optional[Any] = None,
+                     window: Optional[int] = None, stride: Optional[int] = None,
+                     aggregate: str = "auto", batch_size: Optional[int] = None,
+                     hooks=None, on_predict_start=None, on_predict_end=None,
+                     hooks_raise: Optional[bool] = None, hooks_timeout: Optional[float] = None,
+                     ) -> Dict[str, Any]:
+        """Route, then scan every window of the state instead of only its first one.
+
+        `predict` scores a state from a single window: anything past `max_len` is cut off (the
+        first window, or for a conversation list the last) and never reaches the model. This
+        routes exactly as `predict` does -- the same `model`/`task`/`lang` hints, the same
+        router-level hooks, the same `routing` key and `usage` -- and scores the routed state with
+        that agent's `predict_long`, which splits it into overlapping windows and aggregates per
+        question. The aggregation rules are `laya.agent.Agent.predict_long`'s: `noul` takes the
+        strongest window, `choice`/`score` the most confident one.
+
+        Per-call hooks (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`,
+        `hooks_timeout`) wrap the whole route+scan exactly as they wrap `predict`: the scan runs
+        last, so a start hook that answers (`ctx.skip(...)`) or rewrites the state wins.
+        `max_len` / `head_max_len` are not accepted here -- a window is sized by `window` or the
+        checkpoint budget, and overriding the single-window truncation is what `predict_long` is for.
+
+        Args:
+            window: state tokens per window. Defaults to the routed checkpoint's budget
+                    (`max_len - head_max_len - 8`); a smaller window isolates a localized span.
+            stride: token step between windows; defaults to `window // 2` (50% overlap).
+            aggregate: "auto" (the per-type rules above) is the only mode.
+            batch_size: cap on windows per forward pass, to bound memory on very long states.
+
+        Returns:
+            The usual `predict` payload, with `usage["windows"]` counting the windows scored.
+
+        Raises:
+            TypeError: the routed agent has no `predict_long` (an ONNX agent, or one attached by
+                    hand), so there is nothing to scan with. Raised under the router's
+                    `hooks_raise` policy, which defaults to raising.
+        """
+        per_call = normalise_hooks(hooks, on_predict_start, on_predict_end)
+        per_call.append(_ScanLong(window=window, stride=stride, aggregate=aggregate,
+                                  batch_size=batch_size, lang=lang))
+        return self.predict(state, questions, model=model, task=task, lang=lang,
+                            lang_guess=lang_guess, hooks=per_call,
+                            hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
                questions: Optional[Dict[str, Any]] = None, return_details: bool = False,

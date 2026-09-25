@@ -657,7 +657,11 @@ class Router(HookRegistry):
 
     system_one = predict
 
-    def route_batch(self, requests: Sequence[Dict[str, Any]]) -> List[RouteDecision]:
+    def route_batch(
+        self,
+        requests: Sequence[Dict[str, Any]],
+        hooks_timeout: Optional[float] = None,
+    ) -> List[RouteDecision]:
         """Route a heterogeneous request batch without loading any checkpoints.
 
         Each request is a mapping with ``state`` and ``questions`` plus the same optional
@@ -666,6 +670,12 @@ class Router(HookRegistry):
 
         This is intentionally separate from inference so callers can inspect or aggregate
         routing decisions before paying model-load cost.
+
+        Args:
+            requests: Sequence of request dictionaries, each requiring ``state`` and
+                ``questions``.
+            hooks_timeout: Override the Router's ``hooks_timeout`` for this call, applied to
+                every request's ``on_route`` dispatch, as on :meth:`route`.
         """
         if not isinstance(requests, SequenceABC) or isinstance(requests, (str, bytes)):
             raise TypeError("requests must be a sequence of request dictionaries")
@@ -694,6 +704,7 @@ class Router(HookRegistry):
                     task=request.get("task"),
                     lang=request.get("lang"),
                     lang_guess=request.get("lang_guess"),
+                    hooks_timeout=hooks_timeout,
                 )
             )
 
@@ -733,7 +744,7 @@ class Router(HookRegistry):
         Returns:
             One normal Router prediction result per request, in the same order as the input.
         """
-        decisions = self.route_batch(requests)
+        decisions = self.route_batch(requests, hooks_timeout=hooks_timeout)
         if not decisions:
             return []
 

@@ -1179,6 +1179,63 @@ finally:
 check("timeout/a timed hook sees the caller's contextvars", _cv_calls, ["request-1"])
 
 
+# ------------------------------------------- per-call timeout reaches on_route through the batches
+# #277 threaded the per-call timeout through predict_batch's own dispatches, but route_batch had no
+# hooks_timeout argument and predict_batch did not forward its override into it, so an on_route hook
+# reached through either batch entry point saw the instance timeout instead of the caller's.
+class SlowRoute:
+    def on_route(self, ctx):
+        time.sleep(0.3)
+
+
+def slow_route_router(**kwargs):
+    return batch_router(hooks=[SlowRoute()], **kwargs)[0]
+
+
+# route_batch takes the per-call timeout and applies it to on_route.
+raised = None
+try:
+    slow_route_router().route_batch([req("a")], hooks_timeout=0.05)
+except TimeoutError as exc:
+    raised = str(exc)
+check_true("timeout/route_batch per-call reaches on_route",
+           isinstance(raised, str) and "exceeded" in raised)
+
+# predict_batch forwards the same override into route_batch, so on_route times out there too.
+raised = None
+try:
+    slow_route_router().predict_batch([req("a")], hooks_timeout=0.05)
+except TimeoutError as exc:
+    raised = str(exc)
+check_true("timeout/predict_batch per-call reaches on_route",
+           isinstance(raised, str) and "exceeded" in raised)
+
+# No per-call override: the instance timeout is still the fallback for the batched route path.
+raised = None
+try:
+    slow_route_router(hooks_timeout=0.05).route_batch([req("a")])
+except TimeoutError:
+    raised = True
+check("timeout/route_batch instance-level applies", raised, True)
+
+# A longer per-call value overrides a shorter instance timeout, as on the other entry points.
+decisions = slow_route_router(hooks_timeout=0.05).route_batch([req("a")], hooks_timeout=5.0)
+check("timeout/route_batch per-call override wins", [d["model"] for d in decisions], ["english"])
+
+# With no hooks at all both batched paths are unchanged.
+plain_r, plain_en, _ = batch_router()
+check("timeout/route_batch without hooks is unchanged",
+      [d["model"] for d in plain_r.route_batch([req("a")])], ["english"])
+plain_out = plain_r.predict_batch([req("a")])
+check("timeout/predict_batch without hooks is unchanged", len(plain_out), 1)
+check("timeout/predict_batch without hooks keeps routing", plain_out[0]["routing"]["model"], "english")
+check("timeout/predict_batch without hooks still batches", [c[0] for c in plain_en.calls], [["a"]])
+
+# The forwarded value is still validated by route(), exactly like a direct route() call.
+check_raises("timeout/route_batch rejects a zero per-call timeout", ValueError,
+             lambda: Router().route_batch([req("a")], hooks_timeout=0))
+
+
 # --------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f_ in FAIL:

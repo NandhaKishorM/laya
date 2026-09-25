@@ -106,6 +106,10 @@ laya.load("convaiinnovations/laya", on_predict_start=read, on_predict_end=write)
 Guard the cache with a lock when serving concurrently. On the Router the cached payload still
 gets a `routing` key, so the return shape is unchanged.
 
+The same pair works on a single [LangChain](../langchain.md) node via its `hooks=` argument, which
+is the way to cache one hot step in a graph without changing what every other caller of that agent
+sees.
+
 ### Metrics
 
 Counters and histograms from `ctx.model`, `ctx.usage` and `ctx.elapsed_ms`. Keep it lenient.

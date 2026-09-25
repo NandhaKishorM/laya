@@ -7,6 +7,10 @@ redaction before inference, caching, metrics, confidence gating, routing overrid
 forwarding a decision to an external service. They are **opt-in**: with no hooks configured the
 behaviour of `Agent`, `Router` and `ONNXAgent` is unchanged.
 
+They are not only for direct calls. Each [LangChain and LangGraph](../langchain.md) runnable takes
+the same five per-call arguments, so a hook can be attached to one node in a graph rather than to
+the whole agent.
+
 This folder is the full reference. Start here, then dive into the page you need:
 
 | page | what is in it |

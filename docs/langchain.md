@@ -7,6 +7,8 @@ Laya provides fast, non-autoregressive decision components for **LangChain** and
 * **`LayaTriage`**: Support ticket triage node evaluating intent, urgency, frustration, and churn risk in one forward pass.
 * **`LayaEvaluator`**: Rubric-based output grading and hallucination evaluation.
 
+Every node also takes core's five per-call prediction-hook arguments (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`).
+
 Supports both **local in-process inference** (`Agent` or `Router`) and **remote HTTP inference** against your own `laya-serve` without requiring PyTorch on edge clients.
 
 ---
@@ -176,3 +178,61 @@ router = LayaRouter(
 ```
 
 No local PyTorch or checkpoint downloads are required in remote mode.
+
+---
+
+## 5. Prediction Hooks on a Single Node
+
+Every runnable takes the five per-call hook arguments the core API takes -- `hooks`,
+`on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout` -- so the caching, audit and
+gating patterns from [Prediction hooks](hooks/index.md) can be attached to one node in a graph
+instead of to the whole agent. See [Patterns and anti-patterns](hooks/patterns.md) for the cache
+pair this is built around.
+
+```python
+from laya.integrations.langchain import LayaRouter
+
+class Memo:
+    def __init__(self):
+        self.cache = {}
+
+    def on_predict_start(self, ctx):
+        hit = self.cache.get(str(ctx.states[0]))
+        if hit is not None:
+            ctx.skip([hit])          # the forward pass is skipped; end hooks still run
+
+    def on_predict_end(self, ctx):
+        if ctx.results:
+            self.cache[str(ctx.states[0])] = ctx.results[0]
+
+
+router = LayaRouter(
+    criteria={"billing": "invoices, charges, refunds", "technical": "bugs, errors, outage"},
+    hooks=[Memo()],
+    hooks_timeout=0.25,
+)
+```
+
+Leave an argument out and it is not sent at all, so the node keeps whatever the runner was built
+with. `hooks=[]` and `hooks_raise=False` are decisions rather than absences and are forwarded as
+given: the first means "no hooks for this call" even on an agent that has some, the second means
+"keep deciding after a hook fails". Both belong to [the error contract in hooks/errors.md](hooks/errors.md).
+
+**What it buys.** On `laya` (Apple silicon) a 24-state pass over 4 distinct tickets, median of 3
+runs, scored on the returned route label:
+
+| Node | Forward passes | Wall clock |
+|---|---|---|
+| no hooks | 24 | 2109 ms |
+| `hooks=[Memo(), Counter()]`, cold cache | 4 | 330 ms |
+| `hooks=[Memo(), Counter()]`, warm cache | 0 | 0.3 ms |
+
+All 24 routes were identical to the hook-free node's. The cold run is 4 forwards rather than 24
+because the distinct tickets are the only ones that can miss; a warm cache answers the whole pass
+from memory, which is the point of the pattern and not a speedup of the model. The same pair wired
+through `on_predict_start=`/`on_predict_end=` instead of `hooks=` measured 359 ms cold.
+
+**Remote mode refuses them.** A hook is a Python callable that runs inside `predict`, and
+`laya-serve` has no way to receive or run one, so a node with a `base_url` and any of the five set
+raises `ValueError` naming the arguments rather than reporting success for a cache that never ran.
+Install hooks on the process that runs inference.

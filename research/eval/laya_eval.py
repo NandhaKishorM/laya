@@ -299,8 +299,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         help="score with the checkpoint's RAW bucket temperatures instead "
                              "of the clamped ones Agent applies. This is what reproduces "
                              "the committed pre-#42 sweep")
-    parser.add_argument("--lang-temperatures", action="store_true",
-                        help="Use per-language temperature calibration if available")
+    parser.add_argument("--lang-temperatures", type=str, default=None,
+                        help="Path to JSON file with per-language temperature calibration if available")
     args = parser.parse_args(argv)
 
     if args.langs.strip().lower() == "all":
@@ -317,8 +317,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     import laya
 
+    if args.lang_temperatures:
+        with open(args.lang_temperatures, "r") as f:
+            lang_temperatures = json.load(f)
+    else:
+        lang_temperatures = None
+
     started = time.time()
-    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder)
+    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder, lang_temperatures=lang_temperatures)
     agent.model.eval()
     payload: Dict[str, Any] = {
         "config": {
@@ -333,6 +339,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "n_opts": args.n_opts,
             "seed": args.seed,
             "instructions": INSTRUCTIONS,
+            "lang_temperatures": lang_temperatures,
             "temperatures": dict(agent.temperature_by_options_raw) if args.unclamped
             else dict(agent.temperature_by_options),
             "laya_version": getattr(laya, "__version__", "unknown"),
@@ -345,7 +352,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         t0 = time.time()
         try:
             out = run_language(agent, lang, args.per_lang, args.n_opts,
-                               args.seed, args.unclamped, args.lang_temperatures)
+                               args.seed, args.unclamped, bool(args.lang_temperatures))
         except Exception as exc:
             print("  %-8s FAILED: %s" % (lang, str(exc)[:110]), file=sys.stderr)
             payload["report"][lang] = {"error": str(exc)[:200]}

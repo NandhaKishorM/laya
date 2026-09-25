@@ -294,7 +294,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=harness.SEED)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--unclamped", action="store_true")
-    parser.add_argument("--lang-temperatures", action="store_true", help="Use per-language temperature calibration if available")
+    parser.add_argument("--lang-temperatures", type=str, default=None, help="Path to JSON file with per-language temperature calibration if available")
     parser.add_argument("--out", required=True, help="JSON report path")
     args = parser.parse_args(argv)
     if args.per_lang < 1 or args.n_opts < 2 or args.batch_size < 1:
@@ -305,11 +305,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("no languages selected")
     import laya
 
-    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder)
+    if args.lang_temperatures:
+        with open(args.lang_temperatures, "r") as f:
+            lang_temperatures = json.load(f)
+    else:
+        lang_temperatures = None
+
+    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder, lang_temperatures=lang_temperatures)
     agent.model.eval()
     payload: dict[str, Any] = {
         "config": {**vars(args), "dataset": harness.DATASET, "split": "test",
                    "device": str(agent.device), "laya_version": laya.__version__,
+                   "lang_temperatures": lang_temperatures,
                    "max_len": agent.cfg.get("max_len"),
                    "head_max_len": agent.cfg.get("head_max_len"),
                    "temperature": list(agent.temperature_raw if args.unclamped else agent.temperature),

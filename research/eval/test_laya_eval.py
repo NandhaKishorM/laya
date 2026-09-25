@@ -137,6 +137,12 @@ class _FakeAgent:
     temperature = [1.0, 1.0, 1.0]
     temperature_by_options_raw = {"choice:11+": 0.10058280825614929}
     temperature_raw = [1.0, 1.0, 1.0]
+    lang_temperatures = {
+        "fr": {
+            "temperature_by_options": {"choice:11+": 0.25},
+            "temperature": [2.0, 2.0, 2.0]
+        }
+    }
 
 
 _fa = _FakeAgent()
@@ -150,6 +156,10 @@ check("temp/falls back to the per-type list",
       temperature_for(_fa, QTYPES["choice"], 3), 1.0)
 check("temp/raw falls back too",
       temperature_for(_fa, QTYPES["choice"], 3, unclamped=True), 1.0)
+check("temp/lang_temperatures takes precedence if available",
+      temperature_for(_fa, QTYPES["choice"], 20, lang="fr-FR"), 0.25)
+check("temp/lang_temperatures falls back for other languages",
+      temperature_for(_fa, QTYPES["choice"], 20, lang="de"), 0.5)
 
 
 # ------------------------------------------------------------------- constants

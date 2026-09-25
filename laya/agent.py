@@ -588,6 +588,32 @@ class Agent(HookRegistry):
                         "question %r: choice label %d is a %s; a label is rendered as option text "
                         "and used as the answer key, so it must be a scalar (a string, number or "
                         "None), got %r" % (qid, i, type(label).__name__, label))
+            # `_to_internal` normalises the list form to `{label: None}`, so those labels become
+            # the answer keys. Two entries that land on one key made the model score fewer options
+            # than the caller wrote, and the response carry fewer probabilities than their list,
+            # without a word -- the same silent-shape class as the two checks above. Python
+            # treats values as one key whenever they compare equal, so `[1, 1.0]` and `[True, 1]`
+            # collapse as well as an exact repeat. An unhashable label raised
+            # `TypeError: cannot use 'tuple' as a dict key` from `_to_internal`, three frames down,
+            # which names neither the question nor the label -- and which `serve` cannot classify
+            # as a caller error, so over HTTP it became a 500 "inference failed" instead of a 422.
+            if isinstance(crit, list):
+                keys: Dict[Any, int] = {}
+                for i, label in enumerate(crit):
+                    try:
+                        first = keys[label]
+                    except TypeError as exc:
+                        raise ValueError(
+                            "question %r: choice label %d (%r) cannot be an answer key because it is "
+                            "unhashable; a label is rendered as option text and used as the answer "
+                            "key" % (qid, i, label)) from exc
+                    except KeyError:
+                        keys[label] = i
+                    else:
+                        raise ValueError(
+                            "question %r: choice label %d (%r) repeats label %d; the labels are the "
+                            "answer keys, so every option needs its own (1, 1.0 and True are one "
+                            "key)" % (qid, i, label, first))
         elif t == "score":
             if not isinstance(crit, list):
                 raise ValueError("question %r: a score question takes 'criteria' as a list of level "

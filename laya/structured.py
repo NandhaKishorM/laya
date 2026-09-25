@@ -19,6 +19,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from .confidence import check_min_confidence, flag_low_confidence
+
 MAX_PROPERTIES = 32
 MAX_OPTIONS = 32
 MAX_SCORE_LEVELS = 10
@@ -198,6 +200,9 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
         answer = answers.get(f.name)
         if answer is None:
             continue
+        if answer.get("low_confidence"):
+            values[f.name] = None
+            continue
         if f.kind == "noul":
             values[f.name] = bool(float(answer.get("noul", 0.0)) >= 0.5)
         elif f.kind == "score":
@@ -245,7 +250,7 @@ def _details(values: Dict[str, Any], answers: Dict[str, Any], result: Dict[str, 
 
 
 def decide(runner, state: Any, schema: Any = None, *, questions: Optional[Dict[str, Any]] = None,
-           return_details: bool = False, **predict_kwargs) -> Any:
+           return_details: bool = False, min_confidence: Optional[float] = None, **predict_kwargs) -> Any:
     """Answer `state` against a schema (or explicit questions) and return the decided values.
 
     Pass exactly one of `schema` or `questions`. With `schema`, the values follow the schema
@@ -256,12 +261,27 @@ def decide(runner, state: Any, schema: Any = None, *, questions: Optional[Dict[s
     if (schema is None) == (questions is None):
         raise ValueError("pass exactly one of schema= or questions=")
 
+    mc = check_min_confidence(min_confidence) if min_confidence is not None else None
+    if mc is not None:
+        predict_kwargs["min_confidence"] = mc
+
     fields: Optional[List[_Field]] = None
     if schema is not None:
         fields = plan_from_json_schema(_schema_of(schema))
         questions = {f.name: f.question for f in fields}
 
-    result = runner.predict(state, questions, **predict_kwargs)
+    try:
+        result = runner.predict(state, questions, **predict_kwargs)
+    except TypeError as e:
+        if mc is not None and "unexpected keyword argument 'min_confidence'" in str(e):
+            predict_kwargs.pop("min_confidence", None)
+            result = runner.predict(state, questions, **predict_kwargs)
+        else:
+            raise
+
+    if mc is not None and isinstance(result, dict):
+        flag_low_confidence([result], mc)
+
     answers = result.get("answers", {}) or {}
     values = _project(answers, fields) if fields is not None else dict(answers)
     if return_details:

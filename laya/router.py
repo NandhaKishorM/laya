@@ -35,6 +35,7 @@ import time
 from collections.abc import Sequence as SequenceABC
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+from .confidence import check_min_confidence, flag_low_confidence
 from .hooks import (
     HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks,
     validate_timeout,
@@ -563,6 +564,7 @@ class Router(HookRegistry):
         hooks_timeout: Optional[float] = None,
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
+        min_confidence: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
 
@@ -571,6 +573,7 @@ class Router(HookRegistry):
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
+        mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
@@ -597,12 +600,13 @@ class Router(HookRegistry):
                     overrides["max_len"] = ctx.max_len
                 if ctx.head_max_len is not None:
                     overrides["head_max_len"] = ctx.head_max_len
-                
+
                 skip = _SKIP_DEFAULTS.set(True)
                 try:
                     result = agent.system_one(ctx.states[0], ctx.questions, lang=effective_lang, **overrides)
                 except TypeError as e:
                     if "unexpected keyword argument 'lang'" in str(e):
+                        overrides.pop("lang", None)
                         result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
                     else:
                         raise
@@ -634,10 +638,13 @@ class Router(HookRegistry):
                     ctx.error.__context__ = hook_exc
                 else:
                     raise
+        if mc is not None and ctx.results:
+            flag_low_confidence(ctx.results, mc)
         return ctx.results[0]
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
                questions: Optional[Dict[str, Any]] = None, return_details: bool = False,
+               min_confidence: Optional[float] = None,
                **predict_kwargs) -> Any:
         """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
 
@@ -646,7 +653,7 @@ class Router(HookRegistry):
         """
         from .structured import decide as _decide
         return _decide(self, state, schema, questions=questions,
-                       return_details=return_details, **predict_kwargs)
+                       return_details=return_details, min_confidence=min_confidence, **predict_kwargs)
 
     def __enter__(self):
         return self
@@ -704,6 +711,7 @@ class Router(HookRegistry):
         requests: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
         hooks_timeout: Optional[float] = None,
+        min_confidence: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -733,6 +741,7 @@ class Router(HookRegistry):
         Returns:
             One normal Router prediction result per request, in the same order as the input.
         """
+        mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         decisions = self.route_batch(requests)
         if not decisions:
             return []
@@ -882,7 +891,10 @@ class Router(HookRegistry):
         if any(result is None for result in results):
             raise RuntimeError("internal error: batch execution did not produce every result")
 
-        return [result for result in results if result is not None]
+        final = [result for result in results if result is not None]
+        if mc is not None:
+            flag_low_confidence(final, mc)
+        return final
 
     predict_many = predict_batch
 

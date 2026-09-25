@@ -866,8 +866,16 @@ from laya.onnx_agent import ONNXAgent  # noqa: E402
 
 o = ONNXAgent.__new__(ONNXAgent)
 o.model_id = "convaiinnovations/laya-onnx"
-o._infer = lambda state, questions, **kwargs: {"model": "onnx", "answers": {},
-                                               "usage": {"input_tokens": 0, "output_tokens": 0}}
+
+
+def _fake_onnx_batch(states, questions, **kwargs):
+    # `system_one` runs through `predict_batch` -> `_infer_batch`, as `Agent.system_one` does,
+    # so the batch seam is what a hook test stubs.
+    return [{"model": "onnx", "answers": {},
+             "usage": {"input_tokens": 0, "output_tokens": 0}} for _ in states]
+
+
+o._infer_batch = _fake_onnx_batch
 onnx_seen = []
 onnx_models = []
 onnx_out = o.system_one("s", QUESTIONS,
@@ -884,7 +892,7 @@ def _never(*args, **kwargs):
     raise AssertionError("inference should have been skipped")
 
 
-o._infer = _never
+o._infer_batch = _never
 check("onnx/skip short-circuits",
       o.system_one("s", QUESTIONS, on_predict_start=lambda c: c.skip([{"model": "cached"}])),
       {"model": "cached"})

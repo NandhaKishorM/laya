@@ -560,6 +560,10 @@ batched (measured ~9–10×). On CPU, increasing batch size alone may not speed 
 length grouping can help by reducing the padded work in a mixed-length workload. See the
 [CPU measurements and reproduction commands](research/README.md#length-batching).
 
+`ONNXAgent.predict_batch(states, questions, batch_size=...)` has the same contract, backed by one
+ONNX Runtime session run per chunk, so an ONNX deployment gets the same batch API and the same
+result shape; `sort_by_length` is not ported there yet.
+
 ### Long documents: `predict_long`
 
 `predict`/`system_one` truncate a state that exceeds `max_len` to a single window (the first, or

@@ -104,6 +104,7 @@ jobs:
           python tests/test_structured.py
           python tests/test_structured_api.py
           python tests/test_onnx_lang_parity.py
+          python tests/test_onnx_batch.py
           python tests/test_download.py
           python tests/test_shortlist.py
           python tests/test_decision_model.py

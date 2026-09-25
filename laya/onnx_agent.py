@@ -3,7 +3,7 @@ import os
 import threading
 import time
 import warnings
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -232,26 +232,106 @@ class ONNXAgent(HookRegistry):
                    max_len: Optional[int] = None,
                    head_max_len: Optional[int] = None,
                    min_confidence: Optional[float] = None) -> Dict[str, Any]:
-        """Evaluate typed questions, running any opt-in hooks around the inference.
+        """Evaluate typed questions across state in one ONNX Runtime session run.
 
         `lang` selects a per-language temperature override (see `lang_temperatures`), matching the
         PyTorch `Agent.system_one` signature so either backend is a drop-in for the other.
+
+        Defined in terms of `predict_batch`, exactly as the PyTorch `Agent.system_one` is, so the
+        single-state and batched paths cannot drift apart.
+
+        Args:
+            state: Text string, JSON dict, or conversation turn list.
+            questions: Question definitions, with the shapes `Agent.system_one` accepts.
+            lang: Per-language temperature override (see `lang_temperatures`).
+            hooks (HookArg): Per-call hooks, appended after any installed on the agent.
+            on_predict_start (PredictHookArg): A per-call start hook. It may rewrite the
+                    state/questions or call `ctx.skip(...)` to short-circuit inference.
+            on_predict_end (PredictHookArg): A per-call end hook. It may rewrite the results.
+            hooks_raise: Override the agent's `hooks_raise` for this call.
+            hooks_timeout: Override the agent's `hooks_timeout` for this call.
+            max_len: Override the config's `max_len` for this call.
+            head_max_len: Override the config's `head_max_len` for this call.
+            min_confidence: Opt-in abstention threshold on `answer_confidence` (#361); an answer
+                    below it is returned flagged with `low_confidence: True`.
+
+        Returns:
+            Dictionary with answers, probabilities, calibrated confidence, and token usage.
+
+        To score many states at once, see `predict_batch`, which shares session runs across them.
+        """
+        return self.predict_batch([state], questions, lang=lang, hooks=hooks,
+                                  on_predict_start=on_predict_start,
+                                  on_predict_end=on_predict_end, hooks_raise=hooks_raise,
+                                  hooks_timeout=hooks_timeout,
+                                  max_len=max_len, head_max_len=head_max_len,
+                                  min_confidence=min_confidence)[0]
+
+    def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
+                      batch_size: Optional[int] = None, lang: Optional[str] = None,
+                      hooks=None, on_predict_start=None, on_predict_end=None,
+                      hooks_raise: Optional[bool] = None,
+                      hooks_timeout: Optional[float] = None,
+                      max_len: Optional[int] = None,
+                      head_max_len: Optional[int] = None,
+                      min_confidence: Optional[float] = None) -> List[Dict[str, Any]]:
+        """Evaluate the same questions over many states, sharing ONNX Runtime session runs.
+
+        The throughput path, mirroring `laya.agent.Agent.predict_batch`: `system_one` collates one
+        state's question rows per session run, so N states cost N runs. `predict_batch` collates
+        several states' rows into one run -- or `ceil(len(states) / batch_size)` of them -- which is
+        where ONNX Runtime's own parallelism pays off on CPU.
+
+        Args:
+            states: A list of states (each a text string, JSON dict, or conversation turn list).
+                    The same `questions` are evaluated against every state.
+            questions: Question definitions, exactly as accepted by `system_one`.
+            batch_size: Optional cap on states per session run. `None` sends them all in one run;
+                        set it to bound peak memory when batching many or long states.
+            lang: Per-language temperature override applied to every state; see
+                    `lang_temperatures`.
+            hooks (HookArg): Per-call hooks, appended after any installed on the agent.
+            on_predict_start (PredictHookArg): A per-call start hook. It may rewrite the
+                    states/questions or call `ctx.skip(...)` to short-circuit inference.
+            on_predict_end (PredictHookArg): A per-call end hook. It may rewrite the results.
+            hooks_raise: Override the agent's `hooks_raise` for this call.
+            hooks_timeout: Override the agent's `hooks_timeout` for this call.
+            max_len: Override the config's `max_len` for this call.
+            head_max_len: Override the config's `head_max_len` for this call.
+            min_confidence: Opt-in abstention threshold on `answer_confidence` (#361); answers
+                    below it are returned flagged with `low_confidence: True`.
+
+        Returns:
+            A list of per-state result dicts, each identical in shape to `system_one`'s output and
+            aligned with `states` by index.
         """
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
-        ctx = PredictContext(states=[state], questions=questions, model=self.model_id, agent=self,
+        ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self,
                              max_len=max_len, head_max_len=head_max_len)
         try:
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
+            states, questions = ctx.states, ctx.questions
             if ctx.results is None:
-                overrides = {}
-                if ctx.max_len is not None:
-                    overrides["max_len"] = ctx.max_len
-                if ctx.head_max_len is not None:
-                    overrides["head_max_len"] = ctx.head_max_len
-                ctx.results = [self._infer(ctx.states[0], ctx.questions, lang=lang, **overrides)]
+                # A start hook may have normalised a bare string/dict into a list; only the value
+                # that survives the hook is validated, as Agent.predict_batch does.
+                if isinstance(states, (str, bytes, dict)):
+                    raise TypeError(
+                        "predict_batch expects a list of states; pass a single state to predict()/system_one()."
+                    )
+                states = list(states)
+                if not states:
+                    ctx.results = []
+                else:
+                    overrides: Dict[str, int] = {}
+                    if ctx.max_len is not None:
+                        overrides["max_len"] = ctx.max_len
+                    if ctx.head_max_len is not None:
+                        overrides["head_max_len"] = ctx.head_max_len
+                    ctx.results = self._infer_batch(states, questions, lang=lang,
+                                                    batch_size=batch_size, **overrides)
         except BaseException as exc:
             ctx.error = exc
             try:
@@ -272,38 +352,31 @@ class ONNXAgent(HookRegistry):
                     ctx.error.__context__ = hook_exc
                 else:
                     raise
-        return ctx.results[0]
+        return ctx.results
 
     def _infer(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
                max_len: Optional[int] = None, head_max_len: Optional[int] = None,
                lang: Optional[str] = None) -> Dict[str, Any]:
-        from .agent import Agent as _Agent
+        """Answer one state without hooks: one session run, the `predict_batch([state])` case."""
+        return self._infer_batch([state], questions, max_len=max_len, head_max_len=head_max_len,
+                                 lang=lang)[0]
 
-        ids = list(questions.keys())
-        if not ids:
-            return {
-                "model": "laya-rl-agent-onnx",
-                "answers": {},
-                "usage": {"input_tokens": 0, "output_tokens": 0},
-            }
-        for qid in ids:
-            _Agent._check_question(qid, questions[qid])
-        items = []
-        max_len = self.cfg.get("max_len", 512) if max_len is None else max_len
-        head_max_len = self.cfg.get("head_max_len", 192) if head_max_len is None else head_max_len
-
+    def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Any],
+                      max_len: int, head_max_len: int) -> List[Dict[str, Any]]:
+        """This state's question rows, tokenizing the state once for all of them."""
+        truncate_left = isinstance(state, list)
         # Tokenize the shared state once and reuse it across questions, instead of
         # re-serializing and re-tokenizing the same document inside build_sequence per
         # question (the PyTorch Agent already does this via `state_ids`).
-        truncate_left = isinstance(state, list)
         state_ids = encode_text(
             self.tok,
             serialize_state(state).replace(self.tok.mask_token, " "),
             add_special_tokens=False,
         )["input_ids"]
 
+        items = []
         for qid in ids:
-            q = self._to_internal(questions[qid])
+            q = internal[qid]
             seq, markers = build_sequence(
                 self.tok, state, q, max_len, head_max_len,
                 truncate_left=truncate_left, state_ids=state_ids,
@@ -311,39 +384,22 @@ class ONNXAgent(HookRegistry):
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
+        return items
 
-        b = collate_items([items], self.tok.pad_token_id)
-        
-        # Prepare ONNX inputs as numpy arrays
-        ort_inputs = {
-            "input_ids": b["input_ids"].numpy().astype(np.int64),
-            "attention_mask": b["attention_mask"].numpy().astype(np.int64),
-            "marker_pos": b["marker_pos"].numpy().astype(np.int64),
-            "marker_mask": b["marker_mask"].numpy().astype(bool),
-            "qtype": b["qtype"].numpy().astype(np.int64),
-        }
-
-        # Run ONNX inference
-        ort_outs = self.session.run(["logits", "act_logits"], ort_inputs)
-        logits = ort_outs[0]
-        act_logits = ort_outs[1]
-
-        # Compute softmax for actions manually in numpy
-        act_exp = np.exp(act_logits - np.max(act_logits, axis=-1, keepdims=True))
-        act = act_exp / np.sum(act_exp, axis=-1, keepdims=True)
-
+    def _decode_answers(self, logits, act, items: List[Dict[str, Any]], ids: List[str],
+                        internal: Dict[str, Any], offset: int,
+                        lang: Optional[str] = None) -> Dict[str, Any]:
+        """Decode the `len(ids)` head rows starting at `offset` into this state's answers."""
         answers = {}
-        n_tokens = int(b["attention_mask"].sum())
-
         for r, qid in enumerate(ids):
-            q = self._to_internal(questions[qid])
+            q = internal[qid]
             k = len(items[r]["markers"])
             qt = QTYPES[q["t"]]
             t_scale = self.temperature_by_options.get(temp_bucket(qt, k), self.temperature[qt])
             if lang and lang.split("-")[0].lower() in self.lang_temperatures:
                 l_cfg = self.lang_temperatures[lang.split("-")[0].lower()]
                 t_scale = l_cfg["temperature_by_options"].get(temp_bucket(qt, k), l_cfg["temperature"][qt])
-            z = logits[r, :k] / t_scale
+            z = logits[offset + r, :k] / t_scale
             p = np.exp(z - z.max())
             p = p / p.sum()
 
@@ -352,7 +408,7 @@ class ONNXAgent(HookRegistry):
             # type so a caller can gate across types on one number -- matching the PyTorch Agent,
             # whose output ONNX callers otherwise cannot read (KeyError on cross-backend swap).
             ans_conf = round(answer_confidence(p, k), 4)
-            ext = {"act_probability": round(float(act[r, 0]), 4)}
+            ext = {"act_probability": round(float(act[offset + r, 0]), 4)}
 
             if q["t"] == "choice":
                 keys = list(q["crit"].keys())
@@ -383,12 +439,63 @@ class ONNXAgent(HookRegistry):
                     "answer_confidence": ans_conf,
                     "action": ext,
                 }
+        return answers
 
-        return {
-            "model": "laya-rl-agent-onnx",
-            "answers": answers,
-            "usage": {"input_tokens": n_tokens, "output_tokens": 0},
-        }
+    def _infer_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
+                     max_len: Optional[int] = None, head_max_len: Optional[int] = None,
+                     lang: Optional[str] = None,
+                     batch_size: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Validate once, then encode, collate, run and decode in chunks of `batch_size` states."""
+        from .agent import Agent as _Agent
+
+        ids = list(questions.keys())
+        if not ids:
+            return [{"model": "laya-rl-agent-onnx", "answers": {},
+                     "usage": {"input_tokens": 0, "output_tokens": 0}} for _ in states]
+        for qid in ids:
+            _Agent._check_question(qid, questions[qid])
+        internal = {qid: self._to_internal(questions[qid]) for qid in ids}
+        max_len = self.cfg.get("max_len", 512) if max_len is None else max_len
+        head_max_len = self.cfg.get("head_max_len", 192) if head_max_len is None else head_max_len
+        chunk = batch_size if (batch_size and batch_size > 0) else len(states)
+
+        results: List[Dict[str, Any]] = []
+        for start in range(0, len(states), chunk):
+            part = states[start:start + chunk]
+            encoded = [self._encode_state(st, ids, internal, max_len, head_max_len) for st in part]
+
+            b = collate_items(encoded, self.tok.pad_token_id)
+
+            # Prepare ONNX inputs as numpy arrays
+            ort_inputs = {
+                "input_ids": b["input_ids"].numpy().astype(np.int64),
+                "attention_mask": b["attention_mask"].numpy().astype(np.int64),
+                "marker_pos": b["marker_pos"].numpy().astype(np.int64),
+                "marker_mask": b["marker_mask"].numpy().astype(bool),
+                "qtype": b["qtype"].numpy().astype(np.int64),
+            }
+
+            # Run ONNX inference
+            ort_outs = self.session.run(["logits", "act_logits"], ort_inputs)
+            logits = ort_outs[0]
+            act_logits = ort_outs[1]
+
+            # Compute softmax for actions manually in numpy
+            act_exp = np.exp(act_logits - np.max(act_logits, axis=-1, keepdims=True))
+            act = act_exp / np.sum(act_exp, axis=-1, keepdims=True)
+            att = b["attention_mask"]
+
+            row = 0
+            for index, items in enumerate(encoded):
+                nrows = len(items)
+                n_tokens = int(att[row:row + nrows].sum())
+                results.append({
+                    "model": "laya-rl-agent-onnx",
+                    "answers": self._decode_answers(logits, act, items, ids, internal, row, lang=lang),
+                    "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+                })
+                row += nrows
+        return results
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
                questions: Optional[Dict[str, Dict[str, Any]]] = None, return_details: bool = False,

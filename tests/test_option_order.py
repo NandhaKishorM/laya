@@ -18,8 +18,12 @@ choice, `arange(k) * p` for a score, `p[1]` for noul-true. Without the inverse p
 probabilities come back attached to the wrong labels, which is silent and worse than ignoring
 the argument. These tests pin both halves.
 
-No weights are loaded: the encoder is driven with a stub tokenizer and the decoder through
-`Agent.__new__`, as in tests/test_batch.py.
+Both runtimes are covered. `ONNXAgent` validates with the same `_check_question`, so it accepts
+`option_order` too and has to honour it identically -- otherwise the argument is accepted and
+ignored on one of the two backends, which is the same silent failure this change removes.
+
+No weights are loaded: the encoder is driven with a stub tokenizer, and both decoders through
+`__new__` with a stub session, as in tests/test_batch.py.
 
 Run: python tests/test_option_order.py
 """
@@ -31,7 +35,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from laya.agent import Agent, _option_count  # noqa: E402
-from laya.common import build_sequence  # noqa: E402
+from laya.common import build_sequence, unpermute_probs  # noqa: E402
+from laya.onnx_agent import ONNXAgent  # noqa: E402
 
 PASS, FAIL = [], []
 
@@ -157,6 +162,70 @@ straight = decoder._decode_answers(n_logits, act, n_items, ["n"], {"n": dict(NOU
 swapped = decoder._decode_answers(n_logits, act, n_items, ["n"], {"n": dict(NOUL, option_order=[1, 0])}, 0)["n"]
 check("decode/noul canonical P(true)", round(straight["noul"], 4), 0.3)
 check("decode/noul swapped slots report P(true), not P(slot 1)", round(swapped["noul"], 4), 0.7)
+
+# ------------------------------------------------------------------ the shared helper
+check("helper/no order is a no-op", list(unpermute_probs(np.array([0.5, 0.3, 0.2]), None)), [0.5, 0.3, 0.2])
+check("helper/identity is a no-op", list(unpermute_probs(np.array([0.5, 0.3, 0.2]), [0, 1, 2])), [0.5, 0.3, 0.2])
+check("helper/slot s lands on option order[s]",
+      list(unpermute_probs(np.array([0.5, 0.3, 0.2]), [2, 0, 1])), [0.3, 0.2, 0.5])
+check("helper/a mismatched length is left alone",
+      list(unpermute_probs(np.array([0.5, 0.5]), [0, 1, 2])), [0.5, 0.5])
+check_true("helper/round-trips for every permutation of 4",
+           all(list(unpermute_probs(np.array([0.4, 0.3, 0.2, 0.1]), list(o))) ==
+               [dict(zip(o, [0.4, 0.3, 0.2, 0.1]))[i] for i in range(4)]
+               for o in __import__("itertools").permutations(range(4))))
+
+# ------------------------------------------------------------------ the ONNX backend agrees
+# ONNXAgent validates with the same `_check_question`, so it accepts `option_order`; it has to
+# act on it too. A stub session returns a fixed logit row, so the two backends can be compared
+# on identical numbers without onnxruntime or a model file.
+onnx = ONNXAgent.__new__(ONNXAgent)
+onnx.tok = StubTok()
+onnx.cfg = {"max_len": 512, "head_max_len": 192}
+onnx.temperature = {0: 1.0, 1: 1.0, 2: 1.0}
+onnx.temperature_by_options = {}
+onnx.model_id = "stub"
+
+ONNX_P = [0.7, 0.2, 0.1]
+
+
+class StubSession:
+    def run(self, names, feeds):
+        rows = feeds["input_ids"].shape[0]
+        return [np.log(np.array([ONNX_P] * rows)), np.zeros((rows, 2))]
+
+
+onnx.session = StubSession()
+
+onnx_q = {"type": "choice", "instructions": "which team",
+          "criteria": {"a": "first", "b": "second", "c": "third"}}
+check("onnx/carries option_order into the internal form",
+      ONNXAgent._to_internal(dict(onnx_q, option_order=[2, 0, 1]))["option_order"], [2, 0, 1])
+check("onnx/omits it when absent", "option_order" in ONNXAgent._to_internal(dict(onnx_q)), False)
+
+for order, winner in (([0, 1, 2], "a"), ([2, 1, 0], "c"), ([1, 2, 0], "b")):
+    ans = onnx._infer({"x": "hello"}, {"q": dict(onnx_q, option_order=order)})["answers"]["q"]
+    check("onnx/keys stay in the caller's order %s" % (order,), list(ans["probabilities"]), ["a", "b", "c"])
+    check("onnx/slot 0 mass lands on %s" % winner, ans["choice"], winner)
+    check("onnx/mass follows the slot %s" % (order,),
+          round(ans["probabilities"][winner], 4), round(ONNX_P[0], 4))
+
+plain_onnx = onnx._infer({"x": "hello"}, {"q": dict(onnx_q)})["answers"]["q"]
+ident_onnx = onnx._infer({"x": "hello"}, {"q": dict(onnx_q, option_order=[0, 1, 2])})["answers"]["q"]
+check("onnx/identity order changes nothing", ident_onnx["probabilities"], plain_onnx["probabilities"])
+check_raises("onnx/rejects a bad order the same way", ValueError,
+             lambda: onnx._infer({"x": "hi"}, {"q": dict(onnx_q, option_order=[0, 1])}))
+
+# The two backends must not disagree about what an order means.
+torch_side = decoder._decode_answers(np.log([ONNX_P]), np.zeros((1, 2)),
+                                     [{"markers": [0, 1, 2]}], ["q"],
+                                     {"q": {"t": "choice", "crit": {"a": None, "b": None, "c": None},
+                                            "option_order": [2, 0, 1]}}, 0)["q"]
+onnx_side = onnx._infer({"x": "hello"}, {"q": dict(onnx_q, option_order=[2, 0, 1])})["answers"]["q"]
+check("backends/torch and onnx agree on the permuted answer",
+      (torch_side["choice"], torch_side["probabilities"]),
+      (onnx_side["choice"], onnx_side["probabilities"]))
+
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

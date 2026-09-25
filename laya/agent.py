@@ -27,6 +27,7 @@ from .common import (
     render_options,
     serialize_state,
     temp_bucket,
+    unpermute_probs,
 )
 from .hooks import (
     HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks,
@@ -799,15 +800,8 @@ class Agent(HookRegistry):
             p = np.exp(z - z.max())
             p = p / p.sum()
 
-            # Slot s scored option `order[s]`, so the row comes back in slot order. Everything
-            # below indexes by the caller's own option order -- `zip(keys, p)` for a choice,
-            # `arange(k) * p` for a score level, `p[1]` for noul-true -- so put it back first.
-            # Without this the probabilities would be attached to the wrong labels.
-            order = q.get("option_order")
-            if order is not None and len(order) == k:
-                canonical = np.empty_like(p)
-                canonical[np.asarray(order, dtype=int)] = p
-                p = canonical
+            # The row comes back in slot order; everything below indexes by option.
+            p = unpermute_probs(p, q.get("option_order"))
 
             # `confidence` means one thing for `noul` (max(p)) and another for `choice` and
             # `score` (normalized entropy), and only the first is the quantity temperature

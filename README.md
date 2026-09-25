@@ -768,6 +768,47 @@ whose values must be distinct non-empty strings. Mapping order does not matter, 
 `noul` value is still P(true). Label sensitivity varies by checkpoint and state, so validate any
 override on your own data rather than treating `A`/`B` as a universal fix.
 
+### Option order
+
+Every question type also takes an optional `option_order`: a permutation of the option indices
+saying which option goes in which slot. Slot `s` shows option `option_order[s]`. Probabilities
+always come back keyed in your own option order, whatever order the model saw them in, so the
+key is presentation only — it never changes what a returned label means.
+
+```python
+question = {
+    "type": "choice",
+    "instructions": "Which team should handle this?",
+    "criteria": {"billing": "...", "technical": "...", "sales": "..."},
+    "option_order": [2, 0, 1],     # slot 0 shows `sales`, slot 1 `billing`, slot 2 `technical`
+}
+```
+
+It exists because where an option sits changes the answer. `research/eval/presentation_checks.py`
+measures the English checkpoint on five options whose text is *identical*: the per-slot logits
+centre at `[+1.68, +1.47, +0.11, -1.35, -1.91]`, a spread decided by position alone, and the
+multilingual checkpoint leans the other way on `score` (see [#131](https://github.com/NandhaKishorM/laya/issues/131)).
+The checkpoint-side fix is a position-balanced retrain; until then `option_order` lets a caller
+average the effect out, by asking the same question under orders in which every option occupies
+every slot equally often:
+
+```python
+k = len(question["criteria"])
+totals = {label: 0.0 for label in question["criteria"]}
+for r in range(k):                                     # k cyclic rotations
+    rotated = dict(question, option_order=[(i + r) % k for i in range(k)])
+    answer = agent.predict(state, {"q": rotated})["answers"]["q"]
+    for label, value in answer["probabilities"].items():
+        totals[label] += value / k
+
+decision = max(totals, key=totals.get)
+```
+
+That costs `k` rows in the same forward pass rather than `k` forward passes. On 62 banking
+intents shortlisted to 20 over 49 states, it took the share of answers that change with
+presentation order from 16.3% to 6.1%. Omitting `option_order` keeps the canonical order and the
+behaviour every existing caller already has.
+
 ---
 
 ## MCP Server (Optional)

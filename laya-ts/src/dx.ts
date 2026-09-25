@@ -41,13 +41,11 @@ export function topK(probs: Record<string, number>, k: number): string[] {
     .map(([key]) => key);
 }
 
-/** Confidence gate (default 0.8). Reads answer_confidence (max(p), comparable
- * across question types) when present, falling back to entropy confidence. */
+/** Confidence gate (default 0.8) on answer_confidence (max(p)) alone, so the
+ * gate uses one scale across question types instead of mixing in entropy. */
 export function isConfident(
-  answer: Pick<SystemAnswer, "confidence"> & { answer_confidence?: unknown },
+  answer: Pick<SystemAnswer, "answer_confidence">,
   thresh = 0.8,
 ): boolean {
-  const ac = (answer as { answer_confidence?: unknown }).answer_confidence;
-  const v = typeof ac === "number" && Number.isFinite(ac) ? ac : answer.confidence;
-  return (v ?? 0) >= thresh;
+  return (answer.answer_confidence ?? 0) >= thresh;
 }

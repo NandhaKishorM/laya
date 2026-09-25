@@ -24,12 +24,13 @@ describe("result helpers", () => {
     expect(best({ type: "choice", choice: "b", probabilities: { a: 0.2, b: 0.8 } } as any)).toBe("b");
     expect(best({ type: "score", probabilities: { "0": 0.1, "1": 0.7, "2": 0.2 } } as any)).toBe("1");
     expect(topK({ a: 0.2, b: 0.8, c: 0.5 }, 2)).toEqual(["b", "c"]);
-    expect(isConfident({ confidence: 0.9 } as any, 0.8)).toBe(true);
-    expect(isConfident({ confidence: 0.5 } as any, 0.8)).toBe(false);
+    expect(isConfident({ answer_confidence: 0.9 } as any, 0.8)).toBe(true);
+    expect(isConfident({ answer_confidence: 0.5 } as any, 0.8)).toBe(false);
   });
-  it("prefers answer_confidence over entropy confidence", () => {
+  it("gates on answer_confidence alone, ignoring entropy confidence", () => {
     expect(isConfident({ confidence: 0.5, answer_confidence: 0.9 } as any, 0.8)).toBe(true);
     expect(isConfident({ confidence: 0.9, answer_confidence: 0.5 } as any, 0.8)).toBe(false);
+    expect(isConfident({ confidence: 0.9 } as any, 0.8)).toBe(false);
   });
 });
 

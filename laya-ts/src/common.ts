@@ -76,7 +76,9 @@ export function buildQuestionPrefix(tok: TokenizerLike, q: InternalQ,
     per = new Map();
     prefixCache.set(tok as object, per);
   }
-  const key = JSON.stringify([q.t, q.ins, q.crit, q.labels ?? null, maxLen, headMaxLen, optionOrder ?? null]);
+  // Key on what actually builds the prefix: raw criteria lie (JSON.stringify
+  // drops undefined values and throws on BigInt), rendered options don't.
+  const key = JSON.stringify([q.t, q.ins, renderOptions(q), maxLen, headMaxLen, optionOrder ?? null]);
   const hit = per.get(key);
   if (hit) return hit;
   const built = buildQuestionPrefixUncached(tok, q, maxLen, headMaxLen, optionOrder);

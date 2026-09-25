@@ -242,6 +242,7 @@ export function composeHooks(
 }
 
 const EMPTY_HOOKS: Hook[] = [];
+Object.freeze(EMPTY_HOOKS);
 
 /**
  * Base class giving a runtime-mutable hook list.

@@ -6,6 +6,7 @@ nav:
       - structured.md
       - hooks
       - langchain.md
+      - crewai.md
       - glob: "*"
         ignore_no_matches: true
   - Deployment:

@@ -64,6 +64,11 @@ langgraph = [
     "langgraph>=0.1.0",
 ]
 
+# `pip install laya[crewai]` adds the CrewAI multi-agent delegation router (laya.integrations).
+crewai = [
+    "crewai>=0.28.0",
+]
+
 [project.scripts]
 laya = "laya.cli:main"
 laya-serve = "laya.serve:main"

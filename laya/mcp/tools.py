@@ -117,6 +117,31 @@ def _normalize_answers(raw: Any) -> dict:
     return raw
 
 
+def _normalize_result(result: Any) -> dict:
+    if not isinstance(result, dict):
+        raise ToolError("internal_error", "predict returned non-object")
+    # Router.predict and Agent.system_one both return the system_one payload,
+    # which always carries an "answers" object (empty for empty questions).
+    try:
+        answers = result["answers"]
+    except KeyError:
+        raise ToolError("internal_error", "predict result has no 'answers' object") from None
+    return {"answers": _normalize_answers(answers), "routing": result.get("routing")}
+
+
+def _reading_device(router: Any, agent: Any, model_name: str, routing: dict | None) -> str | None:
+    """Real device of the checkpoint that answered: Agent.device reflects a
+    silent GPU -> CPU fallback. Omitted when it cannot be read, rather than
+    guessed.
+    """
+    if model_name != "auto" and agent is not None:
+        return agent_device(agent)
+    model_used = (routing or {}).get("model")
+    if isinstance(model_used, str) and model_used:
+        return agent_device(router_agent(router, model_used))
+    return None
+
+
 def laya_predict(
     state: Any,
     questions: Any,
@@ -148,22 +173,10 @@ def laya_predict(
     result = _run()
     latency_ms = (time.perf_counter() - started) * 1000.0
 
-    if not isinstance(result, dict):
-        raise ToolError("internal_error", "predict returned non-object")
-    # Router.predict and Agent.system_one both return the system_one payload,
-    # which always carries an "answers" object (empty for empty questions).
-    answers = _normalize_answers(result["answers"])
-    routing = result.get("routing") or {"model": model_name, "repo": None, "reason": "explicit model"}
-    # Real device of the checkpoint that answered: Agent.device reflects a
-    # silent GPU -> CPU fallback. Omitted when it cannot be read, rather than
-    # guessed.
-    device = None
-    if model_name != "auto" and agent is not None:
-        device = agent_device(agent)
-    else:
-        model_used = routing.get("model")
-        if isinstance(model_used, str) and model_used:
-            device = agent_device(router_agent(router, model_used))
+    norm = _normalize_result(result)
+    answers = norm["answers"]
+    routing = norm["routing"] or {"model": model_name, "repo": None, "reason": "explicit model"}
+    device = _reading_device(router, agent, model_name, norm["routing"])
     out: dict[str, Any] = {
         "answers": answers,
         "routing": routing,
@@ -174,15 +187,7 @@ def laya_predict(
     return out
 
 
-def laya_route(state: Any, questions: Any, *, router: Any = None) -> dict:
-    """Routing decision only: no forward pass."""
-    state_d = validate_state(state)
-    questions_d = validate_questions(questions)
-    if router is None:
-        raise ToolError("models_not_ready", "Router is not loaded")
-    if not hasattr(router, "route"):
-        raise ToolError("internal_error", "router has no route() method")
-    decision = router.route(state_d, questions_d)
+def _decision_to_dict(decision: Any) -> dict:
     if isinstance(decision, dict):
         return {
             "model": decision.get("model"),
@@ -194,6 +199,17 @@ def laya_route(state: Any, questions: Any, *, router: Any = None) -> dict:
         "repo": getattr(decision, "repo", None),
         "reason": getattr(decision, "reason", None),
     }
+
+
+def laya_route(state: Any, questions: Any, *, router: Any = None) -> dict:
+    """Routing decision only: no forward pass."""
+    state_d = validate_state(state)
+    questions_d = validate_questions(questions)
+    if router is None:
+        raise ToolError("models_not_ready", "Router is not loaded")
+    if not hasattr(router, "route"):
+        raise ToolError("internal_error", "router has no route() method")
+    return _decision_to_dict(router.route(state_d, questions_d))
 
 
 def _resident_or_load(router: Any, name: str) -> Any:
@@ -252,21 +268,8 @@ def laya_shortlist(
             raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
         if not hasattr(router, "route"):
             raise ToolError("internal_error", "router has no route() method")
-        decision = router.route(state_d, questions_d)
-        if isinstance(decision, dict):
-            routed = decision.get("model")
-            routing = {
-                "model": routed,
-                "repo": decision.get("repo"),
-                "reason": decision.get("reason"),
-            }
-        else:
-            routed = getattr(decision, "model", None)
-            routing = {
-                "model": routed,
-                "repo": getattr(decision, "repo", None),
-                "reason": getattr(decision, "reason", None),
-            }
+        routing = _decision_to_dict(router.route(state_d, questions_d))
+        routed = routing["model"]
         if not isinstance(routed, str) or not routed:
             raise ToolError("internal_error", "router.route returned no model")
         predict_target = router
@@ -378,3 +381,165 @@ def laya_status(*, router: Any = None, loaded: list[str] | None = None, preload:
         "router_ready": router is not None,
         "package_versions": versions,
     }
+
+
+# --- batch tools ----------------------------------------------------------
+
+def _validate_batch_model(value: Any, where: str) -> str | None:
+    """``model`` as a Router routing override: "auto" (or absent) means None so
+    Router.route resolves the checkpoint per request; a name pins it. Kept
+    separate from ``validate_model``, whose "auto" means "answer via
+    router.predict" on the single-request path.
+    """
+    if value is None or value == "auto":
+        return None
+    if value not in VALID_MODELS:
+        raise ToolError(
+            "invalid_model",
+            f"{where}['model'] must be one of {sorted(VALID_MODELS)}, got {value!r}",
+        )
+    return value
+
+
+def _validate_batch_str(value: Any, where: str, allow_empty: bool = False) -> str:
+    if not isinstance(value, str) or (not allow_empty and not value.strip()):
+        raise ToolError("invalid_request", f"{where} must be a non-empty string, got {value!r}")
+    return value
+
+
+def _validate_batch_item(request: Any, i: int) -> dict:
+    where = "requests[%d]" % i
+    if not isinstance(request, dict):
+        raise ToolError("invalid_request", "%s must be an object with 'state' and 'questions'" % where)
+    item: dict[str, Any] = {
+        "state": validate_state(request.get("state")),
+        "questions": validate_questions(request.get("questions")),
+    }
+    if "model" in request:
+        model = _validate_batch_model(request["model"], where)
+        if model is not None:
+            item["model"] = model
+    for key in ("task", "lang"):
+        if key in request:
+            item[key] = _validate_batch_str(request[key], "%s[%r]" % (where, key))
+    if "lang_guess" in request:
+        item["lang_guess"] = request["lang_guess"]
+    return item
+
+
+def validate_batch_requests(requests: Any) -> list[dict]:
+    """Validate a tool payload of many requests, preserving order.
+
+    Same per-item validation as ``laya_predict``/``laya_route`` (state, questions,
+    optional model/task/lang/lang_guess overrides), run before any model loads so
+    one malformed item fails the whole call instead of a partial batch.
+    """
+    if not isinstance(requests, list) or not requests:
+        raise ToolError(
+            "invalid_request",
+            "requests must be a non-empty array of {state, questions, model?, task?, lang?, lang_guess?} objects",
+        )
+    return [_validate_batch_item(request, i) for i, request in enumerate(requests)]
+
+
+def _validate_batch_size(batch_size: Any) -> int | None:
+    if batch_size is None:
+        return None
+    if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size < 1:
+        raise ToolError("invalid_batch_size", f"batch_size must be a positive integer, got {batch_size!r}")
+    return batch_size
+
+
+def laya_predict_batch(
+    requests: Any,
+    batch_size: Any = None,
+    *,
+    router: Any = None,
+) -> dict:
+    """Answer many requests in one call: ``Router.predict_batch`` over MCP.
+
+    ``laya_predict`` scores one request per round trip; an agent with many
+    tickets to triage pays a routing pass and a separate forward pass every
+    time. This tool hands the whole list to ``Router.predict_batch``, which
+    groups requests by routed checkpoint and shares forward passes between
+    requests with the same question schema, and returns the answers in input
+    order. Every item carries the same ``answers``/``routing``/``device``
+    fields as ``laya_predict``. Requests are validated up front, so one
+    malformed item errors before any model loads.
+    """
+    items = validate_batch_requests(requests)
+    size = _validate_batch_size(batch_size)
+    if router is None:
+        raise ToolError("models_not_ready", "Router is not loaded")
+    if not hasattr(router, "predict_batch"):
+        raise ToolError("internal_error", "router has no predict_batch() method")
+
+    started = time.perf_counter()
+    try:
+        results = router.predict_batch(items, batch_size=size) if size is not None \
+            else router.predict_batch(items)
+    except TypeError as exc:
+        # A Router without batch support raises at the call itself; anything
+        # else is a real bug and must surface unchanged.
+        raise ToolError(
+            "internal_error",
+            "router.predict_batch failed: %s: %s" % (type(exc).__name__, exc),
+        ) from exc
+    latency_ms = (time.perf_counter() - started) * 1000.0
+
+    if not isinstance(results, list) or len(results) != len(items):
+        raise ToolError(
+            "internal_error",
+            "predict_batch returned %r results for %d requests" % (
+                len(results) if isinstance(results, list) else type(results).__name__, len(items)),
+        )
+
+    out_requests: list[dict[str, Any]] = []
+    for result in results:
+        norm = _normalize_result(result)
+        entry: dict[str, Any] = {"answers": norm["answers"], "routing": norm["routing"] or {}}
+        device = _reading_device(router, None, "auto", norm["routing"])
+        if device:
+            entry["device"] = device
+        out_requests.append(entry)
+
+    model_counts: dict[str, int] = {}
+    for entry in out_requests:
+        name = entry["routing"].get("model")
+        key = name if isinstance(name, str) and name else "unknown"
+        model_counts[key] = model_counts.get(key, 0) + 1
+
+    return {
+        "requests": out_requests,
+        "model_counts": model_counts,
+        "total_latency_ms": round(latency_ms, 3),
+        "per_request_latency_ms": round(latency_ms / len(items), 3),
+    }
+
+
+def laya_route_batch(requests: Any, *, router: Any = None) -> dict:
+    """Routing decisions for many requests: no forward pass, no checkpoint loads.
+
+    The batch form of ``laya_route``, mirroring ``Router.route_batch``: it
+    reports which checkpoint each request *would* answer from so clients can
+    inspect or aggregate a workload's routing before paying any load cost.
+    """
+    items = validate_batch_requests(requests)
+    if router is None:
+        raise ToolError("models_not_ready", "Router is not loaded")
+    if not hasattr(router, "route_batch"):
+        raise ToolError("internal_error", "router has no route_batch() method")
+    decisions = router.route_batch(items)
+    if not isinstance(decisions, list) or len(decisions) != len(items):
+        raise ToolError(
+            "internal_error",
+            "route_batch returned %r decisions for %d requests" % (
+                len(decisions) if isinstance(decisions, list) else type(decisions).__name__, len(items)),
+        )
+    out = [_decision_to_dict(decision) for decision in decisions]
+    model_counts: dict[str, int] = {}
+    for entry in out:
+        name = entry["model"]
+        key = name if isinstance(name, str) and name else "unknown"
+        model_counts[key] = model_counts.get(key, 0) + 1
+    return {"decisions": out, "model_counts": model_counts}

@@ -560,6 +560,10 @@ batched (measured ~9–10×). On CPU, increasing batch size alone may not speed 
 length grouping can help by reducing the padded work in a mixed-length workload. See the
 [CPU measurements and reproduction commands](research/README.md#length-batching).
 
+`ONNXAgent.predict_batch(states, questions, batch_size=...)` has the same contract, backed by one
+ONNX Runtime session run per chunk, so an ONNX deployment gets the same batch API and the same
+result shape; `sort_by_length` is not ported there yet.
+
 ### Long documents: `predict_long`
 
 `predict`/`system_one` truncate a state that exceeds `max_len` to a single window (the first, or
@@ -580,6 +584,10 @@ result = agent.predict_long(state, questions, window=256)  # smaller window isol
 A smaller `window` isolates a short deciding span better (it becomes a larger fraction of its
 window); the default (`max_len - head_max_len`) favors context and throughput. Output shape matches
 `predict`, with `usage["windows"]` added.
+
+`ONNXAgent.predict_long(state, questions, window=..., stride=..., batch_size=...)` has the same
+contract and the same aggregation rules, with the windows scored through `ONNXAgent.predict_batch`
+— one ONNX Runtime session run for all of them, or one per chunk when `batch_size` bounds memory.
 
 The returned probability is the deciding window's, **not a calibrated number for the whole
 document** — a `noul` max drifts up with the window count even with no signal, and `choice` can land
@@ -634,6 +642,22 @@ else:
 A threshold is a policy you choose from measured accuracy at that coverage on your data, not a property of the model. Both checkpoints are over-confident as shipped and `laya-multilingual` has no fitted temperatures at all, so fit them before relying on these numbers — see [Calibration](#calibration) above, and the [fine-tuning notebook](notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb) for the fitting loop itself. Then pick the point where the errors you accept are ones you can live with. Confidence orders decisions; it does not establish that a decision is correct.
 
 A threshold also depends on the autocast dtype. On CUDA at compute capability 8 or above the runtime uses the checkpoint's `amp_dtype`, which is bf16 for all three shipped checkpoints. On the fixed set from `benchmarks/parity_fast.py` (60 states, 288 questions per checkpoint, RTX 2000 Ada) bf16 moves a probability by up to 0.073 against the fp32 forward and flips 3 of 864 argmaxes across the three checkpoints; fp16 stays within 0.019 and flips none, at the same latency. `LAYA_CUDA_AMP=fp16` selects fp16 and `LAYA_CUDA_AMP=bf16` selects bf16 (`LAYA_CPU_AMP=bf16` is the CPU counterpart). Fit and measure a threshold in the dtype you serve with.
+
+### Opt-in abstention: `min_confidence`
+
+`predict`, `predict_batch`, `system_one` and `decide` — on `Agent`, `Router` and `ONNXAgent` — take an opt-in `min_confidence`, off by default. It is a caller-side policy on top of the emitted confidence: every answer whose `answer_confidence` falls below the threshold is flagged `low_confidence: True`, with the raw answer, probabilities and confidence left intact for inspection.
+
+```python
+res = agent.predict(state, questions, min_confidence=0.85)
+ans = res["answers"]["department"]
+
+if ans.get("low_confidence"):        # answer_confidence < 0.85
+    escalate_to_human_agent(ans["choice"], reason=f"Low confidence ({ans['answer_confidence']:.2f})")
+else:
+    route_automatically(ans["choice"])
+```
+
+The threshold reads `answer_confidence` (`max(p)`) — the calibrated quantity, invariant to the number of options — never the entropy `confidence`. With `decide(..., min_confidence=...)` a low-confidence field comes back as `None` in the schema output, while `return_details=True` keeps the answer and its confidence. [LangChain `LayaRouter`](docs/langchain.md)'s `confidence_threshold` reads the same value: `answer_confidence` when the answer carries it, `confidence` otherwise. Left unset, `min_confidence` changes nothing.
 
 ---
 

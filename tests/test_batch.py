@@ -271,6 +271,40 @@ with patch.object(_agent, "confidence_from_probs", wraps=_agent.confidence_from_
     check("decode/noul-only answers skip entropy", entropy.call_count, 0)
 
 
+# --------------------------------------------------------------- min_confidence abstention (#361)
+# The flag is set before `on_predict_end` runs, so an audit hook sees exactly what the caller gets.
+def make_confidence_fake():
+    fake = make_fake()
+
+    def decode(logits, act, items, ids, internal, offset):
+        return {qid: {"type": "choice", "choice": qid,
+                      "answer_confidence": 0.90 if qid == "a" else 0.40}
+                for qid in ids}
+
+    fake._decode_answers = decode
+    return fake
+
+
+seen = []
+gated = make_confidence_fake().predict_batch(
+    ["s0", "s1"], QUESTIONS, min_confidence=0.5,
+    on_predict_end=lambda ctx: seen.append(
+        [{q: a.get("low_confidence", False) for q, a in r["answers"].items()} for r in ctx.results]))
+check("min_confidence/flags only answers below the threshold",
+      [[r["answers"][q].get("low_confidence", False) for q in ("a", "b")] for r in gated],
+      [[False, True], [False, True]])
+check("min_confidence/end hook sees the same flags", seen, [[{"a": False, "b": True}] * 2])
+check("min_confidence/raw answer and confidence intact",
+      (gated[0]["answers"]["a"]["answer_confidence"], "low_confidence" in gated[0]["answers"]["a"]),
+      (0.90, False))
+check("min_confidence/default leaves results untouched",
+      "low_confidence" in make_confidence_fake().predict_batch(["s0"], QUESTIONS)[0]["answers"]["b"], False)
+check_raises("min_confidence/out-of-range rejected", ValueError,
+             lambda: make_confidence_fake().predict_batch(["s0"], QUESTIONS, min_confidence=1.5))
+check_raises("min_confidence/bool rejected", ValueError,
+             lambda: make_confidence_fake().predict_batch(["s0"], QUESTIONS, min_confidence=True))
+
+
 # --------------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f_ in FAIL:

@@ -108,6 +108,15 @@ def _check_thresholds(overall: Dict[str, float], mins: Dict[str, float],
     return failures
 
 
+def _print_deltas(deltas: Dict[str, Dict[str, Any]]) -> None:
+    for metric, delta in sorted(deltas.items()):
+        if delta.get("missing"):
+            print("%-18s baseline=%.4f missing from the report" % (metric, delta["baseline"]))
+            continue
+        print("%-18s baseline=%.4f value=%.4f diff=%+.4f (tol %.4f)"
+              % (metric, delta["baseline"], delta["value"], delta["diff"], delta["tolerance"]))
+
+
 def _cmd_validate(args) -> int:
     dataset = evals.Dataset.from_jsonl(args.dataset)
     questions = sorted({qid for example in dataset.examples for qid in example.questions})
@@ -139,9 +148,7 @@ def _cmd_run(args) -> int:
     if args.baseline:
         baseline = _load_report(args.baseline)
         ok, deltas = report.compare(baseline, _parse_pairs(args.tolerance))
-        for metric, delta in sorted(deltas.items()):
-            print("%-18s baseline=%.4f value=%.4f diff=%+.4f (tol %.4f)"
-                  % (metric, delta["baseline"], delta["value"], delta["diff"], delta["tolerance"]))
+        _print_deltas(deltas)
         if not ok:
             failures.append("baseline comparison failed")
 
@@ -171,9 +178,7 @@ def _cmd_compare(args) -> int:
                                  if k in ("config", "overall", "slices", "cases")})
     baseline = _load_report(args.baseline)
     ok, deltas = report.compare(baseline, _parse_pairs(args.tolerance))
-    for metric, delta in sorted(deltas.items()):
-        print("%-18s baseline=%.4f value=%.4f diff=%+.4f (tol %.4f)"
-              % (metric, delta["baseline"], delta["value"], delta["diff"], delta["tolerance"]))
+    _print_deltas(deltas)
     return 0 if ok else 1
 
 

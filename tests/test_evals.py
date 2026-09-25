@@ -188,6 +188,30 @@ def test_compare_and_assert_regression():
         assert_regression(report, baseline, {"ece": 0.01})
 
 
+def test_compare_fails_when_a_baseline_metric_is_missing():
+    # Every example errors under on_error="skip", so `overall` is empty. The gate used to skip
+    # each baseline metric absent from the report and pass with nothing compared.
+    class Broken:
+        def predict(self, state, questions, model=None):
+            raise RuntimeError("checkpoint failed to load")
+
+    report = evaluate(Broken(), Dataset([Example("s", Q, {"intent": "a"})] * 3), on_error="skip")
+    assert "choice_accuracy" not in report.overall
+    baseline = {"overall": {"choice_accuracy": 0.9, "ece": 0.05, "latency_p50_ms": 3.0}}
+    ok, deltas = report.compare(baseline, {"choice_accuracy": 1.0})
+    assert not ok
+    assert deltas["choice_accuracy"]["missing"] and deltas["ece"]["missing"]
+    assert "latency_p50_ms" not in deltas, "latency stays informational without a tolerance"
+    with pytest.raises(AssertionError, match="choice_accuracy"):
+        assert_regression(report, baseline)
+
+    # A partial loss fails too, and names only the metric that went missing.
+    partial = EvalReport(overall={"choice_accuracy": 0.9})
+    ok, deltas = partial.compare({"overall": {"choice_accuracy": 0.9, "noul_accuracy": 0.8}})
+    assert not ok and set(deltas) == {"choice_accuracy", "noul_accuracy"}
+    assert "missing" not in deltas["choice_accuracy"] and deltas["noul_accuracy"]["missing"]
+
+
 def test_default_evaluators_cover_the_three_types():
     names = {e.name for e in default_evaluators()}
     assert {"choice_accuracy", "noul_accuracy", "score_mae", "mean_confidence"} <= names
@@ -222,6 +246,17 @@ def test_cli_compare_exit_codes(tmp_path):
                            "--tolerance", "choice_accuracy=0.02"]) == 0
     assert evals_cli.main(["compare", report, "--baseline", baseline,
                            "--tolerance", "choice_accuracy=0.001"]) == 1
+
+
+def test_cli_compare_fails_on_an_empty_report(tmp_path, capsys):
+    from laya import evals_cli
+
+    (tmp_path / "report.json").write_text(json.dumps({"overall": {}}))
+    (tmp_path / "baseline.json").write_text(json.dumps({"overall": {"choice_accuracy": 0.79}}))
+    assert evals_cli.main(["compare", str(tmp_path / "report.json"),
+                           "--baseline", str(tmp_path / "baseline.json")]) == 1
+    out = capsys.readouterr().out
+    assert "choice_accuracy" in out and "missing from the report" in out
 
 
 def test_cli_rejects_a_malformed_tolerance():

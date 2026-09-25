@@ -225,22 +225,28 @@ class EvalReport:
         """Compare `overall` to a baseline report's `overall`. Returns (ok, deltas).
 
         With no `tolerances`, every shared metric must match exactly; a tolerance is the maximum
-        absolute difference allowed for that metric.
+        absolute difference allowed for that metric. A baseline metric the report no longer has
+        fails the comparison (its delta carries ``missing: True`` and a NaN value): a run whose
+        every example errored under ``on_error="skip"`` has an empty ``overall``, and must not
+        pass the gate by having nothing left to compare.
         """
         base = (baseline or {}).get("overall", baseline or {})
         tolerances = tolerances or {}
         deltas: Dict[str, Dict[str, float]] = {}
         ok = True
         for metric, base_value in base.items():
-            if metric not in self.overall:
-                continue
             # Latency is informational; a re-run differs by timing noise, not quality, so it is
             # compared only when a tolerance explicitly names it.
             if metric.endswith("_ms") and metric not in tolerances:
                 continue
+            allowed = float(tolerances.get(metric, 0.0))
+            if metric not in self.overall:
+                deltas[metric] = {"baseline": float(base_value), "value": float("nan"),
+                                  "diff": float("nan"), "tolerance": allowed, "missing": True}
+                ok = False
+                continue
             value = self.overall[metric]
             diff = value - float(base_value)
-            allowed = float(tolerances.get(metric, 0.0))
             deltas[metric] = {"baseline": float(base_value), "value": value,
                               "diff": diff, "tolerance": allowed}
             if abs(diff) > allowed:
@@ -366,6 +372,7 @@ def assert_regression(report: EvalReport, baseline: Dict[str, Any],
     """Raise AssertionError when `report` drifts from `baseline` beyond `tolerances`."""
     ok, deltas = report.compare(baseline, tolerances)
     if not ok:
-        failed = {m: d for m, d in deltas.items() if abs(d["diff"]) > d["tolerance"]}
+        failed = {m: d for m, d in deltas.items()
+                  if d.get("missing") or abs(d["diff"]) > d["tolerance"]}
         raise AssertionError("evaluation regressed: %s" % json.dumps(failed, sort_keys=True))
     return deltas

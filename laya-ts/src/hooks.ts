@@ -231,8 +231,18 @@ export function composeHooks(
   onPredictStart?: PredictHookArg,
   onPredictEnd?: PredictHookArg,
 ): Hook[] {
+  if (
+    defaultHooksList.length === 0 && installed.length === 0 && (hooks === null || hooks === undefined) &&
+    (onPredictStart === null || onPredictStart === undefined) &&
+    (onPredictEnd === null || onPredictEnd === undefined)
+  ) {
+    return EMPTY_HOOKS;
+  }
   return [...defaultHooksList, ...installed, ...normaliseHooks(hooks, onPredictStart, onPredictEnd)];
 }
+
+const EMPTY_HOOKS: Hook[] = [];
+Object.freeze(EMPTY_HOOKS);
 
 /**
  * Base class giving a runtime-mutable hook list.

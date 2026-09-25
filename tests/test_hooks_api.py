@@ -157,6 +157,32 @@ for label, cls in (("Agent", Agent), ("Router", Router), ("ONNXAgent", ONNXAgent
     for method in ("add_hook", "remove_hook", "hooks_installed"):
         check_true("%s/%s exists" % (label, method), callable(getattr(cls, method, None)))
 
+# The LangChain runnables batch: laya.integrations.langchain's own suite checks what
+# batch() returns, so these lines pin only the caller-visible shape. A rename, or losing
+# the keyword-only return_exceptions, would break LCEL and LangGraph map-reduce silently.
+from laya.integrations.langchain import (  # noqa: E402
+    LayaEvaluator,
+    LayaGuardrail,
+    LayaRouter,
+    LayaTriage,
+)
+
+for label, cls in (("LayaRouter", LayaRouter), ("LayaGuardrail", LayaGuardrail),
+                   ("LayaTriage", LayaTriage), ("LayaEvaluator", LayaEvaluator)):
+    for method in ("invoke", "batch", "abatch"):
+        check_true("langchain/%s.%s exists" % (label, method),
+                   callable(getattr(cls, method, None)))
+    check("langchain/%s/batch defaults" % label,
+          [(p.name, p.kind.name, p.default) for p in sig(cls.batch).values()],
+          [("self", "POSITIONAL_OR_KEYWORD", inspect.Parameter.empty),
+           ("inputs", "POSITIONAL_OR_KEYWORD", inspect.Parameter.empty),
+           ("config", "POSITIONAL_OR_KEYWORD", None),
+           ("return_exceptions", "KEYWORD_ONLY", False),
+           ("kwargs", "VAR_KEYWORD", inspect.Parameter.empty)])
+    check("langchain/%s/abatch defaults" % label,
+          [(p.name, p.kind.name, p.default) for p in sig(cls.abatch).values()],
+          [(p.name, p.kind.name, p.default) for p in sig(cls.batch).values()])
+
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

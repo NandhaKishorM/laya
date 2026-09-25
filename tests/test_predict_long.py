@@ -108,6 +108,99 @@ a = make_agent(canned)
 check_raises("aggregate/rejects unknown mode", ValueError,
              lambda: a.predict_long({"body": "y" * 300}, Q, aggregate="mean"))
 
+# ------------------------------------------------------------------- Router.predict_long
+# The Router is the entry point the README leads with, and it had no windowed scan: a state past
+# max_len was answered from its first window however it was routed. Weight-free, like the rest of
+# this file -- the routed agent is a stub, attached so no checkpoint is ever built.
+from laya.router import Router  # noqa: E402
+
+
+class _LongStub:
+    def __init__(self):
+        self.calls = []
+
+    def predict_long(self, state, questions, window=None, stride=None, aggregate="auto",
+                     batch_size=None, lang=None):
+        self.calls.append({"state": state, "questions": questions, "window": window,
+                           "stride": stride, "aggregate": aggregate,
+                           "batch_size": batch_size, "lang": lang})
+        return {"model": "stub", "answers": {"scanned": {"noul": 0.5}},
+                "usage": {"windows": 3, "input_tokens": 30}}
+
+
+def _router(stub, hooks=None):
+    r = Router(hooks=hooks) if hooks else Router()
+    r.attach("english", stub)
+    return r
+
+
+# 4. routes first, then scans on the routed agent, with the caller's options forwarded
+stub = _LongStub()
+out = _router(stub).predict_long({"body": "y" * 300}, Q, model="english",
+                                 window=64, stride=32, batch_size=8, lang="de")
+check("router/routing key attached", out["routing"]["model"], "english")
+check("router/answers come from the scan", out["answers"], {"scanned": {"noul": 0.5}})
+check("router/window forwarded", stub.calls[0]["window"], 64)
+check("router/stride forwarded", stub.calls[0]["stride"], 32)
+check("router/batch_size forwarded", stub.calls[0]["batch_size"], 8)
+check("router/explicit lang forwarded", stub.calls[0]["lang"], "de")
+check("router/usage carried through", out["usage"]["windows"], 3)
+
+# 5. an installed start hook runs before the scan and may answer instead of it
+class _Skipper:
+    def __init__(self):
+        self.started = 0
+
+    def on_predict_start(self, ctx):
+        self.started += 1
+        ctx.skip([{"model": "hook", "answers": {"cached": {"noul": 0.9}}, "usage": {}}])
+
+
+skipper = _Skipper()
+skipped_stub = _LongStub()
+out = _router(skipped_stub, hooks=[skipper]).predict_long(
+    {"body": "y" * 300}, Q, model="english")
+check("router/installed start hook ran", skipper.started, 1)
+check("router/hook answer wins over the scan", skipped_stub.calls, [])
+check("router/skipped answer still routed", out["routing"]["model"], "english")
+
+# 6. a start hook that rewrites the state: the scan reads what it left behind
+class _Rewriter:
+    def on_predict_start(self, ctx):
+        ctx.states[0] = "rewritten by the start hook"
+
+
+rewritten_stub = _LongStub()
+_router(rewritten_stub, hooks=[_Rewriter()]).predict_long(
+    {"body": "y" * 300}, Q, model="english")
+check("router/scan uses the rewritten state", rewritten_stub.calls[0]["state"],
+      "rewritten by the start hook")
+
+# 7. a per-call end hook sees the scanned result
+ended = {}
+
+
+class _Recorder:
+    def on_predict_end(self, ctx):
+        ended["answers"] = ctx.results[0]["answers"]
+
+
+recorder_stub = _LongStub()
+_router(recorder_stub).predict_long({"body": "y" * 300}, Q, model="english",
+                                    on_predict_end=_Recorder().on_predict_end)
+check("router/per-call end hook sees the scan", ended["answers"], {"scanned": {"noul": 0.5}})
+
+# 8. an agent with no predict_long is a named caller error, not a bare AttributeError
+class _NoScan:
+    def system_one(self, state, questions):
+        return {"model": "noscan", "answers": {}, "usage": {}}
+
+
+r_noscan = Router()
+r_noscan.attach("english", _NoScan())
+check_raises("router/agent without predict_long", TypeError,
+             lambda: r_noscan.predict_long({"body": "y" * 300}, Q, model="english"))
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

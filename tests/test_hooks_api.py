@@ -73,6 +73,7 @@ check_param("Router.__init__", Router.__init__, "revisions", None)
 for label, fn in (("Agent.predict_batch", Agent.predict_batch),
                   ("Agent.system_one", Agent.system_one),
                   ("Router.predict", Router.predict),
+                  ("Router.predict_long", Router.predict_long),
                   ("ONNXAgent.system_one", ONNXAgent.system_one)):
     check_param(label, fn, "hooks", None)
     check_param(label, fn, "on_predict_start", None)

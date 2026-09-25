@@ -340,8 +340,12 @@ def answer_confidence(p: np.ndarray, k: int) -> float:
 
     This is the quantity temperature scaling fits, and the quantity every calibration figure in
     this repository is computed on -- both benchmark harnesses take `conf = max(probs)` before
-    calling `ece_score`. It is therefore the one confidence with the property the README's
-    gating section relies on: of the answers returned at confidence c, about c of them are right.
+    calling `ece_score`. The README's gating section relies on the property that goes with it:
+    of the answers returned at confidence c, about c of them are right. That property is
+    conditional, and the condition is not met by default -- it holds only after the temperatures
+    have been fitted and validated on held-out data for this checkpoint and this option count.
+    The shipped checkpoints are over-confident: `choice:11+` is a ~10x sharpener that returns a
+    point mass at 1.0, so a threshold applied to them selects below model accuracy (issue #394).
 
     `confidence_from_probs` below reports a different quantity on a different scale and carries
     no such guarantee, so the two must not be compared against the same threshold.

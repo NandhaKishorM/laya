@@ -4,7 +4,7 @@ import math
 import os
 import threading
 from contextlib import nullcontext
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -386,6 +386,49 @@ def clamp_temperature(t, lo: float = TEMP_MIN, hi: float = TEMP_MAX) -> float:
     if t != t or t in (float("inf"), float("-inf")):    # NaN / inf
         return 1.0
     return min(hi, max(lo, t))
+
+
+def resolve_lang_temperatures(raw: Optional[Dict[str, Any]],
+                              base_temperature: Sequence[float]) -> Dict[str, Dict[str, Any]]:
+    """Parse the `lang_temperatures` option into `{language: {temperature, temperature_by_options}}`.
+
+    One implementation, because `Agent` and `ONNXAgent` both accept this option and both promise
+    the same confidences for it. Reading it with `cfg.get(...)` and `len(...)` before checking the
+    shape of either raised `AttributeError` and `TypeError` for exactly the inputs the
+    `ValueError` below is written for, after the whole checkpoint had loaded:
+
+        {"de": {"temperature": 2}}       -> TypeError: object of type 'int' has no len()
+        {"de": {"temperature": None}}    -> TypeError: object of type 'NoneType' has no len()
+        {"de": None}                     -> AttributeError: 'NoneType' object has no attribute 'get'
+
+    A `null` entry or a `null` temperature both mean "inherit the checkpoint's own", which is how
+    the `laya-ts` port reads the same option (`agent.ts:322-327`).
+    """
+    resolved: Dict[str, Dict[str, Any]] = {}
+    for lang, cfg in (raw or {}).items():
+        if not isinstance(lang, str):
+            raise ValueError("Language override keys must be strings, got %r" % (lang,))
+        norm = lang.split("-")[0].lower()
+        if cfg is None:
+            cfg = {}
+        if not isinstance(cfg, dict):
+            raise ValueError("Language override %r must be a mapping, got %s"
+                             % (lang, type(cfg).__name__))
+        t_raw = cfg.get("temperature")
+        if t_raw is None:
+            t_raw = base_temperature
+        if not isinstance(t_raw, (list, tuple)) or len(t_raw) != 3:
+            raise ValueError("Language override %r temperature must be a list of 3 floats, got %r"
+                             % (lang, t_raw))
+        tbo_raw = cfg.get("temperature_by_options") or {}
+        if not isinstance(tbo_raw, dict):
+            raise ValueError("Language override %r temperature_by_options must be a mapping of "
+                             "bucket -> float, got %s" % (lang, type(tbo_raw).__name__))
+        resolved[norm] = {
+            "temperature": [clamp_temperature(t) for t in t_raw],
+            "temperature_by_options": {k: clamp_temperature(v) for k, v in tbo_raw.items()},
+        }
+    return resolved
 
 
 def amp_dtype(name: Optional[str]) -> torch.dtype:

@@ -20,6 +20,7 @@ from laya.common import (
     confidence_from_probs,
     encode_text,
     render_options,
+    resolve_lang_temperatures,
     serialize_state,
     temp_bucket,
     TEMP_MIN,
@@ -174,19 +175,10 @@ class ONNXAgent(HookRegistry):
         self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
         self.temperature_by_options = {k: clamp_temperature(v)
                                        for k, v in self.temperature_by_options_raw.items()}
-        # Per-language temperature overrides, built exactly as the PyTorch Agent does so a caller
-        # can hand the same `lang_temperatures` to either backend and read the same confidence.
-        self.lang_temperatures = {}
-        for l, lcfg in (lang_temperatures or {}).items():
-            norm_l = l.split("-")[0].lower()
-            t_raw = lcfg.get("temperature", self.temperature_raw)
-            if len(t_raw) != 3:
-                raise ValueError("Language override %r temperature must be a list of 3 floats" % l)
-            tbo_raw = lcfg.get("temperature_by_options", {})
-            self.lang_temperatures[norm_l] = {
-                "temperature": [clamp_temperature(t) for t in t_raw],
-                "temperature_by_options": {k: clamp_temperature(v) for k, v in tbo_raw.items()},
-            }
+        # Per-language temperature overrides, through the same helper the PyTorch Agent uses, so a
+        # caller can hand the same `lang_temperatures` to either backend and read the same
+        # confidence -- including the same error for the same malformed input.
+        self.lang_temperatures = resolve_lang_temperatures(lang_temperatures, self.temperature_raw)
         entries = [(k, v, self.temperature_by_options[k]) for k, v in self.temperature_by_options_raw.items()]
         entries += [("temperature[%d]" % i, t, self.temperature[i]) for i, t in enumerate(self.temperature_raw)]
         rejected = []

@@ -81,6 +81,9 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
     check_param(label, fn, "hooks_timeout", None)
 
 check_param("Agent.predict_batch", Agent.predict_batch, "batch_size", None)
+check_param("Agent.predict_batch", Agent.predict_batch, "sort_by_length", False)
+check_param("Router.predict_batch", Router.predict_batch, "batch_size", None)
+check_param("Router.predict_batch", Router.predict_batch, "sort_by_length", False)
 
 # per-call token-budget overrides
 for label, fn in (("Agent.predict_batch", Agent.predict_batch),

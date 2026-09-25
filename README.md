@@ -349,9 +349,10 @@ Requests are validated before model loading. Different requests may use differen
 
 [Prediction hooks](#prediction-hooks) installed on the `Router` run once per request, as they do for `predict()`, so a redaction hook rewrites every state before the model sees it. Requests that share a checkpoint run all their start hooks before their shared forward pass; see [`docs/hooks/lifecycle.md`](docs/hooks/lifecycle.md#routerpredict_batch).
 
-You can also bound the Agent-level forward-pass batch size:
+You can also bound the Agent-level forward-pass batch size, and forward the length grouping knob
+to every group (see [Batch Mode](#batch-mode-score-many-states-in-one-forward-pass)):
 ```python
-results = router.predict_batch(requests, batch_size=8)
+results = router.predict_batch(requests, batch_size=8, sort_by_length=True)
 ```
 
 ### Why Route: The Evidence

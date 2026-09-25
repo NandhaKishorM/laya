@@ -1,7 +1,7 @@
 """LangChain and LangGraph integration for Laya System 1 decision engine.
 
-Provides fast (~33 ms), non-autoregressive routing, real-time guardrails, and
-state evaluation nodes for LangChain Expression Language (LCEL) and LangGraph.
+Provides fast (~33 ms), non-autoregressive routing, real-time guardrails, schema-driven
+decisions and state evaluation nodes for LangChain Expression Language (LCEL) and LangGraph.
 
 Supports both local in-process models (`Agent` / `Router`) and remote HTTP
 deployments (your own `laya-serve`) without requiring PyTorch on edge clients.
@@ -534,4 +534,107 @@ class LayaEvaluator(RunnableSerializable):
         return res.get("answers", {})
 
     def __call__(self, state: Any) -> Dict[str, Any]:
+        return self.invoke(state)
+
+
+def _validate_decision_schema(schema: Any) -> None:
+    """Plan ``schema`` into Laya questions and keep only the errors it raises."""
+    from ..structured import questions_from_json_schema, questions_from_pydantic
+
+    if hasattr(schema, "model_json_schema") or hasattr(schema, "schema"):
+        questions_from_pydantic(schema)
+    else:
+        questions_from_json_schema(schema)
+
+
+class _RemoteDecisionRunner:
+    """Present a remote ``laya-serve`` endpoint with the ``predict`` API ``laya.decide`` drives.
+
+    The HTTP endpoint answers a question set exactly as a local runner does, so wrapping it lets
+    remote mode share core's schema projection instead of reimplementing it here.
+    """
+
+    def __init__(self, base_url: str, api_key: Optional[str] = None):
+        self.base_url = base_url
+        self.api_key = api_key
+
+    def predict(self, state: Any, questions: Dict[str, Any], model: Optional[str] = None) -> Dict[str, Any]:
+        return _call_remote(self.base_url, state, questions, api_key=self.api_key, model=model)
+
+
+class LayaDecision(RunnableSerializable):
+    """Schema-driven decision node: a JSON schema or pydantic model in, schema-shaped values out.
+
+    This is the LCEL form of `laya.decide`, so a chain or graph node gets a typed decision -- an
+    enum choice, an integer level, a boolean -- from one forward pass, without writing the Laya
+    questions by hand and without a structured-output parser downstream.
+
+    The schema is planned at construction: a property Laya cannot answer from a fixed option set
+    (a free string, an array, a nested object) raises `SchemaError` here rather than on the first
+    request, after the chain has already paid for every earlier step.
+    """
+
+    decision_schema: Any
+    return_details: bool = False
+    state_key: Optional[Union[str, Callable[[Any], Any]]] = None
+    agent: Optional[Any] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    model: Optional[str] = None
+
+    class Config:
+        arbitrary_types_allowed = True
+        extra = "allow"
+
+    def __init__(
+        self,
+        decision_schema: Any,
+        return_details: bool = False,
+        state_key: Optional[Union[str, Callable[[Any], Any]]] = None,
+        agent: Optional[Any] = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        **kwargs: Any,
+    ):
+        _validate_decision_schema(decision_schema)
+        if _RUNNABLE_AVAILABLE:
+            super().__init__(
+                decision_schema=decision_schema,
+                return_details=return_details,
+                state_key=state_key,
+                agent=agent,
+                base_url=base_url,
+                api_key=api_key,
+                model=model,
+                **kwargs,
+            )
+        else:
+            self.decision_schema = decision_schema
+            self.return_details = return_details
+            self.state_key = state_key
+            self.agent = agent
+            self.base_url = base_url
+            self.api_key = api_key
+            self.model = model
+
+    def invoke(self, input: Any, config: Optional[RunnableConfig] = None) -> Any:
+        """Decide ``input`` against the schema and return its values, or a ``DecisionResult``."""
+        from ..structured import decide
+
+        text = _extract_text(input, self.state_key)
+        if self.base_url:
+            runner: Any = _RemoteDecisionRunner(self.base_url, self.api_key)
+        else:
+            runner = self.agent if self.agent is not None else _get_default_router()
+        kwargs = {"model": self.model} if self.model else {}
+        return decide(
+            runner,
+            text,
+            schema=self.decision_schema,
+            return_details=self.return_details,
+            **kwargs,
+        )
+
+    def __call__(self, state: Any) -> Any:
         return self.invoke(state)

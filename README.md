@@ -226,6 +226,43 @@ pins the device. See `python examples/server.py --help` for the rest.
 
 ---
 
+### Fresh-environment setup (recommended)
+
+```bash
+python --version          # 3.10 or newer (3.11-3.13 recommended; see platform notes below)
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -U pip
+pip install laya
+python -c "import laya; print(laya.__version__)"
+```
+
+### Install from PyPI vs from source
+
+```bash
+pip install laya            # latest release
+pip install -U laya         # upgrade to the latest release
+pip install git+https://github.com/NandhaKishorM/laya.git   # latest main
+```
+
+### Troubleshooting
+
+- `torch` errors on install: laya needs `torch>=2.0`. For CPU-only machines, install the CPU wheel first
+  (`pip install torch --index-url https://download.pytorch.org/whl/cpu`), then `pip install laya`.
+- `transformers` errors: laya needs `transformers>=4.48`. Upgrade with `pip install -U transformers`.
+- First run downloads checkpoints from Hugging Face (`convaiinnovations/laya`, ~421M per checkpoint).
+  Set `HF_HUB_CACHE` to move the cache, or `HF_TOKEN` if you hit rate limits.
+- Out of memory when serving: pass `max_loaded=1` (default, LRU-evicted) or `Router(preload=True)` when
+  you have RAM for all three checkpoints (~1.16B params total).
+
+### Platform notes
+
+- Linux / macOS / Windows on Python 3.11-3.13 is the tested combination.
+- Windows + Python 3.14 + torch 2.14 segfaults while building the model (upstream `transformers`
+  issue, see #123) — use Python 3.11-3.13 on Windows for now.
+
+---
+
 ## Quickstart: Route Mode (Recommended)
 
 To try the Python SDK in a CPU container, see the
@@ -233,6 +270,28 @@ To try the Python SDK in a CPU container, see the
 downloaded models between runs.
 
 Laya ships three checkpoints. The built-in **`Router`** is the recommended entry point: it evaluates any state in any language, automatically detects scripts and languages in sub-milliseconds, and dispatches to the optimal checkpoint in a single forward pass.
+
+### Minimal example (30 seconds)
+
+```python
+from laya import Router
+
+router = Router()  # checkpoints download on first use; pass preload=True to warm them up front
+result = router.predict(
+    {"body": "We were billed twice. Please refund the duplicate."},
+    {"billing": {"type": "noul", "instructions": "Does the user request a refund?"}},
+)
+print(result["answers"]["billing"]["noul"])  # e.g. {'type': 'noul', 'noul': 0.97, 'confidence': 0.97, ...}
+print(result["routing"]["model"])            # which checkpoint answered, e.g. 'english'
+```
+
+Input is any state (`str`, `dict`, or `list` — text, email, ticket, JSON document) plus a dict of typed
+questions (`choice` = pick one label, `score` = ordinal levels, `noul` = yes/no statement check).
+Output is `result["answers"][qid][qtype]` with the decision, per-option probabilities and a calibrated
+confidence, plus `result["routing"]` explaining which checkpoint was picked and why. For ready-made
+question sets see `laya.presets` (`triage_questions`, `moderation_questions`, `email_questions`, ...).
+
+Full walkthrough:
 
 ```python
 from laya import Router

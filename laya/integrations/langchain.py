@@ -242,7 +242,9 @@ class LayaRouter(RunnableSerializable):
         self.last_decision = res
         ans = res["answers"][self.question_id]
         choice = ans["choice"]
-        confidence = ans.get("confidence", 1.0)
+        confidence = ans.get("answer_confidence")
+        if confidence is None:
+            confidence = ans.get("confidence", 1.0)
 
         if self.confidence_threshold > 0.0 and confidence < self.confidence_threshold:
             if self.fallback is not None:

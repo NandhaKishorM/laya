@@ -107,12 +107,56 @@ for probs, k in (([0.1, 0.9], 2), ([0.25] * 4, 4), ([0.7, 0.2, 0.1], 3)):
     check_true("entropy/formula for k=%d" % k,
                close(confidence_from_probs(p, k), float(np.clip(1 - ent / math.log(k), 0.0, 1.0))))
 
+# --------------------------------------------------------------- min_confidence validation & abstention (#361)
+from laya.confidence import check_min_confidence, flag_low_confidence  # noqa: E402
+
+# check_min_confidence validates [0.0, 1.0] and rejects non-floats and bools
+for valid in (0.0, 0.5, 1.0, 0, 1, 0.85):
+    check("min_confidence/valid %.2f" % valid, check_min_confidence(valid), float(valid))
+
+for invalid in (True, False, -0.01, 1.01, -1.0, 2.0, float("nan"), float("inf"), float("-inf"), "0.5", None, [0.5]):
+    try:
+        check_min_confidence(invalid)
+        FAIL.append("min_confidence/should reject %r" % (invalid,))
+    except ValueError:
+        PASS.append("min_confidence/rejected %r" % (invalid,))
+
+# flag_low_confidence marks answers where answer_confidence < threshold
+sample_res = [{
+    "answers": {
+        "q_high": {"type": "choice", "choice": "a", "answer_confidence": 0.92, "confidence": 0.8},
+        "q_low": {"type": "score", "score": 1, "answer_confidence": 0.45, "confidence": 0.4},
+        "q_fallback": {"type": "choice", "choice": "b", "confidence": 0.3},
+        "q_exact": {"type": "choice", "choice": "c", "answer_confidence": 0.70},
+    }
+}]
+
+# min_confidence=0.0 is a no-op (default behavior untouched)
+flag_low_confidence(sample_res, 0.0)
+check_true("flag/0.0 is no-op", not any("low_confidence" in a for a in sample_res[0]["answers"].values()))
+
+# min_confidence=0.70: q_low (0.45) and q_fallback (0.3) flagged; q_high (0.92) and q_exact (0.70) NOT flagged
+flag_low_confidence(sample_res, 0.70)
+ans = sample_res[0]["answers"]
+check_true("flag/q_low flagged", ans["q_low"].get("low_confidence") is True)
+check_true("flag/q_fallback flagged", ans["q_fallback"].get("low_confidence") is True)
+check_true("flag/q_high unflagged", "low_confidence" not in ans["q_high"])
+check_true("flag/q_exact unflagged", "low_confidence" not in ans["q_exact"])
+check("flag/answer_confidence intact", ans["q_low"]["answer_confidence"], 0.45)
+check("flag/raw choice intact", ans["q_high"]["choice"], "a")
+
 # --------------------------------------------------------------- exported
 import laya  # noqa: E402
 
 check_true("export/answer_confidence is importable from laya", hasattr(laya, "answer_confidence"))
 check_true("export/answer_confidence is in __all__", "answer_confidence" in laya.__all__)
 check_true("export/answer_confidence is in dir()", "answer_confidence" in dir(laya))
+check_true("export/check_min_confidence is importable from laya", hasattr(laya, "check_min_confidence"))
+check_true("export/check_min_confidence is in __all__", "check_min_confidence" in laya.__all__)
+check_true("export/check_min_confidence is in dir()", "check_min_confidence" in dir(laya))
+check_true("export/flag_low_confidence is importable from laya", hasattr(laya, "flag_low_confidence"))
+check_true("export/flag_low_confidence is in __all__", "flag_low_confidence" in laya.__all__)
+check_true("export/flag_low_confidence is in dir()", "flag_low_confidence" in dir(laya))
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

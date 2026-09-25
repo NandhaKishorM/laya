@@ -26,17 +26,62 @@ def semantic_scorer(cases):
 class TransformTests(unittest.TestCase):
     def test_mapping_and_unchanged_inputs(self):
         original = deepcopy(CASE)
-        baseline, order = m.make_variants(CASE, random.Random(13))
+        baseline, order, rename = m.make_variants(CASE, random.Random(13))
         self.assertEqual(CASE, original)
         self.assertEqual(baseline["case"], CASE)
         self.assertNotEqual(order["canonical_indices"], [0, 1, 2])
-        for variant in (baseline, order):
+        self.assertEqual(rename["kind"], "label_rename")
+        for variant in (baseline, order, rename):
             criteria = variant["case"][1]["intent"]["criteria"]
             descriptions = list(CASE[1]["intent"]["criteria"].values())
             self.assertEqual(list(criteria.values()),
                              [descriptions[i] for i in variant["canonical_indices"]])
         order["case"][0]["utterance"] = "changed"
         self.assertEqual(CASE, original)
+
+    def test_rename_labels_preserves_order_and_descriptions(self):
+        case = m.MetamorphicCase(*CASE)
+        variant = m.rename_labels(case)
+        self.assertEqual(variant.kind, "label_rename")
+        self.assertEqual(variant.canonical_to_transformed,
+                         {"billing": "A", "technical": "B", "sales": "C"})
+        criteria = variant.case.questions["intent"]["criteria"]
+        self.assertEqual(list(criteria), ["A", "B", "C"])
+        self.assertEqual(list(criteria.values()),
+                         list(CASE[1]["intent"]["criteria"].values()))
+        self.assertEqual(variant.as_record()["canonical_indices"], [0, 1, 2])
+        again = m.rename_labels(case)
+        self.assertEqual(variant, again)
+
+    def test_rename_labels_fallback_beyond_alphabet(self):
+        case = deepcopy(CASE)
+        case[1]["intent"]["criteria"] = {str(i): f"description {i}" for i in range(30)}
+        variant = m.rename_labels(m.MetamorphicCase(*case))
+        self.assertEqual(variant.canonical_to_transformed["0"], "key_0")
+        self.assertEqual(variant.canonical_to_transformed["29"], "key_29")
+        self.assertEqual(len(set(variant.canonical_to_transformed.values())), 30)
+
+    def test_rename_labels_exposes_lexical_sensitivity(self):
+        # A scorer keyed on the label tokens (not the descriptions) is
+        # invariant under permutation but drifts under renaming.
+        def label_scorer(cases):
+            # Opaque labels pull the probability mass flat AND move the winner:
+            # baseline picks billing (0.7), the renamed input picks B (0.4),
+            # which canonicalizes back to technical.
+            weights = {"billing": 0.7, "technical": 0.2, "sales": 0.1,
+                       "A": 0.3, "B": 0.4, "C": 0.3}
+            return [[weights[v] for v in q["intent"]["criteria"]] for _, q in cases]
+        case = m.MetamorphicCase(*CASE, gold_index=0)
+        result = m.evaluate_variants(None, case,
+                                     [m.permute_options(case, seed=42), m.rename_labels(case)],
+                                     score=label_scorer)
+        self.assertEqual(result.variants[0]["probabilities"], [0.7, 0.2, 0.1])
+        self.assertEqual(result.variants[1]["probabilities"], [0.3, 0.4, 0.3])
+        report = m.compare_predictions(baseline=result.baseline, variants=result.variants)
+        self.assertEqual(report["option_order"]["semantic_agreement_rate"], 1)
+        self.assertEqual(report["option_order"]["max_probability_drift"], 0)
+        self.assertEqual(report["label_rename"]["semantic_agreement_rate"], 0)
+        self.assertGreater(report["label_rename"]["max_probability_drift"], 0.3)
 
     def test_identity_shuffle_fallback(self):
         with patch("random.Random.shuffle", return_value=None):
@@ -68,7 +113,7 @@ class TransformTests(unittest.TestCase):
             case = deepcopy(CASE)
             case[1]["intent"]["criteria"] = criteria
             variants = m.make_variants(case, random.Random(0))
-            self.assertEqual(len(variants), 2)
+            self.assertEqual(len(variants), 3)
 
     def test_invalid_cases(self):
         for criteria in ({}, {"a": "one"}, {1: "one", "b": "two"}, {" ": "one", "b": "two"}, {"": "one", "b": "two"}):
@@ -147,9 +192,13 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(outputs[0], outputs[2])
         self.assertEqual(json.loads(json.dumps(outputs[0], allow_nan=False)), outputs[0])
 
-    def test_position_bias_detected(self):
+    def test_position_and_label_bias_detected(self):
         report = m.evaluate([CASE], lambda cases: [[1, 0, 0] for _ in cases])["report"]
         self.assertEqual(report["option_order"]["semantic_agreement_rate"], 0)
+        # A pure position scorer is untouched by renaming: order is preserved,
+        # so any drift in the label_rename group can only come from labels.
+        self.assertEqual(report["label_rename"]["semantic_agreement_rate"], 1)
+        self.assertEqual(report["label_rename"]["max_probability_drift"], 0)
         self.assertEqual(report["quality"]["baseline"], {"n_labelled": 0})
 
     def test_ties_use_canonical_order(self):

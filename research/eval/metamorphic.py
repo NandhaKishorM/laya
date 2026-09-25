@@ -91,18 +91,38 @@ def permute_options(case: MetamorphicCase, seed: int = harness.SEED):
     return _transform(case, "option_order", order, case.option_keys)
 
 
+def opaque_labels(count: int, alphabet: str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ") -> list[str]:
+    """Deterministic neutral labels: A, B, ... Z, then key_26, key_27, ..."""
+    if count < 1:
+        raise ValueError("at least one label is required")
+    if len(set(alphabet)) < count:
+        return [f"key_{i}" for i in range(count)]
+    return list(alphabet[:count])
+
+
+def rename_labels(case: MetamorphicCase, alphabet: str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
+    """Replace model-facing labels with neutral opaque ones; semantics and order unchanged.
+
+    The option at canonical position i is renamed to opaque_labels[i], so the
+    presented order is identical and only the label tokens differ (issue #512).
+    """
+    labels = opaque_labels(len(case.option_keys), alphabet)
+    return _transform(case, "label_rename", list(range(len(case.option_keys))), labels)
+
+
 def _baseline(case):
     return _transform(case, "baseline", list(range(len(case.option_keys))), case.option_keys)
 
 
 def make_variants(case, rng: random.Random):
-    """Adapt the harness tuple format to baseline plus option permutation.
+    """Adapt the harness tuple format to baseline, option permutation, label rename.
 
-    Label renaming, paraphrases, and other metamorphic transforms are intentionally deferred.
+    Paraphrases and other metamorphic transforms are intentionally deferred.
     """
     canonical = MetamorphicCase(*case)
     return [v.as_record() for v in (
-        _baseline(canonical), permute_options(canonical, rng.getrandbits(64)))]
+        _baseline(canonical), permute_options(canonical, rng.getrandbits(64)),
+        rename_labels(canonical))]
 
 
 def canonicalize(probabilities, canonical_indices):
@@ -216,7 +236,7 @@ def _evaluate_generated(cases, generated_by_case, score, gold_indices, batch_siz
 
 
 def _report(records):
-    groups = {"option_order": []}
+    groups = {"option_order": [], "label_rename": []}
     for record in records:
         baseline = record["variants"][0]["probabilities"]
         for variant in record["variants"][1:]:
@@ -225,7 +245,7 @@ def _report(records):
     report = {kind: summarise_pairs(pairs) for kind, pairs in groups.items()}
     report["overall"] = summarise_pairs([p for pairs in groups.values() for p in pairs])
     report["quality"] = {}
-    for kind in ("baseline", "option_order"):
+    for kind in ("baseline", "option_order", "label_rename"):
         labelled = [v for r in records for v in r["variants"]
                     if v["kind"] == kind and v["correct"] is not None]
         quality = {"n_labelled": len(labelled)}
@@ -263,7 +283,7 @@ def evaluate_variants(agent, case: MetamorphicCase, variants, *, score=None,
     """
     generated = [_baseline(case).as_record()]
     for variant in variants:
-        if variant.kind not in ("option_order",):
+        if variant.kind not in ("option_order", "label_rename"):
             raise ValueError("unsupported transformation kind")
         if list(variant.canonical_to_transformed) != case.option_keys:
             raise ValueError("variant mapping does not match the canonical case")
@@ -314,7 +334,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                    "temperature": list(agent.temperature_raw if args.unclamped else agent.temperature),
                    "temperature_by_options": dict(agent.temperature_by_options_raw if args.unclamped
                                                   else agent.temperature_by_options),
-                   "permutations_per_case": 1, "js_log_base": "e"},
+                   "permutations_per_case": 1, "label_renames_per_case": 1, "js_log_base": "e"},
         "report": {}, "cases": [],
     }
     failed = False

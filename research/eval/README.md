@@ -323,7 +323,7 @@ checks, and an order-invariant model scores exactly 1/3.
 ## Metamorphic option-order robustness (experimental)
 
 `metamorphic.py` adds the initial scope of
-[#244](https://github.com/NandhaKishorM/laya/issues/244): **choice option order robustness**, without changing model/runtime behavior. Label renaming, neutral labels, paraphrases, structured-state permutations, `score` and `noul` perturbations are intentionally deferred. Run from the repository root after installing Laya and `datasets`:
+[#244](https://github.com/NandhaKishorM/laya/issues/244): **choice option order robustness**, and the label-renaming transformation from [#512](https://github.com/NandhaKishorM/laya/issues/512), without changing model/runtime behavior. Paraphrases, structured-state permutations, `score` and `noul` perturbations are intentionally deferred. Run from the repository root after installing Laya and `datasets`:
 
 ```bash
 python -m research.eval.metamorphic --model convaiinnovations/laya \
@@ -333,18 +333,23 @@ python -m research.eval.metamorphic --model convaiinnovations/laya \
 python -m unittest research.eval.test_metamorphic -v
 ```
 
-Each MASSIVE case uses the existing harness's sampler and produces two inputs:
+Each MASSIVE case uses the existing harness's sampler and produces three inputs:
 
 1. The unchanged baseline.
 2. One seeded shuffle of option order; if the shuffle is the identity, a one-slot
    rotation is used. This is a bounded diagnostic, not exhaustive permutation testing
    or a uniform draw over all nonidentity permutations.
+3. A deterministic label rename: the option at each position keeps its slot and
+   description, and its model-facing key becomes an opaque label (`A`, `B`, `C`, ...
+   `Z`, then `key_26`, `key_27`, ...). Order and semantics are unchanged, so any
+   drift in the `label_rename` group isolates lexical-label sensitivity (the failure
+   mode of #156) from the position sensitivity measured by `option_order`.
 
-Instructions and state are otherwise unchanged. Option key/value pairs are moved together during permutation. Every result is mapped back to the original semantic option order **before** predictions and metrics are computed. Exact ties choose the first canonical option. The RNG starts fresh per language; `--seed` controls both sampling and transformations. `--batch-size` bounds the number of forward-pass inputs and does not alter the generated variants. Model inference may still have small floating-point differences across devices and batch sizes.
+Instructions and state are otherwise unchanged. Option key/value pairs are moved together during permutation. Every result is mapped back to the original semantic option order **before** predictions and metrics are computed, and each variant records the explicit bidirectional mapping so the comparison is auditable. Exact ties choose the first canonical option. The RNG starts fresh per language; `--seed` controls both sampling and transformations. `--batch-size` bounds the number of forward-pass inputs and does not alter the generated variants. Model inference may still have small floating-point differences across devices and batch sizes.
 
 The JSON contains `config`, per-language `report`, and full `cases`. Each case saves its original input, canonical keys and optional gold index; each variant saves its presented keys, explicit `canonical_to_transformed` and `transformed_to_canonical` label mappings, slot-to-canonical indices, complete **canonical-order** probability vector, prediction, confidence, correctness (or `null`), and comparison to baseline. Probabilities are not rounded. The config records model/subfolder, temperature mode and values, truncation settings, dataset, seed and batch size. For reproducible checkpoint comparisons, use a pinned local snapshot and retain the environment versions alongside the report. `--unclamped` has the same meaning as in `laya_eval`. If any language fails, its error is saved and the command exits nonzero while retaining successful languages.
 
-Metrics are grouped under `option_order` and `overall`:
+Metrics are grouped under `option_order`, `label_rename` and `overall`:
 
 | Metric | Definition |
 |---|---|
@@ -366,18 +371,18 @@ agent.model.eval()
 result = evaluate(cases, model_scorer(agent), gold_indices=None, seed=13)
 ```
 
-The first version intentionally accepts only **one choice question per case**, with at least two options. Label renaming and other metamorphic transforms are intentionally deferred as proposed in the issue.
+The first version intentionally accepts only **one choice question per case**, with at least two options. Paraphrases and other metamorphic transforms are intentionally deferred as proposed in the issues.
 
 For an explicit single-case experiment, the same implementation exposes:
 
 ```python
 from research.eval.metamorphic import (
-    MetamorphicCase, permute_options,
+    MetamorphicCase, permute_options, rename_labels,
     evaluate_variants, compare_predictions,
 )
 
 case = MetamorphicCase(state, questions, gold_index=None)
-variants = [permute_options(case, seed=42)]
+variants = [permute_options(case, seed=42), rename_labels(case)]
 agent.model.eval()
 results = evaluate_variants(agent, case, variants)
 report = compare_predictions(baseline=results.baseline, variants=results.variants)

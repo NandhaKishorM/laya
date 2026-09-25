@@ -150,8 +150,8 @@ python -m http.server 8000   # run at the repo root
 
 The page loads `laya-ts/dist` (run `npm run build` inside `laya-ts/`
 first), pulls `onnxruntime-web` from a pinned CDN import map, and
-fetches the model from the URL in the box (default `../../model-ml`,
-i.e. the exported `./model-ml`). First load transfers ~1.3GB and is
+fetches the model from the URL in the box (default `../../../model-ml`,
+i.e. the exported `./model-ml` at the repo root). First load transfers ~1.3GB and is
 cached in CacheStorage afterwards; the encoder tries WebGPU and falls
 back to WASM automatically. Chrome/Edge for WebGPU, any modern
 browser for WASM.

@@ -34,14 +34,23 @@ const CRIT_SAMPLE = {
 
 function renderQuestions() {
   const list = $("qlist");
-  list.innerHTML = "";
+  list.replaceChildren();
   const ids = Object.keys(questions);
-  if (ids.length === 0) list.innerHTML = `<p class="hint">No questions — add one below.</p>`;
+  if (ids.length === 0) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "No questions — add one below.";
+    list.append(p);
+  }
   for (const qid of ids) {
     const q = questions[qid];
     const item = document.createElement("div");
     item.className = "qitem";
-    item.innerHTML = `<code>${qid}</code><span>${q.type}</span>`;
+    const code = document.createElement("code");
+    code.textContent = qid;
+    const type = document.createElement("span");
+    type.textContent = q.type;
+    item.append(code, type);
     const del = document.createElement("button");
     del.textContent = "remove";
     del.onclick = () => {
@@ -165,7 +174,10 @@ function markReady(seconds, gpu) {
   cardQ.classList.add("active");
   renderQuestions();
   syncRunEnabled();
-  outEl.innerHTML = `<p class="hint">Type a message and hit Triage.</p>`;
+  const hint = document.createElement("p");
+  hint.className = "hint";
+  hint.textContent = "Type a message and hit Triage.";
+  outEl.replaceChildren(hint);
   $("text").focus();
 }
 
@@ -206,32 +218,54 @@ async function triage() {
   }
   runBtn.disabled = true;
   runMeta.textContent = "Running…";
-  outEl.innerHTML = "";
+  outEl.replaceChildren();
   const t0 = performance.now();
   try {
     const r = await agent.predict({ body: text }, questions);
     const ms = (performance.now() - t0).toFixed(0);
     runMeta.textContent = `${ms}ms · ${r.usage.input_tokens} input tokens`;
     for (const [qid, a] of Object.entries(r.answers)) {
+      // Built with DOM APIs throughout: qids, labels, and scores all derive
+      // from user input and must never pass through innerHTML.
       const row = document.createElement("div");
       row.className = "answer";
-      const head = a.type === "choice" ? `${qid}: <b>${a.choice}</b>`
-        : a.type === "score" ? `${qid}: <b>${a.score.toFixed(2)}</b>`
-        : `${qid}: <b>${a.noul.toFixed(2)}</b>`;
-      const conf = a.confidence ?? 0;
-      row.innerHTML = `${head} <span class="probs">(conf ${conf.toFixed(2)})</span>
-        <div class="conf"><div style="width:${Math.round(conf * 100)}%"></div></div>`;
+      const value = a.type === "choice" ? String(a.choice)
+        : a.type === "score" ? a.score.toFixed(2)
+        : a.noul.toFixed(2);
+      const headline = document.createElement("div");
+      headline.append(document.createTextNode(`${qid}: `));
+      const bold = document.createElement("b");
+      bold.textContent = value;
+      headline.append(bold);
+      const conf = a.answer_confidence ?? a.confidence ?? 0;
+      const confSpan = document.createElement("span");
+      confSpan.className = "probs";
+      confSpan.textContent = ` (conf ${conf.toFixed(2)})`;
+      headline.append(confSpan);
+      row.append(headline);
+      const barOuter = document.createElement("div");
+      barOuter.className = "conf";
+      const barInner = document.createElement("div");
+      barInner.style.width = `${Math.round(Math.min(1, Math.max(0, conf)) * 100)}%`;
+      barOuter.append(barInner);
+      row.append(barOuter);
       if (a.probabilities) {
-        row.innerHTML += `<div class="probs">${Object.entries(a.probabilities)
+        const probs = document.createElement("div");
+        probs.className = "probs";
+        probs.textContent = Object.entries(a.probabilities)
           .sort((x, y) => y[1] - x[1])
           .slice(0, 4)
           .map(([k, v]) => `${k} ${Number(v).toFixed(2)}`)
-          .join(" · ")}</div>`;
+          .join(" · ");
+        row.append(probs);
       }
-      outEl.appendChild(row);
+      outEl.append(row);
     }
   } catch (e) {
-    outEl.innerHTML = `<p class="hint">Failed: ${e.message}</p>`;
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = `Failed: ${e.message}`;
+    outEl.replaceChildren(p);
     runMeta.textContent = "";
   } finally {
     runBtn.disabled = false;

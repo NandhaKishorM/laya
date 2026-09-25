@@ -34,7 +34,7 @@ dependencies = [
 
 [tool.setuptools]
 # assets/, research/ and notebooks/ sit in the root, so auto-discovery bails out.
-packages = ["laya", "laya.mcp", "laya.integrations"]
+packages = ["laya", "laya.backends", "laya.mcp", "laya.integrations"]
 
 [project.optional-dependencies]
 # `pip install laya[serve]` adds the HTTP server (laya.serve / the laya-serve CLI).

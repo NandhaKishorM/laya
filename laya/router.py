@@ -688,16 +688,18 @@ class Router(HookRegistry):
         question. The aggregation rules are `laya.agent.Agent.predict_long`'s: `noul` takes the
         strongest window, `choice`/`score` the most confident one.
 
+        Per-call hooks (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`,
+        `hooks_timeout`) wrap the whole route+scan exactly as they wrap `predict`: the scan runs
+        last, so a start hook that answers (`ctx.skip(...)`) or rewrites the state wins.
+        `max_len` / `head_max_len` are not accepted here -- a window is sized by `window` or the
+        checkpoint budget, and overriding the single-window truncation is what `predict_long` is for.
+
         Args:
             window: state tokens per window. Defaults to the routed checkpoint's budget
                     (`max_len - head_max_len - 8`); a smaller window isolates a localized span.
             stride: token step between windows; defaults to `window // 2` (50% overlap).
             aggregate: "auto" (the per-type rules above) is the only mode.
             batch_size: cap on windows per forward pass, to bound memory on very long states.
-            hooks, on_predict_start, on_predict_end, hooks_raise, hooks_timeout: wrap the whole
-                    route+scan exactly as they wrap `predict`. `max_len` / `head_max_len` are not
-                    accepted: a window is sized by `window` or the checkpoint budget, and
-                    overriding the single-window truncation is what `predict_long` is for.
 
         Returns:
             The usual `predict` payload, with `usage["windows"]` counting the windows scored.

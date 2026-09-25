@@ -196,6 +196,29 @@ def laya_route(state: Any, questions: Any, *, router: Any = None) -> dict:
     }
 
 
+# Where the reusable shortlist embedder lives. Kept private and on the agent, so the
+# cache's lifetime is the answering checkpoint's rather than this process's.
+_EMBED_CACHE_ATTR = "_laya_mcp_shortlist_embed_fn"
+
+
+def _detected_language(detection: Any) -> str | None:
+    """The language a route decision detected, or None when it reported none.
+
+    Accepts either shape ``Router.route`` returns -- a ``RouteDecision`` (a dict)
+    or a plain object -- and tolerates a decision that carries no detection at all,
+    an explicit-model decision being the normal case.
+    """
+    if detection is None:
+        return None
+    if isinstance(detection, dict):
+        lang = detection.get("language")
+    else:
+        lang = getattr(detection, "language", None)
+    if isinstance(lang, str) and lang:
+        return lang
+    return None
+
+
 def _resident_or_load(router: Any, name: str) -> Any:
     """The resident agent for checkpoint ``name``, loading on demand when possible.
 
@@ -211,6 +234,33 @@ def _resident_or_load(router: Any, name: str) -> Any:
     if load is None:
         raise ToolError("models_not_ready", f"checkpoint {name!r} is not loaded")
     return load(name)
+
+
+def _embed_fn_with_cache(agent: Any, embed_fn_from_agent: Any, cached_embed_fn: Any) -> Any:
+    """An embedder for ``agent`` whose rows survive between shortlist calls.
+
+    ``predict_shortlist`` embeds the query plus every option text on each call, so a
+    fixed option list is re-encoded on every request even though it never changes.
+    The ``cached_embed_fn`` wrapper from #405 fixes that, but only if the same
+    wrapper is reused across calls.
+
+    The wrapper is stored on the answering agent itself, so its lifetime is exactly
+    that checkpoint's: another checkpoint, or the same checkpoint reloaded into a
+    fresh ``Agent``, starts with an empty cache and can never reuse another
+    checkpoint's rows. No module-level state is involved, and the cache stays bounded
+    by ``cached_embed_fn``'s own LRU limit.
+    """
+    cached = getattr(agent, _EMBED_CACHE_ATTR, None)
+    if cached is not None:
+        return cached
+    cached = cached_embed_fn(embed_fn_from_agent(agent))
+    try:
+        setattr(agent, _EMBED_CACHE_ATTR, cached)
+    except (AttributeError, TypeError):
+        # An agent that will not take attributes simply gets no reuse between calls,
+        # which is the behaviour before this cache existed.
+        pass
+    return cached
 
 
 def laya_shortlist(
@@ -236,7 +286,12 @@ def laya_shortlist(
     pass then runs with an explicit ``model=``, so routing happens once).
     """
     # Lazy: keeps numpy/shortlist out of module import for laya.mcp.tools.
-    from laya.shortlist import DEFAULT_SHORTLIST_K, embed_fn_from_agent, predict_shortlist
+    from laya.shortlist import (
+        DEFAULT_SHORTLIST_K,
+        cached_embed_fn,
+        embed_fn_from_agent,
+        predict_shortlist,
+    )
 
     state_d = validate_state(state)
     questions_d = validate_questions(questions)
@@ -255,6 +310,7 @@ def laya_shortlist(
         decision = router.route(state_d, questions_d)
         if isinstance(decision, dict):
             routed = decision.get("model")
+            detection = decision.get("detection")
             routing = {
                 "model": routed,
                 "repo": decision.get("repo"),
@@ -262,6 +318,7 @@ def laya_shortlist(
             }
         else:
             routed = getattr(decision, "model", None)
+            detection = getattr(decision, "detection", None)
             routing = {
                 "model": routed,
                 "repo": getattr(decision, "repo", None),
@@ -271,6 +328,14 @@ def laya_shortlist(
             raise ToolError("internal_error", "router.route returned no model")
         predict_target = router
         predict_kwargs: dict[str, Any] = {"model": routed}
+        # Answering with an explicit model= makes predict re-route, and an
+        # explicit-model decision carries no detection, so the language detected
+        # here would otherwise be lost and the checkpoint's per-language
+        # temperatures would not apply the way they do in laya_predict. Forward
+        # it when the route actually reported one.
+        lang = _detected_language(detection)
+        if lang is not None:
+            predict_kwargs["lang"] = lang
         embed_agent = _resident_or_load(router, routed)
     elif agent is not None:
         routing = {"model": model_name, "repo": None, "reason": "explicit model"}
@@ -287,7 +352,7 @@ def laya_shortlist(
 
     if embed_fn is None:
         try:
-            embed_fn = embed_fn_from_agent(embed_agent)
+            embed_fn = _embed_fn_with_cache(embed_agent, embed_fn_from_agent, cached_embed_fn)
         except (AttributeError, TypeError, ValueError) as exc:
             raise ToolError(
                 "models_not_ready",

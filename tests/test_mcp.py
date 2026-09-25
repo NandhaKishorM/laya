@@ -505,6 +505,156 @@ def test_shortlist():
        and out["routing"]["reason"] == "explicit model", repr(out["routing"]))
 
 
+def test_shortlist_lang_parity():
+    """Auto mode must forward the routed language, so per-language temperatures
+    behave as they do in laya_predict. Passing an explicit model= makes
+    Router.predict re-route with that model, and an explicit-model decision
+    carries no detection -- so the language is lost unless shortlist passes it on.
+    """
+    class DetectingRouter(ShortlistRouter):
+        def route(self, state, questions):
+            return {
+                "model": "multilingual",
+                "repo": "fake/repo",
+                "reason": "Latin script but language looks like 'de'",
+                "detection": {"language": "de", "script": "Latin"},
+            }
+
+    router = DetectingRouter({"multilingual": ShortlistAgent()}, routed="multilingual")
+    out = laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, router=router, embed_fn=_tie_embed)
+    ok("shortlist_lang/auto_forwards_lang", (router.seen_kwargs or {}).get("lang") == "de",
+       repr(router.seen_kwargs))
+    ok("shortlist_lang/auto_still_explicit_model",
+       (router.seen_kwargs or {}).get("model") == "multilingual", repr(router.seen_kwargs))
+    ok("shortlist_lang/auto_routes_once",
+       out["routing"]["model"] == "multilingual", repr(out["routing"]))
+
+    # A decision without a usable language must not invent one.
+    plain = ShortlistRouter({"english": ShortlistAgent()}, routed="english")
+    laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, router=plain, embed_fn=_tie_embed)
+    ok("shortlist_lang/no_detection_adds_nothing", plain.seen_kwargs == {"model": "english"},
+       repr(plain.seen_kwargs))
+
+    # Explicit-model mode is unchanged: no routing, so no language to forward.
+    agent = ShortlistDirectAgent()
+    laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, model="multilingual", agent=agent,
+                   embed_fn=_tie_embed)
+    ok("shortlist_lang/explicit_model_untouched", agent.seen is not None)
+
+
+def test_shortlist_embed_cache():
+    """A fixed option list must not be re-embedded on every call.
+
+    Uses the answering checkpoint's own encoder (no injected embed_fn) through a
+    weight-free fake tokenizer/encoder, so the number of tokenizer batches is a
+    direct count of embedding work.
+    """
+    import torch
+
+    class _Out:
+        def __init__(self, hidden):
+            self.last_hidden_state = hidden
+
+    class CountingEncoder:
+        def __init__(self):
+            self.calls = 0
+
+        def __call__(self, input_ids=None, attention_mask=None):
+            self.calls += 1
+            ids = input_ids.float()
+            return _Out(torch.stack([ids, torch.ones_like(ids)], dim=-1))
+
+    class CacheTok:
+        def __init__(self):
+            self.batches = []
+
+        def __call__(self, texts, padding=True, truncation=True, max_length=256, return_tensors="pt"):
+            self.batches.append(list(texts))
+            rows = [[(ord(ch) % 5) + 1 for ch in t][:max_length] or [1] for t in texts]
+            width = max(len(r) for r in rows)
+            ids, mask = [], []
+            for row in rows:
+                pad = width - len(row)
+                ids.append(row + [0] * pad)
+                mask.append([1] * len(row) + [0] * pad)
+            return {"input_ids": torch.tensor(ids, dtype=torch.long),
+                    "attention_mask": torch.tensor(mask, dtype=torch.long)}
+
+    def make_agent():
+        enc = CountingEncoder()
+        tok = CacheTok()
+        agent = ShortlistAgent()
+        agent.tok = tok
+        agent.encoder = enc
+        agent.model = type("M", (), {"encoder": enc})()
+        agent.device = torch.device("cpu")
+        return agent
+
+    # Same checkpoint, same option list: the second call re-embeds only the query.
+    # Count embedded texts, not tokenizer batches: the whole set fits in one batch
+    # either way, so batch count cannot tell the two cases apart.
+    agent = make_agent()
+    router = ShortlistRouter({"english": agent})
+
+    def texts_since(mark):
+        return sum(len(b) for b in agent.tok.batches[mark:])
+
+    laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, model="english", router=router)
+    first_texts = texts_since(0)
+    ok("shortlist_cache/first_call_embeds_query_and_options", first_texts == 6,
+       "texts=%d batches=%r" % (first_texts, agent.tok.batches))
+
+    # An identical repeat call embeds nothing at all: the query text is the same
+    # too, and cached_embed_fn matches on exact strings.
+    mark = len(agent.tok.batches)
+    laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, model="english", router=router)
+    ok("shortlist_cache/identical_repeat_embeds_nothing", texts_since(mark) == 0,
+       "texts=%d batches=%r" % (texts_since(mark), agent.tok.batches[mark:]))
+
+    # A different state is a new query, so a repeat with that state embeds the
+    # query alone and reuses the five cached option rows.
+    mark = len(agent.tok.batches)
+    laya_shortlist({"text": "a completely different customer message"},
+                   SHORTLIST_QUESTIONS, k=2, model="english", router=router)
+    ok("shortlist_cache/new_state_still_embedded", texts_since(mark) == 1,
+       "texts=%d batches=%r" % (texts_since(mark), agent.tok.batches[mark:]))
+
+    # A different answering checkpoint must not share another one's embeddings.
+    other = make_agent()
+    other_router = ShortlistRouter({"multilingual": other})
+    laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, model="multilingual", router=other_router)
+    ok("shortlist_cache/other_checkpoint_embeds_its_own",
+       sum(len(b) for b in other.tok.batches) == 6,
+       "texts=%d" % sum(len(b) for b in other.tok.batches))
+    ok("shortlist_cache/other_checkpoint_encoder_used", other.encoder.calls == 1,
+       "calls=%d" % other.encoder.calls)
+
+    # Replacing the agent (a reload) starts a fresh cache rather than reusing rows.
+    reloaded = make_agent()
+    laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, model="english",
+                   router=ShortlistRouter({"english": reloaded}))
+    ok("shortlist_cache/reloaded_agent_re_embeds",
+       sum(len(b) for b in reloaded.tok.batches) == 6,
+       "texts=%d" % sum(len(b) for b in reloaded.tok.batches))
+    ok("shortlist_cache/other_checkpoint_still_cached",
+       other.encoder.calls == 1, "calls=%d" % other.encoder.calls)
+
+    # An injected embed_fn stays the caller's own, uncached.
+    calls = []
+
+    def counting_embed(texts):
+        calls.append(list(texts))
+        return [[0.0, 0.0] for _ in texts]
+
+    inj_router = ShortlistRouter({"english": make_agent()})
+    laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, model="english", router=inj_router,
+                   embed_fn=counting_embed)
+    laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, model="english", router=inj_router,
+                   embed_fn=counting_embed)
+    ok("shortlist_cache/injected_embed_not_wrapped", len(calls) == 2,
+       "calls=%d" % len(calls))
+
+
 def test_timeout_removed():
     # The per-call timeout was removed: a ThreadPoolExecutor shutdown waits for
     # the work anyway, and MCP clients apply their own request timeout. The tool
@@ -563,6 +713,8 @@ test_schema()
 test_shape()
 test_question_forwarding()
 test_shortlist()
+test_shortlist_lang_parity()
+test_shortlist_embed_cache()
 test_timeout_removed()
 test_models_from_env()
 test_server_registration()

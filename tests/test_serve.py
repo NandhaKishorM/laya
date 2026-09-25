@@ -529,3 +529,170 @@ def test_admission_slot_is_released_after_inference(monkeypatch):
     client = TestClient(create_app(router=FakeRouter()))
     assert client.post("/v1/systemone", json=REQ).status_code == 200
     assert client.post("/v1/systemone", json=REQ).status_code == 200
+
+
+BATCH_REQ = {
+    "states": ["first state", "second state"],
+    "questions": REQ["questions"],
+}
+
+
+def test_batch_happy_path(monkeypatch):
+    client, fake = _client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json=BATCH_REQ)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert "results" in data
+    assert len(data["results"]) == 2
+    assert "total_usage" in data
+    assert data["total_usage"]["input_tokens"] == sum(
+        res["usage"]["input_tokens"] for res in data["results"]
+    )
+    assert len(fake.calls) == 2
+    assert "Server-Timing" in r.headers
+    assert "X-Inference-Time-Ms" in r.headers
+
+
+def test_batch_missing_state_in_list_returns_400(monkeypatch):
+    """A None state inside states list must be rejected with 400 'state' is required."""
+    client, _ = _client(monkeypatch)
+    bad_req = {"states": [None, "hello"], "questions": REQ["questions"]}
+    r = client.post("/v1/systemone/batch", json=bad_req)
+    assert r.status_code == 400
+    assert "'state' is required" in r.json()["detail"]
+
+
+def test_batch_too_many_options_returns_413(monkeypatch):
+    """Questions with more than MAX_CHOICE_OPTIONS must be rejected with 413."""
+    client, _ = _client(monkeypatch)
+    bad_questions = {
+        "dept": {
+            "type": "choice",
+            "instructions": "which?",
+            "criteria": {f"opt_{i}": f"desc_{i}" for i in range(101)},
+        }
+    }
+    r = client.post("/v1/systemone/batch", json={"states": ["state"], "questions": bad_questions})
+    assert r.status_code == 413
+    assert "too many choice options" in r.json()["detail"]
+
+
+def test_batch_empty_states_returns_400(monkeypatch):
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json={"states": [], "questions": REQ["questions"]})
+    assert r.status_code == 400
+    assert "states" in r.json()["detail"]
+
+
+def test_batch_missing_states_returns_400(monkeypatch):
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json={"questions": REQ["questions"]})
+    assert r.status_code == 400
+
+
+def test_batch_missing_questions_returns_400(monkeypatch):
+    client, _ = _client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json={"states": ["state 1"]})
+    assert r.status_code == 400
+
+
+def test_batch_too_many_states_returns_413(monkeypatch):
+    client, _ = _client(monkeypatch)
+    from laya.serve import MAX_BATCH_STATES
+    oversized = {"states": ["state"] * (MAX_BATCH_STATES + 1), "questions": REQ["questions"]}
+    r = client.post("/v1/systemone/batch", json=oversized)
+    assert r.status_code == 413
+    assert "too many states" in r.json()["detail"]
+
+
+def test_batch_individual_oversized_state_returns_413(monkeypatch):
+    client, _ = _client(monkeypatch)
+    from laya.serve import MAX_STATE_CHARS
+    bad_req = {
+        "states": ["ok", "X" * (MAX_STATE_CHARS + 10)],
+        "questions": REQ["questions"],
+    }
+    r = client.post("/v1/systemone/batch", json=bad_req)
+    assert r.status_code == 413
+    assert "state too large" in r.json()["detail"]
+
+
+def test_batch_auth_required_when_key_set(monkeypatch):
+    client, _ = _client(monkeypatch, api_key="secret123")
+    r = client.post("/v1/systemone/batch", json=BATCH_REQ)
+    assert r.status_code == 401
+    ok = client.post(
+        "/v1/systemone/batch",
+        json=BATCH_REQ,
+        headers={"Authorization": "Bearer secret123"},
+    )
+    assert ok.status_code == 200
+
+
+def test_batch_admission_bound_refuses_with_503(monkeypatch):
+    """Batch endpoint must respect the admission bound and return 503 when busy."""
+    import asyncio
+    import httpx
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = GatedRouter()
+    app = create_app(router=fake)
+    seen = {}
+
+    async def drive():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+            first = asyncio.ensure_future(client.post("/v1/systemone", json=REQ))
+            for _ in range(200):
+                if fake.entered.is_set():
+                    break
+                await asyncio.sleep(0.05)
+            assert fake.entered.is_set(), "first request never reached inference"
+            await asyncio.sleep(0.2)
+            seen["batch_second"] = (await client.post("/v1/systemone/batch", json=BATCH_REQ)).status_code
+            fake.release.set()
+            seen["first"] = (await first).status_code
+
+    asyncio.run(drive())
+
+    assert seen["batch_second"] == 503, seen
+    assert seen["first"] == 200, seen
+
+
+class BatchCapableFakeRouter(FakeRouter):
+    """FakeRouter that implements predict_batch."""
+
+    def __init__(self):
+        super().__init__()
+        self.batch_calls = []
+
+    def predict_batch(self, requests, batch_size=None):
+        self.batch_calls.append(requests)
+        return [
+            {
+                "model": "laya-rl-agent",
+                "answers": {
+                    "dept": {
+                        "type": "choice",
+                        "choice": "billing",
+                        "probabilities": {"billing": 0.94, "tech": 0.06},
+                        "confidence": 0.94,
+                    }
+                },
+                "usage": {"input_tokens": 42, "output_tokens": 0},
+                "routing": {"model": "english", "reason": "English Latin text"},
+            }
+            for _ in requests
+        ]
+
+
+def test_batch_uses_predict_batch_when_available(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = BatchCapableFakeRouter()
+    client = TestClient(create_app(router=fake))
+    r = client.post("/v1/systemone/batch", json=BATCH_REQ)
+    assert r.status_code == 200, r.text
+    assert len(fake.batch_calls) == 1
+    assert len(fake.batch_calls[0]) == 2
+    assert len(fake.calls) == 0  # Confirms no sequential predict() fallback calls were made

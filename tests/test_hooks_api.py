@@ -158,6 +158,31 @@ for label, cls in (("Agent", Agent), ("Router", Router), ("ONNXAgent", ONNXAgent
         check_true("%s/%s exists" % (label, method), callable(getattr(cls, method, None)))
 
 
+# The LangChain runnables have to carry the per-call hook arguments too, or a chain cannot
+# install the cache/guard patterns from docs/hooks/patterns.md on a single node. They default to
+# None (meaning "inherit the runner"), which is what keeps an unset node byte-identical to today.
+# `hooks_concurrent` is deliberately absent: like the core predict surfaces, it is not per-call.
+from laya.integrations.langchain import (  # noqa: E402
+    LayaEvaluator,
+    LayaGuardrail,
+    LayaRouter,
+    LayaTriage,
+)
+
+PER_CALL_HOOK_PARAMS = ("hooks", "on_predict_start", "on_predict_end", "hooks_raise",
+                        "hooks_timeout")
+
+for label, cls in (("LayaRouter", LayaRouter), ("LayaGuardrail", LayaGuardrail),
+                   ("LayaTriage", LayaTriage), ("LayaEvaluator", LayaEvaluator)):
+    for param in PER_CALL_HOOK_PARAMS:
+        check_param("%s.__init__" % label, cls.__init__, param, None)
+        declared = getattr(cls, "model_fields", None)
+        if declared is not None:
+            check_true("%s/%s declared field" % (label, param), param in declared)
+    check_true("%s has no per-call hooks_concurrent" % label,
+               "hooks_concurrent" not in inspect.signature(cls.__init__).parameters)
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL", f)

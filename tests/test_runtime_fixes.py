@@ -146,9 +146,11 @@ calls = {"n": 0}
 
 
 class Flaky:
+    """Fail the autocast attempt of the first three requests; the fp32 retry succeeds."""
+
     def __call__(self, *args):
         calls["n"] += 1
-        if calls["n"] == 1:
+        if calls["n"] in (1, 3, 5):
             raise RuntimeError("autocast not supported on this build")
         return torch.zeros((1, 2)), torch.zeros((1, 2))
 
@@ -162,8 +164,36 @@ batch = {
 }
 flaky = _bare_agent(Flaky(), dtype=torch.bfloat16, amp=True)
 flaky._infer(batch)
-check("infer/falls back and disables amp", flaky.amp_enabled, False)
+check("infer/one miss keeps amp", flaky.amp_enabled, True)
+check("infer/one miss keeps dtype", flaky.dtype, torch.bfloat16)
 check("infer/retried once", calls["n"], 2)
+flaky._infer(batch)
+check("infer/two misses keep amp", flaky.amp_enabled, True)
+flaky._infer(batch)
+check("infer/third miss disables amp", flaky.amp_enabled, False)
+check("infer/third miss drops dtype", flaky.dtype, torch.float32)
+check("infer/three misses retried", calls["n"], 6)
+flaky._infer(batch)
+check("infer/later request is one forward", calls["n"], 7)
+
+
+class OneMiss:
+    def __init__(self):
+        self.n = 0
+
+    def __call__(self, *args):
+        self.n += 1
+        if self.n == 1:
+            raise RuntimeError("autocast not supported on this build")
+        return torch.zeros((1, 2)), torch.zeros((1, 2))
+
+
+streak = _bare_agent(OneMiss(), dtype=torch.bfloat16, amp=True)
+streak._infer(batch)
+check("infer/streak is one after a miss", streak._amp_failures, 1)
+streak._infer(batch)
+check("infer/a clean forward clears the streak", streak._amp_failures, 0)
+check("infer/a clean forward keeps amp", streak.amp_enabled, True)
 
 
 class Boom:

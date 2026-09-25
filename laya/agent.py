@@ -193,6 +193,9 @@ def _amp_context(device, dtype, enabled: bool):
 
 
 MPS_AMP_MIN_ROWS_DEFAULT = 5
+# An unsupported autocast op fails the same way on every request. Retry that request in
+# full precision, and only turn AMP off after this many failures in a row (#351).
+_AMP_FAIL_LIMIT = 3
 
 
 def _mps_amp_min_rows() -> int:
@@ -230,6 +233,7 @@ class Agent(HookRegistry):
     # without it (for example a hand-constructed runtime in tests).
     amp_enabled = False
     mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
+    _amp_failures = 0
     # The stock forward is also used by lightweight runtimes built with __new__ in tests.
     _fast = None
 
@@ -700,10 +704,12 @@ class Agent(HookRegistry):
                 % (self._fast.max_len, b["input_ids"].shape[1], self._fast.max_len)
             )
 
-        def run():
-            # Recomputed inside run() so a fallback that disables amp (or moves to CPU) takes
-            # effect on the retry. A disabled gate never enters torch.autocast at all.
-            enabled = self._amp_enabled_for(b["input_ids"].shape[0])
+        def run(enabled=None):
+            # Recomputed inside run() so a fallback that moves to CPU takes effect on the
+            # retry. A disabled gate never enters torch.autocast at all. `enabled=False`
+            # retries one request in full precision without reading the agent's AMP flag.
+            if enabled is None:
+                enabled = self._amp_enabled_for(b["input_ids"].shape[0])
             with _amp_context(self.device, self.dtype, enabled):
                 return self.model(
                     b["input_ids"].to(self.device),
@@ -714,7 +720,7 @@ class Agent(HookRegistry):
                 )
 
         try:
-            return run()
+            out = run()
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
             low = str(e).lower()
             # An OOM is `torch.cuda.OutOfMemoryError` or says so in its message. The bare
@@ -744,12 +750,23 @@ class Agent(HookRegistry):
                     finally:
                         self._restore_runtime(held_device, held_dtype, held_amp, had_fast)
             if use_amp and self.device.type in ("mps", "cpu"):
-                # Not every MPS/CPU build implements autocast for every op. Drop to full
-                # precision once rather than failing the request.
-                self.amp_enabled = False
-                self.dtype = torch.float32
-                return run()
+                # Not every MPS/CPU build implements autocast for every op. Retry this
+                # request in full precision. One miss must not turn AMP off; a build that
+                # lacks the op fails the same way every time, so after a short streak the
+                # process drops to full precision instead of paying for two forwards (#351).
+                try:
+                    return run(enabled=False)
+                finally:
+                    self._amp_failures += 1
+                    if self._amp_failures >= _AMP_FAIL_LIMIT:
+                        print("Warning: autocast failed %d times in a row. Disabling mixed precision."
+                              % self._amp_failures)
+                        self.amp_enabled = False
+                        self.dtype = torch.float32
             raise
+        else:
+            self._amp_failures = 0
+            return out
 
     def _forward(self, b: Dict):
         """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""

@@ -4,9 +4,11 @@ Laya's ``predict()`` output is already schema-compatible with the Jev decision
 API -- ``choice`` / ``score`` / ``noul`` answers and a ``{input_tokens,
 output_tokens}`` usage block -- so a client written against Jev (for example the
 `hs-jev` Haskell client) can point its ``baseUrl`` at this server and keep
-working unchanged. All this module adds is the HTTP surface Laya itself does not
-ship: a ``POST /v1/systemone`` route, an optional bearer check, and a health
-probe.
+working unchanged. It also ships an OpenAI-compatible structured-decision surface:
+``POST /v1/chat/completions`` and ``POST /v1/responses`` accept ``response_format`` (a JSON
+schema) or ``tools`` (function calling), ``GET /v1/models`` lists the checkpoints, and
+``POST /v1/moderations`` answers the moderation preset. Laya is not a chat model, so requests
+that need free text, sampling or streaming are rejected with a 400 that says what to send.
 
 Configuration is entirely via environment variables so the same entry point
 serves a laptop dev run and a systemd unit:
@@ -25,6 +27,7 @@ env var                 meaning                                        default
                         logical/hyperthread count is a large regression.
 ``LAYA_AUTO_TASK``      auto-route to the typed-decisions checkpoint   0
 ``LAYA_API_KEY``        if set, require ``Authorization: Bearer <it>``  (none)
+``LAYA_MODERATION_THRESHOLD``  flag a moderation category at or above it 0.5
 ``LAYA_LOG_LEVEL``      uvicorn log level                              info
 ``LAYA_MAX_CONCURRENT`` cap on requests past auth at once; excess      16
                         gets 503 (see below)
@@ -68,6 +71,8 @@ MAX_TOTAL_OPTIONS = 512
 # before inference, so without a bound many concurrent near-cap requests OOM
 # the worker even though every request is individually valid (#330).
 DEFAULT_MAX_CONCURRENT = 16
+# A moderation request may carry many inputs; cap the batch like the other batch limits.
+MAX_MODERATION_INPUTS = 64
 # Public Hugging Face ids, accepted so a client can name a checkpoint. The root bundle is
 # deliberately absent: the documented ``convaiinnovations/laya`` value means
 # "let the Router choose", rather than pinning the English checkpoint.
@@ -206,6 +211,28 @@ async def _read_body_capped(request: Any) -> bytes:
             raise HTTPException(status_code=413, detail="request body too large")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+async def _read_json(request: Any) -> Any:
+    """Read a JSON body with the same guards ``/v1/systemone`` uses, for the OpenAI routes.
+
+    The declared length is a fast reject; the streamed cap is what enforces the limit for every
+    framing. ``RecursionError`` is caught alongside ``ValueError`` so a deeply nested body is a
+    400 rather than a 500, matching the fix in #401.
+    """
+    from fastapi import HTTPException
+
+    if request.headers.get("content-length"):
+        try:
+            if int(request.headers["content-length"]) > MAX_BODY_BYTES:
+                raise HTTPException(status_code=413, detail="request body too large")
+        except ValueError:
+            pass
+    raw = await _read_body_capped(request)
+    try:
+        return json.loads(raw)
+    except (ValueError, RecursionError):
+        raise HTTPException(status_code=400, detail="request body must be valid JSON")
 
 
 def _apply_thread_limit():
@@ -386,6 +413,115 @@ def create_app(router: Optional[Any] = None):
             # and has to be reproduced in-process to be diagnosed at all.
             _log.exception("inference failed for model=%s", model)
             raise HTTPException(status_code=500, detail="inference failed")
+
+    # ------------------------------------------------------------------ OpenAI-compatible surface
+    # Laya is a structured-decision engine, not a chat model: these routes accept the OpenAI
+    # request shapes for structured output (response_format / text.format) and function calling
+    # (tools), and reject anything that needs free text, sampling or streaming.
+    from .openai_api import (
+        MODERATION_THRESHOLD,
+        UnsupportedRequest,
+        format_chat_response,
+        format_responses_response,
+        moderation_payload,
+        moderation_questions_preset,
+        models_payload,
+        parse_chat_request,
+        parse_moderation_request,
+        parse_responses_request,
+    )
+
+    async def _infer(fn):
+        nonlocal gate
+        if gate is None:
+            gate = asyncio.Lock()
+        async with gate:
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(pool, fn)
+
+    def _plan_or_http(parse, body):
+        try:
+            return parse(body)
+        except UnsupportedRequest as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except ValueError as exc:
+            # SchemaError and question validation name the field and what to fix.
+            raise HTTPException(status_code=422, detail=str(exc))
+
+    @app.get("/v1/models")
+    def models(authorization: Optional[str] = Header(default=None)):
+        _check_auth(authorization)
+        return models_payload(sorted(_KNOWN_MODELS))
+
+    @app.post("/v1/chat/completions")
+    async def chat_completions(request: Request, authorization: Optional[str] = Header(default=None)):
+        _check_auth(authorization)
+        body = await _read_json(request)
+        plan = _plan_or_http(parse_chat_request, body)
+        _check_request_limits(plan.state, plan.questions)
+        model = _resolve_model(plan.model)
+        try:
+            result = await _infer(lambda: router.predict(plan.state, plan.questions, model=model))
+        except HTTPException:
+            raise
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception:  # noqa: BLE001
+            _log.exception("inference failed for model=%s", model)
+            raise HTTPException(status_code=500, detail="inference failed")
+        return format_chat_response(plan, result)
+
+    @app.post("/v1/responses")
+    async def responses(request: Request, authorization: Optional[str] = Header(default=None)):
+        _check_auth(authorization)
+        body = await _read_json(request)
+        plan = _plan_or_http(parse_responses_request, body)
+        _check_request_limits(plan.state, plan.questions)
+        model = _resolve_model(plan.model)
+        try:
+            result = await _infer(lambda: router.predict(plan.state, plan.questions, model=model))
+        except HTTPException:
+            raise
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception:  # noqa: BLE001
+            _log.exception("inference failed for model=%s", model)
+            raise HTTPException(status_code=500, detail="inference failed")
+        return format_responses_response(plan, result)
+
+    @app.post("/v1/moderations")
+    async def moderations(request: Request, authorization: Optional[str] = Header(default=None)):
+        _check_auth(authorization)
+        body = await _read_json(request)
+        try:
+            states = parse_moderation_request(body)
+        except UnsupportedRequest as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        if len(states) > MAX_MODERATION_INPUTS:
+            raise HTTPException(status_code=413,
+                                detail="too many moderation inputs (%d > %d)"
+                                % (len(states), MAX_MODERATION_INPUTS))
+        questions = moderation_questions_preset()
+        for state in states:
+            _check_request_limits(state, questions)
+
+        async def _score(state):
+            return await _infer(lambda: router.predict(state, questions))
+
+        try:
+            results = [await _score(state) for state in states]
+        except HTTPException:
+            raise
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception:  # noqa: BLE001
+            _log.exception("inference failed")
+            raise HTTPException(status_code=500, detail="inference failed")
+        try:
+            threshold = float(os.environ.get("LAYA_MODERATION_THRESHOLD", MODERATION_THRESHOLD))
+        except ValueError:
+            threshold = MODERATION_THRESHOLD
+        return moderation_payload(results, threshold=threshold, questions=questions)
 
     return app
 

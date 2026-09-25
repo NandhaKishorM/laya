@@ -34,8 +34,7 @@
     "laya": "0.3.3",
     "nvidia-ml-py": "13.610.43",
     "numpy": "2.5.3",
-    "huggingface_hub": "1.32.0",
-    "typesafe-sdk": "0.7.1"
+    "huggingface_hub": "1.32.0"
    },
    "torch_cuda": "13.0",
    "gpu": {
@@ -66,8 +65,7 @@
     "laya": "0.3.3",
     "nvidia-ml-py": "13.610.43",
     "numpy": "2.5.3",
-    "huggingface_hub": "1.32.0",
-    "typesafe-sdk": "0.7.1"
+    "huggingface_hub": "1.32.0"
    },
    "torch_cuda": "13.0",
    "gpu": {
@@ -98,8 +96,7 @@
     "laya": "0.3.3",
     "nvidia-ml-py": "13.610.43",
     "numpy": "2.5.2",
-    "huggingface_hub": "1.32.0",
-    "typesafe-sdk": "0.7.1"
+    "huggingface_hub": "1.32.0"
    },
    "torch_cuda": "13.0",
    "gpu": {
@@ -130,8 +127,7 @@
     "laya": "0.3.3",
     "nvidia-ml-py": "13.610.43",
     "numpy": "2.5.3",
-    "huggingface_hub": "1.32.0",
-    "typesafe-sdk": "0.7.1"
+    "huggingface_hub": "1.32.0"
    },
    "torch_cuda": "13.0",
    "gpu": {
@@ -162,8 +158,7 @@
     "laya": "0.3.3",
     "nvidia-ml-py": "13.610.43",
     "numpy": "2.5.2",
-    "huggingface_hub": "1.32.0",
-    "typesafe-sdk": "0.7.1"
+    "huggingface_hub": "1.32.0"
    },
    "torch_cuda": "13.0",
    "gpu": {

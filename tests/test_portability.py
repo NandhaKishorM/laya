@@ -133,6 +133,18 @@ check_true("amp/no unconditional autocast in the forward pass",
            "torch.autocast(device_type=self.device.type" not in _src)
 
 
+# ------------------------------------------------ 2b. LAYA_CUDA_AMP override (#443)
+# The CUDA autocast dtype is the checkpoint's `amp_dtype` (bf16 for every shipped checkpoint) on
+# Ampere-or-newer GPUs. `LAYA_CUDA_AMP` pins it, mirroring `LAYA_CPU_AMP`, so a caller can run
+# fp16 (within ~0.02 of fp32) instead of bf16 (up to 0.073 off) at the same latency.
+for name, want in [("fp16", torch.float16), ("float16", torch.float16), ("half", torch.float16),
+                   ("bf16", torch.bfloat16), ("bfloat16", torch.bfloat16),
+                   ("", None), ("fp32", None), ("garbage", None)]:
+    with mock.patch.dict(os.environ, {"LAYA_CUDA_AMP": name}, clear=False):
+        got = _agent._cuda_amp_dtype()
+    check("cuda_amp/%r -> %s" % (name, want), got, want)
+
+
 # ------------------------------------------------ 3. a failed GPU placement falls back to CPU
 # `system_one` promises to survive a device that cannot hold the work: on a memory error it moves
 # to CPU and re-runs. That path is easy to break and never fires on a machine with no GPU, so it

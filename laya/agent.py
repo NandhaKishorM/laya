@@ -192,6 +192,23 @@ def _mps_amp_min_rows() -> int:
         return MPS_AMP_MIN_ROWS_DEFAULT
 
 
+def _cuda_amp_dtype() -> Optional[torch.dtype]:
+    """CUDA autocast dtype override, or None to use the checkpoint's `amp_dtype`.
+
+    Mirrors `LAYA_CPU_AMP`: `LAYA_CUDA_AMP=fp16|bf16` pins the CUDA autocast dtype
+    regardless of the checkpoint's training dtype. On Ampere-or-newer GPUs the stock
+    default is the checkpoint's `amp_dtype` (bf16 for all shipped checkpoints), which is
+    the least precise dtype the forward can run in; fp16 stays within ~0.02 of fp32 at
+    the same latency (#443). An unrecognised value falls back to the default.
+    """
+    raw = os.environ.get("LAYA_CUDA_AMP", "").strip().lower()
+    if raw in ("fp16", "float16", "half"):
+        return torch.float16
+    if raw in ("bf16", "bfloat16"):
+        return torch.bfloat16
+    return None
+
+
 class Agent(HookRegistry):
     """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions."""
 
@@ -397,7 +414,7 @@ class Agent(HookRegistry):
             if torch.cuda.get_device_capability(self.device)[0] < 8:
                 self.dtype = torch.float16
             else:
-                self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+                self.dtype = _cuda_amp_dtype() or amp_dtype(self.cfg.get("amp_dtype", "fp16"))
         elif self.device.type == "mps":
             self.amp_enabled = True
             self.dtype = torch.float16

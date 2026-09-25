@@ -8,6 +8,14 @@ describe("router", () => {
     expect(r.route({ body: "मुझसे दो बार शुल्क लिया गया" }, {}).model).toBe("multilingual");
     expect(r.loaded).toEqual([]);
   });
+  it.each([
+    ["Please send me the café menu today please", "english"],
+    ["Send the invoice to José before Friday", "english"],
+    ["Grüße aus Köln, wir melden uns wegen der Rechnung", "multilingual"],
+    ["sluk lyset i soveværelset", "multilingual"],
+  ])("routes %s to %s", (text, model) => {
+    expect(new Router().route(text, {}).model).toBe(model);
+  });
   it("explicit model wins", () => {
     expect(new Router().route("hi", {}, { model: "typed-decisions" }).model).toBe("typed-decisions");
   });

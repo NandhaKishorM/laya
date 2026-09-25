@@ -110,4 +110,26 @@ describe("lang", () => {
     expect(buried.isEnglish).toBe(false);
     expect(buried.language).toBe("de");
   });
+
+  it.each([
+    "Please send me the café menu today please",
+    "Could you email me your résumé before the meeting",
+    "Send the invoice to José before Friday",
+    "We visited Zürich last summer and loved it",
+  ])("keeps English with one accented loanword English: %s", (text) => {
+    expect(guessLatinLanguage(text)).toBe("en");
+    expect(isEnglish(text)).toBe(true);
+  });
+
+  it.each<[string, string | null]>([
+    ["Grüße aus Köln, wir melden uns wegen der Rechnung", "de"],
+    ["sluk lyset i soveværelset", null],
+    ["kan jeg få en refundering for det dobbelte beløb", null],
+    ["stäng av ljuset i sovrummet", null],
+    ["jag vill ha en återbetalning för den dubbla avgiften", null],
+    ["The naïve façade needs a fresh coat of paint", null],
+  ])("does not rescue accented non-English text: %s", (text, language) => {
+    expect(guessLatinLanguage(text)).toBe(language);
+    expect(isEnglish(text)).toBe(false);
+  });
 });

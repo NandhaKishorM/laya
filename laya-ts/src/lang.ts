@@ -113,6 +113,20 @@ const NON_EN_DIACRITICS = new Set(
 );
 
 export const NON_EN_DIACRITIC_RATE = 0.02;
+const ENGLISH_RESCUE_DIACRITIC_RATE = 0.06;
+
+// One accented loanword (`café`, `José`) clears the rate above on its own; two English-only function words
+// and at most one accented word keep the text English, as in laya/lang.py.
+function englishRescuedByWords(wordSet: Set<string>, diacRate: number): boolean {
+  if (diacRate >= ENGLISH_RESCUE_DIACRITIC_RATE) return false;
+  let englishOnly = 0;
+  let accented = 0;
+  for (const w of wordSet) {
+    if (EN_ONLY_WORDS.has(w)) englishOnly += 1;
+    if ([...w].some((ch) => NON_EN_DIACRITICS.has(ch))) accented += 1;
+  }
+  return englishOnly >= 2 && accented <= 1;
+}
 
 const SHARED_WORDS: Set<string> = (() => {
   const counts = new Map<string, number>();
@@ -123,6 +137,7 @@ const SHARED_WORDS: Set<string> = (() => {
   for (const [w, n] of counts) if (n > 1) out.add(w);
   return out;
 })();
+const EN_ONLY_WORDS = new Set([...STOP["en"]].filter((w) => !SHARED_WORDS.has(w)));
 
 // JS `\w` is ASCII-only, so Python's `[^\W\d_]` needs the Unicode classes spelled out (Nl/No are in Python's `\w`).
 const WORD_RE = /[\p{L}\p{Nl}\p{No}]+/gu;
@@ -307,7 +322,7 @@ export function latinProfile(text: string): LatinProfile {
     lang = bestLg;
   } else if (bestLg && nonEnglish && best >= Math.max(2, en)) {
     lang = bestLg;
-  } else if (en && !nonEnglish) {
+  } else if (en && (!nonEnglish || englishRescuedByWords(wordSet, diacRate))) {
     lang = "en";
   }
   return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish };

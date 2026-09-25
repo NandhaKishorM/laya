@@ -128,15 +128,108 @@ check("lang/hyphen subtag resolves to the override",
 check_true("lang/noul is scaled too",
            base["answers"]["flag"]["noul"] != de["answers"]["flag"]["noul"])
 
-# a malformed override is rejected up front, like the torch Agent
+# A malformed override is rejected up front, like the torch Agent.
+#
+# The two backends parse `lang_temperatures` independently today, and the shared helper that would
+# replace both copies is `common.resolve_lang_temperatures` from #428. This check is written so it
+# holds either way: through the shared helper when it is present, and against whichever copy is
+# local when it is not. A source-text check on `__init__` cannot do that -- it passed while the two
+# copies had already drifted, which is how ONNXAgent kept the `cfg.get(...)`-then-`len(...)` shape
+# after Agent was fixed.
 try:
-    _bare_onnx_bad = ONNXAgent.__new__(ONNXAgent)
-    # the parsing lives in __init__; assert the same guard exists in its source
-    src = inspect.getsource(ONNXAgent.__init__)
-    check_true("lang/__init__ validates the 3-float override",
-               "must be a list of 3 floats" in src)
+    try:
+        from laya.common import resolve_lang_temperatures as _resolve_overrides
+        _via = "common.resolve_lang_temperatures"
+    except ImportError:                                     # #428 not merged yet
+        _resolve_overrides = None
+        _via = "the ONNXAgent copy"
+        _src = inspect.getsource(ONNXAgent.__init__)
+        check_true("lang/__init__ validates the override's shape",
+                   "must be a list of 3 floats" in _src, "neither the helper nor the guard")
+    check_true("lang/override parsing is locatable (%s)" % _via, True)
+
+    if _resolve_overrides is not None:
+        try:
+            _resolve_overrides({"de": {"temperature": 2}}, [1.0, 1.0, 1.0])
+            check_true("lang/a scalar override is rejected", False, "no error raised")
+        except ValueError as exc:
+            check_true("lang/a scalar override is rejected with the 3-float message",
+                       "must be a list of 3 floats" in str(exc), str(exc))
 except Exception as e:  # noqa: BLE001
     FAIL.append("lang/guard check raised %r" % e)
+
+
+# ------------------------------------------- the over-budget diagnosis, identical in both backends
+# The two backends each build sequences for the same questions and can each refuse one whose
+# option markers do not all fit. They used to say different things: `Agent` named the question,
+# the marker counts and both budgets, while `ONNXAgent` said only
+# "question %r options exceed head_max_len=%d" -- which pointed at the knob that makes the overflow
+# worse. Rewording one and not the other is invisible to both suites, so this drives the same
+# over-budget question through BOTH paths and compares the messages, which is the property that
+# has to hold rather than either message on its own.
+_MANY = {("department of %s handling billing enquiries %d" % ("x" * 12, i)): None
+         for i in range(1, 41)}
+_OVER = {"q": {"type": "choice", "instructions": "Which department?", "criteria": _MANY}}
+
+
+def _make_onnx(max_len, head_max_len):
+    a = ONNXAgent.__new__(ONNXAgent)
+    a.model_id = "stub"
+    a.cfg = {"max_len": max_len, "head_max_len": head_max_len}
+    a.tok = _FakeTok()
+    a.temperature = [1.0, 1.0, 1.0]
+    a.temperature_by_options = {}
+    a.session = _StubSession(np.zeros((1, 8), dtype=np.float32),
+                             np.zeros((1, 2), dtype=np.float32))
+    a.lang_temperatures = {}
+    return a
+
+
+def _make_torch(max_len, head_max_len):
+    f = Agent.__new__(Agent)
+    f.cfg = {"max_len": max_len, "head_max_len": head_max_len}
+    f.tok = _FakeTok()
+    f.temperature = [1.0, 1.0, 1.0]
+    f.temperature_by_options = {}
+    f.lang_temperatures = {}
+    return f
+
+
+def _outcome(fn):
+    """Call `fn` and return the exception, or None if it did not raise."""
+    try:
+        fn()
+        return None
+    except Exception as exc:  # noqa: BLE001
+        return exc
+
+
+for _max_len, _head in ((64, 32), (128, 64)):
+    _onnx_exc = _outcome(lambda ml=_max_len, h=_head: _make_onnx(ml, h)._infer("short state", _OVER))
+    _torch_exc = _outcome(lambda ml=_max_len, h=_head: _make_torch(ml, h)._encode_state(
+        "short state", list(_OVER),
+        {qid: Agent._to_internal(_OVER[qid]) for qid in _OVER}))
+
+    _label = "over-budget/%d/%d" % (_max_len, _head)
+    check_true("%s both backends refuse it" % _label,
+               isinstance(_onnx_exc, ValueError) and isinstance(_torch_exc, ValueError),
+               "onnx=%r torch=%r" % (_onnx_exc, _torch_exc))
+    check("%s the two messages are identical" % _label,
+          str(_onnx_exc), str(_torch_exc))
+    # ...and the shared message says what the guard measured, not the ceiling `len(seq)` hits
+    check_true("%s names the markers that survived" % _label,
+               "only " in str(_torch_exc) and "option markers fit" in str(_torch_exc),
+               str(_torch_exc))
+    check_true("%s names max_len as well as head_max_len" % _label,
+               "max_len=" in str(_torch_exc) and "head_max_len=" in str(_torch_exc),
+               str(_torch_exc))
+
+# a question that fits must not raise in either backend, so the guard is not refusing everything
+_onnx_ok = _outcome(lambda: _make_onnx(512, 192)._infer("short state", {
+    "q": {"type": "choice", "instructions": "Pick one",
+          "criteria": {"department": None, "billing": None}}}))
+check_true("over-budget/a question that fits is answered by ONNXAgent",
+           _onnx_ok is None, repr(_onnx_ok))
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

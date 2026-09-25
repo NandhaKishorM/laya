@@ -172,6 +172,24 @@ check_true("options over budget/raises ValueError", isinstance(_outcome, ValueEr
 check_true("options over budget/names the question", "'q'" in str(_outcome), str(_outcome))
 check_true("options over budget/reports the budget",
            "head_max_len" in str(_outcome), str(_outcome))
+
+# The message used to name only `head_max_len`, which pointed at the wrong knob in both
+# directions. The option markers are placed at absolute positions and `build_sequence` drops the
+# ones past `max_len`, so `head_max_len` is how much of the sequence the options were given --
+# lowering it shortens the option block and can bring the question back inside `max_len`, while
+# raising it overflows further. The message has to name `max_len` and say what was measured, or a
+# caller follows it the wrong way. The direction itself is measured against a real checkpoint in
+# the description rather than pinned here, since it needs one this suite does not build.
+check_true("options over budget/names max_len too",
+           "max_len=" in str(_outcome), str(_outcome))
+# The count is the markers that SURVIVED, not `len(seq)`: `build_sequence` truncates to `max_len`
+# first, so `len(seq)` is always exactly `max_len` at this point and reporting it stated the
+# ceiling as though it were the requirement. `only N of its M` is the shape that distinguishes
+# them, and `M` is checkable here because the question has 140 options.
+check_true("options over budget/reports the markers that survived, not the ceiling",
+           "only " in str(_outcome) and "fit in" in str(_outcome), str(_outcome))
+check_true("options over budget/names the option count",
+           "140 option markers" in str(_outcome), str(_outcome))
 # ...and a question that does fit still answers, so the guard is not refusing everything.
 fits = {"q": {"type": "choice", "instructions": "Pick one",
               "criteria": {"department": None, "billing": None}}}

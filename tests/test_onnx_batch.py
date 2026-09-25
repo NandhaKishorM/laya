@@ -127,8 +127,8 @@ _shared = ["batch_size", "lang", "hooks", "on_predict_start", "on_predict_end", 
            "max_len", "head_max_len", "min_confidence"]
 check("contract/parameter names match Agent.predict_batch",
       [p for p in _shared if p not in _onnx_so], [])
-check("contract/only Agent-only knobs are missing",
-      sorted(set(_agent_so) - set(_onnx_so)), ["sort_by_length"])
+check("contract/the Agent's full knob set is now ported",
+      sorted(set(_agent_so) - set(_onnx_so)), [])
 
 
 # ---------------------------------------------------------------- batched == sequential

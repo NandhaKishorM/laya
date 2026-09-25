@@ -45,6 +45,7 @@ jobs:
           python tests/test_onnx_lang_parity.py
           python tests/test_onnx_batch.py
           python tests/test_onnx_long.py
+          python tests/test_onnx_sort.py
           python tests/test_email.py
           python tests/test_download.py
           python tests/test_shortlist.py

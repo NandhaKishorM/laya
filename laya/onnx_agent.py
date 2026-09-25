@@ -274,6 +274,7 @@ class ONNXAgent(HookRegistry):
                       hooks_timeout: Optional[float] = None,
                       max_len: Optional[int] = None,
                       head_max_len: Optional[int] = None,
+                      sort_by_length: bool = False,
                       min_confidence: Optional[float] = None) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, sharing ONNX Runtime session runs.
 
@@ -298,6 +299,11 @@ class ONNXAgent(HookRegistry):
             hooks_timeout: Override the agent's `hooks_timeout` for this call.
             max_len: Override the config's `max_len` for this call.
             head_max_len: Override the config's `head_max_len` for this call.
+            sort_by_length: Group similarly sized encoded states within windows of eight batches
+                    to reduce padding, exactly as `Agent.predict_batch` does. Requires an explicit
+                    `batch_size` greater than one and smaller than the number of states; otherwise
+                    it has no effect. Results retain input order. Changing batch shapes can
+                    slightly change floating-point predictions near decision thresholds.
             min_confidence: Opt-in abstention threshold on `answer_confidence` (#361); answers
                     below it are returned flagged with `low_confidence: True`.
 
@@ -331,7 +337,8 @@ class ONNXAgent(HookRegistry):
                     if ctx.head_max_len is not None:
                         overrides["head_max_len"] = ctx.head_max_len
                     ctx.results = self._infer_batch(states, questions, lang=lang,
-                                                    batch_size=batch_size, **overrides)
+                                                    batch_size=batch_size,
+                                                    sort_by_length=sort_by_length, **overrides)
         except BaseException as exc:
             ctx.error = exc
             try:
@@ -541,8 +548,14 @@ class ONNXAgent(HookRegistry):
     def _infer_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
                      max_len: Optional[int] = None, head_max_len: Optional[int] = None,
                      lang: Optional[str] = None,
-                     batch_size: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Validate once, then encode, collate, run and decode in chunks of `batch_size` states."""
+                     batch_size: Optional[int] = None,
+                     sort_by_length: bool = False) -> List[Dict[str, Any]]:
+        """Validate once, then encode, collate, run and decode in chunks of `batch_size` states.
+
+        With `sort_by_length`, chunks are formed from length-sorted states inside a lookahead
+        window of eight batches (the same contract as `Agent.predict_batch`), so a batch pads to
+        a shorter maximum; results are returned in input order either way.
+        """
         from .agent import Agent as _Agent
 
         ids = list(questions.keys())
@@ -557,41 +570,53 @@ class ONNXAgent(HookRegistry):
         chunk = batch_size if (batch_size and batch_size > 0) else len(states)
 
         results: List[Dict[str, Any]] = []
-        for start in range(0, len(states), chunk):
-            part = states[start:start + chunk]
+        reorder = sort_by_length and 1 < chunk < len(states)
+        # Bound the tokenized lookahead independently of the input size (same as the torch Agent):
+        # sort within windows of eight batches, using each state's longest encoded question row.
+        window = chunk * 8 if reorder else chunk
+        for start in range(0, len(states), window):
+            part = states[start:start + window]
             encoded = [self._encode_state(st, ids, internal, max_len, head_max_len) for st in part]
+            order = list(range(len(encoded)))
+            if reorder:
+                order.sort(key=lambda i: max(len(item["ids"]) for item in encoded[i]))
+            window_results: List[Optional[Dict[str, Any]]] = [None] * len(encoded)
+            for offset in range(0, len(order), chunk):
+                indices = order[offset:offset + chunk]
+                per_state_items = [encoded[i] for i in indices]
 
-            b = collate_items(encoded, self.tok.pad_token_id)
+                b = collate_items(per_state_items, self.tok.pad_token_id)
 
-            # Prepare ONNX inputs as numpy arrays
-            ort_inputs = {
-                "input_ids": b["input_ids"].numpy().astype(np.int64),
-                "attention_mask": b["attention_mask"].numpy().astype(np.int64),
-                "marker_pos": b["marker_pos"].numpy().astype(np.int64),
-                "marker_mask": b["marker_mask"].numpy().astype(bool),
-                "qtype": b["qtype"].numpy().astype(np.int64),
-            }
+                # Prepare ONNX inputs as numpy arrays
+                ort_inputs = {
+                    "input_ids": b["input_ids"].numpy().astype(np.int64),
+                    "attention_mask": b["attention_mask"].numpy().astype(np.int64),
+                    "marker_pos": b["marker_pos"].numpy().astype(np.int64),
+                    "marker_mask": b["marker_mask"].numpy().astype(bool),
+                    "qtype": b["qtype"].numpy().astype(np.int64),
+                }
 
-            # Run ONNX inference
-            ort_outs = self.session.run(["logits", "act_logits"], ort_inputs)
-            logits = ort_outs[0]
-            act_logits = ort_outs[1]
+                # Run ONNX inference
+                ort_outs = self.session.run(["logits", "act_logits"], ort_inputs)
+                logits = ort_outs[0]
+                act_logits = ort_outs[1]
 
-            # Compute softmax for actions manually in numpy
-            act_exp = np.exp(act_logits - np.max(act_logits, axis=-1, keepdims=True))
-            act = act_exp / np.sum(act_exp, axis=-1, keepdims=True)
-            att = b["attention_mask"]
+                # Compute softmax for actions manually in numpy
+                act_exp = np.exp(act_logits - np.max(act_logits, axis=-1, keepdims=True))
+                act = act_exp / np.sum(act_exp, axis=-1, keepdims=True)
+                att = b["attention_mask"]
 
-            row = 0
-            for index, items in enumerate(encoded):
-                nrows = len(items)
-                n_tokens = int(att[row:row + nrows].sum())
-                results.append({
-                    "model": "laya-rl-agent-onnx",
-                    "answers": self._decode_answers(logits, act, items, ids, internal, row, lang=lang),
-                    "usage": {"input_tokens": n_tokens, "output_tokens": 0},
-                })
-                row += nrows
+                row = 0
+                for index, items in zip(indices, per_state_items):
+                    nrows = len(items)
+                    n_tokens = int(att[row:row + nrows].sum())
+                    window_results[index] = {
+                        "model": "laya-rl-agent-onnx",
+                        "answers": self._decode_answers(logits, act, items, ids, internal, row, lang=lang),
+                        "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+                    }
+                    row += nrows
+            results.extend(window_results)
         return results
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,

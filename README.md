@@ -550,7 +550,8 @@ It looks ahead at most eight batches and reuses the encoded rows for sorting. Th
 CPU memory for tokenized inputs, and takes effect only when `1 < batch_size < len(states)`.
 Benchmark it on your workload and backend: uniform lengths offer little benefit, and changed
 batch shapes can cause small floating-point differences, including near decision thresholds.
-Hooks still see states and final results in input order. The option is available on `Agent`.
+Hooks still see states and final results in input order. The option is available on `Agent` and
+`ONNXAgent`.
 
 Results are aligned with `states` by index and identical in shape to `predict`. Changing batch
 shapes can introduce floating-point differences on CPU and GPU; check decision thresholds on
@@ -560,9 +561,12 @@ batched (measured ~9–10×). On CPU, increasing batch size alone may not speed 
 length grouping can help by reducing the padded work in a mixed-length workload. See the
 [CPU measurements and reproduction commands](research/README.md#length-batching).
 
-`ONNXAgent.predict_batch(states, questions, batch_size=...)` has the same contract, backed by one
-ONNX Runtime session run per chunk, so an ONNX deployment gets the same batch API and the same
-result shape; `sort_by_length` is not ported there yet.
+`ONNXAgent.predict_batch(states, questions, batch_size=..., sort_by_length=...)` has the same
+contract, backed by one ONNX Runtime session run per chunk, so an ONNX deployment gets the same
+batch API, the same result shape, and the same length grouping. Measured on the English checkpoint
+(flat fp32 export, Apple M1, 80 support tickets alternating short and ~8x-longer documents,
+`batch_size=4`, best of 3): wall clock 53.7 s unsorted → 36.3 s sorted (**~1.48x**), with 0/80
+decision changes and max probability drift 0.0 across queue/noul/score.
 
 ### Long documents: `predict_long`
 

@@ -427,6 +427,7 @@ class BatchRouter:
     """Counts batch forward passes and answers each request; a 'poison' state fails the batch."""
 
     loaded = ["english"]
+    supports_batch_isolation = True
 
     def __init__(self, delay=0.0):
         self.batch_calls = 0
@@ -434,13 +435,18 @@ class BatchRouter:
         self.seen_models = []
         self._delay = delay
 
-    def predict_batch(self, requests, batch_size=None):
+    def predict_batch(self, requests, batch_size=None, isolate_errors=False):
         import time
         self.batch_calls += 1
         if self._delay:
             time.sleep(self._delay)
         self.seen_models.extend(r.get("model") for r in requests)
-        if any(r.get("state") == "poison" for r in requests):
+        poison = [r.get("state") == "poison" for r in requests]
+        if isolate_errors:
+            # Emulate Router: retry each request alone under its one context, returning the
+            # failed request's exception in place of its result.
+            return [ValueError("batch poisoned") if bad else _OK for bad in poison]
+        if any(poison):
             raise RuntimeError("batch poisoned")
         return [_OK for _ in requests]
 
@@ -449,6 +455,12 @@ class BatchRouter:
         if state == "poison":
             raise ValueError("question 'q': bad state")
         return _OK
+
+
+class LegacyBatchRouter(BatchRouter):
+    """A router whose predict_batch does not isolate; the Batcher falls back per request."""
+
+    supports_batch_isolation = False
 
 
 def _batching_client(fake, **config):
@@ -529,7 +541,7 @@ def test_request_timeout_returns_504():
     assert asyncio.run(scenario()).status_code == 504
 
 
-def test_batch_failure_falls_back_per_request():
+def test_batch_failure_isolates_without_a_second_router_lifecycle():
     import asyncio
 
     fake = BatchRouter()
@@ -542,9 +554,61 @@ def test_batch_failure_falls_back_per_request():
 
     good, bad = asyncio.run(scenario())
     assert good.status_code == 200
-    # the poison request fails alone; the batch fell back to per-request calls
+    # the poison request fails alone, inside the one batch, with no Router.predict retry
+    assert bad.status_code == 422
+    assert fake.batch_calls == 1
+    assert fake.single_calls == 0
+
+
+def test_batch_failure_falls_back_for_a_router_without_isolation():
+    import asyncio
+
+    fake = LegacyBatchRouter()
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=30, batch_max=16) as client:
+            return await asyncio.gather(
+                client.post("/v1/systemone", json=REQ),
+                client.post("/v1/systemone", json={**REQ, "state": "poison"}))
+
+    good, bad = asyncio.run(scenario())
+    assert good.status_code == 200
     assert bad.status_code == 422
     assert fake.single_calls == 2
+
+
+def test_row_cap_splits_a_batch():
+    import asyncio
+
+    fake = BatchRouter()
+    three = {"state": "x", "questions": {k: {"type": "noul", "instructions": "?"} for k in "abc"}}
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=40, batch_max=16,
+                                    batch_max_rows=4) as client:
+            return await asyncio.gather(
+                client.post("/v1/systemone", json=three),
+                client.post("/v1/systemone", json=three))
+
+    responses = asyncio.run(scenario())
+    assert all(r.status_code == 200 for r in responses)
+    # 3 + 3 rows exceeds 4, so the second request starts its own batch
+    assert fake.batch_calls == 2
+
+
+def test_row_cap_still_dispatches_one_oversized_request():
+    import asyncio
+
+    fake = BatchRouter()
+    five = {"state": "x", "questions": {k: {"type": "noul", "instructions": "?"} for k in "abcde"}}
+
+    async def scenario():
+        async with _batching_client(fake, batch_window_ms=0, batch_max=16,
+                                    batch_max_rows=4) as client:
+            return await client.post("/v1/systemone", json=five)
+
+    assert asyncio.run(scenario()).status_code == 200
+    assert fake.batch_calls == 1
 
 
 def test_model_override_survives_batching():

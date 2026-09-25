@@ -7,8 +7,9 @@ torch. ``serve.create_app`` wires a ``Batcher`` around ``Router.predict_batch`` 
 Batching is opt-in and behavior-preserving by default: with ``LAYA_BATCH_MAX=1`` and
 ``LAYA_BATCH_WINDOW_MS=0`` each request is dispatched immediately through the same single
 inference worker the endpoint used before. Set ``LAYA_BATCH_WINDOW_MS`` to collect requests
-arriving in a short window and ``LAYA_BATCH_MAX`` to size the batch; set ``LAYA_QUEUE_MAX`` to
-bound the queue and reject overflow with 503 instead of letting it grow without limit.
+arriving in a short window and ``LAYA_BATCH_MAX`` to size the batch; ``LAYA_BATCH_MAX_ROWS``
+bounds ``requests x questions`` rows per forward (a forward holds that many rows, not just the
+requests); set ``LAYA_QUEUE_MAX`` to bound the queue and reject overflow with 503.
 """
 from __future__ import annotations
 
@@ -28,6 +29,10 @@ DEFAULT_WINDOW_MS = 0
 DEFAULT_BATCH_MAX = 1
 DEFAULT_QUEUE_MAX = 0
 DEFAULT_REQUEST_TIMEOUT_S = 0.0
+# A forward pass holds `requests x questions` rows, so bounding requests is not enough. 64
+# matches MAX_QUESTIONS: one maximal single request still fits, and a batch cannot grow past
+# this many rows however many concurrent callers arrive.
+DEFAULT_BATCH_MAX_ROWS = 64
 DEFAULT_RETRY_AFTER = 1
 # Upper bound on how long shutdown waits for the in-flight batch before abandoning it.
 DEFAULT_SHUTDOWN_GRACE_S = 30.0
@@ -77,6 +82,7 @@ class ServingConfig:
 
     batch_window_ms: int = DEFAULT_WINDOW_MS
     batch_max: int = DEFAULT_BATCH_MAX
+    batch_max_rows: int = DEFAULT_BATCH_MAX_ROWS
     queue_max: int = DEFAULT_QUEUE_MAX
     request_timeout_s: float = DEFAULT_REQUEST_TIMEOUT_S
 
@@ -85,6 +91,7 @@ class ServingConfig:
         return cls(
             batch_window_ms=_env_int("LAYA_BATCH_WINDOW_MS", DEFAULT_WINDOW_MS, 0),
             batch_max=_env_int("LAYA_BATCH_MAX", DEFAULT_BATCH_MAX, 1),
+            batch_max_rows=_env_int("LAYA_BATCH_MAX_ROWS", DEFAULT_BATCH_MAX_ROWS, 0),
             queue_max=_env_int("LAYA_QUEUE_MAX", DEFAULT_QUEUE_MAX, 0),
             request_timeout_s=_env_float("LAYA_REQUEST_TIMEOUT_S", DEFAULT_REQUEST_TIMEOUT_S, 0.0),
         )
@@ -104,10 +111,11 @@ class PendingRequest:
 class Batcher:
     """Collects concurrent requests into one ``Router.predict_batch`` call.
 
-    A bounded queue provides backpressure; each request waits on its own future. A batch
-    that raises falls back to one ``Router.predict`` per request, so a single bad state
-    cannot fail the whole batch. If the router has no ``predict_batch``, every request is
-    dispatched through ``predict`` (the pre-batching behavior).
+    A bounded queue provides backpressure; each request waits on its own future. When the
+    router isolates batch failures (``supports_batch_isolation``), a request that fails is
+    answered with its own exception and the rest of the batch is unaffected, under a single
+    Router lifecycle. A router without that support falls back to one ``Router.predict`` per
+    request, and a router with no ``predict_batch`` runs ``predict`` for every request.
     """
 
     def __init__(self, router: Any, config: ServingConfig, executor: Any):
@@ -117,6 +125,9 @@ class Batcher:
         self.queue: "asyncio.Queue[Optional[PendingRequest]]" = asyncio.Queue(maxsize=config.queue_max)
         self._task: Optional["asyncio.Task"] = None
         self._running = False
+        # A request pulled to start a batch that the row cap would not let in; it leads the
+        # next batch so arrival order is preserved and it is never dropped.
+        self._carry: Optional[PendingRequest] = None
 
     @property
     def queue_depth(self) -> int:
@@ -143,13 +154,17 @@ class Batcher:
 
     async def _run(self) -> None:
         while self._running:
-            try:
-                pending = await self.queue.get()
-            except asyncio.CancelledError:
-                break
-            if pending is None:                      # shutdown sentinel
-                break
+            if self._carry is not None:
+                pending, self._carry = self._carry, None
+            else:
+                try:
+                    pending = await self.queue.get()
+                except asyncio.CancelledError:
+                    break
+                if pending is None:                  # shutdown sentinel
+                    break
             batch = [pending]
+            rows = len(pending.payload.get("questions") or {})
             deadline = time.perf_counter() + self.config.batch_window_ms / 1000.0
             while len(batch) < self.config.batch_max:
                 remaining = deadline - time.perf_counter()
@@ -162,7 +177,14 @@ class Batcher:
                 if nxt is None:                      # shutdown sentinel arrived mid-collection
                     self._running = False
                     break
+                nxt_rows = len(nxt.payload.get("questions") or {})
+                if self.config.batch_max_rows and rows + nxt_rows > self.config.batch_max_rows:
+                    # Carry `nxt` into the next batch: it keeps arrival order, and a single
+                    # request larger than the cap still dispatches alone instead of starving.
+                    self._carry = nxt
+                    break
                 batch.append(nxt)
+                rows += nxt_rows
             await self._dispatch(batch)
 
     async def _dispatch(self, batch: Sequence[PendingRequest]) -> None:
@@ -175,18 +197,33 @@ class Batcher:
             return
         payloads = [p.payload for p in batch]
         loop = asyncio.get_running_loop()
+        isolates = bool(getattr(self.router, "supports_batch_isolation", False))
+
+        def call():
+            if isolates:
+                return predict_batch(payloads, batch_size=self.config.batch_max, isolate_errors=True)
+            return predict_batch(payloads, batch_size=self.config.batch_max)
+
         try:
-            results = await loop.run_in_executor(
-                self.executor,
-                lambda: predict_batch(payloads, batch_size=self.config.batch_max),
-            )
-            for pending, result in zip(batch, results):
-                self._resolve(pending, result)
-        except Exception as exc:  # noqa: BLE001 -- isolate the poison request from the batch
+            results = await loop.run_in_executor(self.executor, call)
+        except Exception as exc:  # noqa: BLE001 -- surfaced per request
+            if isolates:
+                # A per-request failure is returned in `results`, not raised, so an exception
+                # here is router-level (for example a checkpoint load error) and fails the batch.
+                for pending in batch:
+                    self._fail(pending, exc)
+                return
             log.warning("batch of %d failed, retrying per request: %s: %s",
                         len(batch), type(exc).__name__, exc)
             for pending in batch:
                 await self._dispatch_one(pending)
+            return
+
+        for pending, result in zip(batch, results):
+            if isinstance(result, BaseException):
+                self._fail(pending, result)
+            else:
+                self._resolve(pending, result)
 
     async def _dispatch_one(self, pending: PendingRequest) -> None:
         payload = pending.payload
@@ -211,9 +248,21 @@ class Batcher:
         pending.finished_at = time.perf_counter()
         pending.future.set_result(result)
 
+    @staticmethod
+    def _fail(pending: PendingRequest, exc: BaseException) -> None:
+        # Same guard as `_resolve`: a request that timed out already resolved its future.
+        if pending.future.done():
+            return
+        pending.finished_at = time.perf_counter()
+        pending.future.set_exception(exc)
+
     async def aclose(self, grace_s: float = DEFAULT_SHUTDOWN_GRACE_S) -> None:
         """Stop the worker and fail anything still queued, so no request is left waiting."""
         self._running = False
+        if self._carry is not None:                  # pulled but not yet dispatched
+            carry, self._carry = self._carry, None
+            if not carry.future.done():
+                carry.future.set_exception(RequestQueueFull(reason="server is shutting down"))
         if self._task is not None:
             try:
                 self.queue.put_nowait(None)

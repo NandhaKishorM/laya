@@ -450,12 +450,16 @@ names a Laya checkpoint (`english`/`multilingual`/`typed-decisions`), otherwise
 the router auto-selects by script/language.
 
 Batching is opt-in: by default each request is dispatched immediately, exactly as
-before. Set `LAYA_BATCH_WINDOW_MS` (e.g. `10`) to collect requests arriving in a
-short window and `LAYA_BATCH_MAX` (e.g. `16`) to size the forward pass, so
-concurrent `POST /v1/systemone` calls share one `Router.predict_batch`. Optionally
-bound the queue with `LAYA_QUEUE_MAX` (overflow answers `503` + `Retry-After`) and
-cap a request with `LAYA_REQUEST_TIMEOUT_S` once queue + inference exceeds it
-(`504`; `0`, the default, disables the timeout).
+before. Set `LAYA_BATCH_WINDOW_MS` to collect requests arriving in a short window
+and `LAYA_BATCH_MAX` to size the forward pass, so concurrent
+`POST /v1/systemone` calls share one `Router.predict_batch`. The forward holds one
+row per question per request, so `LAYA_BATCH_MAX_ROWS` (default 64) bounds
+`requests x questions`, not just the requests. Size the batch so the longest states
+still finish inside your tail latency budget: on a small or power-capped card the
+right value may be `1`, since the window and the padding can cost more than they
+save. Optionally bound the queue with `LAYA_QUEUE_MAX` (overflow answers `503` +
+`Retry-After`) and cap a request with `LAYA_REQUEST_TIMEOUT_S` once queue plus
+inference exceeds it (`504`; `0`, the default, disables the timeout).
 
 Three things differ from Jev when you port a client:
 

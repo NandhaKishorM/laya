@@ -30,6 +30,8 @@ env var                 meaning                                        default
                         opt-in; 1 dispatches each request immediately)
 ``LAYA_BATCH_WINDOW_MS``  window to collect a batch; 0 dispatches      0
                         immediately
+``LAYA_BATCH_MAX_ROWS``  max requests x questions rows per forward;    64
+                        0 disables the cap
 ``LAYA_QUEUE_MAX``      bounded queue; overflow is 503; 0 is unbounded 0
 ``LAYA_REQUEST_TIMEOUT_S``  queue + inference budget per request;     0 (off)
                         0 disables the timeout

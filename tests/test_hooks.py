@@ -376,6 +376,61 @@ with f.hooks_installed(Tag(log, "temp")):
 f.predict_batch(["s0"], QUESTIONS)
 check("hooks_installed/only during the block", log, ["installed", "temp", "installed"])
 
+# ...and the block restores the PREVIOUS list, which is what the docs promise. Installing a hook
+# that is already installed is legal (`add_hook` appends), so the block has to take its own copy
+# back off and leave the caller's in place. Removing by identity instead took both, so a hook an
+# application had installed once was silently uninstalled by any block that happened to name it.
+log = []
+f = make_fake()
+already = Tag(log, "already")
+f.add_hook(already)
+check("hooks_installed/pre-installed hook is present", len(f.hooks), 1)
+with f.hooks_installed(already):
+    check("hooks_installed/the block adds a second copy", len(f.hooks), 2)
+    f.predict_batch(["s0"], QUESTIONS)
+check("hooks_installed/restores the previous list", len(f.hooks), 1)
+log.clear()
+f.predict_batch(["s0"], QUESTIONS)
+check("hooks_installed/the pre-installed hook still fires after the block", log, ["already"])
+
+# The block removes ONE occurrence per hook it added -- the most recent match by identity -- and
+# touches nothing else. Two cases pin that, because the obvious alternatives get them wrong: a
+# snapshot restore reinstates a list from before the inner block and so drops a hook the inner
+# block legitimately installed; and removing by identity takes the caller's own copy too.
+log = []
+f = make_fake()
+outer, inner = Tag(log, "outer"), Tag(log, "inner")
+with f.hooks_installed(outer):
+    check("hooks_installed/overlapping blocks: outer installed", len(f.hooks), 1)
+    with f.hooks_installed(inner):
+        check("hooks_installed/overlapping blocks: both installed", len(f.hooks), 2)
+    check("hooks_installed/overlapping blocks: inner exit leaves the outer hook",
+          len(f.hooks), 1)
+    check_true("hooks_installed/overlapping blocks: and it is the outer one",
+               f.hooks[0] is outer)
+check("hooks_installed/overlapping blocks: outer exit leaves nothing", len(f.hooks), 0)
+
+# a hook added INSIDE the block is not the block's to remove, so it outlives it
+log = []
+f = make_fake()
+added_inside = Tag(log, "added-inside")
+with f.hooks_installed(Tag(log, "temp")):
+    f.add_hook(added_inside)
+    check("hooks_installed/add_hook inside: both present", len(f.hooks), 2)
+check("hooks_installed/add_hook inside: survives the block", len(f.hooks), 1)
+check_true("hooks_installed/add_hook inside: and it is the one that was added",
+           f.hooks[0] is added_inside)
+log.clear()
+f.predict_batch(["s0"], QUESTIONS)
+check("hooks_installed/add_hook inside: still fires after the block", log, ["added-inside"])
+
+# and the same hook passed twice is the same case with no pre-install at all
+log = []
+f = make_fake()
+with f.hooks_installed(Tag(log, "t"), Tag(log, "t")):
+    pass
+check("hooks_installed/no residue when nothing was installed before", len(f.hooks), 0)
+
 log = []
 r = Router()
 r.add_hook(Tag(log, "router"))

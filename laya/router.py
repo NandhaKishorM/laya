@@ -704,6 +704,7 @@ class Router(HookRegistry):
         requests: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
         hooks_timeout: Optional[float] = None,
+        sort_by_length: bool = False,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -729,6 +730,10 @@ class Router(HookRegistry):
                 ``lang_guess`` overrides.
             batch_size: Optional maximum number of states per Agent forward-pass batch.
             hooks_timeout: Override the Router's ``hooks_timeout`` for this call.
+            sort_by_length: Forwarded to every ``Agent.predict_batch`` call, so each question
+                group pads to a shorter maximum; see ``Agent.predict_batch``. Results retain the
+                input order either way. Silently dropped for an attached agent whose
+                ``predict_batch`` predates the knob (#294).
 
         Returns:
             One normal Router prediction result per request, in the same order as the input.
@@ -822,6 +827,10 @@ class Router(HookRegistry):
                     batch_kwargs = dict(group["overrides"])
                     if group["lang"] is not None:
                         batch_kwargs["lang"] = group["lang"]
+                    if sort_by_length:
+                        # Passed only when on, as the token-budget overrides are: agents attached
+                        # via `attach()` may predate the knob (#294).
+                        batch_kwargs["sort_by_length"] = True
                     skip = _SKIP_DEFAULTS.set(True)
                     try:
                         batch_results = agent.predict_batch(
@@ -832,9 +841,14 @@ class Router(HookRegistry):
                         )
                     except TypeError as e:
                         # Same tolerance `predict` has for an Agent-like object whose
-                        # `predict_batch` predates the `lang` argument.
-                        if batch_kwargs.get("lang") is not None and "unexpected keyword argument 'lang'" in str(e):
-                            batch_kwargs.pop("lang")
+                        # `predict_batch` predates the `lang` (or `sort_by_length`) argument.
+                        retried = False
+                        for kwarg in ("lang", "sort_by_length"):
+                            if batch_kwargs.get(kwarg) is not None and \
+                                    "unexpected keyword argument '%s'" % kwarg in str(e):
+                                batch_kwargs.pop(kwarg)
+                                retried = True
+                        if retried:
                             batch_results = agent.predict_batch(
                                 [ctx.states[0] for _, ctx in items],
                                 group["questions"],

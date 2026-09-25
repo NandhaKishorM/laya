@@ -184,6 +184,24 @@ check_true("options within budget/still answers", _ok)
 del wide_agent
 
 
+# ------------------------------------------- 6. a temperature list of the wrong length
+# `_decode_answers` indexes `temperature` by question type (`QTYPES`), so a checkpoint that
+# ships the wrong number of entries -- say one -- loads cleanly, answers `choice` questions,
+# and then raises a bare `IndexError` on the first `score`/`noul` question: a decode-time
+# crash whose cause is a single config field. The language-override path already refuses this
+# shape ("must be a list of 3 floats"); this pins the same refusal for the checkpoint's own
+# list, where there was none.
+short_temp = Path(TMP.name) / "short-temperature"
+build_checkpoint(short_temp)
+_cfg = json.loads((short_temp / "rl_agent_config.json").read_text())
+_cfg["temperature"] = [0.9]
+(short_temp / "rl_agent_config.json").write_text(json.dumps(_cfg), encoding="utf-8")
+err = load_error(short_temp)
+check_true("short temperature/raises ValueError", isinstance(err, ValueError), repr(err))
+check_true("short temperature/names the field", "temperature" in str(err), str(err))
+check_true("short temperature/says the shape", "list of 3" in str(err), str(err))
+
+
 TMP.cleanup()
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

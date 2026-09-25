@@ -349,6 +349,13 @@ class Agent(HookRegistry):
         # Keep what the checkpoint shipped for inspection, but only ever apply clamped values:
         # some buckets are fitted to sharpen rather than soften (see clamp_temperature).
         self.temperature_raw = self.cfg.get("temperature", [1.0, 1.0, 1.0])
+        # `_decode_answers` indexes this by question type, so a list of the wrong length would
+        # load cleanly and then raise a bare `IndexError` on the first `score`/`noul` question;
+        # refuse the shape here, the way the language-override check below does.
+        if not isinstance(self.temperature_raw, (list, tuple)) or len(self.temperature_raw) != 3:
+            raise ValueError(
+                "Incompatible model: %r temperature must be a list of 3 floats, got %r"
+                % (model_id_or_path, self.temperature_raw))
         self.temperature_by_options_raw = self.cfg.get("temperature_by_options", {})
         self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
         self.temperature_by_options = {k: clamp_temperature(v)

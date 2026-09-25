@@ -581,13 +581,6 @@ A smaller `window` isolates a short deciding span better (it becomes a larger fr
 window); the default (`max_len - head_max_len`) favors context and throughput. Output shape matches
 `predict`, with `usage["windows"]` added.
 
-The same scan is available from the Router, which routes first and then windows the checkpoint it
-chose — same hints (`model=`, `task=`, `lang=`), same hooks, same `routing` key:
-
-```python
-result = router.predict_long(state, questions, model="multilingual")
-```
-
 The returned probability is the deciding window's, **not a calibrated number for the whole
 document** — a `noul` max drifts up with the window count even with no signal, and `choice` can land
 on a confidently-neutral window when nothing is decisive. Each answer carries `answer["window"]`
@@ -597,6 +590,13 @@ the answer actually came from:
 ```python
 r = agent.predict_long(state, questions)
 r["answers"]["refund"]["window"]   # {'index': 13, 'token_start': 4680, 'token_end': 5432, 'count': 14}
+```
+
+The same scan is reachable from the Router, which routes first and then windows the checkpoint it
+picked — the same `model=`/`task=`/`lang=` hints, hooks and `routing` key as `predict`:
+
+```python
+result = router.predict_long(state, questions, model="multilingual")
 ```
 
 ---

@@ -52,7 +52,9 @@ mcp = ["mcp>=2.2.0"]
 # `pip install laya[structured]` adds pydantic for the typed-model helpers (laya/structured.py).
 structured = ["pydantic>=2.0.0"]
 
-onnx = ["onnx", "onnxruntime"]
+# `pip install laya[onnx]` adds ONNX Runtime for `laya.onnx_agent` and `onnxscript`, which
+# `torch.onnx.export` requires (`scripts/export_onnx.py`, `tests/test_onnx.py`).
+onnx = ["onnx", "onnxruntime", "onnxscript"]
 
 # `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
 langchain = [

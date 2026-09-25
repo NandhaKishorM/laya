@@ -603,8 +603,11 @@ export class Router extends HookRegistry {
    * Requests are routed first, then grouped by checkpoint so each loaded Agent scores its
    * requests in as few forward passes as possible; results are restored to input order.
    * Requests routed to the same checkpoint still split into separate `predictBatch` calls
-   * when their question schemas differ (order-sensitively) or when per-request start hooks
-   * set different maxLen/headMaxLen overrides.
+   * when their question schemas differ (order-sensitively), when per-request start hooks
+   * set different maxLen/headMaxLen overrides, or — for an agent carrying
+   * `lang_temperatures` — when their languages differ: each request's effective language
+   * (an explicit `lang`, otherwise the detected non-English one) is forwarded so the
+   * batched path scores exactly like `predict`.
    *
    * Router-level predict hooks run per request: each request gets its own PredictContext
    * carrying `decision`; `onPredictStart` may rewrite a request or `ctx.skip()` it, and
@@ -634,12 +637,19 @@ export class Router extends HookRegistry {
         predictBatch?(
           states: unknown[],
           questions: Record<string, QuestionDef>,
-          opts?: { batchSize?: number | null; maxLen?: number | null; headMaxLen?: number | null },
+          opts?: {
+            batchSize?: number | null;
+            maxLen?: number | null;
+            headMaxLen?: number | null;
+            lang?: string | null;
+          },
         ): Promise<SystemOneResult[]>;
         systemOne(
           state: unknown,
           questions: Record<string, QuestionDef>,
+          opts?: { lang?: string | null },
         ): Promise<SystemOneResult>;
+        langTemperatures?: Record<string, unknown>;
       };
       const started: PredictContext[] = [];
       try {
@@ -658,11 +668,20 @@ export class Router extends HookRegistry {
 
         // Order-sensitive at every nesting level (#166): options are positional, so two
         // equal schemas with different key orders must not share a group.
+        //
+        // Python parity (router.py predict_batch): `predict` forwards the request's language so
+        // the agent can apply its per-language temperatures; the batched path forwarded only the
+        // token budgets, so the same request scored differently depending on the entry point.
+        // Only computed for an agent that actually carries overrides: `lang` is otherwise
+        // unused, and adding it to the group key would split a group that shares one forward
+        // pass today.
+        const hasLangOverrides = Object.keys(agent.langTemperatures ?? {}).length > 0;
         const questionGroups: {
           questions: Record<string, unknown>;
           schema: string;
           maxLen: number | null;
           headMaxLen: number | null;
+          lang: string | null;
           items: [number, PredictContext][];
         }[] = [];
         for (let s = 0; s < indices.length; s++) {
@@ -678,9 +697,21 @@ export class Router extends HookRegistry {
             }
             continue;
           }
+          // An explicit `lang` wins; otherwise forward the language the router detected for the
+          // routing decision. TS analyse() names English "en" where Python's returns None (it
+          // only ever names non-English), so a detected "en" forwards as null — in Python only
+          // an explicit lang="en" can select an "en" override. Same rule as `predict`.
+          const detectedLang = decisions[i].detection?.language ?? null;
+          const effectiveLang =
+            requests[i].lang ?? (detectedLang && detectedLang !== "en" ? detectedLang : null);
+          const langKey = hasLangOverrides ? effectiveLang : null;
           const schema = questionSchema(ctx.questions);
           const found = questionGroups.find(
-            (g) => g.schema === schema && g.maxLen === ctx.maxLen && g.headMaxLen === ctx.headMaxLen,
+            (g) =>
+              g.schema === schema &&
+              g.maxLen === ctx.maxLen &&
+              g.headMaxLen === ctx.headMaxLen &&
+              g.lang === langKey,
           );
           if (found) found.items.push([i, ctx]);
           else {
@@ -689,6 +720,7 @@ export class Router extends HookRegistry {
               schema,
               maxLen: ctx.maxLen,
               headMaxLen: ctx.headMaxLen,
+              lang: langKey,
               items: [[i, ctx]],
             });
           }
@@ -699,11 +731,13 @@ export class Router extends HookRegistry {
             batchSize: number | null;
             maxLen?: number;
             headMaxLen?: number;
+            lang?: string;
           } = { batchSize };
           // Only pass overrides when set, so an Agent-like object that does not accept
           // them still works.
           if (group.maxLen !== null) agentOpts.maxLen = group.maxLen;
           if (group.headMaxLen !== null) agentOpts.headMaxLen = group.headMaxLen;
+          if (group.lang !== null) agentOpts.lang = group.lang;
           let batchResults: SystemOneResult[];
           if (typeof agent.predictBatch === "function") {
             batchResults = await agent.predictBatch(
@@ -717,7 +751,11 @@ export class Router extends HookRegistry {
             batchResults = [];
             for (const [, ctx] of group.items) {
               batchResults.push(
-                await agent.systemOne(ctx.states[0], group.questions as Record<string, QuestionDef>),
+                await agent.systemOne(
+                  ctx.states[0],
+                  group.questions as Record<string, QuestionDef>,
+                  group.lang === null ? undefined : { lang: group.lang },
+                ),
               );
             }
           }

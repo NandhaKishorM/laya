@@ -136,3 +136,86 @@ describe("Router.predict lang forwarding", () => {
     expect(seen).toEqual([{ lang: "en" }]);
   });
 });
+
+describe("Router.predictBatch lang forwarding", () => {
+  const questions = { q: { type: "noul", instructions: "?" } } as any;
+  const req = (state: unknown, overrides: Record<string, unknown> = {}) =>
+    ({ state, questions, ...overrides }) as any;
+
+  // Records every agent.predictBatch call. `langTemperatures` is what gates the group split,
+  // exactly as on Agent: an agent without overrides keeps sharing one forward pass.
+  function routerRecording(seen: any[], langTemperatures: Record<string, unknown> = { de: {} }) {
+    const stub = {
+      langTemperatures,
+      async predictBatch(states: unknown[], _q: any, opts?: any) {
+        seen.push({ states, opts });
+        return states.map((state) => ({ model: "m", answers: { seen: state }, usage: {} }));
+      },
+      async systemOne(state: unknown, _q: any, opts?: any) {
+        seen.push({ states: [state], opts });
+        return { model: "m", answers: { seen: state }, usage: {} };
+      },
+    };
+    return new Router({ loader: () => stub } as any);
+  }
+
+  it("forwards an explicit lang to agent.predictBatch, winning over detection", async () => {
+    const seen: any[] = [];
+    const r = routerRecording(seen);
+    // This romanized Bangla text detects as "bn"; the explicit lang must win.
+    await r.predictBatch([req("ami ekta ticket khulsi, kalke theke payment hocche na", { lang: "de" })]);
+    expect(seen.map((c) => c.opts.lang)).toEqual(["de"]);
+  });
+
+  it("forwards the detected language when no explicit lang is given", async () => {
+    const seen: any[] = [];
+    const r = routerRecording(seen);
+    await r.predictBatch([req("ami ekta ticket khulsi, kalke theke payment hocche na")]);
+    expect(seen.map((c) => c.opts.lang)).toEqual(["bn"]);
+  });
+
+  it("forwards no lang when nothing non-English was detected", async () => {
+    const seen: any[] = [];
+    const r = routerRecording(seen);
+    await r.predictBatch([req("please refund my ticket")]);
+    expect(seen.map((c) => c.opts.lang)).toEqual([undefined]);
+  });
+
+  it("does not share a forward pass across languages", async () => {
+    const seen: any[] = [];
+    const r = routerRecording(seen);
+    await r.predictBatch([
+      req("hallo", { lang: "de", model: "english" }),
+      req("buna", { lang: "ro", model: "english" }),
+      req("hallo zwei", { lang: "de", model: "english" }),
+    ]);
+    expect(seen.map((c) => [c.opts.lang, c.states])).toEqual([
+      ["de", ["hallo", "hallo zwei"]],
+      ["ro", ["buna"]],
+    ]);
+  });
+
+  it("keeps one shared batch when the agent carries no lang overrides", async () => {
+    const seen: any[] = [];
+    const r = routerRecording(seen, {});
+    await r.predictBatch([
+      req("hallo", { lang: "de", model: "english" }),
+      req("hello", { lang: "fr", model: "english" }),
+    ]);
+    expect(seen.map((c) => [c.opts.lang, c.states])).toEqual([[undefined, ["hallo", "hello"]]]);
+  });
+
+  it("applies the same lang override on the batch path as predict (German override)", async () => {
+    // The reported gap: with a German override, predict returned 0.7311 and predictBatch
+    // 0.8808, because the batched path never forwarded the request's language.
+    const agent = new Agent({
+      provider: fakeProvider(),
+      lang_temperatures: { de: { temperature: [2, 2, 2] } },
+    } as any);
+    const r = new Router({ loader: () => agent } as any);
+    const single: any = await r.predict("hallo", CHOICE, { lang: "de" });
+    const batch: any[] = await r.predictBatch([{ state: "hallo", questions: CHOICE, lang: "de" } as any]);
+    expect(single.answers.d.probabilities.x).toBeCloseTo(0.7311, 4);
+    expect(batch[0].answers.d.probabilities.x).toBeCloseTo(0.7311, 4);
+  });
+});

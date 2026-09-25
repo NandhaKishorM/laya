@@ -112,10 +112,13 @@ const decisions = router.routeBatch(requests);          // validate + route, not
 const routed = await router.predictBatch(requests, 32); // == router.predictMany(...)
 
 // requests routed to the same checkpoint still split into separate batches when their
-// question schemas differ (order-sensitively) or when per-request start hooks set
-// different ctx.maxLen / ctx.headMaxLen overrides. Router-level predict hooks run once
-// per request: ctx.decision is set, ctx.skip() serves a cached result, and onPredictEnd
-// runs per request even when the batch fails.
+// question schemas differ (order-sensitively), when per-request start hooks set
+// different ctx.maxLen / ctx.headMaxLen overrides, or — for an agent carrying
+// lang_temperatures — when their languages differ: each request's effective language (an
+// explicit lang, otherwise the detected non-English one) is forwarded to the agent, so
+// the batched path scores exactly like predict. Router-level predict hooks run once per
+// request: ctx.decision is set, ctx.skip() serves a cached result, and onPredictEnd runs
+// per request even when the batch fails.
 ```
 
 Python's `sort_by_length` grouping is not ported yet.

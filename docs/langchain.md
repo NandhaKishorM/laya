@@ -188,7 +188,10 @@ roughly 20 options every label is trimmed to fit and similar labels start reachi
 same text. See the README's [Honest limits](https://github.com/NandhaKishorM/laya#honest-limits)
 for the same effect measured on Banking77.
 
-A routing node with many branches is the common case, and it had no way to ask for more room:
+Two situations call for it. A routing node with many branches overflows the *option* budget, and
+a long document overflows the *state* budget -- the README's own long-document guidance is literally
+`router.predict(long_document, questions, model="multilingual", max_len=8192)`, which until now was
+unspeakable from a chain step. Both go through the same two arguments:
 
 ```python
 router = LayaRouter(

@@ -426,6 +426,28 @@ for label, body in [
 ]:
     check("signoff kept/" + label, clean_email_body(body), body)
 
+# ------------------------------------------- the name rule reaches lowercase beyond Latin-1
+# #245 replaced the ASCII `[A-Z]` with "exclude the lowercase letters", but the ranges that
+# exclude them stop at Latin-1 (`a-zß-öø-ÿ`). A word starting with ż, д or α *is* lowercase --
+# not "capitalised in any script" -- yet the class read it as a name, so the line counted as a
+# sign-off and the cut dropped whatever followed it. Case is a property of the character, not of
+# the script: the port checks it per character (`\p{Lu}\p{Lt}\p{Lo}`), and Python now checks the
+# same first-letter categories.
+for label, body in [
+    ("latin-extended lowercase name", "Hi,\n\nPlease refund invoice 4411.\nThanks, żaneta"),
+    ("cyrillic lowercase name", "Hi,\n\nPlease refund invoice 4411.\nThanks, дмитрий"),
+    ("greek lowercase name", "Hi,\n\nPlease refund invoice 4411.\nThanks, αλέξανδρος"),
+    ("a roman numeral is not a name", "Hi,\n\nPlease refund invoice 4411.\nThanks, Ⅷ"),
+]:
+    check("signoff kept/" + label, clean_email_body(body), body)
+# ...while a combining mark stays part of the letter before it: `Jose\u0301` spells `José` and
+# still cuts as a sign-off (the port's `\p{M}`).
+check(
+    "signoff cut/decomposed accented name",
+    clean_email_body("%s\n\n%s" % (BODY, "Regards, Jose\u0301")),
+    BODY,
+)
+
 
 # ------------------------------------------------- the word, without the disclaimer
 # `confidential` was a bare substring of `_DISCLAIMER`, so any sentence that merely

@@ -34,9 +34,9 @@ const HEADER_NEXT = /^\s*(Enviad[oa]( em| el)?:\s|Sent:\s|(Data|Fecha|Date):\s.*
 // case-insensitively here and the name is checked case-sensitively by SIGNOFF_TAIL.
 const SIGNOFF_HEAD =
   /^\s*(?:best|kind|warmest|warm|many thanks|thanks|thank you|regards|cheers|sincerely)(?:\s+(?:and|&)\s+regards|\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?/i;
-// Python's name class [^\W\d_a-zß-öø-ÿ] is "a word char that is not a digit, underscore or
-// lowercase letter"; \p{Lu}/\p{Lt}/\p{Lo} is the same intent: a name is capitalised in any
-// script (Regards, Łukasz) or written in a script without case (山田).
+// The name's first letter must not be lowercase, so the check is per character, not per script:
+// \p{Lu}/\p{Lt}/\p{Lo} accepts a name capitalised in any script (Regards, Łukasz) or written in
+// a script without case (山田). Python asks the same question per token (`_is_english_signoff`).
 const SIGNOFF_TAIL = /^[\s,;:!.]*(?:[\p{Lu}\p{Lt}\p{Lo}][\p{L}\p{M}\p{N}_'-]*[\s,.]*){0,3}$/u;
 function isEnglishSignoff(line: string): boolean {
   const m = SIGNOFF_HEAD.exec(line);

@@ -7,6 +7,7 @@ cleaning was a no-op: Gmail's `Em ... escreveu:`, Outlook's `-----Mensagem origi
 history (often a *different* request) weighed on the answer as much as the new message did.
 """
 import re
+import unicodedata
 from typing import Dict, List, Optional
 
 # One definition, in the module that holds the other presets. Re-exported here because
@@ -45,20 +46,49 @@ _ATTRIBUTION_HEAD = re.compile(r"^\s*(On|Em|El) (?=.*\d)", re.I)
 # English pair is "From: <name>" followed by "Sent:"/"Date:".
 _HEADER_FROM_NAME = re.compile(r"^\s*(De|From):\s+\S", re.I)
 _HEADER_NEXT = re.compile(r"^\s*(Enviad[oa]( em| el)?:\s|Sent:\s|(Data|Fecha|Date):\s.*\d{4})", re.I)
+# A closing's name starts with a letter that is not lowercase: capitalised in any script
+# (`Łukasz`, `Дмитрий`) or caseless (`山田`). `re` cannot say "not a lowercase letter in any
+# script" -- a class has to list ranges, and `[^\W\d_a-zß-öø-ÿ]` stops at Latin-1, so
+# `Thanks, żaneta` read as a name and the line counted as a sign-off. The tail is matched
+# structurally instead, and each token's first letter is judged by category below -- the same
+# rule as the TS port's `\p{Lu}\p{Lt}\p{Lo}`. Combining marks ride along with the letter before
+# them (`Jose\u0301` is `José`), as `\p{M}` allows in the port.
+_SIGNOFF_HEAD = re.compile(
+    r"^\s*(?i:best|kind|warmest|warm|many thanks|thanks|thank you|regards|cheers|sincerely)"
+    r"(?i:\s+(?:and|&)\s+regards|\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?"
+)
+_SIGNOFF_TAIL = re.compile(r"^[\s,;:!.]*(?:[^\W\d_][\w\u0300-\u036f'-]*[\s,.]*){0,3}$")
+_SIGNOFF_TOKEN = re.compile(r"[^\W\d_][\w\u0300-\u036f'-]*")
+
+
+def _is_english_signoff(line: str) -> bool:
+    """True when a closing word is followed by nothing but punctuation and a short name."""
+    m = _SIGNOFF_HEAD.match(line)
+    if m is None:
+        return False
+    tail = line[m.end():]
+    if _SIGNOFF_TAIL.match(tail) is None:
+        return False
+    return all(unicodedata.category(token[0]) in ("Lu", "Lt", "Lo")
+               for token in _SIGNOFF_TOKEN.findall(tail))
+
+
+def _marker_matches(marker, line: str) -> bool:
+    """One `_SIGNATURE_MARKERS` entry: a compiled pattern, or a callable for a rule a pattern
+    cannot express (the English sign-off)."""
+    return bool(marker(line)) if callable(marker) else bool(marker.match(line))
+
+
 _SIGNATURE_MARKERS = [
     re.compile(r"^\s*--\s*$"),
     # A closing line is the closing word plus punctuation and at most a name. Anything else on
     # the line is a sentence, and the case of the next word is what separates the two: a name is
     # capitalised, "for" in "Thanks for the quick reply." is not. The closing words are matched
     # case-insensitively, the name is not, so the flag is scoped instead of global.
-    # `warmest` and `and/& regards` are closings the alternation did not reach, and a name is
-    # capitalised in any script, so the name class excludes the lowercase letters instead of
-    # listing the uppercase ones: `Regards, Łukasz` is a sign-off, `Thanks for the reply` is not.
-    re.compile(
-        r"^\s*(?i:best|kind|warmest|warm|many thanks|thanks|thank you|regards|cheers|sincerely)"
-        r"(?i:\s+(?:and|&)\s+regards|\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?"
-        r"[\s,;:!.]*(?:[^\W\d_a-zß-öø-ÿ][\w'-]*[\s,.]*){0,3}$"
-    ),
+    # `warmest` and `and/& regards` are closings the alternation did not reach; the name that may
+    # follow is judged in `_is_english_signoff` above, a callable because `re` cannot express its
+    # rule. `Regards, Łukasz` is a sign-off, `Thanks for the reply` is not.
+    _is_english_signoff,
     re.compile(r"^\s*sent from my (iphone|android|mobile|ipad)", re.I),
     # Portuguese/Spanish sign-offs match only on their own: "Obrigado pelo retorno, mas ..." is a
     # request, not a signature, so unlike the English marker no trailing words are allowed
@@ -185,7 +215,7 @@ def clean_email_body(body: str, max_chars: int = 3000) -> str:
     cut = len(lines)
     for i in range(max(1, min(int(len(lines) * 0.6), len(lines) - 8)), len(lines)):
         n = len(lines[i].strip())
-        if (n <= 40 and any(p.match(lines[i]) for p in _SIGNATURE_MARKERS)) or (
+        if (n <= 40 and any(_marker_matches(p, lines[i]) for p in _SIGNATURE_MARKERS)) or (
                 n <= 60 and _DEVICE_FOOTER.match(lines[i])):
             cut = i
             break

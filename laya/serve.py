@@ -38,6 +38,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional
@@ -180,6 +181,38 @@ def _check_request_limits(state: Any, questions: Any) -> None:
     if state_len > MAX_STATE_CHARS:
         raise HTTPException(status_code=413,
                             detail="state too large (%d > %d chars)" % (state_len, MAX_STATE_CHARS))
+
+
+# One surrogate code point in a Python string. Compiled once: a nested body can hold many
+# strings, and `re.search` scans each at C speed, where the per-character Python loop this
+# replaced cost ~170 ms on a near-cap body on the event loop.
+_LONE_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
+def _has_lone_surrogate(value: Any) -> bool:
+    """True if any string in the parsed body contains an unpaired surrogate code point.
+
+    `json.loads` accepts a `\\udXXX` escape and builds a `str` holding that code point, which
+    cannot be encoded to UTF-8. A *pair* of escapes is combined into one ordinary astral
+    character by the decoder, so it never appears here and an emoji still works.
+
+    Walks with an explicit stack rather than recursing: `json.loads` accepts nesting far deeper
+    than Python's default recursion limit, so a recursive walk turned a body the parser handles
+    into a `RecursionError` -- one 500 replaced by another. The size checks run first, so the
+    strings reached here are bounded by `MAX_STATE_CHARS` and `MAX_QUESTIONS`.
+    """
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            if _LONE_SURROGATE.search(item):
+                return True
+        elif isinstance(item, dict):
+            stack.extend(item.keys())
+            stack.extend(item.values())
+        elif isinstance(item, (list, tuple)):
+            stack.extend(item)
+    return False
 
 
 async def _read_body_capped(request: Any) -> bytes:
@@ -354,6 +387,16 @@ def create_app(router: Optional[Any] = None):
         state = body.get("state")
         questions = body["questions"]
         _check_request_limits(state, questions)
+        # After the size checks, so an oversized body is refused before anything walks it, and
+        # `MAX_STATE_CHARS`/`MAX_QUESTIONS` bound what the walk can reach. A `\udXXX` escape with
+        # no pair is legal JSON that cannot be UTF-8 encoded, so the tokenizer raised `TypeError`
+        # from inside `build_sequence` and the client's own mistake came back as a 500
+        # "inference failed". A *paired* surrogate is an ordinary astral character (an emoji) by
+        # the time `json.loads` is done, so only lone ones are rejected here.
+        if _has_lone_surrogate(body):
+            raise HTTPException(status_code=400,
+                                detail="request body contains an unpaired surrogate escape; "
+                                       "those cannot be encoded as UTF-8")
         model = _resolve_model(body.get("model"))
         if gate is None:
             gate = asyncio.Lock()

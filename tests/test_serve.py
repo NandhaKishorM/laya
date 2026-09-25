@@ -512,13 +512,16 @@ def test_admission_bound_refuses_with_503_when_full(monkeypatch):
             # Give the first request a moment to settle past the gate too, so the
             # second request deterministically finds the slot taken.
             await asyncio.sleep(0.2)
-            seen["second"] = (await client.post("/v1/systemone", json=REQ)).status_code
+            second = await client.post("/v1/systemone", json=REQ)
+            seen["second"] = second.status_code
+            seen["retry_after"] = second.headers.get("retry-after")
             fake.release.set()
             seen["first"] = (await first).status_code
 
     asyncio.run(drive())
 
     assert seen["second"] == 503, seen
+    assert seen["retry_after"] == "1", seen
     assert seen["first"] == 200, seen
 
 

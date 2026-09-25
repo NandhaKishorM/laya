@@ -400,9 +400,22 @@ for label, tail in [
     ("thanks in advance", "Thanks in advance,"),
     ("sincerely", "Sincerely,\nA. Meier"),
     ("sent from phone", "Sent from my iPhone"),
+    ("sent from tablet", "Sent from my iPad."),
+    ("sent from android", "Sent from my Android"),
+    ("sent from mobile", "Sent from my mobile"),
     ("dash delimiter", "--\nAnna Meier\nSupport"),
 ]:
     check("signoff cut/" + label, clean_email_body("%s\n\n%s" % (BODY, tail)), BODY)
+
+# A device mention can describe the request rather than close the message.
+for sentence in [
+    "Sent from my iPhone by mistake.",
+    "Sent from my iPad yesterday.",
+    "Sent from my Android by mistake.",
+    "Sent from my mobile yesterday.",
+]:
+    body = "Hi support,\n%s\nPlease cancel the duplicate order." % sentence
+    check("device sentence kept/" + sentence, clean_email_body(body), body)
 
 # ------------------------------------------- closings the case rule did not reach (#132 follow-up)
 # These were cut before #132 and are not now: `warmest` is not in the alternation, `and regards`

@@ -532,6 +532,51 @@ check("router/predict start sees the decision", predict_seen["decision"]["model"
 check("router/predict end sees results", len(predict_seen["results"]), 1)
 check("router/predict keeps routing", out["routing"]["model"], "english")
 
+
+class PredictSuccessTrace:
+    def __init__(self):
+        self.events = []
+        self.contexts = []
+
+    def on_predict_start(self, ctx):
+        self.events.append("start")
+        self.contexts.append(ctx)
+
+    def on_predict_end(self, ctx):
+        self.events.append("end")
+        self.contexts.append(ctx)
+
+
+success_trace = PredictSuccessTrace()
+r = Router(hooks=[success_trace])
+r.attach("english", FakeAgent())
+success_out = r.predict("hello", QUESTIONS)
+check("router/predict success lifecycle", success_trace.events, ["start", "end"])
+check_true("router/predict success shares one context", success_trace.contexts[0] is success_trace.contexts[1])
+check("router/predict success shares one run_id", success_trace.contexts[0].run_id,
+      success_trace.contexts[1].run_id)
+check("router/predict success keeps the normal result", success_out["routing"]["model"], "english")
+
+
+class TimedAgent:
+    def system_one(self, state, questions, **kwargs):
+        return {"model": "timed", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}
+
+
+class TimedRouter(Router):
+    def load(self, model):
+        time.sleep(0.001)
+        self.load_finished = time.perf_counter()
+        return TimedAgent()
+
+
+timed_trace = PredictSuccessTrace()
+timed_router = TimedRouter(hooks=[timed_trace])
+timed_router.predict("hello", QUESTIONS)
+timed_ctx = timed_trace.contexts[0]
+check_true("router/success elapsed starts after load", timed_ctx.started_at >= timed_router.load_finished)
+
+
 cached = [{"model": "cached", "answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0}}]
 r = Router()
 r.attach("english", FakeAgent())
@@ -553,6 +598,68 @@ r = Router()
 r.attach("english", FakeAgent())
 r.predict("hello", QUESTIONS, hooks=[pcr])
 check("router/per-call hooks apply to on_route", len(pcr.decisions), 1)
+
+
+class PredictFailureTrace:
+    def __init__(self):
+        self.events = []
+        self.contexts = {}
+
+    def on_predict_start(self, ctx):
+        self.events.append("start")
+
+    def on_error(self, ctx):
+        self.events.append("error")
+        self.contexts["error"] = ctx
+
+    def on_predict_end(self, ctx):
+        self.events.append("end")
+        self.contexts["end"] = ctx
+
+
+class RaiseOnRoute(PredictFailureTrace):
+    def on_route(self, ctx):
+        raise RuntimeError("route failed")
+
+
+route_trace = RaiseOnRoute()
+route_error = None
+try:
+    Router(hooks=[route_trace]).predict("hello", QUESTIONS)
+except RuntimeError as exc:
+    route_error = exc
+check_true("router/route failure propagates", isinstance(route_error, RuntimeError))
+check("router/route failure lifecycle", route_trace.events, ["error", "end"])
+check_true("router/route failure has no start", "start" not in route_trace.events)
+route_ctx = route_trace.contexts.get("error")
+check_true("router/route failure records the original error",
+           getattr(route_ctx, "error", None) is route_error)
+check("router/route failure has no decision", getattr(route_ctx, "decision", "missing"), None)
+check("router/route failure has no model", getattr(route_ctx, "model", "missing"), None)
+check("router/route failure has no agent", getattr(route_ctx, "agent", "missing"), None)
+
+
+class LoadFailRouter(Router):
+    def load(self, model):
+        raise RuntimeError("load failed")
+
+
+load_trace = PredictFailureTrace()
+load_error = None
+try:
+    LoadFailRouter(hooks=[load_trace]).predict("hello", QUESTIONS)
+except RuntimeError as exc:
+    load_error = exc
+check_true("router/load failure propagates", isinstance(load_error, RuntimeError))
+check("router/load failure lifecycle", load_trace.events, ["error", "end"])
+check_true("router/load failure has no start", "start" not in load_trace.events)
+load_ctx = load_trace.contexts.get("error")
+check_true("router/load failure records the original error",
+           getattr(load_ctx, "error", None) is load_error)
+check("router/load failure retains the routed decision",
+      (getattr(load_ctx, "decision", None) or {}).get("model"), "english")
+check("router/load failure exposes the routed model", getattr(load_ctx, "model", "missing"), "english")
+check("router/load failure has no agent", getattr(load_ctx, "agent", "missing"), None)
 
 
 # --------------------------------------------------------------- Router.predict_batch

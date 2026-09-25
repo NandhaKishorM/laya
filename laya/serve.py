@@ -26,7 +26,20 @@ env var                 meaning                                        default
 ``LAYA_AUTO_TASK``      auto-route to the typed-decisions checkpoint   0
 ``LAYA_API_KEY``        if set, require ``Authorization: Bearer <it>``  (none)
 ``LAYA_LOG_LEVEL``      uvicorn log level                              info
+``LAYA_BACKEND``        inference backend for every checkpoint         (eager)
+                        (auto, eager, compile, tilelang; laya.backends)
+``LAYA_BATCH_WINDOW_MS``  collect concurrent requests for this long    2
+                        and run them as one forward; 0 = one request
+                        per forward, as before
+``LAYA_BATCH_MAX``      most requests merged into one forward          32
 ======================  ============================================  =========
+
+Dynamic batching: a forward pass at Laya's sizes is launch-bound, so eight requests in one
+``predict_batch`` cost about what one costs (see ``laya.backends``). Requests that arrive
+within ``LAYA_BATCH_WINDOW_MS`` of each other -- or while a forward is already running --
+are merged into one ``Router.predict_batch`` call, per checkpoint and question schema, and
+each gets its own result and its own error: a request that fails validation answers 422
+without failing the rest of its batch.
 
 Imports of heavy dependencies (fastapi, uvicorn, torch via Router) are all
 deferred into the functions that need them, so ``import laya.serve`` stays cheap
@@ -71,6 +84,121 @@ def _env_bool(name: str, default: bool) -> bool:
     if v is None:
         return default
     return v.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _env_number(name: str, default: float, minimum: float = 0.0) -> float:
+    """A non-negative number from the environment; anything unparsable is the default."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return max(minimum, value)
+
+
+DEFAULT_BATCH_WINDOW_MS = 2.0
+DEFAULT_BATCH_MAX = 32
+
+
+class RequestBatcher:
+    """Merge concurrent ``/v1/systemone`` requests into one ``Router.predict_batch`` call.
+
+    Every request is appended to ``pending`` and awaits its own future. The first arrival
+    schedules a flush: it waits ``window_s`` (so requests arriving together join), then takes
+    the queue -- at most ``max_batch`` at a time -- and runs it on the inference executor
+    under the app's gate. Requests that arrive while a batch is running queue up for the
+    next one, so a busy server batches however short the window is.
+
+    The window only opens during a burst: when the request that starts a flush arrived
+    within ``window_s`` of the previous one. A single client sending requests back to back
+    is spaced by its own round trip, so it is served at once and never pays the window; a
+    burst of clients firing together is ``window_s`` apart at most and is collected.
+
+    Per-request semantics are kept: results are handed back by position, and if the batched
+    call raises (one request's questions failed validation, say), every request in it is
+    re-run on its own so the failure reaches only its owner and the rest still answer. A
+    router without ``predict_batch`` (an injected fake) runs requests one at a time too.
+    """
+
+    def __init__(self, router: Any, pool: Any, window_s: float, max_batch: int):
+        self.router = router
+        self.pool = pool
+        self.window_s = max(0.0, float(window_s))
+        self.max_batch = max(1, int(max_batch))
+        self.pending: list = []
+        self._flush = None
+        self.gate = None                       # created on the running loop, see create_app
+        self.batches: list = []                # sizes of the batches run, for tests and metrics
+        self._last_arrival = float("-inf")
+        self._burst = False
+
+    async def submit(self, state: Any, questions: Any, model: Optional[str]) -> Dict[str, Any]:
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        if self.gate is None:
+            self.gate = asyncio.Lock()
+        future = loop.create_future()
+        now = time.perf_counter()
+        if not self.pending:
+            self._burst = (now - self._last_arrival) < self.window_s
+        self._last_arrival = now
+        self.pending.append((state, questions, model, future))
+        if self._flush is None:
+            self._flush = loop.create_task(self._flush_later())
+        return await future
+
+    async def _flush_later(self):
+        import asyncio
+
+        try:
+            if self.window_s > 0 and self._burst:
+                await asyncio.sleep(self.window_s)
+            while self.pending:
+                items, self.pending = self.pending[:self.max_batch], self.pending[self.max_batch:]
+                loop = asyncio.get_running_loop()
+                async with self.gate:
+                    outcomes = await loop.run_in_executor(self.pool, self._run, items)
+                for (_, _, _, future), (ok, value) in zip(items, outcomes):
+                    if future.cancelled():
+                        continue
+                    if ok:
+                        future.set_result(value)
+                    else:
+                        future.set_exception(value)
+        finally:
+            self._flush = None
+            if self.pending:                   # arrivals during the last run start the next flush
+                self._flush = asyncio.get_running_loop().create_task(self._flush_later())
+
+    def _run(self, items) -> list:
+        """On the executor: one predict_batch, falling back to per-request predict on failure."""
+        self.batches.append(len(items))
+        batched = getattr(self.router, "predict_batch", None)
+        if len(items) > 1 and callable(batched):
+            requests = []
+            for state, questions, model, _ in items:
+                req = {"state": state, "questions": questions}
+                if model is not None:
+                    req["model"] = model
+                requests.append(req)
+            try:
+                results = batched(requests, batch_size=self.max_batch)
+                if len(results) == len(items):
+                    return [(True, r) for r in results]
+                _log.error("predict_batch returned %d results for %d requests; re-running singly",
+                           len(results), len(items))
+            except Exception:  # noqa: BLE001 -- isolate the failure to the request that caused it
+                pass
+        outcomes = []
+        for state, questions, model, _ in items:
+            try:
+                outcomes.append((True, self.router.predict(state, questions, model=model)))
+            except Exception as e:  # noqa: BLE001 -- every request gets its own answer or error
+                outcomes.append((False, e))
+        return outcomes
 
 
 def _resolve_model(model: Optional[str]) -> Optional[str]:
@@ -175,7 +303,8 @@ def build_router():
     device = os.environ.get("LAYA_DEVICE") or None
     models_env = os.environ.get("LAYA_MODELS", "").strip()
     preload_names = [m.strip() for m in models_env.split(",") if m.strip()] or None
-    router = Router(device=device, auto_task_detection=_env_bool("LAYA_AUTO_TASK", False))
+    router = Router(device=device, auto_task_detection=_env_bool("LAYA_AUTO_TASK", False),
+                    backend=os.environ.get("LAYA_BACKEND") or None)
     if _env_bool("LAYA_PRELOAD", True):
         router.preload(preload_names)
     return router
@@ -205,6 +334,11 @@ def create_app(router: Optional[Any] = None):
     # running when it is first awaited, and `create_app` may be called before that loop
     # exists (module scope, TestClient startup, a preload script).
     gate: Optional[asyncio.Lock] = None
+    # Concurrent requests share a forward pass (see RequestBatcher); LAYA_BATCH_WINDOW_MS=0
+    # keeps one request per forward.
+    window_ms = _env_number("LAYA_BATCH_WINDOW_MS", DEFAULT_BATCH_WINDOW_MS)
+    batcher = RequestBatcher(router, pool, window_ms / 1000.0,
+                             int(_env_number("LAYA_BATCH_MAX", DEFAULT_BATCH_MAX, minimum=1)))
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -275,23 +409,29 @@ def create_app(router: Optional[Any] = None):
         model = _resolve_model(body.get("model"))
         if gate is None:
             gate = asyncio.Lock()
+            batcher.gate = gate
         try:
             # Laya's result is already Jev-shaped: {model, answers, usage, routing}.
             # hs-jev decodes `answers` and `usage` and ignores the rest.
-            async with gate:
-                loop = asyncio.get_running_loop()
-                t0 = time.perf_counter()
-                result = await loop.run_in_executor(
-                    pool, lambda: router.predict(state, questions, model=model))
-                infer_ms = (time.perf_counter() - t0) * 1000.0
-                from fastapi.responses import JSONResponse
-                return JSONResponse(
-                    content=result,
-                    headers={
-                        "Server-Timing": f"inference;dur={infer_ms:.2f}",
-                        "X-Inference-Time-Ms": f"{infer_ms:.2f}"
-                    }
-                )
+            t0 = time.perf_counter()
+            if window_ms > 0:
+                # The batcher takes the gate itself; a request's inference time then covers
+                # the window it waited and the forward it shared.
+                result = await batcher.submit(state, questions, model)
+            else:
+                async with gate:
+                    loop = asyncio.get_running_loop()
+                    result = await loop.run_in_executor(
+                        pool, lambda: router.predict(state, questions, model=model))
+            infer_ms = (time.perf_counter() - t0) * 1000.0
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                content=result,
+                headers={
+                    "Server-Timing": f"inference;dur={infer_ms:.2f}",
+                    "X-Inference-Time-Ms": f"{infer_ms:.2f}"
+                }
+            )
         except HTTPException:
             raise
         except ValueError as e:
@@ -305,6 +445,7 @@ def create_app(router: Optional[Any] = None):
             _log.exception("inference failed for model=%s", model)
             raise HTTPException(status_code=500, detail="inference failed")
 
+    app.state.batcher = batcher
     return app
 
 

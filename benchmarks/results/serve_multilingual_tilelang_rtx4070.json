@@ -1,0 +1,63 @@
+{
+ "real": true,
+ "gpu_state_before": "94 %, 7558 MiB",
+ "cells": [
+  {
+   "clients": 1,
+   "requests": 128,
+   "req_per_s": 64.8,
+   "p50_ms": 20.13,
+   "p95_ms": 22.98,
+   "window_ms": 0.0,
+   "mean_batch": 0.0
+  },
+  {
+   "clients": 8,
+   "requests": 128,
+   "req_per_s": 55.5,
+   "p50_ms": 160.0,
+   "p95_ms": 167.9,
+   "window_ms": 0.0,
+   "mean_batch": 0.0
+  },
+  {
+   "clients": 32,
+   "requests": 128,
+   "req_per_s": 50.7,
+   "p50_ms": 627.76,
+   "p95_ms": 652.77,
+   "window_ms": 0.0,
+   "mean_batch": 0.0
+  },
+  {
+   "clients": 1,
+   "requests": 128,
+   "req_per_s": 50.6,
+   "p50_ms": 20.91,
+   "p95_ms": 22.95,
+   "window_ms": 2.0,
+   "mean_batch": 0.0
+  },
+  {
+   "clients": 8,
+   "requests": 128,
+   "req_per_s": 152.0,
+   "p50_ms": 49.41,
+   "p95_ms": 112.94,
+   "window_ms": 2.0,
+   "mean_batch": 0.0
+  },
+  {
+   "clients": 32,
+   "requests": 128,
+   "req_per_s": 168.2,
+   "p50_ms": 141.99,
+   "p95_ms": 341.78,
+   "window_ms": 2.0,
+   "mean_batch": 0.0
+  }
+ ],
+ "backend": "tilelang",
+ "model": "convaiinnovations/laya",
+ "subfolder": "multilingual"
+}

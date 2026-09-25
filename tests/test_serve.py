@@ -402,3 +402,143 @@ def test_inference_timing_headers():
     assert "X-Inference-Time-Ms" in res.headers
     dur = float(res.headers["X-Inference-Time-Ms"])
     assert dur >= 0.0
+
+
+# ------------------------------------------------------------------ dynamic batching
+class BatchingRouter(FakeRouter):
+    """A Router with `predict_batch`: records how many requests each forward pass carried."""
+
+    def __init__(self, seconds=0.0):
+        super().__init__()
+        self.seconds = seconds
+        self.batch_sizes = []
+
+    def _answer(self, state):
+        return {
+            "model": "laya-rl-agent",
+            "answers": {"dept": {"type": "choice", "choice": "billing",
+                                 "probabilities": {"billing": 0.94, "tech": 0.06}, "confidence": 0.94}},
+            "usage": {"input_tokens": len(str(state)), "output_tokens": 0},
+            "routing": {"model": "english", "reason": "English Latin text"},
+        }
+
+    def predict(self, state, questions, model=None):
+        import time
+        self.calls.append({"state": state, "questions": questions, "model": model})
+        self.batch_sizes.append(1)
+        if "boom" in str(state):
+            raise ValueError("question 'dept': bad request for %s" % state)
+        time.sleep(self.seconds)
+        return self._answer(state)
+
+    def predict_batch(self, requests, batch_size=None):
+        import time
+        self.batch_sizes.append(len(requests))
+        for r in requests:
+            if "boom" in str(r["state"]):
+                raise ValueError("question 'dept': bad request for %s" % r["state"])
+        time.sleep(self.seconds)
+        return [self._answer(r["state"]) for r in requests]
+
+
+def _drive(app, n, states=None, concurrency=None):
+    """`n` concurrent POSTs on one event loop, the way real clients arrive."""
+    import asyncio
+
+    import httpx
+
+    async def go():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+            async def one(i):
+                body = dict(REQ, state={"body": (states[i] if states else "request %d" % i)})
+                return await client.post("/v1/systemone", json=body)
+            return await asyncio.gather(*(one(i) for i in range(n)))
+
+    return asyncio.run(go())
+
+
+def test_concurrent_requests_are_merged_into_one_forward(monkeypatch):
+    """Eight requests arriving together run as one `predict_batch`, each with its own answer."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_BATCH_WINDOW_MS", "20")
+    fake = BatchingRouter(seconds=0.05)
+    app = create_app(router=fake)
+
+    responses = _drive(app, 8)
+
+    assert [r.status_code for r in responses] == [200] * 8
+    # every client got its own state's result back, in the right order
+    assert [r.json()["usage"]["input_tokens"] for r in responses] == [len(str({"body": "request %d" % i})) for i in range(8)]
+    assert max(fake.batch_sizes) >= 4, fake.batch_sizes
+    assert sum(fake.batch_sizes) == 8
+    assert fake.calls == []                          # nothing went through the per-request path
+    for r in responses:
+        assert r.headers["Server-Timing"].startswith("inference;dur=")
+
+
+def test_requests_arriving_during_a_forward_join_the_next_batch(monkeypatch):
+    """With the window at zero a busy server still batches: arrivals during a run wait together."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_BATCH_WINDOW_MS", "0.001")   # on, but no collection window to speak of
+    fake = BatchingRouter(seconds=0.1)
+    app = create_app(router=fake)
+
+    responses = _drive(app, 6)
+
+    assert [r.status_code for r in responses] == [200] * 6
+    assert sum(fake.batch_sizes) == 6
+    assert len(fake.batch_sizes) < 6, fake.batch_sizes
+
+
+def test_a_bad_request_in_a_batch_fails_alone(monkeypatch):
+    """One 422 in a merged batch: the others still answer 200, from a re-run of each request."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_BATCH_WINDOW_MS", "20")
+    fake = BatchingRouter(seconds=0.02)
+    app = create_app(router=fake)
+
+    responses = _drive(app, 4, states=["ok 0", "boom 1", "ok 2", "ok 3"])
+
+    assert [r.status_code for r in responses] == [200, 422, 200, 200]
+    assert "boom 1" in responses[1].text and "bad request" in responses[1].text
+    assert responses[2].json()["usage"]["input_tokens"] == len(str({"body": "ok 2"}))
+
+
+def test_batch_window_zero_keeps_one_request_per_forward(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_BATCH_WINDOW_MS", "0")
+    fake = BatchingRouter(seconds=0.02)
+    app = create_app(router=fake)
+
+    responses = _drive(app, 5)
+
+    assert [r.status_code for r in responses] == [200] * 5
+    assert fake.batch_sizes == [1] * 5
+    assert len(fake.calls) == 5
+
+
+def test_batching_works_with_a_router_that_has_no_predict_batch(monkeypatch):
+    """An injected router without `predict_batch` (the plain FakeRouter) is run one request at a time."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_BATCH_WINDOW_MS", "10")
+    fake = FakeRouter()
+    app = create_app(router=fake)
+
+    responses = _drive(app, 3)
+
+    assert [r.status_code for r in responses] == [200] * 3
+    assert len(fake.calls) == 3
+
+
+def test_batch_max_caps_a_forward(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_BATCH_WINDOW_MS", "20")
+    monkeypatch.setenv("LAYA_BATCH_MAX", "3")
+    fake = BatchingRouter(seconds=0.01)
+    app = create_app(router=fake)
+
+    responses = _drive(app, 7)
+
+    assert [r.status_code for r in responses] == [200] * 7
+    assert max(fake.batch_sizes) <= 3 and sum(fake.batch_sizes) == 7, fake.batch_sizes

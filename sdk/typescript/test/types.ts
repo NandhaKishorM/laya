@@ -1,4 +1,4 @@
-import { Laya, defineQuestions, emailQuestions, triageQuestions, type Questions, type Answer } from '@laya/typescript-sdk';
+import { Laya, defineQuestions, emailQuestions, triageQuestions, type Questions, type Answer } from 'laya-client';
 
 const client = new Laya();
 const questions = defineQuestions({
@@ -16,9 +16,9 @@ const noul: number = result.answers.refund.noul;
 const routingModel: string | undefined = result.routing?.model;
 const actionProbability: number | undefined = result.answers.team.action?.act_probability;
 const noulConfidence: number | undefined = result.answers.refund.confidence;
-// @ts-expect-error Jev does not return Laya routing metadata.
+// @ts-expect-error Routing metadata is optional.
 result.routing.model;
-// @ts-expect-error Jev does not return action probabilities.
+// @ts-expect-error Action metadata is optional.
 result.answers.team.action.act_probability;
 // @ts-expect-error /v1/systemone does not expose standalone routing.
 client.route('hello');
@@ -26,8 +26,8 @@ client.route('hello');
 client.predict('hello', questions, { task: 'typed' });
 // @ts-expect-error /v1/systemone supports model, not lang.
 client.predict('hello', questions, { lang: 'hi' });
-client.predict('hello', questions, { model: 'jev-preview' });
-new Laya({ model: 'jev-latest' });
+client.predict('hello', questions, { model: 'multilingual' });
+new Laya({ model: 'english' });
 // @ts-expect-error A score answer has no choice field.
 result.answers.priority.choice;
 // @ts-expect-error Unknown question IDs are not valid.

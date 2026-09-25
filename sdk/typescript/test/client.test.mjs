@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import {
   Laya, LayaAPIError, LayaAbortError, LayaConnectionError, LayaTimeoutError,
   LayaValidationError, LayaResponseError, emailQuestions, triageQuestions,
-} from '@laya/typescript-sdk';
+} from 'laya-client';
 
 const questions = { refund: { type: 'noul', instructions: 'Refund?' } };
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status });
@@ -14,7 +14,7 @@ const prediction = { model: 'laya-rl-agent', routing: route, usage: { input_toke
   answers: { refund: { type: 'noul', noul: 0.9, confidence: 0.9, action: { act_probability: 0.8 } } } };
 
 test('ESM and CommonJS exports can be consumed by ordinary JavaScript', () => {
-  const cjs = createRequire(import.meta.url)('@laya/typescript-sdk');
+  const cjs = createRequire(import.meta.url)('laya-client');
   assert.equal(typeof cjs.Laya, 'function');
   assert.deepEqual(cjs.triageQuestions(), triageQuestions());
 });
@@ -47,14 +47,13 @@ test('Laya health uses GET and accepts the existing server response', async () =
   assert.equal(client.route, undefined);
 });
 
-// Contract fixtures based on https://docs.typesafe.ai/api (no live Jev credentials required).
-const jevQuestions = {
+const allAnswerQuestions = {
   team: { type: 'choice', instructions: 'Team?', criteria: ['billing', 'support'] },
   urgency: { type: 'score', instructions: 'Urgency?', criteria: ['low', 'high'] },
   refund: questions.refund,
 };
-const jevPrediction = {
-  model: 'jev-1.13.0', usage: { input_tokens: 20, output_tokens: 10 },
+const allAnswerPrediction = {
+  model: 'english', usage: { input_tokens: 20, output_tokens: 10 },
   answers: {
     team: { type: 'choice', choice: 'billing', probabilities: { billing: 0.8, support: 0.2 }, confidence: 0.6 },
     urgency: { type: 'score', score: 0.7, probabilities: { '0': 0.3, '1': 0.7 }, legend: { '0': 'low', '1': 'high' }, confidence: 0.4 },
@@ -62,31 +61,29 @@ const jevPrediction = {
   },
 };
 
-test('shared protocol accepts all Jev answer types without Laya extensions', async () => {
-  for (const baseURL of ['http://127.0.0.1:8000', 'https://api.typesafe.ai']) {
-    const client = new Laya({ baseURL, apiKey: 'test-key', fetch: async (url, init) => {
-      assert.equal(url, `${baseURL}/v1/systemone`);
-      assert.equal(init.headers.get('Authorization'), 'Bearer test-key');
-      assert.deepEqual(JSON.parse(init.body), {
-        state: 'Refund please', model: 'jev-latest',
-        questions: { ...jevQuestions, team: { ...jevQuestions.team, criteria: { billing: null, support: null } } },
-      });
-      return json(jevPrediction);
-    } });
-    assert.deepEqual(await client.predict('Refund please', jevQuestions), jevPrediction);
-  }
-  assert.deepEqual(jevQuestions.team.criteria, ['billing', 'support'], 'normalization must not mutate the schema');
+test('default request omits model and supports every Laya answer type', async () => {
+  const client = new Laya({ baseURL: 'http://127.0.0.1:8000', apiKey: 'test-key', fetch: async (url, init) => {
+    assert.equal(url, 'http://127.0.0.1:8000/v1/systemone');
+    assert.equal(init.headers.get('Authorization'), 'Bearer test-key');
+    assert.deepEqual(JSON.parse(init.body), {
+      state: 'Refund please',
+      questions: { ...allAnswerQuestions, team: { ...allAnswerQuestions.team, criteria: { billing: null, support: null } } },
+    });
+    return json(allAnswerPrediction);
+  } });
+  assert.deepEqual(await client.predict('Refund please', allAnswerQuestions), allAnswerPrediction);
+  assert.deepEqual(allAnswerQuestions.team.criteria, ['billing', 'support'], 'normalization must not mutate the schema');
 });
 
-test('client model default supports arbitrary Jev IDs and request overrides', async () => {
+test('client model default and prediction overrides select local checkpoints', async () => {
   const models = [];
-  const client = new Laya({ model: 'jev-preview', fetch: async (_url, init) => {
+  const client = new Laya({ model: 'english', fetch: async (_url, init) => {
     models.push(JSON.parse(init.body).model);
     return json(prediction);
   } });
   await client.predict('hello', questions);
-  await client.predict('hello', questions, { model: 'convaiinnovations/laya-multilingual' });
-  assert.deepEqual(models, ['jev-preview', 'convaiinnovations/laya-multilingual']);
+  await client.predict('hello', questions, { model: 'multilingual' });
+  assert.deepEqual(models, ['english', 'multilingual']);
 });
 
 test('unsupported routing options and invalid models fail before sending a request', async () => {
@@ -140,7 +137,7 @@ test('structured API errors keep status, code and validation details; no retries
 
 test('FastAPI errors preserve detail strings and validation arrays', async () => {
   for (const [status, detail] of [[401, 'invalid or missing bearer token'],
-    [422, [{ loc: ['body', 'model'], msg: 'Field required', type: 'missing' }]],
+    [422, [{ loc: ['body', 'questions'], msg: 'Field required', type: 'missing' }]],
     [413, 'request body too large'], [500, 'inference failed']]) {
     await assert.rejects(new Laya({ fetch: async () => json({ detail }, status) }).predict('hello', questions), error => {
       assert.ok(error instanceof LayaAPIError);
@@ -172,14 +169,14 @@ test('malformed answers cannot masquerade as typed predictions', async () => {
   }
 });
 
-test('Jev compatibility still rejects malformed required fields and optional extensions', async () => {
+test('prediction validation rejects malformed required fields and optional extensions', async () => {
   for (const mutate of [p => { delete p.answers.team.confidence; }, p => { delete p.answers.urgency.legend; },
     p => { p.answers.team.choice = 'unknown'; }, p => { delete p.answers.team.probabilities.billing; },
     p => { p.answers.urgency.score = 2; }, p => { p.answers.refund.confidence = 'high'; },
     p => { p.answers.refund.action = { act_probability: 2 }; }, p => { p.routing = null; }]) {
-    const payload = structuredClone(jevPrediction);
+    const payload = structuredClone(allAnswerPrediction);
     mutate(payload);
-    await assert.rejects(new Laya({ fetch: async () => json(payload) }).predict('hello', jevQuestions), LayaResponseError);
+    await assert.rejects(new Laya({ fetch: async () => json(payload) }).predict('hello', allAnswerQuestions), LayaResponseError);
   }
 });
 

@@ -226,9 +226,10 @@ pins the device. See `python examples/server.py --help` for the rest.
 
 ### JavaScript / TypeScript
 
-The [TypeScript SDK](sdk/typescript/README.md) supports JavaScript and TypeScript
-apps through the existing Jev-compatible `/v1/systemone` HTTP server. It includes inferred
-answer types, all five question presets, ESM/CommonJS exports, and cancellation.
+[`laya-client`](sdk/typescript/README.md) supports JavaScript and TypeScript
+applications over HTTP to a self-hosted `laya-serve` `/v1/systemone` server. It
+includes inferred answer types, all five question presets, ESM/CommonJS exports,
+and cancellation.
 
 ```bash
 # From this checkout, install and start the Python inference service:
@@ -242,9 +243,10 @@ npm run build
 node examples/triage.mjs
 ```
 
-The npm package is named `@laya/typescript-sdk`.
-The prediction API also accepts Jev's response format; see the SDK's
-[Jev compatibility guide](sdk/typescript/README.md#jev-compatibility-and-model-selection).
+The npm package is named `laya-client`. Use it when a JavaScript or TypeScript
+application talks over HTTP to self-hosted Python `laya-serve`. Use `laya-ts`
+when inference must run directly inside JavaScript through its local ONNX
+runtime, without a Python server.
 See [installation, examples, and publishing](sdk/typescript/README.md) and the
 [repository analysis](docs/typescript-sdk.md) for architecture and scope.
 
@@ -443,14 +445,11 @@ The hint only decides *English or not*: a code whose primary subtag is `en`, `en
 
 ---
 
-## Self-Hosting: HTTP Server (Jev-compatible)
+## Self-Hosting: HTTP Server
 
-`laya.serve` exposes the `Router` over HTTP on the same `POST /v1/systemone`
-wire protocol as TypeSafe's hosted Jev API. Laya's answer payload is already
-schema-identical to what Jev returns (`choice`/`score`/`noul` answers and a
-`{input_tokens, output_tokens}` usage block), so an existing Jev client — e.g.
-the [`hs-jev`](https://github.com/getmissionctrl/hs-jev) Haskell client — just
-needs its `baseUrl` repointed; nothing else changes.
+`laya-serve` exposes the `Router` over its local `POST /v1/systemone` HTTP
+endpoint. Responses contain `choice`/`score`/`noul` answers and an
+`{input_tokens, output_tokens}` usage block.
 
 ```bash
 pip install "laya[serve]"          # adds fastapi + uvicorn + python-multipart
@@ -473,11 +472,11 @@ send `Authorization: Bearer <key>`). A client's `model` field is honoured when i
 names a Laya checkpoint (`english`/`multilingual`/`typed-decisions`), otherwise
 the router auto-selects by script/language.
 
-Three things differ from Jev when you port a client:
+For HTTP clients:
 
-* **Options per question.** A question's options share the checkpoint's option budget, `head_max_len` (192 tokens on `laya`, 256 on the other two), not Jev's cap of 255 options. Once they overflow it, around 20 options with a short description each, every option is trimmed to fit, so long or similar labels can reach the model reading the same ([Where Jev leads](#where-jev-leads)). Once they no longer fit the window at all, the request is rejected with 422. With short labels such as `Queue 042: Tickets routed to queue 42` that happens above 126 options on `laya` and 254 on the other two; the exact point moves with the length of the instructions and labels. For more candidates, narrow them first with `predict_shortlist` ([Honest limits](#honest-limits)).
+* **Options per question.** A question's options share the checkpoint's option budget, `head_max_len` (192 tokens on `laya`, 256 on the other two). Once they overflow it, around 20 options with a short description each, every option is trimmed to fit, so long or similar labels can reach the model reading the same. Once they no longer fit the window at all, the request is rejected with 422. With short labels such as `Queue 042: Tickets routed to queue 42` that happens above 126 options on `laya` and 254 on the other two; the exact point moves with the length of the instructions and labels. For more candidates, narrow them first with `predict_shortlist` ([Honest limits](#honest-limits)).
 * **Score levels.** Every level needs a description. A `null` level is rejected with 422 rather than scored and echoed back in `legend`.
-* **`confidence`** on `choice` and `score` answers is 1 minus normalised entropy, a measure of how concentrated the distribution is, not Jev's `(n·p_max − 1)/(n − 1)`. A threshold carried over from Jev does not transfer. For one calibrated number on every question type, gate on `answer_confidence`, the probability of the reported answer.
+* **`confidence`** on `choice` and `score` answers is 1 minus normalised entropy, a measure of how concentrated the distribution is. For one calibrated number on every question type, gate on `answer_confidence`, the probability of the reported answer.
 
 ### Nix / NixOS
 

@@ -1,5 +1,5 @@
 {
-  "name": "@laya/typescript-sdk",
+  "name": "laya-client",
   "version": "0.1.0",
   "description": "Typed JavaScript client for the self-hosted Laya decision engine",
   "license": "Apache-2.0",

@@ -10,7 +10,7 @@ export interface LayaOptions {
   /** Server root URL, optionally including a reverse-proxy path prefix. */
   baseURL?: string;
   apiKey?: string;
-  /** Default jev-latest: used by Jev and treated as automatic routing by Laya. */
+  /** Optional local checkpoint or alias to send with every prediction. */
   model?: string;
   /** Default 120000 ms; cold checkpoint downloads may require more. Zero disables. */
   timeoutMs?: number;
@@ -24,7 +24,7 @@ export class Laya {
   private readonly timeoutMs: number;
   private readonly headers: Headers;
   private readonly fetcher: typeof globalThis.fetch;
-  private readonly model: string;
+  private readonly model: string | undefined;
 
   constructor(options: LayaOptions = {}) {
     let url: URL;
@@ -34,8 +34,8 @@ export class Laya {
       throw new LayaValidationError('baseURL must be HTTP(S), without credentials, query, or fragment');
     }
     this.baseURL = url.href.replace(/\/+$/, '');
-    this.model = options.model ?? 'jev-latest';
-    if (typeof this.model !== 'string' || !this.model.trim()) {
+    this.model = options.model;
+    if (this.model !== undefined && (typeof this.model !== 'string' || !this.model.trim())) {
       throw new LayaValidationError('model must be a nonempty string');
     }
     this.timeoutMs = options.timeoutMs ?? 120_000;
@@ -55,7 +55,7 @@ export class Laya {
     return result;
   }
 
-  /** Query the self-hosted Laya server's health probe. Not supported by Jev. */
+  /** Query the self-hosted Laya server's health probe. */
   async health(options: RequestOptions = {}): Promise<Health> {
     const result = await this.request<Health>('/health', undefined, options);
     validateHealth(result);
@@ -70,15 +70,16 @@ export class Laya {
       if (key in options) throw new LayaValidationError(`${key} is not supported by /v1/systemone; use model instead`);
     }
     const model = options.model ?? this.model;
-    if (typeof model !== 'string' || !model.trim()) throw new LayaValidationError('model must be a nonempty string');
-    // Validate before normalizing so JSON-incompatible values cannot be hidden.
-    validateJson({ state, questions, model });
+    if (model !== undefined && (typeof model !== 'string' || !model.trim())) {
+      throw new LayaValidationError('model must be a nonempty string');
+    }
     const wireQuestions = Object.fromEntries(Object.entries(questions).map(([id, question]) => [id,
       question.type === 'choice' && Array.isArray(question.criteria)
         ? { ...question, criteria: Object.fromEntries(question.criteria.map(label => [label, null])) }
         : question,
     ]));
-    const body = { state, questions: wireQuestions, model };
+    const body: { state: State; questions: typeof wireQuestions; model?: string } = { state, questions: wireQuestions };
+    if (model !== undefined) body.model = model;
     validateJson(body);
     return JSON.stringify(body);
   }

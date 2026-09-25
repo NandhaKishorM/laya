@@ -5,7 +5,7 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { test } from 'node:test';
-import { Laya, LayaAPIError, triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions } from '@laya/typescript-sdk';
+import { Laya, LayaAPIError, triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions } from 'laya-client';
 
 test('JavaScript → HTTP → Python Router → real offline Agent inference', { timeout: 90_000 }, async t => {
   const script = fileURLToPath(new URL('../../../tests/sdk_server_fixture.py', import.meta.url));
@@ -51,8 +51,6 @@ test('JavaScript → HTTP → Python Router → real offline Agent inference', {
   assert.equal(result.usage.output_tokens, 0);
   assert.equal((await client.predict({ text: 'मुझे पैसे वापस चाहिए' }, fixture.questions)).routing.model, 'multilingual');
   assert.equal((await client.predict('hello', fixture.questions, { model: 'typed_decisions' })).routing.model, 'typed-decisions');
-  assert.equal((await client.predict('hello', fixture.questions, { model: 'convaiinnovations/laya-multilingual' })).routing.model, 'multilingual');
-  assert.equal((await client.predict('hello', fixture.questions, { model: 'jev-preview' })).routing.model, 'english');
 
   for (const preset of [triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions]) {
     const questions = preset();

@@ -30,12 +30,12 @@ export interface RequestOptions {
   timeoutMs?: number;
 }
 export interface PredictOptions extends RequestOptions {
-  /** Laya checkpoint/alias or Jev model ID. Overrides the client's default model. */
+  /** Local Laya checkpoint or alias. Overrides the client's configured model. */
   model?: string;
 }
 
 interface AnswerBase {
-  /** Laya extension; absent from Jev responses. */
+  /** Optional action metadata returned by Laya. */
   action?: { act_probability: number };
 }
 export interface ChoiceAnswer<Label extends string = string> extends AnswerBase {
@@ -54,7 +54,7 @@ export interface ScoreAnswer extends AnswerBase {
 }
 export interface NoulAnswer extends AnswerBase {
   type: 'noul';
-  /** Laya extension; Jev returns only type and noul. */
+  /** Optional confidence metadata returned by Laya. */
   confidence?: number;
   /** P(true), between 0 and 1. */
   noul: number;
@@ -85,10 +85,10 @@ export interface Prediction<Q extends Questions = Questions> {
   model: string;
   answers: Answers<Q>;
   usage: { input_tokens: number; output_tokens: number };
-  /** Laya extension; absent from Jev responses. */
+  /** Optional routing metadata returned by Laya. */
   routing?: RouteDecision;
 }
-/** Laya's health probe; not part of the shared Jev protocol. */
+/** Laya's self-hosted health probe. */
 export interface Health {
   status: 'ok';
   loaded: ModelName[];

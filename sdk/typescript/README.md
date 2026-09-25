@@ -1,12 +1,12 @@
-# @laya/typescript-sdk
+# laya-client
 
-A dependency-free HTTP client for Laya's Jev-compatible `/v1/systemone` endpoint. Supports ESM and
+A dependency-free HTTP client for a self-hosted Laya `laya-serve` `/v1/systemone` endpoint. Supports ESM and
 CommonJS on Node.js 22+, and browsers with `fetch`, `AbortController`, and
 `structuredClone`. TypeScript consumers need TypeScript 5 or newer.
 
-Inference runs in Laya's existing `laya.serve` server or the Jev API. JavaScript clients do not need
-Python, PyTorch, or model weights installed; the server does. This package does
-not run models directly in a browser or Node.js.
+Inference runs in your self-hosted `laya-serve` process. JavaScript clients do
+not need Python, PyTorch, or model weights installed; the server does. This
+package does not run models directly in a browser or Node.js.
 
 ## Run from this repository
 
@@ -45,11 +45,10 @@ configuration uses environment variables, not command-line flags. See the
 
 ## Install in another JavaScript project
 
-The npm package name is `@laya/typescript-sdk`. After the first release is
-published, install it with:
+After the first release is published, install `laya-client` with:
 
 ```sh
-npm install @laya/typescript-sdk
+npm install laya-client
 ```
 
 You can also install the locally built tarball before publication:
@@ -59,11 +58,11 @@ You can also install the locally built tarball before publication:
 npm pack
 
 # From your app, substitute the actual checkout path:
-npm install /path/to/laya/sdk/typescript/laya-typescript-sdk-0.1.0.tgz
+npm install /path/to/laya/sdk/typescript/laya-client-0.1.0.tgz
 ```
 
 ```js
-import { Laya, triageQuestions } from '@laya/typescript-sdk';
+import { Laya, triageQuestions } from 'laya-client';
 
 const laya = new Laya({ baseURL: 'http://127.0.0.1:8000' });
 const result = await laya.predict(
@@ -79,7 +78,7 @@ console.log(result.routing?.model); // Laya-only metadata
 CommonJS works too:
 
 ```js
-const { Laya, triageQuestions } = require('@laya/typescript-sdk');
+const { Laya, triageQuestions } = require('laya-client');
 const laya = new Laya();
 laya.predict({ message: 'Please refund my order' }, triageQuestions())
   .then(result => console.log(result.answers));
@@ -92,7 +91,7 @@ Question IDs, primitive types, and choice labels are inferred. Use
 Inline schemas also infer automatically.
 
 ```ts
-import { Laya, defineQuestions } from '@laya/typescript-sdk';
+import { Laya, defineQuestions } from 'laya-client';
 
 const laya = new Laya();
 const questions = defineQuestions({
@@ -133,47 +132,33 @@ Response fields retain Python's spelling (`input_tokens`, `act_probability`,
 etc.). Scores use zero-based rubric levels. Confidence and accuracy have the
 same calibration limits as the Python model; see the root README.
 
-## Jev compatibility and model selection
+## Local model selection
 
-The same `predict` method calls [TypeSafe's System One API](https://docs.typesafe.ai/api):
-
-```js
-const jev = new Laya({
-  baseURL: 'https://api.typesafe.ai', // server root; do not append /v1
-  apiKey: process.env.TYPESAFE_API_KEY,
-});
-const result = await jev.predict('Please refund the duplicate charge.', triageQuestions());
-console.log(result.answers.refund_requested.noul);
-```
-
-The default request model is `jev-latest`. Jev uses that model alias; Laya ignores
-unrecognized model IDs and chooses a local checkpoint automatically. This lets
-the same prediction code switch servers through `baseURL` and credentials.
-Set a client-wide `model` or override it per prediction to select a checkpoint:
+By default, `laya-client` sends no `model` property. `laya-serve` then chooses
+the appropriate local checkpoint automatically. Set a client-wide `model` or
+override it per prediction only when a specific local checkpoint is required:
 
 ```js
 const laya = new Laya({ model: 'english' });
 await laya.predict(state, questions, { model: 'typed-decisions' });
 await laya.predict(state, questions, { model: 'multilingual' });
-await jev.predict(state, questions, { model: 'jev-preview' });
 ```
 
-Laya accepts its checkpoint aliases and published multilingual/typed-decisions
-model IDs. Use a Jev model ID when calling Jev. The HTTP endpoint supports
-`model`; it does not expose standalone `route()`, `task`, or `lang` overrides.
-Laya still detects language automatically; set `LAYA_AUTO_TASK=1` on the server
-to enable automatic workflow routing.
+Laya accepts its local checkpoint aliases. The HTTP endpoint supports `model`;
+it does not expose standalone `route()`, `task`, or `lang` overrides. Laya
+still detects language automatically; set `LAYA_AUTO_TASK=1` on the server to
+enable automatic workflow routing.
 
-Both servers return `model`, `answers`, and `usage`. Laya additionally returns
-`routing`, answer `action`, and Noul `confidence`. Those extensions are optional
-in the SDK types and validated when present. Choice and Score confidence remains
-required. `health()` is a Laya-only probe and is never called by `predict()`.
+Laya returns `model`, `answers`, and `usage`, with optional `routing`, answer
+`action`, and Noul `confidence` metadata. Those fields are validated when
+present. Choice and Score confidence remains required. `health()` is never
+called by `predict()`.
 
-Jev compatibility is covered by fixtures based on its official API contract;
-the automated suite does not call the hosted service. Jev also enforces its own
-input limits (up to 255 Choice options and 2–10 Score levels). Use text/object/array
-state for portability; null state and broader JSON scalar descriptions are Laya
-extensions accepted by this SDK.
+## Which JavaScript client?
+
+Use `laya-client` when a JavaScript or TypeScript application talks over HTTP to
+self-hosted Python `laya-serve`. Use `laya-ts` when inference must run directly
+inside JavaScript through its local ONNX runtime, without a Python server.
 
 ## Presets
 
@@ -182,14 +167,14 @@ Available preset functions: `triageQuestions()`, `emailQuestions(categories?)`,
 a fresh schema. Email categories can be customized:
 
 ```js
-import { emailQuestions } from '@laya/typescript-sdk';
+import { emailQuestions } from 'laya-client';
 const questions = emailQuestions({ finance: 'payments', engineering: 'bugs' });
 ```
 
 ## Errors, cancellation, authentication
 
 ```js
-import { Laya, LayaAPIError, LayaTimeoutError } from '@laya/typescript-sdk';
+import { Laya, LayaAPIError, LayaTimeoutError } from 'laya-client';
 
 const client = new Laya({
   baseURL: 'http://127.0.0.1:8000',
@@ -227,8 +212,8 @@ and TLS at your application proxy or gateway.
 
 | Endpoint | Request | Response |
 | --- | --- | --- |
-| `GET /health` (Laya only) | None | `{status, loaded, device}` |
-| `POST /v1/systemone` | `{state, questions, model}` | `{model, answers, usage}` plus optional Laya `routing` |
+| `GET /health` | None | `{status, loaded, device}` |
+| `POST /v1/systemone` | `{state, questions, model?}` | `{model, answers, usage}` plus optional `routing` |
 
 Laya errors use FastAPI's `{detail: ...}` body: 400 for malformed requests, 401
 for authentication, 413 for request limits, 422 for invalid questions, and 500
@@ -272,9 +257,8 @@ with `python3 scripts/sync_presets.py` after editing that source.
 
 ## Publishing
 
-Publish from `sdk/typescript` using an npm account with publishing rights in the
-`@laya` scope. npm uses `@scope/package` names; `laya/typescript-sdk` without `@`
-is not this registry package. See [npm's scoped package guide](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/).
+Publish `laya-client` from `sdk/typescript` using an npm account with publishing
+rights for that package name.
 
 ```sh
 npm login --registry=https://registry.npmjs.org
@@ -300,6 +284,6 @@ package. npm does not allow republishing an already-used name/version pair.
 After publication, verify the release and install it into a clean project:
 
 ```sh
-npm view @laya/typescript-sdk version --registry=https://registry.npmjs.org
-npm install @laya/typescript-sdk
+npm view laya-client version --registry=https://registry.npmjs.org
+npm install laya-client
 ```

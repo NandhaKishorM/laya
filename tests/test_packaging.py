@@ -94,6 +94,32 @@ missing_from_ci = [
 check("ci/tests every advertised Python version", missing_from_ci, [])
 
 
+# --------------------------------------------------------------- workflow concurrency
+# A workflow that runs on pushes to main used to group them all under one branch group: while a
+# merge's run was in progress the next merge queued into that same group, and the queued-run
+# limit replaced the run that had not started, so bursts of merges landed with no result of their
+# own (#399). Push runs need a group per commit; pull request runs keep the ref group so an
+# outdated one is still cancelled.
+_workflows_dir = os.path.join(".github", "workflows")
+for _name in sorted(os.listdir(_workflows_dir)):
+    if not _name.endswith((".yml", ".yaml")):
+        continue
+    _text = read(os.path.join(_workflows_dir, _name))
+    if "push:" not in _text or "branches: [main]" not in _text:
+        continue
+    _group = re.search(r"^  group:\s*(.+)$", _text, re.M)
+    check_true(
+        "%s/push runs get a concurrency group per commit" % _name,
+        _group is not None and "github.sha" in _group.group(1),
+        "group must include github.sha so each push to main gets a run of its own",
+    )
+    check_true(
+        "%s/cancels only pull request runs" % _name,
+        "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in _text,
+        "runs on main must be allowed to finish",
+    )
+
+
 # --------------------------------------------------------------- markdown links
 # Nothing checked these, and the README ships to PyPI and to the model card. Only
 # targets inside the repository are checked: external URLs would make the suite depend

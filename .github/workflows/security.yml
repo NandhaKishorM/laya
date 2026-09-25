@@ -7,9 +7,10 @@ on:
   schedule:
     - cron: "17 6 * * 1"     # Monday morning: catch CVEs disclosed since the last push
 
-# Cancel outdated pull request runs; let runs on main finish.
+# Cancel outdated pull request runs; let runs on main finish, one group per commit so a merge
+# queued behind an active run does not take another merge's run with it (#399).
 concurrency:
-  group: security-${{ github.ref }}
+  group: "security-${{ github.event_name == 'pull_request' && github.ref || github.sha }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Read-only by default. Jobs that need more ask for it explicitly.

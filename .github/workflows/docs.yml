@@ -14,9 +14,10 @@ on:
 permissions:
   contents: read
 
-# Cancel outdated pull request builds; let an active deploy on main finish.
+# Cancel outdated pull request builds; let an active deploy on main finish, one group per commit
+# so a merge queued behind an active run does not take another merge's run with it (#399).
 concurrency:
-  group: docs-${{ github.ref }}
+  group: "docs-${{ github.event_name == 'pull_request' && github.ref || github.sha }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

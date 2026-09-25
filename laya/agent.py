@@ -1121,6 +1121,21 @@ class Agent(HookRegistry):
         return _decide(self, state, schema, questions=questions,
                        return_details=return_details, **predict_kwargs)
 
+    def decide_batch(self, states: List[Union[str, dict, list]], schema: Any = None, *,
+                     questions: Optional[Dict[str, Any]] = None,
+                     return_details: bool = False, **predict_kwargs) -> List[Any]:
+        """Answer many states against one schema (JSON schema or pydantic model) in one batched call.
+
+        The throughput form of :meth:`decide`: the schema is planned once and its questions
+        run over every state through :meth:`predict_batch` (shared forward passes, results
+        in input order), then each state's answers are projected as ``decide`` does. Extra
+        keyword arguments (``batch_size=``, ``lang=``, ``hooks=``, ...) are forwarded to
+        ``predict_batch``. See `laya.structured`.
+        """
+        from .structured import decide_batch as _decide_batch
+        return _decide_batch(self, states, schema, questions=questions,
+                             return_details=return_details, **predict_kwargs)
+
     def __repr__(self) -> str:
         return "Agent(model_id=%r, device=%s)" % (self.model_id, getattr(self, "device", None))
 

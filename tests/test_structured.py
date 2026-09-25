@@ -13,6 +13,7 @@ from laya.structured import (  # noqa: E402
     answers_to_json,
     answer_to_pydantic,
     decide,
+    decide_batch,
     plan_from_json_schema,
     questions_from_json_schema,
     questions_from_pydantic,
@@ -174,6 +175,119 @@ decide(runner, "s", schema=SCHEMA, hooks_raise=False)
 check("decide/forwards predict kwargs", runner.calls[0]["kwargs"], {"hooks_raise": False})
 
 
+# --------------------------------------------------------------- decide_batch
+class FakeBatchRunner:
+    """predict_batch(states, questions, **kwargs) like Agent's/Router's: one
+    result dict per state, in input order."""
+
+    def __init__(self, answers_by_state):
+        self.answers_by_state = answers_by_state
+        self.calls = []
+
+    def predict_batch(self, states, questions, **kwargs):
+        self.calls.append({"states": states, "questions": questions, "kwargs": kwargs})
+        # like Router.predict_batch: empty answers only for a state that was
+        # genuinely skipped by a hook -- the fake keys them off an unknown text.
+        return [{"answers": self.answers_by_state.get(s, {}), "routing": {"model": "english"}}
+                for s in states]
+
+
+STATES = ["first ticket", "second ticket"]
+BATCH_ANSWERS = {
+    "first ticket": ANSWERS,
+    "second ticket": {
+        "department": {"type": "choice", "choice": "sales", "confidence": 0.8,
+                       "probabilities": {"billing": 0.0, "support": 0.1, "sales": 0.9}},
+        "urgency": {"type": "score", "score": 0.4, "confidence": 0.5,
+                    "probabilities": {"0": 0.7, "1": 0.2, "2": 0.1}},
+        "needs_human": {"type": "noul", "noul": 0.1, "confidence": 0.8},
+        "priority": {"type": "choice", "choice": "1", "confidence": 0.6,
+                    "probabilities": {"1": 0.6, "2": 0.3, "3": 0.1}},
+    },
+}
+
+batch_runner = FakeBatchRunner(BATCH_ANSWERS)
+outs = decide_batch(batch_runner, STATES, schema=SCHEMA)
+check("batch/one predict_batch call", len(batch_runner.calls), 1)
+check("batch/states forwarded", batch_runner.calls[0]["states"], STATES)
+check("batch/questions planned once", batch_runner.calls[0]["questions"],
+      {f.name: f.question for f in plan_from_json_schema(SCHEMA)})
+check("batch/input order", [o["department"] for o in outs], ["billing", "sales"])
+check("batch/projection matches decide", outs[0], decide(FakeRunner(ANSWERS), "x", schema=SCHEMA))
+check("batch/per-state values", outs[1],
+      {"department": "sales", "urgency": 0, "needs_human": False, "priority": 1})
+
+# kwargs are forwarded to predict_batch (batch_size, model, hooks, ...)
+batch_runner = FakeBatchRunner(BATCH_ANSWERS)
+decide_batch(batch_runner, STATES, schema=SCHEMA, batch_size=4, model="english")
+check("batch/forwards predict kwargs", batch_runner.calls[0]["kwargs"],
+      {"batch_size": 4, "model": "english"})
+
+# return_details: one DecisionResult per state with the usual fields
+details = decide_batch(FakeBatchRunner(BATCH_ANSWERS), STATES, schema=SCHEMA, return_details=True)
+check_true("batch/details are DecisionResult", all(isinstance(d, laya.DecisionResult) for d in details))
+check("batch/details values", [d.values["department"] for d in details], ["billing", "sales"])
+check("batch/details confidence", details[0].confidence["department"], 0.9)
+check("batch/details routing", details[0].routing, {"model": "english"})
+
+# questions= is the raw-answers pass-through, exactly like decide()
+raw = decide_batch(FakeBatchRunner({"a": {"x": {"type": "noul", "noul": 0.9, "confidence": 0.9}}}),
+                   ["a"], questions={"x": {"type": "noul", "instructions": "?"}})
+check("batch/questions pass-through", raw, [{"x": {"type": "noul", "noul": 0.9, "confidence": 0.9}}])
+
+
+class FakeRouterLike:
+    """predict_batch(requests, **kwargs) like Router's: one request dict per
+    state (no positional questions), routed through route_batch."""
+
+    def __init__(self, answers_by_state):
+        self.answers_by_state = answers_by_state
+        self.calls = []
+
+    def route_batch(self, requests):
+        return [{"model": "english"} for _ in requests]
+
+    def predict_batch(self, requests, **kwargs):
+        self.calls.append({"requests": requests, "kwargs": kwargs})
+        return [{"answers": self.answers_by_state.get(r["state"], {}),
+                 "routing": {"model": "english"}} for r in requests]
+
+
+router_like = FakeRouterLike(BATCH_ANSWERS)
+router_outs = decide_batch(router_like, STATES, schema=SCHEMA, batch_size=3)
+expected_questions = {f.name: f.question for f in plan_from_json_schema(SCHEMA)}
+check("batch/router one call", len(router_like.calls), 1)
+check("batch/router request dicts", [r["state"] for r in router_like.calls[0]["requests"]], STATES)
+check("batch/router questions per request",
+      all(r["questions"] == expected_questions for r in router_like.calls[0]["requests"]), True)
+check("batch/router kwargs forwarded", router_like.calls[0]["kwargs"], {"batch_size": 3})
+check("batch/router projection matches agent path", router_outs, outs)
+
+# a string is a sequence of states only accidentally: refuse it like route_batch does
+check_raises("batch/rejects string states", TypeError,
+             lambda: decide_batch(FakeBatchRunner({}), "abc", schema=SCHEMA))
+check_raises("batch/requires schema or questions", ValueError,
+             lambda: decide_batch(FakeBatchRunner({}), ["a"]))
+check_raises("batch/rejects both", ValueError,
+             lambda: decide_batch(FakeBatchRunner({}), ["a"], schema=SCHEMA, questions={}))
+check_raises("batch/rejects bad schema", SchemaError,
+             lambda: decide_batch(FakeBatchRunner({}), ["a"],
+                                  schema={"type": "object", "properties": {"s": {"type": "string"}}}))
+
+
+class NoBatchRunner(FakeRunner):
+    pass  # has predict() but no predict_batch
+
+
+check_raises("batch/runner without predict_batch", TypeError,
+             lambda: decide_batch(NoBatchRunner(ANSWERS), ["a"], schema=SCHEMA))
+
+# a runner that answers nothing (hook-skipped states surface as empty values)
+noop_runner = FakeBatchRunner({})
+check("batch/skipped states", decide_batch(noop_runner, ["unmatched"], schema=SCHEMA), [{}])
+check("batch/noop still batches", len(noop_runner.calls), 1)
+
+
 # --------------------------------------------------------------- pydantic (optional)
 try:
     from typing import Literal
@@ -203,9 +317,12 @@ except ImportError:
 
 # --------------------------------------------------------------- exports and methods
 check("export/decide", callable(laya.decide), True)
+check("export/decide_batch", callable(laya.decide_batch), True)
 check("export/DecisionResult", hasattr(laya, "DecisionResult"), True)
 check("method/Agent.decide", callable(getattr(laya.Agent, "decide", None)), True)
+check("method/Agent.decide_batch", callable(getattr(laya.Agent, "decide_batch", None)), True)
 check("method/Router.decide", callable(getattr(laya.Router, "decide", None)), True)
+check("method/Router.decide_batch", callable(getattr(laya.Router, "decide_batch", None)), True)
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 
 check("method/ONNXAgent.decide", callable(getattr(ONNXAgent, "decide", None)), True)

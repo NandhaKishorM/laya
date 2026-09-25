@@ -84,6 +84,9 @@ From the command line, `laya "My payment failed twice" --preset triage` answers 
 
 The shipped checkpoints work zero-shot, but fine-tuning on decisions from your own domain is where accuracy jumps. On the typed-decisions benchmark (2,000 decisions across four workflows), the fine-tuned `laya-typed-decisions` checkpoint scores **0.766** accuracy, against **0.362** for the base English checkpoint on the same decisions.
 
+**[Video walkthrough: Laya in depth](https://youtu.be/P4hJikU_PYA)**: how Laya works, installation on an RTX 4090, benchmarks, and a step-by-step explanation of fine-tuning (the training record format, the RLCD recipe, and how accuracy scales with 150 to 1,200 labelled cases).
+
+
 **[Fine-tuning notebook](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb)**: runs the whole loop on Kaggle's free 2x T4 GPUs (build the dataset, train, fit calibration temperatures, evaluate, and push the result to the Hub). Details in [Fine-Tuning](#fine-tuning).
 
 ## Documentation

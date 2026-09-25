@@ -132,11 +132,18 @@ def laya_predict(
     state_d = validate_state(state)
     questions_d = validate_questions(questions)
     model_name = validate_model(model)
+    auto_without_router = False
 
     def _run() -> Any:
         if model_name == "auto":
             if router is None:
-                raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
+                if agent is None:
+                    raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
+                # An Agent answers but does not route: run it directly and report
+                # a null model below, instead of echoing 'auto' (#444).
+                nonlocal auto_without_router
+                auto_without_router = True
+                return agent.predict(state_d, questions_d)
             return router.predict(state_d, questions_d)
         if agent is not None:
             return agent.predict(state_d, questions_d)
@@ -153,12 +160,26 @@ def laya_predict(
     # Router.predict and Agent.system_one both return the system_one payload,
     # which always carries an "answers" object (empty for empty questions).
     answers = _normalize_answers(result["answers"])
-    routing = result.get("routing") or {"model": model_name, "repo": None, "reason": "explicit model"}
+    if auto_without_router:
+        routing = {"model": None, "repo": None, "reason": "auto routing without router"}
+    else:
+        routing = result.get("routing")
+        if not routing:
+            # Agent.predict() returns the system_one payload, which carries no
+            # 'routing' key because the Agent itself does no routing. 'auto' is a
+            # routing directive, not a checkpoint name, so it must never be echoed
+            # back as the answering model (#444).
+            if model_name == "auto":
+                routing = {"model": None, "repo": None, "reason": "auto routing without router"}
+            else:
+                routing = {"model": model_name, "repo": None, "reason": "explicit model"}
     # Real device of the checkpoint that answered: Agent.device reflects a
     # silent GPU -> CPU fallback. Omitted when it cannot be read, rather than
-    # guessed.
+    # guessed. With no routing decision there is no checkpoint to read it from.
     device = None
-    if model_name != "auto" and agent is not None:
+    if auto_without_router:
+        pass
+    elif model_name != "auto" and agent is not None:
         device = agent_device(agent)
     else:
         model_used = routing.get("model")

@@ -321,8 +321,11 @@ def create_app(router: Optional[Any] = None):
             admission = asyncio.Semaphore(max_concurrent)
         if admission.locked():
             # Non-blocking: excess load is refused rather than queued, so the
-            # buffered bodies stay within the bound above.
-            raise HTTPException(status_code=503, detail="server busy, try again later")
+            # buffered bodies stay within the bound above. Retry-After tells
+            # well-behaved clients when a slot is likely free: admission turns
+            # over at inference speed, so one second is the honest hint.
+            raise HTTPException(status_code=503, detail="server busy, try again later",
+                                headers={"Retry-After": "1"})
         await admission.acquire()
         try:
             return await _systemone_inner(request)

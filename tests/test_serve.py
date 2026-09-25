@@ -529,3 +529,68 @@ def test_admission_slot_is_released_after_inference(monkeypatch):
     client = TestClient(create_app(router=FakeRouter()))
     assert client.post("/v1/systemone", json=REQ).status_code == 200
     assert client.post("/v1/systemone", json=REQ).status_code == 200
+
+
+def test_an_unpaired_surrogate_is_a_caller_error_not_a_server_fault():
+    r"""A `\udXXX` escape with no pair parses as JSON and then cannot be UTF-8 encoded.
+
+    The tokenizer raised `TypeError` from inside `build_sequence`, and `serve` maps only
+    `ValueError` to 422, so a malformed string in the client's own body came back as a 500
+    "inference failed" -- a server fault plus an operator traceback for the caller's mistake.
+    A *paired* surrogate is an ordinary astral character (an emoji) and must keep working.
+    """
+    seen = []
+
+    class RecordingRouter:
+        loaded = ["english"]
+
+        def predict(self, state, questions, model=None):
+            seen.append(state)
+            return {"model": "stub", "answers": {}, "usage": {}}
+
+    client = TestClient(create_app(router=RecordingRouter()), raise_server_exceptions=False)
+
+    lone = [
+        b'{"state":"\\ud800","questions":{"q":{"type":"noul","instructions":"x"}}}',
+        b'{"state":"ok","questions":{"q":{"type":"noul","instructions":"\\udfff"}}}',
+        b'{"state":"ok","questions":{"q":{"type":"choice","instructions":"x",'
+        b'"criteria":["\\ud800","b"]}}}',
+    ]
+    for body in lone:
+        res = client.post("/v1/systemone", content=body,
+                          headers={"content-type": "application/json"})
+        assert res.status_code == 400, (body, res.status_code, res.text)
+        assert "unpaired surrogate" in res.text, res.text
+
+    # a paired surrogate is one astral character by the time json.loads is done: it must reach
+    # the router rather than be rejected
+    seen.clear()
+    ok = json.dumps({"state": "hi \U0001f600",
+                     "questions": {"q": {"type": "noul", "instructions": "x"}}}).encode("utf-8")
+    res = client.post("/v1/systemone", content=ok,
+                      headers={"content-type": "application/json"})
+    assert res.status_code == 200, (res.status_code, res.text)
+    assert seen and "\U0001f600" in str(seen[0]), seen
+
+
+def test_a_deeply_nested_state_is_not_a_recursion_error():
+    """`json.loads` accepts nesting far deeper than Python's recursion limit.
+
+    A recursive walk over the parsed body therefore turned a body the parser handles into a
+    `RecursionError`, i.e. one 500 replaced by another. The walk uses an explicit stack, so the
+    depth the JSON parser accepts is the depth this handles.
+    """
+    class NestedRouter:
+        loaded = ["english"]
+
+        def predict(self, state, questions, model=None):
+            return {"model": "stub", "answers": {}, "usage": {}}
+
+    client = TestClient(create_app(router=NestedRouter()), raise_server_exceptions=False)
+    questions = {"q": {"type": "noul", "instructions": "x"}}
+
+    for depth in (200, 600, 1200):
+        body = json.dumps({"state": ["x" * 3] * depth, "questions": questions}).encode("utf-8")
+        res = client.post("/v1/systemone", content=body,
+                          headers={"content-type": "application/json"})
+        assert res.status_code == 200, (depth, res.status_code, res.text)

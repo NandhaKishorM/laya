@@ -4,7 +4,7 @@ import math
 import os
 import threading
 from contextlib import nullcontext
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, NamedTuple, Optional, Union
 
 import numpy as np
 import torch
@@ -13,6 +13,69 @@ from torch.utils.checkpoint import checkpoint
 
 QTYPES = {"choice": 0, "score": 1, "noul": 2}
 QTYPE_NAMES = {v: k for k, v in QTYPES.items()}
+
+# Same slack `build_sequence` keeps when option ids overflow the head budget.
+HEAD_OPTION_SLACK = 16
+MIN_OPTION_TOKENS = 4
+
+
+class HeadBudget(NamedTuple):
+    k: int
+    tokens_per_option: int
+    head_max_len: int
+    max_len: int
+    raised: bool
+    ok: bool
+
+
+def head_budget_for(k, head_max_len, max_len, encoder_max) -> HeadBudget:
+    """Allocate a head budget that keeps at least MIN_OPTION_TOKENS per option.
+
+    Pure arithmetic: no tokenizer, no torch. If 4 tokens per option cannot fit in
+    `encoder_max`, `ok` is False and the original head/max_len are returned so
+    `predict` still raises rather than silently truncating below the floor.
+    """
+    k = int(k)
+    head_max_len = int(head_max_len)
+    max_len = int(max_len)
+    encoder_max = int(encoder_max)
+
+    def keep(tokens_per_option, ok):
+        return HeadBudget(
+            k=max(k, 0),
+            tokens_per_option=tokens_per_option,
+            head_max_len=head_max_len,
+            max_len=max_len,
+            raised=False,
+            ok=ok,
+        )
+
+    if k < 1:
+        return keep(0, True)
+
+    tokens_per_option = max(1, (head_max_len - HEAD_OPTION_SLACK) // k)
+    if tokens_per_option >= MIN_OPTION_TOKENS or k < 2:
+        return keep(tokens_per_option, True)
+
+    new_head = HEAD_OPTION_SLACK + MIN_OPTION_TOKENS * k
+    if new_head > encoder_max:
+        return keep(tokens_per_option, False)
+
+    doc_room = max(max_len - head_max_len, 64)
+    new_max = min(max(max_len, new_head + doc_room), encoder_max)
+    new_tpo = max(1, (new_head - HEAD_OPTION_SLACK) // k)
+    if new_tpo < MIN_OPTION_TOKENS:
+        return keep(tokens_per_option, False)
+    return HeadBudget(
+        k=k,
+        tokens_per_option=new_tpo,
+        head_max_len=new_head,
+        max_len=new_max,
+        raised=True,
+        ok=True,
+    )
+
+
 _DEFAULT_NOUL_LABELS = {"false": "false", "true": "true"}
 
 # A fast tokenizer is not read-only: `truncation=True` / `padding=True` make it call
@@ -125,8 +188,8 @@ def build_sequence(
         )["input_ids"]
         opt_ids.append([tok.mask_token_id] + opt_tokens)
     opt_budget = head_max_len - sum(len(o) for o in opt_ids)
-    if opt_budget < 16:
-        per = max(4, (head_max_len - 16) // max(1, len(opt_ids)))
+    if opt_budget < HEAD_OPTION_SLACK:
+        per = max(MIN_OPTION_TOKENS, (head_max_len - HEAD_OPTION_SLACK) // max(1, len(opt_ids)))
         opt_ids = [o[:per] for o in opt_ids]
         opt_budget = head_max_len - sum(len(o) for o in opt_ids)
     head_ids = head_ids[: max(8, opt_budget)]

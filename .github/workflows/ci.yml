@@ -97,6 +97,7 @@ jobs:
         run: |
           python tests/test_router.py
           python tests/test_criteria.py
+          python tests/test_head_budget.py
           python tests/test_batch.py
           python tests/test_predict_long.py
           python tests/test_hooks.py
@@ -233,7 +234,7 @@ jobs:
       # pass -- a change to a container script, so it belongs in its own PR, not this one.
       - name: Routing and language-detection tests
         run: |
-          for t in test_router test_criteria test_download test_shortlist \
+          for t in test_router test_criteria test_head_budget test_download test_shortlist \
                    test_decision_model test_packaging test_lang_guess \
                    test_identifier_complexity \
                    test_calibration_persistence test_context_manager \

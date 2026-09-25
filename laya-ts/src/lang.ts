@@ -325,6 +325,70 @@ export interface AnalyseResult {
   languageUndecided: boolean;
   diacriticRate: number;
   nonLatinFraction: number;
+  mixedSegment: string | null;
+}
+
+// Code is not prose in any language, but split into words it reads as one: `os.path` is Portuguese
+// (`os`), `round(el, 2)` Spanish (`el`), `non_english` Italian (`non`). A line pasted from a program
+// into an English request must not count as a foreign segment, so a line carrying code syntax --
+// `=`, `;`, braces, brackets or a call `name(` -- is skipped, and dotted or underscored identifiers
+// are dropped from the rest. Prose keeps "Deu erro (500)": the parenthesis follows a space.
+const CODE_LINE_RE = /[=;{}[\]]|\w\(/;
+// Slash and backslash compounds are names, not sentences: `Nav/Com` and `OS/2` read as Portuguese
+// (`com`, `os`), `C:\DOS\mode` as Portuguese (`dos`), `ESA/UN` as Spanish (`un`). A whitespace token
+// holding a letter or digit, a joiner (`.`, `_`, `/`, `\`) and another letter or digit is an
+// identifier or a compound and is dropped whole.
+const JOINED_RE = /[^\W_][._/\\][^\W_]/;
+// An all-caps token inside mixed-case text is an acronym or a code: `MON`, `LA`, `EST`, `COM`, `DES`
+// are hockey teams, states, time zones and radio bands, not French or Portuguese. A segment written
+// entirely in capitals keeps its words -- a customer shouting in Portuguese is still Portuguese.
+const LETTER_RUN_RE = /[\p{L}]{2,}/gu;
+
+/** Language code for one non-code line, or null when it does not name a foreign language.
+ *
+ * Same evidence bar as `nonEnglishSegment`: four words, a language `latinProfile` will name,
+ * and two *different* words of that language. Acronyms and slash compounds are not words.
+ */
+function namedProseLanguage(segment: string): string | null {
+  if (!segment.trim() || CODE_LINE_RE.test(segment)) return null;
+  const prose = segment.split(/\s+/).filter((tok) => !JOINED_RE.test(tok)).join(" ");
+  // In mixed-case text, replace all-caps runs with spaces (they are acronyms).
+  let cleaned = prose;
+  if ([...prose].some((ch) => /\p{Ll}/u.test(ch))) {
+    cleaned = prose.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
+  }
+  const tokens = cleaned.match(WORD_RE) ?? [];
+  if (tokens.length < 4) return null;
+  const lang = latinProfile(cleaned).language;
+  if (lang === null || lang === "en") return null;
+  const stopSet = STOP[lang];
+  if (!stopSet) return null;
+  const distinctHits = new Set(tokens.map((w) => w.toLowerCase()).filter((w) => stopSet.has(w)));
+  if (distinctHits.size < 2) return null;
+  return lang;
+}
+
+/** First line or field that, read on its own, is named a non-English language, else null.
+ *
+ * Returns [language, segment]. A segment needs the evidence a whole state needs -- at least four
+ * words, and a language named by `latinProfile` -- and, because one line carries far less text
+ * than a state, two things more: the words that name the language must be two *different* ones
+ * (`COM ... COM` in an English radio listing is one word seen twice), and acronyms and slash
+ * compounds are not words. This adds no new way to call English text foreign; it only stops a
+ * longer English part from outvoting a foreign one. Reads at most `maxChars` characters in all.
+ */
+function nonEnglishSegment(state: unknown, maxChars = 4000): [string, string] | null {
+  let seen = 0;
+  for (const leaf of iterText(state)) {
+    for (const seg of leaf.split("\n")) {
+      if (seen >= maxChars) return null;
+      const capped = seg.slice(0, maxChars - seen);
+      seen += capped.length;
+      const lang = namedProseLanguage(capped);
+      if (lang) return [lang, capped.trim()];
+    }
+  }
+  return null;
 }
 
 function round4(x: number): number {
@@ -357,14 +421,14 @@ function analyseText(text: string): AnalyseResult {
     return {
       script: "unknown", scriptProfile: prof, language: null,
       isEnglish: true, languageUndecided: true, diacriticRate: 0.0,
-      nonLatinFraction: 0.0,
+      nonLatinFraction: 0.0, mixedSegment: null,
     };
   }
   if (script !== "latin") {
     return {
       script, scriptProfile: prof, language: null,
       isEnglish: false, languageUndecided: true, diacriticRate: 0.0,
-      nonLatinFraction: nonLatin,
+      nonLatinFraction: nonLatin, mixedSegment: null,
     };
   }
   const profLat = latinProfile(text);
@@ -375,7 +439,7 @@ function analyseText(text: string): AnalyseResult {
     script: "latin", scriptProfile: prof, language: lang,
     isEnglish: english, languageUndecided: undecided,
     diacriticRate: round4(profLat.diacriticRate),
-    nonLatinFraction: nonLatin,
+    nonLatinFraction: nonLatin, mixedSegment: null,
   };
 }
 
@@ -409,6 +473,29 @@ export function analyse(state: unknown): AnalyseResult {
   // note fill the window, or outvote a short German message, and that message was
   // then sent to the English checkpoint.
   const result = analyseText(stateText(state));
+  if (result.script === "latin" && result.isEnglish) {
+    // A Portuguese ticket with an English stack trace, error payload or form template reads as
+    // English as a whole, because the English part is longer -- yet the part a question is about
+    // is the customer's, and the English checkpoint cannot read it. So a state that would go to
+    // English is checked line by line and field by field.
+    const leaves = iterText(state);
+    // a single line has no other part to be outvoted by, and was just read whole
+    if (leaves.length > 1 || leaves.some((leaf) => leaf.includes("\n"))) {
+      const found = nonEnglishSegment(state);
+      if (found) {
+        const [lang, mixed] = found;
+        return {
+          ...result,
+          language: lang,
+          isEnglish: false,
+          languageUndecided: false,
+          mixedSegment: mixed,
+        };
+      }
+    }
+  }
+  // A plain string was just read whole. A structured state can still hide a message past the
+  // segment cap, or in a script `latinProfile` does not name.
   if (typeof state === "string" || state == null || state instanceof Uint8Array || !result.isEnglish) {
     return result;
   }

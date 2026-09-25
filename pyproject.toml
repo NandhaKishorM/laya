@@ -64,6 +64,11 @@ langgraph = [
     "langgraph>=0.1.0",
 ]
 
+# `pip install laya[llamaindex]` adds the LlamaIndex query router & selector integrations (laya.integrations).
+llamaindex = [
+    "llama-index-core>=0.10.0",
+]
+
 [project.scripts]
 laya = "laya.cli:main"
 laya-serve = "laya.serve:main"

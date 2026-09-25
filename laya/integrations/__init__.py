@@ -6,6 +6,12 @@ from .langchain import (
     LayaRouter,
     LayaTriage,
 )
+from .llamaindex import (
+    LayaLowConfidenceError,
+    LayaMultiSelector,
+    LayaQueryRouter,
+    LayaSingleSelector,
+)
 
 __all__ = [
     "LayaRouter",
@@ -13,4 +19,8 @@ __all__ = [
     "LayaGuardrailError",
     "LayaTriage",
     "LayaEvaluator",
+    "LayaSingleSelector",
+    "LayaMultiSelector",
+    "LayaQueryRouter",
+    "LayaLowConfidenceError",
 ]

@@ -794,20 +794,27 @@ every slot equally often:
 
 ```python
 k = len(question["criteria"])
+
+# the k rotations go in as k questions, so they share one forward pass
+rotations = {
+    "q%d" % r: dict(question, option_order=[(i + r) % k for i in range(k)])
+    for r in range(k)
+}
+answers = agent.predict(state, rotations)["answers"]
+
 totals = {label: 0.0 for label in question["criteria"]}
-for r in range(k):                                     # k cyclic rotations
-    rotated = dict(question, option_order=[(i + r) % k for i in range(k)])
-    answer = agent.predict(state, {"q": rotated})["answers"]["q"]
+for answer in answers.values():
     for label, value in answer["probabilities"].items():
         totals[label] += value / k
 
 decision = max(totals, key=totals.get)
 ```
 
-That costs `k` rows in the same forward pass rather than `k` forward passes. On 62 banking
-intents shortlisted to 20 over 49 states, it took the share of answers that change with
-presentation order from 16.3% to 6.1%. Omitting `option_order` keeps the canonical order and the
-behaviour every existing caller already has.
+`predict` already scores every question in a request in one parallel forward pass, so this costs
+`k` rows rather than `k` forward passes — sending the rotations as separate `predict` calls would
+cost `k` of them. On 62 banking intents shortlisted to 20 over 49 states, averaging this way took
+the share of answers that change with presentation order from 16.3% to 6.1%. Omitting
+`option_order` keeps the canonical order and the behaviour every existing caller already has.
 
 ---
 

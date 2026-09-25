@@ -606,7 +606,6 @@ class Router(HookRegistry):
                     result = agent.system_one(ctx.states[0], ctx.questions, lang=effective_lang, **overrides)
                 except TypeError as e:
                     if "unexpected keyword argument 'lang'" in str(e):
-                        overrides.pop("lang", None)
                         result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
                     else:
                         raise
@@ -631,6 +630,8 @@ class Router(HookRegistry):
             ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
             if ctx.results is not None:
                 ctx.usage = aggregate_usage(ctx.results)
+                if mc is not None:
+                    flag_low_confidence(ctx.results, mc)
             try:
                 dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             except BaseException as hook_exc:
@@ -638,8 +639,6 @@ class Router(HookRegistry):
                     ctx.error.__context__ = hook_exc
                 else:
                     raise
-        if mc is not None and ctx.results:
-            flag_low_confidence(ctx.results, mc)
         return ctx.results[0]
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
@@ -876,12 +875,18 @@ class Router(HookRegistry):
                                      lock=self._hooks_lock, timeout=timeout)
                         except BaseException as hook_exc:
                             exc.__context__ = hook_exc
+                for ctx in started:
+                    if mc is not None and ctx.results:
+                        flag_low_confidence(ctx.results, mc)
                 try:
                     self._end_contexts(active, started, raise_errors, timeout)
                 except BaseException as hook_exc:
                     exc.__context__ = hook_exc
                 raise
 
+            for ctx in started:
+                if mc is not None and ctx.results:
+                    flag_low_confidence(ctx.results, mc)
             self._end_contexts(active, started, raise_errors, timeout)
             for i, ctx in zip(indices, started):
                 results[i] = ctx.results[0]
@@ -891,10 +896,7 @@ class Router(HookRegistry):
         if any(result is None for result in results):
             raise RuntimeError("internal error: batch execution did not produce every result")
 
-        final = [result for result in results if result is not None]
-        if mc is not None:
-            flag_low_confidence(final, mc)
-        return final
+        return [result for result in results if result is not None]
 
     predict_many = predict_batch
 

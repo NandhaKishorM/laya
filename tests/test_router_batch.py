@@ -353,3 +353,39 @@ def test_router_predict_and_predict_batch_min_confidence(monkeypatch):
         router.predict("hello", {"q1": {}}, min_confidence=True)
     with pytest.raises(ValueError):
         router.predict_batch([request("hello", model="english")], min_confidence=-0.1)
+
+
+def test_end_hooks_see_the_low_confidence_flag(monkeypatch):
+    """`on_predict_end` sees `low_confidence` on both Router paths (#361 review)."""
+    import laya.agent
+
+    class Agent:
+        def __init__(self, repo, *, device, token, subfolder):
+            pass
+
+        def system_one(self, state, questions, **overrides):
+            return {
+                "model": "fake",
+                "answers": {
+                    "q1": {"type": "choice", "choice": "yes", "answer_confidence": 0.95},
+                    "q2": {"type": "choice", "choice": "no", "answer_confidence": 0.60},
+                },
+            }
+
+        def predict_batch(self, states, questions, batch_size=None, **overrides):
+            return [self.system_one(s, questions, **overrides) for s in states]
+
+    monkeypatch.setattr(laya.agent, "Agent", Agent)
+    seen = []
+
+    class Record:
+        def on_predict_end(self, ctx):
+            seen.append({q: a.get("low_confidence", False) for q, a in ctx.results[0]["answers"].items()})
+
+    router = Router(max_loaded=1, default="english", hooks=[Record()])
+
+    router.predict("hello", {"q1": {}}, model="english", min_confidence=0.80)
+    assert seen[-1] == {"q1": False, "q2": True}
+
+    router.predict_batch([request("hello", model="english")], min_confidence=0.80)
+    assert seen[-1] == {"q1": False, "q2": True}

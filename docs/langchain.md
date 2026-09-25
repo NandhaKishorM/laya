@@ -42,7 +42,7 @@ router = LayaRouter(
         "sales_agent": "pricing plans, new contracts, demo requests",
     },
     instructions="Which specialist agent should answer this user query?",
-    confidence_threshold=0.80,   # If confidence < 0.80, route to human fallback
+    confidence_threshold=0.80,   # If answer_confidence < 0.80, route to the fallback
     fallback="human_agent",
     state_key="input",
 )
@@ -70,6 +70,10 @@ app = workflow.compile()
 result = app.invoke({"input": "I was billed twice for last month's subscription."})
 print(result["response"])  # -> "Handling billing..."
 ```
+
+`confidence_threshold` reads `answer_confidence`, the calibrated `max(p)` confidence the
+calibration figures describe, when the answer carries it, and falls back to the entropy
+`confidence` otherwise.
 
 ### Routing with the full conversation
 

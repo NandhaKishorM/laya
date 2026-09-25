@@ -946,6 +946,8 @@ class Agent(HookRegistry):
             ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
             if ctx.results is not None:
                 ctx.usage = aggregate_usage(ctx.results)
+                if mc is not None:
+                    flag_low_confidence(ctx.results, mc)
             try:
                 dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             except BaseException as hook_exc:
@@ -954,8 +956,6 @@ class Agent(HookRegistry):
                     ctx.error.__context__ = hook_exc
                 else:
                     raise
-        if mc is not None and ctx.results is not None:
-            flag_low_confidence(ctx.results, mc)
         return ctx.results
 
     def predict_long(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],

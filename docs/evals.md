@@ -29,6 +29,36 @@ Exit codes: `0` on success, `1` when a threshold or a baseline tolerance fails, 
 usage error. `run` prints the overall metrics and any requested slices to stdout, and writes
 the full report and a Markdown summary when `--json` / `--markdown` are given.
 
+## Evaluating an ONNX export
+
+`run --onnx PATH` scores an exported ONNX model through `ONNXAgent` instead of the torch
+Router, so an ONNX deployment (including an INT8 copy from `scripts/export_onnx.py --quantize`)
+gets gated by the same thresholds and baselines as the torch path:
+
+```bash
+python scripts/export_onnx.py --model convaiinnovations/laya --output laya.onnx --quantize
+laya-evals run data.jsonl --onnx laya.int8.onnx --max-ece 0.05
+```
+
+`--model` names the checkpoint the export came from — a Hub id or local path, not a Router
+short name like `english`, since there is no Router on this path (default
+`convaiinnovations/laya`). Its config and tokenizer are loaded from there. The agent serves one checkpoint, so a dataset row
+whose `model` field names a different one fails with a clear error rather than being silently
+answered by the wrong model; `--device` does not apply. `--batch-size` uses the agent's batch
+API when it has one and falls back to one call per state otherwise. The report's `config` block
+records the `onnx` path.
+
+Measured on `research/evals/fixture.jsonl` (12 labelled rows, English checkpoint, CPU):
+
+| runner | choice_acc | noul_acc | score_mae | ece | mean_conf | p50 ms |
+|---|---|---|---|---|---|---|
+| torch Router | 0.75 | 1.00 | 1.3418 | 0.1596 | 0.7304 | 116.8 |
+| `--onnx` fp32 | 0.75 | 1.00 | 1.3418 | 0.1596 | 0.7304 | 66.3 |
+| `--onnx` int8 | 0.75 | 1.00 | 1.3512 | 0.1658 | 0.7304 | 46.3 |
+
+The fp32 export reproduces the torch numbers exactly, and the quantized copy moves `score_mae`
+by 0.009 and `ece` by 0.006 — the kind of drift `compare --tolerance` is meant to gate.
+
 ## Dataset format
 
 One JSON object per line (JSONL). Blank lines and lines starting with `#` are ignored.

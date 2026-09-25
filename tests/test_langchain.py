@@ -8,6 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from laya.integrations import langchain as langchain_module
 from laya.integrations.langchain import (
     LayaEvaluator,
     LayaGuardrail,
@@ -270,6 +271,97 @@ eval_res = evaluator.evaluate_strings(
 )
 check("evaluator/faithfulness", eval_res["faithfulness"]["noul"], 0.98)
 check("evaluator/hallucination", eval_res["hallucination"]["noul"], 0.02)
+
+
+# --------------------------------------------------------------- 7. Per-request token budget
+class BudgetAgent:
+    """Answers every question by type and records the keyword arguments it was called with."""
+
+    def __init__(self):
+        self.kwargs = []
+
+    def predict(self, state, questions, **kwargs):
+        self.kwargs.append(kwargs)
+        answers = {}
+        for qid, question in questions.items():
+            qtype = question.get("type")
+            if qtype == "choice":
+                answers[qid] = {"type": "choice", "choice": list(question["criteria"])[0],
+                                "confidence": 0.9, "probabilities": {}}
+            elif qtype == "score":
+                answers[qid] = {"type": "score", "score": 1.0, "confidence": 0.9,
+                                "probabilities": {}}
+            else:
+                answers[qid] = {"type": "noul", "noul": 0.1, "confidence": 0.9}
+        return {"model": "mock", "answers": answers}
+
+
+BUDGET_CRITERIA = {"billing": "invoices", "tech": "bugs"}
+BUDGET_NODES = (
+    ("router", lambda a, **kw: LayaRouter(BUDGET_CRITERIA, agent=a, **kw)),
+    ("guardrail", lambda a, **kw: LayaGuardrail(
+        questions={"jailbreak": {"type": "noul", "instructions": "jailbreak?"}}, agent=a, **kw)),
+    ("triage", lambda a, **kw: LayaTriage(agent=a, **kw)),
+    ("evaluator", lambda a, **kw: LayaEvaluator(
+        questions={"faithful": {"type": "noul", "instructions": "faithful?"}}, agent=a, **kw)),
+)
+
+for name, build in BUDGET_NODES:
+    # Nothing set has to mean nothing sent, so core's own defaults stay in charge.
+    plain = BudgetAgent()
+    build(plain).invoke("some state")
+    check("budget/%s default sends nothing" % name, plain.kwargs[0], {})
+
+    both = BudgetAgent()
+    build(both, max_len=1024, head_max_len=512).invoke("some state")
+    check("budget/%s forwards both" % name, both.kwargs[0], {"max_len": 1024, "head_max_len": 512})
+
+    # Each knob has to work alone; a budget built from one must not carry the other.
+    one = BudgetAgent()
+    build(one, max_len=2048).invoke("some state")
+    check("budget/%s forwards max_len alone" % name, one.kwargs[0], {"max_len": 2048})
+
+    # A zero budget is a real value, not an absent one.
+    zero = BudgetAgent()
+    build(zero, head_max_len=0).invoke("some state")
+    check("budget/%s keeps head_max_len=0" % name, zero.kwargs[0], {"head_max_len": 0})
+
+    # model= keeps its slot next to the budget.
+    mixed = BudgetAgent()
+    build(mixed, model="laya-multilingual", head_max_len=256).invoke("some state")
+    check("budget/%s with model" % name, mixed.kwargs[0],
+          {"model": "laya-multilingual", "head_max_len": 256})
+
+
+# `laya-serve` has no budget field, so a remote node must refuse rather than drop the override.
+budget_remote_calls = []
+_budget_real_call_remote = langchain_module._call_remote
+
+
+def budget_spy_call_remote(base_url, state, questions, api_key=None, model=None):
+    budget_remote_calls.append({"model": model})
+    return {"answers": {"route": {"type": "choice", "choice": "billing", "confidence": 0.9}}}
+
+
+langchain_module._call_remote = budget_spy_call_remote
+try:
+    remote_plain = LayaRouter(criteria={"billing": "invoices", "tech": "bugs"},
+                              base_url="http://laya:8000", api_key="k")
+    check("budget/remote without an override", remote_plain.invoke("x"), "billing")
+    check("budget/remote still sends model", budget_remote_calls[-1], {"model": None})
+
+    for field in ("max_len", "head_max_len"):
+        raised, message = False, ""
+        try:
+            LayaRouter(BUDGET_CRITERIA, base_url="http://laya:8000", **{field: 512}).invoke("x")
+        except ValueError as e:
+            raised, message = True, str(e)
+        check_true("budget/remote refuses %s" % field, raised)
+        check_true("budget/remote %s names the endpoint" % field, "laya-serve" in message)
+
+    check("budget/remote made no extra call", len(budget_remote_calls), 1)
+finally:
+    langchain_module._call_remote = _budget_real_call_remote
 
 
 # --------------------------------------------------------------- Summary

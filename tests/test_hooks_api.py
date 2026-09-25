@@ -158,6 +158,28 @@ for label, cls in (("Agent", Agent), ("Router", Router), ("ONNXAgent", ONNXAgent
         check_true("%s/%s exists" % (label, method), callable(getattr(cls, method, None)))
 
 
+# --------------------------------------------------------------- LangChain token budget
+# `max_len`/`head_max_len` are the per-request knobs that decide how many tokens each option of a
+# choice question gets. Every runnable has to carry both, under the names the core API uses, or a
+# chain has no way to widen a question that overflows the checkpoint's budget.
+from laya.integrations.langchain import (  # noqa: E402
+    LayaEvaluator,
+    LayaGuardrail,
+    LayaRouter,
+    LayaTriage,
+)
+
+for label, cls in (("LayaRouter", LayaRouter), ("LayaGuardrail", LayaGuardrail),
+                   ("LayaTriage", LayaTriage), ("LayaEvaluator", LayaEvaluator)):
+    # Without langchain-core the runnables are plain objects, so there is no model schema to
+    # carry the field; only the constructor contract applies in that lane.
+    declared = getattr(cls, "model_fields", None)
+    for param in ("max_len", "head_max_len"):
+        check_param("%s.__init__" % label, cls.__init__, param, None)
+        if declared is not None:
+            check_true("%s/%s declared field" % (label, param), param in declared)
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL", f)

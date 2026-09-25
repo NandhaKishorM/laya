@@ -144,6 +144,35 @@ def _get_default_router():
     return _DEFAULT_ROUTER
 
 
+def _reject_remote_budget(max_len: Optional[int], head_max_len: Optional[int],
+                          base_url: Optional[str]) -> None:
+    """Refuse a budget override on a remote node rather than dropping it silently.
+
+    `laya-serve` has no budget field of its own -- it answers within the checkpoint's defaults and
+    rejects an oversized question with 413. The budget decides how many tokens each option gets, so
+    ignoring it can change the label the model returns; a caller must not be told it applied when
+    it could not.
+    """
+    if base_url and (max_len is not None or head_max_len is not None):
+        raise ValueError(
+            "max_len/head_max_len are applied by the local runner and cannot be sent to a "
+            "laya-serve endpoint; raise the budget where serve runs, or drop the override"
+        )
+
+
+def _predict_kwargs(model: Optional[str] = None, max_len: Optional[int] = None,
+                    head_max_len: Optional[int] = None) -> Dict[str, Any]:
+    """The per-request overrides a local runner accepts, with the unset ones omitted."""
+    kwargs: Dict[str, Any] = {}
+    if model:
+        kwargs["model"] = model
+    if max_len is not None:
+        kwargs["max_len"] = max_len
+    if head_max_len is not None:
+        kwargs["head_max_len"] = head_max_len
+    return kwargs
+
+
 def _execute_decision(
     state: Any,
     questions: Dict[str, Any],
@@ -151,12 +180,14 @@ def _execute_decision(
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
+    max_len: Optional[int] = None,
+    head_max_len: Optional[int] = None,
 ) -> Dict[str, Any]:
     if base_url:
+        _reject_remote_budget(max_len, head_max_len, base_url)
         return _call_remote(base_url, state, questions, api_key=api_key, model=model)
     runner = agent if agent is not None else _get_default_router()
-    kwargs = {"model": model} if model else {}
-    return runner.predict(state, questions, **kwargs)
+    return runner.predict(state, questions, **_predict_kwargs(model, max_len, head_max_len))
 
 
 class LayaRouter(RunnableSerializable):
@@ -175,6 +206,8 @@ class LayaRouter(RunnableSerializable):
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
+    max_len: Optional[int] = None
+    head_max_len: Optional[int] = None
     question_id: str = "route"
     last_decision: Optional[Dict[str, Any]] = None
 
@@ -193,6 +226,8 @@ class LayaRouter(RunnableSerializable):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        max_len: Optional[int] = None,
+        head_max_len: Optional[int] = None,
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -206,6 +241,8 @@ class LayaRouter(RunnableSerializable):
                 base_url=base_url,
                 api_key=api_key,
                 model=model,
+                max_len=max_len,
+                head_max_len=head_max_len,
                 **kwargs,
             )
         else:
@@ -218,6 +255,8 @@ class LayaRouter(RunnableSerializable):
             self.base_url = base_url
             self.api_key = api_key
             self.model = model
+            self.max_len = max_len
+            self.head_max_len = head_max_len
         self.question_id = "route"
         self.last_decision: Optional[Dict[str, Any]] = None
 
@@ -238,6 +277,8 @@ class LayaRouter(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            max_len=self.max_len,
+            head_max_len=self.head_max_len,
         )
         self.last_decision = res
         ans = res["answers"][self.question_id]
@@ -271,6 +312,8 @@ class LayaGuardrail(RunnableSerializable):
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
+    max_len: Optional[int] = None
+    head_max_len: Optional[int] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -287,6 +330,8 @@ class LayaGuardrail(RunnableSerializable):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        max_len: Optional[int] = None,
+        head_max_len: Optional[int] = None,
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -300,6 +345,8 @@ class LayaGuardrail(RunnableSerializable):
                 base_url=base_url,
                 api_key=api_key,
                 model=model,
+                max_len=max_len,
+                head_max_len=head_max_len,
                 **kwargs,
             )
         else:
@@ -312,6 +359,8 @@ class LayaGuardrail(RunnableSerializable):
             self.base_url = base_url
             self.api_key = api_key
             self.model = model
+            self.max_len = max_len
+            self.head_max_len = head_max_len
 
     def _default_questions(self) -> Dict[str, Any]:
         from ..presets import guard_questions
@@ -329,6 +378,8 @@ class LayaGuardrail(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            max_len=self.max_len,
+            head_max_len=self.head_max_len,
         )
         answers = res.get("answers", {})
 
@@ -398,6 +449,8 @@ class LayaTriage(RunnableSerializable):
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
+    max_len: Optional[int] = None
+    head_max_len: Optional[int] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -410,6 +463,8 @@ class LayaTriage(RunnableSerializable):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        max_len: Optional[int] = None,
+        head_max_len: Optional[int] = None,
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -419,6 +474,8 @@ class LayaTriage(RunnableSerializable):
                 base_url=base_url,
                 api_key=api_key,
                 model=model,
+                max_len=max_len,
+                head_max_len=head_max_len,
                 **kwargs,
             )
         else:
@@ -427,6 +484,8 @@ class LayaTriage(RunnableSerializable):
             self.base_url = base_url
             self.api_key = api_key
             self.model = model
+            self.max_len = max_len
+            self.head_max_len = head_max_len
 
     def invoke(self, state: Any, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
         """Triage the state and return enriched fields."""
@@ -440,6 +499,8 @@ class LayaTriage(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            max_len=self.max_len,
+            head_max_len=self.head_max_len,
         )
         ans = res.get("answers", {})
 
@@ -475,6 +536,8 @@ class LayaEvaluator(RunnableSerializable):
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
+    max_len: Optional[int] = None
+    head_max_len: Optional[int] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -488,6 +551,8 @@ class LayaEvaluator(RunnableSerializable):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        max_len: Optional[int] = None,
+        head_max_len: Optional[int] = None,
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -498,6 +563,8 @@ class LayaEvaluator(RunnableSerializable):
                 base_url=base_url,
                 api_key=api_key,
                 model=model,
+                max_len=max_len,
+                head_max_len=head_max_len,
                 **kwargs,
             )
         else:
@@ -507,6 +574,8 @@ class LayaEvaluator(RunnableSerializable):
             self.base_url = base_url
             self.api_key = api_key
             self.model = model
+            self.max_len = max_len
+            self.head_max_len = head_max_len
 
     def evaluate_strings(self, *, prediction: str, input: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
         """LangChain standard string evaluation interface."""
@@ -518,6 +587,8 @@ class LayaEvaluator(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            max_len=self.max_len,
+            head_max_len=self.head_max_len,
         )
         return res.get("answers", {})
 
@@ -530,6 +601,8 @@ class LayaEvaluator(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            max_len=self.max_len,
+            head_max_len=self.head_max_len,
         )
         return res.get("answers", {})
 

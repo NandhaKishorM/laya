@@ -22,6 +22,7 @@ is one copy to keep current.
 | log, redact, cache or gate every decision without forking Laya | [Prediction hooks](hooks/index.md) |
 | adopt Laya incrementally without granting execution permission | [Staged adoption](staged-adoption.md) |
 | route, screen or triage inside a LangChain or LangGraph app | [LangChain & LangGraph](langchain.md) |
+| run Laya from a terminal or connect its built-in MCP stdio server | [Command line and MCP server](cli-mcp.md) |
 | run the SDK or the `laya-serve` HTTP API in a container, on CPU or an NVIDIA GPU | [Docker quickstart](docker.md) |
 | build for ARM64 hosts or DGX Spark | [ARM64 and DGX Spark containers](docker-platforms.md) |
 | specialise a checkpoint for your own decisions | [Browser-agent fine-tuning example](finetune_browser_agent.md) and the [fine-tuning notebook](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb) |
@@ -29,5 +30,5 @@ is one copy to keep current.
 | look up a class, function or parameter | [Python API reference](reference/index.md) |
 | score a labelled dataset, compare to a baseline, or gate a build on it | [Evaluation harness](evals.md) |
 
-Routing, the HTTP API, the command line, the MCP server and confidence gating are in the
+Routing, the HTTP API and confidence gating are in the
 [README](https://github.com/NandhaKishorM/laya#readme) for now.

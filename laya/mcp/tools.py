@@ -133,9 +133,13 @@ def laya_predict(
 
     def _run() -> Any:
         if model_name == "auto":
-            if router is None:
-                raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
-            return router.predict(state_d, questions_d)
+            if router is not None:
+                return router.predict(state_d, questions_d)
+            if agent is not None:
+                # Agent-only auto: no router to resolve the directive, so the
+                # agent answers and the routing fallback reports model None.
+                return agent.predict(state_d, questions_d)
+            raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
         if agent is not None:
             return agent.predict(state_d, questions_d)
         if router is None:
@@ -164,7 +168,7 @@ def laya_predict(
     # silent GPU -> CPU fallback. Omitted when it cannot be read, rather than
     # guessed.
     device = None
-    if model_name != "auto" and agent is not None:
+    if agent is not None and (model_name != "auto" or router is None):
         device = agent_device(agent)
     else:
         model_used = routing.get("model")

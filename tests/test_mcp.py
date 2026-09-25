@@ -13,6 +13,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 os.environ.setdefault("USE_TF", "0")
 os.environ.setdefault("USE_TORCH", "1")
@@ -223,6 +224,15 @@ def test_shape():
     expect_tool_error("shape/predict_bad_questions",
                       lambda: laya_predict(STATE, {}, model="auto", router=FakeRouter()),
                       "invalid_questions")
+
+    # model="auto" with an Agent and no Router runs the agent and reports no
+    # checkpoint instead of the "auto" routing directive as the model.
+    auto_agent = SimpleNamespace(predict=lambda state, questions: {"answers": {}})
+    out = laya_predict(STATE, QUESTIONS, model="auto", agent=auto_agent)
+    ok("shape/predict_auto_agent_routing",
+       out["routing"] == {"model": None, "repo": None, "reason": "auto routing without router"},
+       repr(out["routing"]))
+    ok("shape/predict_auto_agent_answers", out["answers"] == {}, repr(out["answers"]))
 
 
 def test_real_device():

@@ -508,6 +508,18 @@ export async function createNodeProvider(
   };
 }
 
+/** Best-effort fetch of a `<model>.data` sidecar; null when the model is single-file. */
+async function fetchSidecar(url: string): Promise<{ path: string; data: Uint8Array } | null> {
+  const name = `${url.split("/").pop()}.data`;
+  const sidecarUrl = `${url.replace(/\/+$/, "").split("/").slice(0, -1).join("/")}/${name}`;
+  try {
+    const buf = await fetchArrayBuffer(sidecarUrl);
+    return { path: name, data: new Uint8Array(buf) };
+  } catch {
+    return null;
+  }
+}
+
 export async function createWebProvider(
   modelUrl: string,
   opts?: ProviderOptions,
@@ -518,9 +530,17 @@ export async function createWebProvider(
   const base = modelUrl.replace(/\/+$/, "");
   const encUrl = `${base}/encoder.onnx`;
   const headUrl = `${base}/head.onnx`;
+  // (Re-)read through fetchArrayBuffer so repeat reads hit CacheStorage.
+  // Nothing pin-worthy is retained: after each create, buffers are droppable.
+  const readEncoderParts = async () => {
+    const buf = await fetchArrayBuffer(encUrl);
+    const sidecar = await fetchSidecar(encUrl);
+    return { buf, extra: sidecar ? { externalData: [sidecar] } : {} };
+  };
   let encBuf: ArrayBuffer;
+  let encExtra: Record<string, unknown>;
   try {
-    encBuf = await fetchArrayBuffer(encUrl);
+    ({ buf: encBuf, extra: encExtra } = await readEncoderParts());
   } catch {
     throw new Error(`Incompatible model: 'encoder.onnx' not found (expected ${encUrl}).`);
   }
@@ -535,27 +555,76 @@ export async function createWebProvider(
     await expectDigest("encoder.onnx", encBuf, opts.expectedSha256);
     await expectDigest("head.onnx", headBuf, opts.expectedSha256);
   }
+  // Split ONNX references its weights relatively ("encoder.onnx.data"); buffered
+  // sessions have no filesystem, so mount the sidecar via externalData.
+  const headSidecar = await fetchSidecar(headUrl);
+  const headExtra = headSidecar ? { externalData: [headSidecar] } : {};
   let enc: any;
   try {
+    // "basic" skips the Skip+LayerNorm fusion whose fused Beta shape the
+    // WebGPU kernel rejects; unfused LayerNormalization runs fine on GPU.
     enc = await ort.InferenceSession.create(new Uint8Array(encBuf), {
       executionProviders: ["webgpu", "wasm"],
+      graphOptimizationLevel: "basic",
+      ...encExtra,
     });
   } catch (e) {
     enc = await ort.InferenceSession.create(new Uint8Array(encBuf), {
       executionProviders: ["wasm"],
+      ...encExtra,
     });
   }
   const head = await ort.InferenceSession.create(new Uint8Array(headBuf), {
     executionProviders: ["wasm"],
+    ...headExtra,
   });
+  // Lazy WASM encoder: some graphs pass WebGPU session creation but hit an
+  // unsupported kernel at run time (e.g. SkipLayerNormalization shape gaps).
+  // On the first such failure we build a WASM session and stick with it.
+  let encWasm: any = null;
+  const runEncoderOn = async (session: any, b: Batch) => {
+    const out = await session.run(feed(ort, b));
+    const t = pickOutput(out, ["last_hidden_state", "lastHidden", "hidden_states"]);
+    return { lastHidden: toNested(t.data, t.dims) };
+  };
   return {
     runEncoder: async (b) => {
+      if (encWasm) {
+        try {
+          return await runEncoderOn(encWasm, b);
+        } catch (e) {
+          if (isOomError(e)) throw new Error(`${(e as Error).message} (out of memory; try fewer questions per call)`);
+          throw e;
+        }
+      }
       try {
-        const out = await enc.run(feed(ort, b));
-        const t = pickOutput(out, ["last_hidden_state", "lastHidden", "hidden_states"]);
-        return { lastHidden: toNested(t.data, t.dims) };
+        return await runEncoderOn(enc, b);
       } catch (e) {
         if (isOomError(e)) throw new Error(`${(e as Error).message} (WebGPU out of memory; WASM fallback already active)`);
+        if (/\[webgpu\]/i.test(String((e as Error)?.message ?? e))) {
+          console.warn(
+            `laya: WebGPU encoder run failed (${String((e as Error)?.message ?? e)}); falling back to WASM.`,
+          );
+          if (!encWasm) {
+            // Re-read through the cache instead of pinning 1GB+ for the agent's life.
+            let parts;
+            try {
+              parts = await readEncoderParts();
+            } catch {
+              throw e;
+            }
+            encWasm = await ort.InferenceSession.create(new Uint8Array(parts.buf), {
+              executionProviders: ["wasm"],
+              ...parts.extra,
+            });
+          }
+          try {
+            return await runEncoderOn(encWasm, b);
+          } catch (e2) {
+            if (isOomError(e2)) throw new Error(`${(e2 as Error).message} (out of memory; try fewer questions per call)`);
+            throw e2;
+          }
+        }
         throw e;
       }
     },

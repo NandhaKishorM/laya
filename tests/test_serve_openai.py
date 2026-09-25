@@ -3,6 +3,7 @@
 The translation itself is covered by tests/test_openai.py; these assert the HTTP surface.
 """
 import json
+import logging
 
 import pytest
 
@@ -235,3 +236,45 @@ def test_moderation_rejects_too_many_inputs(monkeypatch):
     r = client.post("/v1/moderations", json={"input": ["text"] * 65})
     assert r.status_code == 413
     assert client.post("/v1/moderations", json={"input": ["text"] * 64}).status_code == 200
+
+
+class ExplodingRouter:
+    """Fails the way a container missing triton's C compiler does (#365)."""
+
+    loaded = ["english"]
+
+    def __init__(self, message):
+        self.message = message
+
+    def predict(self, state, questions, model=None):
+        raise RuntimeError(self.message)
+
+
+def test_inference_failure_is_logged_and_not_leaked(monkeypatch, caplog):
+    """The OpenAI routes return a bare 500 but the cause still reaches the log.
+
+    `/v1/systemone` logs the exception (#365/#375); these routes must match, or the
+    operator only sees `POST /v1/chat/completions ... 500` with no traceback.
+    """
+    secret = ("Failed to find C compiler. Please specify via CC environment variable "
+              "or set triton.knobs.build.impl (/opt/venv/lib/python3.11/site-packages/triton)")
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    client = TestClient(create_app(router=ExplodingRouter(secret)), raise_server_exceptions=False)
+    cases = [
+        ("/v1/chat/completions", {"messages": [{"role": "user", "content": "hi"}],
+         "response_format": {"type": "json_schema", "json_schema": {"schema": SCHEMA}}}),
+        ("/v1/responses", {"input": "hi",
+         "text": {"format": {"type": "json_schema", "schema": SCHEMA}}}),
+        ("/v1/moderations", {"input": "some post"}),
+    ]
+    for path, body in cases:
+        with caplog.at_level(logging.ERROR, logger="laya.serve"):
+            caplog.clear()
+            response = client.post(path, json=body)
+        assert response.status_code == 500, path
+        assert response.json() == {"detail": "inference failed"}, path
+        for leaked in ("C compiler", "triton", "/opt/venv", "site-packages"):
+            assert leaked not in response.text, path
+        records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        assert records, path
+        assert any(r.exc_info for r in records), "no exc_info on the failure record: " + path

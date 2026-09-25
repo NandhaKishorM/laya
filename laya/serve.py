@@ -467,6 +467,7 @@ def create_app(router: Optional[Any] = None):
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
         except Exception:  # noqa: BLE001
+            _log.exception("inference failed for model=%s", model)
             raise HTTPException(status_code=500, detail="inference failed")
         return format_chat_response(plan, result)
 
@@ -484,6 +485,7 @@ def create_app(router: Optional[Any] = None):
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
         except Exception:  # noqa: BLE001
+            _log.exception("inference failed for model=%s", model)
             raise HTTPException(status_code=500, detail="inference failed")
         return format_responses_response(plan, result)
 
@@ -513,6 +515,7 @@ def create_app(router: Optional[Any] = None):
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
         except Exception:  # noqa: BLE001
+            _log.exception("inference failed")
             raise HTTPException(status_code=500, detail="inference failed")
         try:
             threshold = float(os.environ.get("LAYA_MODERATION_THRESHOLD", MODERATION_THRESHOLD))

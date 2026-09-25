@@ -1,0 +1,1610 @@
+{
+ "description": "Independent NVIDIA CUDA capacity study of laya as a dynamically batched HTTP service (trimmed, laya-only). Workload: 1,000 public SAM.gov notices, natural length mix (<= 472 laya tokens); each request asks the same 3 typed questions (choice, score, noul), so decisions/s = 3 x requests/s. A sustained point needs p99 <= SLO, achieved >= 90% of the offered rate and latency trend <= 1.5 over a 60 s step.",
+ "source": {
+  "repo": "https://github.com/bhushankinge/laya-cuda-bench",
+  "commit": "6cf4148ef4d148273eae83604815fb63ca2254de",
+  "file_paths_relative_to": "https://github.com/bhushankinge/laya-cuda-bench/blob/6cf4148ef4d148273eae83604815fb63ca2254de/"
+ },
+ "script": "research/scripts/bench_nvidia_capacity.py",
+ "laya": {
+  "commit": "6a5819129eb220570792e417e49723d697efd76f",
+  "checkpoint": "convaiinnovations/laya",
+  "checkpoint_revision": "c5d78730f3493e4fe16d61507ef4b78eef7318cf",
+  "model_safetensors_sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c"
+ },
+ "tensorrt_note": "TensorRT rows run ONNX Runtime's TensorRT execution provider over an ONNX export of the checkpoint (FP16, LayerNorm kept in FP32). TensorRT is an external runtime, not a laya-shipped backend.",
+ "measured": "2026-09-22 to 2026-09-23, one run per configuration",
+ "environment": {
+  "zbook-rtxpro5000": {
+   "box": "zbook-rtxpro5000",
+   "collected_at": "2026-09-22T19:32:27.811144+00:00",
+   "os": "Linux-6.17.0-35-generic-x86_64-with-glibc2.39",
+   "python": "3.12.3",
+   "cpu_count": 24,
+   "ram_gb": 66.8,
+   "torch_disable_native_jit": "1",
+   "laya_trt_max_batch": "256",
+   "packages": {
+    "torch": "2.14.0+cu130",
+    "transformers": "5.17.0",
+    "onnxruntime-gpu": "1.30.0",
+    "onnxruntime": null,
+    "tensorrt-cu13": "10.16.1.11",
+    "tensorrt": null,
+    "laya": "0.3.3",
+    "nvidia-ml-py": "13.610.43",
+    "numpy": "2.5.3",
+    "huggingface_hub": "1.32.0",
+    "typesafe-sdk": "0.7.1"
+   },
+   "torch_cuda": "13.0",
+   "gpu": {
+    "name": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "capability": "12.0",
+    "total_mem_gb": 25.1
+   },
+   "driver": "595.71.05",
+   "mig_mode": "[N/A]",
+   "power_limit_w": "[N/A]"
+  },
+  "rtxpro6000-ws": {
+   "box": "rtxpro6000-ws",
+   "collected_at": "2026-09-23T03:17:22.051199+00:00",
+   "os": "Linux-6.17.0-40-generic-x86_64-with-glibc2.39",
+   "python": "3.12.3",
+   "cpu_count": 24,
+   "ram_gb": 100.6,
+   "torch_disable_native_jit": "1",
+   "laya_trt_max_batch": "256",
+   "packages": {
+    "torch": "2.14.0+cu130",
+    "transformers": "5.17.0",
+    "onnxruntime-gpu": "1.30.0",
+    "onnxruntime": null,
+    "tensorrt-cu13": "10.16.1.11",
+    "tensorrt": null,
+    "laya": "0.3.3",
+    "nvidia-ml-py": "13.610.43",
+    "numpy": "2.5.3",
+    "huggingface_hub": "1.32.0",
+    "typesafe-sdk": "0.7.1"
+   },
+   "torch_cuda": "13.0",
+   "gpu": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "capability": "12.0",
+    "total_mem_gb": 102.0
+   },
+   "driver": "595.84",
+   "mig_mode": "[N/A]",
+   "power_limit_w": "600.00 W"
+  },
+  "h100nvl": {
+   "box": "h100nvl",
+   "collected_at": "2026-09-23T19:12:58.800605+00:00",
+   "os": "Linux-4.18.0-553.104.1.el8_10.x86_64-x86_64-with-glibc2.39",
+   "python": "3.12.3",
+   "cpu_count": 128,
+   "ram_gb": 540.2,
+   "torch_disable_native_jit": "1",
+   "laya_trt_max_batch": "256",
+   "packages": {
+    "torch": "2.14.0+cu130",
+    "transformers": "5.17.0",
+    "onnxruntime-gpu": "1.30.0",
+    "onnxruntime": null,
+    "tensorrt-cu13": "10.16.1.11",
+    "tensorrt": null,
+    "laya": "0.3.3",
+    "nvidia-ml-py": "13.610.43",
+    "numpy": "2.5.2",
+    "huggingface_hub": "1.32.0",
+    "typesafe-sdk": "0.7.1"
+   },
+   "torch_cuda": "13.0",
+   "gpu": {
+    "name": "NVIDIA H100 NVL",
+    "capability": "9.0",
+    "total_mem_gb": 99.9
+   },
+   "driver": "580.95.05",
+   "mig_mode": "Disabled",
+   "power_limit_w": "400.00 W"
+  },
+  "laptop-rtx2000ada": {
+   "box": "laptop-rtx2000ada",
+   "collected_at": "2026-09-22T16:03:52.795468+00:00",
+   "os": "Linux-6.17.0-1032-oem-x86_64-with-glibc2.39",
+   "python": "3.12.3",
+   "cpu_count": 28,
+   "ram_gb": 33.2,
+   "torch_disable_native_jit": null,
+   "laya_trt_max_batch": null,
+   "packages": {
+    "torch": "2.14.0+cu130",
+    "transformers": "5.17.0",
+    "onnxruntime-gpu": null,
+    "onnxruntime": null,
+    "tensorrt-cu13": null,
+    "tensorrt": null,
+    "laya": "0.3.3",
+    "nvidia-ml-py": "13.610.43",
+    "numpy": "2.5.3",
+    "huggingface_hub": "1.32.0",
+    "typesafe-sdk": "0.7.1"
+   },
+   "torch_cuda": "13.0",
+   "gpu": {
+    "name": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "capability": "8.9",
+    "total_mem_gb": 8.2
+   },
+   "driver": "590.48.01",
+   "mig_mode": "[N/A]",
+   "power_limit_w": "[N/A]"
+  },
+  "h100nvl-mig-1g.12gb": {
+   "box": "h100nvl",
+   "collected_at": "2026-09-23T22:44:12.234270+00:00",
+   "os": "Linux-4.18.0-553.104.1.el8_10.x86_64-x86_64-with-glibc2.39",
+   "python": "3.12.3",
+   "cpu_count": 128,
+   "ram_gb": 540.2,
+   "torch_disable_native_jit": "1",
+   "laya_trt_max_batch": "256",
+   "packages": {
+    "torch": "2.14.0+cu130",
+    "transformers": "5.17.0",
+    "onnxruntime-gpu": "1.30.0",
+    "onnxruntime": null,
+    "tensorrt-cu13": "10.16.1.11",
+    "tensorrt": null,
+    "laya": "0.3.3",
+    "nvidia-ml-py": "13.610.43",
+    "numpy": "2.5.2",
+    "huggingface_hub": "1.32.0",
+    "typesafe-sdk": "0.7.1"
+   },
+   "torch_cuda": "13.0",
+   "gpu": {
+    "name": "NVIDIA H100 NVL MIG 1g.12gb",
+    "capability": "9.0",
+    "total_mem_gb": 11.5
+   },
+   "driver": "580.95.05",
+   "mig_mode": "Enabled",
+   "power_limit_w": "400.00 W"
+  }
+ },
+ "slo_sweeps": [
+  {
+   "gpu": "RTX PRO 5000 Blackwell Laptop 24 GB",
+   "box": "zbook-rtxpro5000",
+   "file": "results/zbook-rtxpro5000/server/laya.ort-trt-fp16.sweep.json",
+   "backend": "ort-trt-fp16-maxb256",
+   "max_batch": 16,
+   "max_delay_ms": 2.0,
+   "warmup_s": 20.0,
+   "step_s": 60.0,
+   "sustained": {
+    "50": {
+     "target_qps": 5.0,
+     "achieved_qps": 5.006,
+     "decisions_per_s": 15.019,
+     "p99_ms": 45.331,
+     "p50_ms": 18.913
+    },
+    "130": {
+     "target_qps": 13.72,
+     "achieved_qps": 13.93,
+     "decisions_per_s": 41.791,
+     "p99_ms": 113.126,
+     "p50_ms": 20.084
+    }
+   },
+   "steps": [
+    {
+     "target_qps": 5.0,
+     "achieved_qps": 5.006,
+     "requests": 300,
+     "errors": 0,
+     "decisions_per_s": 15.019,
+     "p50_ms": 18.913,
+     "p95_ms": 33.36,
+     "p99_ms": 45.331,
+     "max_ms": 59.726,
+     "mean_served_batch": 3.14,
+     "latency_trend": 1.096,
+     "saturated": false
+    },
+    {
+     "target_qps": 7.0,
+     "achieved_qps": 6.67,
+     "requests": 402,
+     "errors": 0,
+     "decisions_per_s": 20.01,
+     "p50_ms": 19.044,
+     "p95_ms": 33.996,
+     "p99_ms": 60.609,
+     "max_ms": 71.188,
+     "mean_served_batch": 3.149,
+     "latency_trend": 0.947,
+     "saturated": false
+    },
+    {
+     "target_qps": 9.8,
+     "achieved_qps": 9.764,
+     "requests": 586,
+     "errors": 0,
+     "decisions_per_s": 29.292,
+     "p50_ms": 19.668,
+     "p95_ms": 40.148,
+     "p99_ms": 61.07,
+     "max_ms": 76.422,
+     "mean_served_batch": 3.205,
+     "latency_trend": 1.047,
+     "saturated": false
+    },
+    {
+     "target_qps": 13.72,
+     "achieved_qps": 13.93,
+     "requests": 836,
+     "errors": 0,
+     "decisions_per_s": 41.791,
+     "p50_ms": 20.084,
+     "p95_ms": 55.122,
+     "p99_ms": 113.126,
+     "max_ms": 154.412,
+     "mean_served_batch": 3.459,
+     "latency_trend": 1.049,
+     "saturated": false
+    },
+    {
+     "target_qps": 19.208,
+     "achieved_qps": 18.811,
+     "requests": 1129,
+     "errors": 0,
+     "decisions_per_s": 56.433,
+     "p50_ms": 22.796,
+     "p95_ms": 83.012,
+     "p99_ms": 135.269,
+     "max_ms": 208.868,
+     "mean_served_batch": 3.702,
+     "latency_trend": 0.944,
+     "saturated": false
+    },
+    {
+     "target_qps": 26.891,
+     "achieved_qps": 27.824,
+     "requests": 1673,
+     "errors": 0,
+     "decisions_per_s": 83.472,
+     "p50_ms": 30.928,
+     "p95_ms": 361.955,
+     "p99_ms": 628.47,
+     "max_ms": 775.337,
+     "mean_served_batch": 5.733,
+     "latency_trend": 0.888,
+     "saturated": true
+    }
+   ]
+  },
+  {
+   "gpu": "RTX PRO 5000 Blackwell Laptop 24 GB",
+   "box": "zbook-rtxpro5000",
+   "file": "results/zbook-rtxpro5000/server/laya.eager-fp16.sweep.json",
+   "backend": "torch-eager-fp16",
+   "max_batch": 16,
+   "max_delay_ms": 2.0,
+   "warmup_s": 20.0,
+   "step_s": 60.0,
+   "sustained": {
+    "50": null,
+    "130": {
+     "target_qps": 13.72,
+     "achieved_qps": 13.93,
+     "decisions_per_s": 41.79,
+     "p99_ms": 118.241,
+     "p50_ms": 25.027
+    }
+   },
+   "steps": [
+    {
+     "target_qps": 5.0,
+     "achieved_qps": 5.006,
+     "requests": 300,
+     "errors": 0,
+     "decisions_per_s": 15.018,
+     "p50_ms": 24.487,
+     "p95_ms": 42.937,
+     "p99_ms": 55.583,
+     "max_ms": 75.993,
+     "mean_served_batch": 3.16,
+     "latency_trend": 1.043,
+     "saturated": false
+    },
+    {
+     "target_qps": 7.0,
+     "achieved_qps": 6.669,
+     "requests": 402,
+     "errors": 0,
+     "decisions_per_s": 20.007,
+     "p50_ms": 23.649,
+     "p95_ms": 44.621,
+     "p99_ms": 61.364,
+     "max_ms": 86.137,
+     "mean_served_batch": 3.179,
+     "latency_trend": 0.952,
+     "saturated": false
+    },
+    {
+     "target_qps": 9.8,
+     "achieved_qps": 9.763,
+     "requests": 586,
+     "errors": 0,
+     "decisions_per_s": 29.289,
+     "p50_ms": 23.822,
+     "p95_ms": 54.293,
+     "p99_ms": 72.834,
+     "max_ms": 84.366,
+     "mean_served_batch": 3.256,
+     "latency_trend": 0.993,
+     "saturated": false
+    },
+    {
+     "target_qps": 13.72,
+     "achieved_qps": 13.93,
+     "requests": 836,
+     "errors": 0,
+     "decisions_per_s": 41.79,
+     "p50_ms": 25.027,
+     "p95_ms": 72.338,
+     "p99_ms": 118.241,
+     "max_ms": 202.486,
+     "mean_served_batch": 3.574,
+     "latency_trend": 1.062,
+     "saturated": false
+    },
+    {
+     "target_qps": 19.208,
+     "achieved_qps": 18.807,
+     "requests": 1129,
+     "errors": 0,
+     "decisions_per_s": 56.422,
+     "p50_ms": 29.164,
+     "p95_ms": 90.721,
+     "p99_ms": 143.14,
+     "max_ms": 193.706,
+     "mean_served_batch": 3.909,
+     "latency_trend": 1.03,
+     "saturated": false
+    },
+    {
+     "target_qps": 26.891,
+     "achieved_qps": 27.822,
+     "requests": 1673,
+     "errors": 0,
+     "decisions_per_s": 83.465,
+     "p50_ms": 52.473,
+     "p95_ms": 759.726,
+     "p99_ms": 947.794,
+     "max_ms": 1063.501,
+     "mean_served_batch": 8.025,
+     "latency_trend": 0.816,
+     "saturated": true
+    }
+   ]
+  },
+  {
+   "gpu": "RTX PRO 6000 Blackwell Workstation 96 GB",
+   "box": "rtxpro6000-ws",
+   "file": "results/rtxpro6000-ws/server/laya.ort-trt-fp16.sweep.json",
+   "backend": "ort-trt-fp16-maxb256",
+   "max_batch": 128,
+   "max_delay_ms": 2.0,
+   "warmup_s": 20.0,
+   "step_s": 60.0,
+   "sustained": {
+    "50": null,
+    "130": {
+     "target_qps": 50.0,
+     "achieved_qps": 48.561,
+     "decisions_per_s": 145.682,
+     "p99_ms": 67.54,
+     "p50_ms": 19.6
+    }
+   },
+   "steps": [
+    {
+     "target_qps": 50.0,
+     "achieved_qps": 48.561,
+     "requests": 2914,
+     "errors": 0,
+     "decisions_per_s": 145.682,
+     "p50_ms": 19.6,
+     "p95_ms": 50.224,
+     "p99_ms": 67.54,
+     "max_ms": 103.343,
+     "mean_served_batch": 4.792,
+     "latency_trend": 0.941,
+     "saturated": false
+    },
+    {
+     "target_qps": 70.0,
+     "achieved_qps": 69.589,
+     "requests": 4175,
+     "errors": 0,
+     "decisions_per_s": 208.766,
+     "p50_ms": 29.465,
+     "p95_ms": 116.168,
+     "p99_ms": 176.576,
+     "max_ms": 250.543,
+     "mean_served_batch": 8.238,
+     "latency_trend": 1.063,
+     "saturated": false
+    },
+    {
+     "target_qps": 98.0,
+     "achieved_qps": 88.605,
+     "requests": 5881,
+     "errors": 0,
+     "decisions_per_s": 265.814,
+     "p50_ms": 4280.761,
+     "p95_ms": 6263.83,
+     "p99_ms": 6660.771,
+     "max_ms": 6853.595,
+     "mean_served_batch": 128.793,
+     "latency_trend": 2.043,
+     "saturated": true
+    }
+   ]
+  },
+  {
+   "gpu": "RTX PRO 6000 Blackwell Workstation 96 GB",
+   "box": "rtxpro6000-ws",
+   "file": "results/rtxpro6000-ws/server/laya.eager-fp16.sweep.json",
+   "backend": "torch-eager-fp16",
+   "max_batch": 128,
+   "max_delay_ms": 2.0,
+   "warmup_s": 20.0,
+   "step_s": 60.0,
+   "sustained": {
+    "50": null,
+    "130": {
+     "target_qps": 50.0,
+     "achieved_qps": 48.541,
+     "decisions_per_s": 145.623,
+     "p99_ms": 86.466,
+     "p50_ms": 50.549
+    }
+   },
+   "steps": [
+    {
+     "target_qps": 50.0,
+     "achieved_qps": 48.541,
+     "requests": 2914,
+     "errors": 0,
+     "decisions_per_s": 145.623,
+     "p50_ms": 50.549,
+     "p95_ms": 74.713,
+     "p99_ms": 86.466,
+     "max_ms": 121.705,
+     "mean_served_batch": 7.465,
+     "latency_trend": 0.992,
+     "saturated": false
+    },
+    {
+     "target_qps": 70.0,
+     "achieved_qps": 69.568,
+     "requests": 4175,
+     "errors": 0,
+     "decisions_per_s": 208.704,
+     "p50_ms": 61.617,
+     "p95_ms": 140.363,
+     "p99_ms": 194.784,
+     "max_ms": 230.976,
+     "mean_served_batch": 12.364,
+     "latency_trend": 1.008,
+     "saturated": false
+    },
+    {
+     "target_qps": 98.0,
+     "achieved_qps": 62.866,
+     "requests": 5881,
+     "errors": 1046,
+     "decisions_per_s": 188.598,
+     "p50_ms": 12311.677,
+     "p95_ms": 16984.734,
+     "p99_ms": 17193.178,
+     "max_ms": 19999.371,
+     "mean_served_batch": 128.932,
+     "latency_trend": 2.278,
+     "saturated": true
+    }
+   ]
+  },
+  {
+   "gpu": "H100 NVL 94 GB",
+   "box": "h100nvl",
+   "file": "results/h100nvl/server/laya.ort-trt-fp16.sweep.json",
+   "backend": "ort-trt-fp16-maxb256",
+   "max_batch": 128,
+   "max_delay_ms": 2.0,
+   "warmup_s": 20.0,
+   "step_s": 60.0,
+   "sustained": {
+    "50": {
+     "target_qps": 35.714,
+     "achieved_qps": 34.902,
+     "decisions_per_s": 104.706,
+     "p99_ms": 46.062,
+     "p50_ms": 14.515
+    },
+    "130": {
+     "target_qps": 59.161,
+     "achieved_qps": 58.235,
+     "decisions_per_s": 174.706,
+     "p99_ms": 91.136,
+     "p50_ms": 18.792
+    }
+   },
+   "steps": [
+    {
+     "target_qps": 35.714,
+     "achieved_qps": 34.902,
+     "requests": 2094,
+     "errors": 0,
+     "decisions_per_s": 104.706,
+     "p50_ms": 14.515,
+     "p95_ms": 32.2,
+     "p99_ms": 46.062,
+     "max_ms": 81.516,
+     "mean_served_batch": 3.731,
+     "latency_trend": 1.005,
+     "saturated": false
+    },
+    {
+     "target_qps": 42.258,
+     "achieved_qps": 43.7,
+     "requests": 2621,
+     "errors": 0,
+     "decisions_per_s": 131.1,
+     "p50_ms": 15.844,
+     "p95_ms": 39.572,
+     "p99_ms": 52.629,
+     "max_ms": 75.421,
+     "mean_served_batch": 4.165,
+     "latency_trend": 1.088,
+     "saturated": false
+    },
+    {
+     "target_qps": 50.0,
+     "achieved_qps": 48.563,
+     "requests": 2914,
+     "errors": 0,
+     "decisions_per_s": 145.689,
+     "p50_ms": 16.98,
+     "p95_ms": 45.198,
+     "p99_ms": 63.734,
+     "max_ms": 98.071,
+     "mean_served_batch": 4.566,
+     "latency_trend": 0.97,
+     "saturated": false
+    },
+    {
+     "target_qps": 59.161,
+     "achieved_qps": 58.235,
+     "requests": 3498,
+     "errors": 0,
+     "decisions_per_s": 174.706,
+     "p50_ms": 18.792,
+     "p95_ms": 58.097,
+     "p99_ms": 91.136,
+     "max_ms": 164.121,
+     "mean_served_batch": 5.403,
+     "latency_trend": 0.988,
+     "saturated": false
+    },
+    {
+     "target_qps": 70.0,
+     "achieved_qps": 69.593,
+     "requests": 4175,
+     "errors": 0,
+     "decisions_per_s": 208.779,
+     "p50_ms": 23.847,
+     "p95_ms": 88.346,
+     "p99_ms": 135.857,
+     "max_ms": 212.034,
+     "mean_served_batch": 7.242,
+     "latency_trend": 1.054,
+     "saturated": false
+    },
+    {
+     "target_qps": 98.0,
+     "achieved_qps": 97.749,
+     "requests": 5881,
+     "errors": 0,
+     "decisions_per_s": 293.248,
+     "p50_ms": 170.396,
+     "p95_ms": 475.441,
+     "p99_ms": 706.513,
+     "max_ms": 884.172,
+     "mean_served_batch": 41.265,
+     "latency_trend": 1.574,
+     "saturated": true
+    }
+   ]
+  },
+  {
+   "gpu": "H100 NVL 94 GB",
+   "box": "h100nvl",
+   "file": "results/h100nvl/server/laya.eager-fp16.sweep.json",
+   "backend": "torch-eager-fp16",
+   "max_batch": 128,
+   "max_delay_ms": 2.0,
+   "warmup_s": 20.0,
+   "step_s": 60.0,
+   "sustained": {
+    "50": {
+     "target_qps": 13.015,
+     "achieved_qps": 13.051,
+     "decisions_per_s": 39.154,
+     "p99_ms": 38.84,
+     "p50_ms": 17.763
+    },
+    "130": {
+     "target_qps": 30.184,
+     "achieved_qps": 31.092,
+     "decisions_per_s": 93.275,
+     "p99_ms": 100.294,
+     "p50_ms": 19.305
+    }
+   },
+   "steps": [
+    {
+     "target_qps": 13.015,
+     "achieved_qps": 13.051,
+     "requests": 783,
+     "errors": 0,
+     "decisions_per_s": 39.154,
+     "p50_ms": 17.763,
+     "p95_ms": 30.516,
+     "p99_ms": 38.84,
+     "max_ms": 96.222,
+     "mean_served_batch": 3.383,
+     "latency_trend": 1.022,
+     "saturated": false
+    },
+    {
+     "target_qps": 15.4,
+     "achieved_qps": 15.947,
+     "requests": 956,
+     "errors": 0,
+     "decisions_per_s": 47.842,
+     "p50_ms": 17.869,
+     "p95_ms": 31.729,
+     "p99_ms": 88.714,
+     "max_ms": 126.199,
+     "mean_served_batch": 3.496,
+     "latency_trend": 1.002,
+     "saturated": false
+    },
+    {
+     "target_qps": 18.222,
+     "achieved_qps": 19.637,
+     "requests": 1178,
+     "errors": 0,
+     "decisions_per_s": 58.911,
+     "p50_ms": 18.076,
+     "p95_ms": 34.952,
+     "p99_ms": 95.025,
+     "max_ms": 117.211,
+     "mean_served_batch": 3.576,
+     "latency_trend": 0.977,
+     "saturated": false
+    },
+    {
+     "target_qps": 25.51,
+     "achieved_qps": 25.434,
+     "requests": 1529,
+     "errors": 0,
+     "decisions_per_s": 76.303,
+     "p50_ms": 18.744,
+     "p95_ms": 50.522,
+     "p99_ms": 124.008,
+     "max_ms": 176.933,
+     "mean_served_batch": 3.836,
+     "latency_trend": 0.969,
+     "saturated": false
+    },
+    {
+     "target_qps": 30.184,
+     "achieved_qps": 31.092,
+     "requests": 1866,
+     "errors": 0,
+     "decisions_per_s": 93.275,
+     "p50_ms": 19.305,
+     "p95_ms": 40.97,
+     "p99_ms": 100.294,
+     "max_ms": 143.284,
+     "mean_served_batch": 4.055,
+     "latency_trend": 1.012,
+     "saturated": false
+    },
+    {
+     "target_qps": 35.714,
+     "achieved_qps": 34.899,
+     "requests": 2094,
+     "errors": 0,
+     "decisions_per_s": 104.696,
+     "p50_ms": 22.107,
+     "p95_ms": 102.874,
+     "p99_ms": 135.348,
+     "max_ms": 178.08,
+     "mean_served_batch": 4.908,
+     "latency_trend": 0.826,
+     "saturated": false
+    },
+    {
+     "target_qps": 50.0,
+     "achieved_qps": 48.559,
+     "requests": 2914,
+     "errors": 0,
+     "decisions_per_s": 145.678,
+     "p50_ms": 100.56,
+     "p95_ms": 164.806,
+     "p99_ms": 199.552,
+     "max_ms": 248.792,
+     "mean_served_batch": 12.986,
+     "latency_trend": 0.854,
+     "saturated": false
+    },
+    {
+     "target_qps": 70.0,
+     "achieved_qps": 69.589,
+     "requests": 4175,
+     "errors": 0,
+     "decisions_per_s": 208.767,
+     "p50_ms": 106.299,
+     "p95_ms": 229.279,
+     "p99_ms": 327.726,
+     "max_ms": 491.874,
+     "mean_served_batch": 18.97,
+     "latency_trend": 0.837,
+     "saturated": false
+    },
+    {
+     "target_qps": 98.0,
+     "achieved_qps": 97.346,
+     "requests": 5881,
+     "errors": 0,
+     "decisions_per_s": 292.037,
+     "p50_ms": 401.076,
+     "p95_ms": 717.645,
+     "p99_ms": 842.341,
+     "max_ms": 960.329,
+     "mean_served_batch": 82.195,
+     "latency_trend": 0.908,
+     "saturated": true
+    }
+   ]
+  },
+  {
+   "gpu": "H100 NVL, 7 x MIG 1g.12gb, concurrent",
+   "box": "h100nvl",
+   "backend": "torch-eager-fp16",
+   "max_batch": 64,
+   "files": "results/h100nvl/server/laya.eager-fp16.mig-1g.12gb-slice{0..6}.sweep.json",
+   "sustained": {
+    "50": null,
+    "130": null
+   },
+   "steps": [
+    {
+     "target_qps_per_slice": 2.603,
+     "decisions_per_s_total": 48.61,
+     "p99_ms_min": 125.918,
+     "p99_ms_max": 127.171,
+     "achieved_over_target_min": 0.889,
+     "errors": 0,
+     "slices_meeting_130ms": 0,
+     "slices_meeting_50ms": 0
+    },
+    {
+     "target_qps_per_slice": 3.644,
+     "decisions_per_s_total": 72.699,
+     "p99_ms_min": 188.392,
+     "p99_ms_max": 456.968,
+     "achieved_over_target_min": 0.949,
+     "errors": 0,
+     "slices_meeting_130ms": 0,
+     "slices_meeting_50ms": 0
+    },
+    {
+     "target_qps_per_slice": 5.102,
+     "decisions_per_s_total": 115.614,
+     "p99_ms_min": 152.471,
+     "p99_ms_max": 285.66,
+     "achieved_over_target_min": 1.079,
+     "errors": 0,
+     "slices_meeting_130ms": 0,
+     "slices_meeting_50ms": 0
+    },
+    {
+     "target_qps_per_slice": 7.143,
+     "decisions_per_s_total": 149.68,
+     "p99_ms_min": 222.046,
+     "p99_ms_max": 246.109,
+     "achieved_over_target_min": 0.998,
+     "errors": 0,
+     "slices_meeting_130ms": 0,
+     "slices_meeting_50ms": 0
+    },
+    {
+     "target_qps_per_slice": 10.0,
+     "decisions_per_s_total": 217.081,
+     "p99_ms_min": 363.269,
+     "p99_ms_max": 410.228,
+     "achieved_over_target_min": 1.034,
+     "errors": 0,
+     "slices_meeting_130ms": 0,
+     "slices_meeting_50ms": 0
+    },
+    {
+     "target_qps_per_slice": 14.0,
+     "decisions_per_s_total": 283.667,
+     "p99_ms_min": 583.931,
+     "p99_ms_max": 1110.721,
+     "achieved_over_target_min": 0.962,
+     "errors": 0,
+     "slices_meeting_130ms": 0,
+     "slices_meeting_50ms": 0
+    }
+   ]
+  }
+ ],
+ "parity": {
+  "reference": "upstream FP32 forward at the pinned laya commit",
+  "cases": 16,
+  "questions_per_row": 63,
+  "rows": 74,
+  "rows_all_63_agree": 74,
+  "gpus": 4,
+  "files": "results/*/parity*.json",
+  "by_row": [
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00673
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0063
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya",
+    "backend": "ort-trt-fp16-maxb256",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0149
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0011
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya-multilingual",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000977
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya-multilingual",
+    "backend": "ort-trt-fp16-maxb256",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00189
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00561
+   },
+   {
+    "gpu": "NVIDIA H100 NVL",
+    "model": "laya-multilingual",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000728
+   },
+   {
+    "gpu": "NVIDIA H100 NVL MIG 1g.12gb",
+    "model": "laya",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00672
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00305
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0146
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 3.2e-06
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00752
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00331
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000773
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00437
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 5.99e-07
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00151
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000679
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00129
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00692
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 1.43e-06
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00242
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00137
+   },
+   {
+    "gpu": "NVIDIA RTX 2000 Ada Generation Laptop GPU",
+    "model": "laya",
+    "backend": "ort-trt-fp16-maxb32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0168
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00545
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0164
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 1.43e-06
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0101
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00605
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya",
+    "backend": "ort-trt-fp16-maxb128",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00573
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000531
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00606
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-multilingual",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 7.09e-07
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-multilingual",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000995
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-multilingual",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000867
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-multilingual",
+    "backend": "ort-trt-fp16-maxb128",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00173
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00122
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0148
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-typed-decisions",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 1.71e-06
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-typed-decisions",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00217
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-typed-decisions",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0012
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-typed-decisions",
+    "backend": "ort-trt-fp16-maxb128",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00772
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya",
+    "backend": "ort-trt-fp16-maxb256",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0188
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "model": "laya-multilingual",
+    "backend": "ort-trt-fp16-maxb256",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00173
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00529
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00897
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 6.53e-06
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00316
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00953
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya",
+    "backend": "ort-trt-fp16-maxb64",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0115
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000539
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00621
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 4.06e-07
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00101
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.000671
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-multilingual",
+    "backend": "ort-trt-fp16-maxb64",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00236
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.0
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00233
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "torch-eager-bf16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00786
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "ort-cuda-fp32",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 1.62e-06
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "ort-cuda-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00301
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "torch-compile-max-autotune-fp16",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00146
+   },
+   {
+    "gpu": "NVIDIA RTX PRO 5000 Blackwell Generation Laptop GPU",
+    "model": "laya-typed-decisions",
+    "backend": "ort-trt-fp16-maxb64",
+    "argmax_agreements": 63,
+    "questions": 63,
+    "probability_max_abs_error": 0.00479
+   }
+  ]
+ },
+ "replay": {
+  "gpu": "RTX PRO 6000 Blackwell Workstation 96 GB",
+  "box": "rtxpro6000-ws",
+  "backend": "torch-eager-fp16",
+  "max_batch": 128,
+  "file": "results/rtxpro6000-ws/replay/laya.eager-fp16.10M-day.jsonl",
+  "curve": "fixtures/workload/diurnal.csv",
+  "total_decisions_per_day": 10000000,
+  "compress": 24,
+  "hour_replayed_s": 150,
+  "requests": 138863,
+  "errors": 0,
+  "p50_ms": 47.372,
+  "p90_ms": 70.068,
+  "p99_ms": 110.725,
+  "max_ms": 250.599,
+  "decisions_per_s_mean": 115.716,
+  "mean_served_batch": 7.287,
+  "per_hour": [
+   {
+    "hour": 0,
+    "decisions_per_s": 64.5,
+    "p99_ms": 65.8
+   },
+   {
+    "hour": 1,
+    "decisions_per_s": 54.7,
+    "p99_ms": 64.4
+   },
+   {
+    "hour": 2,
+    "decisions_per_s": 49.4,
+    "p99_ms": 64.0
+   },
+   {
+    "hour": 3,
+    "decisions_per_s": 48.2,
+    "p99_ms": 65.9
+   },
+   {
+    "hour": 4,
+    "decisions_per_s": 49.1,
+    "p99_ms": 65.3
+   },
+   {
+    "hour": 5,
+    "decisions_per_s": 57.4,
+    "p99_ms": 64.8
+   },
+   {
+    "hour": 6,
+    "decisions_per_s": 81.4,
+    "p99_ms": 71.1
+   },
+   {
+    "hour": 7,
+    "decisions_per_s": 118.7,
+    "p99_ms": 85.6
+   },
+   {
+    "hour": 8,
+    "decisions_per_s": 147.5,
+    "p99_ms": 92.8
+   },
+   {
+    "hour": 9,
+    "decisions_per_s": 177.4,
+    "p99_ms": 124.5
+   },
+   {
+    "hour": 10,
+    "decisions_per_s": 187.4,
+    "p99_ms": 132.2
+   },
+   {
+    "hour": 11,
+    "decisions_per_s": 182.8,
+    "p99_ms": 126.0
+   },
+   {
+    "hour": 12,
+    "decisions_per_s": 161.3,
+    "p99_ms": 110.8
+   },
+   {
+    "hour": 13,
+    "decisions_per_s": 170.7,
+    "p99_ms": 125.5
+   },
+   {
+    "hour": 14,
+    "decisions_per_s": 185.4,
+    "p99_ms": 143.7
+   },
+   {
+    "hour": 15,
+    "decisions_per_s": 177.3,
+    "p99_ms": 109.4
+   },
+   {
+    "hour": 16,
+    "decisions_per_s": 163.6,
+    "p99_ms": 115.8
+   },
+   {
+    "hour": 17,
+    "decisions_per_s": 140.4,
+    "p99_ms": 90.0
+   },
+   {
+    "hour": 18,
+    "decisions_per_s": 115.3,
+    "p99_ms": 85.9
+   },
+   {
+    "hour": 19,
+    "decisions_per_s": 105.0,
+    "p99_ms": 79.8
+   },
+   {
+    "hour": 20,
+    "decisions_per_s": 98.7,
+    "p99_ms": 77.7
+   },
+   {
+    "hour": 21,
+    "decisions_per_s": 89.4,
+    "p99_ms": 69.9
+   },
+   {
+    "hour": 22,
+    "decisions_per_s": 80.3,
+    "p99_ms": 68.3
+   },
+   {
+    "hour": 23,
+    "decisions_per_s": 71.7,
+    "p99_ms": 65.8
+   }
+  ]
+ }
+}

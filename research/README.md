@@ -78,18 +78,22 @@ python research/scripts/bench_length_batching.py MODEL_DIR --count 64 --batch-si
 | `results/t4_colab_benchmark.json` | 17,416 questions on one T4, both checkpoints, identical questions per model |
 | `results/long_context_multilingual.json` | the long-document run behind `assets/long_context_8192.png`: every prediction, with device and library versions |
 | `results/cpu_51_language_sweep.json` | 51 languages x 2 checkpoints, MASSIVE intent, 20 options |
-| `results/cpu_51_language_sweep_clamped.json` | the same 51 languages and 5,100 cases re-run after the temperature clamp, raw temperatures and served temperatures side by side ([#208](https://github.com/NandhaKishorM/laya/issues/208)) |
+| `results/cpu_51_language_sweep_clamped.json` | the English half of the 51 languages re-run after the temperature clamp, raw temperatures and served temperatures side by side ([#222](https://github.com/NandhaKishorM/laya/pull/222)) |
+| `results/cpu_51_language_sweep_refreshed.json` | both checkpoints with the environment recorded, the superseded committed columns kept beside the new ones. The multilingual half of the committed sweep does not reproduce on current code, so this is what the table in `BENCHMARKS.md` prints ([#208](https://github.com/NandhaKishorM/laya/issues/208)) |
 
 ## Headline findings
 
-**Routing takes Laya from 23 to 45 of 51 languages.** On MASSIVE intent (20 options, random =
+**Routing takes Laya from 23 to 48 of 51 languages.** On MASSIVE intent (20 options, random =
 0.050) the English checkpoint macro-averages 0.227 and clears 3x random on 23 of 51 languages;
-the multilingual checkpoint reaches 0.366 and clears it on 45.
+the multilingual checkpoint reaches 0.401 and clears it on 48. The multilingual figures are the
+re-run, not the committed sweep — see `results/cpu_51_language_sweep_refreshed.json` below.
 
 **The English checkpoint's confidence gives no warning when it cannot read the input.** Khmer:
-0.000 accuracy at 0.952 mean confidence. Macro ECE 0.733 across 51 languages, with mean
-confidence never dropping below 0.885 at any accuracy level. This is why routing has to happen
-*before* the forward pass — confidence gating cannot catch it.
+0.000 accuracy at 0.952 mean confidence — that is the *raw* temperature; as served, after the
+#42 clamp, it is 0.705 at the same 0.000 accuracy. Macro ECE 0.733 across 51 languages as
+committed (0.571 as served), with mean confidence never dropping below 0.885 raw, or 0.621 as
+served, at any accuracy level. This is why routing has to happen *before* the forward pass — confidence gating cannot
+catch it.
 
 **Both checkpoints ship over-confident.** Refitting one temperature per (question type, option
 count) on held-out data moves mean ECE 0.466 -> 0.081 (`laya`) and 0.314 -> 0.106

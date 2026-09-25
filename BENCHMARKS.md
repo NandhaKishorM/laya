@@ -23,6 +23,16 @@ The same 51 languages and 5,100 cases have now been re-run after the temperature
 
 The raw-temperature column reproduces the committed file, so the only variable left is the clamp. `choice:11+` is the sole bucket it moves, and every case in this sweep is a 20-option question, so the clamp applies to all 5,100 — and lowers ECE in all 51 languages. `acc_at_50_coverage` is the one rank-quality column that uses the confidence values: macro 0.3004 → 0.3020, and `en` 0.94 → 0.98, so the flatter distribution selects a slightly better half rather than a worse one.
 
+**The multilingual columns below are the re-run, not the committed file.** The committed `cpu_51_language_sweep.json` was measured at laya 0.2.0, and its `laya-multilingual` half does not reproduce on current code — 51 languages and 5,100 cases re-run under laya 0.2.0, 0.3.7 and 0.3.20, on x86 CPU and on an Apple M5 under both CPU and MPS, all give **0.4008** macro accuracy and match the committed file on only **6 of 51** languages, while the `laya` half reproduces exactly on all of them. Three machines agreeing settled it ([#208](https://github.com/NandhaKishorM/laya/issues/208)). The table therefore prints the refreshed numbers for both checkpoints, from `research/results/cpu_51_language_sweep_refreshed.json`, which records the environment and keeps the superseded committed columns beside the new ones:
+
+| | committed (`laya-multilingual`) | refreshed |
+|---|---|---|
+| macro accuracy | 0.3661 | **0.4008** |
+| macro ECE | 0.3869 | **0.3911** |
+| languages clearing 3× random | 45 / 51 | **48 / 51** |
+
+The direction is consistent rather than noise: of the 16 languages that move by 0.05 or more, **every one moves up** (`bn` 0.29 → 0.45, `kn` 0.15 → 0.30, `hy` 0.15 → 0.25), and none move down by that much. `laya`'s columns are unchanged by the refresh — they reproduce the committed file to the last stored digit — so the accuracy spread between the two checkpoints is wider than the committed table suggested, and `en` remains the one language where `laya` wins (0.820 against 0.710).
+
 ---
 
 ## Headline
@@ -43,65 +53,65 @@ The raw-temperature column reproduces the committed file, so the only variable l
 
 | | laya | laya-multilingual |
 |---|---|---|
-| macro accuracy | 0.2269 | **0.3661** |
-| macro ECE *(lower better)* | 0.7331 | **0.3869** |
-| languages clearing 3× random | 23 / 51 | **45 / 51** |
+| macro accuracy | 0.2269 | **0.4008** |
+| macro ECE *(lower better)* | 0.5709 | **0.3911** |
+| languages clearing 3x random | 23 / 51 | **48 / 51** |
 
 <details><summary><b>Per language (51)</b> — sorted by how much routing gains</summary>
 
 | lang | laya | laya-multilingual | Δ | laya ECE | multilingual ECE |
 |---|---|---|---|---|---|
-| `th` | 0.080 | 0.480 | +0.400 | 0.881 | 0.336 |
-| `ko` | 0.110 | 0.450 | +0.340 | 0.850 | 0.329 |
-| `he` | 0.060 | 0.400 | +0.340 | 0.911 | 0.350 |
-| `ur` | 0.070 | 0.400 | +0.330 | 0.883 | 0.311 |
-| `hi` | 0.100 | 0.430 | +0.330 | 0.850 | 0.321 |
-| `ar` | 0.110 | 0.400 | +0.290 | 0.800 | 0.341 |
-| `pl` | 0.240 | 0.510 | +0.270 | 0.713 | 0.350 |
-| `el` | 0.130 | 0.380 | +0.250 | 0.839 | 0.383 |
-| `fa` | 0.140 | 0.390 | +0.250 | 0.820 | 0.399 |
-| `ru` | 0.310 | 0.540 | +0.230 | 0.668 | 0.316 |
-| `tr` | 0.140 | 0.370 | +0.230 | 0.788 | 0.417 |
-| `lv` | 0.100 | 0.320 | +0.220 | 0.847 | 0.480 |
-| `bn` | 0.080 | 0.290 | +0.210 | 0.865 | 0.408 |
-| `nb` | 0.330 | 0.530 | +0.200 | 0.648 | 0.327 |
-| `vi` | 0.060 | 0.260 | +0.200 | 0.891 | 0.521 |
-| `az` | 0.100 | 0.300 | +0.200 | 0.825 | 0.368 |
-| `hu` | 0.090 | 0.290 | +0.200 | 0.857 | 0.422 |
-| `is` | 0.110 | 0.300 | +0.190 | 0.835 | 0.469 |
-| `sv` | 0.380 | 0.570 | +0.190 | 0.596 | 0.276 |
-| `km` | 0.000 | 0.180 | +0.180 | 0.952 | 0.412 |
-| `ml` | 0.070 | 0.240 | +0.170 | 0.857 | 0.414 |
-| `it` | 0.340 | 0.500 | +0.160 | 0.647 | 0.302 |
-| `fi` | 0.130 | 0.290 | +0.160 | 0.849 | 0.436 |
-| `ms` | 0.270 | 0.430 | +0.160 | 0.688 | 0.392 |
-| `da` | 0.350 | 0.500 | +0.150 | 0.626 | 0.263 |
-| `id` | 0.360 | 0.510 | +0.150 | 0.613 | 0.305 |
-| `te` | 0.090 | 0.220 | +0.130 | 0.858 | 0.370 |
-| `sl` | 0.200 | 0.330 | +0.130 | 0.756 | 0.433 |
-| `jv` | 0.160 | 0.270 | +0.110 | 0.803 | 0.506 |
-| `ta` | 0.120 | 0.230 | +0.110 | 0.822 | 0.397 |
-| `ja` | 0.530 | 0.640 | +0.110 | 0.460 | 0.228 |
-| `hy` | 0.050 | 0.150 | +0.100 | 0.835 | 0.506 |
-| `zh-TW` | 0.460 | 0.540 | +0.080 | 0.520 | 0.327 |
-| `de` | 0.420 | 0.500 | +0.080 | 0.558 | 0.301 |
-| `tl` | 0.290 | 0.360 | +0.070 | 0.676 | 0.374 |
-| `nl` | 0.390 | 0.450 | +0.060 | 0.591 | 0.378 |
-| `af` | 0.290 | 0.350 | +0.060 | 0.687 | 0.484 |
-| `my` | 0.060 | 0.120 | +0.060 | 0.861 | 0.455 |
-| `sq` | 0.210 | 0.260 | +0.050 | 0.755 | 0.476 |
-| `sw` | 0.130 | 0.180 | +0.050 | 0.828 | 0.549 |
-| `cy` | 0.120 | 0.160 | +0.040 | 0.841 | 0.591 |
-| `kn` | 0.110 | 0.150 | +0.040 | 0.842 | 0.437 |
-| `es` | 0.510 | 0.530 | +0.020 | 0.480 | 0.275 |
-| `ka` | 0.090 | 0.110 | +0.020 | 0.845 | 0.528 |
-| `ro` | 0.330 | 0.350 | +0.020 | 0.658 | 0.404 |
-| `zh-CN` | 0.620 | 0.630 | +0.010 | 0.376 | 0.212 |
-| `am` | 0.120 | 0.110 | -0.010 | 0.825 | 0.463 |
-| `pt` | 0.470 | 0.450 | -0.020 | 0.512 | 0.342 |
-| `mn` | 0.130 | 0.100 | -0.030 | 0.837 | 0.558 |
-| `fr` | 0.590 | 0.540 | -0.050 | 0.388 | 0.277 |
-| `en` | 0.820 | 0.680 | -0.140 | 0.179 | 0.209 |
+| `th` | 0.080 | 0.480 | +0.400 | 0.718 | 0.356 |
+| `bn` | 0.080 | 0.450 | +0.370 | 0.627 | 0.354 |
+| `fa` | 0.140 | 0.510 | +0.370 | 0.633 | 0.298 |
+| `hi` | 0.100 | 0.460 | +0.360 | 0.642 | 0.368 |
+| `ko` | 0.110 | 0.470 | +0.360 | 0.680 | 0.311 |
+| `ar` | 0.110 | 0.460 | +0.350 | 0.580 | 0.315 |
+| `ur` | 0.070 | 0.420 | +0.350 | 0.643 | 0.336 |
+| `el` | 0.130 | 0.440 | +0.310 | 0.679 | 0.430 |
+| `he` | 0.060 | 0.370 | +0.310 | 0.738 | 0.419 |
+| `vi` | 0.060 | 0.340 | +0.280 | 0.690 | 0.464 |
+| `hu` | 0.090 | 0.360 | +0.270 | 0.678 | 0.401 |
+| `az` | 0.100 | 0.360 | +0.260 | 0.598 | 0.381 |
+| `pl` | 0.240 | 0.500 | +0.260 | 0.570 | 0.353 |
+| `tr` | 0.140 | 0.400 | +0.260 | 0.587 | 0.400 |
+| `ru` | 0.310 | 0.570 | +0.260 | 0.595 | 0.296 |
+| `is` | 0.110 | 0.350 | +0.240 | 0.664 | 0.452 |
+| `nb` | 0.330 | 0.560 | +0.230 | 0.518 | 0.294 |
+| `fi` | 0.130 | 0.340 | +0.210 | 0.719 | 0.392 |
+| `ml` | 0.070 | 0.280 | +0.210 | 0.601 | 0.443 |
+| `lv` | 0.100 | 0.310 | +0.210 | 0.666 | 0.472 |
+| `hy` | 0.050 | 0.250 | +0.200 | 0.571 | 0.513 |
+| `km` | 0.000 | 0.200 | +0.200 | 0.705 | 0.445 |
+| `kn` | 0.110 | 0.300 | +0.190 | 0.590 | 0.388 |
+| `ta` | 0.120 | 0.310 | +0.190 | 0.554 | 0.448 |
+| `it` | 0.340 | 0.520 | +0.180 | 0.516 | 0.343 |
+| `da` | 0.350 | 0.520 | +0.170 | 0.526 | 0.315 |
+| `sl` | 0.200 | 0.370 | +0.170 | 0.599 | 0.434 |
+| `id` | 0.360 | 0.510 | +0.150 | 0.487 | 0.323 |
+| `zh-TW` | 0.460 | 0.610 | +0.150 | 0.434 | 0.266 |
+| `jv` | 0.160 | 0.300 | +0.140 | 0.670 | 0.484 |
+| `ms` | 0.270 | 0.410 | +0.140 | 0.506 | 0.436 |
+| `te` | 0.090 | 0.220 | +0.130 | 0.669 | 0.497 |
+| `ja` | 0.530 | 0.640 | +0.110 | 0.366 | 0.234 |
+| `sv` | 0.380 | 0.490 | +0.110 | 0.487 | 0.341 |
+| `my` | 0.060 | 0.160 | +0.100 | 0.580 | 0.477 |
+| `sw` | 0.130 | 0.230 | +0.100 | 0.632 | 0.492 |
+| `sq` | 0.210 | 0.300 | +0.090 | 0.603 | 0.487 |
+| `de` | 0.420 | 0.500 | +0.080 | 0.452 | 0.336 |
+| `nl` | 0.390 | 0.470 | +0.080 | 0.502 | 0.397 |
+| `es` | 0.510 | 0.580 | +0.070 | 0.422 | 0.258 |
+| `af` | 0.290 | 0.350 | +0.060 | 0.559 | 0.439 |
+| `ka` | 0.090 | 0.150 | +0.060 | 0.610 | 0.542 |
+| `tl` | 0.290 | 0.350 | +0.060 | 0.512 | 0.430 |
+| `ro` | 0.330 | 0.370 | +0.040 | 0.550 | 0.397 |
+| `pt` | 0.470 | 0.500 | +0.030 | 0.432 | 0.341 |
+| `zh-CN` | 0.620 | 0.650 | +0.030 | 0.320 | 0.219 |
+| `am` | 0.120 | 0.150 | +0.030 | 0.680 | 0.484 |
+| `mn` | 0.130 | 0.160 | +0.030 | 0.670 | 0.577 |
+| `cy` | 0.120 | 0.130 | +0.010 | 0.645 | 0.587 |
+| `fr` | 0.590 | 0.600 | +0.010 | 0.299 | 0.248 |
+| `en` | 0.820 | 0.710 | -0.110 | 0.138 | 0.233 |
 
 </details>
 
@@ -116,7 +126,7 @@ The raw-temperature column reproduces the committed file, so the only variable l
 | XNLI — English | **0.860** | 0.843 |
 | XNLI — other languages | 0.521 | **0.731** |
 
-The English checkpoint does not degrade gracefully outside English — it collapses, and stays confident doing so. Khmer: **0.000 accuracy at 0.952 confidence**. Its mean confidence never drops below 0.885 at any accuracy level, so confidence gating cannot catch it — which is why routing happens *before* the forward pass.
+The English checkpoint does not degrade gracefully outside English — it collapses, and stays confident doing so. Khmer: **0.000 accuracy at 0.952 confidence** raw, **0.705** as served after the clamp. Its mean confidence never drops below 0.885 (raw; 0.621 as served) at any accuracy level, so confidence gating cannot catch it — which is why routing happens *before* the forward pass.
 
 ---
 

@@ -5,11 +5,15 @@
     laya                                                # interactive mode
     laya "Mein Konto wurde zweimal belastet" --lang de  # explicit language
     laya "My payment failed twice" --preset triage      # a ready-made question preset
+    laya --batch tickets.txt --predict                  # a file of requests, one per line
+    cat tickets.txt | laya --batch - --predict --json   # stdin, one JSON line of answers each
 
 Routing (the default) never downloads a checkpoint, so it works offline and
 returns in milliseconds. --predict loads the routed checkpoint on first use,
 which needs network access to the Hugging Face hub. --preset answers one of the
 ready-made question presets from laya.presets and implies --predict.
+--batch scores a whole file (or stdin, with `-`) through Router.predict_batch in one
+process, so the states share checkpoint loads and forward passes; --json prints JSONL.
 """
 
 import argparse
@@ -56,6 +60,13 @@ def build_parser():
                         % ", ".join(sorted(PRESETS)))
     parser.add_argument("--device", help="torch device, e.g. cpu or cuda")
     parser.add_argument("--json", action="store_true", help="print the raw result as JSON")
+    parser.add_argument("--batch", metavar="FILE",
+                        help="score a file of requests, one per line (use '-' for stdin), instead "
+                             "of a single text; implies neither --predict nor --preset, but the "
+                             "same modes apply: routing by default, answers with --predict/--preset")
+    parser.add_argument("--batch-size", type=int, default=None, metavar="N",
+                        help="states per forward pass in --batch mode; the default sends each "
+                             "routed group in one pass")
     return parser
 
 
@@ -129,6 +140,57 @@ def run(text, args, router=None):
     return 0
 
 
+def read_batch_lines(source):
+    """One request per non-blank line of FILE, or of stdin for '-'."""
+    if source == "-":
+        lines = sys.stdin.read().splitlines()
+    else:
+        with open(source, encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    return [line.strip() for line in lines if line.strip()]
+
+
+def run_batch(lines, args, router=None):
+    """Route or predict a whole file in one call, so states share checkpoint loads and
+    forward passes; returns 0 on success, 2 on a handled error."""
+    router = router or make_router(args)
+    overrides = {key: value for key, value in (("model", args.model), ("task", args.task),
+                                               ("lang", args.lang)) if value is not None}
+    try:
+        if args.predict or args.preset:
+            questions = PRESETS[args.preset]() if args.preset else laya.router_questions()
+            key = PRESET_STATE_KEYS.get(args.preset, "request")
+            requests = [{"state": {key: line}, "questions": questions, **overrides}
+                        for line in lines]
+            results = router.predict_batch(requests, batch_size=args.batch_size)
+            for line, result in zip(lines, results):
+                if args.json:
+                    print(json.dumps(result, ensure_ascii=False, default=str))
+                else:
+                    print("# %s" % (line if len(line) <= 72 else line[:69] + "..."))
+                    show_answers(result)
+                    print()
+        else:
+            decisions = router.route_batch([{"state": {"text": line}, "questions": {},
+                                             **overrides} for line in lines])
+            for line, decision in zip(lines, decisions):
+                if args.json:
+                    print(json.dumps(dict(decision), ensure_ascii=False, default=str))
+                else:
+                    print("%-14s %s  <- %s" % (decision["model"], decision["reason"],
+                                               line if len(line) <= 48 else line[:45] + "..."))
+    except ValueError as error:
+        print("laya: %s" % error, file=sys.stderr)
+        return 2
+    except (ImportError, OSError, RuntimeError) as error:
+        print("laya: could not run Laya (%s)." % error, file=sys.stderr)
+        print("Check that the dependencies are installed and the checkpoints can be "
+              "downloaded from the Hugging Face hub (network access is needed on first use).",
+              file=sys.stderr)
+        return 2
+    return 0
+
+
 def interactive(args):
     print("Laya interactive mode. Type a request and press Enter; Ctrl-D or 'quit' to exit.")
     router = make_router(args)
@@ -151,6 +213,19 @@ def main(argv=None):
         return eval_main(argv[1:])
     args = build_parser().parse_args(argv)
     text = " ".join(args.text).strip()
+    if args.batch:
+        if text:
+            print("laya: pass either a text or --batch FILE, not both.", file=sys.stderr)
+            return 2
+        try:
+            lines = read_batch_lines(args.batch)
+        except OSError as error:
+            print("laya: could not read %s (%s)." % (args.batch, error), file=sys.stderr)
+            return 2
+        if not lines:
+            print("laya: no requests found in %s." % args.batch, file=sys.stderr)
+            return 2
+        return run_batch(lines, args)
     if not text:
         return interactive(args)
     return run(text, args)

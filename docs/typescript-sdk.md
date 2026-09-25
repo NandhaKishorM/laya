@@ -65,5 +65,5 @@ Tiny random weights verify transport and numerical parity, not pretrained
 quality or performance.
 
 See the [SDK guide](../sdk/typescript/README.md) for setup, examples, and npm
-publishing. The package is published as `laya-client`. Python release workflows
+publishing. The package will be published under the `laya-client` name. Python release workflows
 are unchanged.

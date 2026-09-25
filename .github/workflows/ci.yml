@@ -118,6 +118,7 @@ jobs:
           python tests/test_identifier_complexity.py
           python tests/test_lang_stats.py
           python tests/test_calibration_persistence.py
+          python tests/test_calibrate.py
           python tests/test_context_manager.py
           python tests/test_criteria_normalization.py
           python tests/test_docker_entrypoint.py
@@ -236,7 +237,7 @@ jobs:
           for t in test_router test_criteria test_download test_shortlist \
                    test_decision_model test_packaging test_lang_guess \
                    test_identifier_complexity \
-                   test_calibration_persistence test_context_manager \
+                   test_calibration_persistence test_calibrate test_context_manager \
                    test_criteria_normalization test_docker_entrypoint \
                    test_empty_questions test_router_memory test_shortlist_cosine \
                    test_temperature_loading; do

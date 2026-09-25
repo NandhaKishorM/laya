@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { loadWebBundle } from "../src/providers.js";
+import { createWebProvider, loadWebBundle } from "../src/providers.js";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -37,5 +37,54 @@ describe("load robustness", () => {
       return jsonResponse({});
     }));
     await expect(loadWebBundle("https://example.com/m", { signal: c.signal } as any)).rejects.toThrow();
+  });
+});
+
+describe("web provider downloads", () => {
+  function onnxBytes() {
+    return {
+      ok: true,
+      status: 200,
+      clone: () => ({}),
+      arrayBuffer: async () => new Uint8Array([0, 1, 2, 3]).buffer as ArrayBuffer,
+    };
+  }
+  it("passes signal to the model fetches and reports per-file progress", async () => {
+    const seen: Array<{ url: string; signal: unknown }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: any) => {
+      seen.push({ url, signal: init?.signal ?? null });
+      return onnxBytes();
+    }));
+    const progress: Array<[number, number, string]> = [];
+    const c = new AbortController();
+    // Garbage bytes: the real runtime rejects at session creation, after the
+    // fetches already carried the signal and the progress fired.
+    await expect(
+      createWebProvider("https://example.com/m", {
+        signal: c.signal,
+        onProgress: (d: number, t: number, f: string) => progress.push([d, t, f]),
+      } as any),
+    ).rejects.toThrow();
+    const encFetch = seen.find((s) => s.url.endsWith("encoder.onnx"));
+    const headFetch = seen.find((s) => s.url.endsWith("head.onnx"));
+    expect(encFetch?.signal).toBe(c.signal);
+    expect(headFetch?.signal).toBe(c.signal);
+    expect(progress).toEqual([
+      [1, 2, "encoder.onnx"],
+      [2, 2, "head.onnx"],
+    ]);
+  });
+});
+
+describe("load abort semantics", () => {
+  it("aborted signal surfaces AbortError, not Incompatible model", async () => {
+    const c = new AbortController();
+    c.abort();
+    vi.stubGlobal("fetch", vi.fn(async (_u: any, init: any) => {
+      if (init?.signal?.aborted ?? c.signal.aborted) throw new DOMException("aborted", "AbortError");
+      return jsonResponse({});
+    }));
+    const err = await loadWebBundle("https://example.com/m", { signal: c.signal } as any).catch((e) => e);
+    expect(err?.name).toBe("AbortError");
   });
 });

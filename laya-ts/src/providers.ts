@@ -168,6 +168,8 @@ export interface ProviderOptions {
   numThreads?: number;
   /** Opt-in {artifact name: SHA-256 hexdigest} check for fetched ONNX files (web). */
   expectedSha256?: Record<string, string>;
+  signal?: AbortSignal | null;
+  onProgress?: ((done: number, total: number, file: string) => void) | null;
 }
 
 function applyNumThreads(ort: any, numThreads?: number): void {
@@ -188,7 +190,7 @@ function isOomError(e: unknown): boolean {
   return m.includes("memory") || m.includes("cuda") || m.includes("out of memory") || m.includes("oom");
 }
 
-const CACHE_KEY = "laya-ts-v1";
+const CACHE_KEY = "laya-ts";
 const TOKENIZER_CANDIDATES = ["tokenizer.json", "tokenizer/tokenizer.json"];
 
 function sleep(ms: number): Promise<void> {
@@ -451,6 +453,7 @@ export async function loadWebBundle(
     cfg = await fetchVerifiedJson("rl_agent_config.json");
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("laya-ts: SHA-256 mismatch")) throw e;
+    if ((e as Error)?.name === "AbortError") throw e;
     throw new Error(`Incompatible model: ${JSON.stringify(repoOrUrl)} does not contain 'rl_agent_config.json'.`);
   }
   opts?.onProgress?.(1, 2, "rl_agent_config.json");
@@ -572,16 +575,20 @@ export async function createWebProvider(
   const headUrl = `${base}/head.onnx`;
   let encBuf: ArrayBuffer;
   try {
-    encBuf = await fetchArrayBuffer(encUrl);
-  } catch {
+    encBuf = await fetchArrayBuffer(encUrl, { signal: opts?.signal ?? undefined });
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw e;
     throw new Error(`Incompatible model: 'encoder.onnx' not found (expected ${encUrl}).`);
   }
+  opts?.onProgress?.(1, 2, "encoder.onnx");
   let headBuf: ArrayBuffer;
   try {
-    headBuf = await fetchArrayBuffer(headUrl);
-  } catch {
+    headBuf = await fetchArrayBuffer(headUrl, { signal: opts?.signal ?? undefined });
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw e;
     throw new Error(`Incompatible model: 'head.onnx' not found (expected ${headUrl}).`);
   }
+  opts?.onProgress?.(2, 2, "head.onnx");
   // Verify before the bytes reach the runtime: a tampered ONNX never becomes a session.
   if (opts?.expectedSha256) {
     await expectDigest("encoder.onnx", encBuf, opts.expectedSha256);

@@ -303,8 +303,19 @@ class ONNXAgent(HookRegistry):
                 self.tok, state, q, max_len, head_max_len,
                 truncate_left=truncate_left, state_ids=state_ids,
             )
-            if len(markers) != len(render_options(q)):
-                raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
+            n_opts = len(render_options(q))
+            if len(markers) != n_opts:
+                # The markers are placed at absolute positions and `build_sequence` then drops the
+                # ones past `max_len`, so this is about the question fitting in the sequence --
+                # `head_max_len` is how much of it the options were given, and `max_len` is the
+                # ceiling that dropped them. Naming only `head_max_len` pointed at the wrong knob
+                # in both directions: lowering it shortens the option block and can make the
+                # call succeed, while raising it makes the overflow worse.
+                raise ValueError(
+                    "question %r: its %d options and question text need %d tokens, more than "
+                    "max_len=%d allows once head_max_len=%d is spent on them; lower head_max_len, "
+                    "raise max_len, or use fewer options"
+                    % (qid, n_opts, len(seq), max_len, head_max_len))
             items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
 
         b = collate_items([items], self.tok.pad_token_id)

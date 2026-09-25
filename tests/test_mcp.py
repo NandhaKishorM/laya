@@ -29,6 +29,7 @@ from laya.mcp.device import agent_device, device_report, env_device, resolve_dev
 from laya.mcp.server import _models_from_env, server as mcp_server  # noqa: E402
 from laya.mcp.tools import (  # noqa: E402
     ToolError,
+    laya_decide,
     laya_predict,
     laya_predict_batch,
     laya_preset,
@@ -670,6 +671,110 @@ def test_batch_route():
                       "internal_error")
 
 
+# --- decide tool (mocked router, no weights) ----------------------------------
+
+DECIDE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "department": {"enum": ["billing", "support", "sales"],
+                       "description": "Which team should handle this ticket?"},
+        "urgency": {"type": "integer", "minimum": 0, "maximum": 2},
+        "needs_human": {"type": "boolean"},
+    },
+}
+
+
+class TypeEchoRouter(FakeRouter):
+    """FakeRouter that also answers with the real payload shape: the `type`
+    key and a probabilities dict keyed by option/level, like system_one does,
+    so laya.structured's per-field probabilities are exercised."""
+
+    def predict(self, state, questions, **kwargs):
+        out = super().predict(state, questions, **kwargs)
+        for name, spec in questions.items():
+            answer = out["answers"][name]
+            answer["type"] = spec["type"]
+            if spec["type"] == "score":
+                answer["probabilities"] = {"0": 0.1, "1": 0.2, "2": 0.7}
+        return out
+
+
+def test_decide():
+    import laya
+
+    router = TypeEchoRouter()
+    out = laya_decide(STATE, DECIDE_SCHEMA, router=router)
+    ok("decide/keys", set(out) >= {"values", "confidence", "probabilities", "routing", "latency_ms"},
+       repr(sorted(out)))
+    ok("decide/values_choice", out["values"]["department"] == "billing", repr(out["values"]))
+    ok("decide/values_score_level", out["values"]["urgency"] == 2, repr(out["values"]))
+    ok("decide/values_bool", out["values"]["needs_human"] is True, repr(out["values"]))
+    ok("decide/confidence", set(out["confidence"]) == {"department", "urgency", "needs_human"}
+       and out["confidence"]["department"] == 0.94, repr(out["confidence"]))
+    ok("decide/probs_noul_pair", set(out["probabilities"]["needs_human"]) == {"false", "true"}
+       and out["probabilities"]["needs_human"]["true"] == 0.892,
+       repr(out["probabilities"]["needs_human"]))
+    ok("decide/probs_score_offset", set(out["probabilities"]["urgency"]) >= {"0", "1", "2"},
+       repr(out["probabilities"]["urgency"]))
+    ok("decide/score_level_from_probs", out["values"]["urgency"] == 2, repr(out["values"]))
+    ok("decide/device", out.get("device") == "cpu", repr(out.get("device")))
+    ok("decide/routing", out["routing"]["model"] == "english")
+
+    # Same values the core decide() returns for the same runner: the tool is a
+    # thin MCP surface over the documented schema projection, not a second one.
+    core = laya.decide(router, STATE, schema=DECIDE_SCHEMA)
+    ok("decide/parity_with_core", out["values"] == core, "tool=%r core=%r" % (out["values"], core))
+
+    # Score projection follows the argmax of the distribution, offset by minimum.
+    class LowUrgencyRouter(TypeEchoRouter):
+        def predict(self, state, questions, **kwargs):
+            out = super().predict(state, questions, **kwargs)
+            out["answers"]["urgency"] = {"type": "score", "score": 2.0, "confidence": 0.6,
+                                         "probabilities": {"0": 0.6, "1": 0.3, "2": 0.1}}
+            return out
+
+    out = laya_decide(STATE, DECIDE_SCHEMA, router=LowUrgencyRouter())
+    ok("decide/score_argmax", out["values"]["urgency"] == 0, repr(out["values"]["urgency"]))
+
+    expect_tool_error("decide/bad_state", lambda: laya_decide({}, DECIDE_SCHEMA, router=router),
+                      "invalid_state")
+    for bad, why in (({"type": "object"}, "no properties"),
+                     ({"type": "object", "properties": {"x": {"type": "string"}}}, "free string"),
+                     ({"type": "object", "properties": {"x": {"type": "array"}}}, "array"),
+                     ({}, "empty"), ([], "not an object")):
+        expect_tool_error("decide/bad_schema_%s" % why,
+                          lambda b=bad: laya_decide(STATE, b, router=router), "invalid_schema")
+    expect_tool_error("decide/bad_model",
+                      lambda: laya_decide(STATE, DECIDE_SCHEMA, model="gpt4", router=router),
+                      "invalid_model")
+    expect_tool_error("decide/no_router",
+                      lambda: laya_decide(STATE, DECIDE_SCHEMA), "models_not_ready")
+    # Explicit model with a direct agent: answered by the agent, no Router needed.
+    # A bare Agent payload carries no routing, which is when the tool synthesises
+    # the "explicit model" routing entry (laya_predict does the same).
+    class BareAgent:
+        device = "cpu"
+
+        def predict(self, state, questions, **kwargs):
+            answers = {}
+            for name, spec in questions.items():
+                if spec["type"] == "choice":
+                    answers[name] = {"type": "choice", "choice": "billing", "confidence": 0.9,
+                                     "probabilities": {"billing": 0.9, "support": 0.1}}
+                elif spec["type"] == "score":
+                    answers[name] = {"type": "score", "score": 1.0, "confidence": 0.6,
+                                     "probabilities": {"0": 0.2, "1": 0.6, "2": 0.2}}
+                else:
+                    answers[name] = {"type": "noul", "noul": 0.2, "confidence": 0.8}
+            return {"answers": answers}
+
+    out = laya_decide(STATE, DECIDE_SCHEMA, model="english", agent=BareAgent())
+    ok("decide/direct_agent", out["values"]["department"] == "billing"
+       and out["routing"] == {"model": "english", "repo": None, "reason": "explicit model"},
+       repr(out["routing"]))
+    ok("decide/direct_agent_device", out.get("device") == "cpu", repr(out.get("device")))
+
+
 def test_timeout_removed():
     # The per-call timeout was removed: a ThreadPoolExecutor shutdown waits for
     # the work anyway, and MCP clients apply their own request timeout. The tool
@@ -679,7 +784,7 @@ def test_timeout_removed():
     import laya.mcp.tools as tools_mod
 
     for fn in (laya_predict, laya_route, laya_preset, laya_shortlist,
-               laya_predict_batch, laya_route_batch):
+               laya_predict_batch, laya_route_batch, laya_decide):
         ok("timeout/param_absent_%s" % fn.__name__, "timeout" not in inspect.signature(fn).parameters)
     ok("timeout/executor_absent", "ThreadPoolExecutor" not in inspect.getsource(tools_mod))
 
@@ -709,11 +814,11 @@ def test_models_from_env():
 def test_server_registration():
     tools = asyncio.run(mcp_server.list_tools())
     names = sorted(t.name for t in tools)
-    ok("server/tool_names", names == ["laya_predict", "laya_predict_batch", "laya_preset",
-                                      "laya_route", "laya_route_batch", "laya_shortlist",
-                                      "laya_status"], repr(names))
+    ok("server/tool_names", names == ["laya_decide", "laya_predict", "laya_predict_batch",
+                                      "laya_preset", "laya_route", "laya_route_batch",
+                                      "laya_shortlist", "laya_status"], repr(names))
     decision = {"laya_predict", "laya_route", "laya_preset", "laya_shortlist",
-                "laya_predict_batch", "laya_route_batch"}
+                "laya_predict_batch", "laya_route_batch", "laya_decide"}
     for t in tools:
         desc = (t.description or "").lower()
         ok("server/desc_%s_nonempty" % t.name, bool(desc.strip()), repr(desc))
@@ -737,6 +842,7 @@ test_shortlist()
 test_batch_validation()
 test_batch_predict()
 test_batch_route()
+test_decide()
 test_timeout_removed()
 test_models_from_env()
 test_server_registration()

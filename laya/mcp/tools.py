@@ -543,3 +543,64 @@ def laya_route_batch(requests: Any, *, router: Any = None) -> dict:
         key = name if isinstance(name, str) and name else "unknown"
         model_counts[key] = model_counts.get(key, 0) + 1
     return {"decisions": out, "model_counts": model_counts}
+
+
+def laya_decide(
+    state: Any,
+    schema: Any,
+    model: Any = "auto",
+    *,
+    router: Any = None,
+    agent: Any = None,
+) -> dict:
+    """Answer a JSON-schema-shaped decision and return the decided values.
+
+    The MCP form of ``laya.decide`` (the schema-driven API: an object of enum /
+    bounded-integer / boolean properties is turned into Laya questions, answered
+    in one forward pass, and projected back onto the schema). MCP clients carry
+    JSON, not pydantic classes, so ``schema`` is a JSON schema dictionary. The
+    answer is ``values`` -- enum members, integer levels, booleans -- beside the
+    per-field ``confidence``/``probabilities`` and the usual routing/device/
+    latency metadata, so a client never parses an answer map by hand.
+    """
+    # Lazy: keeps laya.structured (pure Python, but a module import is still a
+    # module import) out of this module's import-time surface.
+    from laya.structured import SchemaError, decide
+
+    state_d = validate_state(state)
+    model_name = validate_model(model)
+    try:
+        # `decide` validates the schema itself (SchemaError names the offending
+        # path) and projects the answers; calling it with return_details keeps
+        # this tool on the core's exact semantics instead of a copied projection.
+        started = time.perf_counter()
+        if model_name == "auto":
+            if router is None:
+                raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
+            details = decide(router, state_d, schema=schema, return_details=True)
+        elif agent is not None:
+            details = decide(agent, state_d, schema=schema, return_details=True)
+        else:
+            if router is None:
+                raise ToolError("models_not_ready", "no agent/router loaded")
+            details = decide(router, state_d, schema=schema, return_details=True,
+                             model=model_name)
+    except SchemaError as exc:
+        raise ToolError("invalid_schema", str(exc)) from exc
+    latency_ms = (time.perf_counter() - started) * 1000.0
+
+    answers = _normalize_answers(details.answers)
+    routing = details.routing or {"model": model_name, "repo": None, "reason": "explicit model"}
+    device = _reading_device(router, agent, model_name, details.routing)
+    out: dict[str, Any] = {
+        "values": details.values,
+        "confidence": details.confidence,
+        "probabilities": details.probabilities,
+        "routing": routing,
+        "latency_ms": round(latency_ms, 3),
+    }
+    if details.usage:
+        out["usage"] = details.usage
+    if device:
+        out["device"] = device
+    return out

@@ -39,6 +39,7 @@ from laya.serve import _apply_thread_limit, _env_bool
 from .device import env_device
 from .tools import (
     ToolError,
+    laya_decide,
     laya_predict,
     laya_predict_batch,
     laya_preset,
@@ -290,6 +291,25 @@ def laya_preset_tool(preset: str, state: dict) -> str:
         router=router,
         preset_builder=_preset_builder,
     )
+
+
+@server.tool(
+    name="laya_decide",
+    description=(
+        "Answer a JSON-schema-shaped decision in one forward pass and return the decided "
+        "values: schema is a JSON schema object whose properties are enum choices, booleans "
+        "(noul), or integers with integer minimum/maximum (ordinal score); free strings, "
+        "arrays and nested objects are rejected by path. Use this instead of laya_predict "
+        "when the caller already knows the answer shape and wants values projected onto the "
+        "schema (enum member, integer level, boolean) plus per-field confidence, instead of "
+        "an answer map to parse by hand. "
+        + _GUARDRAILS
+    ),
+)
+def laya_decide_tool(state: dict, schema: dict, model: str = "auto") -> str:
+    """Answer a JSON-schema-shaped decision and return the decided values."""
+    router = _router_or_error()
+    return _wrap(laya_decide, state=state, schema=schema, model=model, router=router)
 
 
 def main() -> None:

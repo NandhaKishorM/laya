@@ -173,6 +173,53 @@ runner = FakeRunner(ANSWERS)
 decide(runner, "s", schema=SCHEMA, hooks_raise=False)
 check("decide/forwards predict kwargs", runner.calls[0]["kwargs"], {"hooks_raise": False})
 
+# --------------------------------------------------------------- min_confidence abstention (#361)
+# Default behavior unchanged: all fields project normally when min_confidence is omitted
+runner_default = FakeRunner(ANSWERS)
+out_default = decide(runner_default, "s", schema=SCHEMA)
+check("decide/default department unchanged", out_default["department"], "billing")
+check("decide/default urgency unchanged", out_default["urgency"], 2)
+check("decide/default needs_human unchanged", out_default["needs_human"], True)
+check("decide/default priority unchanged", out_default["priority"], 2)
+check_true("decide/default has no low_confidence flags",
+           not any(a.get("low_confidence") for a in ANSWERS.values()))
+
+# With min_confidence=0.85: answers below 0.85 project as None, raw confidence preserved
+runner_gated = FakeRunner({k: dict(v) for k, v in ANSWERS.items()})
+out_gated = decide(runner_gated, "s", schema=SCHEMA, min_confidence=0.85)
+check("decide/gated high-confidence field kept", out_gated["department"], "billing")
+check("decide/gated low-confidence score becomes None", out_gated["urgency"], None)
+check("decide/gated low-confidence noul becomes None", out_gated["needs_human"], None)
+check("decide/gated low-confidence choice becomes None", out_gated["priority"], None)
+
+# With return_details=True, details keep raw confidence and answers dict
+runner_det = FakeRunner({k: dict(v) for k, v in ANSWERS.items()})
+det = decide(runner_det, "s", schema=SCHEMA, min_confidence=0.85, return_details=True)
+check("decide/details values has None for low conf", det.values["urgency"], None)
+check("decide/details raw confidence preserved", det.confidence["urgency"], 0.5)
+check_true("decide/details answers flag set", det.answers["urgency"].get("low_confidence") is True)
+check("decide/details high conf value kept", det.values["department"], "billing")
+check_true("decide/details high conf flag unset", det.answers["department"].get("low_confidence") is not True)
+
+# Direct projection with low_confidence: True in answer
+answers_with_flag = {
+    "department": {"type": "choice", "choice": "billing", "confidence": 0.4, "low_confidence": True},
+    "urgency": {"type": "score", "score": 2.0, "confidence": 0.9, "probabilities": {"0": 0.0, "1": 0.1, "2": 0.9}, "legend": {}},
+}
+proj = answers_to_json(answers_with_flag, SCHEMA)
+check("project/flagged answer becomes None", proj["department"], None)
+check("project/unflagged answer keeps value", proj["urgency"], 2)
+
+# Invalid min_confidence validation
+check_raises("decide/rejects min_confidence > 1", ValueError,
+             lambda: decide(runner, "s", schema=SCHEMA, min_confidence=1.2))
+check_raises("decide/rejects min_confidence < 0", ValueError,
+             lambda: decide(runner, "s", schema=SCHEMA, min_confidence=-0.1))
+check_raises("decide/rejects bool min_confidence", ValueError,
+             lambda: decide(runner, "s", schema=SCHEMA, min_confidence=True))
+check_raises("decide/rejects str min_confidence", ValueError,
+             lambda: decide(runner, "s", schema=SCHEMA, min_confidence="0.85"))
+
 
 # --------------------------------------------------------------- pydantic (optional)
 try:

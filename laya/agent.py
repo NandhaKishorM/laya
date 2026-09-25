@@ -28,6 +28,7 @@ from .common import (
     serialize_state,
     temp_bucket,
 )
+from .confidence import check_min_confidence, flag_low_confidence
 from .hooks import (
     HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks,
     validate_timeout,
@@ -822,7 +823,8 @@ class Agent(HookRegistry):
                       hooks_timeout: Optional[float] = None,
                       max_len: Optional[int] = None,
                       head_max_len: Optional[int] = None,
-                      sort_by_length: bool = False) -> List[Dict[str, Any]]:
+                      sort_by_length: bool = False,
+                      min_confidence: Optional[float] = None) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, packing them into shared forward passes.
 
         This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
@@ -857,6 +859,7 @@ class Agent(HookRegistry):
             A list of per-state result dicts, each identical in shape to `system_one`'s output and
             aligned with `states` by index.
         """
+        mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
@@ -943,6 +946,8 @@ class Agent(HookRegistry):
             ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
             if ctx.results is not None:
                 ctx.usage = aggregate_usage(ctx.results)
+                if mc is not None:
+                    flag_low_confidence(ctx.results, mc)
             try:
                 dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             except BaseException as hook_exc:
@@ -1061,7 +1066,8 @@ class Agent(HookRegistry):
                    hooks_raise: Optional[bool] = None,
                    hooks_timeout: Optional[float] = None,
                    max_len: Optional[int] = None,
-                   head_max_len: Optional[int] = None) -> Dict[str, Any]:
+                   head_max_len: Optional[int] = None,
+                   min_confidence: Optional[float] = None) -> Dict[str, Any]:
         """Evaluate typed questions across state in a single, parallel forward pass.
 
         Args:
@@ -1088,7 +1094,8 @@ class Agent(HookRegistry):
                                   on_predict_start=on_predict_start,
                                   on_predict_end=on_predict_end, hooks_raise=hooks_raise,
                                   hooks_timeout=hooks_timeout,
-                                  max_len=max_len, head_max_len=head_max_len)[0]
+                                  max_len=max_len, head_max_len=head_max_len,
+                                  min_confidence=min_confidence)[0]
 
     def __enter__(self):
         return self
@@ -1111,6 +1118,7 @@ class Agent(HookRegistry):
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
                questions: Optional[Dict[str, Any]] = None, return_details: bool = False,
+               min_confidence: Optional[float] = None,
                **predict_kwargs) -> Any:
         """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
 
@@ -1119,7 +1127,7 @@ class Agent(HookRegistry):
         """
         from .structured import decide as _decide
         return _decide(self, state, schema, questions=questions,
-                       return_details=return_details, **predict_kwargs)
+                       return_details=return_details, min_confidence=min_confidence, **predict_kwargs)
 
     def __repr__(self) -> str:
         return "Agent(model_id=%r, device=%s)" % (self.model_id, getattr(self, "device", None))

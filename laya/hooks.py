@@ -207,12 +207,17 @@ def clear_default_hooks() -> None:
         _DEFAULT_HOOKS.clear()
 
 
-def compose_hooks(installed, hooks=None, on_predict_start=None, on_predict_end=None) -> List[Any]:
+def compose_hooks(installed, hooks=None, on_predict_start=None, on_predict_end=None,
+                  include_defaults: bool = True) -> List[Any]:
     """Effective hook list for one call: defaults, then installed, then per-call hooks.
 
     Reads the process-wide defaults at call time, so hooks set after construction still apply.
+    Pass ``include_defaults=False`` when an outer caller (e.g. Router.predict) has already composed
+    the process-wide defaults into ``installed`` / ``hooks``: the inner Agent must not add them a
+    second time, or a default hook fires twice per call.
     """
-    return default_hooks() + list(installed) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+    defaults = default_hooks() if include_defaults else ()
+    return list(defaults) + list(installed) + normalise_hooks(hooks, on_predict_start, on_predict_end)
 
 
 class HookRegistry:

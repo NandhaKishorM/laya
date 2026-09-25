@@ -718,7 +718,8 @@ class Agent(HookRegistry):
                       hooks_raise: Optional[bool] = None,
                       max_len: Optional[int] = None,
                       head_max_len: Optional[int] = None,
-                      sort_by_length: bool = False) -> List[Dict[str, Any]]:
+                      sort_by_length: bool = False,
+                      skip_default_hooks: bool = False) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, packing them into shared forward passes.
 
         This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
@@ -752,7 +753,8 @@ class Agent(HookRegistry):
             A list of per-state result dicts, each identical in shape to `system_one`'s output and
             aligned with `states` by index.
         """
-        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end,
+                               include_defaults=not skip_default_hooks)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self,
                              max_len=max_len, head_max_len=head_max_len)
@@ -852,7 +854,8 @@ class Agent(HookRegistry):
                    hooks=None, on_predict_start=None, on_predict_end=None,
                    hooks_raise: Optional[bool] = None,
                    max_len: Optional[int] = None,
-                   head_max_len: Optional[int] = None) -> Dict[str, Any]:
+                   head_max_len: Optional[int] = None,
+                   skip_default_hooks: bool = False) -> Dict[str, Any]:
         """Evaluate typed questions across state in a single, parallel forward pass.
 
         Args:
@@ -878,7 +881,8 @@ class Agent(HookRegistry):
         return self.predict_batch([state], questions, lang=lang, hooks=hooks,
                                   on_predict_start=on_predict_start,
                                   on_predict_end=on_predict_end, hooks_raise=hooks_raise,
-                                  max_len=max_len, head_max_len=head_max_len)[0]
+                                  max_len=max_len, head_max_len=head_max_len,
+                                  skip_default_hooks=skip_default_hooks)[0]
 
     def __enter__(self):
         return self

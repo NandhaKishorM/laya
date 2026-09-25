@@ -28,6 +28,7 @@ primary routing signal.
 synthetic workflows and should not be a silent default.
 """
 import gc
+import inspect
 import json
 import os
 import threading
@@ -37,6 +38,26 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 from .hooks import HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks
 from .lang import analyse
+
+
+def _agent_accepts_skip_hooks(agent: Any, method: str = "system_one") -> bool:
+    """Whether the Agent method the Router actually calls accepts the hooks we pass.
+
+    The stock `Agent` does; older or minimal stubs (tests, foreign objects) may not. When it
+    does not, the Router still fires the process-wide default hooks itself, so nothing is lost --
+    we just must not pass kwargs the call would reject. ``method`` is the exact entry point the
+    Router will invoke ("system_one" for `predict`, "predict_batch" for the batched path).
+    """
+    fn = getattr(agent, method, None)
+    if fn is None:
+        return False
+    try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return False
+    return "skip_default_hooks" in sig.parameters or any(
+        p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+    )
 
 # The hub repo bundles all three checkpoints; only the requested subfolder is downloaded.
 BUNDLE_REPO = "convaiinnovations/laya"
@@ -536,6 +557,11 @@ class Router(HookRegistry):
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
+        # The Agent runs its own hook dispatch; pass it the installed + per-call hooks *without*
+        # the process-wide defaults, because `active` (above) already fired those at the Router
+        # level. With `skip_default_hooks=True` the Agent must not add them a second time.
+        agent_hooks = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end,
+                                    include_defaults=False)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
 
         # Per-call hooks apply to the whole call, including on_route inside route().
@@ -559,7 +585,10 @@ class Router(HookRegistry):
                     overrides["max_len"] = ctx.max_len
                 if ctx.head_max_len is not None:
                     overrides["head_max_len"] = ctx.head_max_len
-                
+                if _agent_accepts_skip_hooks(agent, "system_one"):
+                    overrides["hooks"] = agent_hooks
+                    overrides["skip_default_hooks"] = True
+
                 try:
                     result = agent.system_one(ctx.states[0], ctx.questions, lang=effective_lang, **overrides)
                 except TypeError as e:
@@ -710,6 +739,10 @@ class Router(HookRegistry):
         # keeping them on `predict`, so a default audit or metrics hook saw no Router-level event
         # for a request that arrived through `predict_batch`.
         active = compose_hooks(self.hooks)
+        # Installed hooks without the process-wide defaults: passed to the Agent as per-call hooks
+        # with `skip_default_hooks=True`, since `active` already fired the defaults at the Router
+        # level. This keeps a default hook from firing twice per request (Router + Agent).
+        agent_active = compose_hooks(self.hooks, include_defaults=False)
         raise_errors = self.hooks_raise
 
         for model_name, indices in groups.items():
@@ -777,6 +810,9 @@ class Router(HookRegistry):
                     batch_kwargs = dict(group["overrides"])
                     if group["lang"] is not None:
                         batch_kwargs["lang"] = group["lang"]
+                    if _agent_accepts_skip_hooks(agent, "predict_batch"):
+                        batch_kwargs["hooks"] = agent_active
+                        batch_kwargs["skip_default_hooks"] = True
                     try:
                         batch_results = agent.predict_batch(
                             [ctx.states[0] for _, ctx in items],

@@ -712,8 +712,15 @@ def budget_start(ctx):
 
 r, en, ml = batch_router(on_predict_start=budget_start)
 r.predict_batch([req("short"), req("long"), req("short again")])
+# The Router now forwards its composed hooks (and a skip_default_hooks flag) to an Agent-like
+# object that accepts them, so the captured overrides carry those keys too. What must still hold
+# is that a start hook's token-budget override reaches only the request that set it.
+budget_calls = [(c[0], {k: v for k, v in c[2].items() if k in ("max_len", "skip_default_hooks")})
+                for c in en.calls]
 check("router_batch/hook-set token budget reaches the agent for that request only",
-      [(c[0], c[2]) for c in en.calls], [(["short", "short again"], {}), (["long"], {"max_len": 1024})])
+      budget_calls,
+      [(["short", "short again"], {"skip_default_hooks": True}),
+       (["long"], {"max_len": 1024, "skip_default_hooks": True})])
 
 Q_OTHER = {"other": {"type": "noul", "instructions": "Other?"}}
 r, en, ml = batch_router(on_predict_start=lambda c: setattr(c, "questions", Q_OTHER) if c.states == ["b"] else None)
@@ -1016,6 +1023,67 @@ finally:
     _hooks.clear_default_hooks()
 check("defaults/cover router lifecycle", ld.events,
       [("load", "english"), ("evict", "english"), ("load", "multilingual")])
+
+
+# --------------------------------------------------------------- #433: default hooks fire once per Router call
+# Before the fix, a process-wide default hook was composed both by Router.predict /
+# Router.predict_batch and again inside the Agent's predict_batch, so it fired twice
+# per request (once at the Router level, once at the Agent level). The Router now hands
+# its already-composed hook list to the Agent and tells the Agent to skip its own default
+# composition, so a default hook fires exactly once per request.
+def _counting_router():
+    r = Router()
+    r.attach("english", make_fake())
+    return r
+
+
+fires = []
+
+
+class CountEnd:
+    def on_predict_start(self, ctx):
+        fires.append(("start", "default"))
+
+    def on_predict_end(self, ctx):
+        fires.append(("end", "default"))
+
+
+# Single-state entry point.
+_hooks.set_default_hooks(hooks=[CountEnd()])
+try:
+    r = _counting_router()
+    fires.clear()
+    r.predict("hi", QUESTIONS, model="english")
+    check("issue433/predict fires default hook once",
+          fires, [("start", "default"), ("end", "default")])
+finally:
+    _hooks.clear_default_hooks()
+
+# Batched entry point: each request must see its own start/end exactly once.
+_hooks.set_default_hooks(hooks=[CountEnd()])
+try:
+    r = _counting_router()
+    fires.clear()
+    r.predict_batch([req("a"), req("b")], batch_size=2)
+    # The batched entry point starts every request, then ends every request, so the two
+    # requests' start events precede their end events. The point of #433 is that each
+    # request's start/end fires exactly once (not twice), regardless of ordering.
+    check("issue433/predict_batch fires default hook once per request",
+          fires, [("start", "default"), ("start", "default"),
+                  ("end", "default"), ("end", "default")])
+finally:
+    _hooks.clear_default_hooks()
+
+# The Agent still composes the defaults when called directly (no Router above it), so a
+# default hook is not lost -- it just must not be doubled when the Router is in the loop.
+_hooks.set_default_hooks(hooks=[CountEnd()])
+try:
+    fires.clear()
+    make_fake().predict_batch(["s0"], QUESTIONS)
+    check("issue433/direct agent still fires default hook",
+          fires, [("start", "default"), ("end", "default")])
+finally:
+    _hooks.clear_default_hooks()
 
 
 # --------------------------------------------------------------- report

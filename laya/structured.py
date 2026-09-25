@@ -16,6 +16,7 @@ rejected with an error that names the path.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence as SequenceABC
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -269,12 +270,71 @@ def decide(runner, state: Any, schema: Any = None, *, questions: Optional[Dict[s
     return values
 
 
+def decide_batch(runner, states: Sequence[Any], schema: Any = None, *,
+                 questions: Optional[Dict[str, Any]] = None,
+                 return_details: bool = False, **predict_kwargs) -> List[Any]:
+    """Answer many states against one schema in one batched call, in input order.
+
+    The throughput form of :meth:`decide`: the schema is planned once and its questions
+    are evaluated over every state through ``runner.predict_batch`` (the same
+    shared-forward-pass path as :meth:`Agent.predict_batch` /
+    :meth:`Router.predict_batch`), then each state's answers are projected exactly as
+    ``decide`` does. Pass exactly one of ``schema`` or ``questions``; extra keyword
+    arguments (``batch_size=``, ``model=``, ``hooks=``, ...) are forwarded to
+    ``runner.predict_batch``. With ``return_details=True`` each item is a
+    ``DecisionResult``.
+
+    Both batch calling conventions are handled: an ``Agent``-like runner receives
+    ``(states, questions)``, while a ``Router``-like runner (one exposing
+    ``route_batch``) receives one ``{"state": ..., "questions": ...}`` request per
+    state, so states may route to different checkpoints.
+
+    Not every runner batches: ``ONNXAgent`` has no ``predict_batch`` yet, so passing one
+    raises ``TypeError`` here rather than silently degrading to N sequential ``decide``
+    calls -- loop ``decide`` yourself when the runner cannot batch.
+    """
+    if (schema is None) == (questions is None):
+        raise ValueError("pass exactly one of schema= or questions=")
+    if isinstance(states, (str, bytes)) or not isinstance(states, SequenceABC):
+        raise TypeError("states must be a sequence of states, not %s" % type(states).__name__)
+
+    fields: Optional[List[_Field]] = None
+    if schema is not None:
+        fields = plan_from_json_schema(_schema_of(schema))
+        questions = {f.name: f.question for f in fields}
+
+    predict_batch = getattr(runner, "predict_batch", None)
+    if predict_batch is None:
+        raise TypeError(
+            "%s has no predict_batch; loop decide() over the states instead"
+            % type(runner).__name__)
+
+    if hasattr(runner, "route_batch"):
+        # Router convention: one request dict per state, each carrying the shared
+        # questions, so it routes, groups by checkpoint and restores input order.
+        results = predict_batch([{"state": s, "questions": questions} for s in states],
+                                **predict_kwargs)
+    else:
+        # Agent convention: a list of states evaluated against one question set.
+        results = predict_batch(list(states), questions, **predict_kwargs)
+
+    def _one(r: Dict[str, Any]) -> Any:
+        answers = r.get("answers", {}) or {}
+        values = _project(answers, fields) if fields is not None else dict(answers)
+        if return_details:
+            return _details(values, answers, r)
+        return values
+
+    return [_one(r) for r in results]
+
+
 __all__ = [
     "DecisionResult",
     "SchemaError",
     "answers_to_json",
     "answer_to_pydantic",
     "decide",
+    "decide_batch",
     "plan_from_json_schema",
     "questions_from_json_schema",
     "questions_from_pydantic",

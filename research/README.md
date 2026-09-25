@@ -25,6 +25,7 @@ the numbers quoted in the main README — nothing here is imported by the `laya`
 | `scripts/bench_apps.py` | the six application workflows (support triage, email + phishing, guardrails, RAG relevance, moderation, model routing) plus the datasets where public Jev numbers exist |
 | `scripts/bench_latency.py` | inference speed including what routing costs: detection overhead, hot path, cold-swap, mixed-language throughput at several `max_loaded` settings |
 | `scripts/bench_length_batching.py` | compare upstream contiguous batches with optional length sorting on synthetic tickets, including output consistency and optional fresh-process memory profiles (`psutil` required for memory mode) |
+| `scripts/bench_nvidia_capacity.py` | `laya` as a dynamically batched HTTP service on one NVIDIA GPU: open-loop Poisson sweep to the highest rate meeting a p99 SLO, 24-hour curve replay, and the ONNX export the TensorRT rows need (TensorRT via ONNX Runtime, not a laya backend). Results: `results/nvidia_capacity_20260925.json` |
 | `scripts/make_plots.py` | renders `assets/laya_benchmark.png` from the result JSONs |
 | `scripts/bench_long_context.py` | `laya-multilingual` on long documents: 20 support requests in 8 languages, each placed after 0 to 7,000 tokens of unrelated text, scored at the default limit and at `max_len=8192` |
 | `scripts/plot_long_context.py` | renders `assets/long_context_8192.png` from `results/long_context_multilingual.json` |

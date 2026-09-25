@@ -7,6 +7,7 @@ Every checkpoint answered **byte-identical questions** in each run (fixed seed).
 | T4 Colab | typed-decisions, MASSIVE (14 langs), XNLI (15 langs), English suites, latency, option-order robustness, calibration repair | `research/results/t4_colab_benchmark.json` |
 | CPU sweep | MASSIVE intent across **all 51 languages**; its typed-decisions part (`part_b`) covers the English checkpoint only | `research/results/cpu_51_language_sweep.json` |
 | Applications | the seven workflow themes + the datasets where Jev numbers exist, all three checkpoints (laya 0.2.1, CPU, 400 cases per task, seed 13, 2026-09-19) | `research/results/app_benchmark_results.json` |
+| NVIDIA capacity | `laya` served with dynamic batching under p99 SLOs on RTX PRO 5000, RTX PRO 6000 and H100 NVL (eager FP16, TensorRT FP16 via ONNX Runtime), backend parity, 24-hour replay | `research/results/nvidia_capacity_20260925.json` |
 
 
 **Calibration columns in the CPU sweep predate the temperature clamp.** The 51-language ECE and mean-confidence figures were produced before #42 clamped temperatures to `[0.5, 5]`, so today's package reports different confidence for the affected buckets. Accuracy columns are unaffected, because a temperature-scaled softmax has the same argmax at every positive temperature.
@@ -269,6 +270,46 @@ On laya_router's 180 requests (zero-shot, one 3-tier `choice`), nearly every con
 | typed-decisions | 584 ms | 2,819 ms | 6,031 ms | 35,653 ms | 0.5 s |
 
 Values are p50. p95 is within 2% of p50 on every row. Up to 10 questions, each question costs about 600 ms on `english` and `typed-decisions` and about 185 ms on `multilingual`. At 50 questions, the cost per question rises by 15–20% on all three. Batching questions saves little on CPU, unlike the GB10 above. Cold load depends on the OS file cache, so treat that column as approximate. Peak memory for the whole script, with up to five checkpoints loaded at once, was 9.3 GiB (maximum RSS).
+
+## Independent NVIDIA CUDA capacity study
+
+An independent study measured `laya` as a dynamically batched service on a frozen mix of 1,000 public
+SAM.gov notices. Each request asked the same three typed questions, so the table reports decisions per second
+(three decisions per request) at the highest tested load that met both the latency SLO and the achieved-rate gate.
+The study pinned Laya to
+[`6a58191`](https://github.com/NandhaKishorM/laya/commit/6a5819129eb220570792e417e49723d697efd76f)
+and recorded the checkpoint hashes, software versions and GPU environments. Sweep rows, parity counts, the replay
+summary and the environments: `research/results/nvidia_capacity_20260925.json`. Sweep and replay script:
+`research/scripts/bench_nvidia_capacity.py`.
+
+| GPU and serving backend | p99 ≤ 50 ms | p99 ≤ 130 ms |
+|---|---:|---:|
+| RTX PRO 5000 Blackwell, TensorRT FP16 | 15 decisions/s | 42 decisions/s |
+| RTX PRO 6000 Blackwell, TensorRT FP16 | not measured | 146 decisions/s |
+| H100 NVL, TensorRT FP16 | 105 decisions/s | 175 decisions/s |
+| H100 NVL, 7 × MIG 1g.12gb, eager FP16 | not met | not met reliably[^mig-rate] |
+
+TensorRT is not a laya backend. It is an external runtime: these rows ran ONNX Runtime's TensorRT execution
+provider (FP16, LayerNorm kept in FP32) over an ONNX export of the checkpoint. The eager rows are laya's own
+PyTorch model under FP16 autocast.
+
+Every tested backend and precision reproduced the upstream FP32 answers on all 63 parity questions: 74 of 74
+backend-and-device rows passed across four GPUs. Dynamic serving depended on the architecture: TensorRT raised
+the H100's 130 ms capacity from 93 to 175 decisions/s, while eager FP16 and TensorRT both reached 146 decisions/s
+on the RTX PRO 6000.
+
+A compressed replay of a 24-hour, 10-million-decision curve on one RTX PRO 6000 (eager FP16) completed 138,863
+requests with zero errors and 111 ms overall p99. Two peak-hour segments reached 132 and 144 ms, so deployments
+that must hold 130 ms continuously need about 25% headroom at that volume.
+
+These are capacity results for one English federal-procurement workload, not general latency guarantees. Server
+sweeps and replays used one run per configuration; the RTX PRO 6000 sweep did not search below 50 requests/s;
+and `torch.compile` was not tested as a serving backend. Raw per-request laya results: sweeps for the
+[RTX PRO 5000](https://github.com/bhushankinge/laya-cuda-bench/tree/6cf4148ef4d148273eae83604815fb63ca2254de/results/zbook-rtxpro5000/server), [RTX PRO 6000](https://github.com/bhushankinge/laya-cuda-bench/tree/6cf4148ef4d148273eae83604815fb63ca2254de/results/rtxpro6000-ws/server) and
+[H100 NVL](https://github.com/bhushankinge/laya-cuda-bench/tree/6cf4148ef4d148273eae83604815fb63ca2254de/results/h100nvl/server), and the [day replay](https://github.com/bhushankinge/laya-cuda-bench/tree/6cf4148ef4d148273eae83604815fb63ca2254de/results/rtxpro6000-ws/replay).
+
+[^mig-rate]: Seven concurrent slices reached about 49 decisions/s at p99 127 ms at the lowest load, but the
+    achieved request rate fell below the study's 90% gate. Higher loads missed the 130 ms SLO.
 
 ---
 

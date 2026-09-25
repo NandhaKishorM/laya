@@ -729,7 +729,18 @@ workflow.add_conditional_edges("triage", router)
 
 # 2. Inline prompt guardrails
 guard = LayaGuardrail(action="raise")  # raises LayaGuardrailError on jailbreak/injection
+
+# 3. Score a backlog in one batched call, not one forward pass per input
+routes = router.batch(["refund my invoice", "the app crashes", "change my password"])
 ```
+
+`batch()` and `abatch()` run the whole list through `predict_batch`, so `chain.batch(...)`,
+`RunnableParallel` and LangGraph map-reduce nodes get Laya's shared forward passes instead of
+LangChain's default one-call-per-input thread pool -- which races on MPS, where concurrent torch
+forwards abort the process. Measured on Apple M-series (medians of three): **2.2x** on a 16-ticket
+routing batch, **2.2x** across 24 mixed-language tickets through a `Router`, **1.8x** on the guard
+preset, with every route label and guardrail flag unchanged. On CPU the same workloads are
+2.2-2.4x over the one-by-one loop and 1.1-1.5x over the thread pool.
 
 See [**`docs/langchain.md`**](docs/langchain.md) for full guide, support ticket triage nodes, and remote HTTP server configuration.
 

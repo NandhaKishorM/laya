@@ -176,3 +176,42 @@ router = LayaRouter(
 ```
 
 No local PyTorch or checkpoint downloads are required in remote mode.
+
+---
+
+## 5. Batching Many Inputs
+
+Every Laya runnable implements `batch()` on Laya's shared forward passes, so a backlog costs one
+batched call instead of one pass per input. LangChain calls this for you from `chain.batch(...)`,
+`RunnableParallel`, and LangGraph map-reduce; you can also call it directly:
+
+```python
+routes = router.batch(["refund my invoice", "the app crashes", "change my password"])
+# ["billing", "technical", "account"] -- one call, outputs in input order
+
+graded = asyncio.run(evaluator.abatch(predictions))   # the async entry point, same batch
+```
+
+The outputs are the same as calling `invoke` on each input in turn, including the confidence
+fallback on `LayaRouter` and the `action` (`raise` / `filter` / `annotate`) on `LayaGuardrail`. Two
+differences are worth knowing:
+
+- With `action="raise"`, the first violating input raises, so the batch stops there. Pass
+  `return_exceptions=True` to get one outcome per input, exceptions included.
+- `batch()` shares one forward pass, so a failure fails the batch; that is also why
+  `return_exceptions=True` falls back to the per-input loop.
+
+Remote mode (`base_url`) keeps the per-request loop, because `laya-serve` answers one decision per
+`POST`. A runner you supply yourself only needs `predict_batch` to take the fast path; without it
+the runnable behaves like any other `Runnable`.
+
+This matters most on MPS: LangChain's default `batch` runs `invoke` concurrently on a thread pool,
+and concurrent PyTorch MPS forwards abort the process
+(`failed assertion _status < MTLCommandBufferStatusCommitted`). One batched call has no such race.
+Measured on an Apple M-series GPU with a 4-way routing question, medians of three runs. 16 English
+tickets through an `Agent`: 1320 ms invoking one by one vs **598 ms** batched (**2.2x**); 24 mixed
+English/German tickets through a `Router`: 1805 ms vs **814 ms** (**2.2x**); 16 tickets through the
+guard `LayaGuardrail`: 4173 ms vs **2329 ms** (**1.8x**). Route labels and guardrail flags were
+identical to the one-by-one loop in every run (0/16 and 0/24 changes). On CPU the same workloads are
+2.2x to 2.4x over the one-by-one loop, but only 1.1x to 1.5x over the thread pool, which already
+overlaps cores -- the MPS case is where `batch()` was not just slower but unusable.

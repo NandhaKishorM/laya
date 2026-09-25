@@ -86,7 +86,10 @@ jobs:
           # `mcp` so laya[mcp] resolution and the laya.mcp layer are both exercised, and
           # `serve` because laya.serve and examples/server.py both import fastapi -- without
           # it every test that touches them skips itself silently and passes.
-          pip install -e ".[mcp,serve]" httpx
+          # `langchain` for the same reason: without langchain-core the runnables fall back
+          # to their plain-object path, so tests/test_langchain.py never checks the real
+          # Runnable behaviour (batch delegation, pydantic field validation) it is there for.
+          pip install -e ".[mcp,serve,langchain]" httpx
           # The pytest-style suites need the runner; nothing else in this job uses it.
           pip install pytest
 

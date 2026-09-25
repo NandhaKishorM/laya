@@ -2,6 +2,8 @@
 
 Provides fast (~33 ms), non-autoregressive routing, real-time guardrails, and
 state evaluation nodes for LangChain Expression Language (LCEL) and LangGraph.
+Each runnable also batches: `batch()` and `abatch()` evaluate a list of inputs on
+Laya's shared forward passes instead of one call per input.
 
 Supports both local in-process models (`Agent` / `Router`) and remote HTTP
 deployments (your own `laya-serve`) without requiring PyTorch on edge clients.
@@ -13,7 +15,7 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Callable, Dict, Optional, Sequence, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
 # Optional LangChain base class integration
 try:
@@ -159,11 +161,133 @@ def _execute_decision(
     return runner.predict(state, questions, **kwargs)
 
 
-class LayaRouter(RunnableSerializable):
+def _can_batch(agent: Optional[Any] = None, base_url: Optional[str] = None) -> bool:
+    """Whether the path this runnable would take supports one batched forward call.
+
+    False for a remote deployment (`laya-serve` answers one request per POST) and for a
+    caller-supplied runner that only implements `predict`.
+    """
+    if base_url:
+        return False
+    runner = agent if agent is not None else _get_default_router()
+    return getattr(runner, "predict_batch", None) is not None
+
+
+def _execute_batch(
+    states: Sequence[Any],
+    questions: Dict[str, Any],
+    agent: Optional[Any] = None,
+    model: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Evaluate one question set over many states, packing them into shared forward passes.
+
+    The local sibling of `_execute_decision`; results come back in input order. `Agent`
+    and `Router` disagree about how `predict_batch` is called (states plus one question
+    set, versus one request dict each), so both forms are built here.
+    """
+    runner = agent if agent is not None else _get_default_router()
+    if hasattr(runner, "route_batch"):
+        requests = [{"state": state, "questions": questions} for state in states]
+        if model:
+            for request in requests:
+                request["model"] = model
+        return runner.predict_batch(requests)
+    kwargs = {"model": model} if model else {}
+    return runner.predict_batch(list(states), questions, **kwargs)
+
+
+def _per_input_config(config: Any, n: int) -> List[Any]:
+    """One config per input: LangChain hands `batch` a single config, a list of them, or None.
+
+    `RunnableSequence` and `RunnableParallel` pass the list form, so anything that loops
+    `invoke` itself has to expand it -- `invoke` expects one config, not a list of them.
+    """
+    if config is None:
+        return [None] * n
+    if isinstance(config, list):
+        return list(config)
+    return [config] * n
+
+
+class _BatchedRunnable:
+    """Gives a Laya runnable a real `batch()`, on Laya's shared forward passes.
+
+    LangChain's default `batch` runs `invoke` once per input on a thread pool, which for
+    a local Laya runner means N independent passes over the same questions -- and N
+    threads contending for the same torch interpreter. `predict_batch` exists precisely
+    to avoid that, so `chain.batch(...)`, `RunnableParallel` and LangGraph map-reduce
+    nodes get it here. Outputs are identical to calling `invoke` per input, in order.
+    """
+
+    def _questions(self) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    def _finish(self, result: Dict[str, Any], input: Any) -> Any:
+        raise NotImplementedError
+
+    def batch(
+        self,
+        inputs: List[Any],
+        config: Optional[RunnableConfig] = None,
+        *,
+        return_exceptions: bool = False,
+        **kwargs: Any,
+    ) -> List[Any]:
+        """Answer every input in one batched call, returning outputs in input order."""
+        inputs = list(inputs)
+        if not inputs:
+            return []
+        if return_exceptions:
+            # A shared forward pass fails as a unit, so there is no per-input exception to
+            # collect: honour the flag the way the per-input loop does.
+            outcomes: List[Any] = []
+            for item, one_config in zip(inputs, _per_input_config(config, len(inputs))):
+                try:
+                    outcomes.append(self.invoke(item, one_config, **kwargs))
+                except Exception as exc:  # noqa: BLE001 - returned, per the Runnable contract
+                    outcomes.append(exc)
+            return outcomes
+        if not _can_batch(self.agent, self.base_url):
+            if _RUNNABLE_AVAILABLE:
+                # LangChain's own loop already understands both config shapes.
+                return super().batch(inputs, config, **kwargs)  # type: ignore[misc]
+            return [
+                self.invoke(item, one_config, **kwargs)
+                for item, one_config in zip(inputs, _per_input_config(config, len(inputs)))
+            ]
+        states = [_extract_text(item, self.state_key) for item in inputs]
+        results = _execute_batch(
+            states, self._questions(), agent=self.agent, model=self.model
+        )
+        return [self._finish(result, item) for result, item in zip(results, inputs)]
+
+    async def abatch(
+        self,
+        inputs: List[Any],
+        config: Optional[RunnableConfig] = None,
+        *,
+        return_exceptions: bool = False,
+        **kwargs: Any,
+    ) -> List[Any]:
+        """The async entry point, on the same batched call (`batch` is synchronous torch work)."""
+        from langchain_core.runnables.config import run_in_executor
+
+        # `batch` is blocking torch work, so it goes to the executor like any other sync
+        # Runnable; the first config carries the executor settings (`RunnableSequence`
+        # hands a step a list of per-input configs, not one).
+        executor_config = _per_input_config(config, max(len(inputs), 1))[0]
+        return await run_in_executor(
+            executor_config, self.batch, inputs, config,
+            return_exceptions=return_exceptions, **kwargs
+        )
+
+
+class LayaRouter(_BatchedRunnable, RunnableSerializable):
     """Zero-latency LangGraph conditional edge and LangChain LCEL routing runnable.
 
     Evaluates user input against typed criteria in ~33 ms without token generation.
-    Supports confidence threshold gating and fallback routing.
+    Supports confidence threshold gating and fallback routing, and answers a list of
+    inputs in one shared forward pass through `batch`.
     """
 
     criteria: Dict[str, str]
@@ -221,26 +345,18 @@ class LayaRouter(RunnableSerializable):
         self.question_id = "route"
         self.last_decision: Optional[Dict[str, Any]] = None
 
-    def invoke(self, input: Any, config: Optional[RunnableConfig] = None) -> str:
-        """Route input to a destination branch label."""
-        text = _extract_text(input, self.state_key)
-        questions = {
+    def _questions(self) -> Dict[str, Any]:
+        return {
             self.question_id: {
                 "type": "choice",
                 "instructions": self.instructions,
                 "criteria": self.criteria,
             }
         }
-        res = _execute_decision(
-            text,
-            questions,
-            agent=self.agent,
-            base_url=self.base_url,
-            api_key=self.api_key,
-            model=self.model,
-        )
-        self.last_decision = res
-        ans = res["answers"][self.question_id]
+
+    def _finish(self, result: Dict[str, Any], input: Any) -> str:
+        self.last_decision = result
+        ans = result["answers"][self.question_id]
         choice = ans["choice"]
         confidence = ans.get("confidence", 1.0)
 
@@ -250,16 +366,30 @@ class LayaRouter(RunnableSerializable):
 
         return choice
 
+    def invoke(self, input: Any, config: Optional[RunnableConfig] = None) -> str:
+        """Route input to a destination branch label."""
+        text = _extract_text(input, self.state_key)
+        res = _execute_decision(
+            text,
+            self._questions(),
+            agent=self.agent,
+            base_url=self.base_url,
+            api_key=self.api_key,
+            model=self.model,
+        )
+        return self._finish(res, input)
+
     def __call__(self, state: Any) -> str:
         """Callable protocol for direct use as a LangGraph conditional edge."""
         return self.invoke(state)
 
 
-class LayaGuardrail(RunnableSerializable):
+class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
     """Sub-40ms inline guardrail for LangChain chains and LangGraph nodes.
 
     Screens for prompt injections, jailbreaks, sensitive data, or custom harm
-    criteria before passing inputs downstream.
+    criteria before passing inputs downstream. A list of inputs is screened in one
+    shared forward pass through `batch`.
     """
 
     questions: Optional[Dict[str, Any]] = None
@@ -317,20 +447,12 @@ class LayaGuardrail(RunnableSerializable):
         from ..presets import guard_questions
         return guard_questions()
 
-    def invoke(self, input: Any, config: Optional[RunnableConfig] = None) -> Any:
-        """Screen input against guardrail questions."""
-        text = _extract_text(input, self.state_key)
-        qdefs = self.questions if self.questions is not None else self._default_questions()
+    def _questions(self) -> Dict[str, Any]:
+        return self.questions if self.questions is not None else self._default_questions()
 
-        res = _execute_decision(
-            text,
-            qdefs,
-            agent=self.agent,
-            base_url=self.base_url,
-            api_key=self.api_key,
-            model=self.model,
-        )
-        answers = res.get("answers", {})
+    def _finish(self, result: Dict[str, Any], input: Any) -> Any:
+        """Apply the violation scan and the configured action to one decision."""
+        answers = result.get("answers", {})
 
         violations: Dict[str, Any] = {}
         for qid, ans in answers.items():
@@ -352,7 +474,7 @@ class LayaGuardrail(RunnableSerializable):
             raise LayaGuardrailError(
                 f"Laya guardrail policy violation detected: {list(violations.keys())}",
                 violations=violations,
-                raw_decision=res,
+                raw_decision=result,
             )
 
         if not is_safe and self.action == "filter":
@@ -382,15 +504,30 @@ class LayaGuardrail(RunnableSerializable):
 
         return input
 
+    def invoke(self, input: Any, config: Optional[RunnableConfig] = None) -> Any:
+        """Screen input against guardrail questions."""
+        text = _extract_text(input, self.state_key)
+
+        res = _execute_decision(
+            text,
+            self._questions(),
+            agent=self.agent,
+            base_url=self.base_url,
+            api_key=self.api_key,
+            model=self.model,
+        )
+        return self._finish(res, input)
+
     def __call__(self, state: Any) -> Any:
         return self.invoke(state)
 
 
-class LayaTriage(RunnableSerializable):
+class LayaTriage(_BatchedRunnable, RunnableSerializable):
     """Customer support ticket and incoming message triage node for LangGraph.
 
     Analyzes intent, urgency, customer frustration, and churn risk in one single
-    forward pass and enriches the graph state dictionary.
+    forward pass and enriches the graph state dictionary. A backlog is triaged in one
+    shared forward pass through `batch`.
     """
 
     state_key: Optional[Union[str, Callable[[Any], Any]]] = None
@@ -428,20 +565,14 @@ class LayaTriage(RunnableSerializable):
             self.api_key = api_key
             self.model = model
 
-    def invoke(self, state: Any, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
-        """Triage the state and return enriched fields."""
+    def _questions(self) -> Dict[str, Any]:
         from ..presets import triage_questions
 
-        text = _extract_text(state, self.state_key)
-        res = _execute_decision(
-            text,
-            triage_questions(),
-            agent=self.agent,
-            base_url=self.base_url,
-            api_key=self.api_key,
-            model=self.model,
-        )
-        ans = res.get("answers", {})
+        return triage_questions()
+
+    def _finish(self, result: Dict[str, Any], state: Any) -> Dict[str, Any]:
+        """Project one triage decision onto the graph state."""
+        ans = result.get("answers", {})
 
         triage_info = {
             "intent": ans.get("intent", {}).get("choice"),
@@ -459,14 +590,28 @@ class LayaTriage(RunnableSerializable):
 
         return {"input": state, "triage": triage_info}
 
+    def invoke(self, state: Any, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
+        """Triage the state and return enriched fields."""
+        text = _extract_text(state, self.state_key)
+        res = _execute_decision(
+            text,
+            self._questions(),
+            agent=self.agent,
+            base_url=self.base_url,
+            api_key=self.api_key,
+            model=self.model,
+        )
+        return self._finish(res, state)
+
     def __call__(self, state: Any) -> Dict[str, Any]:
         return self.invoke(state)
 
 
-class LayaEvaluator(RunnableSerializable):
+class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
     """Rubric-based output grading and hallucination evaluation for LangChain.
 
-    Evaluates LLM responses against criteria without generating text.
+    Evaluates LLM responses against criteria without generating text. A list of
+    responses is graded in one shared forward pass through `batch`.
     """
 
     questions: Dict[str, Any]
@@ -521,17 +666,23 @@ class LayaEvaluator(RunnableSerializable):
         )
         return res.get("answers", {})
 
+    def _questions(self) -> Dict[str, Any]:
+        return self.questions
+
+    def _finish(self, result: Dict[str, Any], input: Any) -> Dict[str, Any]:
+        return result.get("answers", {})
+
     def invoke(self, input: Any, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
         text = _extract_text(input, self.state_key)
         res = _execute_decision(
             text,
-            self.questions,
+            self._questions(),
             agent=self.agent,
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
         )
-        return res.get("answers", {})
+        return self._finish(res, input)
 
     def __call__(self, state: Any) -> Dict[str, Any]:
         return self.invoke(state)

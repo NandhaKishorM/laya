@@ -1,7 +1,8 @@
 """LangChain and LangGraph integration for Laya System 1 decision engine.
 
 Provides fast (~33 ms), non-autoregressive routing, real-time guardrails, and
-state evaluation nodes for LangChain Expression Language (LCEL) and LangGraph.
+state evaluation nodes for LangChain Expression Language (LCEL) and LangGraph. Each
+runnable takes core's per-call prediction hooks.
 
 Supports both local in-process models (`Agent` / `Router`) and remote HTTP
 deployments (your own `laya-serve`) without requiring PyTorch on edge clients.
@@ -144,6 +145,35 @@ def _get_default_router():
     return _DEFAULT_ROUTER
 
 
+def _reject_remote_hooks(hook_kwargs: Dict[str, Any], base_url: Optional[str]) -> None:
+    """Refuse hooks on a remote node rather than dropping them silently.
+
+    A hook is a Python callable that runs inside `predict` -- it can cache a decision, gate one or
+    rewrite its state. `laya-serve` has no way to receive or run one, so a node with a `base_url`
+    and hooks configured would report success while never calling them.
+    """
+    if base_url and hook_kwargs:
+        raise ValueError(
+            "%s run in the local runner and cannot be sent to a laya-serve endpoint; "
+            "install them where serve runs, or drop them" % ", ".join(sorted(hook_kwargs))
+        )
+
+
+def _hook_kwargs(hooks: Optional[Any] = None, on_predict_start: Optional[Any] = None,
+                 on_predict_end: Optional[Any] = None, hooks_raise: Optional[bool] = None,
+                 hooks_timeout: Optional[float] = None) -> Dict[str, Any]:
+    """The per-call hook overrides, with the unset ones omitted.
+
+    Core reads `None` as "inherit whatever the runner was built with", so an unset hook has to be
+    absent rather than passed as `None`. Note the `is not None` tests: `hooks=[]` means "no hooks
+    for this call", and `hooks_raise=False` means "keep deciding after a hook fails" -- both are
+    decisions a caller made, not absences.
+    """
+    given = {"hooks": hooks, "on_predict_start": on_predict_start, "on_predict_end": on_predict_end,
+             "hooks_raise": hooks_raise, "hooks_timeout": hooks_timeout}
+    return {k: v for k, v in given.items() if v is not None}
+
+
 def _execute_decision(
     state: Any,
     questions: Dict[str, Any],
@@ -151,11 +181,19 @@ def _execute_decision(
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
+    hooks: Optional[Any] = None,
+    on_predict_start: Optional[Any] = None,
+    on_predict_end: Optional[Any] = None,
+    hooks_raise: Optional[bool] = None,
+    hooks_timeout: Optional[float] = None,
 ) -> Dict[str, Any]:
+    hook_kwargs = _hook_kwargs(hooks, on_predict_start, on_predict_end, hooks_raise, hooks_timeout)
     if base_url:
+        _reject_remote_hooks(hook_kwargs, base_url)
         return _call_remote(base_url, state, questions, api_key=api_key, model=model)
     runner = agent if agent is not None else _get_default_router()
     kwargs = {"model": model} if model else {}
+    kwargs.update(hook_kwargs)
     return runner.predict(state, questions, **kwargs)
 
 
@@ -175,6 +213,11 @@ class LayaRouter(RunnableSerializable):
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
+    hooks: Optional[Any] = None
+    on_predict_start: Optional[Any] = None
+    on_predict_end: Optional[Any] = None
+    hooks_raise: Optional[bool] = None
+    hooks_timeout: Optional[float] = None
     question_id: str = "route"
     last_decision: Optional[Dict[str, Any]] = None
 
@@ -193,6 +236,11 @@ class LayaRouter(RunnableSerializable):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        hooks: Optional[Any] = None,
+        on_predict_start: Optional[Any] = None,
+        on_predict_end: Optional[Any] = None,
+        hooks_raise: Optional[bool] = None,
+        hooks_timeout: Optional[float] = None,
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -206,6 +254,11 @@ class LayaRouter(RunnableSerializable):
                 base_url=base_url,
                 api_key=api_key,
                 model=model,
+                hooks=hooks,
+                on_predict_start=on_predict_start,
+                on_predict_end=on_predict_end,
+                hooks_raise=hooks_raise,
+                hooks_timeout=hooks_timeout,
                 **kwargs,
             )
         else:
@@ -218,6 +271,11 @@ class LayaRouter(RunnableSerializable):
             self.base_url = base_url
             self.api_key = api_key
             self.model = model
+            self.hooks = hooks
+            self.on_predict_start = on_predict_start
+            self.on_predict_end = on_predict_end
+            self.hooks_raise = hooks_raise
+            self.hooks_timeout = hooks_timeout
         self.question_id = "route"
         self.last_decision: Optional[Dict[str, Any]] = None
 
@@ -238,6 +296,11 @@ class LayaRouter(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            hooks=self.hooks,
+            on_predict_start=self.on_predict_start,
+            on_predict_end=self.on_predict_end,
+            hooks_raise=self.hooks_raise,
+            hooks_timeout=self.hooks_timeout,
         )
         self.last_decision = res
         ans = res["answers"][self.question_id]
@@ -271,6 +334,11 @@ class LayaGuardrail(RunnableSerializable):
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
+    hooks: Optional[Any] = None
+    on_predict_start: Optional[Any] = None
+    on_predict_end: Optional[Any] = None
+    hooks_raise: Optional[bool] = None
+    hooks_timeout: Optional[float] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -287,6 +355,11 @@ class LayaGuardrail(RunnableSerializable):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        hooks: Optional[Any] = None,
+        on_predict_start: Optional[Any] = None,
+        on_predict_end: Optional[Any] = None,
+        hooks_raise: Optional[bool] = None,
+        hooks_timeout: Optional[float] = None,
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -300,6 +373,11 @@ class LayaGuardrail(RunnableSerializable):
                 base_url=base_url,
                 api_key=api_key,
                 model=model,
+                hooks=hooks,
+                on_predict_start=on_predict_start,
+                on_predict_end=on_predict_end,
+                hooks_raise=hooks_raise,
+                hooks_timeout=hooks_timeout,
                 **kwargs,
             )
         else:
@@ -312,6 +390,11 @@ class LayaGuardrail(RunnableSerializable):
             self.base_url = base_url
             self.api_key = api_key
             self.model = model
+            self.hooks = hooks
+            self.on_predict_start = on_predict_start
+            self.on_predict_end = on_predict_end
+            self.hooks_raise = hooks_raise
+            self.hooks_timeout = hooks_timeout
 
     def _default_questions(self) -> Dict[str, Any]:
         from ..presets import guard_questions
@@ -329,6 +412,11 @@ class LayaGuardrail(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            hooks=self.hooks,
+            on_predict_start=self.on_predict_start,
+            on_predict_end=self.on_predict_end,
+            hooks_raise=self.hooks_raise,
+            hooks_timeout=self.hooks_timeout,
         )
         answers = res.get("answers", {})
 
@@ -398,6 +486,11 @@ class LayaTriage(RunnableSerializable):
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
+    hooks: Optional[Any] = None
+    on_predict_start: Optional[Any] = None
+    on_predict_end: Optional[Any] = None
+    hooks_raise: Optional[bool] = None
+    hooks_timeout: Optional[float] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -410,6 +503,11 @@ class LayaTriage(RunnableSerializable):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        hooks: Optional[Any] = None,
+        on_predict_start: Optional[Any] = None,
+        on_predict_end: Optional[Any] = None,
+        hooks_raise: Optional[bool] = None,
+        hooks_timeout: Optional[float] = None,
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -419,6 +517,11 @@ class LayaTriage(RunnableSerializable):
                 base_url=base_url,
                 api_key=api_key,
                 model=model,
+                hooks=hooks,
+                on_predict_start=on_predict_start,
+                on_predict_end=on_predict_end,
+                hooks_raise=hooks_raise,
+                hooks_timeout=hooks_timeout,
                 **kwargs,
             )
         else:
@@ -427,6 +530,11 @@ class LayaTriage(RunnableSerializable):
             self.base_url = base_url
             self.api_key = api_key
             self.model = model
+            self.hooks = hooks
+            self.on_predict_start = on_predict_start
+            self.on_predict_end = on_predict_end
+            self.hooks_raise = hooks_raise
+            self.hooks_timeout = hooks_timeout
 
     def invoke(self, state: Any, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
         """Triage the state and return enriched fields."""
@@ -440,6 +548,11 @@ class LayaTriage(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            hooks=self.hooks,
+            on_predict_start=self.on_predict_start,
+            on_predict_end=self.on_predict_end,
+            hooks_raise=self.hooks_raise,
+            hooks_timeout=self.hooks_timeout,
         )
         ans = res.get("answers", {})
 
@@ -475,6 +588,11 @@ class LayaEvaluator(RunnableSerializable):
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
+    hooks: Optional[Any] = None
+    on_predict_start: Optional[Any] = None
+    on_predict_end: Optional[Any] = None
+    hooks_raise: Optional[bool] = None
+    hooks_timeout: Optional[float] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -488,6 +606,11 @@ class LayaEvaluator(RunnableSerializable):
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        hooks: Optional[Any] = None,
+        on_predict_start: Optional[Any] = None,
+        on_predict_end: Optional[Any] = None,
+        hooks_raise: Optional[bool] = None,
+        hooks_timeout: Optional[float] = None,
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -498,6 +621,11 @@ class LayaEvaluator(RunnableSerializable):
                 base_url=base_url,
                 api_key=api_key,
                 model=model,
+                hooks=hooks,
+                on_predict_start=on_predict_start,
+                on_predict_end=on_predict_end,
+                hooks_raise=hooks_raise,
+                hooks_timeout=hooks_timeout,
                 **kwargs,
             )
         else:
@@ -507,6 +635,11 @@ class LayaEvaluator(RunnableSerializable):
             self.base_url = base_url
             self.api_key = api_key
             self.model = model
+            self.hooks = hooks
+            self.on_predict_start = on_predict_start
+            self.on_predict_end = on_predict_end
+            self.hooks_raise = hooks_raise
+            self.hooks_timeout = hooks_timeout
 
     def evaluate_strings(self, *, prediction: str, input: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
         """LangChain standard string evaluation interface."""
@@ -518,6 +651,11 @@ class LayaEvaluator(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            hooks=self.hooks,
+            on_predict_start=self.on_predict_start,
+            on_predict_end=self.on_predict_end,
+            hooks_raise=self.hooks_raise,
+            hooks_timeout=self.hooks_timeout,
         )
         return res.get("answers", {})
 
@@ -530,6 +668,11 @@ class LayaEvaluator(RunnableSerializable):
             base_url=self.base_url,
             api_key=self.api_key,
             model=self.model,
+            hooks=self.hooks,
+            on_predict_start=self.on_predict_start,
+            on_predict_end=self.on_predict_end,
+            hooks_raise=self.hooks_raise,
+            hooks_timeout=self.hooks_timeout,
         )
         return res.get("answers", {})
 

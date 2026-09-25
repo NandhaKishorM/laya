@@ -714,7 +714,7 @@ triage = agent.predict({"message": "My payment failed twice"}, laya.triage_quest
 
 ## LangChain and LangGraph Integration
 
-Fast System 1 routing and guardrails directly inside LangGraph workflows and LCEL chains:
+Fast System 1 routing and guardrails directly inside LangGraph workflows and LCEL chains. Every node also takes core's per-call prediction hooks (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`):
 
 ```python
 from laya.integrations.langchain import LayaRouter, LayaGuardrail

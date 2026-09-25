@@ -272,6 +272,137 @@ check("evaluator/faithfulness", eval_res["faithfulness"]["noul"], 0.98)
 check("evaluator/hallucination", eval_res["hallucination"]["noul"], 0.02)
 
 
+# --------------------------------------------------------------- 7. Prediction hooks
+from laya.integrations import langchain as langchain_module  # noqa: E402
+from laya.hooks import PredictContext  # noqa: E402
+
+
+class HookAgent:
+    """Answers every question with a fixed choice and records the keyword arguments it saw."""
+
+    def __init__(self, answer="billing"):
+        self.answer = answer
+        self.calls = []
+
+    def predict(self, state, questions, **kwargs):
+        self.calls.append(kwargs)
+        answers = {}
+        for qid, question in questions.items():
+            qtype = question.get("type")
+            if qtype == "choice":
+                answers[qid] = {"type": "choice", "choice": self.answer, "confidence": 0.9,
+                                "probabilities": {}}
+            elif qtype == "score":
+                answers[qid] = {"type": "score", "score": 1.0, "confidence": 0.9,
+                                "probabilities": {}}
+            else:
+                answers[qid] = {"type": "noul", "noul": 0.1, "confidence": 0.9}
+        return {"model": "mock", "answers": answers}
+
+
+HOOK_CRITERIA = {"billing": "invoices", "tech": "bugs"}
+HOOK_QUESTIONS = {"jailbreak": {"type": "noul", "instructions": "jailbreak?"}}
+HOOK_NODES = (
+    ("router", lambda a, **kw: LayaRouter(HOOK_CRITERIA, agent=a, **kw)),
+    ("guardrail", lambda a, **kw: LayaGuardrail(questions=HOOK_QUESTIONS, agent=a, **kw)),
+    ("triage", lambda a, **kw: LayaTriage(agent=a, **kw)),
+    ("evaluator", lambda a, **kw: LayaEvaluator(
+        questions={"faithful": {"type": "noul", "instructions": "faithful?"}}, agent=a, **kw)),
+)
+
+ALL_HOOK_KWARGS = {"hooks": ["H"], "on_predict_start": "S", "on_predict_end": "E",
+                   "hooks_raise": True, "hooks_timeout": 0.5}
+
+for name, build in HOOK_NODES:
+    # Unset has to mean unsent: core reads a missing argument as "inherit the runner's own hooks",
+    # and passing None explicitly would say something different.
+    plain = HookAgent()
+    build(plain).invoke("some state")
+    check("hooks/%s default sends nothing" % name, plain.calls[0], {})
+
+    every = HookAgent()
+    build(every, **ALL_HOOK_KWARGS).invoke("some state")
+    check("hooks/%s forwards all five" % name, every.calls[0], ALL_HOOK_KWARGS)
+
+    # `hooks=[]` means "no hooks for this call" and `hooks_raise=False` means "keep deciding after
+    # a hook fails". Both are falsy and both are decisions, so neither may be dropped.
+    empty = HookAgent()
+    build(empty, hooks=[], hooks_raise=False).invoke("some state")
+    check("hooks/%s keeps falsy values" % name, empty.calls[0],
+          {"hooks": [], "hooks_raise": False})
+
+    model = HookAgent()
+    build(model, model="laya-multilingual", hooks=["H"]).invoke("some state")
+    check("hooks/%s alongside model" % name, model.calls[0],
+          {"model": "laya-multilingual", "hooks": ["H"]})
+
+# The node's whole job is to hand these arguments to `predict` unchanged, so every name it sends
+# has to be one the runners actually accept -- otherwise a chain fails with a TypeError deep inside
+# core instead of at the call site. Whether the hooks then run is core's contract, pinned by
+# tests/test_hooks.py; a mock runner that ignores its kwargs could not prove it either way.
+import inspect  # noqa: E402
+from laya.agent import Agent  # noqa: E402
+from laya.router import Router  # noqa: E402
+
+agent_params = set(inspect.signature(Agent.system_one).parameters)
+router_params = set(inspect.signature(Router.predict).parameters)
+for param in ALL_HOOK_KWARGS:
+    check_true("hooks/%s is an Agent.predict parameter" % param, param in agent_params)
+    check_true("hooks/%s is a Router.predict parameter" % param, param in router_params)
+
+class Watcher:
+    """A minimal lifecycle hook; only its identity matters to the node under test."""
+
+    def on_predict_start(self, ctx):
+        pass
+
+    def on_predict_end(self, ctx):
+        pass
+
+
+# Identity, not equality: the node must hand `predict` the caller's own hook objects, so a hook
+# that keys state off `self` still works after the trip through the runnable.
+sentinel_hooks = [Watcher()]
+identity_agent = HookAgent()
+LayaRouter(HOOK_CRITERIA, agent=identity_agent, hooks=sentinel_hooks).invoke("x")
+check_true("hooks/forwards the caller's objects",
+           identity_agent.calls[0]["hooks"] is sentinel_hooks
+           and identity_agent.calls[0]["hooks"][0] is sentinel_hooks[0])
+
+
+# Hooks are Python callables that run inside predict(); a remote node cannot carry them, and
+# silently dropping them would report success for a cache or a guard that never ran.
+remote_hook_calls = []
+_real_call_remote = langchain_module._call_remote
+
+
+def hook_spy_call_remote(base_url, state, questions, api_key=None, model=None):
+    remote_hook_calls.append(1)
+    return {"answers": {"route": {"type": "choice", "choice": "billing", "confidence": 0.9}}}
+
+
+langchain_module._call_remote = hook_spy_call_remote
+try:
+    remote_plain = LayaRouter(HOOK_CRITERIA, base_url="http://laya:8000", api_key="k")
+    check("hooks/remote without hooks still routes", remote_plain.invoke("x"), "billing")
+    # One sample value per parameter, of the type that parameter declares: an ill-typed value
+    # would be rejected by the runnable's own schema and never reach the guard under test.
+    for param, sample in (("hooks", [Watcher()]), ("on_predict_start", Watcher().on_predict_start),
+                          ("on_predict_end", Watcher().on_predict_end),
+                          ("hooks_raise", False), ("hooks_timeout", 0.5)):
+        raised, message = False, ""
+        try:
+            LayaRouter(HOOK_CRITERIA, base_url="http://laya:8000", **{param: sample}).invoke("x")
+        except ValueError as e:
+            raised, message = True, str(e)
+        check_true("hooks/remote refuses %s" % param, raised)
+        check_true("hooks/remote %s names itself" % param, param in message)
+        check_true("hooks/remote %s names the endpoint" % param, "laya-serve" in message)
+    check("hooks/remote made no extra call", len(remote_hook_calls), 1)
+finally:
+    langchain_module._call_remote = _real_call_remote
+
+
 # --------------------------------------------------------------- Summary
 print(f"PASS: {len(PASS)}")
 print(f"FAIL: {len(FAIL)}")

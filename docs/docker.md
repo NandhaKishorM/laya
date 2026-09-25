@@ -227,6 +227,7 @@ These apply to the `laya-serve` service only.
 | `LAYA_AUTO_TASK` | `0` | `1` lets the router reach `typed-decisions` automatically |
 | `LAYA_LOG_LEVEL` | `info` | uvicorn log level |
 | `LAYA_API_KEY` | (none) | when set, requires `Authorization: Bearer <key>` |
+| `LAYA_SHA256_DIGESTS` | (none) | JSON `{path: sha256}` checked before a checkpoint is parsed; one map per process |
 
 `LAYA_PRELOAD` defaults to `0` here rather than the package default of `1`, because
 preloading makes the first boot download all three checkpoints. Set it to `1` for a

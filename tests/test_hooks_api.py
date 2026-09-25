@@ -129,6 +129,11 @@ for name in ("PredictContext", "PredictHook", "Hook", "BaseHook", "AsyncHook"):
 check_true("laya.hooks/run_coroutine_sync exists",
            callable(getattr(__import__("laya.hooks", fromlist=["run_coroutine_sync"]),
                             "run_coroutine_sync", None)))
+# Lazily exported, so `hasattr` is what proves `__getattr__` resolves it and not just that the
+# name sits in `__all__`. It must stay reachable as `laya.PINNED_REVISIONS` for the checkpoint
+# integrity guide; `laya.revisions` is not the documented path.
+check_true("__all__/PINNED_REVISIONS", "PINNED_REVISIONS" in laya.__all__)
+check_true("laya.PINNED_REVISIONS exists", hasattr(laya, "PINNED_REVISIONS"))
 
 # BaseHook is the concrete no-op base class; all six events exist and are callable.
 for event in HOOK_EVENTS:

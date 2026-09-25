@@ -271,6 +271,35 @@ with patch.object(_agent, "confidence_from_probs", wraps=_agent.confidence_from_
     check("decode/noul-only answers skip entropy", entropy.call_count, 0)
 
 
+# A legend maps a level index to the TEXT of that level. Its keys are already strings, and
+# `structured` stringifies every level it builds, so a numeric scale written directly used to be
+# the one path that echoed the caller's own type back: `{"0": 1, "1": 2}` instead of
+# `{"0": "1", "1": "2"}`. That made the response's JSON types depend on the input's types, so a
+# client that reads a level as a string had to handle a number as well.
+#
+# `render_criterion` is what renders the text, so a structured level comes back as the JSON the
+# model was shown rather than a Python repr, and bool/None follow JSON spelling (`true`, `null`).
+for label, crit, want in (
+    ("int levels", [1, 2, 3], {"0": "1", "1": "2", "2": "3"}),
+    ("float levels", [1.5, 2.5], {"0": "1.5", "1": "2.5"}),
+    ("bool levels", [True, False], {"0": "true", "1": "false"}),
+    ("string levels", ["low", "high"], {"0": "low", "1": "high"}),
+    ("dict level", [{"a": 1}], {"0": '{"a": 1}'}),
+    ("list level", [[1, 2]], {"0": "[1, 2]"}),
+):
+    internal = {"level": {"t": "score", "crit": crit}}
+    k = len(crit)
+    logits = np.tile(np.log([1.0 / k] * k), (k, 1))
+    act = np.array([[0.25, 0.75]] * k)
+    result = decoder._decode_answers(
+        logits, act, [{"markers": [0, 1]}] * k, ["level"] * k, internal, 0
+    )
+    check("decode/score legend values are str (%s)" % label, result["level"]["legend"], want)
+    check_true("decode/score legend values have no non-str (%s)" % label,
+               all(isinstance(v, str) for v in result["level"]["legend"].values()),
+               result["level"]["legend"])
+
+
 # --------------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f_ in FAIL:

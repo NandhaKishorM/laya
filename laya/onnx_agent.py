@@ -19,6 +19,7 @@ from laya.common import (
     collate_items,
     confidence_from_probs,
     encode_text,
+    render_criterion,
     render_options,
     serialize_state,
     temp_bucket,
@@ -364,7 +365,11 @@ class ONNXAgent(HookRegistry):
                 answers[qid] = {
                     "type": "score",
                     "score": round(exp_score, 4),
-                    "legend": {str(i): c for i, c in enumerate(q["crit"])},
+                    # Same as `Agent._decode_answers`, so both backends return the same legend:
+                    # `render_criterion` gives a dict or list level back as the JSON text the
+                    # model was shown, and a numeric level as a string, rather than a Python repr
+                    # or the caller's own type.
+                    "legend": {str(i): render_criterion(c) for i, c in enumerate(q["crit"])},
                     "probabilities": {str(i): round(float(v), 4) for i, v in enumerate(p)},
                     "confidence": conf_score,
                     "answer_confidence": ans_conf,

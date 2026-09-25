@@ -39,9 +39,12 @@ from laya.serve import _apply_thread_limit, _env_bool
 from .device import env_device
 from .tools import (
     ToolError,
+    laya_decide,
     laya_predict,
+    laya_predict_batch,
     laya_preset,
     laya_route,
+    laya_route_batch,
     laya_shortlist,
     laya_status,
 )
@@ -63,8 +66,8 @@ _ROUTER_LOCK = threading.Lock()
 # two, and auto-routing never selects it).
 _DEFAULT_MODELS = ("english", "multilingual")
 
-# Shared usage guardrails for the three decision tools. laya_status reports
-# instead of deciding, so it does not carry them.
+# Shared usage guardrails for the decision tools. laya_status reports instead
+# of deciding, so it does not carry them.
 _GUARDRAILS = (
     "Use for structured decisions only: choice (finite labels), score (ordinal rubric), "
     "noul (calibrated P(true)). One forward pass ~33ms (GPU) / ~200ms (CPU). "
@@ -200,6 +203,49 @@ def laya_predict_tool(state: dict, questions: dict, model: str = "auto") -> str:
 
 
 @server.tool(
+    name="laya_predict_batch",
+    description=(
+        "Answer many typed-question requests in one call: requests is a non-empty array of "
+        "{state, questions, model?, task?, lang?, lang_guess?} objects, each with the same "
+        "questions schema as laya_predict. Requests are routed first, grouped by checkpoint, "
+        "and share forward passes when their question schemas match, so scoring many "
+        "requests costs one round trip instead of N. Returns answers in input order with "
+        "per-request routing and device, plus model_counts and batch latency. "
+        + _GUARDRAILS
+    ),
+)
+def laya_predict_batch_tool(requests: list, batch_size: int = 0) -> str:
+    """Answer many typed-question requests in one batched call."""
+    router = _router_or_error()
+    # batch_size=0 means "unset": MCP clients send defaults eagerly, and
+    # None is what Router.predict_batch takes as "no forward-pass cap".
+    return _wrap(
+        laya_predict_batch,
+        requests=requests,
+        batch_size=batch_size or None,
+        router=router,
+    )
+
+
+@server.tool(
+    name="laya_route_batch",
+    description=(
+        "Decide which Laya checkpoint would answer each request, without running any "
+        "forward pass or loading a checkpoint: requests is a non-empty array of "
+        "{state, questions, model?, task?, lang?, lang_guess?} objects. Use this to "
+        "inspect or aggregate the routing of a workload before paying model-load cost. "
+        "Returns one {model, repo, reason} decision per request in input order, plus "
+        "model_counts. "
+        + _GUARDRAILS
+    ),
+)
+def laya_route_batch_tool(requests: list) -> str:
+    """Route many requests to checkpoints without a forward pass."""
+    router = _router_or_error()
+    return _wrap(laya_route_batch, requests=requests, router=router)
+
+
+@server.tool(
     name="laya_shortlist",
     description=(
         "Shortlist a many-option choice question to its k most likely labels by embedding "
@@ -245,6 +291,25 @@ def laya_preset_tool(preset: str, state: dict) -> str:
         router=router,
         preset_builder=_preset_builder,
     )
+
+
+@server.tool(
+    name="laya_decide",
+    description=(
+        "Answer a JSON-schema-shaped decision in one forward pass and return the decided "
+        "values: schema is a JSON schema object whose properties are enum choices, booleans "
+        "(noul), or integers with integer minimum/maximum (ordinal score); free strings, "
+        "arrays and nested objects are rejected by path. Use this instead of laya_predict "
+        "when the caller already knows the answer shape and wants values projected onto the "
+        "schema (enum member, integer level, boolean) plus per-field confidence, instead of "
+        "an answer map to parse by hand. "
+        + _GUARDRAILS
+    ),
+)
+def laya_decide_tool(state: dict, schema: dict, model: str = "auto") -> str:
+    """Answer a JSON-schema-shaped decision and return the decided values."""
+    router = _router_or_error()
+    return _wrap(laya_decide, state=state, schema=schema, model=model, router=router)
 
 
 def main() -> None:

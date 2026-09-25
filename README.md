@@ -774,7 +774,7 @@ override on your own data rather than treating `A`/`B` as a universal fix.
 
 Laya can be exposed as an [MCP](https://modelcontextprotocol.io) stdio server, so any MCP
 client (OpenClaw, Claude Desktop, Cursor, ...) can call typed decisions as tools
-(`laya_predict`, `laya_route`, `laya_shortlist`, `laya_preset`, `laya_status`) without writing glue code.
+(`laya_predict`, `laya_predict_batch`, `laya_route`, `laya_route_batch`, `laya_decide`, `laya_shortlist`, `laya_preset`, `laya_status`) without writing glue code.
 This is an **optional extra**: the core package has no `mcp` dependency.
 
 ```bash
@@ -807,12 +807,25 @@ package:
 | `LAYA_THREADS` | (torch default) | Same as `laya.serve`: cap torch intra-op threads for CPU inference; keep it at or below the physical core count |
 
 The tools return structured JSON (answers with probabilities, routing metadata, device,
-`latency_ms`). `laya_shortlist` is the MCP form of [`predict_shortlist`](#honest-limits):
+`latency_ms`). `laya_predict_batch` and `laya_route_batch` are the MCP form of
+[`Router.predict_batch` / `route_batch`](#batch-mode-score-many-states-in-one-forward-pass):
+one tool call takes an array of `{state, questions, model?, lang?}` requests, routes them
+first, groups them by checkpoint, and shares forward passes between requests with the same
+question schema, returning the answers in input order. On 16 mixed-language tickets through
+the tool functions themselves, one batch call beat 16 `laya_predict` calls by **2.1-2.3x on
+MPS** (983-1082 ms -> 467-477 ms) and **~1.25x on CPU** (1861-2471 ms -> 1470-1911 ms), with
+**0/16 decision flips** (choice label, rounded score, noul sign) against the loop. Prefer it
+whenever a client has more than a few requests: each saved round trip is also an MCP
+request/response. `laya_decide` is the MCP form of [`laya.decide`](#schema-driven-decisions): it
+takes a JSON schema (enum choices, booleans, bounded integers) instead of hand-written
+questions and returns the decided `values` projected onto that schema -- enum member, integer
+level, boolean -- beside per-field `confidence` and `probabilities`, so a client that already
+knows the answer shape never parses an answer map by hand. `laya_shortlist` is the MCP form of [`predict_shortlist`](#honest-limits):
 it shortlists a many-option choice question to its `k` most likely labels by embedding
 similarity (mean-pooled from the answering checkpoint's own encoder, so no extra model is
 downloaded), answers in one forward pass, and returns per-question shortlist metadata
 (kept labels, cosine scores, `k`, option count). The guardrails shown on every decision
-tool point clients here for >20-option choices. As with the SDK, use it for structured
+tool point clients to `laya_shortlist` for >20-option choices. As with the SDK, use it for structured
 decisions only; not for open Q&A or
 text generation. Tests: `tests/test_mcp.py` (CI, no weights) and
 `tests/test_mcp_local_e2e.py` (local, real weights and a real stdio handshake).

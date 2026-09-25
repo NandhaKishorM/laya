@@ -34,8 +34,9 @@ from .base import Backend, BackendUnavailable, pad_batch
 CACHE_DIR_ENV = "LAYA_INDUCTOR_CACHE_DIR"
 WARMUP_ENV = "LAYA_COMPILE_WARMUP"
 DEFAULT_CACHE_DIR = os.path.join("~", ".cache", "laya", "inductor")
-# rows x tokens run at load: one short call, a few questions at a medium length, and a bigger batch
-WARMUP_SHAPES = ((1, 64), (4, 128), (8, 256))
+# rows x tokens x markers run at load: one short call, a few questions at a medium length, and a
+# bigger batch; the three sizes differ within each shape so no two dimensions get tied together
+WARMUP_SHAPES = ((1, 64, 3), (4, 128, 5), (8, 256, 6))
 
 
 def configure_inductor_cache() -> str:
@@ -103,6 +104,14 @@ class CompileBackend(Backend):
         except Exception:
             pass
         try:
+            # Dynamo's "duck sizing" gives two dimensions that happen to be equal at the first
+            # trace one symbol, and then guards on them staying equal: with four questions of four
+            # options, rows == markers, and every request where they differ recompiled (~25 s).
+            # Every dimension here is independent, so give each its own symbol.
+            torch.fx.experimental._config.use_duck_shape = False
+        except Exception:
+            pass
+        try:
             self.compiled = torch.compile(self._stock_forward, dynamic=self.dynamic, mode=self.mode)
         except Exception as e:
             raise BackendUnavailable(e)
@@ -139,12 +148,12 @@ class CompileBackend(Backend):
         dev = agent.device
         t0 = time.perf_counter()
         with torch.no_grad(), torch.autocast(device_type="cuda", dtype=agent.dtype, enabled=agent.amp_enabled):
-            for rows, tokens in shapes or WARMUP_SHAPES:
+            for rows, tokens, markers in shapes or WARMUP_SHAPES:
                 ids = torch.full((rows, tokens), agent.tok.pad_token_id or 0, dtype=torch.long, device=dev)
                 ids[:, 0] = agent.tok.cls_token_id if agent.tok.cls_token_id is not None else 0
                 att = torch.ones((rows, tokens), dtype=torch.long, device=dev)
-                mpos = torch.zeros((rows, 2), dtype=torch.long, device=dev)
-                mmask = torch.ones((rows, 2), dtype=torch.bool, device=dev)
+                mpos = torch.arange(1, markers + 1, device=dev).repeat(rows, 1)
+                mmask = torch.ones((rows, markers), dtype=torch.bool, device=dev)
                 qt = torch.zeros((rows,), dtype=torch.long, device=dev)
                 # cudagraph trees record on the second call of a shape and replay from the third
                 for _ in range(3):

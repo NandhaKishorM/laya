@@ -1,0 +1,33 @@
+{
+ "model": "convaiinnovations/laya",
+ "subfolder": null,
+ "gpu": "NVIDIA GeForce RTX 4070 Ti SUPER",
+ "torch": "2.11.0+cu130",
+ "gpu_state_before": "95 %, 7558 MiB",
+ "cache_dir": "/tmp/claude-1000/-home-ckl-projects-S-laya-upstream/7c416ccc-3d03-423a-b684-a69d309dd413/scratchpad/inductor-en",
+ "eager": {
+  "short_ms": 32.27,
+  "long_ms": 593.0,
+  "peak_mem_gb": 3.0
+ },
+ "compile_cold": {
+  "backend": "compile",
+  "load_s": 127.9,
+  "warmup_s": 122.7,
+  "cache_dir": "/tmp/claude-1000/-home-ckl-projects-S-laya-upstream/7c416ccc-3d03-423a-b684-a69d309dd413/scratchpad/inductor-en",
+  "short_ms": 28.97,
+  "long_ms": 417.2,
+  "peak_mem_gb": 2.43,
+  "first_unseen_length_s": 0.046
+ },
+ "compile_cached": {
+  "backend": "compile",
+  "load_s": 60.7,
+  "warmup_s": 55.7,
+  "cache_dir": "/tmp/claude-1000/-home-ckl-projects-S-laya-upstream/7c416ccc-3d03-423a-b684-a69d309dd413/scratchpad/inductor-en",
+  "short_ms": 33.57,
+  "long_ms": 451.4,
+  "peak_mem_gb": 2.43,
+  "first_unseen_length_s": 0.051
+ }
+}

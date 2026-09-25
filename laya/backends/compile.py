@@ -16,7 +16,7 @@ Cold start is the cost: the first compile takes tens of seconds. Two things cut 
   already set, so a `TORCHINDUCTOR_*` variable the operator exports still wins. A second process
   loads the compiled graphs from there instead of compiling them again.
 * warm-up at load (`warmup=True`, or `LAYA_COMPILE_WARMUP=0` to skip): a few representative
-  shapes are run at load time so the first request pays nothing. `Agent.load_timings["warmup_s"]`
+  shapes are run at load time so the first request pays nothing. `agent.backend_object.warmup_s`
   reports what it cost.
 
 `torch.compile` is only used on CUDA: on CPU the inductor C++ path needs a compiler and buys
@@ -46,7 +46,17 @@ def configure_inductor_cache() -> str:
     the environment is left alone.
     """
     cache_dir = os.path.expanduser(os.environ.get(CACHE_DIR_ENV) or DEFAULT_CACHE_DIR)
-    os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", cache_dir)
+    current = os.environ.get("TORCHINDUCTOR_CACHE_DIR")
+    # torch writes its own default (/tmp/torchinductor_<user>) into the environment the first
+    # time anything asks for the cache dir, so "already set" only counts when it is not that
+    # default: an operator's explicit TORCHINDUCTOR_CACHE_DIR is kept, torch's is replaced.
+    try:
+        from torch._inductor.runtime.cache_dir_utils import default_cache_dir
+        torch_default = default_cache_dir()
+    except Exception:
+        torch_default = None
+    if current is None or current == torch_default:
+        os.environ["TORCHINDUCTOR_CACHE_DIR"] = cache_dir
     os.environ.setdefault("TORCHINDUCTOR_FX_GRAPH_CACHE", "1")
     os.environ.setdefault("TORCHINDUCTOR_AUTOGRAD_CACHE", "1")
     try:

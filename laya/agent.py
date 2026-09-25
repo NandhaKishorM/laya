@@ -5,17 +5,16 @@ import tempfile
 import threading
 import time
 import warnings
-from contextlib import nullcontext
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
 
+from .backends import amp_context as _amp_context, choose_dtype, normalise as _normalise_backend
 from .common import (
     QTYPES,
     TEMP_MAX,
     TEMP_MIN,
-    amp_dtype,
     build_model,
     build_sequence,
     clamp_temperature,
@@ -168,18 +167,6 @@ def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
         return tokenizer
 
 
-def _amp_context(device, dtype, enabled: bool):
-    """Autocast context for the forward pass, or a no-op when mixed precision is not in use.
-
-    Entering `torch.autocast` on a device torch has no autocast backend for raises even with
-    `enabled=False` ("User specified an unsupported autocast device_type mps"), which broke
-    every `predict()` on Apple Silicon on some torch builds. Only enter it when we use it.
-    """
-    if not enabled:
-        return nullcontext()
-    return torch.autocast(device_type=device.type, dtype=dtype)
-
-
 MPS_AMP_MIN_ROWS_DEFAULT = 5
 
 
@@ -207,6 +194,9 @@ class Agent(HookRegistry):
     mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
     # The stock forward is also used by lightweight runtimes built with __new__ in tests.
     _fast = None
+    # The installed inference backend (laya.backends); None means the stock forward.
+    _backend = None
+    backend_requested = "eager"
 
     def __init__(
         self,
@@ -222,11 +212,17 @@ class Agent(HookRegistry):
         on_predict_end=None,
         hooks_raise: bool = True,
         hooks_concurrent: bool = True,
+        backend: Optional[str] = None,
     ):
         """Load a Laya checkpoint.
 
-        `fast=True` swaps the encoder/head forward for the TileLang fast path (CUDA only, needs
-        `pip install laya[fast]`); see `Agent.accelerate`.
+        `backend` picks how the forward runs: `"eager"` (the stock PyTorch forward, the default),
+        `"compile"` (`torch.compile`, CUDA), `"tilelang"` (fused TileLang kernels, CUDA, needs
+        `pip install laya[fast]`) or `"auto"` (the best of those available here); see
+        `laya.backends`. A backend that cannot run falls back to eager with one warning.
+        `fast=True` is `backend="tilelang"` and `compile=True` is `backend="compile"`; an explicit
+        `backend` wins over both. `Agent.set_backend` switches later, `Agent.backend` says which
+        one is installed.
 
         `subfolder` selects one checkpoint from a repo that bundles several, e.g.
         `Agent("convaiinnovations/laya", subfolder="multilingual")`. Only that subfolder is
@@ -336,15 +332,16 @@ class Agent(HookRegistry):
 
         # ModernBERT's reference_compile defaults to "auto" and will torch.compile the encoder.
         # That is a loss for the batch sizes Laya runs (a handful of questions per call) and can
-        # hang on some platforms, so keep the eager path unless explicitly requested.
+        # hang on some platforms, so keep the eager path; the `compile` backend compiles the whole
+        # forward itself.
         try:
-            self.model.encoder.config.reference_compile = compile
+            self.model.encoder.config.reference_compile = False
         except Exception:
             pass
-            
-        # The TileLang fast path replaces the forward itself, so it takes precedence over compile.
-        if compile and not fast:
-            self.model = torch.compile(self.model)
+
+        if backend is None:
+            backend = "tilelang" if fast else ("compile" if compile else "eager")
+        self.backend_requested = _normalise_backend(backend)
 
         # Keep what the checkpoint shipped for inspection, but only ever apply clamped values:
         # some buckets are fitted to sharpen rather than soften (see clamp_temperature).
@@ -383,30 +380,16 @@ class Agent(HookRegistry):
                 "using %s. Treat confidence from the affected entries as uncalibrated."
                 % (TEMP_MIN, TEMP_MAX, ", ".join(rejected)),
                 RuntimeWarning, stacklevel=2)
-        # Autocast policy. CUDA and MPS both support fp16/bf16 autocast and the shipped
-        # checkpoints are trained in reduced precision. CPU bf16 is only a win on hardware with
-        # native BF16, so it stays opt-in via LAYA_CPU_AMP=bf16. MPS fp16 is slower than fp32 on
-        # a single small row (autocast overhead dominates) and only wins once the batch has
-        # several rows, so it is gated per call by `mps_amp_min_rows` (default 5, override with
-        # LAYA_MPS_AMP_MIN_ROWS) rather than enabled unconditionally.
-        self.dtype = torch.float32
-        self.amp_enabled = False
+        # Autocast policy: one dtype per agent, chosen in `laya.backends.choose_dtype` so every
+        # backend honours the same one. MPS fp16 is slower than fp32 on a single small row
+        # (autocast overhead dominates) and only wins once the batch has several rows, so it is
+        # gated per call by `mps_amp_min_rows` (default 5, override with LAYA_MPS_AMP_MIN_ROWS)
+        # rather than enabled unconditionally.
+        self.dtype, self.amp_enabled = choose_dtype(self.device, self.cfg)
         self.mps_amp_min_rows = _mps_amp_min_rows()
-        if self.device.type == "cuda":
-            self.amp_enabled = True
-            if torch.cuda.get_device_capability(self.device)[0] < 8:
-                self.dtype = torch.float16
-            else:
-                self.dtype = amp_dtype(self.cfg.get("amp_dtype", "fp16"))
-        elif self.device.type == "mps":
-            self.amp_enabled = True
-            self.dtype = torch.float16
-        elif self.device.type == "cpu":
-            if os.environ.get("LAYA_CPU_AMP", "").lower() in ("bf16", "bfloat16"):
-                self.amp_enabled = True
-                self.dtype = torch.bfloat16
 
         self._fast = None
+        self._backend = None
 
         # 2. Place on device with graceful fallback to CPU on memory error
         fell_back_from = fell_back_why = None
@@ -424,8 +407,8 @@ class Agent(HookRegistry):
             else:
                 raise e
 
-        if fast:
-            self.accelerate()
+        if self.backend_requested != "eager":
+            self.set_backend(self.backend_requested)
 
         if fell_back_from is not None:
             print(
@@ -438,41 +421,55 @@ class Agent(HookRegistry):
                 "  See https://pytorch.org/get-started/locally/\n"
                 % (fell_back_from, fell_back_why), flush=True)
 
-    def accelerate(self, use_graphs: bool = True, strict: bool = False):
-        """Replace the model forward with the TileLang fast path (fused GEMM/GEGLU/LayerNorm/RoPE kernels,
-        sliding-window flash attention, bf16 resident weights, CUDA graphs per shape bucket).
+    @property
+    def backend(self) -> str:
+        """The installed inference backend: "eager", "compile" or "tilelang" (see `laya.backends`)."""
+        return self._backend.name if self._backend is not None else "eager"
 
-        Same numerics as the stock bf16 autocast path (see benchmarks/bench_fast.py). Returns True if
+    @property
+    def backend_object(self):
+        """The installed `laya.backends.Backend`, for its own attributes (`warmup_s`, `max_len`, ...)."""
+        return self._backend
+
+    def set_backend(self, name: str = "auto", strict: bool = False, **options) -> str:
+        """Install an inference backend and return the name of the one that ended up installed.
+
+        `name` is "auto", "eager", "compile" or "tilelang" (`laya.backends`). The previous backend
+        is uninstalled first. A backend that cannot run here (no CUDA, dependency missing, dtype
+        unsupported) falls back to eager with one `RuntimeWarning`; `strict=True` raises
+        `laya.backends.BackendUnavailable` instead. `options` go to the backend's constructor
+        (`use_graphs=` for tilelang, `warmup=`/`mode=` for compile).
+        """
+        from . import backends
+        backend = backends.install(self, name, strict=strict, **options)
+        self._fast = getattr(backend, "fast", None)
+        return backend.name
+
+    def accelerate(self, use_graphs: bool = True, strict: bool = False):
+        """Install the TileLang backend (fused GEMM/GEGLU/LayerNorm/RoPE kernels, sliding-window flash
+        attention, bf16 resident weights, CUDA graphs per shape bucket): `set_backend("tilelang")`.
+
+        Same numerics as the stock bf16 autocast path (see benchmarks/parity.py). Returns True if
         enabled. With `strict=False` any failure (no CUDA, tilelang missing) leaves the stock path in place.
         """
         if self._fast is not None:
             return True
-        if self.device.type != "cuda":
-            if strict:
-                raise RuntimeError("laya fast path needs a CUDA device")
+        if strict:
+            self.set_backend("tilelang", strict=True, use_graphs=use_graphs)
+            return True
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            name = self.set_backend("tilelang", use_graphs=use_graphs)
+        if name != "tilelang":
+            print("Warning: laya fast path unavailable (%s); using the stock forward."
+                  % (caught[0].message if caught else "unknown"))
             return False
-        last = None
-        for _attempt in range(2):  # tilelang's JIT cache has been seen to fail once, then succeed
-            try:
-                from .fast import FastLaya
-                self._fast = FastLaya(self.model, max_len=self.cfg.get("max_len", 512), use_graphs=use_graphs)
-                break
-            except Exception as e:  # tilelang missing / unsupported arch
-                last = e
-        if self._fast is None:
-            if strict:
-                raise last
-            print("Warning: laya fast path unavailable (%s); using the stock forward." % last)
-            return False
-        self._stock_forward = self.model.forward
-        self.model.forward = self._fast.forward
         return True
 
     def deaccelerate(self):
-        """Restore the stock forward."""
-        if self._fast is not None:
-            self.model.forward = self._stock_forward
-            self._fast = None
+        """Restore the stock forward: `set_backend("eager")`."""
+        if self._backend is not None:
+            self.set_backend("eager")
 
     @staticmethod
     def _check_question(qid: str, qdef: Any) -> None:
@@ -603,11 +600,12 @@ class Agent(HookRegistry):
         """Run the forward pass under autocast, degrading gracefully on OOM or unsupported autocast."""
         use_amp = self._amp_enabled_for(b["input_ids"].shape[0])
 
-        if self._fast is not None and b["input_ids"].shape[1] > self._fast.max_len:
+        limit = getattr(self._backend, "max_len", None) or getattr(self._fast, "max_len", None)
+        if limit and b["input_ids"].shape[1] > limit:
             raise ValueError(
-                "the CUDA fast path was built for max_len=%d; this request needs %d tokens. "
-                "Use max_len <= %d or load without fast=True."
-                % (self._fast.max_len, b["input_ids"].shape[1], self._fast.max_len)
+                "the %s backend was built for max_len=%d; this request needs %d tokens. "
+                "Use max_len <= %d or load with backend=\"eager\"."
+                % (self.backend, limit, b["input_ids"].shape[1], limit)
             )
 
         def run():
@@ -629,9 +627,9 @@ class Agent(HookRegistry):
             low = str(e).lower()
             if self.device.type != "cpu" and ("memory" in low or "cuda" in low):
                 print("Warning: GPU memory exceeded during inference. Falling back to CPU...")
-                # FastLaya keeps copied CUDA weights and replaces model.forward.  Move
-                # the model first without that replacement, or the retry would still
-                # execute on the failed CUDA fast path.
+                # A CUDA backend keeps copied weights or graphs and replaces model.forward.
+                # Drop it before moving the model, or the retry would still execute on the
+                # failed CUDA path.
                 self.deaccelerate()
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
@@ -922,19 +920,33 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
          token: Optional[str] = None, subfolder: Optional[str] = None, fast: bool = False,
          lang_temperatures: Optional[Dict[str, Dict[str, Any]]] = None,
          hooks=None, on_predict_start=None, on_predict_end=None,
-         hooks_raise: bool = True, hooks_concurrent: bool = True) -> Agent:
+         hooks_raise: bool = True, hooks_concurrent: bool = True,
+         backend: Optional[str] = None, compile: bool = False, onnx_path: Optional[str] = None):
     """Load a Laya agent.
 
     `subfolder` picks one checkpoint out of a repo that bundles several:
 
         laya.load("convaiinnovations/laya")                           # English (repo root)
         laya.load("convaiinnovations/laya", subfolder="multilingual")
-        laya.load("convaiinnovations/laya", fast=True)                # TileLang GPU fast path
+        laya.load("convaiinnovations/laya", backend="auto")           # best backend available here
+        laya.load("convaiinnovations/laya", fast=True)                # TileLang GPU fast path (= backend="tilelang")
+
+    `backend` is "auto", "eager", "compile", "tilelang" or "onnx" (see `laya.backends`); the
+    default is the stock eager forward. `backend="onnx"` returns a `laya.onnx_agent.ONNXAgent`
+    over the exported model at `onnx_path` (default `laya.onnx`, or `LAYA_ONNX_PATH`), the CPU
+    option with its own runtime; it has the same `predict` surface but no `lang_temperatures`.
 
     `hooks` / `on_predict_start` / `on_predict_end` observe or shape every prediction; see
     `laya.hooks`.
     """
-    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast,
+    if backend is not None and _normalise_backend(backend) == "onnx":
+        if lang_temperatures:
+            raise ValueError("backend='onnx' (ONNXAgent) does not support lang_temperatures")
+        from .onnx_agent import ONNXAgent
+        return ONNXAgent(model_id_or_path, onnx_path=onnx_path or os.environ.get("LAYA_ONNX_PATH", "laya.onnx"),
+                         subfolder=subfolder, hooks=hooks, on_predict_start=on_predict_start,
+                         on_predict_end=on_predict_end, hooks_raise=hooks_raise, hooks_concurrent=hooks_concurrent)
+    return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast, compile=compile,
                  lang_temperatures=lang_temperatures,
                  hooks=hooks, on_predict_start=on_predict_start, on_predict_end=on_predict_end,
-                 hooks_raise=hooks_raise, hooks_concurrent=hooks_concurrent)
+                 hooks_raise=hooks_raise, hooks_concurrent=hooks_concurrent, backend=backend)

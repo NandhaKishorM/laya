@@ -225,12 +225,16 @@ class Router(HookRegistry):
         on_predict_end=None,
         hooks_raise: bool = True,
         hooks_concurrent: bool = True,
+        backend: Optional[str] = None,
     ):
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
         self.hooks_concurrent = bool(hooks_concurrent)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
         self._hooks_mutex = threading.Lock()
+        # The inference backend every Agent this Router builds is loaded with ("auto", "eager",
+        # "compile", "tilelang"; see `laya.backends`). None keeps the stock eager forward.
+        self.backend = backend
         self.models = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
         if models:
             self.models.update({normalise_name(k): v for k, v in models.items()})
@@ -267,7 +271,7 @@ class Router(HookRegistry):
                 return self._agents[key]
             from .agent import Agent
             repo, sub = _split(self.models[key])
-            agent = Agent(repo, device=self.device, token=self.token, subfolder=sub)
+            agent = Agent(repo, device=self.device, token=self.token, subfolder=sub, backend=self.backend)
             self._agents[key] = agent
             self._order.append(key)
             evicted = self._evict_locked()

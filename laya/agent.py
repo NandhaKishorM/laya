@@ -12,6 +12,7 @@ import numpy as np
 import torch
 
 from .common import (
+    HEAD_OPTION_SLACK,
     QTYPES,
     TEMP_MAX,
     TEMP_MIN,
@@ -24,6 +25,7 @@ from .common import (
     confidence_from_probs,
     _resolve_noul_labels,
     encode_text,
+    head_budget_for,
     render_options,
     serialize_state,
     temp_bucket,
@@ -645,6 +647,52 @@ class Agent(HookRegistry):
             q["labels"] = qdef["labels"]
         return q
 
+    @staticmethod
+    def _resolve_head_budget(questions, cfg):
+        """Return (head_max_len, max_len, report) for one predict call.
+
+        Does not load weights. `questions` is the public predict dict. One forward
+        uses one cfg, so the returned head is the max required across questions
+        that can still fit 4 tokens per option in the encoder.
+        """
+        head0 = int(cfg.get("head_max_len", 192))
+        max0 = int(cfg.get("max_len", 512))
+        enc = cfg.get("encoder_max_len", cfg.get("encoder_max", max0))
+        enc = int(enc)
+        applied_head, applied_max = head0, max0
+        budgets = {}
+        for qid, qdef in questions.items():
+            q = Agent._to_internal(qdef)
+            k = len(render_options(q))
+            b = head_budget_for(k, head0, max0, enc)
+            budgets[qid] = b
+            if b.ok:
+                if b.head_max_len > applied_head:
+                    applied_head = b.head_max_len
+                if b.max_len > applied_max:
+                    applied_max = b.max_len
+        raised_call = applied_head != head0 or applied_max != max0
+        report = {}
+        for qid, b in budgets.items():
+            if b.ok:
+                tpo = max(1, (applied_head - HEAD_OPTION_SLACK) // max(1, b.k)) if b.k else 0
+                report[qid] = {
+                    "k": b.k,
+                    "tokens_per_option": tpo,
+                    "head_max_len": applied_head,
+                    "max_len": applied_max,
+                    "raised": raised_call,
+                }
+            else:
+                report[qid] = {
+                    "k": b.k,
+                    "tokens_per_option": b.tokens_per_option,
+                    "head_max_len": b.head_max_len,
+                    "max_len": b.max_len,
+                    "raised": False,
+                }
+        return applied_head, applied_max, report
+
     def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict],
                       max_len: Optional[int] = None, head_max_len: Optional[int] = None) -> List[Dict]:
         """Tokenize one state against every (already validated + normalized) question.
@@ -822,7 +870,9 @@ class Agent(HookRegistry):
                       hooks_timeout: Optional[float] = None,
                       max_len: Optional[int] = None,
                       head_max_len: Optional[int] = None,
-                      sort_by_length: bool = False) -> List[Dict[str, Any]]:
+                      sort_by_length: bool = False,
+                      auto_head_budget: bool = False,
+                      persist: bool = False) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, packing them into shared forward passes.
 
         This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
@@ -852,6 +902,14 @@ class Agent(HookRegistry):
                     smaller than the number of states; otherwise it has no effect. Results retain
                     input order. This buffers up to eight batches of tokenized states instead of
                     one. Changing batch shapes can slightly change floating-point predictions.
+            auto_head_budget: Raise head_max_len for this call when options would otherwise get
+                    fewer than 4 tokens. Also honors cfg["auto_head_budget"]. Default False, so
+                    existing calls stay byte-identical. An explicit head_max_len / max_len, or a
+                    start hook that sets them, is the baseline this only raises. If 4 tokens per
+                    option cannot fit in the encoder, that baseline stays and predict still raises
+                    rather than truncating below the floor. `predict_shortlist` narrows options
+                    before this runs, so the allocator sees the kept labels.
+            persist: Write the allocated head_max_len / max_len back to self.cfg. Default False.
 
         Returns:
             A list of per-state result dicts, each identical in shape to `system_one`'s output and
@@ -888,6 +946,24 @@ class Agent(HookRegistry):
                         for qid in ids:
                             self._check_question(qid, questions[qid])
                         internal = {qid: self._to_internal(questions[qid]) for qid in ids}
+                        # Hand-built agents in tests have no cfg. Only a real config, or an
+                        # explicit opt-in, may move the budget; the default path stays put.
+                        cfg_auto = (getattr(self, "cfg", None) or {}).get("auto_head_budget")
+                        auto = bool(auto_head_budget or cfg_auto)
+                        head_budget_report = None
+                        if auto:
+                            base_cfg = dict(getattr(self, "cfg", None) or {})
+                            if ctx.max_len is not None:
+                                base_cfg["max_len"] = ctx.max_len
+                            if ctx.head_max_len is not None:
+                                base_cfg["head_max_len"] = ctx.head_max_len
+                            head_max_len, max_len, head_budget_report = self._resolve_head_budget(
+                                questions, base_cfg)
+                            ctx.head_max_len = head_max_len
+                            ctx.max_len = max_len
+                            if persist:
+                                self.cfg["head_max_len"] = head_max_len
+                                self.cfg["max_len"] = max_len
                         chunk = batch_size if (batch_size and batch_size > 0) else len(states)
 
                         # Per-call token-budget overrides (a start hook may have set them).
@@ -923,10 +999,13 @@ class Agent(HookRegistry):
                                     n_tokens = int(att[row:row + nrows].sum())
                                     answers = self._decode_answers(logits, act, items, ids, internal, row,
                                                                   **({"lang": lang} if lang else {}))
+                                    usage = {"input_tokens": n_tokens, "output_tokens": 0}
+                                    if head_budget_report is not None:
+                                        usage["head_budget"] = head_budget_report
                                     window_results[index] = {
                                         "model": "laya-rl-agent",
                                         "answers": answers,
-                                        "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+                                        "usage": usage,
                                     }
                                     row += nrows
                             results.extend(window_results)
@@ -1061,7 +1140,9 @@ class Agent(HookRegistry):
                    hooks_raise: Optional[bool] = None,
                    hooks_timeout: Optional[float] = None,
                    max_len: Optional[int] = None,
-                   head_max_len: Optional[int] = None) -> Dict[str, Any]:
+                   head_max_len: Optional[int] = None,
+                   auto_head_budget: bool = False,
+                   persist: bool = False) -> Dict[str, Any]:
         """Evaluate typed questions across state in a single, parallel forward pass.
 
         Args:
@@ -1076,6 +1157,14 @@ class Agent(HookRegistry):
                   Noul criteria and labels are optional. Labels only control the text shown to the
                   model; their keys retain false/true semantics, and the returned `noul` value is
                   always P(true). Labels default to false/true for compatibility.
+            auto_head_budget: Raise head_max_len for this call when options would
+                otherwise get fewer than 4 tokens. Also honors cfg["auto_head_budget"].
+                Default False, so existing predict calls stay byte-identical. An explicit
+                head_max_len / max_len, or a start hook that sets them, is the baseline
+                this only raises. If 4 tokens per option cannot fit in the encoder, that
+                baseline stays and predict still raises rather than truncating below the floor.
+            persist: Write the allocated head_max_len / max_len back to self.cfg.
+                Default False.
 
         Returns:
             Dictionary with answers, probabilities, calibrated confidence, and token usage.
@@ -1088,7 +1177,8 @@ class Agent(HookRegistry):
                                   on_predict_start=on_predict_start,
                                   on_predict_end=on_predict_end, hooks_raise=hooks_raise,
                                   hooks_timeout=hooks_timeout,
-                                  max_len=max_len, head_max_len=head_max_len)[0]
+                                  max_len=max_len, head_max_len=head_max_len,
+                                  auto_head_budget=auto_head_budget, persist=persist)[0]
 
     def __enter__(self):
         return self

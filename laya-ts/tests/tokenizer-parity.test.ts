@@ -65,6 +65,67 @@ describe("parseTokenizerJson specials aliases", () => {
   });
 });
 
+// Expected ids are what Hugging Face `tokenizers` returns for the same JSON (add_special_tokens=False).
+// Added tokens are cut out of the text before it is tokenized: whitespace runs and placeholders in the
+// ModernBERT checkpoint, HTML tags and control tokens in the Gemma one.
+describe("added tokens (HF parity)", () => {
+  const added = (id: number, content: string, o: Record<string, unknown> = {}) =>
+    ({ id, content, single_word: false, lstrip: false, rstrip: false, normalized: false, special: false, ...o });
+  const byteLevel = parseTokenizerJson({
+    normalizer: { type: "NFC" },
+    pre_tokenizer: { type: "ByteLevel", add_prefix_space: false, use_regex: true },
+    model: {
+      vocab: { a: 0, b: 1, c: 2, "Ġ": 3, "Ċ": 4, "Ġa": 5, "Ġb": 6, "|": 7 },
+      merges: ["Ġ a", "Ġ b"],
+    },
+    added_tokens: [
+      added(8, "  ", { normalized: true }), added(9, "   ", { normalized: true }),
+      added(10, "|||X|||", { normalized: true }),
+      added(11, "[SEP]", { special: true }), added(12, "[MASK]", { special: true, lstrip: true }),
+    ],
+  })!;
+  const metaspace = parseTokenizerJson({
+    normalizer: { type: "Replace", pattern: { String: " " }, content: "▁" },
+    pre_tokenizer: { type: "Metaspace", replacement: "▁", prepend_scheme: "always", split: true },
+    model: {
+      vocab: { "▁": 0, a: 1, b: 2, "▁a": 3, "▁b": 4, "<unk>": 5, c: 6, "▁c": 7 },
+      merges: ["▁ a", "▁ b", "▁ c"],
+    },
+    added_tokens: [added(8, "<t>"), added(9, "<eos>", { special: true })],
+  })!;
+
+  it.each<[string, number[]]>([
+    ["a b", [0, 6]],
+    ["a  b", [0, 8, 1]],
+    ["a   b", [0, 9, 1]],
+    ["a    b", [0, 9, 6]],
+    ["  a", [8, 0]],
+    ["a  ", [0, 8]],
+    ["a|||X|||b", [0, 10, 1]],
+    ["a[SEP]b", [0, 11, 1]],
+    ["a [MASK] b", [0, 12, 6]],
+    ["a [SEP] b", [0, 3, 11, 6]],
+    ["a\n  b", [0, 4, 8, 1]],
+    ["ab  ca", [0, 1, 8, 2, 0]],
+  ])("ByteLevel: %j", (text, ids) => {
+    expect(encodeWithData(byteLevel, text)).toEqual(ids);
+  });
+
+  it.each<[string, number[]]>([
+    ["a<t>b", [3, 8, 4]],
+    ["<t>", [8]],
+    ["a <t> b", [3, 0, 8, 4]],
+    ["<t><t>", [8, 8]],
+    ["a<eos>b", [3, 9, 4]],
+    ["a  b", [3, 0, 4]],
+    ["<t>a", [8, 3]],
+    ["a<t>", [3, 8]],
+    ["a <eos>", [3, 0, 9]],
+  ])("Metaspace: %j", (text, ids) => {
+    expect(encodeWithData(metaspace, text)).toEqual(ids);
+  });
+});
+
 describe("model-ml/tokenizer.json parity (gated on file presence)", () => {
   it("reproduces reference id-sequences byte-identical", () => {
     if (!existsSync(mlPath)) return;

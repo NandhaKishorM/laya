@@ -27,7 +27,11 @@ export interface TokenizerData {
   maskToken: string;
   /** Normalizer Replace rules (pattern -> content) applied in order before pre-tokenizing. */
   replaces: Array<[string, string]>;
+  /** Tokens cut out of the text before it is tokenized (HF added_tokens). */
+  added?: AddedToken[];
 }
+
+export interface AddedToken { content: string; id: number; normalized: boolean; lstrip: boolean; rstrip: boolean }
 
 /** Metaspace word-boundary marker (HF SentencePiece-style replacement for ' '). */
 export const METASPACE_REPLACEMENT = "▁";
@@ -281,11 +285,85 @@ export function metaspaceEncode(
   return out;
 }
 
-/** Dispatch to the Metaspace or GPT-2/ByteLevel encoder based on the parsed pre-tokenizer. */
-export function encodeWithData(data: TokenizerData, text: string): number[] {
+function encodeSegment(data: TokenizerData, text: string): number[] {
   return data.kind === "metaspace"
     ? metaspaceEncode(data.vocab, data.merges, text, data.ids.unk, data.replaces)
     : bpeEncode(data.vocab, data.merges, text);
+}
+
+/** Regex source for `words`, longest match first, as a prefix tree: one branch per next character
+ *  rather than one alternative per token, so a scan does not try every token at every position. */
+function trieSource(words: string[]): string {
+  type Node = { kids: Map<string, Node>; end: boolean };
+  const root: Node = { kids: new Map(), end: false };
+  for (const w of words) {
+    let n = root;
+    for (const ch of w) {
+      let k = n.kids.get(ch);
+      if (!k) n.kids.set(ch, (k = { kids: new Map(), end: false }));
+      n = k;
+    }
+    n.end = true;
+  }
+  const walk = (n: Node): string => {
+    const alts = [...n.kids].map(([c, k]) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + walk(k));
+    if (!alts.length) return "";
+    const body = alts.length === 1 ? alts[0] : "(?:" + alts.join("|") + ")";
+    return n.end ? "(?:" + body + ")?" : body;
+  };
+  return walk(root);
+}
+
+type AddedPhase = { re: RegExp; byContent: Map<string, AddedToken>; normalized: boolean };
+const addedPhases = new WeakMap<TokenizerData, AddedPhase[]>();
+
+/** HF matches added tokens that are not `normalized` on the raw text first, then the `normalized` ones
+ *  on what is left. */
+function phasesOf(data: TokenizerData): AddedPhase[] {
+  let phases = addedPhases.get(data);
+  if (!phases) {
+    phases = [false, true].flatMap((normalized) => {
+      const toks = (data.added ?? []).filter((t) => t.normalized === normalized && t.content);
+      if (!toks.length) return [];
+      const re = new RegExp(trieSource(toks.map((t) => t.content)), "gu");
+      return [{ re, byContent: new Map(toks.map((t) => [t.content, t])), normalized }];
+    });
+    addedPhases.set(data, phases);
+  }
+  return phases;
+}
+
+function splitOnAdded(text: string, { re, byContent }: AddedPhase): Array<string | AddedToken> {
+  const out: Array<string | AddedToken> = [];
+  let last = 0;
+  for (const m of text.matchAll(re)) {
+    const tok = byContent.get(m[0])!;
+    let before = text.slice(last, m.index);
+    if (tok.lstrip) before = before.trimEnd();
+    if (before) out.push(before);
+    out.push(tok);
+    last = m.index + m[0].length;
+    if (tok.rstrip) while (last < text.length && /\s/u.test(text[last])) last++;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+/** Dispatch to the Metaspace or GPT-2/ByteLevel encoder, after cutting out added tokens as HF does. */
+export function encodeWithData(data: TokenizerData, text: string): number[] {
+  let pieces: Array<string | AddedToken> = [text];
+  for (const phase of phasesOf(data)) {
+    pieces = pieces.flatMap((p) => {
+      if (typeof p !== "string") return [p];
+      return splitOnAdded(phase.normalized && data.kind === "bytelevel" ? p.normalize("NFC") : p, phase);
+    });
+  }
+  const out: number[] = [];
+  for (const p of pieces) {
+    if (typeof p === "string") out.push(...encodeSegment(data, p));
+    else out.push(p.id);
+  }
+  return out;
 }
 
 function childNodes(node: unknown): unknown[] {
@@ -326,7 +404,7 @@ export function parseTokenizerJson(raw: unknown): TokenizerData | null {
       model?: { vocab?: Record<string, number>; merges?: Array<string | [string, string]> };
       normalizer?: unknown;
       pre_tokenizer?: unknown;
-      added_tokens?: Array<{ id?: number; content?: string }>;
+      added_tokens?: Array<{ id?: number; content?: string; normalized?: boolean; lstrip?: boolean; rstrip?: boolean }>;
     };
     const vocabObj = r?.model?.vocab;
     if (!vocabObj || typeof vocabObj !== "object") return null;
@@ -337,8 +415,15 @@ export function parseTokenizerJson(raw: unknown): TokenizerData | null {
       if (pair.length >= 2) merges.set(pair[0] + " " + pair[1], i);
     }
     const added = new Map<string, number>();
+    const addedTokens: AddedToken[] = [];
     for (const t of r.added_tokens ?? []) {
-      if (typeof t?.content === "string" && typeof t?.id === "number") added.set(t.content, t.id);
+      if (typeof t?.content === "string" && typeof t?.id === "number") {
+        added.set(t.content, t.id);
+        addedTokens.push({
+          content: t.content, id: t.id,
+          normalized: t.normalized === true, lstrip: t.lstrip === true, rstrip: t.rstrip === true,
+        });
+      }
     }
     const pick = (aliases: readonly string[], fb: number): { id: number; token: string } => {
       for (const a of aliases) {
@@ -362,6 +447,7 @@ export function parseTokenizerJson(raw: unknown): TokenizerData | null {
       kind,
       maskToken: mask.token,
       replaces,
+      added: addedTokens,
     };
   } catch {
     return null;

@@ -392,6 +392,23 @@ def test_validation_errors_are_not_logged_as_failures(monkeypatch, caplog):
     assert not [r for r in caplog.records if r.levelno >= logging.ERROR], caplog.records
 
 
+class ValidatingRouter:
+    """The real guard, without a checkpoint: what `Agent.system_one` runs before encoding.
+
+    The app does not validate `criteria` itself -- the agent does -- so the stub calls the
+    same guard `system_one` calls, and any `ValueError` it raises is what `serve` has to map
+    to 422. `predict` still fails loudly if the guard lets something through.
+    """
+
+    loaded = ["english"]
+
+    def predict(self, state, questions, model=None):
+        from laya.agent import Agent
+        for qid, qdef in questions.items():
+            Agent._check_question(qid, qdef)
+        raise AssertionError("validation should have rejected this before predict()")
+
+
 def test_a_nested_choice_label_is_a_caller_error_not_a_server_fault(monkeypatch):
     """A `criteria` list containing a list/dict label is the caller's mistake, so it must be 422.
 
@@ -400,22 +417,6 @@ def test_a_nested_choice_label_is_a_caller_error_not_a_server_fault(monkeypatch)
     `ValueError` to 422, so the caller got a 500 "inference failed" with the reason discarded.
     `ValueError` is what carries the message to the client, so the guard has to raise that type.
     """
-    class ValidatingRouter:
-        """The real guard, without a checkpoint: what `Agent.system_one` runs before encoding.
-
-        The app does not validate `criteria` itself -- the agent does -- so the stub calls the
-        same guard `system_one` calls, and any `ValueError` it raises is what `serve` has to map
-        to 422. `predict` still fails loudly if the guard lets something through.
-        """
-
-        loaded = ["english"]
-
-        def predict(self, state, questions, model=None):
-            from laya.agent import Agent
-            for qid, qdef in questions.items():
-                Agent._check_question(qid, qdef)
-            raise AssertionError("validation should have rejected this before predict()")
-
     monkeypatch.delenv("LAYA_API_KEY", raising=False)
     client = TestClient(create_app(router=ValidatingRouter()), raise_server_exceptions=False)
 
@@ -426,6 +427,32 @@ def test_a_nested_choice_label_is_a_caller_error_not_a_server_fault(monkeypatch)
         response = client.post("/v1/systemone", json=body)
         assert response.status_code == 422, (label, response.status_code, response.text)
         assert "choice label 0" in response.text, response.text
+
+
+def test_a_colliding_choice_label_is_a_caller_error_not_a_server_fault(monkeypatch):
+    """A `criteria` list that cannot produce one answer key per option must be 422, not 500.
+
+    `_to_internal` normalises the list form to `{label: None}`, so two entries that land on one
+    key scored fewer options than the caller wrote. `serve` maps `ValueError` to 422 and anything
+    else to a 500 "inference failed", so the guard has to raise `ValueError` and say which labels
+    collided. (An unhashable label is the same class of mistake, but JSON has no tuple: a list or
+    dict label arrives as one of those and the guard above already names it, which
+    `test_a_nested_choice_label_is_a_caller_error_not_a_server_fault` covers.)
+    """
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    client = TestClient(create_app(router=ValidatingRouter()), raise_server_exceptions=False)
+
+    for criteria, expect in (
+        (["billing", "billing", "tech"], "repeats label 0"),
+        ([1, 1.0], "repeats label 0"),       # one dict key, two entries
+        ([True, 1], "repeats label 0"),      # `True == 1` is one dict key too
+    ):
+        body = dict(REQ)
+        body["questions"] = {"dept": {"type": "choice", "instructions": "Which team?",
+                                      "criteria": criteria}}
+        response = client.post("/v1/systemone", json=body)
+        assert response.status_code == 422, (criteria, response.status_code, response.text)
+        assert expect in response.text, (criteria, response.text)
 
 
 def test_inference_timing_headers():

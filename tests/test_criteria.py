@@ -322,6 +322,19 @@ for label, qdef in [
     ("unknown type", {"type": "bool", "instructions": "Is it spam?"}),
     ("missing type", {"instructions": "Is it spam?"}),
     ("no instructions", {"type": "noul"}),
+    # A criteria list is normalised to `{label: None}`, so its labels are the answer keys. Two
+    # entries that land on one key scored fewer options than the caller wrote and returned fewer
+    # probabilities than their list, without a word. Python collapses keys that compare equal, so
+    # `[1, 1.0]` and `[True, 1]` collapse like an exact repeat, and an unhashable label raised
+    # `TypeError: cannot use 'tuple' as a dict key` from `_to_internal`, three frames down.
+    ("choice with a duplicate label", {"type": "choice", "instructions": "Which team?",
+                                       "criteria": ["billing", "billing", "tech"]}),
+    ("choice with 1 and 1.0 labels", {"type": "choice", "instructions": "Which team?",
+                                      "criteria": [1, 1.0]}),
+    ("choice with True and 1 labels", {"type": "choice", "instructions": "Which team?",
+                                       "criteria": [True, 1]}),
+    ("choice with an unhashable label", {"type": "choice", "instructions": "Which team?",
+                                         "criteria": [("billing", ["tech"]), "sales"]}),
 ]:
     try:
         agent.system_one(STATE, {"q": qdef})
@@ -338,6 +351,24 @@ try:
     FAIL.append("rejected/score null level names the level: no error raised")
 except ValueError as e:
     check_true("rejected/score null level names the level", "level 1" in str(e), str(e))
+
+# a colliding label names the repeat and the label it repeats, so a twenty-option question can be
+# fixed without guessing which pair collided
+try:
+    agent.system_one(STATE, {"q": {"type": "choice", "instructions": "Which team?",
+                                   "criteria": ["billing", "tech", "billing"]}})
+    FAIL.append("rejected/duplicate choice label names both: no error raised")
+except ValueError as e:
+    check_true("rejected/duplicate choice label names both",
+               "label 2" in str(e) and "label 0" in str(e) and "billing" in str(e), str(e))
+
+# the option count the caller wrote is preserved, so the guard must not reject distinct labels
+try:
+    out = agent.system_one(STATE, {"q": {"type": "choice", "instructions": "Which team?",
+                                         "criteria": ["billing", "tech", "sales"]}})
+    check("rejected/distinct labels still answer", len(out["answers"]["q"]["probabilities"]), 3)
+except Exception as e:  # noqa: BLE001
+    FAIL.append("rejected/distinct labels still answer: %s" % e)
 
 # the same questions through the public entry point, not only the method under it
 router = Router()

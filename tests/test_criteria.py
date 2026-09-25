@@ -294,6 +294,16 @@ for label, qdef in [
     # value, which a Jev client refuses to parse (#302)
     ("score with a null level", {"type": "score", "instructions": "How urgent?",
                                  "criteria": ["low", None, "high"]}),
+    # the same defect one question type over (#302): a null *label* is option text AND the answer
+    # key, and `_to_internal` normalises the list to `{label: None}`, so the option read "None"
+    # while its answer key and probabilities key were the JSON string "null" -- a client cannot
+    # tell that apart from the string `"null"`, and the key is unreachable from the response
+    ("choice with a null label", {"type": "choice", "instructions": "Which team?",
+                                  "criteria": ["billing", None]}),
+    ("choice with a null label first", {"type": "choice", "instructions": "Which team?",
+                                        "criteria": [None, "billing"]}),
+    ("choice with only a null label", {"type": "choice", "instructions": "Which team?",
+                                       "criteria": [None]}),
     ("choice with labels", {"type": "choice", "instructions": "Which team?",
                             "criteria": ["billing", "tech"],
                             "labels": {"false": "B", "true": "A"}}),
@@ -338,6 +348,31 @@ try:
     FAIL.append("rejected/score null level names the level: no error raised")
 except ValueError as e:
     check_true("rejected/score null level names the level", "level 1" in str(e), str(e))
+
+# ...and a null choice label names the label, with the reason it is refused
+try:
+    agent.system_one(STATE, {"q": {"type": "choice", "instructions": "Which team?",
+                                   "criteria": ["billing", None]}})
+    FAIL.append("rejected/choice null label names the label: no error raised")
+except ValueError as e:
+    check_true("rejected/choice null label names the label", "label 1" in str(e), str(e))
+    check_true("rejected/choice null label says why it is refused",
+               "answer key" in str(e), str(e))
+
+# an empty-string label is NOT the same case: unlike a null it round-trips, so it stays accepted
+# (`render_options` renders it as "", the answer key is "", and `criteria[""]` finds it)
+_empty_label = None
+try:
+    _empty_label = agent.system_one(STATE, {"q": {"type": "choice", "instructions": "Which team?",
+                                                  "criteria": ["billing", ""]}})["answers"]["q"]
+except Exception as e:  # noqa: BLE001
+    FAIL.append("accepted/an empty-string label raised %r" % e)
+if _empty_label is not None:
+    check_true("accepted/an empty-string label answers", _empty_label["choice"] in ("billing", ""),
+               str(_empty_label.get("choice")))
+    check_true("accepted/its probabilities keys match the labels it sent",
+               sorted(_empty_label["probabilities"]) == ["", "billing"],
+               str(sorted(_empty_label["probabilities"])))
 
 # the same questions through the public entry point, not only the method under it
 router = Router()

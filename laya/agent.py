@@ -587,7 +587,23 @@ class Agent(HookRegistry):
                     raise ValueError(
                         "question %r: choice label %d is a %s; a label is rendered as option text "
                         "and used as the answer key, so it must be a scalar (a string, number or "
-                        "None), got %r" % (qid, i, type(label).__name__, label))
+                        "bool), got %r" % (qid, i, type(label).__name__, label))
+                if label is None:
+                    # The score path rejects a null level with the same argument one question type
+                    # over: a label is option text AND the answer key, and a null one can be
+                    # neither. `_to_internal` normalises a list of labels to `{label: None}`, so a
+                    # null label became the option text "None" (`str(None)`) while the answer key
+                    # and the `probabilities` key for that same option were the JSON string "null",
+                    # because a dict key has to be a str. A client then cannot tell whether that
+                    # option was the *string* `"null"` or JSON `null`, and the answer key is
+                    # unreachable: `criteria[answer["choice"]]` yields `None`, and
+                    # `answer["choice"] == "null"` is False for it. `""` stays accepted, because
+                    # unlike a null it does round-trip.
+                    raise ValueError(
+                        "question %r: choice label %d is null; a label is rendered as option text "
+                        "and used as the answer key, so it must be a string, number or bool -- a "
+                        "null label renders as the text \"None\" while its answer key is \"null\""
+                        % (qid, i))
         elif t == "score":
             if not isinstance(crit, list):
                 raise ValueError("question %r: a score question takes 'criteria' as a list of level "

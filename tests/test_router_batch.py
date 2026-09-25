@@ -292,3 +292,88 @@ def test_predict_and_predict_batch_pass_the_same_lang(monkeypatch):
     calls.clear()
     router.predict_batch([request("a", model="english", lang="de")])
     assert calls[-1]["lang"] == via_predict == "de"
+
+
+# ------------------------------------------------------------------ error isolation
+# These inject a fake agent instead of going through `laya.agent.Agent`, so the isolation
+# lifecycle is testable without torch. `Router.load` is replaced, which is the only place the
+# real Agent is constructed.
+
+class _IsolatingAgent:
+    """A checkpoint agent whose 'bad' state fails the whole batch, like a real poison input."""
+
+    def __init__(self):
+        self.batches = []
+
+    def predict_batch(self, states, questions, batch_size=None, **overrides):
+        self.batches.append(list(states))
+        if "bad" in states:
+            raise RuntimeError("batch poisoned")
+        return [{"model": "laya-rl-agent", "answers": {"seen": state}, "usage": {}} for state in states]
+
+    def system_one(self, state, questions, **overrides):
+        return self.predict_batch([state], questions)[0]
+
+
+def _isolating_router():
+    router = Router(max_loaded=1, default="english")
+    agent = _IsolatingAgent()
+    router.load = lambda name: agent          # bypass Agent/torch
+    return router, agent
+
+
+class _LifecycleHook:
+    def __init__(self):
+        self.events = []
+
+    def on_predict_start(self, ctx):
+        self.events.append(("start", ctx.run_id))
+
+    def on_predict_end(self, ctx):
+        self.events.append(("end", ctx.run_id))
+
+    def on_error(self, ctx):
+        self.events.append(("error", ctx.run_id))
+
+
+def test_predict_batch_isolation_returns_the_failing_request_exception():
+    router, _ = _isolating_router()
+    results = router.predict_batch(
+        [request("good"), request("bad"), request("also good")], isolate_errors=True)
+    assert results[0]["answers"]["seen"] == "good"
+    assert isinstance(results[1], RuntimeError)
+    assert results[2]["answers"]["seen"] == "also good"
+    assert results[0]["routing"]["model"] == "english"
+
+
+def test_predict_batch_isolation_keeps_one_lifecycle_per_request():
+    router, _ = _isolating_router()
+    hook = _LifecycleHook()
+    router.hooks = [hook]
+    router.predict_batch([request("good"), request("bad")], isolate_errors=True)
+    starts = [rid for event, rid in hook.events if event == "start"]
+    ends = [rid for event, rid in hook.events if event == "end"]
+    errors = [rid for event, rid in hook.events if event == "error"]
+    # one run_id per request, exactly one start and one end, and the error is one of them
+    assert len(starts) == 2 and len(set(starts)) == 2
+    assert sorted(starts) == sorted(ends)
+    assert len(errors) == 1 and errors[0] in starts
+
+
+def test_predict_batch_isolation_does_not_repeat_a_completed_group():
+    router, agent = _isolating_router()
+    q2 = {"risk": {"type": "noul", "instructions": "Risky?"}}
+    results = router.predict_batch(
+        [{"state": "a", "questions": Q, "model": "english"},
+         {"state": "bad", "questions": q2, "model": "english"}],
+        isolate_errors=True)
+    assert results[0]["answers"]["seen"] == "a"
+    assert isinstance(results[1], RuntimeError)
+    # the completed first group ran once; 'a' was never retried
+    assert [state for batch in agent.batches for state in batch].count("a") == 1
+
+
+def test_predict_batch_without_isolation_still_raises():
+    router, _ = _isolating_router()
+    with pytest.raises(RuntimeError, match="poisoned"):
+        router.predict_batch([request("bad")])

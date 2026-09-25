@@ -208,6 +208,10 @@ class Router(HookRegistry):
     hooks_raise = True
     hooks_concurrent = True
     _hooks_lock = None
+    # `predict_batch(isolate_errors=True)` can return a per-request exception instead of
+    # raising. Callers feature-detect this before asking for it, so an Agent-like Router
+    # without the argument keeps working.
+    supports_batch_isolation = True
 
     def __init__(
         self,
@@ -662,6 +666,8 @@ class Router(HookRegistry):
         self,
         requests: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
+        *,
+        isolate_errors: bool = False,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -681,14 +687,23 @@ class Router(HookRegistry):
         and that has no result gets ``on_error``, then every started request gets
         ``on_predict_end``, before the exception propagates.
 
+        With ``isolate_errors=True`` a failing question group does not abort the call. Each
+        request in that group is retried alone under its own already-started context, so a
+        request that failed keeps its single ``on_predict_start`` / ``on_error`` /
+        ``on_predict_end`` lifecycle and every request that succeeded keeps its result. The
+        returned list then holds an ``Exception`` in place of the failed requests' results.
+
         Args:
             requests: Sequence of request dictionaries. Every item requires ``state`` and
                 ``questions`` and may include ``model``, ``task``, ``lang`` or
                 ``lang_guess`` overrides.
             batch_size: Optional maximum number of states per Agent forward-pass batch.
+            isolate_errors: Return a failed request's exception in the result list instead
+                of raising. Off by default, so a batch that fails raises as before.
 
         Returns:
             One normal Router prediction result per request, in the same order as the input.
+            With ``isolate_errors=True`` a failed request is represented by its exception.
         """
         decisions = self.route_batch(requests)
         if not decisions:
@@ -703,7 +718,7 @@ class Router(HookRegistry):
             # which `predict` accepts too.
             groups.setdefault(decision["model"], []).append(i)
 
-        results: List[Optional[Dict[str, Any]]] = [None] * len(requests)
+        results: List[Optional[Any]] = [None] * len(requests)
         # `compose_hooks`, not `list(self.hooks)`: this is the composition `predict` uses at its
         # own dispatch site, and it is what merges in `set_default_hooks`. Reading the instance
         # list alone silently dropped every process-wide default from the batched path while
@@ -774,29 +789,17 @@ class Router(HookRegistry):
 
                 for group in question_groups:
                     items = group["items"]
-                    batch_kwargs = dict(group["overrides"])
-                    if group["lang"] is not None:
-                        batch_kwargs["lang"] = group["lang"]
                     try:
-                        batch_results = agent.predict_batch(
-                            [ctx.states[0] for _, ctx in items],
-                            group["questions"],
-                            batch_size=batch_size,
-                            **batch_kwargs,
-                        )
-                    except TypeError as e:
-                        # Same tolerance `predict` has for an Agent-like object whose
-                        # `predict_batch` predates the `lang` argument.
-                        if batch_kwargs.get("lang") is not None and "unexpected keyword argument 'lang'" in str(e):
-                            batch_kwargs.pop("lang")
-                            batch_results = agent.predict_batch(
-                                [ctx.states[0] for _, ctx in items],
-                                group["questions"],
-                                batch_size=batch_size,
-                                **batch_kwargs,
-                            )
-                        else:
+                        batch_results = self._agent_predict_batch(agent, items, group, batch_size)
+                    except BaseException as exc:
+                        # `isolate_errors` keeps one bad request from failing its whole group,
+                        # but only by retrying each request under its own already-started
+                        # context, so no request gets a second start/end lifecycle. Without it
+                        # the failure propagates and the outer handler ends every started request.
+                        if not isolate_errors:
                             raise
+                        self._isolate_failures(active, agent, items, group, decisions, raise_errors)
+                        continue
 
                     if len(batch_results) != len(items):
                         raise RuntimeError(
@@ -810,9 +813,10 @@ class Router(HookRegistry):
             except BaseException as exc:
                 # Every started request is ended, so a hook that opens something in start (a
                 # span, an in-flight count) always sees the matching end. A request that already
-                # has its result keeps it; the rest failed with the batch.
+                # has its result keeps it; the rest failed with the batch. A request that already
+                # failed in isolation keeps its own error and is not reported again.
                 for ctx in started:
-                    if ctx.results is None:
+                    if ctx.results is None and ctx.error is None:
                         ctx.error = exc
                         try:
                             dispatch(active, "on_error", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
@@ -826,7 +830,7 @@ class Router(HookRegistry):
 
             self._end_contexts(active, started, raise_errors)
             for i, ctx in zip(indices, started):
-                results[i] = ctx.results[0]
+                results[i] = ctx.error if ctx.error is not None else ctx.results[0]
 
         # Every input index is assigned exactly once by construction. Keep this assertion local
         # so a future refactor cannot silently return a partially-filled batch.
@@ -836,6 +840,59 @@ class Router(HookRegistry):
         return [result for result in results if result is not None]
 
     predict_many = predict_batch
+
+    @staticmethod
+    def _agent_predict_batch(agent: Any, items: List[Any], group: Dict[str, Any],
+                             batch_size: Optional[int]) -> List[Dict[str, Any]]:
+        """Call ``Agent.predict_batch`` for one group, tolerating an Agent without ``lang``."""
+        batch_kwargs = dict(group["overrides"])
+        if group["lang"] is not None:
+            batch_kwargs["lang"] = group["lang"]
+        try:
+            return agent.predict_batch(
+                [ctx.states[0] for _, ctx in items],
+                group["questions"],
+                batch_size=batch_size,
+                **batch_kwargs,
+            )
+        except TypeError as e:
+            # Same tolerance `predict` has for an Agent-like object whose predict_batch
+            # predates the `lang` argument.
+            if batch_kwargs.get("lang") is not None and "unexpected keyword argument 'lang'" in str(e):
+                batch_kwargs.pop("lang")
+                return agent.predict_batch(
+                    [ctx.states[0] for _, ctx in items],
+                    group["questions"],
+                    batch_size=batch_size,
+                    **batch_kwargs,
+                )
+            raise
+
+    def _isolate_failures(self, active: List[Any], agent: Any, items: List[Any],
+                          group: Dict[str, Any], decisions: List[Any], raise_errors: bool) -> None:
+        """Retry a failed group one request at a time, under each already-started context.
+
+        The context keeps its single ``on_predict_start``; a request that fails again gets
+        ``on_error`` and its exception recorded, a request that succeeds gets its result.
+        ``on_predict_end`` is left to ``_end_contexts``, so every request still sees exactly
+        one end and no successful inference is repeated.
+        """
+        for i, ctx in items:
+            try:
+                single = self._agent_predict_batch(agent, [(i, ctx)], group, 1)
+                if len(single) != 1:
+                    raise RuntimeError(
+                        "internal error: Agent.predict_batch returned %d results for 1 state"
+                        % len(single))
+                result = single[0]
+                result["routing"] = dict(decisions[i])
+                ctx.results = [result]
+            except BaseException as exc:
+                ctx.error = exc
+                try:
+                    dispatch(active, "on_error", ctx, raise_errors=raise_errors, lock=self._hooks_lock)
+                except BaseException as hook_exc:
+                    exc.__context__ = hook_exc
 
     def _end_contexts(self, active: List[Any], contexts: List[PredictContext], raise_errors: bool) -> None:
         """Finish each request of a batch the way `predict`'s `finally` finishes one.

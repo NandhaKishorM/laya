@@ -271,15 +271,17 @@ Values are p50. p95 is within 2% of p50 on every row. Up to 10 questions, each q
 
 ---
 
-## GPU fast path
+## Inference backends
 
-`pip install laya[fast]` + `laya.load(..., fast=True)` replaces the encoder/head forward with fused
+### GPU fast path (TileLang)
+
+`pip install laya[fast]` + `laya.load(..., backend="tilelang")` (`fast=True` is the same) replaces the encoder/head forward with fused
 [TileLang](https://github.com/tile-ai/tilelang) kernels (GEMM+epilogue, GEMM+GEGLU, residual+LayerNorm,
 in-place RoPE, sliding-window flash attention over the packed QKV buffer), bf16-resident weights and one
 CUDA graph per (batch, length) bucket. Measured with `benchmarks/bench_fast.py --eval 1000` on an
 RTX 4070 Ti SUPER, torch 2.11 + CUDA 13, tilelang 0.1.14; raw numbers in `benchmarks/results/`.
 
-### Same answers
+#### Same answers
 
 `benchmarks/parity_fast.py` answers a fixed, deterministic set of 60 states x up to 8 questions (the five presets over
 12 texts in six languages, short and long) with the stock bf16-autocast forward, the fast path, and an fp32 forward as
@@ -304,7 +306,89 @@ fast path is (0.0446 against 0.0455), so this table does not show that the fast 
 Dataset accuracy / ECE (AG News, dair-ai emotion, 1,000 samples each) are identical within noise; see
 `benchmarks/bench_fast.py --eval 1000`.
 
-### Latency, `agent.predict()` end to end (ms, incl. tokenization)
+### Parity per backend
+
+`benchmarks/parity.py --backend {eager,compile,tilelang,onnx} [--dtype bf16|fp16]` answers the same fixed set
+for any backend and writes the same JSON shape (the "fast" keys name the backend under test; the file's `backend`
+field says which). Every cell below is checked against its JSON by `tests/test_doc_tables.py`. "stock" is the
+eager forward under the same autocast dtype; the fp32 reference is the eager forward with autocast off.
+`onnx` is the model `scripts/export_onnx.py` writes, run by ONNX Runtime on CPU in fp32 (one question per
+call: that export traces a batch of one and does not run with a larger batch), so its stock column is fp32 too.
+
+| checkpoint | backend | dtype | type | n | max \|p - p_stock\| | max \|p - p_fp32\| | max \|p_stock - p_fp32\| | argmax = stock | = fp32 |
+|---|---|---|---|---|---|---|---|---|---|
+| laya | `tilelang` | bf16 | choice | 48 | 0.031 | 0.022 | 0.024 | 47/48 | 47/48 |
+| laya | `tilelang` | bf16 | noul | 180 | 0.076 | 0.043 | 0.058 | 180/180 | 180/180 |
+| laya | `tilelang` | bf16 | score | 60 | 0.015 | 0.011 | 0.017 | 59/60 | 60/60 |
+| laya-multilingual | `tilelang` | bf16 | choice | 48 | 0.049 | 0.015 | 0.039 | 47/48 | 47/48 |
+| laya-multilingual | `tilelang` | bf16 | noul | 180 | 0.037 | 0.045 | 0.045 | 180/180 | 179/180 |
+| laya-multilingual | `tilelang` | bf16 | score | 60 | 0.010 | 0.009 | 0.009 | 59/60 | 59/60 |
+| laya | `compile` | bf16 | choice | 48 | 0.043 | 0.032 | 0.024 | 46/48 | 46/48 |
+| laya | `compile` | bf16 | noul | 180 | 0.043 | 0.051 | 0.058 | 180/180 | 180/180 |
+| laya | `compile` | bf16 | score | 60 | 0.014 | 0.017 | 0.017 | 59/60 | 60/60 |
+| laya-multilingual | `compile` | bf16 | choice | 48 | 0.022 | 0.030 | 0.039 | 48/48 | 48/48 |
+| laya-multilingual | `compile` | bf16 | noul | 180 | 0.028 | 0.055 | 0.045 | 180/180 | 179/180 |
+| laya-multilingual | `compile` | bf16 | score | 60 | 0.008 | 0.006 | 0.009 | 59/60 | 59/60 |
+| laya-multilingual | `compile` | fp16 | choice | 48 | 0.008 | 0.002 | 0.008 | 48/48 | 48/48 |
+| laya-multilingual | `compile` | fp16 | noul | 180 | 0.005 | 0.007 | 0.005 | 180/180 | 180/180 |
+| laya-multilingual | `compile` | fp16 | score | 60 | 0.001 | 0.002 | 0.001 | 60/60 | 60/60 |
+| laya-multilingual | `onnx` | fp32 | choice | 48 | 0.000 | 0.000 | 0.000 | 48/48 | 48/48 |
+| laya-multilingual | `onnx` | fp32 | noul | 180 | 0.000 | 0.000 | 0.000 | 180/180 | 180/180 |
+| laya-multilingual | `onnx` | fp32 | score | 60 | 0.000 | 0.000 | 0.000 | 60/60 | 60/60 |
+
+The two bf16 graph backends differ from fp32 by at most 0.055 (`compile`, multilingual `noul`) and 0.046
+(`tilelang`); neither is uniformly closer, because both differ from the stock bf16 path only by accumulation
+order, and the stock path itself is 0.058 from fp32 on the English `noul` row. Argmax agreement with fp32 is
+at least 46/48 per row (the two `compile` disagreements on English `choice` are near ties, where the stock bf16
+path agrees with fp32). The `compile` fp16 run is 5-10x closer to fp32 than bf16, the same picture #467 reports for
+fp16 TileLang kernels. The ONNX fp32 export matches the fp32 torch forward to 1e-5, which is a check on the export,
+not on a reduced-precision path.
+
+### Cold start of `compile`
+
+`benchmarks/bench_compile.py`, RTX 4070 Ti SUPER, torch 2.11 + CUDA 13, `laya-multilingual`; the GPU was shared
+with another process throughout (its state is in `benchmarks/results/compile_*_rtx4070.json`), so read these as
+upper bounds:
+
+| | first process, empty inductor cache | second process, cache populated |
+|---|---|---|
+| warm-up at load (three shapes, three calls each) | 117 s | 49 s |
+| `predict()` short, after warm-up | 8.1 ms | 7.4 ms |
+| first call at a length the warm-up did not cover | 0.41 s | 0.71 s |
+
+The English checkpoint is the same shape: 123 s cold, 56 s cached. The cached half is the Triton kernels being
+loaded and the CUDA graphs being recorded; the FX-graph cache removes the inductor compile itself. AOTInductor
+(`--aoti`) would remove the rest by shipping a compiled artifact per checkpoint and GPU architecture;
+`torch.export` works (5 s, tokens declared as a multiple of 16) but packaging trips on the model's own
+fp32 upcasts before the action head, so it needs a small model change first (docs/fast-backends.md).
+
+### Server batching
+
+`benchmarks/bench_serve.py` drives `laya.serve` in-process (`httpx.ASGITransport`, no network) with 1, 8 and 32
+concurrent clients, 256 requests, comparing `LAYA_BATCH_WINDOW_MS=0` (one request per forward, the old behaviour)
+with the default 2 ms window. With a fake router that costs 4 ms per forward + 0.3 ms per request in it (the
+launch-bound shape of a real GPU forward):
+
+| clients | window 0: req/s, p50 ms | window 2 ms: req/s, p50 ms | mean requests per forward |
+|---|---|---|---|
+| 1 | 176, 5.5 | 177, 5.5 | 1.0 |
+| 8 | 175, 44.8 | 716, 10.9 | 7.6 |
+| 32 | 176, 180.1 | 1080, 30.4 | 25.8 |
+
+A single client is served at once (the window only opens when requests arrive within 2 ms of each other), so
+it pays nothing; concurrent clients share forwards. The same script against the real `laya-multilingual`
+checkpoint on the `tilelang` backend (`--real`, 128 requests), taken while another process held the GPU at
+about 95% utilisation, so the absolute numbers are roughly 4x slower than an idle GPU (a lone request took
+20 ms where the table above measures 4.5 ms) and only the ratio is meaningful
+(`benchmarks/results/serve_multilingual_tilelang_rtx4070.json`):
+
+| clients | window 0: req/s, p50 ms | window 2 ms: req/s, p50 ms |
+|---|---|---|
+| 1 | 65, 20.1 | 51, 20.9 |
+| 8 | 56, 160.0 | 152, 49.4 |
+| 32 | 51, 627.8 | 168, 142.0 |
+
+#### Latency, `agent.predict()` end to end (ms, incl. tokenization)
 
 | checkpoint | case | stock | fast | speedup |
 |---|---|---|---|---|

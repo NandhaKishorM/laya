@@ -86,10 +86,20 @@ def onnx_session(path):
 
 
 def onnx_probs(session, b, meta):
-    feed = {"input_ids": b["input_ids"].numpy().astype(np.int64), "attention_mask": b["attention_mask"].numpy().astype(np.int64),
-            "marker_pos": b["marker_pos"].numpy().astype(np.int64), "marker_mask": b["marker_mask"].numpy().astype(bool),
-            "qtype": b["qtype"].numpy().astype(np.int64)}
-    return to_probs(session.run(["logits"], feed)[0], meta)
+    # One row per run: the model scripts/export_onnx.py writes traces a batch of one, and with the
+    # dynamo exporter the rotary tables end up broadcast for that batch only (a batch of 2 fails in
+    # ORT with "Attempting to broadcast an axis by a dimension other than 1"). Parity is per question,
+    # so a row at a time measures the same thing.
+    out = []
+    for r, m in enumerate(meta):
+        L = int(b["attention_mask"][r].sum())
+        feed = {"input_ids": b["input_ids"][r:r + 1, :L].numpy().astype(np.int64),
+                "attention_mask": b["attention_mask"][r:r + 1, :L].numpy().astype(np.int64),
+                "marker_pos": b["marker_pos"][r:r + 1].numpy().astype(np.int64),
+                "marker_mask": b["marker_mask"][r:r + 1].numpy().astype(bool),
+                "qtype": b["qtype"][r:r + 1].numpy().astype(np.int64)}
+        out += to_probs(session.run(["logits"], feed)[0], [m])
+    return out
 
 
 def summarise(cases, stock_key):

@@ -71,6 +71,18 @@ SOURCES = {
 HEADER = ("| checkpoint | type | n | max \\|p_fast - p_stock\\| | max \\|p_fast - p_fp32\\| "
           "| max \\|p_stock - p_fp32\\| | argmax fast = stock | fast = fp32 |")
 
+# (checkpoint, backend, dtype) -> the file that row of the per-backend table cites
+BACKEND_SOURCES = {
+    ("laya", "tilelang", "bf16"): "parity_english_rtx4070.json",
+    ("laya-multilingual", "tilelang", "bf16"): "parity_multilingual_rtx4070.json",
+    ("laya", "compile", "bf16"): "parity_english_compile_rtx4070.json",
+    ("laya-multilingual", "compile", "bf16"): "parity_multilingual_compile_rtx4070.json",
+    ("laya-multilingual", "compile", "fp16"): "parity_multilingual_compile_fp16_rtx4070.json",
+    ("laya-multilingual", "onnx", "fp32"): "parity_multilingual_onnx_cpu.json",
+}
+BACKEND_HEADER = ("| checkpoint | backend | dtype | type | n | max \\|p - p_stock\\| | max \\|p - p_fp32\\| "
+                  "| max \\|p_stock - p_fp32\\| | argmax = stock | = fp32 |")
+
 
 def split_row(line: str) -> List[str]:
     return [c.strip() for c in line.strip().strip("|").split("|")]
@@ -153,6 +165,40 @@ def main() -> int:
                     if isinstance(v, dict) and v["d_fast_fp32"] > v["d_stock_fp32"]]
     check("the row that falsified the old sentence is still the multilingual noul one",
           contradicted, [("laya-multilingual", "noul")])
+
+    # ------------------------------------------------- the per-backend parity table
+    # `benchmarks/parity.py --backend ...` writes the same JSON shape for every backend ("fast"
+    # is the backend under test), so the table BENCHMARKS.md prints per backend is checked the
+    # same way, cell by cell, against the file each row cites.
+    rows = parse_table(read(BENCHMARKS), BACKEND_HEADER)
+    check_true("backend table/present", len(rows) >= 1, "no rows under the backend header")
+    check_true("backend table/every row has ten cells", all(len(r) == 10 for r in rows), [len(r) for r in rows])
+    seen = set()
+    for row in rows:
+        ckpt, backend, dtype, qtype = row[0], unstyled(row[1]).strip("`"), row[2], row[3]
+        name = BACKEND_SOURCES.get((ckpt, backend, dtype))
+        if name is None:
+            FAIL.append("backend table/no committed JSON for %s %s %s" % (ckpt, backend, dtype))
+            continue
+        path = os.path.join(PARITY_DIR, name)
+        if not os.path.exists(path):
+            FAIL.append("backend table/%s is missing" % path)
+            continue
+        with open(path, encoding="utf-8") as fh:
+            doc = json.load(fh)
+        label = "%s/%s/%s/%s" % (ckpt, backend, dtype, qtype)
+        check("backend table/%s file names the backend" % label, doc.get("backend", "tilelang"), backend)
+        summary = doc["summary"].get(qtype)
+        if summary is None:
+            FAIL.append("backend table/%s has no %r summary" % (label, qtype))
+            continue
+        check("backend table/%s n" % label, int(row[4]), summary["n"])
+        for cell, key in zip(row[5:8], cols):
+            check("backend table/%s %s" % (label, key), unstyled(cell), rounded(summary[key]))
+        for cell, key in zip(row[8:10], ("agree_fast_stock", "agree_fast_fp32")):
+            check("backend table/%s %s" % (label, key), unstyled(cell), "%d/%d" % (summary[key], summary["n"]))
+        seen.add((ckpt, backend, dtype))
+    check("backend table/every committed backend run is in the table", sorted(seen), sorted(BACKEND_SOURCES))
 
     # ------------------------------------------------- what this cannot check
     unbacked = [

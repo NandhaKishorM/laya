@@ -444,10 +444,21 @@ curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
 Configuration is by environment variable: `LAYA_HOST`, `LAYA_PORT`,
 `LAYA_DEVICE`, `LAYA_PRELOAD`, `LAYA_MODELS` (comma list to preload),
 `LAYA_THREADS` (cap torch intra-op threads for CPU inference — keep at or below
-physical cores), `LAYA_AUTO_TASK`, and `LAYA_API_KEY` (when set, clients must
-send `Authorization: Bearer <key>`). A client's `model` field is honoured when it
-names a Laya checkpoint (`english`/`multilingual`/`typed-decisions`), otherwise
-the router auto-selects by script/language.
+physical cores), `LAYA_AUTO_TASK`, `LAYA_API_KEY` (when set, clients must
+send `Authorization: Bearer <key>`), `LAYA_BACKEND` (the [inference backend](#inference-backends)
+every checkpoint is loaded with: `auto`, `eager`, `compile` or `tilelang`), and
+`LAYA_BATCH_WINDOW_MS` (default 2; `0` switches batching off). A client's `model` field
+is honoured when it names a Laya checkpoint (`english`/`multilingual`/`typed-decisions`),
+otherwise the router auto-selects by script/language.
+
+**Dynamic batching.** Requests that arrive within the batch window of each other, or while a
+forward pass is already running, are merged into one `Router.predict_batch` call per checkpoint
+and question schema. A forward at Laya's sizes is launch-bound, so eight requests in one cost
+about what one costs: with a fake launch-bound agent 8 concurrent clients go from 175 to 716 req/s
+and 32 from 176 to 1080, and a single client is served at once and pays nothing
+([BENCHMARKS.md](BENCHMARKS.md#server-batching)). Each request keeps its own result and its own
+error: one 422 in a merged batch does not fail the others. `LAYA_BATCH_MAX` (default 32) caps the
+requests per forward.
 
 Three things differ from Jev when you port a client:
 
@@ -549,24 +560,61 @@ length grouping can help by reducing the padded work in a mixed-length workload.
 
 ---
 
-## GPU Fast Path (TileLang)
+## Inference backends
 
-`pip install laya[fast]` adds an optional forward built from fused [TileLang](https://github.com/tile-ai/tilelang)
-kernels: GEMM + bias/activation epilogues, GEMM + GEGLU, residual + LayerNorm, in-place RoPE, and a
-sliding-window flash attention that reads the packed QKV buffer directly. Weights stay resident in bf16
-and every (batch, length) bucket is captured as a CUDA graph, so a one-question call no longer pays
-~200 kernel launches from Python.
+`laya.load(..., backend=...)` picks how the forward pass runs; everything else (tokenization,
+temperature scaling, the answers) is shared, so every backend gives the same decisions within rounding.
 
 ```python
-agent = laya.load("convaiinnovations/laya", fast=True)   # or: agent.accelerate()
-agent.predict(state, questions)                            # same API, same answers
+agent = laya.load("convaiinnovations/laya", backend="auto")       # best available here
+agent = laya.load("convaiinnovations/laya", backend="tilelang")   # fast=True is the same thing
+agent = laya.load("convaiinnovations/laya", backend="compile")    # torch.compile, no extra install
+agent.predict(state, questions)                                   # same API, same answers
+agent.backend                                                     # what ended up installed
 ```
 
-Numerics: on a fixed set of 60 states the fast path stays within 0.046 of an fp32 forward and within 0.076 of the stock
-bf16 path (max |Δp| ≤ 0.05 vs fp32 on both checkpoints, argmax agreement ≥ 47/48 per question type; every per-option
-probability is in `benchmarks/results/parity_*.json`) — see `benchmarks/parity_fast.py` and [BENCHMARKS.md](BENCHMARKS.md#gpu-fast-path).
-Falls back to the stock forward on CPU/MPS or when `tilelang` is not installed; `agent.deaccelerate()`
-restores it. Kernels compile once per shape bucket on first use (a few seconds, cached on disk).
+| backend | what it is | needs |
+|---|---|---|
+| `eager` | the stock PyTorch forward under autocast; **the default**, unchanged | nothing |
+| `compile` | `torch.compile(dynamic=True, mode="reduce-overhead")`, warmed up at load | CUDA |
+| `tilelang` | fused [TileLang](https://github.com/tile-ai/tilelang) kernels, bf16 weights, one CUDA graph per shape bucket | CUDA, `pip install laya[fast]`, bf16 |
+| `onnx` | ONNX Runtime through `ONNXAgent`; the explicit CPU option, its own class | `pip install laya[onnx]`, an exported model |
+| `auto` | CUDA: `tilelang` if it is installed and the encoder is ModernBERT-family (all shipped checkpoints) and the agent runs bf16, else `compile`; CPU and MPS: `eager` | |
+
+`predict()` end to end, ms, RTX 4070 Ti SUPER; "short" is one state x 3 questions, "long" is 30 questions over
+about 1,000 tokens:
+
+| backend | multilingual short / long | English (ModernBERT-large) short / long | first call at an unseen length | cold start |
+|---|---|---|---|---|
+| `eager` (bf16) | 17.4 / 325 | 19.6 / 289 | - | - |
+| `tilelang` | **4.5** / 188 | **7.3** / 196 | 0.05-0.2 s (kernels per bucket, cached on disk) | ~1 s |
+| `compile`, dynamic shapes | 4.5 / 183 | 10.2 / 189 | ~0 (0.05-0.7 s to record a graph) | 117 s cold, 49 s from the inductor cache |
+| `compile`, static shapes (not offered) | 4.3 / 181 | 8.8 / 168 | 18 s recompile per length | |
+
+Short calls are launch-bound (about 200 kernels at a 12 us floor each), which is what both graph backends remove;
+batching many small requests together is nearly free on the GPU, and `laya-serve` does that on its own
+(see [the server](#self-hosting-http-server-jev-compatible)). The cold-start cells were measured on a GPU shared
+with another process (`benchmarks/bench_compile.py`, JSON in `benchmarks/results/`), so they are upper bounds;
+`compile` also materialises the expanded attention mask under dynamic shapes (rows x heads x tokens² in bf16,
+0.8 GB at 32 x 1024), which the TileLang kernels do not, so on a memory-tight GPU prefer `tilelang` for wide,
+long batches.
+
+**The contract.** A backend replaces `model.forward` and nothing else. It honours `agent.dtype` (one autocast
+dtype per agent: bf16 on the shipped checkpoints for compute capability 8+, fp16 below), pads to one shared
+bucket policy (rows to a power of two, tokens to 16-token buckets up to 256 and 64-token buckets beyond),
+and if it cannot run here it falls back to `eager` with one `RuntimeWarning`, or raises under
+`agent.set_backend(name, strict=True)`. Numerics: on a fixed set of 60 states x 288 questions the bf16 graph backends
+stay within 0.055 (`compile`) and 0.046 (`tilelang`) of an fp32 forward on both checkpoints, with argmax
+agreement of at least 46/48 per question type, and fp16 `compile` within 0.007; every per-option probability is committed in `benchmarks/results/parity_*.json`, from
+`benchmarks/parity.py --backend {eager,compile,tilelang,onnx}` (see [BENCHMARKS.md](BENCHMARKS.md#inference-backends)).
+
+**Cold start.** The TileLang kernels compile once per shape bucket on first use (a few seconds, cached on disk).
+`compile` pays its compile once, at load: the inductor FX-graph cache is persisted under `LAYA_INDUCTOR_CACHE_DIR`
+(default `~/.cache/laya/inductor`, so it survives a restart; an explicit `TORCHINDUCTOR_CACHE_DIR` is honoured),
+and a few representative shapes are warmed up at load (`LAYA_COMPILE_WARMUP=0` skips that). Shipping a precompiled
+AOTInductor artifact instead was tried and is one model change away (the action head's fp32 upcast);
+that, the engineering notes and what was learned about running the TileLang kernels off CUDA are in
+[docs/fast-backends.md](docs/fast-backends.md).
 
 ---
 

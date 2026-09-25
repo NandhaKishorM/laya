@@ -124,6 +124,30 @@ check("router/high_conf", router.invoke("I need an invoice refund"), "billing")
 check("router/technical", router.invoke("Server crashed with error 500"), "technical")
 # Confidence fallback gating
 check("router/fallback_on_low_confidence", router.invoke("lowconf question"), "human_agent")
+
+# answer_confidence precedence over entropy confidence (#361)
+# Entropy confidence 0.50 is below threshold 0.75, but answer_confidence 0.85 is above threshold
+def mock_answer_conf_response(state, questions):
+    return {
+        "model": "mock",
+        "answers": {
+            "route": {
+                "type": "choice",
+                "choice": "billing",
+                "confidence": 0.50,
+                "answer_confidence": 0.85,
+            }
+        },
+    }
+
+router_ac = LayaRouter(
+    criteria={"billing": "invoices", "technical": "bugs"},
+    confidence_threshold=0.75,
+    fallback="human_agent",
+    agent=MockLayaAgent(mock_answer_conf_response),
+)
+check("router/uses_answer_confidence_over_entropy", router_ac.invoke("refund please"), "billing")
+
 # LangGraph callable protocol
 check("router/callable_protocol", router({"messages": [DummyMessage("human", "refund please")]}), "billing")
 

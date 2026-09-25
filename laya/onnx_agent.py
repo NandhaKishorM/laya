@@ -26,6 +26,7 @@ from laya.common import (
     TEMP_MAX,
     clamp_temperature,
 )
+from laya.confidence import check_min_confidence, flag_low_confidence
 
 
 class ONNXAgent(HookRegistry):
@@ -229,12 +230,14 @@ class ONNXAgent(HookRegistry):
                    hooks_raise: Optional[bool] = None,
                    hooks_timeout: Optional[float] = None,
                    max_len: Optional[int] = None,
-                   head_max_len: Optional[int] = None) -> Dict[str, Any]:
+                   head_max_len: Optional[int] = None,
+                   min_confidence: Optional[float] = None) -> Dict[str, Any]:
         """Evaluate typed questions, running any opt-in hooks around the inference.
 
         `lang` selects a per-language temperature override (see `lang_temperatures`), matching the
         PyTorch `Agent.system_one` signature so either backend is a drop-in for the other.
         """
+        mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
@@ -260,6 +263,8 @@ class ONNXAgent(HookRegistry):
             ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
             if ctx.results is not None:
                 ctx.usage = aggregate_usage(ctx.results)
+                if mc is not None:
+                    flag_low_confidence(ctx.results, mc)
             try:
                 dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             except BaseException as hook_exc:
@@ -387,6 +392,7 @@ class ONNXAgent(HookRegistry):
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
                questions: Optional[Dict[str, Dict[str, Any]]] = None, return_details: bool = False,
+               min_confidence: Optional[float] = None,
                **predict_kwargs) -> Any:
         """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
 
@@ -395,6 +401,6 @@ class ONNXAgent(HookRegistry):
         """
         from laya.structured import decide as _decide
         return _decide(self, state, schema, questions=questions,
-                       return_details=return_details, **predict_kwargs)
+                       return_details=return_details, min_confidence=min_confidence, **predict_kwargs)
 
     predict = system_one

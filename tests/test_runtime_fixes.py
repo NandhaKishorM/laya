@@ -242,6 +242,59 @@ cpu_disabled._infer(batch)
 check("amp-context/_infer disabled completes", True, True)
 
 
+# ------------------------------------------------------------------ OOM fallback observability (#351)
+class FakeCUDAInput:
+    """An input_ids that fails the way a real CUDA OOM does when moved off CPU.
+
+    Only `input_ids` needs this: it is the first tensor `_infer` moves, so the
+    failure fires before the other (real, CPU-safe) tensors are touched, and on
+    the CPU retry `.to('cpu')` passes it straight through.
+    """
+
+    shape = (1, 8)
+
+    def __init__(self):
+        self.moves = 0
+
+    def to(self, device):
+        self.moves += 1
+        if str(device) != "cpu":
+            raise RuntimeError("CUDA out of memory. Tried to allocate 2.00 GiB")
+        return self
+
+
+class ImmovableModel:
+    """Accepts model.to() without moving anything (there is no real tensor to move)."""
+
+    def to(self, device):
+        self.placed = str(device)
+        return self
+
+    def __call__(self, *args):
+        return torch.zeros((1, 2)), torch.zeros((1, 2))
+
+
+oom_batch = dict(batch, input_ids=FakeCUDAInput())
+oom = _bare_agent(ImmovableModel(), dtype=torch.float16)
+oom.device = torch.device("cuda")   # the OOM branch only reads .type
+check("oom-fallback/count starts at 0", oom.cpu_fallback_count, 0)
+check("oom-fallback/reason starts None", oom.last_fallback_reason, None)
+
+out = oom._infer(oom_batch)          # first forward raises OOM -> scoped CPU retry
+check("oom-fallback/retry answered", isinstance(out, tuple), True)
+check("oom-fallback/count recorded", oom.cpu_fallback_count, 1)
+check("oom-fallback/reason recorded",
+      "out of memory" in (oom.last_fallback_reason or ""), True)
+check("oom-fallback/scoped: device restored", oom.device.type, "cuda")
+
+oom._infer(oom_batch)                # a second OOM accumulates
+check("oom-fallback/second OOM counts too", oom.cpu_fallback_count, 2)
+
+# a plain forward never touches the counters
+check("oom-fallback/plain CPU infer stays 0", cpu_disabled.cpu_fallback_count, 0)
+check("oom-fallback/plain CPU reason stays None", cpu_disabled.last_fallback_reason, None)
+
+
 # ------------------------------------------------------------------ report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

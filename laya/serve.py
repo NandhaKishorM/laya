@@ -306,11 +306,21 @@ def create_app(router: Optional[Any] = None):
 
     @app.get("/health")
     def health() -> Dict[str, Any]:
+        # Per-agent CPU-fallback counters. `_agents` is read the way laya.mcp.device
+        # reads it -- the only side-effect-free handle on a resident agent -- and every
+        # access is getattr-guarded so injected routers predating the counters (or
+        # without a `_agents` mapping) stay health-compatible, like `revisions`.
+        agents = getattr(router, "_agents", None) or {}
         return {
             "status": "ok",
             "loaded": router.loaded,
             "revisions": getattr(router, "loaded_revisions", {}),
             "device": os.environ.get("LAYA_DEVICE") or "auto",
+            "cpu_fallbacks": {
+                name: {"count": getattr(agents.get(name), "cpu_fallback_count", 0),
+                       "last_reason": getattr(agents.get(name), "last_fallback_reason", None)}
+                for name in router.loaded
+            },
         }
 
     @app.post("/v1/systemone")

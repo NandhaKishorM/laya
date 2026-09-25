@@ -232,6 +232,11 @@ class Agent(HookRegistry):
     mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
     # The stock forward is also used by lightweight runtimes built with __new__ in tests.
     _fast = None
+    # Scoped CPU-fallback observability: how often _infer's per-request OOM fallback fired
+    # and what the last failure was, so an operator sees a slow lane in /health instead of
+    # discovering it by accident. Class defaults cover instances built without __init__.
+    cpu_fallback_count = 0
+    last_fallback_reason = None
 
     def __init__(
         self,
@@ -727,6 +732,10 @@ class Agent(HookRegistry):
                 # later call ~10-15x slower on CPU. Demote under the lock, answer this request
                 # on CPU, then put the runtime back the way it was.
                 with _OOM_FALLBACK_LOCK:
+                    # Recorded on entry, under the same lock as the demotion: the count and
+                    # reason must be readable by /health without racing a concurrent fallback.
+                    self.cpu_fallback_count += 1
+                    self.last_fallback_reason = str(e)
                     held_device, held_dtype, held_amp = self.device, self.dtype, self.amp_enabled
                     had_fast = self._fast is not None
                     # FastLaya keeps copied CUDA weights and replaces model.forward.  Move

@@ -176,3 +176,50 @@ router = LayaRouter(
 ```
 
 No local PyTorch or checkpoint downloads are required in remote mode.
+
+---
+
+## 5. Widening the Token Budget for Many Options
+
+Every runnable takes `max_len` and `head_max_len`, the two per-request knobs the core API accepts.
+A choice question's options share the checkpoint's *option* budget -- `head_max_len`, 192 tokens on
+`laya` and 256 on `laya-multilingual` -- and each option carries its own description, so past
+roughly 20 options every label is trimmed to fit and similar labels start reaching the model as the
+same text. See the README's [Honest limits](https://github.com/NandhaKishorM/laya#honest-limits)
+for the same effect measured on Banking77.
+
+A routing node with many branches is the common case, and it had no way to ask for more room:
+
+```python
+router = LayaRouter(
+    criteria=queue_criteria,          # 48 queues, each with a description
+    instructions="Which support queue owns this ticket?",
+    max_len=1024,                     # total window
+    head_max_len=512,                 # tokens shared by the option prompt
+)
+```
+
+Measured on `laya` (Apple silicon, one forward pass per state, scored on the chosen label) with
+queue labels a state names explicitly, so ground truth is exact. Each cell is the count over the
+full set, and all three repeats of every row gave the identical count:
+
+| Options | Default budget | `max_len=1024, head_max_len=512` |
+|---|---|---|
+| 24 | 24/24 | 20/24 |
+| 48 | 1/48 | 43/48 |
+| 72 | 1/72 | 63/72 |
+
+Both directions of that table matter. Past about 40 options the default budget collapses the
+decision, and widening it recovers most of it. Below that, widening it costs a few: at 24 options
+the labels already fit the default budget and four answers move. The docs do not claim to know why
+the wider collation changes those four -- it is enough that it can. That is why the two arguments
+are opt-in per node: set the knob to fix a question that does not fit, not to sharpen one that does.
+
+The same override applies to `LayaGuardrail`, `LayaTriage` and `LayaEvaluator`.
+It is per node, so a chain can give its wide routing step room while every other node keeps the
+checkpoint's defaults, which is the point of not raising `agent.cfg["head_max_len"]` process-wide.
+
+**Remote mode rejects it.** A budget override is applied by the local runner, and `laya-serve`
+neither accepts nor needs the field, so `max_len` or `head_max_len` on a node with a `base_url`
+raises `ValueError` instead of quietly doing nothing. Raise the budget on the server that runs
+inference.

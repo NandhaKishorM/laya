@@ -402,3 +402,14 @@ def test_inference_timing_headers():
     assert "X-Inference-Time-Ms" in res.headers
     dur = float(res.headers["X-Inference-Time-Ms"])
     assert dur >= 0.0
+
+
+def test_inference_timing_headers_absent_on_error():
+    """Inference timing headers must not be attached to error responses."""
+    router = FakeRouter()
+    client = TestClient(create_app(router=router))
+    res = client.post("/v1/systemone", json={"state": "missing questions"})
+    assert res.status_code == 400
+    assert "Server-Timing" not in res.headers
+    assert "X-Inference-Time-Ms" not in res.headers
+

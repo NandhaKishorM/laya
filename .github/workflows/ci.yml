@@ -183,6 +183,12 @@ jobs:
       - name: Eval API guard
         run: python tests/test_evals_api.py
 
+      # The ONNX runner suite fakes the agent, so it stays weight-free and needs no
+      # onnxruntime: the module only imports numpy, and ONNXAgent's constructor is
+      # never called.
+      - name: Eval ONNX runner tests
+        run: python tests/test_evals_onnx.py
+
       - name: Fixture dataset validates
         run: laya-evals validate research/evals/fixture.jsonl
 

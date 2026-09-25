@@ -34,6 +34,37 @@ class RouterRunner:
         return self.router.predict_batch(requests, batch_size=batch_size)
 
 
+class OnnxRunner:
+    """Adapt a single-checkpoint `ONNXAgent` to the harness, like `RouterRunner` does for a Router.
+
+    The agent serves one checkpoint, so a per-example `model` that names a different one is an
+    error rather than a silent no-op: the report would otherwise claim to score a fleet it never
+    ran. `predict_batch` delegates to the agent when it has one and falls back to one predict per
+    state otherwise, so the harness's batching path works on every ONNXAgent build.
+    """
+
+    def __init__(self, agent: Any):
+        self.agent = agent
+
+    def _check_model(self, model: Optional[str]) -> None:
+        if model is not None and model != self.agent.model_id:
+            raise EvalError(
+                "the ONNX runner serves only %r, but this example asks for %r; "
+                "run them separately or drop --onnx" % (self.agent.model_id, model))
+
+    def predict(self, state: Any, questions: Dict[str, Any], model: Optional[str] = None) -> Dict[str, Any]:
+        self._check_model(model)
+        return self.agent.predict(state, questions)
+
+    def predict_batch(self, states: Sequence[Any], questions: Dict[str, Any],
+                      model: Optional[str] = None, batch_size: Optional[int] = None) -> List[Dict[str, Any]]:
+        self._check_model(model)
+        agent_batch = getattr(self.agent, "predict_batch", None)
+        if agent_batch is not None:
+            return agent_batch(list(states), questions, batch_size=batch_size)
+        return [self.agent.predict(state, questions) for state in states]
+
+
 def _parse_pairs(pairs: Optional[Sequence[str]]) -> Dict[str, float]:
     out: Dict[str, float] = {}
     for pair in pairs or []:
@@ -59,6 +90,10 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("dataset")
     run.add_argument("--model", help="force a checkpoint instead of auto-routing")
     run.add_argument("--device", help="torch device, e.g. cpu or cuda")
+    run.add_argument("--onnx", metavar="PATH",
+                     help="evaluate an ONNX export through ONNXAgent instead of the torch Router; "
+                          "--model then names the checkpoint directory or Hub id the export came "
+                          "from (default convaiinnovations/laya)")
     run.add_argument("--batch-size", type=int, help="examples per forward pass when questions match")
     run.add_argument("--on-error", choices=("fail", "skip"), default="fail")
     run.add_argument("--baseline", help="a baseline report JSON to compare against")
@@ -116,14 +151,22 @@ def _cmd_validate(args) -> int:
 
 
 def _cmd_run(args) -> int:
-    import laya
-
     dataset = evals.Dataset.from_jsonl(args.dataset)
     if args.model:
         for example in dataset.examples:      # --model is authoritative over per-row model
             example.model = args.model
-    runner: Any = RouterRunner(laya.Router(device=args.device, preload=False))
+    if args.onnx:
+        from .onnx_agent import ONNXAgent
+        # The export was produced from one checkpoint; --model names it (the ONNXAgent load
+        # needs its config and tokenizer), so the default is the english bundle repo.
+        agent = ONNXAgent(args.model or "convaiinnovations/laya", onnx_path=args.onnx)
+        runner: Any = OnnxRunner(agent)
+    else:
+        import laya
+        runner = RouterRunner(laya.Router(device=args.device, preload=False))
     config = {"dataset": args.dataset, "model": args.model, "device": args.device}
+    if args.onnx:
+        config["onnx"] = args.onnx
     report = evals.evaluate(runner, dataset, batch_size=args.batch_size,
                             on_error=args.on_error, config=config)
 

@@ -96,7 +96,42 @@ instead of a schema to get raw answers. Zod/TypeBox users can pass `z.toJSONSche
 any object with a `toJSONSchema()` method is accepted. `planFromJsonSchema`,
 `questionsFromJsonSchema` and `answersToJson` expose the planning and projection steps.
 
-## Shortlist (many labels)
+## Batch prediction
+
+Batch prediction evaluates multiple states together using shared forward passes. Results preserve the exact input order.
+
+### Agent.predictBatch
+
+`agent.predictBatch(states, questions, opts?)` answers questions across multiple states in a single forward pass, chunking states when `batchSize` is set in options:
+
+```ts
+const states = [
+  { body: "charged twice, refund please" },
+  { body: "cannot log into my account" },
+];
+
+const results = await agent.predictBatch(states, {
+  intent: { type: "choice", instructions: "What does the customer want?", criteria: { refund: "money back", other: "anything else" } },
+}, { batchSize: 32 });
+
+console.log(results[0].answers.intent, results[1].answers.intent);
+```
+
+### Router.predictBatch and Router.routeBatch
+
+`router.routeBatch(requests)` resolves routing decisions for heterogeneous requests without loading model checkpoints. `router.predictBatch(requests, opts?)` groups requests by routed checkpoint and question schema to share forward passes:
+
+```ts
+const requests = [
+  { state: { body: "charged twice" }, questions: { intent: /* ... */ } },
+  { state: { body: "मुझसे दो बार शुल्क लिया गया" }, questions: { intent: /* ... */ } },
+];
+
+const decisions = router.routeBatch(requests);
+const results = await router.predictBatch(requests, { batchSize: 32 });
+// results[i].routing records the RouteDecision for requests[i]
+```
+
 ## Shortlist (many labels)
 
 ```ts

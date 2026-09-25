@@ -360,8 +360,23 @@ def parse_moderation_request(body: Dict[str, Any]) -> List[Any]:
     raise UnsupportedRequest("'input' must be a string or a list of strings")
 
 
+def _score_levels(question: Any, answer: Dict[str, Any]) -> Optional[int]:
+    """How many levels a `score` question has, from its criteria or the answer's probabilities.
+
+    Returns None when neither names more than one level, in which case the raw score is used.
+    """
+    criteria = (question or {}).get("criteria") if isinstance(question, dict) else None
+    if isinstance(criteria, list) and len(criteria) > 1:
+        return len(criteria)
+    probabilities = answer.get("probabilities")
+    if isinstance(probabilities, dict) and len(probabilities) > 1:
+        return len(probabilities)
+    return None
+
+
 def moderation_payload(results: Sequence[Dict[str, Any]], *, model: str = "laya",
-                       threshold: float = MODERATION_THRESHOLD) -> Dict[str, Any]:
+                       threshold: float = MODERATION_THRESHOLD,
+                       questions: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     rows = []
     for result in results:
         answers = result.get("answers") or {}
@@ -373,7 +388,14 @@ def moderation_payload(results: Sequence[Dict[str, Any]], *, model: str = "laya"
                 scores[name] = round(value, 4)
                 categories[name] = value >= threshold
             elif answer.get("type") == "score":
+                # A score answer's `score` is the expected level on the question's 0..n-1
+                # scale, not a probability, so it is normalized onto [0, 1] before it shares
+                # the `threshold` with the noul categories. Without this a 4-level severity
+                # trends above 0 and flags every input.
                 value = float(answer.get("score", 0.0))
+                levels = _score_levels((questions or {}).get(name), answer)
+                if levels:
+                    value /= levels - 1
                 scores[name] = round(value, 4)
                 categories[name] = value >= threshold
         rows.append({"flagged": any(categories.values()), "categories": categories,

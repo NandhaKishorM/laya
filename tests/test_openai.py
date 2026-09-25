@@ -15,6 +15,7 @@ from laya.openai_api import (  # noqa: E402
     format_chat_response,
     format_responses_response,
     moderation_payload,
+    moderation_questions_preset,
     models_payload,
     parse_chat_request,
     parse_moderation_request,
@@ -215,12 +216,19 @@ mod = moderation_payload([
                  "severity": {"type": "score", "score": 2.1, "probabilities": {}},
                  "spam": {"type": "noul", "noul": 0.1, "confidence": 0.9}}},
     {"answers": {"toxic": {"type": "noul", "noul": 0.05, "confidence": 0.95}}},
-])
+    # a benign post: low toxicity and a severity near the "no rule-breaking" end must not flag
+    {"answers": {"toxic": {"type": "noul", "noul": 0.03, "confidence": 0.97},
+                 "severity": {"type": "score", "score": 0.85, "probabilities": {}}}},
+], questions=moderation_questions_preset())
 check("moderation/flagged first", mod["results"][0]["flagged"], True)
 check("moderation/category bool", mod["results"][0]["categories"]["toxic"], True)
-check("moderation/category score", mod["results"][0]["category_scores"]["severity"], 2.1)
+# the 4-level severity score is normalized onto [0, 1] before it shares the threshold
+check("moderation/severity normalized", mod["results"][0]["category_scores"]["severity"], 0.7)
+check("moderation/severity follows threshold", mod["results"][0]["categories"]["severity"], True)
 check("moderation/spam not flagged", mod["results"][0]["categories"]["spam"], False)
 check("moderation/second clean", mod["results"][1]["flagged"], False)
+check("moderation/benign severity score", mod["results"][2]["category_scores"]["severity"], 0.2833)
+check("moderation/benign not flagged", mod["results"][2]["flagged"], False)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

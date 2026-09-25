@@ -518,7 +518,7 @@ def create_app(router: Optional[Any] = None):
             threshold = float(os.environ.get("LAYA_MODERATION_THRESHOLD", MODERATION_THRESHOLD))
         except ValueError:
             threshold = MODERATION_THRESHOLD
-        return moderation_payload(results, threshold=threshold)
+        return moderation_payload(results, threshold=threshold, questions=questions)
 
     return app
 

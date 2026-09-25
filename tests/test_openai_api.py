@@ -66,8 +66,10 @@ check_param("parse_moderation_request", openai_api.parse_moderation_request, "bo
 check_param("moderation_payload", openai_api.moderation_payload, "results", inspect.Parameter.empty)
 check_kwonly("moderation_payload", openai_api.moderation_payload, "model")
 check_kwonly("moderation_payload", openai_api.moderation_payload, "threshold")
+check_kwonly("moderation_payload", openai_api.moderation_payload, "questions")
 check_param("moderation_payload", openai_api.moderation_payload, "model", "laya")
 check_param("moderation_payload", openai_api.moderation_payload, "threshold", openai_api.MODERATION_THRESHOLD)
+check_param("moderation_payload", openai_api.moderation_payload, "questions", None)
 
 # --------------------------------------------------------------- ChatPlan
 FIELDS = ["mode", "state", "questions", "model", "schema", "tool_names", "tool_schemas", "forced_tool"]

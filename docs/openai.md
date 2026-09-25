@@ -126,12 +126,14 @@ curl -s localhost:8000/v1/moderations -H 'content-type: application/json' \
 {"id": "modr-...", "model": "laya",
  "results": [{"flagged": true,
    "categories": {"toxic": true, "harassment": false, "threat": false, "spam": false, "severity": true},
-   "category_scores": {"toxic": 0.81, "harassment": 0.12, "threat": 0.03, "spam": 0.05, "severity": 1.7}}]}
+   "category_scores": {"toxic": 0.81, "harassment": 0.12, "threat": 0.03, "spam": 0.05, "severity": 0.57}}]}
 ```
 
 The categories are Laya's moderation preset (`toxic`, `harassment`, `threat`, `spam`, `severity`),
 not OpenAI's fixed taxonomy. A category is flagged at or above `LAYA_MODERATION_THRESHOLD`
-(default `0.5`). `input` may be a list, and `results` is aligned with it.
+(default `0.5`). `severity` is a four-level score rather than a probability, so its value is
+normalized onto `[0, 1]` before it shares that threshold (a raw expected level of `1.7` is
+reported as `0.57`). `input` may be a list, and `results` is aligned with it.
 
 ## OpenAI SDK
 

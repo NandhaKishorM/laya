@@ -27,6 +27,7 @@ from .common import (
     render_options,
     serialize_state,
     temp_bucket,
+    unpermute_probs,
 )
 from .hooks import (
     HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks,
@@ -214,6 +215,17 @@ def _cuda_amp_dtype(checkpoint_default: Optional[str]) -> torch.dtype:
     if raw in ("bf16", "bfloat16"):
         return torch.bfloat16
     return amp_dtype(checkpoint_default)
+
+def _option_count(qdef: Dict) -> int:
+    """How many options a validated question definition renders to.
+
+    Mirrors `render_options`: a choice has one option per criterion, a score one per level,
+    and a noul is always the pair [false, true].
+    """
+    if qdef.get("type") == "noul":
+        return 2
+    crit = qdef.get("criteria")
+    return len(crit) if isinstance(crit, (dict, list, tuple)) else 0
 
 
 class Agent(HookRegistry):
@@ -615,6 +627,18 @@ class Agent(HookRegistry):
                     "reads; any other key was silently dropped and replaced with the defaults. If you "
                     "want the answer worded differently, keep 'criteria' keyed 'true'/'false' and set "
                     "'labels' instead." % (qid, sorted(keys)))
+        if "option_order" in qdef:
+            # Slot s shows option `order[s]`. Anything other than a permutation of the option
+            # indices would either drop an option or show one twice, so reject it here rather
+            # than let it reach the encoder.
+            order = qdef["option_order"]
+            n = _option_count(qdef)
+            if (not isinstance(order, (list, tuple))
+                    or len(order) != n
+                    or sorted(int(i) for i in order if isinstance(i, int) and not isinstance(i, bool)) != list(range(n))):
+                raise ValueError(
+                    "question %r: 'option_order' must be a permutation of range(%d) -- one slot per "
+                    "option, each option once -- got %r" % (qid, n, order))
         if "labels" in qdef:
             if t != "noul":
                 raise ValueError("question %r: 'labels' is only supported for noul questions" % (qid,))
@@ -643,6 +667,8 @@ class Agent(HookRegistry):
         q = {"t": t, "ins": ins, "crit": crit}
         if "labels" in qdef:
             q["labels"] = qdef["labels"]
+        if "option_order" in qdef:
+            q["option_order"] = [int(i) for i in qdef["option_order"]]
         return q
 
     def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict],
@@ -671,6 +697,7 @@ class Agent(HookRegistry):
         for qid in ids:
             q = internal[qid]
             seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len,
+                                          option_order=q.get("option_order"),
                                           truncate_left=truncate_left, state_ids=state_ids)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
@@ -772,6 +799,9 @@ class Agent(HookRegistry):
             z = logits[r, :k] / t_scale
             p = np.exp(z - z.max())
             p = p / p.sum()
+
+            # The row comes back in slot order; everything below indexes by option.
+            p = unpermute_probs(p, q.get("option_order"))
 
             # `confidence` means one thing for `noul` (max(p)) and another for `choice` and
             # `score` (normalized entropy), and only the first is the quantity temperature

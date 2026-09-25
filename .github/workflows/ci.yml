@@ -99,6 +99,7 @@ jobs:
           python tests/test_criteria.py
           python tests/test_batch.py
           python tests/test_predict_long.py
+          python tests/test_option_order.py
           python tests/test_hooks.py
           python tests/test_hooks_api.py
           python tests/test_structured.py

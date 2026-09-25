@@ -146,6 +146,23 @@ def build_sequence(
     return ids[:max_len], [m for m in markers if m < max_len]
 
 
+def unpermute_probs(p: np.ndarray, option_order: Optional[List[int]]) -> np.ndarray:
+    """Put a slot-ordered probability row back into the caller's option order.
+
+    `build_sequence` puts option `option_order[s]` in slot `s`, so a model row comes back
+    indexed by slot. Everything downstream indexes by option -- `zip(keys, p)` for a choice,
+    `arange(k) * p` for a score level, `p[1]` for noul-true -- so the row has to be inverted
+    first or the probabilities end up attached to the wrong options, which is silent.
+
+    A missing or mismatched order returns `p` untouched, so the canonical path is unaffected.
+    """
+    if option_order is None or len(option_order) != len(p):
+        return p
+    canonical = np.empty_like(p)
+    canonical[np.asarray(option_order, dtype=int)] = p
+    return canonical
+
+
 class DecisionModel(nn.Module):
     """Bidirectional transformer encoder backbone + typed decision head."""
 

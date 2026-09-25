@@ -768,6 +768,54 @@ whose values must be distinct non-empty strings. Mapping order does not matter, 
 `noul` value is still P(true). Label sensitivity varies by checkpoint and state, so validate any
 override on your own data rather than treating `A`/`B` as a universal fix.
 
+### Option order
+
+Every question type also takes an optional `option_order`: a permutation of the option indices
+saying which option goes in which slot. Slot `s` shows option `option_order[s]`. Probabilities
+always come back keyed in your own option order, whatever order the model saw them in, so the
+key is presentation only — it never changes what a returned label means.
+
+```python
+question = {
+    "type": "choice",
+    "instructions": "Which team should handle this?",
+    "criteria": {"billing": "...", "technical": "...", "sales": "..."},
+    "option_order": [2, 0, 1],     # slot 0 shows `sales`, slot 1 `billing`, slot 2 `technical`
+}
+```
+
+It exists because where an option sits changes the answer. `research/eval/presentation_checks.py`
+measures the English checkpoint on five options whose text is *identical*: the per-slot logits
+centre at `[+1.68, +1.47, +0.11, -1.35, -1.91]`, a spread decided by position alone, and the
+multilingual checkpoint leans the other way on `score` (see [#131](https://github.com/NandhaKishorM/laya/issues/131)).
+The checkpoint-side fix is a position-balanced retrain; until then `option_order` lets a caller
+average the effect out, by asking the same question under orders in which every option occupies
+every slot equally often:
+
+```python
+k = len(question["criteria"])
+
+# the k rotations go in as k questions, so they share one forward pass
+rotations = {
+    "q%d" % r: dict(question, option_order=[(i + r) % k for i in range(k)])
+    for r in range(k)
+}
+answers = agent.predict(state, rotations)["answers"]
+
+totals = {label: 0.0 for label in question["criteria"]}
+for answer in answers.values():
+    for label, value in answer["probabilities"].items():
+        totals[label] += value / k
+
+decision = max(totals, key=totals.get)
+```
+
+`predict` already scores every question in a request in one parallel forward pass, so this costs
+`k` rows rather than `k` forward passes — sending the rotations as separate `predict` calls would
+cost `k` of them. On 62 banking intents shortlisted to 20 over 49 states, averaging this way took
+the share of answers that change with presentation order from 16.3% to 6.1%. Omitting
+`option_order` keeps the canonical order and the behaviour every existing caller already has.
+
 ---
 
 ## MCP Server (Optional)

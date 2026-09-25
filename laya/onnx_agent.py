@@ -22,6 +22,7 @@ from laya.common import (
     render_options,
     serialize_state,
     temp_bucket,
+    unpermute_probs,
     TEMP_MIN,
     TEMP_MAX,
     clamp_temperature,
@@ -221,6 +222,8 @@ class ONNXAgent(HookRegistry):
         q = {"t": t, "ins": ins, "crit": crit}
         if "labels" in qdef:
             q["labels"] = qdef["labels"]
+        if "option_order" in qdef:
+            q["option_order"] = [int(i) for i in qdef["option_order"]]
         return q
 
     def system_one(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
@@ -301,6 +304,7 @@ class ONNXAgent(HookRegistry):
             q = self._to_internal(questions[qid])
             seq, markers = build_sequence(
                 self.tok, state, q, max_len, head_max_len,
+                option_order=q.get("option_order"),
                 truncate_left=truncate_left, state_ids=state_ids,
             )
             if len(markers) != len(render_options(q)):
@@ -341,6 +345,9 @@ class ONNXAgent(HookRegistry):
             z = logits[r, :k] / t_scale
             p = np.exp(z - z.max())
             p = p / p.sum()
+
+            # The row comes back in slot order; everything below indexes by option.
+            p = unpermute_probs(p, q.get("option_order"))
 
             conf_score = round(confidence_from_probs(p, k), 4)
             # `answer_confidence` is the calibrated max(p) confidence, reported on every question

@@ -454,6 +454,22 @@ curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
 }'
 ```
 
+To evaluate multiple states in a single call, send a `states` array to `POST /v1/systemone/batch` (capped at 64 states):
+
+```bash
+curl -s localhost:8000/v1/systemone/batch -H 'content-type: application/json' -d '{
+  "states": [
+    {"body": "billed twice, refund please"},
+    {"body": "cannot login, getting 500 error"}
+  ],
+  "questions": {"dept": {"type": "choice", "instructions": "which team?",
+                "criteria": {"billing": "refunds", "tech": "bugs"}}}
+}'
+```
+
+The endpoint shares forward passes via `Router.predict_batch` and returns an array of `results` in matching order along with aggregated `total_usage`.
+
+
 Configuration is by environment variable: `LAYA_HOST`, `LAYA_PORT`,
 `LAYA_DEVICE`, `LAYA_PRELOAD`, `LAYA_MODELS` (comma list to preload),
 `LAYA_THREADS` (cap torch intra-op threads for CPU inference — keep at or below

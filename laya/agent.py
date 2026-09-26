@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import torch
 
+from ._compile import compile_model, independent_dims
 from .common import (
     QTYPES,
     TEMP_MAX,
@@ -232,6 +233,8 @@ class Agent(HookRegistry):
     mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
     # The stock forward is also used by lightweight runtimes built with __new__ in tests.
     _fast = None
+    # Set when `compile=True` wrapped the model in torch.compile.
+    _compiled = False
 
     def __init__(
         self,
@@ -384,8 +387,11 @@ class Agent(HookRegistry):
             pass
             
         # The TileLang fast path replaces the forward itself, so it takes precedence over compile.
+        # dynamic=True plus independent dimensions (laya/_compile.py) so a new request shape
+        # does not recompile.
         if compile and not fast:
-            self.model = torch.compile(self.model)
+            self.model = compile_model(self.model)
+            self._compiled = True
 
         # Keep what the checkpoint shipped for inspection, but only ever apply clamped values:
         # some buckets are fitted to sharpen rather than soften (see clamp_temperature).
@@ -704,7 +710,8 @@ class Agent(HookRegistry):
             # Recomputed inside run() so a fallback that disables amp (or moves to CPU) takes
             # effect on the retry. A disabled gate never enters torch.autocast at all.
             enabled = self._amp_enabled_for(b["input_ids"].shape[0])
-            with _amp_context(self.device, self.dtype, enabled):
+            dims = independent_dims() if self._compiled else nullcontext()
+            with _amp_context(self.device, self.dtype, enabled), dims:
                 return self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),

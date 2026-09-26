@@ -31,7 +31,7 @@ INTENT_CONFIDENT = 0.35          # below this the intent itself is too soft to a
 def decide(answers):
     """Map triage answers to an action. Everything here is application policy."""
     intent = answers["intent"]["choice"]
-    intent_conf = answers["intent"]["confidence"]
+    intent_conf = answers["intent"]["answer_confidence"]
     churn = answers["churn_risk"]["noul"]
     urgent = answers["is_urgent"]["noul"]
     frustration = answers["frustration"]["score"]
@@ -54,12 +54,13 @@ def decide(answers):
         reasons.append("intent=technical_help")
         return "route_to_team", "engineering", False, reasons
     if intent == "information" and intent_conf >= INTENT_CONFIDENT:
-        reasons.append("intent=information conf=%.2f >= %.2f" % (intent_conf, INTENT_CONFIDENT))
+        reasons.append("intent=information answer_confidence=%.2f >= %.2f"
+                       % (intent_conf, INTENT_CONFIDENT))
         return "auto_respond", "self_service", False, reasons
     if frustration >= 2.5:
         reasons.append("frustration=%.2f" % frustration)
         return "route_to_team", "senior_support", False, reasons
-    reasons.append("fallback: intent=%s conf=%.2f" % (intent, intent_conf))
+    reasons.append("fallback: intent=%s answer_confidence=%.2f" % (intent, intent_conf))
     return "route_to_team", "general_support", False, reasons
 
 # --- four tickets, one per branch -----------------------------------------------------------
@@ -94,7 +95,7 @@ for ticket in TICKETS:
         "routing": {"model": result["routing"]["model"], "reason": result["routing"]["reason"]},
         "answers": {
             "intent": {"choice": answers["intent"]["choice"],
-                       "confidence": answers["intent"]["confidence"]},
+                       "answer_confidence": answers["intent"]["answer_confidence"]},
             "is_urgent": {"noul": answers["is_urgent"]["noul"]},
             "frustration": {"score": answers["frustration"]["score"]},
             "refund_requested": {"noul": answers["refund_requested"]["noul"]},

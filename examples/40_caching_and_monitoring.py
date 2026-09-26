@@ -16,8 +16,9 @@ banner("40", "Caching and monitoring", """
     inputs, keep the result, and pay for the forward pass once.
 
     Part A measures a real forward pass against a cache hit. Part B runs 15 tickets through
-    the triage preset and uses Laya's calibrated confidence to sort every answer into
-    auto-action, human review or escalation -- the operational shape example 41 builds on.
+    the triage preset and gates on `answer_confidence`, the calibrated probability of the
+    answer Laya reports, to sort every answer into auto-action, human review or escalation --
+    the operational shape example 41 builds on.
     """)
 
 agent = load("english")
@@ -128,11 +129,11 @@ print("   %-19s %-17s %-7s %-24s %s"
 for name, message in TICKETS:
     answers = agent.predict({"message": message}, QUESTIONS)["answers"]
     for qid, answer in answers.items():
-        b = bucket(answer["confidence"])
+        b = bucket(answer["answer_confidence"])
         answer_buckets[b] += 1
         per_question.setdefault(qid, {"auto": 0, "review": 0, "escalate": 0})[b] += 1
-    weakest_id = min(DECISION_IDS, key=lambda q: answers[q]["confidence"])
-    weakest_conf = answers[weakest_id]["confidence"]
+    weakest_id = min(DECISION_IDS, key=lambda q: answers[q]["answer_confidence"])
+    weakest_conf = answers[weakest_id]["answer_confidence"]
     top_intent = max(answers["intent"]["probabilities"].values())
     rows.append((name, answers, weakest_id, weakest_conf, bucket(weakest_conf), top_intent))
     print("   %-19s %-17s %-7.2f %-24s %s"
@@ -148,11 +149,11 @@ for qid, counts in per_question.items():
     print("   %-19s %-7s %-6d %-7d %d"
           % (qid, QUESTIONS[qid]["type"], counts["auto"], counts["review"], counts["escalate"]))
 frustration = per_question["frustration"]
-print("   `frustration` is a %d-level score, so its entropy confidence is low even when the"
+print("   `frustration` is a %d-level score, so the probability it puts on the reported level"
       % len(QUESTIONS["frustration"]["criteria"]))
-print("   answer is informative: %d of %d landed in escalate. Gate on the choice and noul"
+print("   is modest even when the answer is informative: %d of %d landed in escalate. Gate on"
       % (frustration["escalate"], len(TICKETS)))
-print("   answers you actually act on, not on the score.")
+print("   the choice and noul answers you actually act on, not on the score.")
 
 heading("states that look unusual")
 print("   %-19s %-17s %-7s %-24s %s"
@@ -169,15 +170,15 @@ vague = next(answers for name, answers, *_ in rows if name == "vague")
 p = list(vague["intent"]["probabilities"].values())
 entropy = -sum(x * math.log(max(x, 1e-12)) for x in p) / math.log(len(p))
 print("""
-   Confidence is calibrated: the checkpoint is trained with proper scoring rules (example
-   34 covers the temperatures), so 0.80 is a level of certainty you can gate on rather than
-   a vibe. For a choice question it is normalised Shannon entropy, confidence = 1 - H/log(k).
-   For the "vague" ticket the intent distribution has H/log(k) = %.2f, so confidence is %.2f:
+   The monitor gates on `answer_confidence`: the calibrated probability of the answer Laya
+   reports, defined the same way on every question type. `confidence` is a different measure --
+   on `choice` and `score` it is 1 - H/log(k), how concentrated the distribution is -- and the
+   README warns against carrying a threshold over from it. For the "vague" ticket the intent
+   distribution has H/log(k) = %.2f, so `confidence` is %.2f while `answer_confidence` is %.2f:
    the model is stating that the message does not identify one intent, and the monitor
-   escalates it. For `noul`, confidence is max(p, 1-p) -- a different formula on a different
-   scale, which is why the table above is split by primitive.
+   escalates it.
 
    The thresholds, the 0.5 spam-style gates and the auto/review/escalate split are ours.
    The probabilities are the model's, and they are the only reason a threshold means
    anything. Example 41 turns exactly this monitor into a service policy.
-   """ % (entropy, 1 - entropy))
+   """ % (entropy, 1 - entropy, vague["intent"]["answer_confidence"]))

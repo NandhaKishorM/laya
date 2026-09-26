@@ -8,7 +8,7 @@ demonstrates the sharpening honestly on a real prediction.
 
 from _common import banner, describe, device_line, load
 
-from laya.common import temp_bucket
+from laya.common import TEMP_MAX, TEMP_MIN, temp_bucket
 from laya import QTYPE_NAMES, QTYPES, render_options
 
 banner("34", "Calibration and temperature", """
@@ -20,17 +20,19 @@ banner("34", "Calibration and temperature", """
 
     The shipped checkpoint adds a temperature, one per (question type, option-count) bucket:
 
-      z = logits / temperature_by_options[bucket]     # e.g. choice:11+ -> 0.1006
+      z = logits / temperature_by_options[bucket]     # e.g. choice:11+ -> 0.1006 shipped
       p = softmax(z)
 
     `temperature` is a list of three floats indexed by question type
     (choice=0, score=1, noul=2); `temperature_by_options` holds the finer buckets and wins when
     its key exists. A temperature below 1 divides by less than one, i.e. multiplies the logits
-    and sharpens the distribution. The English checkpoint's `choice:11+` bucket is 0.1006 --
-    about a 9.9x logit multiplier -- so large option sets come back almost one-hot.
+    and sharpens the distribution.
 
-    The effect below is measured, not asserted: the same question is answered at the shipped
-    temperature and again after setting that bucket to 1.0 in `agent.cfg`.
+    One thing to know before reading a checkpoint's numbers: the agent clamps every temperature
+    into [0.5, 5] when it loads a checkpoint and applies the clamped copy. The English
+    checkpoint ships `choice:11+` at 0.1006, which is below the floor, so what actually runs is
+    0.5 -- about a 2x logit multiplier, not the 9.9x the raw value suggests. This example prints
+    both and measures the sharpening on a real prediction.
     """)
 
 # --- a 12-option question lands in choice:11+ ----------------------------------------------
@@ -80,40 +82,49 @@ def top_line(probabilities, n=5):
 
 agent = load("english")
 device_line(agent)
+raw = agent.temperature_by_options_raw
+applied = agent.temperature_by_options
 print("   temperature (by type)      : %s"
-      % {QTYPE_NAMES[i]: round(t, 4) for i, t in enumerate(agent.cfg["temperature"])})
-print("   temperature_by_options     : %s"
-      % {k: round(v, 4) for k, v in sorted(agent.cfg["temperature_by_options"].items())})
+      % {QTYPE_NAMES[i]: round(t, 4) for i, t in enumerate(agent.temperature)})
+print("   temperature_by_options raw : %s"
+      % {k: round(v, 4) for k, v in sorted(raw.items())})
+print("   temperature_by_options used: %s"
+      % {k: round(v, 4) for k, v in sorted(applied.items())})
+print("   the agent clamps into [%.1f, %.1f]; `predict()` reads the clamped map." % (TEMP_MIN, TEMP_MAX))
 
 print("\n   bucket selected per question:")
 for qid, question in QUESTIONS.items():
     bucket, qt, k = bucket_for(question)
-    scale = agent.cfg["temperature_by_options"].get(bucket, agent.cfg["temperature"][qt])
-    print("   %-12s %-16s (%d options) -> t_scale=%.4f  (logit multiplier %.2fx)"
-          % (qid, bucket, k, scale, 1.0 / scale))
+    raw_scale = float(raw.get(bucket, agent.temperature_raw[qt]))
+    scale = applied.get(bucket, agent.temperature[qt])
+    clamped = "" if raw_scale == scale else "   (raw %.4f clamped to the floor)" % raw_scale
+    print("   %-12s %-16s (%d options) -> t_scale=%.4f  (logit multiplier %.2fx)%s"
+          % (qid, bucket, k, scale, 1.0 / scale, clamped))
 
-print("\n   == the shipped temperature on the 12-option question ==")
+print("\n   == the applied temperature on the 12-option question ==")
 shipped = agent.predict(STATE, QUESTIONS)["answers"]
 print("   category: %s" % top_line(shipped["category"]["probabilities"]))
-print("   top choice %r with confidence %.4f"
-      % (shipped["category"]["choice"], shipped["category"]["confidence"]))
+print("   top choice %r with answer_confidence %.4f"
+      % (shipped["category"]["choice"], shipped["category"]["answer_confidence"]))
 
 # --- neutralise exactly that bucket and ask the same question again ------------------------
+# `agent.temperature_by_options` is the clamped copy predict() applies, so this is the map to
+# edit. `agent.cfg` holds the checkpoint's raw values and is not read per call.
 BUCKET = "choice:11+"
-original = agent.cfg["temperature_by_options"][BUCKET]
-agent.cfg["temperature_by_options"][BUCKET] = 1.0
+original = agent.temperature_by_options[BUCKET]
+agent.temperature_by_options[BUCKET] = 1.0
 neutral = agent.predict(STATE, QUESTIONS)["answers"]
-agent.cfg["temperature_by_options"][BUCKET] = original        # put the checkpoint back
+agent.temperature_by_options[BUCKET] = original        # put the applied temperature back
 
 print("\n   == the same call with %s set to 1.0 (logits not divided) ==" % BUCKET)
 print("   category: %s" % top_line(neutral["category"]["probabilities"]))
-print("   top choice %r with confidence %.4f"
-      % (neutral["category"]["choice"], neutral["category"]["confidence"]))
+print("   top choice %r with answer_confidence %.4f"
+      % (neutral["category"]["choice"], neutral["category"]["answer_confidence"]))
 
-print("\n   shipped t=%.4f vs neutral t=1.0: top probability %.4f -> %.4f, confidence %.4f -> %.4f"
-      % (original, max(shipped["category"]["probabilities"].values()),
+print("\n   applied t=%.4f vs neutral t=1.0: top probability %.4f -> %.4f, answer_confidence %.4f -> %.4f"
+      % (applied[BUCKET], max(shipped["category"]["probabilities"].values()),
          max(neutral["category"]["probabilities"].values()),
-         shipped["category"]["confidence"], neutral["category"]["confidence"]))
+         shipped["category"]["answer_confidence"], neutral["category"]["answer_confidence"]))
 print("   the scores above are real: same weights, same state, only the divisor changed.")
 print("   the other questions in the set:")
 describe(shipped)

@@ -189,6 +189,23 @@ def ece(confidences: Sequence[float], corrects: Sequence[bool], bins: int = 15) 
                            np.asarray(corrects, dtype=bool), bins=bins))
 
 
+def _answered_model(result: Any) -> Optional[Any]:
+    """Which checkpoint produced `result`, read the way each runner records it.
+
+    A `Router` puts its choice under `routing["model"]` and leaves no checkpoint name at the top
+    level: `result["model"]` is the payload's family tag, `"laya-rl-agent"`, on every Agent and
+    ONNXAgent result too. So a routed run has to read `routing`, or its `by model` slice reports
+    one family for every checkpoint that answered.
+    """
+    result = result or {}
+    routing = result.get("routing")
+    if isinstance(routing, dict):
+        chosen = routing.get("model")
+        if isinstance(chosen, str) and chosen:
+            return chosen
+    return result.get("model")
+
+
 # --------------------------------------------------------------------------- evaluation
 @dataclass
 class EvalReport:
@@ -334,7 +351,7 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
                 cases.append({
                     "qid": qid,
                     "language": example.language,
-                    "model": example.model or (result or {}).get("model"),
+                    "model": example.model or _answered_model(result),
                     "tags": list(example.tags),
                     "expected": expected,
                     "answer": answer,

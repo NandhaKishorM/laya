@@ -143,6 +143,65 @@ def test_evaluate_overall_and_slices():
     assert "choice_accuracy" in report.to_markdown()
 
 
+def test_model_slice_follows_the_routed_checkpoint():
+    """A Router records the checkpoint it chose under `routing`, not at the top level.
+
+    `result["model"]` is the payload's family tag -- `laya-rl-agent` -- on every Laya runner, so
+    reading only that collapses `by model` into one bucket for a mixed-language run.
+    """
+    class RoutedRunner(StubRunner):
+        def _result(self, state, model):
+            # What this runner answers with. The pinned row is deliberately routed somewhere
+            # else, so the case label can only come from the caller's pin.
+            chosen = "english" if state == "s_en" else "multilingual"
+            return {"model": "laya-rl-agent", "routing": {"model": chosen},
+                    "answers": self.by_state[state]}
+
+        def predict(self, state, questions, model=None):
+            return self._result(state, model)
+
+        def predict_batch(self, states, questions, model=None, batch_size=None):
+            return [self._result(s, model) for s in states]
+
+    dataset = Dataset([
+        Example("s_en", Q, {"intent": "a"}),
+        Example("s_de", Q, {"intent": "a"}),
+        Example("pinned", Q, {"intent": "a"}, model="english"),
+    ])
+    runner = RoutedRunner({s: {"intent": choice_answer("a")} for s in ("s_en", "s_de", "pinned")})
+    wanted = ["english", "multilingual", "english"]
+    for kwargs in ({}, {"batch_size": 8}):
+        report = evaluate(runner, dataset, evaluators=[ChoiceAccuracy()], **kwargs)
+        assert [c["model"] for c in report.cases] == wanted, kwargs
+        assert sorted(report.slices["model"]) == ["english", "multilingual"], kwargs
+
+
+def test_model_slice_falls_back_when_a_runner_reports_no_route():
+    # Absent, empty, or not a usable checkpoint name -- none of these may label a case.
+    UNUSABLE = [None, {}, {"model": None}, {"model": ""}, {"model": 5}, "english", ["english"]]
+
+    class OddRunner(StubRunner):
+        def __init__(self, by_state, routing):
+            super().__init__(by_state)
+            self.routing = routing
+
+        def predict(self, state, questions, model=None):
+            result = {"model": "laya-rl-agent", "answers": self.by_state[state]}
+            if self.routing is not None:
+                result["routing"] = self.routing
+            return result
+
+    answers = {"s": {"intent": choice_answer("a")}}
+    dataset = Dataset([Example("s", Q, {"intent": "a"})])
+    for routing in UNUSABLE:
+        report = evaluate(OddRunner(answers, routing), dataset, evaluators=[ChoiceAccuracy()])
+        assert sorted(report.slices["model"]) == ["laya-rl-agent"], routing
+    # An Agent runner that never routes is labelled by its own payload, as before.
+    report = evaluate(StubRunner({"s1": {"intent": choice_answer("a")}}),
+                      Dataset([Example("s1", Q, {"intent": "a"})]), evaluators=[ChoiceAccuracy()])
+    assert sorted(report.slices["model"]) == ["stub"]
+
+
 def test_evaluate_batches_same_questions():
     class BatchRunner(StubRunner):
         def __init__(self, by_state):

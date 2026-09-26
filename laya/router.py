@@ -712,8 +712,14 @@ class Router(HookRegistry):
         ``Agent.predict_batch`` so their states can share forward passes. Results are
         then restored to the original request order.
 
-        Requests may independently specify ``model``, ``task``, ``lang`` or
-        ``lang_guess`` and may use different question schemas.
+        Requests may independently specify ``model``, ``task``, ``lang``,
+        ``lang_guess``, ``max_len`` or ``head_max_len`` and may use different question schemas.
+        ``max_len`` / ``head_max_len`` are the per-request form of the token-budget override
+        ``predict`` takes as call arguments: they set the checkpoint's state and question-head
+        budgets for that one request, so a wide question can be asked without shrinking the
+        batch's other requests to the same window. Requests that ask for different budgets are
+        split into separate forward passes, since one ``Agent.predict_batch`` call carries one
+        budget for all its states. A start hook may still replace either value on ``ctx``.
 
         Router-level predict hooks run per request, as ``predict`` runs them: each request
         gets its own ``PredictContext``, so ``on_predict_start`` can replace that request's
@@ -726,7 +732,8 @@ class Router(HookRegistry):
         Args:
             requests: Sequence of request dictionaries. Every item requires ``state`` and
                 ``questions`` and may include ``model``, ``task``, ``lang`` or
-                ``lang_guess`` overrides.
+                ``lang_guess`` routing overrides and ``max_len`` / ``head_max_len`` token-budget
+                overrides.
             batch_size: Optional maximum number of states per Agent forward-pass batch.
             hooks_timeout: Override the Router's ``hooks_timeout`` for this call.
 
@@ -762,11 +769,15 @@ class Router(HookRegistry):
             try:
                 # One context per request, built and started the way `predict` does it, so a
                 # start hook sees -- and can redact, rewrite or skip -- each request before it
-                # joins a shared forward pass.
+                # joins a shared forward pass. A request's own `max_len` / `head_max_len` seed the
+                # context here; the grouping below already splits on those fields, so this is the
+                # only place the per-request budget can enter.
                 for i in indices:
                     ctx = PredictContext(states=[requests[i]["state"]], questions=requests[i]["questions"],
                                          decision=dict(decisions[i]), model=model_name, agent=agent,
-                                         router=self)
+                                         router=self,
+                                         max_len=requests[i].get("max_len"),
+                                         head_max_len=requests[i].get("head_max_len"))
                     started.append(ctx)
                     dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors,
                              lock=self._hooks_lock, timeout=timeout)

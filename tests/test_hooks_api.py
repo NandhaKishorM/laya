@@ -90,6 +90,14 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
     check_param(label, fn, "max_len", None)
     check_param(label, fn, "head_max_len", None)
 
+# Router.predict_batch has no call-level budget: a heterogeneous batch sets it per request, and
+# the request keys `max_len` / `head_max_len` are read into each request's PredictContext.
+check_param("Router.predict_batch", Router.predict_batch, "batch_size", None)
+check_param("Router.predict_batch", Router.predict_batch, "hooks_timeout", None)
+for param in ("max_len", "head_max_len"):
+    check("Router.predict_batch/%s is per-request, not a call argument" % param,
+          param in sig(Router.predict_batch), False)
+
 # route() takes per-call hooks so a hook can pin a checkpoint for one call
 check_param("Router.route", Router.route, "hooks", None)
 check_param("Router.route", Router.route, "hooks_raise", None)

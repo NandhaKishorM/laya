@@ -124,7 +124,9 @@ Router.predict_batch(requests, batch_size=...)
        │
        ├─ load(checkpoint) ──► on_load / on_evict
        ├─ for each request of this checkpoint, in input order:
-       │      ctx = PredictContext(states=[state], questions, decision, model, agent, router)
+       │      ctx = PredictContext(states=[state], questions, decision, model, agent, router,
+       │                           max_len=request.get("max_len"),
+       │                           head_max_len=request.get("head_max_len"))
        │      on_predict_start       a hook may redact, rewrite, set a token budget or skip
        ├─ group the requests left to infer by (questions, ctx.max_len, ctx.head_max_len)
        │      agent.predict_batch(states, questions, ...)  ──► one shared forward pass per group
@@ -143,6 +145,10 @@ Key points:
   request only: requests are grouped for the forward pass after their start hooks have run.
   Mutating a questions dict in place changes it for every request that shares that dict, and for
   the caller, as it would with `predict`.
+- A request may carry its own `max_len` / `head_max_len`, the per-request form of the token budget
+  `predict` takes as call arguments. A start hook that sets `ctx.max_len` overrides it, because the
+  hook runs after the context is built. Requests that ask for different budgets cannot share a
+  forward pass, so a batch that mixes budgets makes one `agent.predict_batch` call per budget.
 - Every started request gets exactly one `on_predict_end`, even when an earlier request's end hook
   raises; the first such error is raised after all of them have run.
 - If the batch fails, a request that did not get a result is reported as failed (`on_error`, with

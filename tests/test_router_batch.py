@@ -306,3 +306,87 @@ def test_predict_and_predict_batch_pass_the_same_lang(monkeypatch):
     calls.clear()
     router.predict_batch([request("a", model="english", lang="de")])
     assert calls[-1]["lang"] == via_predict == "de"
+
+
+def _budget_recording_router(monkeypatch, hooks=(), agent=None):
+    """A Router over a fake agent that records the token budget each forward pass received."""
+    import laya.agent
+
+    calls = []
+
+    class Recording:
+        def __init__(self, repo, *, device, token, subfolder):
+            self.checkpoint = subfolder or "english"
+
+        def predict_batch(self, states, questions, batch_size=None, **overrides):
+            calls.append({"n": len(states), "max_len": overrides.get("max_len"),
+                          "head_max_len": overrides.get("head_max_len")})
+            return [{"model": "fake", "answers": {}, "usage": {}} for _ in states]
+
+        def system_one(self, state, questions, **overrides):
+            calls.append({"n": 1, "max_len": overrides.get("max_len"),
+                          "head_max_len": overrides.get("head_max_len")})
+            return {"model": "fake", "answers": {}, "usage": {}}
+
+    monkeypatch.setattr(laya.agent, "Agent", agent or Recording)
+    return Router(max_loaded=1, default="english", hooks=list(hooks)), calls
+
+
+def test_request_token_budget_reaches_the_forward_pass(monkeypatch):
+    """A request's `max_len` / `head_max_len` are read into its context, which is where the
+    grouping below already keys on them. Two requests that ask for the same wide budget share a
+    forward pass; the one that asks for nothing is grouped apart, because the budgets differ."""
+    router, calls = _budget_recording_router(monkeypatch)
+    router.predict_batch([request("a", max_len=1024, head_max_len=512),
+                          request("b", max_len=1024, head_max_len=512),
+                          request("c")])
+    assert calls == [{"n": 2, "max_len": 1024, "head_max_len": 512},
+                     {"n": 1, "max_len": None, "head_max_len": None}]
+
+
+def test_predict_and_predict_batch_pass_the_same_budget(monkeypatch):
+    """The invariant: one request, either entry point, the same token budget."""
+    router, calls = _budget_recording_router(monkeypatch)
+    router.predict("a", Q, model="english", max_len=1024, head_max_len=512)
+    via_predict = calls[-1]
+    calls.clear()
+    router.predict_batch([request("a", model="english", max_len=1024, head_max_len=512)])
+    assert calls[-1] == dict(via_predict, n=1)
+
+
+def test_requests_without_a_budget_forward_no_budget_keys(monkeypatch):
+    """`predict` passes the budget only when set, so an Agent-like object whose methods predate
+    the arguments still works. Naming the keys `None` must behave like leaving them out."""
+    class NoBudgetArgs:
+        def __init__(self, repo, *, device, token, subfolder):
+            pass
+
+        def predict_batch(self, states, questions, batch_size=None):
+            return [{"model": "fake", "answers": {}, "usage": {}} for _ in states]
+
+    router, _ = _budget_recording_router(monkeypatch, agent=NoBudgetArgs)
+    out = router.predict_batch([request("a"), request("b", max_len=None, head_max_len=None)])
+    assert len(out) == 2
+
+
+def test_start_hook_budget_outranks_the_request_budget(monkeypatch):
+    """The context is seeded from the request and only then started, so a hook that sets a budget
+    wins -- the same ordering `predict` has."""
+    class Narrow:
+        def on_predict_start(self, ctx):
+            ctx.max_len = 64
+
+    router, calls = _budget_recording_router(monkeypatch, hooks=[Narrow()])
+    router.predict_batch([request("a", max_len=1024)])
+    assert calls == [{"n": 1, "max_len": 64, "head_max_len": None}]
+
+
+def test_request_budget_does_not_change_routing(monkeypatch):
+    """The budget is an inference argument: the routed checkpoint and `routing` must be what the
+    same request gets without it."""
+    router, calls = _budget_recording_router(monkeypatch)
+    plain = router.predict_batch([request("a")])
+    calls.clear()
+    wide = router.predict_batch([request("a", max_len=1024, head_max_len=512)])
+    assert [r["routing"] for r in wide] == [r["routing"] for r in plain]
+

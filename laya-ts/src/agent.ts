@@ -187,7 +187,7 @@ export function checkQuestion(qid: string, qdef: unknown): void {
   if ("labels" in q && t !== "noul") {
     throw new Error(`question ${qidStr(qid)}: 'labels' is only supported for noul questions`);
   }
-  if (t === "noul" && "labels" in q) {
+  if (t === "noul" && q["labels"] !== null && q["labels"] !== undefined) {
     const labels = q["labels"];
     if (typeof labels !== "object" || labels === null || Array.isArray(labels)) {
       throw new Error(`question ${qidStr(qid)}: noul labels must be an object with 'false' and 'true'`);

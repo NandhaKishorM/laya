@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Agent, checkQuestion, toInternal } from "../src/agent.js";
-import { buildSequence } from "../src/common.js";
+import { buildSequence, renderOptions } from "../src/common.js";
 import { loadNodeBundle } from "../src/providers.js";
 
 const tokenizer = () => ({
@@ -51,6 +51,19 @@ describe("audit regressions", () => {
     expect(rendered).toContain("Yes");
     expect(() => checkQuestion("q", { type: "noul", instructions: "?", labels: { false: "No" } })).toThrow("labels");
     expect(() => checkQuestion("q", { type: "choice", instructions: "?", criteria: ["yes"], labels: { false: "No", true: "Yes" } })).toThrow("labels");
+  });
+
+  it("treats a null or undefined noul `labels` as the defaults, as Python does", () => {
+    const defaults = renderOptions(toInternal({ type: "noul", instructions: "?" }));
+    for (const labels of [null, undefined]) {
+      const q = { type: "noul", instructions: "?", labels };
+      expect(() => checkQuestion("q", q)).not.toThrow();
+      expect(renderOptions(toInternal(q))).toEqual(defaults);
+    }
+    for (const labels of ["x", [], {}, 5, { false: "No" }]) {
+      expect(() => checkQuestion("q", { type: "noul", instructions: "?", labels })).toThrow("labels");
+    }
+    expect(() => checkQuestion("q", { type: "choice", instructions: "?", criteria: ["a"], labels: null })).toThrow("labels");
   });
 
   it("rejects a null score level, as Python does (#302)", () => {

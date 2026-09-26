@@ -1,8 +1,9 @@
 """Numerics check: is the forward pass on this machine trustworthy?
 
 For every checkpoint:
-  1. The RoPE base transformers 4.x actually uses == the one the checkpoint was trained with
-     (transformers 5 records it as `rope_parameters`).
+  1. The RoPE bases actually in use == the ones the checkpoint records, read from either config
+     layout (`rope_parameters` on transformers 5; `global_rope_theta` / `local_rope_theta` on
+     4.x).
   2. Run-to-run determinism (same model, same input, twice) -- the float32 noise floor.
   3. SDPA (what Laya asks transformers for) vs eager (reference math), on the user-visible
      answers: choice labels, probabilities, confidence, noul, score.
@@ -67,6 +68,38 @@ def compare(label, a, b):
     return worst
 
 
+def _theta(node, layer, flat=None):
+    """A per-layer `rope_theta` from a `rope_parameters` mapping, or the flat fallback."""
+    if isinstance(node, dict):
+        params = node.get(layer)
+        if isinstance(params, dict) and "rope_theta" in params:
+            return float(params["rope_theta"])
+        if flat is not None:
+            return float(flat)
+    return None
+
+
+def rope_pair(source):
+    """The (full_attention, sliding_attention) RoPE bases a config records.
+
+    transformers 5 stores them per attention layer under `rope_parameters`; 4.x keeps
+    `global_rope_theta` / `local_rope_theta` flat. `source` is a live config (after
+    `_apply_rope_config`, which maps the 5.x layout onto the attributes 4.x reads) or the raw
+    config.json, so this runs without assuming which version produced the checkpoint.
+    """
+    rope = (source.get("rope_parameters") if isinstance(source, dict)
+            else getattr(source, "rope_parameters", None))
+    if isinstance(rope, dict):
+        flat = rope.get("rope_theta")
+        full = _theta(rope, "full_attention", flat)
+        sliding = _theta(rope, "sliding_attention", flat)
+        if full is not None and sliding is not None:
+            return full, sliding
+    if isinstance(source, dict):
+        return source.get("global_rope_theta"), source.get("local_rope_theta")
+    return getattr(source, "global_rope_theta", None), getattr(source, "local_rope_theta", None)
+
+
 def main():
     print("torch %s" % torch.__version__)
     failures = []
@@ -75,14 +108,15 @@ def main():
         path = os.path.join(ROOT, rel)
         raw = json.load(open(os.path.join(path, "encoder", "config.json")))
         ecfg = AutoConfig.from_pretrained(os.path.join(path, "encoder"))
+        # transformers 4.x reads flat attributes, so map the 5.x `rope_parameters` layout onto
+        # them first; on 5.x this is a no-op and the live config already carries that mapping.
         _apply_rope_config(ecfg)
-        want = raw.get("rope_parameters") or {}
-        rope_ok = (float(want["full_attention"]["rope_theta"]) == ecfg.global_rope_theta and
-                   float(want["sliding_attention"]["rope_theta"]) == ecfg.local_rope_theta)
+        full, sliding = rope_pair(ecfg)
+        want_full, want_sliding = rope_pair(raw)
+        rope_ok = (full is not None and sliding is not None and
+                   full == want_full and sliding == want_sliding)
         print("\n   %-16s rope full=%-8s sliding=%-8s (trained %s / %s)  %s"
-              % (name, ecfg.global_rope_theta, ecfg.local_rope_theta,
-                 want["full_attention"]["rope_theta"], want["sliding_attention"]["rope_theta"],
-                 "OK" if rope_ok else "MISMATCH"))
+              % (name, full, sliding, want_full, want_sliding, "OK" if rope_ok else "MISMATCH"))
         if not rope_ok:
             failures.append("%s rope theta" % name)
 

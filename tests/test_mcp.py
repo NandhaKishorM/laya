@@ -122,8 +122,17 @@ def test_schema():
     ok("schema/questions_score_ok", out["urg"]["criteria"] == ["low", "high"])
     out = validate_questions({"risk": {"type": "noul", "instructions": "is true?"}})
     ok("schema/questions_noul_ok", out["risk"]["type"] == "noul")
-    out = validate_questions({"risk": {"type": "noul", "instructions": "is true?", "criteria": {"yes": "affirmative"}}})
+    out = validate_questions({"risk": {"type": "noul", "instructions": "is true?",
+                                       "criteria": {"true": "affirmative", "false": "negative"}}})
     ok("schema/questions_noul_criteria_ok", "criteria" in out["risk"])
+    # A noul question takes its criteria keyed only 'true'/'false'. The agent rejects anything
+    # else with a ValueError, so accepting 'yes'/'no' here only moved the failure deeper, where
+    # the tool wrapper reported a caller mistake as an internal_error.
+    expect_tool_error("schema/questions_noul_criteria_bad_key",
+                      lambda: validate_questions(
+                          {"risk": {"type": "noul", "instructions": "is true?",
+                                    "criteria": {"yes": "affirmative", "no": "negative"}}}),
+                      "invalid_questions")
 
     bad_questions = [
         None,
@@ -505,6 +514,143 @@ def test_shortlist():
        and out["routing"]["reason"] == "explicit model", repr(out["routing"]))
 
 
+def test_question_validation_matches_the_agent():
+    """MCP must reject a bad question the same way the agent does, and say so.
+
+    `Agent._check_question` is the contract: it runs before encoding and raises `ValueError`
+    for a caller mistake. The MCP tools used to check only part of it, so the rest reached the
+    agent, and `_wrap` mapped the `ValueError` to `internal_error` -- the code this layer
+    reserves for a tool that broke ("predict returned non-object", "router has no route()").
+    An MCP client was told the server failed when it had sent a malformed question.
+
+    This is the same shape as the serve-side test that calls the real guard from a stub
+    router: no weights, and the core guard is the oracle rather than a second hand-written
+    copy of the rules.
+    """
+    from laya.agent import Agent
+
+    def core_rejects(qid, qdef):
+        try:
+            Agent._check_question(qid, dict(qdef))
+        except ValueError:
+            return True
+        except Exception:  # noqa: BLE001 -- any refusal is still a refusal
+            return True
+        return False
+
+    # (label, question) for every rule the agent enforces and the tools did not.
+    parity = [
+        ("noul_criteria_bad_key",
+         {"type": "noul", "instructions": "is true?",
+          "criteria": {"yes": "affirmative", "no": "negative"}}),
+        ("noul_criteria_extra_key",
+         {"type": "noul", "instructions": "is true?",
+          "criteria": {"true": "yes", "false": "no", "maybe": "perhaps"}}),
+        ("noul_labels_wrong_names",
+         {"type": "noul", "instructions": "is true?", "labels": {"A": "yes", "B": "no"}}),
+        ("noul_labels_missing_true",
+         {"type": "noul", "instructions": "is true?", "labels": {"false": "no"}}),
+        ("noul_labels_identical",
+         {"type": "noul", "instructions": "is true?",
+          "labels": {"false": "same", "true": "same"}}),
+        ("noul_labels_empty",
+         {"type": "noul", "instructions": "is true?", "labels": {"false": "", "true": "yes"}}),
+        ("noul_labels_not_object",
+         {"type": "noul", "instructions": "is true?", "labels": ["yes", "no"]}),
+        # A label is text, not a value. The agent checks the type before using it, so these
+        # have to be refused here too -- stringifying them would accept exactly what the agent
+        # rejects, and the failure would surface as an internal_error instead.
+        ("noul_labels_numeric",
+         {"type": "noul", "instructions": "is true?", "labels": {"false": 0, "true": 1}}),
+        ("noul_labels_mixed_types",
+         {"type": "noul", "instructions": "is true?", "labels": {"false": "no", "true": 1}}),
+        ("noul_labels_bool",
+         {"type": "noul", "instructions": "is true?", "labels": {"false": False, "true": True}}),
+        ("noul_labels_null",
+         {"type": "noul", "instructions": "is true?", "labels": {"false": None, "true": "yes"}}),
+        ("noul_labels_list",
+         {"type": "noul", "instructions": "is true?", "labels": {"false": ["no"], "true": "yes"}}),
+        ("noul_labels_whitespace_equal",
+         {"type": "noul", "instructions": "is true?", "labels": {"false": " same ", "true": "same"}}),
+        ("score_level_null",
+         {"type": "score", "instructions": "how bad", "criteria": ["fine", None]}),
+        ("score_level_null_first",
+         {"type": "score", "instructions": "how bad", "criteria": [None, "fine"]}),
+        ("labels_on_choice",
+         {"type": "choice", "instructions": "which?", "criteria": {"a": "first"},
+          "labels": {"false": "no", "true": "yes"}}),
+    ]
+    for label, qdef in parity:
+        ok("question_parity/core_rejects_%s" % label, core_rejects("q", qdef))
+        expect_tool_error("question_parity/mcp_rejects_%s" % label,
+                          lambda d=qdef: validate_questions({"q": d}), "invalid_questions")
+
+    # The other direction is deliberately not asserted: the tools reject a few shapes the
+    # agent tolerates (a choice `criteria` list, a non-string `instructions`). Widening what
+    # MCP accepts is a separate contract decision and is not what this change is about.
+    accepted_core = [
+        ("choice_criteria_list", {"type": "choice", "instructions": "which?",
+                                  "criteria": ["a", "b"]}),
+    ]
+    for label, qdef in accepted_core:
+        ok("question_parity/core_accepts_%s" % label, not core_rejects("q", qdef))
+
+
+def test_a_bad_question_is_a_caller_error_not_a_server_fault():
+    """End to end through the wrapper: the client must see `invalid_questions`.
+
+    The wrapper turns a `ToolError` into that code and preserves its message, while any other
+    exception becomes `internal_error`. So the only thing standing between a malformed question
+    and a "the server broke" answer is whether the tools reject it themselves.
+    """
+    import json as _json
+
+    from laya.mcp import server as server_mod
+
+    class ValidatingAgent:
+        """The real guard, no checkpoint: what `Agent.system_one` runs before encoding."""
+
+        def predict(self, state, questions, **kwargs):
+            from laya.agent import Agent
+            for qid, qdef in questions.items():
+                Agent._check_question(qid, qdef)
+            return {"answers": {qid: {"type": "noul", "noul": 0.5, "noul_label": None}
+                                for qid in questions}}
+
+    class Router:
+        loaded = ["english"]
+
+        def predict(self, state, questions, model=None, **kwargs):
+            return ValidatingAgent().predict(state, questions)
+
+        def route(self, state, questions, **kwargs):
+            return {"model": "english", "repo": "r", "reason": "stub"}
+
+    for label, qdef in (
+        ("noul_criteria_bad_key", {"type": "noul", "instructions": "is true?",
+                                   "criteria": {"yes": "affirmative", "no": "negative"}}),
+        ("noul_labels_wrong_names", {"type": "noul", "instructions": "is true?",
+                                     "labels": {"A": "yes", "B": "no"}}),
+        ("noul_labels_numeric", {"type": "noul", "instructions": "is true?",
+                                 "labels": {"false": 0, "true": 1}}),
+        ("noul_labels_mixed_types", {"type": "noul", "instructions": "is true?",
+                                     "labels": {"false": "no", "true": 1}}),
+        ("score_level_null", {"type": "score", "instructions": "how bad",
+                              "criteria": ["fine", None]}),
+    ):
+        try:
+            server_mod._wrap(server_mod.laya_predict, state=STATE, questions={"q": qdef},
+                             model="english", router=Router())
+            ok("caller_error/rejected_%s" % label, False, "no error raised")
+        except Exception as exc:  # noqa: BLE001 -- the wrapper raises McpToolError
+            payload = getattr(exc, "message", None) or str(exc)
+            try:
+                code = _json.loads(payload).get("error")
+            except Exception:  # noqa: BLE001
+                code = None
+            ok("caller_error/%s" % label, code == "invalid_questions", "got %r" % (code,))
+
+
 def test_timeout_removed():
     # The per-call timeout was removed: a ThreadPoolExecutor shutdown waits for
     # the work anyway, and MCP clients apply their own request timeout. The tool
@@ -563,6 +709,8 @@ test_schema()
 test_shape()
 test_question_forwarding()
 test_shortlist()
+test_question_validation_matches_the_agent()
+test_a_bad_question_is_a_caller_error_not_a_server_fault()
 test_timeout_removed()
 test_models_from_env()
 test_server_registration()

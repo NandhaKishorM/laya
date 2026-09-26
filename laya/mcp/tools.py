@@ -31,6 +31,40 @@ VALID_TYPES = {"choice", "score", "noul"}
 VALID_MODELS = {"auto", "english", "multilingual", "typed-decisions"}
 
 
+def _check_noul_labels(name: str, labels: Any) -> None:
+    """`labels` renames a noul answer's two model-facing texts; mirror the agent's rule.
+
+    `laya.common._resolve_noul_labels` is the contract: exactly `false` and `true`, each a
+    distinct non-empty string. The agent raises `ValueError` on anything else, and the tool
+    wrapper turns a `ValueError` into `internal_error` -- the code this layer uses for a tool
+    that broke. So the check is repeated here rather than imported, both to keep the message
+    in this layer's `questions[...]` voice and to keep `laya.mcp.tools` free of a torch import.
+    """
+    if not isinstance(labels, dict) or set(labels) != {"false", "true"}:
+        raise ToolError(
+            "invalid_questions",
+            f"questions[{name}].labels must map exactly 'false' and 'true' to distinct "
+            f"non-empty strings",
+        )
+    values = [labels["false"], labels["true"]]
+    # The agent requires a str here, and it is checked before the text is used: a number or a
+    # bool is not a label, it is a type mistake. Stringifying first would quietly accept what
+    # the agent rejects, and the rejection would then arrive too late to be reported as a
+    # caller error.
+    if not all(isinstance(value, str) for value in values):
+        raise ToolError(
+            "invalid_questions",
+            f"questions[{name}].labels must give 'false' and 'true' string values, got "
+            f"{[type(v).__name__ for v in values]}",
+        )
+    texts = [value.strip() for value in values]
+    if not texts[0] or not texts[1] or texts[0] == texts[1]:
+        raise ToolError(
+            "invalid_questions",
+            f"questions[{name}].labels must give 'false' and 'true' distinct non-empty strings",
+        )
+
+
 def validate_questions(questions: Any) -> dict:
     if not isinstance(questions, dict) or not questions:
         raise ToolError(
@@ -70,6 +104,15 @@ def validate_questions(questions: Any) -> dict:
                     "invalid_questions",
                     f"questions[{name}].criteria must be a non-empty list of rubric levels",
                 )
+            # A null level is a hole in the rubric. The agent rejects it before encoding, so
+            # accepting it here only moved the failure past the point where the tool could
+            # still name the question.
+            if None in criteria:
+                raise ToolError(
+                    "invalid_questions",
+                    f"questions[{name}].criteria has a null level at index "
+                    f"{list(criteria).index(None)}; give every level a description",
+                )
             entry["criteria"] = list(criteria)
         else:  # noul
             if criteria is not None:
@@ -78,9 +121,27 @@ def validate_questions(questions: Any) -> dict:
                         "invalid_questions",
                         f"questions[{name}].criteria must be an object when present (noul)",
                     )
+                # `render_options` reads these descriptions by name, so a dict keyed any other
+                # way is not a noul description at all -- the agent rejects it rather than
+                # silently falling back to the default pair.
+                keys = {str(k).lower() for k in criteria}
+                if not keys <= {"true", "false"}:
+                    raise ToolError(
+                        "invalid_questions",
+                        f"questions[{name}].criteria must be keyed only 'true'/'false' "
+                        f"(either or both, omitting it is fine), got {sorted(keys)}. To word "
+                        f"the answer differently set 'labels' instead.",
+                    )
                 entry["criteria"] = {str(k): v for k, v in criteria.items()}
-            if "labels" in spec:
-                entry["labels"] = spec["labels"]
+        if "labels" in spec:
+            # noul-only, like the agent: on any other type it is a caller mistake.
+            if qtype != "noul":
+                raise ToolError(
+                    "invalid_questions",
+                    f"questions[{name}].labels is only supported for noul questions",
+                )
+            _check_noul_labels(name, spec["labels"])
+            entry["labels"] = spec["labels"]
         cleaned[name] = entry
     return cleaned
 

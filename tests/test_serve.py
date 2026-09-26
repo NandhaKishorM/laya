@@ -28,8 +28,10 @@ class FakeRouter:
     def __init__(self):
         self.calls = []
 
-    def predict(self, state, questions, model=None):
-        self.calls.append({"state": state, "questions": questions, "model": model})
+    def predict(self, state, questions, model=None, **kwargs):
+        call_info = {"state": state, "questions": questions, "model": model}
+        call_info.update(kwargs)
+        self.calls.append(call_info)
         return {
             "model": "laya-rl-agent",
             "answers": {
@@ -479,10 +481,10 @@ class GatedRouter(FakeRouter):
         self.entered = threading.Event()
         self.release = threading.Event()
 
-    def predict(self, state, questions, model=None):
+    def predict(self, state, questions, model=None, **kwargs):
         self.entered.set()
         assert self.release.wait(timeout=10), "test did not release the router"
-        return super().predict(state, questions, model=model)
+        return super().predict(state, questions, model=model, **kwargs)
 
 
 def test_admission_bound_refuses_with_503_when_full(monkeypatch):
@@ -529,3 +531,53 @@ def test_admission_slot_is_released_after_inference(monkeypatch):
     client = TestClient(create_app(router=FakeRouter()))
     assert client.post("/v1/systemone", json=REQ).status_code == 200
     assert client.post("/v1/systemone", json=REQ).status_code == 200
+
+
+def test_token_budget_forwarded(monkeypatch):
+    client, fake = _client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": 4096, "head_max_len": 256})
+    assert r.status_code == 200
+    assert fake.calls[0]["max_len"] == 4096
+    assert fake.calls[0]["head_max_len"] == 256
+
+
+@pytest.mark.parametrize("bad_budget", ["fast", True, 3.14])
+def test_token_budget_validation_type(monkeypatch, bad_budget):
+    client, fake = _client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": bad_budget})
+    assert r.status_code == 422
+    assert "must be an integer" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("bad_val", [0, -10])
+def test_token_budget_validation_positive(monkeypatch, bad_val):
+    client, fake = _client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": bad_val})
+    assert r.status_code == 422
+    assert "must be a positive integer" in r.json()["detail"]
+
+
+def test_token_budget_exceeds_server_cap(monkeypatch):
+    client, fake = _client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": 9000})
+    assert r.status_code == 422
+    assert "exceeds server limit" in r.json()["detail"]
+
+
+def test_token_budget_head_max_len_exceeds_max_len(monkeypatch):
+    client, fake = _client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": 512, "head_max_len": 512})
+    assert r.status_code == 422
+    assert "must be less than max_len" in r.json()["detail"]
+
+
+def test_token_budget_env_cap_override(monkeypatch):
+    monkeypatch.setenv("LAYA_MAX_TOKEN_BUDGET", "2048")
+    client, fake = _client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": 4096})
+    assert r.status_code == 422
+    assert "exceeds server limit" in r.json()["detail"]
+
+    r2 = client.post("/v1/systemone", json={**REQ, "max_len": 2048})
+    assert r2.status_code == 200
+    assert fake.calls[0]["max_len"] == 2048

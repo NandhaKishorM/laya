@@ -212,6 +212,13 @@ The service has a healthcheck on `/health`. The server preloads before it starts
 listening, so with `LAYA_PRELOAD=1` a healthy container has its checkpoints loaded.
 `docker compose ... up -d --wait laya-serve` returns once it is healthy.
 
+`/health` reports `device` as the device a resident checkpoint actually computes
+on, which is not always what `LAYA_DEVICE` asked for: a checkpoint that wants a
+GPU it cannot get falls back to CPU silently and still answers correctly.
+`checkpoint_devices` names each loaded checkpoint, and `device_is_preference` is
+`true` only while nothing is resident, so a deployment that quietly lost its GPU
+says so instead of echoing its own configuration back.
+
 ### Server configuration
 
 These apply to the `laya-serve` service only.

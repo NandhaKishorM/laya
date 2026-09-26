@@ -40,7 +40,7 @@ One JSON object per line (JSONL). Blank lines and lines starting with `#` are ig
 | `expected` | yes | ground truth keyed by question id: a label for `choice`, a number for `score`, `true`/`false` for `noul` |
 | `tags` | no | strings to slice by |
 | `language` | no | a code to slice by |
-| `model` | no | force a checkpoint for this row; `--model` overrides it |
+| `model` | no | force a checkpoint for this row; `--model` overrides it. A row that forces nothing is labelled with whatever checkpoint the `Router` answered with |
 
 `research/evals/dataset.template.jsonl` has a commented example.
 
@@ -65,7 +65,8 @@ Add `ScoreWithin(0.25)` to the evaluator list for a tolerance metric; the defaul
 
 `compare` and `run` report overall numbers and, for `--slice language|model|qid|tag`, the same
 metrics per slice value, so a regression in one language or one question is visible without
-reading the aggregate.
+reading the aggregate. The `model` slice holds the checkpoint that answered each row: the
+`Router`'s own choice per request, or the runner's `model` for a runner that does not route.
 
 ## Baseline and CI gate
 

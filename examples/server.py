@@ -59,6 +59,12 @@ import laya.serve as _laya_serve
 
 MAX_QUESTIONS = getattr(_laya_serve, "MAX_QUESTIONS", 64)
 MAX_STATE_CHARS = getattr(_laya_serve, "MAX_STATE_CHARS", 50_000)
+# The option budgets are bounds for the same reason the two above are: a choice or score
+# question encodes one sequence per option, and they share the head budget. Read with the
+# same getattr so this demo cannot drift from the server it demonstrates.
+MAX_CHOICE_OPTIONS = getattr(_laya_serve, "MAX_CHOICE_OPTIONS", 100)
+MAX_SCORE_LEVELS = getattr(_laya_serve, "MAX_SCORE_LEVELS", 32)
+MAX_TOTAL_OPTIONS = getattr(_laya_serve, "MAX_TOTAL_OPTIONS", 512)
 
 # --------------------------------------------------------------------------- #
 # Request / response models
@@ -238,8 +244,11 @@ def _check_request_limits(state: Any, questions: Dict[str, Any]) -> None:
     """Refuse an oversized request, as `laya.serve._check_request_limits` does.
 
     Laya encodes the state once per question, so cost is questions x state size,
-    collated into one tensor. The state length is measured exactly as laya.serve
-    measures it -- `len(v)` for a string, `len(str(v))` for a dict or list.
+    collated into one tensor, and a choice or score question adds one sequence per
+    option against a shared head budget. The state length is measured exactly as
+    laya.serve measures it -- `len(v)` for a string, `len(str(v))` for a dict or list
+    -- and the option counts exactly as it counts them, over `choice` and `score`
+    criteria only.
 
     Checked here rather than declared as pydantic constraints on the request models,
     for two reasons: a `Field(max_length=...)` violation is reported as 422 where
@@ -257,6 +266,43 @@ def _check_request_limits(state: Any, questions: Dict[str, Any]) -> None:
         raise HTTPException(
             status_code=413,
             detail="state too large (%d > %d chars)" % (size, MAX_STATE_CHARS),
+        )
+    # Counted exactly as laya.serve counts them, and refused for the same reason. The
+    # increment belongs inside the two branches, as it does there: a `noul` question carries
+    # false/true criteria, which are option *texts* rather than answer options, so a total
+    # that added them would refuse a request laya.serve accepts. The state above is still
+    # encoded once per question, which is what the question-count bound is for.
+    total_options = 0
+    for qid, qdef in questions.items():
+        # This demo's request model hands these over as `Question` instances where
+        # `laya.serve` sees plain dicts, so read either shape. Mirroring serve's
+        # `if not isinstance(question, dict): continue` verbatim would skip every question
+        # here and leave the check dead.
+        if isinstance(qdef, dict):
+            qtype, crit = qdef.get("type"), qdef.get("criteria")
+        else:
+            qtype, crit = getattr(qdef, "type", None), getattr(qdef, "criteria", None)
+        if qtype == "choice" and isinstance(crit, (dict, list)):
+            count = len(crit)
+            total_options += count
+            if count > MAX_CHOICE_OPTIONS:
+                raise HTTPException(
+                    status_code=413,
+                    detail="too many choice options for %r (%d > %d)" % (qid, count, MAX_CHOICE_OPTIONS),
+                )
+        elif qtype == "score" and isinstance(crit, list):
+            count = len(crit)
+            total_options += count
+            if count > MAX_SCORE_LEVELS:
+                raise HTTPException(
+                    status_code=413,
+                    detail="too many score levels for %r (%d > %d)" % (qid, count, MAX_SCORE_LEVELS),
+                )
+    if total_options > MAX_TOTAL_OPTIONS:
+        raise HTTPException(
+            status_code=413,
+            detail="too many answer options across questions (%d > %d)"
+            % (total_options, MAX_TOTAL_OPTIONS),
         )
 
 

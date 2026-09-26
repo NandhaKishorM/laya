@@ -956,7 +956,10 @@ class Agent(HookRegistry):
     def predict_long(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
                      window: Optional[int] = None, stride: Optional[int] = None,
                      aggregate: str = "auto", batch_size: Optional[int] = None,
-                     lang: Optional[str] = None) -> Dict[str, Any]:
+                     lang: Optional[str] = None,
+                     hooks=None, on_predict_start=None, on_predict_end=None,
+                     hooks_raise: Optional[bool] = None,
+                     hooks_timeout: Optional[float] = None) -> Dict[str, Any]:
         """Evaluate questions over a state longer than the context window, scanning it in
         overlapping windows and aggregating per question.
 
@@ -980,6 +983,13 @@ class Agent(HookRegistry):
 
         A state that already fits one window is passed straight to `system_one` (identical output).
 
+        The hooks wrap the inference that answers the state, which for a document needing several
+        windows is the one shared `predict_batch` over them: `on_predict_start` fires once, and
+        `ctx.states` holds the decoded window texts in scan order -- not the caller's `state`, which
+        was tokenized to produce them. A start hook that rewrites `ctx.states` therefore rewrites
+        windows, and one that calls `ctx.skip(...)` is answering the document rather than a window,
+        so its payload is returned without window attribution.
+
         Args:
             window: state tokens per window. Defaults to the per-question state budget
                     (`max_len - head_max_len - 8`) -- the most a window can hold for every question.
@@ -993,11 +1003,20 @@ class Agent(HookRegistry):
             aggregate: "auto" (the per-type rules above) is the only mode for now.
             batch_size: cap on windows per forward pass, to bound memory on very long states.
             lang: per-language temperature selection, as in `system_one`.
+            hooks (HookArg): Per-call hooks, appended after any installed on the Agent.
+                    See `laya.hooks`.
+            on_predict_start (PredictHookArg): A per-call start hook, as in `system_one`.
+            on_predict_end (PredictHookArg): A per-call end hook, as in `system_one`.
+            hooks_raise: Override the Agent's `hooks_raise` for this call.
+            hooks_timeout: Override the Agent's `hooks_timeout` for this call.
 
         Returns a single result dict, the same shape as `system_one`, with `usage["windows"]` added.
         """
         if aggregate != "auto":
             raise ValueError("predict_long: only aggregate='auto' is supported")
+        hook_kwargs = {"hooks": hooks, "on_predict_start": on_predict_start,
+                       "on_predict_end": on_predict_end, "hooks_raise": hooks_raise,
+                       "hooks_timeout": hooks_timeout}
         max_len = self.cfg.get("max_len", 512)
         head_max_len = self.cfg.get("head_max_len", 192)
         budget = window if (window and window > 0) else max(64, max_len - head_max_len - 8)
@@ -1006,7 +1025,7 @@ class Agent(HookRegistry):
                              add_special_tokens=False)["input_ids"]
         # Fits in one window: identical to a plain call, no windowing overhead.
         if len(state_ids) <= budget:
-            return self.system_one(state, questions, lang=lang)
+            return self.system_one(state, questions, lang=lang, **hook_kwargs)
 
         step = stride if (stride and stride > 0) else max(1, budget // 2)
         windows, starts = [], []
@@ -1021,7 +1040,26 @@ class Agent(HookRegistry):
                 break
             i += step
 
-        results = self.predict_batch(windows, questions, batch_size=batch_size, lang=lang)
+        results = self.predict_batch(windows, questions, batch_size=batch_size, lang=lang,
+                                     **hook_kwargs)
+
+        if len(results) != len(windows):
+            # Only a hook can change the count: `ctx.skip(...)` runs before the split, so a hook
+            # answering the whole document has no way to know how many windows it will produce and
+            # returns one result. Aggregating over that payload would pick between answers that were
+            # never scored and name a deciding window that decided nothing, so pass the document
+            # answer through unattributed and say which windows were scored: none of them.
+            if len(results) != 1:
+                raise ValueError(
+                    "predict_long: %d windows scored, %d results returned; a start hook that answers"
+                    " a long state returns one result for the document" % (len(windows), len(results)))
+            warnings.warn("laya: predict_long: a hook answered the state before it was scanned, so "
+                          "no window decided the result and none is reported", RuntimeWarning,
+                          stacklevel=2)
+            document = dict(results[0])
+            document["usage"] = dict(document.get("usage") or {})
+            document["usage"]["windows"] = 0
+            return document
 
         ids = list(questions.keys())
         internal = {qid: self._to_internal(questions[qid]) for qid in ids}

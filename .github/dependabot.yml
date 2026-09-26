@@ -7,6 +7,12 @@ updates:
     open-pull-requests-limit: 5
     labels: [dependencies]
 
+  - package-ecosystem: npm
+    directory: "/laya-ts"
+    schedule:
+      interval: weekly
+    labels: [dependencies]
+
   # Actions are the other half of the supply chain: a compromised action runs with the
   # workflow's token. Keep them current, and prefer pinning to a SHA for third-party ones.
   - package-ecosystem: github-actions

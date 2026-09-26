@@ -183,5 +183,116 @@ class RouterRevisionTests(unittest.TestCase):
         self.assertEqual(router.loaded_revisions, {"english": "sha-english"})
 
 
+class RouterDigestTests(unittest.TestCase):
+    """`Router(sha256_digests=...)` is the per-checkpoint sibling of `revisions`."""
+
+    def _capture(self):
+        import laya.agent
+
+        captured: list = []
+
+        class FakeAgent:
+            def __init__(self, repo, **kwargs):
+                captured.append(kwargs)
+
+        return patch.object(laya.agent, "Agent", FakeAgent), captured
+
+    def test_router_normalises_digest_keys_like_revision_keys(self):
+        router = Router(sha256_digests={"ml": {"w.bin": "a" * 64}, "typed": None})
+        self.assertEqual(sorted(router.sha256_digests), ["multilingual", "typed-decisions"])
+        self.assertEqual(Router().sha256_digests, {})
+
+    def test_misspelled_model_fails_at_construction(self):
+        with self.assertRaises(ValueError):
+            Router(sha256_digests={"engligh": {"w.bin": "a" * 64}})
+
+    def test_each_checkpoint_gets_its_own_map(self):
+        capture, captured = self._capture()
+        with capture:
+            router = Router(sha256_digests={
+                "english": {"model.safetensors": "a" * 64},
+                "multilingual": {"model.safetensors": "b" * 64},
+            })
+            router.load("english")
+            router.load("multilingual")
+        self.assertEqual(captured[0]["expected_sha256"], {"model.safetensors": "a" * 64})
+        self.assertEqual(captured[1]["expected_sha256"], {"model.safetensors": "b" * 64})
+
+    def test_unlisted_checkpoint_is_left_to_the_environment(self):
+        capture, captured = self._capture()
+        with capture:
+            Router(sha256_digests={"multilingual": {"model.safetensors": "b" * 64}}).load("english")
+        self.assertNotIn("expected_sha256", captured[0])
+
+    def test_none_entry_masks_the_environment_default_for_that_checkpoint(self):
+        capture, captured = self._capture()
+        with capture:
+            Router(sha256_digests={"english": None}).load("english")
+        # `{}` and "absent" differ inside verify_digests: only the absent one falls back to env.
+        self.assertEqual(captured[0]["expected_sha256"], {})
+
+
+class RouterDigestEndToEndTests(unittest.TestCase):
+    """Two checkpoints, one shared relative filename, two different digests."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dirs = {}
+        self.digests = {}
+        for name in ("english", "multilingual"):
+            # `model.safetensors` without a valid config: a matching digest gets as far as the
+            # config check, a mismatching one never leaves the digest check.
+            path = os.path.join(self.tmp.name, name)
+            os.makedirs(path)
+            with open(os.path.join(path, "model.safetensors"), "wb") as f:
+                f.write(b"weights of " + name.encode())
+            self.dirs[name] = path
+            self.digests[name] = hashlib.sha256(b"weights of " + name.encode()).hexdigest()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _router(self, digests, **kw):
+        return Router(models=dict(self.dirs), sha256_digests=digests, **kw)
+
+    def _assert_past_the_digest_gate(self, router, name):
+        """The config check sits just after `verify_digests`, so reaching it proves the digest passed."""
+        with self.assertRaises(FileNotFoundError) as cm:
+            router.load(name)
+        self.assertIn("rl_agent_config.json", str(cm.exception))
+
+    def test_a_matching_digest_lets_the_checkpoint_through(self):
+        router = self._router({"english": {"model.safetensors": self.digests["english"]}})
+        self._assert_past_the_digest_gate(router, "english")
+
+    def test_one_flat_map_cannot_cover_both_checkpoints(self):
+        router = self._router({"english": {"model.safetensors": self.digests["english"]},
+                               "multilingual": {"model.safetensors": self.digests["english"]}})
+        self._assert_past_the_digest_gate(router, "english")
+        with self.assertRaises(ValueError) as cm:
+            router.load("multilingual")
+        self.assertIn("SHA-256 mismatch", str(cm.exception))
+
+    def test_per_checkpoint_maps_cover_both(self):
+        router = self._router({"english": {"model.safetensors": self.digests["english"]},
+                               "multilingual": {"model.safetensors": self.digests["multilingual"]}})
+        self._assert_past_the_digest_gate(router, "english")
+        self._assert_past_the_digest_gate(router, "multilingual")
+
+    def test_environment_digest_still_applies_when_no_map_is_given(self):
+        env = {"LAYA_SHA256_DIGESTS": json.dumps({"model.safetensors": self.digests["english"]})}
+        router = self._router({})
+        with patch.dict(os.environ, env):
+            self._assert_past_the_digest_gate(router, "english")
+            with self.assertRaises(ValueError):
+                router.load("multilingual")
+
+    def test_explicit_none_list_skips_the_environment_digest(self):
+        env = {"LAYA_SHA256_DIGESTS": json.dumps({"model.safetensors": self.digests["english"]})}
+        router = self._router({"multilingual": None})
+        with patch.dict(os.environ, env):
+            self._assert_past_the_digest_gate(router, "multilingual")
+
+
 if __name__ == "__main__":
     unittest.main()

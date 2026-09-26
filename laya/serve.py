@@ -394,11 +394,6 @@ def create_app(router: Optional[Any] = None):
         max_budget_cap = _resolve_max_token_budget()
         max_len = _validate_budget_param(body, "max_len", max_budget_cap)
         head_max_len = _validate_budget_param(body, "head_max_len", max_budget_cap)
-        if max_len is not None and head_max_len is not None and head_max_len >= max_len:
-            raise HTTPException(
-                status_code=422,
-                detail="head_max_len (%d) must be less than max_len (%d)" % (head_max_len, max_len),
-            )
         predict_kwargs = {}
         if max_len is not None:
             predict_kwargs["max_len"] = max_len

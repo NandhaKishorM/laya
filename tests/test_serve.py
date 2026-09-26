@@ -564,11 +564,13 @@ def test_token_budget_exceeds_server_cap(monkeypatch):
     assert "exceeds server limit" in r.json()["detail"]
 
 
-def test_token_budget_head_max_len_exceeds_max_len(monkeypatch):
+def test_token_budget_head_max_len_equal_to_max_len(monkeypatch):
+    """Core accepts head_max_len == max_len; serve forwards both without artificial restriction."""
     client, fake = _client(monkeypatch)
     r = client.post("/v1/systemone", json={**REQ, "max_len": 512, "head_max_len": 512})
-    assert r.status_code == 422
-    assert "must be less than max_len" in r.json()["detail"]
+    assert r.status_code == 200
+    assert fake.calls[0]["max_len"] == 512
+    assert fake.calls[0]["head_max_len"] == 512
 
 
 def test_token_budget_env_cap_override(monkeypatch):

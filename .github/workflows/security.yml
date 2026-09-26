@@ -85,7 +85,7 @@ jobs:
         with:
           languages: python
           queries: security-extended
-      - uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
 
   supply_chain:
     name: no unsafe deserialization

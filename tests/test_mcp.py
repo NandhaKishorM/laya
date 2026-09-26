@@ -28,16 +28,23 @@ except ImportError:
 from laya.mcp.device import agent_device, device_report, env_device, resolve_device, router_agent  # noqa: E402
 from laya.mcp.server import _models_from_env, server as mcp_server  # noqa: E402
 from laya.mcp.tools import (  # noqa: E402
+    PRESETS,
+    PRESET_ALIASES,
     ToolError,
+    _overrides,
+    get_available_presets,
     laya_predict,
     laya_preset,
     laya_route,
     laya_shortlist,
     laya_status,
+    validate_budget,
+    validate_lang,
     validate_model,
     validate_preset,
     validate_questions,
     validate_state,
+    validate_task,
 )
 
 PASS, FAIL = [], []
@@ -145,6 +152,156 @@ def test_schema():
     ok("schema/model_auto", validate_model("auto") == "auto")
     ok("schema/model_multilingual", validate_model("multilingual") == "multilingual")
     expect_tool_error("schema/model_bad", lambda: validate_model("gpt4"), "invalid_model")
+
+
+def test_model_names():
+    """`model` is core's registry, not a second list kept here.
+
+    The names and aliases live in `laya.router`, and `router.predict(model=...)` runs whatever
+    arrives through `normalise_name` a few lines after `validate_model` sees it. So any name core
+    resolves has to survive this layer, and it has to come back canonical: the `routing.model` a
+    caller reads should not depend on how the checkpoint was spelled in the request.
+    """
+    from laya.router import DEFAULT_MODELS, _ALIASES, normalise_name
+
+    for name in sorted(DEFAULT_MODELS):
+        ok("model/canonical_%s" % name, validate_model(name) == name)
+    for alias, canonical in sorted(_ALIASES.items()):
+        got = validate_model(alias)
+        ok("model/alias_%s" % alias, got == canonical, "got %r want %r" % (got, canonical))
+    for spelling in ("EN", " Multilingual ", "Typed-Decisions", "AUTO"):
+        want = "auto" if spelling.strip().lower() == "auto" else normalise_name(spelling)
+        ok("model/casing_and_spacing_%r" % spelling, validate_model(spelling) == want)
+    for auto in (None, "auto", "Auto", " auto "):
+        ok("model/auto_%r" % (auto,), validate_model(auto) == "auto")
+    for bad in ("gpt4", "", "   ", "english-ish", "laya-typed", 5, [], {}):
+        expect_tool_error("model/rejected_%r" % (bad,), lambda b=bad: validate_model(b),
+                          "invalid_model")
+
+    # The list a client learns from is now core's words, so it must still name every option:
+    # the checkpoints, the aliases, and this layer's own `auto` sentinel.
+    try:
+        validate_model("gpt4")
+        message = ""
+    except ToolError as exc:
+        message = exc.message
+    ok("model/error_lists_checkpoints", all(n in message for n in sorted(DEFAULT_MODELS)), repr(message))
+    ok("model/error_lists_aliases", "alias" in message and "'en'" in message, repr(message))
+    ok("model/error_keeps_auto", "'auto'" in message, repr(message))
+
+
+def test_presets():
+    """The preset list, and the state field each preset reads, come from core.
+
+    Two things used to be able to drift here: the table of names (which was missing `email`, so a
+    caller had no way to ask for the preset the CLI has), and which field of the state a preset's
+    questions read. A preset says that out loud -- "What does the customer want in `message`?" -- so
+    the field is read back out of the questions instead of kept beside them, and `laya_preset` puts a
+    caller's lone string under it. Nothing else about the state is touched: more than one key is the
+    caller's shape, and guessing there would be a worse failure than the honest one.
+    """
+    import laya
+    from laya.presets import state_field
+
+    def build(attr):
+        return getattr(laya, attr)()
+
+    class StateRouter(FakeRouter):
+        def predict(self, state, questions, **kwargs):
+            self.state = state
+            self.questions = questions
+            return super().predict(state, questions, **kwargs)
+
+    # The names are a list only in one place, and every entry has to resolve in core.
+    fields = {}
+    for name, attr in sorted(PRESETS.items()):
+        questions = build(attr)
+        field = state_field(questions)
+        fields[name] = field
+        ok("preset/questions_%s" % name, isinstance(questions, dict) and bool(questions))
+        ok("preset/names_one_field_%s" % name, isinstance(field, str), repr(field))
+        ok("preset/field_is_asked_for_%s" % name,
+           any(field in q["instructions"] for q in questions.values()), repr(field))
+
+    # `email` was the whole missing half of the table; the CLI has had it all along.
+    ok("preset/email_exposed", "email" in PRESETS, repr(sorted(PRESETS)))
+
+    for name, field in sorted(fields.items()):
+        router = StateRouter()
+        laya_preset(name, {"text": "the request"}, router=router, preset_builder=build)
+        ok("preset/lone_string_placed_%s" % name, router.state == {field: "the request"},
+           repr(router.state))
+        laya_preset(name, {field: "the request"}, router=router, preset_builder=build)
+        ok("preset/right_key_untouched_%s" % name, router.state == {field: "the request"},
+           repr(router.state))
+        laya_preset(name, {"text": "the request", "lang": "en"}, router=router, preset_builder=build)
+        ok("preset/multi_key_untouched_%s" % name,
+           router.state == {"text": "the request", "lang": "en"}, repr(router.state))
+        laya_preset(name, {"payload": {"nested": 1}}, router=router, preset_builder=build)
+        ok("preset/lone_non_string_untouched_%s" % name,
+           router.state == {"payload": {"nested": 1}}, repr(router.state))
+        # the questions that get answered are the preset's own, not a hand-copied set
+        ok("preset/questions_forwarded_%s" % name, router.questions == build(PRESETS[name]))
+
+    for name in sorted(PRESETS):
+        ok("preset/canonical_%s" % name, validate_preset(name) == name)
+    for alias, canonical in sorted(PRESET_ALIASES.items()):
+        ok("preset/alias_%s" % alias, validate_preset(alias) == canonical)
+        # an alias has to reach the same preset through the tool, not just the validator
+        router = StateRouter()
+        laya_preset(alias, {"text": "the request"}, router=router, preset_builder=build)
+        ok("preset/alias_through_tool_%s" % alias,
+           router.questions == build(PRESETS[canonical]), repr(router.questions))
+    ok("preset/aliases_are_not_names", not (set(PRESET_ALIASES) & set(PRESETS)))
+
+    for bad in ("nope", "", "   ", "Email", "model router", "guard_questions", 5, [], {}, None):
+        expect_tool_error("preset/rejected_%r" % (bad,), lambda b=bad: validate_preset(b),
+                          "invalid_preset")
+
+    # What a client can discover without calling: the table, and the tools/list description built
+    # from it. Both are derived, so neither can advertise a name the tool rejects.
+    info = get_available_presets()
+    ok("preset/table_covered_by_info", sorted(info) == sorted(PRESETS), repr(sorted(info)))
+    for name, entry in sorted(info.items()):
+        ok("preset/info_builder_%s" % name, entry["questions"] == PRESETS[name], repr(entry))
+        ok("preset/info_field_%s" % name, entry.get("state_field") == fields[name], repr(entry))
+    ok("preset/info_lists_aliases", info["model_router"].get("aliases") == ["router"],
+       repr(info["model_router"]))
+    ok("preset/info_alias_names_are_not_entries", "router" not in info, repr(sorted(info)))
+
+    description = next(t.description for t in asyncio.run(mcp_server.list_tools())
+                       if t.name == "laya_preset")
+    for name in sorted(PRESETS):
+        ok("preset/desc_names_%s" % name, "'%s'" % name in description, description)
+    for name, field in sorted(fields.items()):
+        ok("preset/desc_field_%s" % name, "'%s' reads `%s`" % (name, field) in description,
+           description)
+    ok("preset/desc_names_the_alias", "'router' is 'model_router'" in description, description)
+
+
+def test_model_forwarding():
+    """An alias reaches core canonical, and changes nothing else about the answer."""
+
+    class EchoRouter:
+        _agents = {"english": FakeAgent()}
+
+        def __init__(self):
+            self.calls = []
+
+        def predict(self, state, questions, **kwargs):
+            # No `routing` key on purpose: what the tool then reports is the name it settled on,
+            # which is the piece an alias could have leaked through.
+            self.calls.append(kwargs)
+            return {"answers": {"department": {"choice": "billing", "confidence": 0.94}}}
+
+    router = EchoRouter()
+    by_alias = laya_predict(STATE, QUESTIONS, model="laya", router=router)
+    by_name = laya_predict(STATE, QUESTIONS, model="english", router=router)
+    ok("forward/model_seen_by_core", [c.get("model") for c in router.calls] == ["english", "english"],
+       repr(router.calls))
+    ok("forward/reports_canonical", by_alias["routing"]["model"] == "english", repr(by_alias["routing"]))
+    ok("forward/answers_identical", by_alias["answers"] == by_name["answers"])
+
 
 
 # --- shape (mocked router, no weights) ---------------------------------------
@@ -505,6 +662,386 @@ def test_shortlist():
        and out["routing"]["reason"] == "explicit model", repr(out["routing"]))
 
 
+# --- per-call controls: task / lang / max_len / head_max_len -------------------
+
+class ControlRouter:
+    """A router that records which keywords the tools handed to core.
+
+    `route` and `predict` both take **kwargs on purpose: what these checks read is which keywords
+    arrive, and an absent one has to be distinguishable from a `None` one -- which is exactly what
+    `_overrides` promises.
+    """
+
+    def __init__(self, routed="english"):
+        self._agents = {routed: ShortlistAgent()}
+        self.routed = routed
+        self.predict_calls = []
+        self.predict_questions = []
+        self.route_calls = []
+
+    def route(self, state, questions, **kwargs):
+        self.route_calls.append(kwargs)
+        return {"model": self.routed, "repo": "fake/repo",
+                "reason": "unit-test route %s" % sorted(kwargs)}
+
+    def predict(self, state, questions, **kwargs):
+        self.predict_calls.append(kwargs)
+        self.predict_questions.append(questions)
+        return {"answers": {"department": {"choice": "billing", "confidence": 0.94}},
+                "routing": {"model": kwargs.get("model", self.routed), "repo": "fake/repo",
+                            "reason": "unit-test predict %s" % sorted(kwargs)}}
+
+    def load(self, name):
+        return ShortlistAgent()
+
+
+class ControlAgent:
+    """An ``agent=`` injection: it answers, and it remembers being asked."""
+
+    device = "cpu"
+
+    def __init__(self):
+        self.calls = []
+
+    def predict(self, state, questions, **kwargs):
+        self.calls.append(kwargs)
+        return {"answers": {"department": {"choice": "billing", "confidence": 0.94}}}
+
+
+def test_controls_validation():
+    """Each control is checked the way core checks it, and refused in this layer's words."""
+    from laya.router import DEFAULT_MODELS, _ALIASES
+
+    ok("task/none_is_unset", validate_task(None) is None)
+    for name in sorted(DEFAULT_MODELS):
+        ok("task/canonical_%s" % name, validate_task(name) == name)
+    for alias in sorted(_ALIASES):
+        # Accepted because core accepts it, and forwarded as the caller wrote it: `Router._route`
+        # normalises the task itself, and its `reason` quotes the spelling that was asked for, so
+        # canonicalising here would rewrite the explanation the caller reads back.
+        ok("task/alias_%s" % alias, validate_task(alias) == alias, repr(validate_task(alias)))
+    # What the sweep really protects: every name core's registry holds is accepted here, so this
+    # layer can never be narrower than `router.predict(task=...)` the way a copied list was.
+    from laya.router import normalise_name
+
+    for alias in sorted(_ALIASES):
+        ok("task/resolves_%s" % alias, normalise_name(validate_task(alias)) == _ALIASES[alias],
+           "%s -> %s" % (alias, normalise_name(validate_task(alias))))
+    # The underscore form is what the CLI and the question ids use, and `Router._route` remaps it
+    # before it looks anything up. The tool remaps the same way but forwards the caller's own
+    # spelling, so `routing.reason` still reads as the request that was made.
+    for spelling in ("typed_decisions", "TYPED_DECISIONS", " typed_decisions ", "typed-decisions"):
+        got = validate_task(spelling)
+        ok("task/workflow_%r" % spelling, got == spelling, repr(got))
+    for bad in ("nope", "", "   ", "english-ish", 5, [], {}, True):
+        expect_tool_error("task/rejected_%r" % (bad,), lambda b=bad: validate_task(b), "invalid_task")
+    try:
+        validate_task("nope")
+        message = ""
+    except ToolError as exc:
+        message = exc.message
+    ok("task/error_lists_checkpoints", all(n in message for n in sorted(DEFAULT_MODELS)),
+       repr(message))
+
+    ok("lang/none_is_unset", validate_lang(None) is None)
+    # Verbatim, including the codes that mean nothing to core: a blank lang falls through to
+    # detection rather than failing, and whether a code names a language is core's question.
+    for code in ("de", "en-US", "pt", "en_US.UTF-8", "", "  ", "DE"):
+        ok("lang/verbatim_%r" % code, validate_lang(code) == code)
+    for bad in (5, ["de"], {"lang": "de"}, True):
+        expect_tool_error("lang/rejected_%r" % (bad,), lambda b=bad: validate_lang(b), "invalid_lang")
+
+    ok("budget/none_is_unset", validate_budget(None, "max_len") is None)
+    for value in (1, 8, 512, 8192):
+        ok("budget/ok_%d" % value, validate_budget(value, "max_len") == value)
+    # The code carries the argument's own name, so a client that set one wrongly learns which.
+    for bad in (0, -1, 1.5, 384.0, "384", True, [], {}, "  "):
+        for arg in ("max_len", "head_max_len"):
+            expect_tool_error("budget/rejected_%s_%r" % (arg, bad),
+                              lambda b=bad, a=arg: validate_budget(b, a), "invalid_%s" % arg)
+    # 384.0 is a float and core slices with it (`ids[:max_len]`), which is a TypeError in the middle
+    # of a forward pass. JSON writes both 384 and 384.0, so this is a real input, not a corner.
+    expect_tool_error("budget/float_is_rejected", lambda: validate_budget(384.0, "max_len"),
+                      "invalid_max_len")
+
+    ok("overrides/all_unset", _overrides(None, None, None, None) == {})
+    ok("overrides/drops_unset",
+       _overrides(None, "de", None, 384) == {"lang": "de", "head_max_len": 384},
+       repr(_overrides(None, "de", None, 384)))
+    ok("overrides/keeps_falsy_lang", _overrides(None, "", None, None) == {"lang": ""},
+       repr(_overrides(None, "", None, None)))
+    ok("overrides/names_in_order",
+       list(_overrides("t", "l", 1, 2)) == ["task", "lang", "max_len", "head_max_len"])
+
+
+def test_controls_predict():
+    """What `laya_predict` forwards, and what it refuses to forward."""
+    # The baseline these checks protect: a call that sets no control reaches core exactly as it did
+    # before the controls existed -- no keywords at all.
+    router = ControlRouter()
+    laya_predict(STATE, QUESTIONS, router=router)
+    ok("predict/no_controls_call", router.predict_calls == [{}], repr(router.predict_calls))
+    laya_predict(STATE, QUESTIONS, model="english", router=router)
+    ok("predict/pinned_model_only_kwarg", router.predict_calls[-1] == {"model": "english"},
+       repr(router.predict_calls[-1]))
+
+    router = ControlRouter()
+    out = laya_predict(STATE, QUESTIONS, task="typed_decisions", lang="de",
+                       max_len=1024, head_max_len=512, router=router)
+    ok("predict/all_controls_forwarded",
+       router.predict_calls == [{"task": "typed_decisions", "lang": "de",
+                                 "max_len": 1024, "head_max_len": 512}],
+       repr(router.predict_calls))
+    ok("predict/answers_untouched", out["answers"]["department"]["choice"] == "billing")
+
+    router = ControlRouter()
+    laya_predict(STATE, QUESTIONS, lang="de", router=router)
+    ok("predict/lang_only", router.predict_calls == [{"lang": "de"}], repr(router.predict_calls))
+    router = ControlRouter()
+    laya_predict(STATE, QUESTIONS, head_max_len=384, router=router)
+    ok("predict/budget_only", router.predict_calls == [{"head_max_len": 384}],
+       repr(router.predict_calls))
+
+    # A pinned checkpoint plus a task is two answers to one question: `Router._route` checks model
+    # first and never reads the task, and `Agent.system_one` does not accept it at all.
+    for model in ("english", "laya", "ML"):
+        router = ControlRouter()
+        expect_tool_error("predict/model_plus_task_%s" % model,
+                          lambda m=model: laya_predict(STATE, QUESTIONS, model=m,
+                                                       task="typed_decisions", router=router),
+                          "invalid_task")
+        ok("predict/model_plus_task_no_call_%s" % model, router.predict_calls == [],
+           repr(router.predict_calls))
+
+    # Everything is checked before core is called, so a bad value costs no forward pass.
+    router = ControlRouter()
+    expect_tool_error("predict/bad_budget_before_core",
+                      lambda: laya_predict(STATE, QUESTIONS, max_len=0, router=router),
+                      "invalid_max_len")
+    ok("predict/bad_budget_no_call", router.predict_calls == [], repr(router.predict_calls))
+    router = ControlRouter()
+    expect_tool_error("predict/bad_task_before_core",
+                      lambda: laya_predict(STATE, QUESTIONS, task="nope", router=router),
+                      "invalid_task")
+    ok("predict/bad_task_no_call", router.predict_calls == [], repr(router.predict_calls))
+
+    # The agent branch: budget and lang reach a checkpoint directly, task cannot mean anything.
+    agent = ControlAgent()
+    laya_predict(STATE, QUESTIONS, model="english", agent=agent)
+    ok("predict/agent_no_controls_call", agent.calls == [{}], repr(agent.calls))
+    agent = ControlAgent()
+    out = laya_predict(STATE, QUESTIONS, model="english", lang="de", max_len=1024,
+                       head_max_len=512, agent=agent)
+    ok("predict/agent_budget_forwarded",
+       agent.calls == [{"lang": "de", "max_len": 1024, "head_max_len": 512}], repr(agent.calls))
+    ok("predict/agent_routing_recorded", out["routing"]["model"] == "english", repr(out["routing"]))
+    agent = ControlAgent()
+    expect_tool_error("predict/agent_task_refused",
+                      lambda a=agent: laya_predict(STATE, QUESTIONS, model="english",
+                                                   task="typed_decisions", agent=a),
+                      "invalid_task")
+    ok("predict/agent_task_no_call", agent.calls == [], repr(agent.calls))
+
+    # A router whose predict() accepts only state and questions still answers a plain call.
+    class LegacyRouter:
+        _agents = {"english": FakeAgent()}
+
+        def predict(self, state, questions):
+            return {"answers": {"department": {"choice": "other", "confidence": 0.6}}}
+
+    out = laya_predict(STATE, QUESTIONS, router=LegacyRouter())
+    ok("predict/legacy_router_untouched", out["answers"]["department"]["choice"] == "other")
+
+
+def test_controls_route():
+    """`laya_route` takes the routing overrides, so a route can explain a pinned predict."""
+    router = ControlRouter(routed="multilingual")
+    laya_route(STATE, QUESTIONS, router=router)
+    ok("route/no_overrides_call", router.route_calls == [{}], repr(router.route_calls))
+
+    router = ControlRouter(routed="multilingual")
+    out = laya_route(STATE, QUESTIONS, task="typed_decisions", lang="de", router=router)
+    ok("route/overrides_forwarded",
+       router.route_calls == [{"task": "typed_decisions", "lang": "de"}], repr(router.route_calls))
+    ok("route/decision_shape", set(out) == {"model", "repo", "reason"}, repr(out))
+
+    # `auto` is this layer's sentinel and core has no such name: it means "do not pin", so it is
+    # dropped rather than forwarded as a checkpoint that does not exist.
+    for unset in (None, "auto", "AUTO", " auto "):
+        router = ControlRouter()
+        laya_route(STATE, QUESTIONS, model=unset, router=router)
+        ok("route/auto_is_absent_%r" % (unset,), router.route_calls == [{}], repr(router.route_calls))
+    router = ControlRouter()
+    laya_route(STATE, QUESTIONS, model="en", router=router)
+    ok("route/model_canonical", router.route_calls == [{"model": "english"}],
+       repr(router.route_calls))
+    router = ControlRouter()
+    expect_tool_error("route/model_plus_task",
+                      lambda: laya_route(STATE, QUESTIONS, model="english",
+                                         task="typed_decisions", router=router),
+                      "invalid_task")
+    ok("route/refused_before_core", router.route_calls == [], repr(router.route_calls))
+    for bad in ("nope", 5, []):
+        router = ControlRouter()
+        expect_tool_error("route/bad_task_%r" % (bad,),
+                          lambda b=bad: laya_route(STATE, QUESTIONS, task=b, router=router),
+                          "invalid_task")
+        ok("route/bad_task_no_call_%r" % (bad,), router.route_calls == [], repr(router.route_calls))
+    router = ControlRouter()
+    expect_tool_error("route/bad_lang",
+                      lambda: laya_route(STATE, QUESTIONS, lang=["de"], router=router),
+                      "invalid_lang")
+    ok("route/bad_lang_no_call", router.route_calls == [], repr(router.route_calls))
+    # No budget on a route: there is no forward pass to size, so the parameter does not exist.
+    try:
+        laya_route(STATE, QUESTIONS, max_len=512, router=ControlRouter())
+        ok("route/no_budget_param", False, "accepted max_len")
+    except TypeError:
+        ok("route/no_budget_param", True)
+
+
+def test_controls_shortlist():
+    """The budget reaches the answering pass; the task reaches only the route that chose it."""
+    small = {"dept": {"type": "choice", "instructions": "pick",
+                      "criteria": {"a": "A", "b": "B", "c": "C", "d": "D", "e": "E"}}}
+
+    router = ControlRouter(routed="multilingual")
+    laya_shortlist(STATE, small, k=2, router=router, embed_fn=_tie_embed)
+    ok("shortlist/no_controls_route", router.route_calls == [{}], repr(router.route_calls))
+    ok("shortlist/no_controls_predict", router.predict_calls == [{"model": "multilingual"}],
+       repr(router.predict_calls))
+
+    router = ControlRouter(routed="multilingual")
+    out = laya_shortlist(STATE, small, k=2, task="typed_decisions", lang="de",
+                         max_len=1024, head_max_len=384, router=router, embed_fn=_tie_embed)
+    ok("shortlist/route_sees_task",
+       router.route_calls == [{"task": "typed_decisions", "lang": "de"}], repr(router.route_calls))
+    ok("shortlist/predict_sees_budget",
+       router.predict_calls == [{"model": "multilingual", "lang": "de",
+                                 "max_len": 1024, "head_max_len": 384}],
+       repr(router.predict_calls))
+    ok("shortlist/shortlist_still_ran", out["shortlist"]["dept"]["k"] == 2
+       and len(out["shortlist"]["dept"]["labels"]) == 2, repr(out["shortlist"]["dept"]))
+
+    router = ControlRouter(routed="multilingual")
+    laya_shortlist(STATE, small, k=2, model="english", lang="de", head_max_len=384,
+                   router=router, embed_fn=_tie_embed)
+    ok("shortlist/pinned_skips_route", router.route_calls == [], repr(router.route_calls))
+    ok("shortlist/pinned_budget",
+       router.predict_calls == [{"model": "english", "lang": "de", "head_max_len": 384}],
+       repr(router.predict_calls))
+
+    router = ControlRouter()
+    expect_tool_error("shortlist/pinned_plus_task",
+                      lambda: laya_shortlist(STATE, small, k=2, model="english",
+                                             task="typed_decisions", router=router,
+                                             embed_fn=_tie_embed),
+                      "invalid_task")
+    ok("shortlist/pinned_plus_task_no_call", router.predict_calls == [], repr(router.predict_calls))
+
+    agent = ControlAgent()
+    laya_shortlist(STATE, small, k=2, model="english", agent=agent, lang="de",
+                   head_max_len=384, embed_fn=_tie_embed)
+    ok("shortlist/agent_budget", agent.calls == [{"lang": "de", "head_max_len": 384}],
+       repr(agent.calls))
+    agent = ControlAgent()
+    expect_tool_error("shortlist/agent_task_refused",
+                      lambda a=agent: laya_shortlist(STATE, small, k=2, model="english",
+                                                     task="typed", agent=a, embed_fn=_tie_embed),
+                      "invalid_task")
+    ok("shortlist/agent_task_no_call", agent.calls == [], repr(agent.calls))
+
+    # A bad budget is refused before the embedding pass, which is the expensive half.
+    calls = []
+
+    def counting_embed(texts):
+        calls.append(len(texts))
+        return _tie_embed(texts)
+
+    router = ControlRouter()
+    expect_tool_error("shortlist/bad_budget_before_embedding",
+                      lambda: laya_shortlist(STATE, small, k=2, head_max_len="384", router=router,
+                                             embed_fn=counting_embed),
+                      "invalid_head_max_len")
+    ok("shortlist/bad_budget_no_embedding", calls == [], repr(calls))
+
+
+def test_controls_preset():
+    """The preset fixes the questions, not the route or the budget."""
+    def builder(attr):
+        return {"probe": {"type": "noul", "instructions": "Does the `body` need a human?"}}
+
+    router = ControlRouter()
+    laya_preset("guard", STATE, router=router, preset_builder=builder)
+    ok("preset/no_controls_call", router.predict_calls == [{}], repr(router.predict_calls))
+
+    router = ControlRouter()
+    out = laya_preset("guard", STATE, task="typed_decisions", lang="de", max_len=1024,
+                      head_max_len=384, router=router, preset_builder=builder)
+    ok("preset/controls_forwarded",
+       router.predict_calls == [{"task": "typed_decisions", "lang": "de",
+                                 "max_len": 1024, "head_max_len": 384}],
+       repr(router.predict_calls))
+    # The questions the preset builder produced are what core was asked, alongside the controls --
+    # the preset supplies the questions, the caller supplies how they get answered.
+    ok("preset/questions_reached_core",
+       list(router.predict_questions[-1]) == ["probe"], repr(router.predict_questions[-1]))
+    ok("preset/result_shape", set(out) >= {"answers", "routing", "latency_ms"}, repr(sorted(out)))
+
+    for args, code in (({"max_len": -1}, "invalid_max_len"),
+                       ({"task": "nope"}, "invalid_task"),
+                       ({"lang": 7}, "invalid_lang"),
+                       ({"head_max_len": "512"}, "invalid_head_max_len")):
+        router = ControlRouter()
+        expect_tool_error("preset/rejected_%r" % (args,),
+                          lambda a=args: laya_preset("guard", STATE, router=router,
+                                                     preset_builder=builder, **a),
+                          code)
+        ok("preset/rejected_no_call_%r" % (args,), router.predict_calls == [],
+           repr(router.predict_calls))
+
+
+def test_controls_signature_and_schema():
+    """The keywords a client can see, and that none of them became required.
+
+    A new required argument would break every prompt already in the wild; a Python keyword with no
+    schema entry would be a control nobody can send. Both directions are checked.
+    """
+    import inspect
+
+    controls = ["task", "lang", "max_len", "head_max_len"]
+    for fn, want in ((laya_predict, controls), (laya_shortlist, controls),
+                     (laya_preset, controls), (laya_route, ["model", "task", "lang"])):
+        params = inspect.signature(fn).parameters
+        for name in want:
+            ok("signature/%s_has_%s" % (fn.__name__, name), name in params, repr(sorted(params)))
+            ok("signature/%s_%s_default_none" % (fn.__name__, name),
+               params[name].default is None, repr(params[name].default))
+            ok("signature/%s_%s_keyword_only" % (fn.__name__, name),
+               params[name].kind is inspect.Parameter.KEYWORD_ONLY)
+    ok("signature/predict_positionals_kept",
+       list(inspect.signature(laya_predict).parameters)[:3] == ["state", "questions", "model"],
+       repr(list(inspect.signature(laya_predict).parameters)))
+
+    by_name = {t.name: t for t in asyncio.run(mcp_server.list_tools())}
+    for name, want in (("laya_predict", controls), ("laya_shortlist", controls),
+                       ("laya_preset", controls), ("laya_route", ["model", "task", "lang"])):
+        tool = by_name[name]
+        schema = tool.input_schema if hasattr(tool, "input_schema") else tool.inputSchema
+        props = schema.get("properties", {})
+        required = schema.get("required", [])
+        for arg in want:
+            ok("schema/%s_exposes_%s" % (name, arg), arg in props, repr(sorted(props)))
+            spec = props.get(arg, {})
+            ok("schema/%s_%s_nullable" % (name, arg),
+               {"type": "null"} in (spec.get("anyOf") or []), repr(spec))
+            ok("schema/%s_%s_default_none" % (name, arg),
+               spec.get("default", "missing") is None, repr(spec))
+            ok("schema/%s_%s_not_required" % (name, arg), arg not in required, repr(required))
+            ok("schema/%s_desc_documents_%s" % (name, arg), arg in tool.description.lower())
+        ok("schema/%s_required_unchanged" % name,
+           required == (["preset", "state"] if name == "laya_preset" else ["state", "questions"]),
+           repr(required))
 def test_timeout_removed():
     # The per-call timeout was removed: a ThreadPoolExecutor shutdown waits for
     # the work anyway, and MCP clients apply their own request timeout. The tool
@@ -560,9 +1097,18 @@ test_device()
 test_real_device()
 test_private_contract()
 test_schema()
+test_model_names()
+test_presets()
+test_model_forwarding()
 test_shape()
 test_question_forwarding()
 test_shortlist()
+test_controls_validation()
+test_controls_predict()
+test_controls_route()
+test_controls_shortlist()
+test_controls_preset()
+test_controls_signature_and_schema()
 test_timeout_removed()
 test_models_from_env()
 test_server_registration()

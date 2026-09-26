@@ -39,6 +39,7 @@ from laya.serve import _apply_thread_limit, _env_bool
 from .device import env_device
 from .tools import (
     ToolError,
+    get_available_presets,
     laya_predict,
     laya_preset,
     laya_route,
@@ -71,6 +72,30 @@ _GUARDRAILS = (
     "No text generation, so no hallucination. Do NOT use for open Q&A, summarization, "
     "rewriting, code, or multi-hop reasoning. Do NOT use for >20-option choice "
     "questions without shortlisting (use the laya_shortlist tool)."
+)
+
+# The `model` argument's contract, spelled out for clients because the tools take a free string.
+# The accepted names are deliberately not listed: that registry belongs to laya.router, it grows
+# with the checkpoints, and a copy here would be a second thing to keep current. An invalid name
+# comes back as an error that lists every accepted one.
+_MODEL_DOC = (
+    " model: 'auto' (default) lets the router pick the checkpoint; anything else names one, and "
+    "core's aliases and casing are honoured ('en', 'ML', 'laya-multilingual'). The answer's "
+    "routing.model always reports the canonical name."
+)
+
+# The routing overrides and the token budget, spelled out once because the tools take them as free
+# strings and integers. Precedence matters to say plainly: a client that pins a model and also sets
+# a task would otherwise see the task silently ignored (the tool rejects it instead).
+_CONTROLS_DOC = (
+    " task: name a checkpoint by what the work is ('typed_decisions', or any checkpoint name) -- "
+    "refused on a call that also pins model, since the pin would win and the task would be ignored. "
+    "lang: a language code ('de', 'en-US') -- routes non-English text to the multilingual "
+    "checkpoint and selects that checkpoint's per-language calibration. "
+    "max_len / head_max_len: positive integers overriding the answering token budget for this call "
+    "only -- head_max_len is the option-and-instructions budget, so raise it when a choice question "
+    "has many options and the answers look like the labels blur together. Leave any of them unset to "
+    "keep the checkpoint's own default."
 )
 
 
@@ -167,13 +192,31 @@ def laya_status_tool() -> str:
     description=(
         "Decide which Laya checkpoint would answer, without running a forward pass. "
         "Use this to explain routing (english vs multilingual vs typed-decisions) to the user. "
+        "Passing a laya_predict call's model/task/lang here reproduces the routing block it "
+        "reported, without paying for the forward pass; leaving model unset (or 'auto') routes as "
+        "normal. "
         + _GUARDRAILS
+        + _CONTROLS_DOC
     ),
 )
-def laya_route_tool(state: dict, questions: dict) -> str:
+def laya_route_tool(
+    state: dict,
+    questions: dict,
+    model: str | None = None,
+    task: str | None = None,
+    lang: str | None = None,
+) -> str:
     """Decide which Laya checkpoint would answer, without running a forward pass."""
     router = _router_or_error()
-    return _wrap(laya_route, state=state, questions=questions, router=router)
+    return _wrap(
+        laya_route,
+        state=state,
+        questions=questions,
+        model=model,
+        task=task,
+        lang=lang,
+        router=router,
+    )
 
 
 @server.tool(
@@ -185,9 +228,19 @@ def laya_route_tool(state: dict, questions: dict) -> str:
         "Returns answers with confidence, routing metadata and, when it can be read, the real "
         "device of the checkpoint that answered. "
         + _GUARDRAILS
+        + _MODEL_DOC
+        + _CONTROLS_DOC
     ),
 )
-def laya_predict_tool(state: dict, questions: dict, model: str = "auto") -> str:
+def laya_predict_tool(
+    state: dict,
+    questions: dict,
+    model: str = "auto",
+    task: str | None = None,
+    lang: str | None = None,
+    max_len: int | None = None,
+    head_max_len: int | None = None,
+) -> str:
     """Answer typed questions (choice/score/noul) over any state in one forward pass."""
     router = _router_or_error()
     return _wrap(
@@ -195,6 +248,10 @@ def laya_predict_tool(state: dict, questions: dict, model: str = "auto") -> str:
         state=state,
         questions=questions,
         model=model,
+        task=task,
+        lang=lang,
+        max_len=max_len,
+        head_max_len=head_max_len,
         router=router,
     )
 
@@ -208,10 +265,23 @@ def laya_predict_tool(state: dict, questions: dict, model: str = "auto") -> str:
         "laya_predict whenever a choice question has more options than the guardrails allow. "
         "Returns the answers plus per-question shortlist metadata (kept labels, cosine "
         "scores, k, option count). "
+        "Shortlisting narrows the label set; head_max_len decides how many tokens each kept label "
+        "is read with, so the two together are the fix for a large-criteria question. "
         + _GUARDRAILS
+        + _MODEL_DOC
+        + _CONTROLS_DOC
     ),
 )
-def laya_shortlist_tool(state: dict, questions: dict, model: str = "auto", k: int = 20) -> str:
+def laya_shortlist_tool(
+    state: dict,
+    questions: dict,
+    model: str = "auto",
+    k: int = 20,
+    task: str | None = None,
+    lang: str | None = None,
+    max_len: int | None = None,
+    head_max_len: int | None = None,
+) -> str:
     """Shortlist many-option choice questions, then answer."""
     # k's default mirrors laya.shortlist.DEFAULT_SHORTLIST_K; it is a literal
     # here so the MCP schema carries the default without importing numpy at
@@ -223,25 +293,59 @@ def laya_shortlist_tool(state: dict, questions: dict, model: str = "auto", k: in
         questions=questions,
         model=model,
         k=k,
+        task=task,
+        lang=lang,
+        max_len=max_len,
+        head_max_len=head_max_len,
         router=router,
     )
 
 
+_PRESET_INFO = get_available_presets()
+
+# Built from tools.get_available_presets() rather than typed out, because the names in a
+# tools/list description are what a client sends back: a hand-written list here could advertise a
+# preset the tool rejects, or miss one it accepts. The field each preset reads is the field its own
+# instructions name, so this line cannot go stale against laya/presets.py either.
+_PRESET_DOC = (
+    "Run a built-in workflow: %s. "
+    "Use when the task matches one of those presets instead of hand-writing questions. "
+    "state: each preset reads one field (%s); a state holding a single string is placed under it "
+    "for you, and a state with more keys is passed through as given, so put your text under the "
+    "field that applies. Aliases: %s. "
+    % (
+        " | ".join("'%s'" % name for name in _PRESET_INFO),
+        ", ".join("'%s' reads `%s`" % (name, info["state_field"])
+                  for name, info in _PRESET_INFO.items() if info.get("state_field")),
+        ", ".join("'%s' is '%s'" % (alias, name)
+                  for name, info in _PRESET_INFO.items()
+                  for alias in info.get("aliases", [])),
+    )
+) + _GUARDRAILS + _CONTROLS_DOC
+
+
 @server.tool(
     name="laya_preset",
-    description=(
-        "Run a built-in workflow: 'guard' | 'moderation' | 'triage' | 'model_router'. "
-        "Use when the task matches one of those presets instead of hand-writing questions. "
-        + _GUARDRAILS
-    ),
+    description=_PRESET_DOC,
 )
-def laya_preset_tool(preset: str, state: dict) -> str:
-    """Run a built-in workflow: 'guard' | 'moderation' | 'triage' | 'model_router'."""
+def laya_preset_tool(
+    preset: str,
+    state: dict,
+    task: str | None = None,
+    lang: str | None = None,
+    max_len: int | None = None,
+    head_max_len: int | None = None,
+) -> str:
+    """Run a built-in workflow preset; the tool description carries the names and state fields."""
     router = _router_or_error()
     return _wrap(
         laya_preset,
         preset=preset,
         state=state,
+        task=task,
+        lang=lang,
+        max_len=max_len,
+        head_max_len=head_max_len,
         router=router,
         preset_builder=_preset_builder,
     )

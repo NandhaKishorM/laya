@@ -242,6 +242,120 @@ def main():
             ok("e2e/preset_jailbreak_value", 0.0 <= jailbreak.get("noul", -1) <= 1.0, repr(jailbreak))
             ok("e2e/preset_jailbreak_detected", jailbreak.get("noul", 0) > 0.5,
                "explicit injection prompt -> expect jailbreak flagged: %r" % jailbreak)
+
+            # --- per-call controls over the wire -------------------------------------------
+            # The schema an MCP client actually reads, not the one the module builds.
+            by_name = {t["name"]: t for t in tools.get("tools", [])}
+            for tname, args in (("laya_predict", ["task", "lang", "max_len", "head_max_len"]),
+                                ("laya_shortlist", ["task", "lang", "max_len", "head_max_len"]),
+                                ("laya_preset", ["task", "lang", "max_len", "head_max_len"]),
+                                ("laya_route", ["model", "task", "lang"])):
+                props = (by_name[tname].get("inputSchema") or {}).get("properties") or {}
+                for arg in args:
+                    ok("e2e/schema_%s_%s" % (tname, arg), arg in props, repr(sorted(props)))
+                    ok("e2e/schema_%s_%s_optional" % (tname, arg),
+                       arg not in ((by_name[tname].get("inputSchema") or {}).get("required") or []),
+                       repr(by_name[tname].get("inputSchema")))
+
+            # A two-option choice is nowhere near the head budget, so the controls must not move
+            # the answer: this is the "setting them changes routing/sizing, not this decision"
+            # check, and the one that would fail if a budget were applied to the wrong thing.
+            baseline = json.loads(client.request(
+                "tools/call", {"name": "laya_predict", "arguments": ticket})["content"][0]["text"])
+            sized = dict(ticket)
+            sized.update({"max_len": 1024, "head_max_len": 384})
+            result = client.request("tools/call", {"name": "laya_predict", "arguments": sized})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/controls_predict_not_error", not result.get("isError"), repr(payload)[:300])
+            ok("e2e/controls_budget_leaves_small_choice_alone",
+               (payload.get("answers") or {}).get("department", {}).get("choice")
+               == (baseline.get("answers") or {}).get("department", {}).get("choice"),
+               "sized=%r baseline=%r" % ((payload.get("answers") or {}).get("department"),
+                                         (baseline.get("answers") or {}).get("department")))
+
+            # lang is a routing override, so the checkpoint it names is the answer's own routing.
+            for code, expect in (("en", "english"), ("de", "multilingual")):
+                argued = dict(ticket)
+                argued["lang"] = code
+                payload = json.loads(client.request(
+                    "tools/call", {"name": "laya_predict", "arguments": argued})["content"][0]["text"])
+                ok("e2e/controls_lang_%s_routes_%s" % (code, expect),
+                   payload.get("routing", {}).get("model") == expect, repr(payload.get("routing")))
+                ok("e2e/controls_lang_%s_reason" % code,
+                   "explicit lang" in (payload.get("routing", {}).get("reason") or ""),
+                   repr(payload.get("routing", {}).get("reason")))
+
+            payload = json.loads(client.request(
+                "tools/call",
+                {"name": "laya_route", "arguments": {"state": ticket["state"],
+                                                     "questions": ticket["questions"],
+                                                     "lang": "de"}})["content"][0]["text"])
+            ok("e2e/controls_route_lang", payload.get("model") == "multilingual", repr(payload))
+
+            # A bad value comes back as this layer's code, not internal_error and not a crash:
+            # that distinction is the whole reason the validation sits in the tool layer.
+            # Two shapes are worth separating. A value the schema can carry but the tool refuses
+            # (`max_len: 0`) comes back as this layer's JSON payload; a value the schema cannot
+            # carry at all (`lang: ["de"]`, or an integer written as `"384"`, which the schema
+            # coerces to 384 before the tool ever sees it) is settled by the protocol layer, and
+            # the only promise is that no forward pass happens.
+            def call_predict(**extra):
+                call = dict(ticket)
+                call.update(extra)
+                res = client.request("tools/call", {"name": "laya_predict", "arguments": call})
+                text = res["content"][0]["text"]
+                # A protocol-layer refusal renders the offending value inside its prose (an empty
+                # dict for `head_max_len: {}`), so the first `{` is not always the start of a
+                # complete JSON document. raw_decode reads the object that is there and ignores
+                # the sentence around it; this check only asks whether a forward pass happened.
+                start = text.find("{")
+                payload = {}
+                if start >= 0:
+                    try:
+                        payload = json.JSONDecoder().raw_decode(text, start)[0]
+                    except ValueError:
+                        payload = {}
+                return res, payload
+
+            for args, want in (({"max_len": 0}, "invalid_max_len"),
+                               ({"max_len": -1}, "invalid_max_len"),
+                               ({"head_max_len": 0}, "invalid_head_max_len"),
+                               ({"task": "nope"}, "invalid_task"),
+                               ({"model": "english", "task": "typed_decisions"}, "invalid_task")):
+                res, payload = call_predict(**args)
+                ok("e2e/controls_error_%s" % sorted(args), res.get("isError") is True,
+                   repr(res.get("isError")))
+                ok("e2e/controls_error_code_%s" % sorted(args), payload.get("error") == want,
+                   repr(payload))
+                # A refused *name* says what the names are; a refused *combination* explains the
+                # combination. Both are this layer's words, not internal_error.
+                if args == {"task": "nope"}:
+                    ok("e2e/controls_error_lists_options",
+                       "typed-decisions" in (payload.get("message") or ""), repr(payload))
+
+            # A blank lang is not an error: it resolves to no usable hint and falls through to
+            # detection, exactly as core documents it. The tool must not turn it into a refusal.
+            res, payload = call_predict(lang="")
+            ok("e2e/controls_blank_lang_answers", not res.get("isError")
+               and "answers" in payload, repr(payload)[:200])
+
+            # An integer written as a string is coerced by the schema before the tool sees it, so
+            # the tool's own type check is a backstop for in-process callers, not the wire path.
+            # Recorded here because it is the difference between the two sets of checks.
+            res, sized_string = call_predict(head_max_len="384")
+            ok("e2e/controls_budget_string_coerced", not res.get("isError")
+               and "answers" in sized_string, repr(sized_string)[:200])
+            ok("e2e/controls_budget_string_matches_int",
+               sized_string.get("answers", {}).get("department", {}).get("choice")
+               == payload.get("answers", {}).get("department", {}).get("choice"),
+               repr([sized_string.get("answers"), payload.get("answers")])[:200])
+
+            for args in ({"lang": ["de"]}, {"max_len": "many"}, {"max_len": [1]},
+                         {"head_max_len": {}}):
+                res, payload = call_predict(**args)
+                ok("e2e/controls_schema_rejects_%s" % sorted(args), res.get("isError") is True
+                   or payload.get("error") in ("invalid_max_len", "invalid_head_max_len"),
+                   repr(payload)[:200])
     finally:
         client.close()
 

@@ -185,3 +185,116 @@ def router_questions() -> Dict:
             "instructions": "Does `request` involve money, legal, medical or safety consequences?",
         },
     }
+
+def agent_trace_questions() -> Dict:
+    """Preset questions for agent trace and trajectory observability."""
+    return {
+        "action": {
+            "type": "choice",
+            "instructions": "What primary action should be taken for this trace?",
+            "criteria": {
+                "approve": "execution proceeds normally",
+                "escalate": "requires human-in-the-loop review",
+                "abort": "unsafe or anomalous state requiring termination",
+                "retry": "transient failure suitable for retry",
+            },
+        },
+        "needs_review": {
+            "type": "noul",
+            "instructions": "Does the agent trajectory require human review?",
+            "criteria": {"true": "requires human intervention", "false": "autonomous execution safe"},
+        },
+        "outcome": {
+            "type": "choice",
+            "instructions": "What is the expected execution outcome?",
+            "criteria": {
+                "success": "goal achieved",
+                "partial": "progress made but incomplete",
+                "failure": "failed to achieve target state",
+                "unknown": "ambiguous outcome",
+            },
+        },
+        "risk": {
+            "type": "score",
+            "instructions": "What is the operational risk level of this trace?",
+            "criteria": ["negligible", "low", "medium", "high", "critical"],
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "How urgent is attention required for this trace?",
+            "criteria": ["low priority", "standard", "high urgency", "immediate action required"],
+        },
+    }
+
+
+def invoice_processing_questions() -> Dict:
+    """Preset questions for automated invoice matching and processing."""
+    return {
+        "discrepancy_severity": {
+            "type": "score",
+            "instructions": "How severe is any discrepancy in this invoice?",
+            "criteria": ["no discrepancy", "minor rounding difference", "material pricing mismatch", "fraudulent or conflicting data"],
+        },
+        "disposition": {
+            "type": "choice",
+            "instructions": "What disposition should be assigned to this invoice?",
+            "criteria": {
+                "auto_approve": "matches purchase order within tolerances",
+                "flag_for_audit": "variance requires manual reconciliation",
+                "reject": "invalid billing details or rejected terms",
+                "hold": "awaiting supporting receipt documentation",
+            },
+        },
+        "duplicate": {
+            "type": "noul",
+            "instructions": "Is this invoice a duplicate submission?",
+            "criteria": {"true": "duplicate invoice detected", "false": "original submission"},
+        },
+        "matches_order": {
+            "type": "noul",
+            "instructions": "Do line items match the corresponding purchase order?",
+            "criteria": {"true": "line items match", "false": "line items mismatch"},
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "How urgent is the processing timeline for this invoice?",
+            "criteria": ["standard payment terms", "approaching due date", "past due or discount expiring"],
+        },
+    }
+
+
+def security_incident_questions() -> Dict:
+    """Preset questions for security alert and incident triage."""
+    return {
+        "credential_compromise": {
+            "type": "noul",
+            "instructions": "Does the incident indicate potential credential compromise or unauthorized access?",
+            "criteria": {"true": "credentials exposed or compromised", "false": "no credential leak"},
+        },
+        "disposition": {
+            "type": "choice",
+            "instructions": "What incident response disposition should be taken?",
+            "criteria": {
+                "close_benign": "benign activity or known false positive",
+                "isolate_host": "quarantine host or revoke session tokens",
+                "escalate_soc": "escalate to Tier 2/3 SOC analysts",
+                "monitor": "add identity to heightened observation",
+            },
+        },
+        "severity": {
+            "type": "score",
+            "instructions": "What is the severity of this security incident?",
+            "criteria": ["info", "low", "medium", "high", "critical"],
+        },
+        "true_positive": {
+            "type": "noul",
+            "instructions": "Is this alert a true positive security threat?",
+            "criteria": {"true": "confirmed true positive", "false": "false positive or benign scanner"},
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "How rapidly must containment begin?",
+            "criteria": ["within 24h", "within 4h", "within 1h", "immediate containment"],
+        },
+    }
+

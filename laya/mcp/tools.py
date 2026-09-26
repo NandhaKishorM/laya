@@ -28,7 +28,12 @@ PRESETS: dict[str, str] = {
 }
 
 VALID_TYPES = {"choice", "score", "noul"}
-VALID_MODELS = {"auto", "english", "multilingual", "typed-decisions"}
+# `auto` is this layer's own sentinel -- "route it, do not pin a checkpoint". Every other value is a
+# checkpoint name, and the registry of those (names, aliases, casing) is core's: `laya.router` runs
+# every model argument through `normalise_name` before it loads anything, which is the same call the
+# tools below end up making through `router.predict(model=...)`. A second list here could only ever
+# be narrower than that one, so it is not repeated.
+AUTO = "auto"
 
 
 def validate_questions(questions: Any) -> dict:
@@ -101,14 +106,25 @@ def validate_preset(preset: Any) -> str:
 
 
 def validate_model(model: Any) -> str:
+    """Canonical checkpoint name for a tool argument, or ``"auto"``.
+
+    Core's ``normalise_name`` is what decides whether something names a checkpoint: it trims,
+    lowercases and resolves ``laya.router._ALIASES``. Running the argument through it here means
+    this layer cannot reject a name that ``router.predict(model=...)`` would have accepted a few
+    lines later, and an alias comes back canonical so the ``routing.model`` a caller reads does not
+    depend on how the checkpoint was spelled. Deferred import: nothing else in this module pulls
+    torch in, and importing this file is how an MCP client starts the server.
+    """
     if model is None:
-        return "auto"
-    if model not in VALID_MODELS:
-        raise ToolError(
-            "invalid_model",
-            f"model must be one of {sorted(VALID_MODELS)}, got {model!r}",
-        )
-    return model
+        return AUTO
+    if isinstance(model, str) and model.strip().lower() == AUTO:
+        return AUTO
+    from laya.router import normalise_name
+
+    try:
+        return normalise_name(model)
+    except ValueError as error:
+        raise ToolError("invalid_model", "%s, or %r" % (error, AUTO)) from None
 
 
 def _normalize_answers(raw: Any) -> dict:

@@ -147,6 +147,67 @@ def test_schema():
     expect_tool_error("schema/model_bad", lambda: validate_model("gpt4"), "invalid_model")
 
 
+def test_model_names():
+    """`model` is core's registry, not a second list kept here.
+
+    The names and aliases live in `laya.router`, and `router.predict(model=...)` runs whatever
+    arrives through `normalise_name` a few lines after `validate_model` sees it. So any name core
+    resolves has to survive this layer, and it has to come back canonical: the `routing.model` a
+    caller reads should not depend on how the checkpoint was spelled in the request.
+    """
+    from laya.router import DEFAULT_MODELS, _ALIASES, normalise_name
+
+    for name in sorted(DEFAULT_MODELS):
+        ok("model/canonical_%s" % name, validate_model(name) == name)
+    for alias, canonical in sorted(_ALIASES.items()):
+        got = validate_model(alias)
+        ok("model/alias_%s" % alias, got == canonical, "got %r want %r" % (got, canonical))
+    for spelling in ("EN", " Multilingual ", "Typed-Decisions", "AUTO"):
+        want = "auto" if spelling.strip().lower() == "auto" else normalise_name(spelling)
+        ok("model/casing_and_spacing_%r" % spelling, validate_model(spelling) == want)
+    for auto in (None, "auto", "Auto", " auto "):
+        ok("model/auto_%r" % (auto,), validate_model(auto) == "auto")
+    for bad in ("gpt4", "", "   ", "english-ish", "laya-typed", 5, [], {}):
+        expect_tool_error("model/rejected_%r" % (bad,), lambda b=bad: validate_model(b),
+                          "invalid_model")
+
+    # The list a client learns from is now core's words, so it must still name every option:
+    # the checkpoints, the aliases, and this layer's own `auto` sentinel.
+    try:
+        validate_model("gpt4")
+        message = ""
+    except ToolError as exc:
+        message = exc.message
+    ok("model/error_lists_checkpoints", all(n in message for n in sorted(DEFAULT_MODELS)), repr(message))
+    ok("model/error_lists_aliases", "alias" in message and "'en'" in message, repr(message))
+    ok("model/error_keeps_auto", "'auto'" in message, repr(message))
+
+
+def test_model_forwarding():
+    """An alias reaches core canonical, and changes nothing else about the answer."""
+
+    class EchoRouter:
+        _agents = {"english": FakeAgent()}
+
+        def __init__(self):
+            self.calls = []
+
+        def predict(self, state, questions, **kwargs):
+            # No `routing` key on purpose: what the tool then reports is the name it settled on,
+            # which is the piece an alias could have leaked through.
+            self.calls.append(kwargs)
+            return {"answers": {"department": {"choice": "billing", "confidence": 0.94}}}
+
+    router = EchoRouter()
+    by_alias = laya_predict(STATE, QUESTIONS, model="laya", router=router)
+    by_name = laya_predict(STATE, QUESTIONS, model="english", router=router)
+    ok("forward/model_seen_by_core", [c.get("model") for c in router.calls] == ["english", "english"],
+       repr(router.calls))
+    ok("forward/reports_canonical", by_alias["routing"]["model"] == "english", repr(by_alias["routing"]))
+    ok("forward/answers_identical", by_alias["answers"] == by_name["answers"])
+
+
+
 # --- shape (mocked router, no weights) ---------------------------------------
 
 class FakeAgent:
@@ -560,6 +621,8 @@ test_device()
 test_real_device()
 test_private_contract()
 test_schema()
+test_model_names()
+test_model_forwarding()
 test_shape()
 test_question_forwarding()
 test_shortlist()

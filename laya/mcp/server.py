@@ -73,6 +73,16 @@ _GUARDRAILS = (
     "questions without shortlisting (use the laya_shortlist tool)."
 )
 
+# The `model` argument's contract, spelled out for clients because the tools take a free string.
+# The accepted names are deliberately not listed: that registry belongs to laya.router, it grows
+# with the checkpoints, and a copy here would be a second thing to keep current. An invalid name
+# comes back as an error that lists every accepted one.
+_MODEL_DOC = (
+    " model: 'auto' (default) lets the router pick the checkpoint; anything else names one, and "
+    "core's aliases and casing are honoured ('en', 'ML', 'laya-multilingual'). The answer's "
+    "routing.model always reports the canonical name."
+)
+
 
 def _models_from_env() -> list[str]:
     """Preload list from LAYA_MODELS (laya.serve contract: comma list of names).
@@ -185,6 +195,7 @@ def laya_route_tool(state: dict, questions: dict) -> str:
         "Returns answers with confidence, routing metadata and, when it can be read, the real "
         "device of the checkpoint that answered. "
         + _GUARDRAILS
+        + _MODEL_DOC
     ),
 )
 def laya_predict_tool(state: dict, questions: dict, model: str = "auto") -> str:
@@ -209,6 +220,7 @@ def laya_predict_tool(state: dict, questions: dict, model: str = "auto") -> str:
         "Returns the answers plus per-question shortlist metadata (kept labels, cosine "
         "scores, k, option count). "
         + _GUARDRAILS
+        + _MODEL_DOC
     ),
 )
 def laya_shortlist_tool(state: dict, questions: dict, model: str = "auto", k: int = 20) -> str:

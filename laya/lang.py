@@ -550,6 +550,16 @@ def _leaf_non_english(leaf: str) -> Optional[Dict[str, object]]:
     best_n = -1
     best: Optional[Dict[str, object]] = None
     for line in leaf.split("\n"):
+        # A line this short cannot be selected, so skip it before the slice, `strip`,
+        # `_CODE_LINE` and a full `_analyse_text` pass. Each branch below needs four `_WORD`
+        # tokens or NON_LATIN_MIN_LETTERS letters. `_WORD` matches maximal runs of letters and
+        # letter-like numerals, so four tokens need three separators between them: seven
+        # characters, and ten letters need ten. What makes seven safe rather than six is that
+        # every one of those counts is taken on the raw line -- `İ` lowers to two code points, so
+        # counting on `sample.lower()` would let a four-character line reach four tokens, which is
+        # why `latin_profile` replaces `İ` before lowering.
+        if len(line) < 7:
+            continue
         sample = line[:4000]
         if not sample.strip() or _CODE_LINE.search(sample):
             continue

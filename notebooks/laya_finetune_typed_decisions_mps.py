@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Laya typed-decisions fine-tuning on Apple Silicon.
 
 This is a standalone replacement for the Kaggle 2xT4 notebook. It performs:
@@ -8,26 +7,20 @@ This is a standalone replacement for the Kaggle 2xT4 notebook. It performs:
 4. temperature calibration
 5. checkpoint/model export
 
-Run without arguments:
-python notebooks/laya_finetune_typed_decisions_mps.py
-
 Useful examples:
     python notebooks/laya_finetune_typed_decisions_mps.py --epochs 2 --micro-batch 1 --grad-accum 32
     python notebooks/laya_finetune_typed_decisions_mps.py --model-dir ./laya_base --items ./train_items.pt
-    python 2.py --device cpu
+    python notebooks/laya_finetune_typed_decisions_mps.py --device cpu
 """
 
 import argparse
 import gc
 import json
 import math
-import os
 import random
-import time
 from pathlib import Path
 
 import torch
-from datasets import load_dataset
 from huggingface_hub import snapshot_download
 from safetensors.torch import load_file, save_file
 from transformers import AutoTokenizer
@@ -109,13 +102,39 @@ def build_training_item(tokenizer, cfg, state, question, gold_question):
 
 def prepare_items(model_dir, items_path, force=False):
     items_path = Path(items_path)
-    if items_path.exists() and not force:
-        print(f"Using cached training items: {items_path}")
-        return
-
-    with open(Path(model_dir) / "rl_agent_config.json") as f:
+    model_path = Path(model_dir).resolve()
+    with open(model_path / "rl_agent_config.json") as f:
         cfg = json.load(f)
-    tokenizer = AutoTokenizer.from_pretrained(Path(model_dir) / "tokenizer")
+    max_len = cfg.get("max_len", 1024)
+    head_max_len = cfg.get("head_max_len", 256)
+    cache_meta_path = items_path.with_name(items_path.name + ".meta.json")
+    cache_key = {
+        "model_dir": str(model_path),
+        "max_len": max_len,
+        "head_max_len": head_max_len,
+        "dataset": DATASET_ID,
+        "split": "train",
+    }
+    if items_path.exists() and not force:
+        if not cache_meta_path.exists():
+            # Legacy item files predate the sidecar metadata. They remain
+            # usable offline; newly written caches always receive a key.
+            print(f"Using legacy cached training items without metadata: {items_path}")
+            return
+        try:
+            with open(cache_meta_path) as f:
+                cached_key = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            cached_key = None
+        if cached_key == cache_key:
+            print(f"Using cached training items: {items_path}")
+            return
+        print("Training-item cache key changed; rebuilding the cache.")
+
+    # Keep datasets optional when a compatible local cache is already available.
+    from datasets import load_dataset
+
+    tokenizer = AutoTokenizer.from_pretrained(model_path / "tokenizer")
     print(f"Downloading dataset {DATASET_ID} ...")
     dataset = load_dataset(DATASET_ID, "all", split="train")
 
@@ -128,7 +147,13 @@ def prepare_items(model_dir, items_path, force=False):
         for qid, question in questions.items():
             if qid not in gold:
                 continue
-            item = build_training_item(tokenizer, cfg, state, question, gold[qid])
+            item = build_training_item(
+                tokenizer,
+                {**cfg, "max_len": max_len, "head_max_len": head_max_len},
+                state,
+                question,
+                gold[qid],
+            )
             if item is None:
                 skipped += 1
             else:
@@ -136,6 +161,8 @@ def prepare_items(model_dir, items_path, force=False):
 
     items_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(items, items_path)
+    with open(cache_meta_path, "w") as f:
+        json.dump(cache_key, f, indent=2)
     print(f"Saved {len(items)} training items to {items_path}; skipped={skipped}")
 
 
@@ -191,7 +218,7 @@ def fit_temperature(samples):
     return float(torch.clamp(log_temperature.exp(), 0.1, 10.0).item())
 
 
-def save_checkpoint(model, tokenizer, output_dir, epoch, final=False):
+def save_checkpoint(model, tokenizer, cfg, output_dir, epoch, final=False):
     path = Path(output_dir) if final else Path(output_dir) / "checkpoint_latest"
     path.mkdir(parents=True, exist_ok=True)
     weights = {
@@ -203,6 +230,8 @@ def save_checkpoint(model, tokenizer, output_dir, epoch, final=False):
     tokenizer.save_pretrained(path / "tokenizer")
     with open(path / "checkpoint_meta.json", "w") as f:
         json.dump({"epoch": epoch, "final": final}, f, indent=2)
+    with open(path / "rl_agent_config.json", "w") as f:
+        json.dump(cfg, f, indent=2)
 
 
 def train(args, model_dir, items_path, device):
@@ -304,7 +333,7 @@ def train(args, model_dir, items_path, device):
 
         avg_loss = total_loss / max(1, n_batches)
         print(f"Epoch {epoch + 1}/{args.epochs} complete; avg_loss={avg_loss:.4f}")
-        save_checkpoint(model, tokenizer, args.output_dir, epoch + 1)
+        save_checkpoint(model, tokenizer, cfg, args.output_dir, epoch + 1)
 
     print("Running temperature calibration ...")
     model.eval()
@@ -323,7 +352,7 @@ def train(args, model_dir, items_path, device):
                 )
 
     temperatures = [fit_temperature(group) if group else 1.2 for group in samples]
-    save_checkpoint(model, tokenizer, args.output_dir, args.epochs, final=True)
+    save_checkpoint(model, tokenizer, cfg, args.output_dir, args.epochs, final=True)
     cfg.update({
         "fine_tuned": True,
         "model_name": "laya-typed-decisions",
@@ -331,6 +360,8 @@ def train(args, model_dir, items_path, device):
     })
     cfg.pop("temperature_by_options", None)
     with open(Path(args.output_dir) / "rl_agent_config.json", "w") as f:
+        json.dump(cfg, f, indent=2)
+    with open(Path(args.output_dir) / "checkpoint_latest" / "rl_agent_config.json", "w") as f:
         json.dump(cfg, f, indent=2)
     print(f"Model saved to {args.output_dir}")
     print(f"Temperatures: {temperatures}")

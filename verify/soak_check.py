@@ -98,7 +98,8 @@ def main():
               "typed-decisions": os.path.join(args.models, "laya-typed-decisions")}
     for name, path in models.items():
         if not os.path.exists(os.path.join(path, "model.safetensors")):
-            sys.exit("missing checkpoint %r -- run ./setup_laya.sh" % name)
+            sys.exit("missing checkpoint %r -- fetch it with "
+                     "python verify/checkpoints.py --fetch" % name)
     device = None if args.device == "auto" else args.device
 
     print("torch %s | pid %d | RSS via %s | %d calls, %d cycles, %d threads"

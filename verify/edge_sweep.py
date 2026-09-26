@@ -1,12 +1,12 @@
 """Edge-case sweep: the inference paths the repo's other suites do not cover.
 
-`tests/test_local_e2e.py` and `laya_smoke_test.py` check that Laya answers the right things.
+`tests/test_local_e2e.py` and `verify/laya_smoke_test.py` check that Laya answers the right things.
 This checks the shapes and API paths around that: one forward pass answering many questions,
 high-cardinality choice sets (the `head_max_len` option budget), odd input shapes and encodings,
 long-context truncation, the router lifecycle (preload / LRU / attach / unload) and explicit
 device selection, including CPU-vs-MPS agreement.
 
-Needs the local checkpoints (~2.3 GB, see setup_laya.sh):
+Needs the local checkpoints (~2.3 GB; fetch with `verify/checkpoints.py --fetch`):
 
     .venv/bin/python verify/edge_sweep.py [--models ./models] [--device auto|cpu|mps]
 
@@ -63,7 +63,8 @@ def main():
               "typed-decisions": os.path.join(args.models, "laya-typed-decisions")}
     for name, path in models.items():
         if not os.path.exists(os.path.join(path, "model.safetensors")):
-            sys.exit("missing checkpoint %r at %s -- run ./setup_laya.sh" % (name, path))
+            sys.exit("missing checkpoint %r at %s -- fetch it with "
+                     "python verify/checkpoints.py --fetch" % (name, path))
     device = None if args.device == "auto" else args.device
 
     mixed = {"a": {"type": "choice", "instructions": "Which team?", "criteria": {"billing": "money", "tech": "bugs"}},

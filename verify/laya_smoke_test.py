@@ -4,7 +4,7 @@
 Exercises everything the README promises -- routing, the three checkpoints, all three
 decision primitives, the built-in presets -- and prints per-checkpoint latency.
 
-    python laya_smoke_test.py --models ./models [--device auto|cpu|mps] [--repeat 5]
+    python verify/laya_smoke_test.py --models ./models [--device auto|cpu|mps] [--repeat 5]
 
 Exits non-zero if any check fails.
 """
@@ -20,7 +20,8 @@ os.environ.setdefault("USE_TORCH", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)          # repository root; <root>/laya/email.py must not shadow stdlib email
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, ROOT)          # repository root; <root>/laya/email.py must not shadow stdlib email
 
 import laya  # noqa: E402
 from laya.router import Router  # noqa: E402
@@ -70,7 +71,7 @@ def timed(fn, repeat):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--models", default=os.path.join(HERE, "models"),
+    ap.add_argument("--models", default=os.path.join(ROOT, "models"),
                     help="directory holding laya/, laya-multilingual/, laya-typed-decisions/")
     ap.add_argument("--device", default="auto", help="auto (Laya picks), cpu, or mps")
     ap.add_argument("--repeat", type=int, default=5, help="timed iterations per checkpoint")
@@ -82,7 +83,8 @@ def main():
              "typed-decisions": os.path.join(root, "laya-typed-decisions")}
     for name, path in local.items():
         if not os.path.exists(os.path.join(path, "model.safetensors")):
-            sys.exit("missing checkpoint %r at %s -- run ./setup_laya.sh" % (name, path))
+            sys.exit("missing checkpoint %r at %s -- fetch it with "
+                     "python verify/checkpoints.py --fetch" % (name, path))
     device = None if args.device == "auto" else args.device
 
     print("laya %s | python %s | torch %s | transformers %s"

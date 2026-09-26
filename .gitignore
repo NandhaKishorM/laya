@@ -74,8 +74,6 @@ site/
 .ruff_cache/
 research/*_benchmark_results.json
 
-# local setup artifacts written by setup_laya.sh: the checkpoint weights, and the Hugging Face
-# and pip caches it keeps inside the checkout
+# local checkpoint weights, kept out of the tree
+# (fetch them with: python verify/checkpoints.py --fetch)
 models/
-.hf-cache/
-.pip-cache/

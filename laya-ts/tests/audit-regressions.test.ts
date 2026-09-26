@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Agent, checkQuestion, toInternal } from "../src/agent.js";
-import { buildSequence } from "../src/common.js";
+import { buildSequence, renderOptions } from "../src/common.js";
 import { loadNodeBundle } from "../src/providers.js";
 
 const tokenizer = () => ({
@@ -51,6 +51,16 @@ describe("audit regressions", () => {
     expect(rendered).toContain("Yes");
     expect(() => checkQuestion("q", { type: "noul", instructions: "?", labels: { false: "No" } })).toThrow("labels");
     expect(() => checkQuestion("q", { type: "choice", instructions: "?", criteria: ["yes"], labels: { false: "No", true: "Yes" } })).toThrow("labels");
+  });
+
+  it("reads noul criteria keys case-insensitively, as Python does", () => {
+    const upper = { type: "noul", instructions: "?", criteria: { True: "it holds", FALSE: "it does not" } };
+    const lower = { type: "noul", instructions: "?", criteria: { true: "it holds", false: "it does not" } };
+    expect(() => checkQuestion("q", upper)).not.toThrow();
+    expect(toInternal(upper).crit).toEqual({ true: "it holds", false: "it does not" });
+    expect(renderOptions(toInternal(upper))).toEqual(renderOptions(toInternal(lower)));
+    expect(() => checkQuestion("q", { type: "noul", instructions: "?", criteria: { True: "x", maybe: "y" } })).toThrow("maybe");
+    expect(() => checkQuestion("q", { type: "noul", instructions: "?", criteria: { yes: "x" } })).toThrow("yes");
   });
 
   it("rejects a null score level, as Python does (#302)", () => {

@@ -177,7 +177,7 @@ export function checkQuestion(qid: string, qdef: unknown): void {
       `question ${qidStr(qid)}: a noul question takes 'criteria' as a dict with optional 'true'/'false' descriptions, or omits it`,
     );
   } else if (crit && typeof crit === "object" && !Array.isArray(crit)) {
-    const invalid = Object.keys(crit as Record<string, unknown>).filter((key) => key !== "true" && key !== "false");
+    const invalid = Object.keys(crit as Record<string, unknown>).filter((key) => key.toLowerCase() !== "true" && key.toLowerCase() !== "false");
     if (invalid.length > 0) {
       throw new Error(
         `question ${qidStr(qid)}: noul criteria may contain only 'true' and 'false'; got ${JSON.stringify(invalid)}`,

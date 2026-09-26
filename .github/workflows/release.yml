@@ -49,6 +49,7 @@ jobs:
           python tests/test_decision_model.py
           python tests/test_packaging.py
           python tests/test_doc_tables.py
+          python tests/test_env_docs.py
           python tests/test_lang_guess.py
           python tests/test_calibration_persistence.py
           python tests/test_context_manager.py

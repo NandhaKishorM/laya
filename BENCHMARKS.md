@@ -363,3 +363,46 @@ graph removes that. Large batches are GEMM bound; the fused kernels sit at ~80 T
 cuBLAS, so the gain comes from the fused epilogues and the sliding-window attention (16× faster than SDPA
 with a dense mask at L=1024). First use of a new length bucket compiles kernels (a few seconds, cached on
 disk); inputs ≤256 tokens share one dynamic-shape kernel and never recompile.
+
+## Community evaluation: zh-CN / zh-TW (external, 2026-09-25)
+
+From [@CodyQin](https://github.com/CodyQin)'s [zh-decision-bench](https://github.com/CodyQin/zh-decision-bench) (dataset CC BY 4.0, raw predictions published). Three parts:
+
+### 1. Same-methodology rerun of Part A (zh only, current package)
+
+`bench_local.py` Part A rerun on laya **0.3.20** (CUDA), public checkpoints, `--per-lang 100`, seed 13 — result file: `research/results/zh_rerun_part_a.json`. The english checkpoint's accuracies replicate the sweep above **exactly**; multilingual zh-TW improves under 0.3.20 + the temperature clamp.
+
+| checkpoint | zh-CN acc / ECE | zh-TW acc / ECE | vs sweep above (0.2.0, pre-clamp) |
+|---|---|---|---|
+| english | 0.620 / 0.320 | 0.460 / 0.434 | accuracy identical (0.62 / 0.46); ECE lower post-clamp |
+| multilingual | 0.650 / 0.219 | 0.610 / 0.266 | zh-CN within noise; zh-TW 0.54 -> 0.61 |
+
+### 2. zh-decision-bench: business-scenario eval set (laya-evals format)
+
+219 items / 284 questions: MASSIVE zh-CN dev (quality-filtered, 6-domain routing) plus human-adjudicated synthetic e-commerce CS and content-moderation items. Ships in this harness's format as `research/evals/zh_decision_bench.jsonl`:
+
+```bash
+laya-evals run research/evals/zh_decision_bench.jsonl --model multilingual --slice tags
+```
+
+Results (laya 0.3.20, CUDA; bootstrap CIs and raw predictions in the source repo):
+
+| checkpoint | voice routing (n=179) | CS routing (n=25) | urgency (n=25) | scam/promo (n=15) | escalate (n=40) |
+|---|---|---|---|---|---|
+| multilingual | 0.883 / 0.061 | 0.640 / 0.293 | 0.560 / 0.091 | 0.667 / 0.311 | 0.550 / 0.230 |
+| english | 0.754 / 0.281 | 0.520 / 0.184 | 0.520 / 0.207 | 0.667 / 0.321 | 0.575 / 0.269 |
+
+Also measured: option-order flip rate 28% (CS) / 10.6% (voice); zh-CN to native zh-TW parallel-utterance flip rate 12.8%. Task framing differs from the sweep above (6-domain routing vs 20-way intent), so these complement rather than compare.
+
+### 3. Temperature refit for zh (official `temp_bucket` convention)
+
+Refit on zh-decision-bench (multilingual checkpoint; 50/50 fit/test split by item hash), clamped to `[0.5, 5]`:
+
+| bucket | T raw | T clamped | test ECE before -> after |
+|---|---|---|---|
+| choice:6-10 | 1.52 | 1.52 | 0.062 -> 0.093 |
+| choice:3-5 | 2.61 | 2.61 | 0.329 -> 0.352 |
+| score:3-5 | 1.33 | 1.33 | 0.118 -> 0.126 |
+| noul:2 | 10.23 | 5.00 | 0.180 -> 0.098 |
+
+The `noul:2` raw fit (10.2) exceeds `TEMP_MAX`: Chinese binary-judgment over-confidence outruns the shipped clamp's correction range (NLL still improves, 0.79 -> 0.55).

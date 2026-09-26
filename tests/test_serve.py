@@ -245,6 +245,7 @@ def test_helpers():
 
 
 def test_thread_limit(monkeypatch):
+    pytest.importorskip("torch")
     monkeypatch.delenv("LAYA_THREADS", raising=False)
     assert _apply_thread_limit() is None  # unset -> no-op, no torch import
     for bad in ("0", "-4", "abc", ""):
@@ -421,6 +422,7 @@ def test_a_nested_choice_label_is_a_caller_error_not_a_server_fault(monkeypatch)
     `ValueError` to 422, so the caller got a 500 "inference failed" with the reason discarded.
     `ValueError` is what carries the message to the client, so the guard has to raise that type.
     """
+    pytest.importorskip("torch")  # laya.agent imports torch at module level
     class ValidatingRouter:
         """The real guard, without a checkpoint: what `Agent.system_one` runs before encoding.
 

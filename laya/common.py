@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 
 QTYPES = {"choice": 0, "score": 1, "noul": 2}
@@ -146,6 +147,58 @@ def build_sequence(
     return ids[:max_len], [m for m in markers if m < max_len]
 
 
+class _DynamicMultiheadAttention(nn.MultiheadAttention):
+    """`nn.MultiheadAttention` that keeps the shapes it traces.
+
+    The stock module reshapes the packed projection with sizes captured while tracing, so under
+    the legacy ONNX exporter the traced sequence length becomes a constant and a model exported
+    from a short dummy input only runs at that length. The parameters and the maths are the same
+    here; the reshape uses only constant shape arguments (`chunk` / `unflatten` / `flatten`) and
+    `scaled_dot_product_attention`, the kernel the stock path already uses when weights are not
+    requested.
+    """
+
+    def forward(self, query, key, value, key_padding_mask=None, need_weights=True,
+                attn_mask=None, average_attn_weights=True, is_causal=False):
+        if (need_weights or self.in_proj_weight is None or self.bias_k is not None
+                or self.bias_v is not None
+                or (attn_mask is not None and attn_mask.dtype != torch.bool)):
+            # Weight averaging, additive masks and the optional k/v bias are not on the traced
+            # path; the stock implementation keeps them correct.
+            return super().forward(query, key, value, key_padding_mask=key_padding_mask,
+                                   need_weights=need_weights, attn_mask=attn_mask,
+                                   average_attn_weights=average_attn_weights, is_causal=is_causal)
+        if self.batch_first:
+            query, key, value = query.transpose(0, 1), key.transpose(0, 1), value.transpose(0, 1)
+        # (T, B, E) from here, matching the stock module's internals; attention runs on (B, H, T, D).
+        if query is key is value:
+            q, k, v = (part.unflatten(-1, (self.num_heads, self.head_dim)).permute(1, 2, 0, 3)
+                       for part in F.linear(query, self.in_proj_weight, self.in_proj_bias).chunk(3, dim=-1))
+        else:
+            embed_dim = query.shape[-1]
+            wq, wk, wv = self.in_proj_weight.split(embed_dim, dim=0)
+            bq, bk, bv = ((None, None, None) if self.in_proj_bias is None
+                          else self.in_proj_bias.split(embed_dim, dim=0))
+            q, k, v = (
+                F.linear(t, w, b).unflatten(-1, (self.num_heads, self.head_dim)).permute(1, 2, 0, 3)
+                for t, w, b in ((query, wq, bq), (key, wk, bk), (value, wv, bv))
+            )
+        mask = None
+        if attn_mask is not None:
+            mask = ~attn_mask
+        if key_padding_mask is not None:
+            # `== 0` keeps this correct for a bool mask and for the 0 / -inf float mask the encoder
+            # layer hands over (`F._canonical_mask`), where `~` would not be defined.
+            keep = key_padding_mask[:, None, None, :] == 0
+            mask = keep if mask is None else mask & keep
+        attn = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, is_causal=is_causal and mask is None,
+                                              dropout_p=self.dropout if self.training else 0.0)
+        attn = attn.permute(2, 0, 1, 3).flatten(-2)
+        if self.batch_first:
+            attn = attn.transpose(0, 1)
+        return self.out_proj(attn), None
+
+
 class DecisionModel(nn.Module):
     """Bidirectional transformer encoder backbone + typed decision head."""
 
@@ -164,6 +217,9 @@ class DecisionModel(nn.Module):
         with torch.device("meta") if no_init else nullcontext():
             nhead = max(1, d // 64)
             layer = nn.TransformerEncoderLayer(d, nhead, 4 * d, dropout, batch_first=True, norm_first=True)
+            # The stock attention bakes the traced length into an exported graph; see
+            # _DynamicMultiheadAttention. Same parameters, same maths, traceable shapes.
+            layer.self_attn = _DynamicMultiheadAttention(d, nhead, dropout=dropout, batch_first=True)
             self.head = nn.TransformerEncoder(layer, head_layers, enable_nested_tensor=False) if head_layers > 0 else None
             self.type_emb = nn.Embedding(3, d)
             self.scorer = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, d), nn.GELU(), nn.Linear(d, 1))

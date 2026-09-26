@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "timestamp": "2026-09-26T00:49:54.940064",
+    "device": "cuda",
+    "purpose": "zh-only rerun of the official 51-language sweep (part A) on current package",
+    "languages": [
+      "zh-CN",
+      "zh-TW"
+    ],
+    "per_lang": 100
+  },
+  "part_a": {
+    "config": {
+      "languages": [
+        "zh-CN",
+        "zh-TW"
+      ],
+      "per_lang": 100,
+      "n_options": 20,
+      "seed": 13
+    },
+    "by_model": {
+      "english": {
+        "per_language": {
+          "zh-CN": {
+            "n": 100,
+            "accuracy": 0.62,
+            "macro_f1": 0.6175,
+            "ece": 0.3198,
+            "brier": 0.6745,
+            "nll": 3.2664,
+            "mean_confidence": 0.9244,
+            "acc_at_50_coverage": 0.84,
+            "seconds": 1.8,
+            "dropped": 0
+          },
+          "zh-TW": {
+            "n": 100,
+            "accuracy": 0.46,
+            "macro_f1": 0.4294,
+            "ece": 0.4344,
+            "brier": 0.9242,
+            "nll": 4.7668,
+            "mean_confidence": 0.8944,
+            "acc_at_50_coverage": 0.72,
+            "seconds": 1.6,
+            "dropped": 0
+          }
+        },
+        "macro_accuracy": 0.54,
+        "macro_ece": 0.3771,
+        "n_languages": 2,
+        "languages_above_random": 2
+      },
+      "multilingual": {
+        "per_language": {
+          "zh-CN": {
+            "n": 100,
+            "accuracy": 0.65,
+            "macro_f1": 0.605,
+            "ece": 0.2192,
+            "brier": 0.5484,
+            "nll": 1.872,
+            "mean_confidence": 0.859,
+            "acc_at_50_coverage": 0.84,
+            "seconds": 0.6,
+            "dropped": 0
+          },
+          "zh-TW": {
+            "n": 100,
+            "accuracy": 0.61,
+            "macro_f1": 0.5565,
+            "ece": 0.2662,
+            "brier": 0.6563,
+            "nll": 2.2928,
+            "mean_confidence": 0.8557,
+            "acc_at_50_coverage": 0.78,
+            "seconds": 0.6,
+            "dropped": 0
+          }
+        },
+        "macro_accuracy": 0.63,
+        "macro_ece": 0.2427,
+        "n_languages": 2,
+        "languages_above_random": 2
+      }
+    }
+  }
+}

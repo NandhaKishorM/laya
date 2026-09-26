@@ -1,7 +1,7 @@
 {
   "repo": "convaiinnovations/laya",
   "revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
-  "note": "Weights the examples and verification scripts expect. Fetch with ./setup_laya.sh; verify with: .venv/bin/python verify/checkpoints.py",
+  "note": "Weights the examples and verification scripts expect. Fetch at this revision, then verify: .venv/bin/python verify/checkpoints.py --fetch",
   "checkpoints": [
     {
       "name": "english",
@@ -19,7 +19,7 @@
       "name": "multilingual",
       "repo": "convaiinnovations/laya",
       "subfolder": "multilingual",
-      "path": "laya/multilingual/model.safetensors",
+      "path": "laya-multilingual/model.safetensors",
       "file": "model.safetensors",
       "bytes": 643835514,
       "sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
@@ -31,7 +31,7 @@
       "name": "typed-decisions",
       "repo": "convaiinnovations/laya",
       "subfolder": "typed-decisions",
-      "path": "laya/typed-decisions/model.safetensors",
+      "path": "laya-typed-decisions/model.safetensors",
       "file": "model.safetensors",
       "bytes": 842609220,
       "sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",

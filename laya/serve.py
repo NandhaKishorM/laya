@@ -28,6 +28,8 @@ env var                 meaning                                        default
 ``LAYA_LOG_LEVEL``      uvicorn log level                              info
 ``LAYA_MAX_CONCURRENT`` cap on requests past auth at once; excess      16
                         gets 503 (see below)
+``LAYA_MAX_TOKENS``     ceiling on the ``max_len``/``head_max_len``    8192
+                        a request may ask for; over it is a 422
 ======================  ============================================  =========
 
 Imports of heavy dependencies (fastapi, uvicorn, torch via Router) are all
@@ -63,6 +65,12 @@ MAX_BODY_BYTES = 2 * 1024 * 1024
 MAX_CHOICE_OPTIONS = 100
 MAX_SCORE_LEVELS = 32
 MAX_TOTAL_OPTIONS = 512
+
+# Ceiling on a client-supplied token budget. A state of MAX_STATE_CHARS is about
+# 12,000 tokens, so without a bound a request could ask for a forward far larger
+# than any checkpoint is meant to run; 8,192 is the longest window the checkpoints
+# are documented to read.
+DEFAULT_MAX_TOKENS = 8192
 
 # Cap on requests past auth at once. Each one can buffer up to MAX_BODY_BYTES
 # before inference, so without a bound many concurrent near-cap requests OOM
@@ -113,6 +121,47 @@ def _resolve_max_concurrent() -> int:
     except ValueError:
         return DEFAULT_MAX_CONCURRENT
     return n if n > 0 else DEFAULT_MAX_CONCURRENT
+
+
+def _resolve_max_tokens() -> int:
+    """Ceiling on a request's token budget, from LAYA_MAX_TOKENS."""
+    raw = os.environ.get("LAYA_MAX_TOKENS")
+    if not raw:
+        return DEFAULT_MAX_TOKENS
+    try:
+        n = int(raw)
+    except ValueError:
+        return DEFAULT_MAX_TOKENS
+    return n if n > 0 else DEFAULT_MAX_TOKENS
+
+
+def _read_token_budget(body: Dict[str, Any]) -> Dict[str, int]:
+    """`max_len` / `head_max_len` from the body, as kwargs for `router.predict`.
+
+    `Router.predict` takes both, and the README tells a caller to raise `max_len` for a long
+    document, but the HTTP surface passed neither: a state over the checkpoint's budget was
+    answered from its first window, and a `max_len` field in the body did nothing, silently
+    (#549). Absent or null fields return `{}`, so the call shape is unchanged for every client
+    that sends neither -- including an injected router whose `predict` takes no such keyword.
+    """
+    from fastapi import HTTPException
+
+    out: Dict[str, int] = {}
+    cap = _resolve_max_tokens()
+    for field in ("max_len", "head_max_len"):
+        value = body.get(field)
+        if value is None:
+            continue
+        # bool is an int in Python; `"max_len": true` is a client error, not 1.
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise HTTPException(status_code=422, detail="'%s' must be an integer" % field)
+        if not 1 <= value <= cap:
+            raise HTTPException(
+                status_code=422,
+                detail="'%s' must be between 1 and %d (LAYA_MAX_TOKENS)" % (field, cap),
+            )
+        out[field] = value
+    return out
 
 
 def _resolve_port() -> int:
@@ -355,6 +404,7 @@ def create_app(router: Optional[Any] = None):
         questions = body["questions"]
         _check_request_limits(state, questions)
         model = _resolve_model(body.get("model"))
+        budget = _read_token_budget(body)
         if gate is None:
             gate = asyncio.Lock()
         try:
@@ -364,7 +414,7 @@ def create_app(router: Optional[Any] = None):
                 loop = asyncio.get_running_loop()
                 t0 = time.perf_counter()
                 result = await loop.run_in_executor(
-                    pool, lambda: router.predict(state, questions, model=model))
+                    pool, lambda: router.predict(state, questions, model=model, **budget))
                 infer_ms = (time.perf_counter() - t0) * 1000.0
                 from fastapi.responses import JSONResponse
                 return JSONResponse(

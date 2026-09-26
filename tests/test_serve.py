@@ -12,9 +12,11 @@ fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
 from laya.serve import (  # noqa: E402
+    DEFAULT_MAX_TOKENS,
     MAX_BODY_BYTES,
     _apply_thread_limit,
     _env_bool,
+    _resolve_max_tokens,
     _resolve_model,
     create_app,
 )
@@ -529,3 +531,97 @@ def test_admission_slot_is_released_after_inference(monkeypatch):
     client = TestClient(create_app(router=FakeRouter()))
     assert client.post("/v1/systemone", json=REQ).status_code == 200
     assert client.post("/v1/systemone", json=REQ).status_code == 200
+
+
+class BudgetRouter(FakeRouter):
+    """A router whose predict() takes the token-budget keywords, and records them."""
+
+    def predict(self, state, questions, model=None, **budget):
+        out = super().predict(state, questions, model=model)
+        self.calls[-1]["budget"] = budget      # one record per call, with what was forwarded
+        return out
+
+
+def test_token_budget_is_forwarded(monkeypatch):
+    """`max_len`/`head_max_len` in the body reach Router.predict.
+
+    Without this the README's long-document advice -- raise `max_len` -- had no HTTP
+    equivalent: the field was dropped and the state was answered from its first window (#549).
+    """
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = BudgetRouter()
+    client = TestClient(create_app(router=router))
+
+    body = dict(REQ, max_len=8192, head_max_len=256)
+    assert client.post("/v1/systemone", json=body).status_code == 200
+    assert router.calls[-1]["budget"] == {"max_len": 8192, "head_max_len": 256}
+
+    # one of the two alone is forwarded alone
+    assert client.post("/v1/systemone", json=dict(REQ, max_len=2048)).status_code == 200
+    assert router.calls[-1]["budget"] == {"max_len": 2048}
+
+
+def test_no_budget_keeps_the_call_unchanged(monkeypatch):
+    """A client that sends neither field, or nulls, calls predict() exactly as before.
+
+    `FakeRouter.predict` takes no budget keyword at all, which is the contract an injected or
+    predating router relies on: passing one unconditionally would break it.
+    """
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = FakeRouter()
+    client = TestClient(create_app(router=router))
+    for body in (REQ, dict(REQ, max_len=None, head_max_len=None)):
+        assert client.post("/v1/systemone", json=body).status_code == 200
+    assert len(router.calls) == 2
+
+
+@pytest.mark.parametrize("field", ["max_len", "head_max_len"])
+@pytest.mark.parametrize("value", [0, -1, DEFAULT_MAX_TOKENS + 1, 1000000])
+def test_a_budget_outside_the_bound_is_422(monkeypatch, field, value):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_MAX_TOKENS", raising=False)
+    router = BudgetRouter()
+    client = TestClient(create_app(router=router))
+    res = client.post("/v1/systemone", json=dict(REQ, **{field: value}))
+    assert res.status_code == 422, (field, value, res.status_code, res.text)
+    assert field in res.text and "LAYA_MAX_TOKENS" in res.text, res.text
+    assert router.calls == [], "no inference should run for a rejected budget"
+
+
+@pytest.mark.parametrize("value", ["8192", 8192.0, True, [8192], {"n": 8192}])
+def test_a_budget_that_is_not_an_integer_is_422(monkeypatch, value):
+    """A string, a float, a bool or a container is a client error, not a silent coercion.
+
+    `True` matters on its own: `isinstance(True, int)` is true in Python, so `"max_len": true`
+    would otherwise be read as a one-token budget.
+    """
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = BudgetRouter()
+    client = TestClient(create_app(router=router))
+    res = client.post("/v1/systemone", json=dict(REQ, max_len=value))
+    assert res.status_code == 422, (value, res.status_code, res.text)
+    assert "must be an integer" in res.text, res.text
+    assert router.calls == []
+
+
+def test_the_bound_comes_from_the_env(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_TOKENS", "1024")
+    router = BudgetRouter()
+    client = TestClient(create_app(router=router))
+    assert client.post("/v1/systemone", json=dict(REQ, max_len=1024)).status_code == 200
+    assert router.calls[-1]["budget"] == {"max_len": 1024}
+    res = client.post("/v1/systemone", json=dict(REQ, max_len=1025))
+    assert res.status_code == 422, res.text
+    assert "between 1 and 1024" in res.text, res.text
+
+
+def test_resolve_max_tokens(monkeypatch):
+    """Same tolerance as LAYA_MAX_CONCURRENT: an unreadable value falls back, not crashes."""
+    monkeypatch.delenv("LAYA_MAX_TOKENS", raising=False)
+    assert _resolve_max_tokens() == DEFAULT_MAX_TOKENS
+    for raw in ("", "not-a-number", "0", "-5"):
+        monkeypatch.setenv("LAYA_MAX_TOKENS", raw)
+        assert _resolve_max_tokens() == DEFAULT_MAX_TOKENS, raw
+    monkeypatch.setenv("LAYA_MAX_TOKENS", "512")
+    assert _resolve_max_tokens() == 512

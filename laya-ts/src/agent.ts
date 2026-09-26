@@ -20,7 +20,7 @@ import {
   PredictContext,
   aggregateUsage,
   composeHooks,
-  dispatch,
+  dispatchAsync,
   normaliseHooks,
   type HookArg,
   type PredictHook,
@@ -368,7 +368,7 @@ export class Agent extends HookRegistry {
       agent: this,
     });
     try {
-      dispatch(active, "onPredictStart", ctx, { raiseErrors });
+      await dispatchAsync(active, "onPredictStart", ctx, { raiseErrors });
       if (ctx.results === null) {
         const out: SystemOneResult[] = [];
         for (const st of ctx.states) {
@@ -386,7 +386,7 @@ export class Agent extends HookRegistry {
     } catch (err) {
       ctx.error = err;
       try {
-        dispatch(active, "onError", ctx, { raiseErrors });
+        await dispatchAsync(active, "onError", ctx, { raiseErrors });
       } catch {
         // A failing onError hook must not hide the failure that triggered it.
       }
@@ -395,7 +395,7 @@ export class Agent extends HookRegistry {
       ctx.markElapsed();
       if (ctx.results !== null) ctx.usage = aggregateUsage(ctx.results);
       try {
-        dispatch(active, "onPredictEnd", ctx, { raiseErrors });
+        await dispatchAsync(active, "onPredictEnd", ctx, { raiseErrors });
       } catch (hookErr) {
         // End hooks run on the failure path too; do not let one mask the real error.
         if (ctx.error === null) throw hookErr;

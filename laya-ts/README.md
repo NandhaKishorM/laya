@@ -43,7 +43,9 @@ const out = await agent.predict("charged twice", {
 
 Port of the Python `laya.hooks` lifecycle. A hook is a `(ctx) => void` for `onPredictStart` /
 `onPredictEnd`, or an object implementing any subset of `onPredictStart`, `onPredictEnd`,
-`onRoute`, `onLoad`, `onEvict`, `onError`:
+`onRoute`, `onLoad`, `onEvict`, `onError`. A hook may be `async`: it is awaited, in order, before the
+call continues, and a rejection follows `hooksRaise` like a thrown error. `onRoute` runs inside the
+synchronous `route()`, so it is not awaited and a rejection there is only logged:
 
 ```ts
 const tracer = {

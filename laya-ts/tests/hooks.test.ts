@@ -113,6 +113,59 @@ describe("agent hooks", () => {
     expect(r["stamped"]).toBe(true);
   });
 
+  it("awaits an async end hook, so it can rewrite the results after an await", async () => {
+    const agent = makeAgent([], {
+      async onPredictEnd(ctx) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        for (const r of ctx.results ?? []) r["stamped"] = true;
+      },
+    });
+    const r = (await agent.systemOne("hi", QUESTIONS)) as Record<string, unknown>;
+    expect(r["stamped"]).toBe(true);
+  });
+
+  it("an async start hook may skip inference after an await", async () => {
+    const seen: string[] = [];
+    const cached = { model: "cache", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } };
+    const agent = makeAgent(seen, {
+      async onPredictStart(ctx) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        ctx.skip([cached]);
+      },
+    });
+    expect(await agent.systemOne("hi", QUESTIONS)).toEqual(cached);
+    expect(seen).toEqual([]);
+  });
+
+  it("waits for each async hook before the next one runs", async () => {
+    const order: string[] = [];
+    const agent = makeAgent([], {
+      hooks: [{
+        async onPredictStart() {
+          order.push("first:begin");
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          order.push("first:end");
+        },
+      }],
+    });
+    await agent.systemOne("hi", QUESTIONS, { onPredictStart: () => void order.push("second") });
+    expect(order).toEqual(["first:begin", "first:end", "second"]);
+  });
+
+  it("a rejecting async hook follows hooksRaise: raised by default, a warning when false", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const failing = { async onPredictEnd() { await Promise.resolve(); throw new Error("metrics backend down"); } };
+      await expect(makeAgent([], { hooks: [failing] }).systemOne("hi", QUESTIONS)).rejects.toThrow("metrics backend down");
+      const r = await makeAgent([], { hooks: [failing], hooksRaise: false }).systemOne("hi", QUESTIONS);
+      expect(r.answers).toHaveProperty("q");
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("metrics backend down"));
+      await new Promise((resolve) => setTimeout(resolve, 10)); // an unhandled rejection would surface here
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("per-call hooks run after installed hooks", async () => {
     const order: string[] = [];
     const agent = makeAgent([], { hooks: [{ onPredictStart: () => order.push("installed") }] });
@@ -224,6 +277,44 @@ describe("router hooks", () => {
     });
     const r = await router.predict("plain english text", QUESTIONS);
     expect(r.routing.model).toBe("english");
+  });
+
+  it("awaits async Router hooks, and a rejecting onRoute hook does not become an unhandled rejection", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { router } = makeRouter({
+        hooksRaise: false,
+        hooks: [{
+          async onPredictEnd(ctx: PredictContext) {
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            for (const r of ctx.results ?? []) r["stamped"] = true;
+          },
+          async onRoute() { await Promise.resolve(); throw new Error("route hook down"); },
+        }],
+      });
+      const r = (await router.predict("plain english text", QUESTIONS)) as unknown as Record<string, unknown>;
+      expect(r["stamped"]).toBe(true);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("route hook down"));
+      await new Promise((resolve) => setTimeout(resolve, 10)); // an unhandled rejection would surface here
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("an async onLoad hook may call router.load for the model being loaded without deadlocking", async () => {
+    const seen: string[] = [];
+    const { router } = makeRouter({
+      hooks: [{
+        async onLoad(ctx: PredictContext) {
+          seen.push("begin");
+          await router.load(ctx.model as string);
+          seen.push("end");
+        },
+      }],
+    });
+    const timeout = new Promise((resolve) => setTimeout(() => resolve("deadlock"), 500));
+    expect(await Promise.race([router.load("english"), timeout])).not.toBe("deadlock");
+    expect(seen).toEqual(["begin", "end"]);
   });
 
   it("a cache hit still gets a routing key, without overwriting an existing one", async () => {

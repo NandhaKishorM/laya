@@ -135,9 +135,11 @@ def laya_predict(
 
     def _run() -> Any:
         if model_name == "auto":
-            if router is None:
-                raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
-            return router.predict(state_d, questions_d)
+            if router is not None:
+                return router.predict(state_d, questions_d)
+            if agent is not None:
+                return agent.predict(state_d, questions_d)
+            raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
         if agent is not None:
             return agent.predict(state_d, questions_d)
         if router is None:
@@ -153,7 +155,12 @@ def laya_predict(
     # Router.predict and Agent.system_one both return the system_one payload,
     # which always carries an "answers" object (empty for empty questions).
     answers = _normalize_answers(result["answers"])
-    routing = result.get("routing") or {"model": model_name, "repo": None, "reason": "explicit model"}
+    routing = result.get("routing")
+    if routing is None:
+        if model_name == "auto":
+            routing = {"model": None, "repo": None, "reason": "auto routing without router"}
+        else:
+            routing = {"model": model_name, "repo": None, "reason": "explicit model"}
     # Real device of the checkpoint that answered: Agent.device reflects a
     # silent GPU -> CPU fallback. Omitted when it cannot be read, rather than
     # guessed.

@@ -193,6 +193,26 @@ def test_shape():
     out = laya_predict(STATE, QUESTIONS, model="auto", router=RouterNoAgents())
     ok("shape/predict_device_absent_when_unreadable", "device" not in out, repr(set(out)))
 
+    # Test for model="auto" with agent and no router (issue #444)
+    class FakeAgentNoRouting:
+        device = "cpu"
+        def predict(self, state, questions):
+            answers = {}
+            for name, spec in questions.items():
+                if spec["type"] == "choice":
+                    answers[name] = {"choice": "billing", "confidence": 0.94}
+                elif spec["type"] == "score":
+                    answers[name] = {"score": 1.84, "confidence": 0.8}
+                else:
+                    answers[name] = {"noul": 0.892, "confidence": 0.89}
+            return {"answers": answers}  # No "routing" key
+
+    out = laya_predict(STATE, QUESTIONS, model="auto", agent=FakeAgentNoRouting())
+    ok("shape/predict_auto_agent_no_router", out["routing"]["model"] is None)
+    ok("shape/predict_auto_agent_no_router_reason", out["routing"]["reason"] == "auto routing without router")
+    ok("shape/predict_auto_agent_no_router_repo", out["routing"]["repo"] is None)
+    ok("shape/predict_auto_agent_no_router_answers", "answers" in out)
+
     out = laya_route(STATE, QUESTIONS, router=FakeRouter())
     ok("shape/route_dict", out == {"model": "multilingual", "repo": "fake/repo",
                                    "reason": "non-Latin script (devanagari)"})

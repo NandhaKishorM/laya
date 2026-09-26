@@ -110,6 +110,7 @@ jobs:
           python tests/test_head_checkpointing.py
           python tests/test_packaging.py
           python tests/test_doc_tables.py
+          python tests/test_env_docs.py
           python tests/test_tokenizer_cache.py
           python tests/test_tokenizer_concurrency.py
           python tests/test_lazy_import.py

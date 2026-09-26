@@ -199,10 +199,20 @@ laya "I was charged twice, please refund"            # routing decision only; wo
 laya "Refactor this service" --predict               # full answers (downloads the checkpoint on first use)
 laya "Mein Konto wurde zweimal belastet" --lang de   # force a language instead of detecting it
 laya "My payment failed twice" --preset triage       # answer a ready-made preset (triage, email, guard, moderation, router)
+laya "Where is my card" --questions intents.json     # answer your own questions, written in a JSON file
 laya                                                 # interactive mode
 ```
 
 Routing alone never downloads a checkpoint, so it returns in milliseconds. `--predict` loads the routed checkpoint, which needs network access to the Hugging Face hub the first time; if a checkpoint cannot be downloaded, the CLI says so instead of crashing.
+
+`--questions` takes the same question dict the SDK takes, as JSON: either the mapping itself, or
+`{"state_key": "body", "questions": {...}}` when the question's instructions name a field other than
+`request`. It implies `--predict`, and a question set with many labels usually wants
+`--head-max-len` with it: on 58 MASSIVE-INTENT labels written as one choice question, the English
+checkpoint goes from 24/58 correct at its default 192-token option budget to 34/58 at
+`--head-max-len 384` (163 ms to 235 ms per request, CPU). Widening it further costs the accuracy
+back, because `max_len` then leaves fewer tokens for the request itself. [Honest
+limits](#honest-limits) describes the same budget ceiling for a 77-option question.
 
 ---
 
@@ -983,7 +993,7 @@ failure; it does not establish calibrated confidence.
   * `laya` (English) defaults to 512 context (`head_max_len = 192`, ~320 tokens for state).
   * `laya-multilingual` and `laya-typed-decisions` default to 1,024 context (`head_max_len = 256`, ~768 tokens for state; mmBERT-base encoder supports up to 8,192 with RoPE).
   At default settings, a 77-option question like Banking77 allocates only `(256 - 16) // 77` ≈ 3–4 tokens per label, which causes accuracy to fall off sharply (0.425 vs Jev's 0.870). If evaluating 50+ options in a single question:
-  1. Raise `agent.cfg["head_max_len"] = 512` and `agent.cfg["max_len"] = 1024` (or up to 2048 / 4096 / 8192) so every option has enough tokens to remain distinct.
+  1. Raise `agent.cfg["head_max_len"] = 512` and `agent.cfg["max_len"] = 1024` (or up to 2048 / 4096 / 8192) so every option has enough tokens to remain distinct. `laya --questions` takes the same two budgets as `--max-len` / `--head-max-len`.
   2. Or shortlist with embeddings and run one forward pass on the top `k` labels (`predict_shortlist`, example below). `predict` and `system_one` still score every criterion they are given.
   3. Or split the label set yourself into a coarse question and a fine question.
 

@@ -1022,9 +1022,14 @@ Shortlisting the same option set on every request re-embeds option texts that do
 
   ```python
   {"type": "noul", "instructions": "Is this review positive?",
-   "criteria": {"true": "yes, the review is positive", "false": "no, the review is negative"},
+   "criteria": {"true": "the review is positive", "false": "the review is negative"},
    "labels": {"true": "A", "false": "B"}}
   ```
+
+  A `noul` with no `criteria` renders one generic option pair for every state (`no, the statement
+  does not hold` / `yes, the statement holds`). On `laya` that pair carries the whole decision, so
+  it answers "no" whatever the state — give a `noul` criteria if you need it to discriminate. On
+  `laya-multilingual` the criteria-less form does read the state.
 
   Label sensitivity varies by checkpoint and state, so validate the override on your own data. A
   two-option `choice` with neutral keys remains another workaround:

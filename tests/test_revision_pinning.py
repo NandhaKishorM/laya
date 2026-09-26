@@ -37,6 +37,26 @@ def _capturing_snapshot(captured):
     return fake_snapshot
 
 
+class PublicApiTests(unittest.TestCase):
+    def test_pinned_revisions_is_importable_from_the_package_root(self):
+        """`from laya import PINNED_REVISIONS` is what the checkpoint-integrity guide tells
+        operators to use, and laya-ts already exports its mirror from the package root."""
+        import laya
+
+        self.assertIn("PINNED_REVISIONS", laya.__all__)
+        self.assertIs(laya.PINNED_REVISIONS, PINNED_REVISIONS)
+
+    def test_pins_are_usable_revision_strings(self):
+        # Not asserting a 40-hex shape: `resolve_revision` and the checkpoint-integrity guide both
+        # say a revision may be a branch or a tag, so pinning that shape here would invent a policy
+        # the library does not state. What must hold is that each pin is something the Hub can be
+        # given -- a non-empty string with no surrounding whitespace.
+        for repo, rev in PINNED_REVISIONS.items():
+            self.assertIsInstance(rev, str, "%s pin is not a string" % repo)
+            self.assertTrue(rev, "%s pin is empty" % repo)
+            self.assertEqual(rev, rev.strip(), "%s pin has surrounding whitespace" % repo)
+
+
 class ResolveRevisionTests(unittest.TestCase):
     def test_explicit_revision_is_returned(self):
         self.assertEqual(resolve_revision("convaiinnovations/laya", "abc123"), "abc123")

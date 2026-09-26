@@ -20,6 +20,8 @@ __version__ = "0.3.20"
 # resolved lazily so that `import laya` -- and therefore `from laya import Router` or
 # `from laya.lang import detect_script` -- does not pay torch's import time and memory.
 _LAZY_ATTRS = {
+    # stdlib-only module, but keep it lazy so `import laya` does not pull in hashlib
+    "PINNED_REVISIONS": (".revisions", "PINNED_REVISIONS"),
     "Agent": (".agent", "Agent"),
     "RLAgent": (".agent", "RLAgent"),
     "load": (".agent", "load"),
@@ -100,5 +102,6 @@ __all__ = [
     "AsyncHook",
     "decide",
     "DecisionResult",
+    "PINNED_REVISIONS",
     "__version__",
 ]

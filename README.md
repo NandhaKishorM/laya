@@ -1054,6 +1054,7 @@ Shortlisting the same option set on every request re-embeds option texts that do
 * **[laya-Ascend](https://github.com/zzhdbw/laya-Ascend)**: Laya on Huawei Ascend NPUs through `torch-npu`, with a CPU vs NPU benchmark (34x to 71x faster at batch size 1), a setup guide, and Snake and Tetris demos.
 * **[laya-apple](https://github.com/tc3oliver/laya-apple)**: a correctness-validated Laya runtime for Apple silicon that uses the MLX GPU and the Apple Neural Engine, with automatic routing and concurrent heterogeneous serving.
 * **[stuntd](https://github.com/bladedevoff/stuntd)**: runs Laya locally behind the Jev API (`POST /v1/systemone`, no key) and trains a head per decision on the frozen encoder from your own labelled rows, with a calibrated confidence threshold (a 12-label intent task: 89.5% zero-shot to 100% trained).
+* **[NeuroLink](https://github.com/juspay/neurolink)**: a TypeScript AI SDK that supports Laya as a `decide()` provider, configured with `LAYA_BASE_URL` and `LAYA_API_KEY` (or SDK credentials) and used for model routing, context compaction and tool selection.
 
 ---
 

@@ -28,7 +28,10 @@ except ImportError:
 from laya.mcp.device import agent_device, device_report, env_device, resolve_device, router_agent  # noqa: E402
 from laya.mcp.server import _models_from_env, server as mcp_server  # noqa: E402
 from laya.mcp.tools import (  # noqa: E402
+    PRESETS,
+    PRESET_ALIASES,
     ToolError,
+    get_available_presets,
     laya_predict,
     laya_preset,
     laya_route,
@@ -145,6 +148,156 @@ def test_schema():
     ok("schema/model_auto", validate_model("auto") == "auto")
     ok("schema/model_multilingual", validate_model("multilingual") == "multilingual")
     expect_tool_error("schema/model_bad", lambda: validate_model("gpt4"), "invalid_model")
+
+
+def test_model_names():
+    """`model` is core's registry, not a second list kept here.
+
+    The names and aliases live in `laya.router`, and `router.predict(model=...)` runs whatever
+    arrives through `normalise_name` a few lines after `validate_model` sees it. So any name core
+    resolves has to survive this layer, and it has to come back canonical: the `routing.model` a
+    caller reads should not depend on how the checkpoint was spelled in the request.
+    """
+    from laya.router import DEFAULT_MODELS, _ALIASES, normalise_name
+
+    for name in sorted(DEFAULT_MODELS):
+        ok("model/canonical_%s" % name, validate_model(name) == name)
+    for alias, canonical in sorted(_ALIASES.items()):
+        got = validate_model(alias)
+        ok("model/alias_%s" % alias, got == canonical, "got %r want %r" % (got, canonical))
+    for spelling in ("EN", " Multilingual ", "Typed-Decisions", "AUTO"):
+        want = "auto" if spelling.strip().lower() == "auto" else normalise_name(spelling)
+        ok("model/casing_and_spacing_%r" % spelling, validate_model(spelling) == want)
+    for auto in (None, "auto", "Auto", " auto "):
+        ok("model/auto_%r" % (auto,), validate_model(auto) == "auto")
+    for bad in ("gpt4", "", "   ", "english-ish", "laya-typed", 5, [], {}):
+        expect_tool_error("model/rejected_%r" % (bad,), lambda b=bad: validate_model(b),
+                          "invalid_model")
+
+    # The list a client learns from is now core's words, so it must still name every option:
+    # the checkpoints, the aliases, and this layer's own `auto` sentinel.
+    try:
+        validate_model("gpt4")
+        message = ""
+    except ToolError as exc:
+        message = exc.message
+    ok("model/error_lists_checkpoints", all(n in message for n in sorted(DEFAULT_MODELS)), repr(message))
+    ok("model/error_lists_aliases", "alias" in message and "'en'" in message, repr(message))
+    ok("model/error_keeps_auto", "'auto'" in message, repr(message))
+
+
+def test_presets():
+    """The preset list, and the state field each preset reads, come from core.
+
+    Two things used to be able to drift here: the table of names (which was missing `email`, so a
+    caller had no way to ask for the preset the CLI has), and which field of the state a preset's
+    questions read. A preset says that out loud -- "What does the customer want in `message`?" -- so
+    the field is read back out of the questions instead of kept beside them, and `laya_preset` puts a
+    caller's lone string under it. Nothing else about the state is touched: more than one key is the
+    caller's shape, and guessing there would be a worse failure than the honest one.
+    """
+    import laya
+    from laya.presets import state_field
+
+    def build(attr):
+        return getattr(laya, attr)()
+
+    class StateRouter(FakeRouter):
+        def predict(self, state, questions, **kwargs):
+            self.state = state
+            self.questions = questions
+            return super().predict(state, questions, **kwargs)
+
+    # The names are a list only in one place, and every entry has to resolve in core.
+    fields = {}
+    for name, attr in sorted(PRESETS.items()):
+        questions = build(attr)
+        field = state_field(questions)
+        fields[name] = field
+        ok("preset/questions_%s" % name, isinstance(questions, dict) and bool(questions))
+        ok("preset/names_one_field_%s" % name, isinstance(field, str), repr(field))
+        ok("preset/field_is_asked_for_%s" % name,
+           any(field in q["instructions"] for q in questions.values()), repr(field))
+
+    # `email` was the whole missing half of the table; the CLI has had it all along.
+    ok("preset/email_exposed", "email" in PRESETS, repr(sorted(PRESETS)))
+
+    for name, field in sorted(fields.items()):
+        router = StateRouter()
+        laya_preset(name, {"text": "the request"}, router=router, preset_builder=build)
+        ok("preset/lone_string_placed_%s" % name, router.state == {field: "the request"},
+           repr(router.state))
+        laya_preset(name, {field: "the request"}, router=router, preset_builder=build)
+        ok("preset/right_key_untouched_%s" % name, router.state == {field: "the request"},
+           repr(router.state))
+        laya_preset(name, {"text": "the request", "lang": "en"}, router=router, preset_builder=build)
+        ok("preset/multi_key_untouched_%s" % name,
+           router.state == {"text": "the request", "lang": "en"}, repr(router.state))
+        laya_preset(name, {"payload": {"nested": 1}}, router=router, preset_builder=build)
+        ok("preset/lone_non_string_untouched_%s" % name,
+           router.state == {"payload": {"nested": 1}}, repr(router.state))
+        # the questions that get answered are the preset's own, not a hand-copied set
+        ok("preset/questions_forwarded_%s" % name, router.questions == build(PRESETS[name]))
+
+    for name in sorted(PRESETS):
+        ok("preset/canonical_%s" % name, validate_preset(name) == name)
+    for alias, canonical in sorted(PRESET_ALIASES.items()):
+        ok("preset/alias_%s" % alias, validate_preset(alias) == canonical)
+        # an alias has to reach the same preset through the tool, not just the validator
+        router = StateRouter()
+        laya_preset(alias, {"text": "the request"}, router=router, preset_builder=build)
+        ok("preset/alias_through_tool_%s" % alias,
+           router.questions == build(PRESETS[canonical]), repr(router.questions))
+    ok("preset/aliases_are_not_names", not (set(PRESET_ALIASES) & set(PRESETS)))
+
+    for bad in ("nope", "", "   ", "Email", "model router", "guard_questions", 5, [], {}, None):
+        expect_tool_error("preset/rejected_%r" % (bad,), lambda b=bad: validate_preset(b),
+                          "invalid_preset")
+
+    # What a client can discover without calling: the table, and the tools/list description built
+    # from it. Both are derived, so neither can advertise a name the tool rejects.
+    info = get_available_presets()
+    ok("preset/table_covered_by_info", sorted(info) == sorted(PRESETS), repr(sorted(info)))
+    for name, entry in sorted(info.items()):
+        ok("preset/info_builder_%s" % name, entry["questions"] == PRESETS[name], repr(entry))
+        ok("preset/info_field_%s" % name, entry.get("state_field") == fields[name], repr(entry))
+    ok("preset/info_lists_aliases", info["model_router"].get("aliases") == ["router"],
+       repr(info["model_router"]))
+    ok("preset/info_alias_names_are_not_entries", "router" not in info, repr(sorted(info)))
+
+    description = next(t.description for t in asyncio.run(mcp_server.list_tools())
+                       if t.name == "laya_preset")
+    for name in sorted(PRESETS):
+        ok("preset/desc_names_%s" % name, "'%s'" % name in description, description)
+    for name, field in sorted(fields.items()):
+        ok("preset/desc_field_%s" % name, "'%s' reads `%s`" % (name, field) in description,
+           description)
+    ok("preset/desc_names_the_alias", "'router' is 'model_router'" in description, description)
+
+
+def test_model_forwarding():
+    """An alias reaches core canonical, and changes nothing else about the answer."""
+
+    class EchoRouter:
+        _agents = {"english": FakeAgent()}
+
+        def __init__(self):
+            self.calls = []
+
+        def predict(self, state, questions, **kwargs):
+            # No `routing` key on purpose: what the tool then reports is the name it settled on,
+            # which is the piece an alias could have leaked through.
+            self.calls.append(kwargs)
+            return {"answers": {"department": {"choice": "billing", "confidence": 0.94}}}
+
+    router = EchoRouter()
+    by_alias = laya_predict(STATE, QUESTIONS, model="laya", router=router)
+    by_name = laya_predict(STATE, QUESTIONS, model="english", router=router)
+    ok("forward/model_seen_by_core", [c.get("model") for c in router.calls] == ["english", "english"],
+       repr(router.calls))
+    ok("forward/reports_canonical", by_alias["routing"]["model"] == "english", repr(by_alias["routing"]))
+    ok("forward/answers_identical", by_alias["answers"] == by_name["answers"])
+
 
 
 # --- shape (mocked router, no weights) ---------------------------------------
@@ -560,6 +713,9 @@ test_device()
 test_real_device()
 test_private_contract()
 test_schema()
+test_model_names()
+test_presets()
+test_model_forwarding()
 test_shape()
 test_question_forwarding()
 test_shortlist()

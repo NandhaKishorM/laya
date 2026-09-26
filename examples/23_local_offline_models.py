@@ -1,50 +1,53 @@
-"""Example 23 -- running against ./models, fully offline.
+"""Example 23 -- where the weights come from: ./models, or the Hub.
 
-Shows that the local checkpoints need no network: prints the resolved paths, cross-checks
-them against verify/checkpoints.json, and runs a prediction from disk.
+Laya takes either a local directory (no network, no token) once `setup_laya.sh` has downloaded
+one, or a Hub repo id. This prints what each name resolves to, cross-checks the local weights
+against verify/checkpoints.json when they are there, and runs one prediction.
 """
 import json
 import os
 
-from _common import laya, MODELS, ROOT, STATE_EN, banner, describe, heading, load, router
+from _common import (LOCAL_MODELS, MODELS, ROOT, STATE_EN, banner, describe, has_local, heading,
+                     laya, load, router)
 
-banner("23", "Local, offline checkpoints", """
-    Every example here passes absolute paths from `models/` to `Agent`, so the first thing
-    `Agent` does is `os.path.exists` -- and it is true. No `snapshot_download`, no hub
-    call, no token. That is the difference from a stock `Router()`, which holds Hugging
-    Face repo ids and downloads the checkpoints into `HF_HOME` on first use.
+banner("23", "Where the weights come from: ./models or the Hub", """
+    `setup_laya.sh` downloads the three checkpoints into `models/`, and `_common` prefers them:
+    an absolute directory means `Agent` stops at `os.path.exists`, so nothing touches the
+    network and no token is needed.
 
-    This script proves the point from disk: it resolves each local path, checks the weight
-    file against the sizes recorded in `verify/checkpoints.json`, and then answers one
-    question without touching the network.
+    Without `models/` the same code falls back to the Hub bundle (`convaiinnovations/laya`,
+    with a subfolder per checkpoint), which downloads on first use. Same checkpoints either
+    way; only where they are read from changes.
     """)
 
 print("   laya %s" % laya.__version__)
 
-heading("resolved checkpoint paths")
-for name, path in MODELS.items():
-    weights = os.path.join(path, "model.safetensors")
-    size = os.path.getsize(weights) if os.path.exists(weights) else 0
-    print("   %-16s %s" % (name, path))
-    print("   %-16s exists=%s  model.safetensors=%d bytes" %
-          ("", os.path.isdir(path), size))
+heading("what each name resolves to")
+for name in MODELS:
+    print("   %-16s %r" % (name, MODELS[name]))
+    if has_local(name):
+        weight = os.path.join(LOCAL_MODELS[name], "model.safetensors")
+        print("   %-16s local: %d bytes" % ("", os.path.getsize(weight)))
+    else:
+        print("   %-16s no local copy: the Hub spec above is used" % "")
 
 heading("cross-check against verify/checkpoints.json")
 manifest_path = os.path.join(ROOT, "verify", "checkpoints.json")
 print("   manifest: %s" % manifest_path)
 if not os.path.exists(manifest_path):
     print("   (verify/checkpoints.json is not in this checkout; skipping the size cross-check)")
+elif not all(has_local(name) for name in LOCAL_MODELS):
+    print("   (some checkpoints are not local; skipping the size cross-check)")
 else:
     with open(manifest_path) as f:
         manifest = json.load(f)
     print("   repo=%s  revision=%s" % (manifest["repo"], manifest["revision"][:12]))
     for cp in manifest["checkpoints"]:
-        local = MODELS[cp["name"]]
-        found = os.path.getsize(os.path.join(local, "model.safetensors"))
+        found = os.path.getsize(os.path.join(LOCAL_MODELS[cp["name"]], "model.safetensors"))
         print("   %-16s expected=%d  local=%d  %s" %
               (cp["name"], cp["bytes"], found, "MATCH" if found == cp["bytes"] else "MISMATCH"))
 
-heading("one prediction, straight from disk")
+heading("one prediction")
 agent = load("english")
 result = agent.predict(STATE_EN, {
     "department": {
@@ -63,14 +66,14 @@ print("   device: %s   tokens: %d in, %d out" %
       (agent.device, result["usage"]["input_tokens"], result["usage"]["output_tokens"]))
 
 heading("Router(models=...) vs the default Router()")
-local = router()
-print("   local Router().models['english']      %r" % local.models["english"])
-print("   default DEFAULT_MODELS['english']     %r" % (laya.DEFAULT_MODELS["english"],))
-print("   local Router().models['multilingual'] %r" % local.models["multilingual"])
-print("   default DEFAULT_MODELS['multilingual'] %r" % (laya.DEFAULT_MODELS["multilingual"],))
+configured = router()
+print("   Router().models['english']       %r" % (configured.models["english"],))
+print("   DEFAULT_MODELS['english']        %r" % (laya.DEFAULT_MODELS["english"],))
+print("   Router().models['multilingual']  %r" % (configured.models["multilingual"],))
+print("   DEFAULT_MODELS['multilingual']   %r" % (laya.DEFAULT_MODELS["multilingual"],))
 print("""
-   The local values are absolute directories, so `Agent` never calls the hub. The default
-   values are a repo id plus an optional subfolder; `Agent` would call `snapshot_download`
-   and write the weights under `HF_HOME` (unset here, so ~/.cache/huggingface by default).
-   Offline inference is therefore not a special mode -- it is what passing local paths does.
+   With a local copy the configured value is an absolute directory, so `Agent` never calls the
+   hub. Without one it is the same Hub spec `DEFAULT_MODELS` uses, and the weights land in
+   `HF_HOME` (~/.cache/huggingface by default). Passing a local path is still the only way to
+   keep a run fully offline.
    """)

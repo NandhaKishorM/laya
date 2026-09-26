@@ -1,13 +1,15 @@
 # Laya examples — a learning path
 
 41 runnable scripts arranged as eight stages. Each stage assumes the one before it and adds one
-idea, so you can stop wherever you already have what you need. Every script runs against the
-checkpoints in `../models` and prints real output — nothing here is a mock, and the numbers you
-see come from the model on your machine.
+idea, so you can stop wherever you already have what you need. Every script runs against the real
+checkpoints and prints real output — nothing here is a mock, and the numbers you see come from the
+model on your machine. `_common.py` prefers `../models` when `setup_laya.sh` has downloaded them
+and otherwise loads the same checkpoints from the Hub (`convaiinnovations/laya`) on first use, so
+these run after a plain `pip install laya`.
 
 ```bash
 cd ..                                            # repository root
-./setup_laya.sh                                  # once: venv + checkpoints
+./setup_laya.sh                                  # optional: venv + local checkpoints
 .venv/bin/python examples/01_first_call_minimal.py
 ./examples/run_all.sh                            # all of them, pass/fail (non-zero exit on failure)
 ./examples/run_all.sh 2[0-4]                     # just stage 5, by basename glob
@@ -16,7 +18,8 @@ cd ..                                            # repository root
 **Before you start**
 
 * Each example is its own process, so each loads its own checkpoints: 30-60 s on CPU, faster on
-  MPS, and the first MPS call pays ~13 s of Metal kernel compilation.
+  MPS, and the first MPS call pays ~13 s of Metal kernel compilation. Without a local `../models`
+  copy, the first run also downloads the checkpoint it needs into `HF_HOME`.
 * `device=None` lets Laya pick CUDA → MPS → CPU. `_common.load(name, device="cpu")` forces CPU.
 * `_common.py` holds the shared states, question sets and printing helpers. Examples import it, so
   you can copy any example out and it keeps working.
@@ -68,7 +71,7 @@ cd ..                                            # repository root
 |---|---|
 | `16_many_questions_one_pass.py` | many questions, one pass: `input_tokens` is a batch total across the questions in the call. |
 | `17_timing_a_call.py` | measuring honestly: load time vs inference, warm-up, and medians over several calls. |
-| `18_confidence_gating.py` | the production pattern: automate on high confidence, escalate on low. |
+| `18_confidence_gating.py` | the production pattern: gate on `answer_confidence`, the calibrated probability of the reported answer, and escalate on low. |
 | `19_many_states_loop.py` | many states in your own loop — and why batching *questions* is the model's job while batching *states* is yours. |
 
 **You can now** size a workload, and branch on confidence instead of always acting.
@@ -80,7 +83,7 @@ cd ..                                            # repository root
 | `20_which_checkpoint.py` | what `english`, `multilingual` and `typed-decisions` each are good at, on the same input. |
 | `21_routing_without_running.py` | `route()` alone: a checkpoint decision in microseconds, with the reason string, before any forward pass. |
 | `22_route_and_predict_multilingual.py` | `predict()` routing and answering in one call, in several languages. |
-| `23_local_offline_models.py` | running against local checkpoints with no network at all, and checking them. |
+| `23_local_offline_models.py` | where the weights come from: local `../models` with no network at all when they are there, the Hub otherwise, and checking them against the manifest. |
 | `24_preload_and_memory.py` | what stays resident: `preload`, `max_loaded`, LRU eviction, `attach`, `unload`. |
 
 **You can now** let the router choose, and control what is held in memory.

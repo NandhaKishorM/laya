@@ -7,9 +7,11 @@ Each example is a standalone script:
 Run it from anywhere -- paths resolve from this file, and Python puts the examples/ directory
 on `sys.path` automatically, so `from _common import ...` just works.
 
-Checkpoints live in `models/` (see `../setup_laya.sh` and `../verify/checkpoints.py`). Loading
-one takes a few seconds, and the first MPS call pays Metal kernel compilation, so anything that
-reports latency warms up first.
+Checkpoints come from `models/` when `setup_laya.sh` has downloaded them, and from the Hub bundle
+(`convaiinnovations/laya`, with a subfolder per checkpoint) otherwise, so the examples run after a
+plain `pip install laya`. Loading one takes a few seconds -- plus the first download when there is
+no local copy -- and the first MPS call pays Metal kernel compilation, so anything that reports
+latency warms up first.
 
 This module also imports `laya` for you -- after setting `USE_TF=0`, because a stray TensorFlow
 install can deadlock model loading. Examples therefore do `from _common import laya, ...` rather
@@ -30,11 +32,35 @@ sys.path.insert(0, ROOT)          # repository root; <root>/laya/email.py must n
 import laya  # noqa: E402
 from laya.router import Router  # noqa: E402
 
-MODELS = {
+BUNDLE_REPO = "convaiinnovations/laya"
+_SUBFOLDER = {
+    "english": None,                 # the bundle's root holds the English checkpoint
+    "multilingual": "multilingual",
+    "typed-decisions": "typed-decisions",
+}
+
+LOCAL_MODELS = {
     "english": os.path.join(ROOT, "models", "laya"),
     "multilingual": os.path.join(ROOT, "models", "laya-multilingual"),
     "typed-decisions": os.path.join(ROOT, "models", "laya-typed-decisions"),
 }
+
+
+def has_local(name="english"):
+    """True when setup_laya.sh has already downloaded this checkpoint into `models/`."""
+    return os.path.exists(os.path.join(LOCAL_MODELS[name], "model.safetensors"))
+
+
+def checkpoint(name="english"):
+    """A Router model spec: the local directory when there is one, else the Hub repo + subfolder."""
+    if has_local(name):
+        return LOCAL_MODELS[name]
+    return (BUNDLE_REPO, _SUBFOLDER[name])
+
+
+# What `Router(models=...)` takes: absolute local paths in a checkout that ran setup_laya.sh,
+# Hub specs otherwise.
+MODELS = {name: checkpoint(name) for name in LOCAL_MODELS}
 
 # ---------------------------------------------------------------- sample inputs
 STATE_EN = {
@@ -72,14 +98,6 @@ QUESTIONS = {
 }
 
 
-def ensure_models():
-    """Exit with a useful message instead of a stack trace when the weights are missing."""
-    for name, path in MODELS.items():
-        if not os.path.exists(os.path.join(path, "model.safetensors")):
-            sys.exit("checkpoint %r is missing at %s\nRun ./setup_laya.sh first "
-                     "(or verify with .venv/bin/python verify/checkpoints.py)." % (name, path))
-
-
 def banner(number, title, blurb=""):
     """Print the header every example starts with."""
     line = "=" * 74
@@ -91,14 +109,17 @@ def banner(number, title, blurb=""):
 
 
 def load(name="english", device=None):
-    """Load one checkpoint. `device=None` lets Laya pick: CUDA, then MPS, then CPU."""
-    ensure_models()
-    return laya.load(MODELS[name], device=device)
+    """Load one checkpoint: from `models/` when it is there, else from the Hub.
+
+    `device=None` lets Laya pick: CUDA, then MPS, then CPU.
+    """
+    if has_local(name):
+        return laya.load(LOCAL_MODELS[name], device=device)
+    return laya.load(BUNDLE_REPO, subfolder=_SUBFOLDER[name], device=device)
 
 
 def router(device=None, **kwargs):
-    """A Router wired to the local checkpoints, so nothing touches the network."""
-    ensure_models()
+    """A Router over the local checkpoints when they are there, else over the Hub bundle."""
     return Router(models=MODELS, device=device, **kwargs)
 
 

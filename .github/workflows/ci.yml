@@ -9,10 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  # Cancel outdated pull request runs. On main, let a started run finish: merges land minutes
-  # apart, and cancelling there left whole bursts of merges without a result of their own. A
-  # newer push still replaces a run that is queued and has not started.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  # Cancel outdated pull request runs. On main, use a per-commit group so each push
+  # gets its own run and started runs finish without cancelling or being cancelled by adjacent merges.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:

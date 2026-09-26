@@ -30,7 +30,7 @@ import laya  # noqa: E402
 from laya.lang import analyse  # noqa: E402
 from laya.router import Router  # noqa: E402
 
-ROOT = os.path.expanduser("~/laya_models")
+ROOT = os.environ.get("LAYA_MODELS", os.path.expanduser("~/laya_models"))
 MODELS = {"english": os.path.join(ROOT, "laya"),
           "multilingual": os.path.join(ROOT, "laya-multilingual"),
           "typed-decisions": os.path.join(ROOT, "laya-typed-decisions")}

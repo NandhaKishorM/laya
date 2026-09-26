@@ -73,3 +73,7 @@ site/
 # ruff's cache, and the JSON the research harnesses write on every run
 .ruff_cache/
 research/*_benchmark_results.json
+
+# local checkpoint weights, kept out of the tree
+# (fetch them with: python verify/checkpoints.py --fetch)
+models/

@@ -149,13 +149,14 @@ jobs:
       # test_onnx.py and test_fast.py are deliberately not here: both are skip-guarded on an extra
       # this job does not install, so they would pass trivially, and their real execution belongs
       # in a lane that installs `onnx` or has a GPU.
-      - name: Pytest suites (serve, batch, system-one, audit regressions, truncation)
+      - name: Pytest suites (serve, batch, system-one, audit regressions, truncation, compile)
         run: |
           python -m pytest tests/test_serve.py \
                            tests/test_router_batch.py \
                            tests/test_system_one_lang.py \
                            tests/test_audit_regressions.py \
                            tests/test_truncation_direction.py \
+                           tests/test_compile.py \
                            -q
 
   # The eval harness needs numpy and laya only, so it stays a separate, weight-free job: metric
@@ -254,16 +255,17 @@ jobs:
           python tests/test_hooks_api.py
         shell: bash
 
-      # Same five pytest suites as the Linux job. They are named explicitly rather than added to
+      # Same six pytest suites as the Linux job. They are named explicitly rather than added to
       # the loop above, because the loop runs each file as a script and that is exactly what does
       # not execute a pytest suite (#374).
-      - name: Pytest suites (serve, batch, system-one, audit regressions, truncation)
+      - name: Pytest suites (serve, batch, system-one, audit regressions, truncation, compile)
         run: |
           python -m pytest tests/test_serve.py \
                            tests/test_router_batch.py \
                            tests/test_system_one_lang.py \
                            tests/test_audit_regressions.py \
                            tests/test_truncation_direction.py \
+                           tests/test_compile.py \
                            -q
         shell: bash
 

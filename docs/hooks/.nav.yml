@@ -1,0 +1,11 @@
+# Same order as the table on the Hooks page. An unlisted page appears at the end.
+nav:
+  - index.md
+  - api.md
+  - lifecycle.md
+  - errors.md
+  - patterns.md
+  - examples.md
+  - tracing.md
+  - glob: "*"
+    ignore_no_matches: true

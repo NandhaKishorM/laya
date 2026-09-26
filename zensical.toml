@@ -9,8 +9,9 @@ repo_url = "https://github.com/NandhaKishorM/laya"
 repo_name = "NandhaKishorM/laya"
 edit_uri = "edit/main/docs/"
 copyright = "Apache 2.0. Developed by Convai Innovations."
-# No nav list: Zensical builds the navigation from docs/, so a new page appears without an
-# edit here. A folder with an index.md becomes a section that opens on that page.
+# The navigation order lives in docs/.nav.yml, read by the awesome-nav plugin below. A page it
+# does not list still appears, so a new page needs no edit here. A folder with an index.md
+# becomes a section that opens on that page.
 
 [project.theme]
 # Reuse the README logo to avoid maintaining a second copy.
@@ -33,6 +34,8 @@ media = "(prefers-color-scheme: dark)"
 scheme = "slate"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to light mode"
+
+[project.plugins.awesome-nav]
 
 # API reference pages under docs/reference/ are generated from the docstrings in laya/.
 [project.plugins.mkdocstrings.handlers.python]

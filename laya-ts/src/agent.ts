@@ -5,6 +5,7 @@ import {
   clampTemperature,
   collateItems,
   confidenceFromProbs,
+  answerConfidence,
   renderOptions,
   sequenceWithState,
   serializeState,
@@ -14,6 +15,7 @@ import {
 import type { SequenceStats } from "./common.js";
 import type { Batch, SessionProvider } from "./providers.js";
 import { encodeWithData, parseTokenizerJson, type TokenizerLike } from "./tokenizer.js";
+import { decide, type DecideOptions, type DecisionResult } from "./structured.js";
 import {
   HookRegistry,
   PredictContext,
@@ -43,6 +45,7 @@ export interface ChoiceAnswer {
   choice: string;
   probabilities: Record<string, number>;
   confidence: number;
+  answer_confidence: number;
   action: ActionInfo;
 }
 
@@ -52,6 +55,7 @@ export interface ScoreAnswer {
   legend: Record<string, unknown>;
   probabilities: Record<string, number>;
   confidence: number;
+  answer_confidence: number;
   action: ActionInfo;
 }
 
@@ -59,6 +63,7 @@ export interface NoulAnswer {
   type: "noul";
   noul: number;
   confidence: number;
+  answer_confidence: number;
   action: ActionInfo;
 }
 
@@ -94,18 +99,37 @@ export interface AgentOptions {
   provider: SessionProvider;
   tok?: TokenizerLike;
   cfg?: AgentCfg;
+  /** Commit SHA the artifacts were loaded from (pinned/requested or `x-repo-commit`); null for local dirs. */
+  revision?: string | null;
   max_len?: number;
   head_max_len?: number;
   temperature?: unknown;
   temperature_by_options?: Record<string, unknown>;
+  /**
+   * Per-language temperature overrides, keyed by language code; keys are normalised to
+   * their base subtag (`de-AT` -> `de`), matching Python `Agent(lang_temperatures=...)`.
+   * Each entry may carry a `temperature` list of 3 floats (default: the base raw
+   * temperature) and/or a `temperature_by_options` map (default: none). A matching
+   * override replaces the scale wholesale — see the note at the decode site.
+   */
+  lang_temperatures?: Record<
+    string,
+    { temperature?: unknown; temperature_by_options?: Record<string, unknown> } | null
+  >;
   hooks?: HookArg;
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
   hooksRaise?: boolean;
 }
 
-/** Per-call hook options shared by Agent.systemOne/predict and Router.predict. */
+/** Per-call options shared by Agent.systemOne/predict and Router.predict. */
 export interface PredictOptions {
+  /**
+   * Language of the request (e.g. "de"); when the Agent has a matching
+   * `lang_temperatures` override it selects that language's temperature, exactly like
+   * Python `system_one(..., lang=...)`. Routing alone never sets this.
+   */
+  lang?: string | null;
   hooks?: HookArg;
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
@@ -154,6 +178,12 @@ export function checkQuestion(qid: string, qdef: unknown): void {
     }
     if (crit.length === 0) {
       throw new Error(`question ${qidStr(qid)}: a score question needs at least one level`);
+    }
+    const nullAt = crit.findIndex((c) => c === null || c === undefined);
+    if (nullAt >= 0) {
+      throw new Error(
+        `question ${qidStr(qid)}: score level ${nullAt} is null; give every level a description, index 0 first`,
+      );
     }
   } else if (crit !== undefined && crit !== null && (typeof crit !== "object" || Array.isArray(crit))) {
     throw new Error(
@@ -244,6 +274,7 @@ export class Agent extends HookRegistry {
   hooksRaise: boolean;
   cfg: AgentCfg;
   provider: SessionProvider;
+  revision: string | null;
   tok: TokenizerLike;
   maxLen: number;
   headMaxLen: number;
@@ -251,11 +282,16 @@ export class Agent extends HookRegistry {
   temperatureByOptionsRaw: Record<string, unknown>;
   temperature: number[];
   temperatureByOptions: Record<string, number>;
+  langTemperatures: Record<
+    string,
+    { temperature: number[]; temperatureByOptions: Record<string, number> }
+  >;
 
   constructor(opts: AgentOptions) {
     super();
     if (!opts || !opts.provider) throw new Error("Agent needs a provider");
     this.provider = opts.provider;
+    this.revision = opts.revision ?? null;
     // Hooks are opt-in; an unset hook list is a no-op. See hooks.ts.
     this.hooks = normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     this.hooksRaise = opts.hooksRaise ?? true;
@@ -294,6 +330,25 @@ export class Agent extends HookRegistry {
         `laya: this checkpoint ships invalid temperatures or values outside [${TEMP_MIN}, ${TEMP_MAX}]; ` +
           `using ${rejected.join(", ")}. Treat confidence from the affected entries as uncalibrated.`,
       );
+    }
+    // Mirrors Agent.__init__ (agent.py): keys normalise to the base subtag, an omitted
+    // temperature defaults to the base raw temperature, and every value is clamped.
+    this.langTemperatures = {};
+    for (const [l, lc] of Object.entries(opts.lang_temperatures ?? {})) {
+      const normL = l.split("-")[0].toLowerCase();
+      const tRaw = lc?.temperature ?? rawList;
+      if (!Array.isArray(tRaw) || tRaw.length !== 3) {
+        throw new Error(
+          `Language override ${JSON.stringify(l)} temperature must be a list of 3 floats`,
+        );
+      }
+      const tboRaw = (lc?.temperature_by_options ?? {}) as Record<string, unknown>;
+      this.langTemperatures[normL] = {
+        temperature: [0, 1, 2].map((i) => clampTemperature(tRaw[i])),
+        temperatureByOptions: Object.fromEntries(
+          Object.entries(tboRaw).map(([k, v]) => [k, clampTemperature(v)]),
+        ),
+      };
     }
   }
 
@@ -334,6 +389,7 @@ export class Agent extends HookRegistry {
           maxLen: ctx.maxLen,
           headMaxLen: ctx.headMaxLen,
           batchSize: opts.batchSize ?? null,
+          lang: opts.lang ?? null,
         });
         ctx.results = out as unknown as Record<string, unknown>[];
         ctx.model ??= out[0]?.model ?? null;
@@ -363,7 +419,7 @@ export class Agent extends HookRegistry {
   private _encodeItems(
     state: unknown,
     ids: string[],
-    internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown }[],
+    internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } }[],
     maxLen: number,
     headMaxLen: number,
   ): { items: { ids: number[]; markers: number[]; qtype: number }[]; nTokens: number; stats: SequenceStats[] } {
@@ -376,7 +432,7 @@ export class Agent extends HookRegistry {
       const qid = ids[qi];
       const q = internals[qi];
       const prefix = buildQuestionPrefix(this.tok, q, maxLen, headMaxLen);
-      const seq = sequenceWithState(prefix, stAll, this.tok.sepId, maxLen);
+      const seq = sequenceWithState(prefix, stAll, this.tok.sepId, maxLen, Array.isArray(state));
       if (seq.markers.length !== renderOptions(q).length) {
         throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${headMaxLen}`);
       }
@@ -394,7 +450,12 @@ export class Agent extends HookRegistry {
   private async _systemOneMany(
     states: unknown[],
     questions: Record<string, QuestionDef>,
-    opts: { maxLen?: number | null; headMaxLen?: number | null; batchSize?: number | null } = {},
+    opts: {
+      maxLen?: number | null;
+      headMaxLen?: number | null;
+      batchSize?: number | null;
+      lang?: string | null;
+    } = {},
   ): Promise<SystemOneResult[]> {
     if (states.length === 0) return [];
     const ids = Object.keys(questions ?? {});
@@ -451,6 +512,7 @@ export class Agent extends HookRegistry {
             (act[row] as number[]) ?? [1, 0],
             internals[qi],
             built[s].items[qi].markers.length,
+            opts.lang ?? null,
           );
           row++;
         }
@@ -482,14 +544,24 @@ export class Agent extends HookRegistry {
     actRow: number[],
     q: { t: "choice" | "score" | "noul"; ins: string; crit: unknown },
     k: number,
+    lang: string | null = null,
   ): SystemAnswer {
     const qt = QTYPES[q.t];
     const bucket = tempBucket(qt, k);
-    const scale = this.temperatureByOptions[bucket] ?? this.temperature[qt] ?? 1.0;
+    // Python parity (_decode_answers): a matching lang override replaces the scale
+    // wholesale — its own temperature_by_options first, then its 3-slot temperature —
+    // so an override without buckets intentionally ignores the base per-bucket entries.
+    const langCfg = lang ? this.langTemperatures[lang.split("-")[0].toLowerCase()] : undefined;
+    const scale = langCfg
+      ? (langCfg.temperatureByOptions[bucket] ?? langCfg.temperature[qt] ?? 1.0)
+      : (this.temperatureByOptions[bucket] ?? this.temperature[qt] ?? 1.0);
     const z = logitsRow.slice(0, k).map((v) => v / scale);
     const p = softmax(z);
     const actP = softmax(actRow.slice(0, Math.max(2, actRow.length)));
     const ext = { act_probability: r4(actP[0]) };
+    // Same quantity on every question type (max(p)), so callers can gate across types on
+    // one number; `confidence` stays as-is for existing callers (entropy for choice/score).
+    const ansConf = r4(answerConfidence(p));
     if (q.t === "choice") {
       const keys = Object.keys(q.crit as Record<string, unknown>);
       let best = 0;
@@ -499,6 +571,7 @@ export class Agent extends HookRegistry {
         choice: keys[best],
         probabilities: Object.fromEntries(keys.map((kk, i) => [kk, r4(p[i] ?? 0)])),
         confidence: r4(confidenceFromProbs(p)),
+        answer_confidence: ansConf,
         action: ext,
       };
     }
@@ -510,11 +583,19 @@ export class Agent extends HookRegistry {
         legend: Object.fromEntries((q.crit as unknown[]).map((c, i) => [String(i), c])),
         probabilities: Object.fromEntries(p.map((v, i) => [String(i), r4(v)])),
         confidence: r4(confidenceFromProbs(p)),
+        answer_confidence: ansConf,
         action: ext,
       };
     }
     const pt = p[1] ?? 0;
-    return { type: "noul", noul: r4(pt), confidence: r4(Math.max(pt, 1 - pt)), action: ext };
+    return {
+      type: "noul",
+      noul: r4(pt),
+      confidence: r4(Math.max(pt, 1 - pt)),
+      // over two options max(p_true, 1 - p_true) is max(p): identical to confidence here
+      answer_confidence: ansConf,
+      action: ext,
+    };
   }
 
   async predict(
@@ -543,6 +624,28 @@ export class Agent extends HookRegistry {
     return this._predictHooked(states, questions, opts);
   }
 
+  /**
+   * Answer `state` against a JSON schema (or explicit `opts.questions`) and return typed
+   * values — see `structured.ts`. Pass exactly one of `schema` or `opts.questions`; other
+   * options are forwarded to `predict`.
+   */
+  async decide(
+    state: unknown,
+    schema: unknown,
+    opts: DecideOptions & PredictOptions & { returnDetails: true },
+  ): Promise<DecisionResult>;
+  async decide(
+    state: unknown,
+    schema?: unknown,
+    opts?: DecideOptions & PredictOptions,
+  ): Promise<Record<string, unknown>>;
+  async decide(
+    state: unknown,
+    schema?: unknown,
+    opts: DecideOptions & PredictOptions = {},
+  ): Promise<Record<string, unknown> | DecisionResult> {
+    return decide(this, state, schema, opts);
+  }
 
   static async load(
     modelDirOrRepo: string,
@@ -552,6 +655,15 @@ export class Agent extends HookRegistry {
       localDir?: string;
       token?: string | null;
       numThreads?: number;
+      /** Per-language temperature overrides; see AgentOptions.lang_temperatures. */
+      lang_temperatures?: AgentOptions["lang_temperatures"];
+      /** Optional commit SHA/branch/tag to fetch; omitted uses the Hub default and existing cache. */
+      revision?: string | null;
+      /**
+       * Opt-in `{artifact name: SHA-256 hexdigest}` check before any artifact is parsed
+       * or executed. A missing artifact or digest mismatch throws and loading is refused.
+       */
+      expectedSha256?: Record<string, string>;
     },
   ): Promise<Agent> {
     const sub = opts?.subfolder ?? null;
@@ -560,25 +672,39 @@ export class Agent extends HookRegistry {
     let cfg: AgentCfg = {};
     let tokenizerJson: unknown | null = null;
     let dir = opts?.localDir ?? modelDirOrRepo;
+    let revision: string | null = null;
     let provider: SessionProvider;
     if (isBrowser) {
       const { loadWebBundle, createWebProvider } = await import("./providers.js");
-      const bundle = await loadWebBundle(modelDirOrRepo, { subfolder: sub });
+      const bundle = await loadWebBundle(modelDirOrRepo, {
+        subfolder: sub,
+        revision: opts?.revision,
+        expectedSha256: opts?.expectedSha256,
+      });
       cfg = bundle.cfg;
       tokenizerJson = bundle.tokenizerJson;
       dir = bundle.dir;
-      provider = await createWebProvider(dir, { numThreads: opts?.numThreads });
+      revision = bundle.revision;
+      provider = await createWebProvider(dir, {
+        numThreads: opts?.numThreads,
+        expectedSha256: opts?.expectedSha256,
+      });
     } else {
       const { loadNodeBundle, createNodeProvider } = await import("./providers.js");
       const bundle = await loadNodeBundle(modelDirOrRepo, {
         subfolder: sub,
         localDir: opts?.localDir,
         token: opts?.token,
+        revision: opts?.revision,
+        expectedSha256: opts?.expectedSha256,
       });
       cfg = bundle.cfg;
       tokenizerJson = bundle.tokenizerJson;
       dir = bundle.dir;
-      provider = await createNodeProvider(dir, { device: opts?.device, numThreads: opts?.numThreads });
+      revision = bundle.revision;
+      provider = await createNodeProvider(dir, {
+        device: opts?.device, numThreads: opts?.numThreads, expectedSha256: opts?.expectedSha256,
+      });
     }
     if (!tokenizerJson) {
       throw new Error(
@@ -595,6 +721,6 @@ export class Agent extends HookRegistry {
         `Incompatible model: tokenizer.json is missing or invalid in ${JSON.stringify(dir)}: ${String(error)}`,
       );
     }
-    return new Agent({ provider, tok, cfg });
+    return new Agent({ provider, tok, cfg, revision, lang_temperatures: opts?.lang_temperatures });
   }
 }

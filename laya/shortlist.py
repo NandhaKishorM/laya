@@ -15,11 +15,13 @@ whatever vectors ``embed_fn`` returns. Issue #102's BANKING77 figures belong to 
 report; this module does not measure them.
 """
 import json
+import threading
+from collections import OrderedDict
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 
-from .common import render_options, serialize_state
+from .common import encode_text, render_options, serialize_state
 
 DEFAULT_SHORTLIST_K = 20
 
@@ -143,7 +145,8 @@ def embed_fn_from_agent(
         parts: List[np.ndarray] = []
         for start in range(0, len(rows), batch_size):
             chunk = rows[start : start + batch_size]
-            encoded = tok(
+            encoded = encode_text(
+                tok,
                 chunk,
                 padding=True,
                 truncation=True,
@@ -162,6 +165,99 @@ def embed_fn_from_agent(
         return np.concatenate(parts, axis=0)
 
     return embed_fn
+
+
+def cached_embed_fn(
+    embed_fn: Callable[[Sequence[str]], Any],
+    maxsize: int = 4096,
+) -> Callable[[Sequence[str]], np.ndarray]:
+    """Cache ``embed_fn`` output per input string, under an LRU bound.
+
+    ``predict_shortlist`` embeds the query plus every option text on each call. When the
+    same option set is shortlisted on every request -- a fixed intent or label list, as
+    in the README's BANKING77 example -- the option rows do not change between calls,
+    yet they are re-embedded every time. Wrapping the embedder once::
+
+        embed_fn = cached_embed_fn(embed_fn_from_agent(agent))
+
+    leaves the first call unchanged and reduces each repeat call to embedding the new
+    query alone.
+
+    Lookups are exact string matches. Texts missing from the cache are deduplicated and
+    embedded in a single ``embed_fn`` call, so a cold cache costs the same number of
+    batched calls as the unwrapped function. Rows are stored as float32; the cache holds
+    at most ``maxsize`` strings and then evicts the least recently used entry, bounding
+    memory at about ``maxsize * dim * 4`` bytes. Nothing is cached when ``embed_fn``
+    raises or returns a bad shape.
+
+    The wrapper is safe to share between threads: the lock covers only cache reads and
+    writes, never the embedding call. The returned callable carries ``cache_info()`` --
+    a dict with ``size``, ``maxsize``, ``hits`` and ``misses`` -- and ``cache_clear()``.
+    Clear the cache if the model or weights behind ``embed_fn`` change.
+    """
+    if not callable(embed_fn):
+        raise TypeError("embed_fn must be callable")
+    if isinstance(maxsize, bool) or not isinstance(maxsize, int) or maxsize < 1:
+        raise ValueError("maxsize must be a positive integer, got %r" % (maxsize,))
+
+    rows_by_text: OrderedDict[str, np.ndarray] = OrderedDict()
+    lock = threading.Lock()
+    counts = {"hits": 0, "misses": 0}
+
+    def cached(texts: Sequence[str]) -> np.ndarray:
+        keys = ["" if text is None else str(text) for text in texts]
+        if not keys:
+            return np.zeros((0, 0), dtype=np.float32)
+        with lock:
+            found: Dict[str, np.ndarray] = {}
+            hits = 0
+            for key in keys:
+                row = rows_by_text.get(key)
+                if row is not None:
+                    rows_by_text.move_to_end(key)
+                    found[key] = row
+                    hits += 1
+            counts["hits"] += hits
+            counts["misses"] += len(keys) - hits
+            missing = [key for key in dict.fromkeys(keys) if key not in found]
+        if missing:
+            raw = embed_fn(list(missing))
+            if hasattr(raw, "detach"):
+                raw = raw.detach().float().cpu().numpy()
+            fresh = np.asarray(raw, dtype=np.float32)
+            if fresh.ndim != 2 or fresh.shape[0] != len(missing) or fresh.shape[1] < 1:
+                raise ValueError(
+                    "embed_fn must return an array of shape (%d, dim), got %s"
+                    % (len(missing), tuple(fresh.shape))
+                )
+            fresh = np.nan_to_num(fresh, copy=True, nan=0.0, posinf=0.0, neginf=0.0)
+            with lock:
+                for key, row in zip(missing, fresh):
+                    rows_by_text[key] = row
+                    rows_by_text.move_to_end(key)
+                    while len(rows_by_text) > maxsize:
+                        rows_by_text.popitem(last=False)
+                    found[key] = row
+        return np.stack([found[key] for key in keys])
+
+    def cache_info() -> Dict[str, int]:
+        with lock:
+            return {
+                "size": len(rows_by_text),
+                "maxsize": maxsize,
+                "hits": counts["hits"],
+                "misses": counts["misses"],
+            }
+
+    def cache_clear() -> None:
+        with lock:
+            rows_by_text.clear()
+            counts["hits"] = 0
+            counts["misses"] = 0
+
+    cached.cache_info = cache_info
+    cached.cache_clear = cache_clear
+    return cached
 
 
 def _rank(state, criteria, embed_fn, k, instructions):

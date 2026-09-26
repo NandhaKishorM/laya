@@ -1,0 +1,9 @@
+# The classes most readers start from first. An unlisted page appears at the end.
+nav:
+  - index.md
+  - agent.md
+  - router.md
+  - helpers.md
+  - langchain.md
+  - glob: "*"
+    ignore_no_matches: true

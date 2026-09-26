@@ -19,6 +19,8 @@ Copy-paste recipes. Every snippet is self-contained apart from the helpers it na
 - [ONNXAgent](#onnxagent)
 - [Runtime registration](#runtime-registration)
 - [Base class and process-wide defaults](#base-class-and-process-wide-defaults)
+- [Async hooks](#async-hooks)
+- [Hook timeout](#hook-timeout)
 - [Token budget](#token-budget)
 - [Testing hooks](#testing-hooks)
 
@@ -339,6 +341,46 @@ agent = laya.load("convaiinnovations/laya", on_predict_start=widen)
 # or per call
 agent.system_one(state, questions, head_max_len=324, max_len=1024)
 ```
+
+## Async hooks
+
+Wrap an async hook in `AsyncHook`; each coroutine runs to completion in the sync core, whether the
+caller is synchronous or already inside an event loop.
+
+```python
+import laya
+from laya import AsyncHook
+
+class RemoteAudit:
+    async def on_predict_end(self, ctx):
+        await ship(ctx.run_id, ctx.results)
+
+agent = laya.load("convaiinnovations/laya", hooks=[AsyncHook(RemoteAudit())])
+```
+
+A plain async callable works too:
+
+```python
+async def async_end(ctx):
+    await ship(ctx.results)
+
+agent.system_one(state, questions, on_predict_end=async_end)
+```
+
+## Hook timeout
+
+Bound each hook call, so a stuck hook cannot hang a served request:
+
+```python
+agent = laya.load("convaiinnovations/laya", on_predict_end=metrics, hooks_timeout=2.0)
+
+# or per call
+agent.system_one(state, questions, on_predict_end=metrics, hooks_timeout=0.5)
+```
+
+A timed-out hook raises `TimeoutError` (or warns when `hooks_raise=False`). The hook keeps running
+in the background, so also give network calls their own timeout. See
+[errors](errors.md#timeouts).
 
 ## Testing hooks
 

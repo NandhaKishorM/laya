@@ -14,7 +14,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import laya  # noqa: E402
-from laya import Agent, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
+from laya import Agent, AsyncHook, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
 from laya.hooks import HOOK_EVENTS, Hook  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 
@@ -56,6 +56,7 @@ HOOK_KEYS = {
     "on_predict_end": None,
     "hooks_raise": True,
     "hooks_concurrent": True,
+    "hooks_timeout": None,
 }
 
 # --------------------------------------------------------------- constructors
@@ -64,8 +65,9 @@ for label, fn in (("Agent.__init__", Agent.__init__), ("load", load),
     for param, default in HOOK_KEYS.items():
         check_param(label, fn, param, default)
 
-# Router keeps lang_guess too
+# Router keeps lang_guess and explicit per-model revisions too
 check_param("Router.__init__", Router.__init__, "lang_guess", None)
+check_param("Router.__init__", Router.__init__, "revisions", None)
 
 # --------------------------------------------------------------- predict surfaces
 for label, fn in (("Agent.predict_batch", Agent.predict_batch),
@@ -76,6 +78,7 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
     check_param(label, fn, "on_predict_start", None)
     check_param(label, fn, "on_predict_end", None)
     check_param(label, fn, "hooks_raise", None)
+    check_param(label, fn, "hooks_timeout", None)
 
 check_param("Agent.predict_batch", Agent.predict_batch, "batch_size", None)
 
@@ -90,6 +93,7 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
 # route() takes per-call hooks so a hook can pin a checkpoint for one call
 check_param("Router.route", Router.route, "hooks", None)
 check_param("Router.route", Router.route, "hooks_raise", None)
+check_param("Router.route", Router.route, "hooks_timeout", None)
 
 # --------------------------------------------------------------- aliases
 check_true("Agent.predict is Agent.system_one", Agent.predict is Agent.system_one)
@@ -119,9 +123,12 @@ for event in HOOK_EVENTS:
 check_true("PredictHook is callable-typed", callable(PredictHook))
 
 # --------------------------------------------------------------- exports
-for name in ("PredictContext", "PredictHook", "Hook", "BaseHook"):
+for name in ("PredictContext", "PredictHook", "Hook", "BaseHook", "AsyncHook"):
     check_true("__all__/%s" % name, name in laya.__all__)
     check_true("laya.%s exists" % name, hasattr(laya, name))
+check_true("laya.hooks/run_coroutine_sync exists",
+           callable(getattr(__import__("laya.hooks", fromlist=["run_coroutine_sync"]),
+                            "run_coroutine_sync", None)))
 
 # BaseHook is the concrete no-op base class; all six events exist and are callable.
 for event in HOOK_EVENTS:
@@ -138,6 +145,7 @@ for label, cls in (("Agent", Agent), ("Router", Router), ("ONNXAgent", ONNXAgent
     check("%s/hooks default" % label, cls.hooks, ())
     check("%s/hooks_raise default" % label, cls.hooks_raise, True)
     check("%s/hooks_concurrent default" % label, cls.hooks_concurrent, True)
+    check("%s/hooks_timeout default" % label, cls.hooks_timeout, None)
     check("%s/_hooks_lock default" % label, cls._hooks_lock, None)
 
 # Agent and ONNXAgent carry the checkpoint id for ctx.model; Router has no single model.

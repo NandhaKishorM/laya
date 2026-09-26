@@ -1,7 +1,10 @@
 """Parity evidence for the TileLang fast path: a fixed, deterministic set of states x questions, answered by the
-stock forward (bf16 autocast) and by the fast path, with an fp32 forward as the reference.
+stock forward (16-bit autocast) and by the fast path, with an fp32 forward as the reference.
 
-    python benchmarks/parity_fast.py [--subfolder multilingual] [--json benchmarks/results/parity_<name>.json]
+    python benchmarks/parity_fast.py [--subfolder multilingual] [--dtype bf16|fp16] [--json benchmarks/results/parity_<name>.json]
+
+`--dtype` sets the autocast dtype of both the stock path and the fast path (default: the agent's own, bf16 for
+the shipped checkpoints on compute capability >= 8).
 
 Writes every per-option probability from all three paths so the comparison can be re-checked without a GPU, and
 prints the summary the PR quotes: max |p_fast - p_stock|, max |p_* - p_fp32|, argmax agreement, per question type.
@@ -63,28 +66,34 @@ def probs(agent, b, meta, amp):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--model", default="convaiinnovations/laya"); ap.add_argument("--subfolder", default=None); ap.add_argument("--json", default=None)
+    ap.add_argument("--dtype", choices=["bf16", "fp16"], default=None, help="autocast dtype for stock and fast (default: the agent's)")
     a = ap.parse_args()
     agent = laya.load(a.model, subfolder=a.subfolder)
     if agent.device.type != "cuda":
         sys.exit("needs CUDA")
+    if a.dtype:
+        agent.dtype = {"bf16": torch.bfloat16, "fp16": torch.float16}[a.dtype]
+    tag = {torch.bfloat16: "bf16", torch.float16: "fp16"}[agent.dtype]
+    stock_key = "p_stock_" + tag
     cases = []
     for name, st, qs in states():
         b, meta = batch(agent, st, qs)
         agent.deaccelerate(); p32 = probs(agent, b, meta, amp=False); pst = probs(agent, b, meta, amp=True)
         assert agent.accelerate(strict=True); pfa = probs(agent, b, meta, amp=True)
         for (qid, t, k), x, y, z in zip(meta, p32, pst, pfa):
-            cases.append({"state": name, "question": qid, "type": t, "k": k, "p_fp32": x, "p_stock_bf16": y, "p_fast": z})
+            cases.append({"state": name, "question": qid, "type": t, "k": k, "p_fp32": x, stock_key: y, "p_fast": z})
     by_t = {}
     for c in cases:
-        d = by_t.setdefault(c["type"], {"n": 0, "d_fast_stock": 0.0, "d_fast_fp32": 0.0, "d_stock_fp32": 0.0, "agree_fast_stock": 0, "agree_fast_fp32": 0})
-        x, y, z = map(np.array, (c["p_fp32"], c["p_stock_bf16"], c["p_fast"]))
+        d = by_t.setdefault(c["type"], {"n": 0, "d_fast_stock": 0.0, "d_fast_fp32": 0.0, "d_stock_fp32": 0.0, "agree_fast_stock": 0, "agree_fast_fp32": 0, "agree_stock_fp32": 0})
+        x, y, z = map(np.array, (c["p_fp32"], c[stock_key], c["p_fast"]))
         d["n"] += 1; d["d_fast_stock"] = max(d["d_fast_stock"], float(abs(z - y).max())); d["d_fast_fp32"] = max(d["d_fast_fp32"], float(abs(z - x).max()))
         d["d_stock_fp32"] = max(d["d_stock_fp32"], float(abs(y - x).max())); d["agree_fast_stock"] += int(z.argmax() == y.argmax()); d["agree_fast_fp32"] += int(z.argmax() == x.argmax())
+        d["agree_stock_fp32"] += int(y.argmax() == x.argmax())
     gpu = torch.cuda.get_device_name(0)
     print(f"\n{a.model}/{a.subfolder or ''}  {gpu}  torch {torch.__version__}  dtype {agent.dtype}\n{len(cases)} questions over {len(set(c['state'] for c in cases))} fixed states")
-    print(f"{'type':8s} {'n':>4s} {'max|fast-stock|':>16s} {'max|fast-fp32|':>15s} {'max|stock-fp32|':>16s} {'argmax fast=stock':>18s} {'fast=fp32':>10s}")
+    print(f"{'type':8s} {'n':>4s} {'max|fast-stock|':>16s} {'max|fast-fp32|':>15s} {'max|stock-fp32|':>16s} {'argmax fast=stock':>18s} {'fast=fp32':>10s} {'stock=fp32':>11s}")
     for t, d in sorted(by_t.items()):
-        print(f"{t:8s} {d['n']:4d} {d['d_fast_stock']:16.4f} {d['d_fast_fp32']:15.4f} {d['d_stock_fp32']:16.4f} {d['agree_fast_stock']:>13d}/{d['n']:<4d} {d['agree_fast_fp32']:>6d}/{d['n']}")
+        print(f"{t:8s} {d['n']:4d} {d['d_fast_stock']:16.4f} {d['d_fast_fp32']:15.4f} {d['d_stock_fp32']:16.4f} {d['agree_fast_stock']:>13d}/{d['n']:<4d} {d['agree_fast_fp32']:>6d}/{d['n']:<4d} {d['agree_stock_fp32']:>6d}/{d['n']}")
     if a.json:
         os.makedirs(os.path.dirname(a.json), exist_ok=True)
         json.dump({"model": a.model, "subfolder": a.subfolder, "gpu": gpu, "torch": torch.__version__, "dtype": str(agent.dtype), "summary": by_t, "cases": cases}, open(a.json, "w"), indent=1)

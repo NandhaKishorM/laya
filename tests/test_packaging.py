@@ -184,6 +184,12 @@ check_true("compose.http/leaves the quickstart service alone",
 check_true("Dockerfile/installs the serve extra", '".[serve]"' in dockerfile, dockerfile[:400])
 check_true("Dockerfile/still runs pip check", "pip check" in dockerfile)
 
+# torch 2.14's eager Triton kernels compile on the first CUDA inference and need a C compiler the
+# slim runtime image does not have (#365). The kill switch keeps the stock kernels.
+check_true("Dockerfile/runtime stage disables torch's native Triton JIT (#365)",
+           re.search(r"^\s*TORCH_DISABLE_NATIVE_JIT=1", dockerfile.partition("AS runtime")[2], re.M) is not None,
+           "without TORCH_DISABLE_NATIVE_JIT=1 a GPU image serves 500s while /health stays green")
+
 # Overrides for `laya` never reach `laya-serve`, a separate service. If the CUDA override does
 # not repeat the args for laya-serve, that service silently serves on CPU.
 check_true("compose.cuda/covers laya-serve too",
@@ -201,6 +207,28 @@ check_true("compose.cuda/no stale reference to a missing file",
 for name in ("compose.yaml", "compose.example.yml", "compose.cuda.yaml", "compose.http.yaml",
              "compose.spark.yaml"):
     check_true("compose/%s exists" % name, os.path.exists(name))
+
+# --------------------------------------------------------------- declared extras
+# The runtime error in laya/structured.py tells users to install `laya[structured]`, and the
+# docs and README repeat it. A reference to an extra pyproject.toml does not declare is a dead
+# end for anyone who follows it, so every `laya[...]` in the code and docs must resolve (#348).
+_extra_section = pyproject.split("[project.optional-dependencies]")[1].split("\n[")[0]
+_declared_extras = set(re.findall(r"^([a-z][\w-]*)\s*=\s*\[", _extra_section, re.M))
+_referenced_extras = {}
+for _dirpath, _dirnames, _filenames in os.walk("."):
+    # `.venv` is where CONTRIBUTING tells contributors to install, and it is not the repository.
+    _dirnames[:] = [d for d in _dirnames
+                    if d not in (".git", "__pycache__", "node_modules", ".pytest_cache", ".venv")]
+    for _f in _filenames:
+        if not _f.endswith((".py", ".md", ".yml", ".toml")):
+            continue
+        _p = os.path.normpath(os.path.join(_dirpath, _f))
+        for _group in re.findall(r"laya\[([a-z][\w,-]*)\]", read(_p)):
+            for _extra in _group.split(","):
+                _referenced_extras.setdefault(_extra.strip(), set()).add(_p)
+
+check("extras/every referenced extra is declared",
+      sorted(set(_referenced_extras) - _declared_extras), [])
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

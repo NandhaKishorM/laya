@@ -26,6 +26,8 @@ env var                 meaning                                        default
 ``LAYA_AUTO_TASK``      auto-route to the typed-decisions checkpoint   0
 ``LAYA_API_KEY``        if set, require ``Authorization: Bearer <it>``  (none)
 ``LAYA_LOG_LEVEL``      uvicorn log level                              info
+``LAYA_MAX_CONCURRENT`` cap on requests past auth at once; excess      16
+                        gets 503 (see below)
 ======================  ============================================  =========
 
 Imports of heavy dependencies (fastapi, uvicorn, torch via Router) are all
@@ -34,9 +36,17 @@ and touches no GPU -- which is what keeps the Nix ``pythonImportsCheck`` honest.
 """
 import hmac
 import json
+import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional
+
+# A failed inference is reported to the client as a fixed 500 so nothing about paths,
+# weights or memory state leaks, which leaves the server log as the only place the
+# actual cause can appear. Uvicorn configures the root logger, so a module logger
+# propagates there without this module setting up any handlers.
+_log = logging.getLogger("laya.serve")
 
 # The three checkpoint names the router understands; used to decide whether a
 # client's `model` field names a Laya checkpoint (honour it) or is some other
@@ -49,6 +59,15 @@ _KNOWN_MODELS = {"english", "multilingual", "typed-decisions"}
 MAX_QUESTIONS = 64
 MAX_STATE_CHARS = 50000
 MAX_BODY_BYTES = 2 * 1024 * 1024
+# HTTP-only amplification guard; the library keeps its head_max_len-aware budget.
+MAX_CHOICE_OPTIONS = 100
+MAX_SCORE_LEVELS = 32
+MAX_TOTAL_OPTIONS = 512
+
+# Cap on requests past auth at once. Each one can buffer up to MAX_BODY_BYTES
+# before inference, so without a bound many concurrent near-cap requests OOM
+# the worker even though every request is individually valid (#330).
+DEFAULT_MAX_CONCURRENT = 16
 # Public Hugging Face ids, accepted so a client can name a checkpoint. The root bundle is
 # deliberately absent: the documented ``convaiinnovations/laya`` value means
 # "let the Router choose", rather than pinning the English checkpoint.
@@ -84,6 +103,18 @@ def _resolve_model(model: Optional[str]) -> Optional[str]:
     return key if key in _KNOWN_MODELS else None
 
 
+def _resolve_max_concurrent() -> int:
+    """Bound on requests past auth at once, from LAYA_MAX_CONCURRENT."""
+    raw = os.environ.get("LAYA_MAX_CONCURRENT")
+    if not raw:
+        return DEFAULT_MAX_CONCURRENT
+    try:
+        n = int(raw)
+    except ValueError:
+        return DEFAULT_MAX_CONCURRENT
+    return n if n > 0 else DEFAULT_MAX_CONCURRENT
+
+
 def _resolve_port() -> int:
     """Port from LAYA_PORT, validated. Exits with a message instead of a traceback."""
     raw = os.environ.get("LAYA_PORT", "8000")
@@ -97,14 +128,51 @@ def _resolve_port() -> int:
 
 
 def _check_request_limits(state: Any, questions: Any) -> None:
-    """Reject oversized inference requests before tokenization (413)."""
+    """Reject absent or oversized inference requests before tokenization (400/413)."""
     from fastapi import HTTPException
 
+    # `serialize_state(None)` is `json.dumps(None)` == the four characters `null`, so a body with
+    # no `state` key, or `"state": null`, was answered as a decision about the literal text
+    # "null" -- HTTP 200, and at ~0.94 confidence here, byte-identical to sending `"state":
+    # "null"`. Nothing downstream can tell that apart from a real string, so the check has to
+    # happen before serialization. The repo's other two surfaces already require a state:
+    # examples/server.py declares it as a required field and mcp/tools.py rejects an empty one.
+    if state is None:
+        raise HTTPException(status_code=400, detail="'state' is required")
     if not isinstance(questions, dict):
         raise HTTPException(status_code=400, detail="'questions' must be an object")
     if len(questions) > MAX_QUESTIONS:
         raise HTTPException(status_code=413,
                             detail="too many questions (%d > %d)" % (len(questions), MAX_QUESTIONS))
+
+    total_options = 0
+    for qid, question in questions.items():
+        if not isinstance(question, dict):
+            continue
+        crit = question.get("criteria")
+        qtype = question.get("type")
+        if qtype == "choice" and isinstance(crit, (dict, list)):
+            count = len(crit)
+            total_options += count
+            if count > MAX_CHOICE_OPTIONS:
+                raise HTTPException(
+                    status_code=413,
+                    detail="too many choice options for %r (%d > %d)" % (qid, count, MAX_CHOICE_OPTIONS),
+                )
+        elif qtype == "score" and isinstance(crit, list):
+            count = len(crit)
+            total_options += count
+            if count > MAX_SCORE_LEVELS:
+                raise HTTPException(
+                    status_code=413,
+                    detail="too many score levels for %r (%d > %d)" % (qid, count, MAX_SCORE_LEVELS),
+                )
+    if total_options > MAX_TOTAL_OPTIONS:
+        raise HTTPException(
+            status_code=413,
+            detail="too many answer options across questions (%d > %d)" % (total_options, MAX_TOTAL_OPTIONS),
+        )
+
     try:
         state_len = len(state) if isinstance(state, str) else len(str(state))
     except Exception:
@@ -197,6 +265,13 @@ def create_app(router: Optional[Any] = None):
     # running when it is first awaited, and `create_app` may be called before that loop
     # exists (module scope, TestClient startup, a preload script).
     gate: Optional[asyncio.Lock] = None
+    # Admission bound, same late-creation reason as the gate. Checked before any
+    # body byte is read and held through inference, so the bodies buffered at
+    # once stay bounded no matter how many clients connect (#330). The inference
+    # gate is still joined only after the body is complete, so a slow client
+    # holds an admission slot but never an inference slot.
+    max_concurrent = _resolve_max_concurrent()
+    admission: Optional[asyncio.Semaphore] = None
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -234,13 +309,28 @@ def create_app(router: Optional[Any] = None):
         return {
             "status": "ok",
             "loaded": router.loaded,
+            "revisions": getattr(router, "loaded_revisions", {}),
             "device": os.environ.get("LAYA_DEVICE") or "auto",
         }
 
     @app.post("/v1/systemone")
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):
-        nonlocal gate
+        nonlocal gate, admission
         _check_auth(authorization)
+        if admission is None:
+            admission = asyncio.Semaphore(max_concurrent)
+        if admission.locked():
+            # Non-blocking: excess load is refused rather than queued, so the
+            # buffered bodies stay within the bound above.
+            raise HTTPException(status_code=503, detail="server busy, try again later")
+        await admission.acquire()
+        try:
+            return await _systemone_inner(request)
+        finally:
+            admission.release()
+
+    async def _systemone_inner(request: Request):
+        nonlocal gate
         # A declared length over the cap is rejected before anything is read; the
         # streaming cap below is what actually enforces it, for bodies that declare
         # no length or understate it.
@@ -252,12 +342,12 @@ def create_app(router: Optional[Any] = None):
                 pass
         raw = await _read_body_capped(request)
         try:
-            # Every parse failure a client can cause is a ValueError: JSONDecodeError for
-            # malformed/empty/truncated bodies, UnicodeDecodeError for invalid UTF-8. A
-            # broader catch would also swallow ClientDisconnect and Starlette's own
-            # stream errors, reporting a transport or server fault as the client's.
+            # A client can cause ValueError (JSONDecodeError for malformed/empty/truncated
+            # bodies, UnicodeDecodeError for invalid UTF-8) or RecursionError (deeply nested
+            # arrays/objects). A broader catch would also swallow ClientDisconnect and
+            # Starlette's own stream errors, reporting a transport or server fault as the client's.
             body = json.loads(raw)
-        except ValueError:
+        except (ValueError, RecursionError):
             raise HTTPException(status_code=400, detail="request body must be valid JSON")
         if not isinstance(body, dict) or "questions" not in body:
             raise HTTPException(status_code=400, detail="request body must be an object with a 'questions' field")
@@ -272,14 +362,29 @@ def create_app(router: Optional[Any] = None):
             # hs-jev decodes `answers` and `usage` and ignores the rest.
             async with gate:
                 loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(
+                t0 = time.perf_counter()
+                result = await loop.run_in_executor(
                     pool, lambda: router.predict(state, questions, model=model))
+                infer_ms = (time.perf_counter() - t0) * 1000.0
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    content=result,
+                    headers={
+                        "Server-Timing": f"inference;dur={infer_ms:.2f}",
+                        "X-Inference-Time-Ms": f"{infer_ms:.2f}"
+                    }
+                )
         except HTTPException:
             raise
         except ValueError as e:
             # Question validation errors name the question and what to fix: safe for clients.
             raise HTTPException(status_code=422, detail=str(e))
         except Exception:  # noqa: BLE001 -- never leak paths/weights/OOM text to clients
+            # The client still learns nothing, but the operator gets the traceback. Without
+            # this the container logs show only the 500, so a deterministic failure such as a
+            # missing C compiler for triton's JIT (#365) is invisible from the running server
+            # and has to be reproduced in-process to be diagnosed at all.
+            _log.exception("inference failed for model=%s", model)
             raise HTTPException(status_code=500, detail="inference failed")
 
     return app

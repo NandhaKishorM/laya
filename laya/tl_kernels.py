@@ -1,14 +1,21 @@
 """TileLang kernels for the Laya (ModernBERT + decision head) encoder.
 
-All kernels take bf16 activations, accumulate in fp32.  Row count M is a runtime
+All kernels take 16-bit activations (bf16 by default, fp16 with dtype="float16"), accumulate in fp32.  Row count M is a runtime
 symbol so one compiled kernel serves every batch/sequence bucket; M must be a
 multiple of 16 (the caller pads); out-of-bounds rows are predicated by TileLang.
 """
 import tilelang
 import tilelang.language as T
 
-DT, ACC = "bfloat16", "float"
+ACC = "float"
+DTYPES = ("bfloat16", "float16")
 FAST = {tilelang.PassConfigKey.TL_ENABLE_FAST_MATH: True}
+
+
+def _dt(dtype):
+    if dtype not in DTYPES:
+        raise ValueError("tl_kernels dtype must be one of %s, got %r" % (DTYPES, dtype))
+    return dtype
 
 
 def _act(x, kind):
@@ -21,8 +28,9 @@ def _act(x, kind):
 
 # ----------------------------------------------------------------------------- GEMM
 @tilelang.jit(pass_configs=FAST)
-def gemm_kernel(N, K, bias=False, act="none", bm=64, bn=128, bk=64, stages=3, threads=128):
+def gemm_kernel(N, K, bias=False, act="none", bm=64, bn=128, bk=64, stages=3, threads=128, dtype="bfloat16"):
     """C[M,N] = act(A[M,K] @ W[N,K]^T + b)."""
+    DT = _dt(dtype)
     M = T.dynamic("M")
 
     @T.prim_func
@@ -36,18 +44,21 @@ def gemm_kernel(N, K, bias=False, act="none", bm=64, bn=128, bk=64, stages=3, th
                 T.copy(A[by * bm, k * bk], A_s)
                 T.copy(W[bx * bn, k * bk], W_s)
                 T.gemm(A_s, W_s, C_l, transpose_B=True)
-            for i, j in T.Parallel(bm, bn):
-                v = C_l[i, j]
-                if bias:
-                    v = v + Bv[bx * bn + j]
-                C_l[i, j] = _act(v, act)
+            # `bias` is a Python-level flag, so each branch is one expression (no re-bound TileLang value)
+            if bias:
+                for i, j in T.Parallel(bm, bn):
+                    C_l[i, j] = _act(C_l[i, j] + Bv[bx * bn + j], act)
+            else:
+                for i, j in T.Parallel(bm, bn):
+                    C_l[i, j] = _act(C_l[i, j], act)
             T.copy(C_l, C[by * bm, bx * bn])
     return main
 
 
 @tilelang.jit(pass_configs=FAST)
-def gemm_geglu_kernel(F, K, bm=64, bn=64, bk=64, stages=3, threads=128):
+def gemm_geglu_kernel(F, K, bm=64, bn=64, bk=64, stages=3, threads=128, dtype="bfloat16"):
     """ModernBERT GLU MLP up-projection, fused:  C[M,F] = gelu(A @ Wi[:F]^T) * (A @ Wi[F:]^T)."""
+    DT = _dt(dtype)
     M = T.dynamic("M")
 
     @T.prim_func
@@ -73,11 +84,12 @@ def gemm_geglu_kernel(F, K, bm=64, bn=64, bk=64, stages=3, threads=128):
 
 # ----------------------------------------------------------------------------- LayerNorm (+residual)
 @tilelang.jit(pass_configs=FAST)
-def add_ln_kernel(D, residual=True, bias=False, eps=1e-5, bm=4, threads=32):
-    """X (fp32 residual stream) += R (bf16 branch output, if residual);  Y (bf16) = LN(X) * w (+ b).
+def add_ln_kernel(D, residual=True, bias=False, eps=1e-5, bm=4, threads=32, dtype="bfloat16"):
+    """X (fp32 residual stream) += R (16-bit branch output, if residual);  Y (16-bit) = LN(X) * w (+ b).
 
     The residual stream stays in fp32 exactly like the stock autocast path: ModernBERT-large's residual
     activations reach ~3e4, where bf16's 8-bit mantissa would lose ~100 units per add and drift layer by layer."""
+    DT = _dt(dtype)
     M = T.dynamic("M")
 
     @T.prim_func
@@ -108,11 +120,12 @@ def add_ln_kernel(D, residual=True, bias=False, eps=1e-5, bm=4, threads=32):
             T.reduce_sum(xs, var, dim=1)
             for i in T.Parallel(bm):
                 var[i] = T.rsqrt(var[i] / D + eps)
-            for i, j in T.Parallel(bm, D):
-                v = (x[i, j] - mean[i]) * var[i] * Wv[j]
-                if bias:
-                    v = v + Bv[j]
-                xs[i, j] = v
+            if bias:
+                for i, j in T.Parallel(bm, D):
+                    xs[i, j] = (x[i, j] - mean[i]) * var[i] * Wv[j] + Bv[j]
+            else:
+                for i, j in T.Parallel(bm, D):
+                    xs[i, j] = (x[i, j] - mean[i]) * var[i] * Wv[j]
             T.copy(xs, Yb)
             T.copy(Yb, Y[bx * bm, 0])
     return main
@@ -120,9 +133,10 @@ def add_ln_kernel(D, residual=True, bias=False, eps=1e-5, bm=4, threads=32):
 
 # ----------------------------------------------------------------------------- RoPE (in place on packed qkv)
 @tilelang.jit(pass_configs=FAST)
-def rope_kernel(H, Dh, bm=32, threads=128):
+def rope_kernel(H, Dh, bm=32, threads=128, dtype="bfloat16"):
     """QKV[M, 3*H*Dh] packed as (q|k|v)(h)(d).  Rotates q and k in place (rotate-half convention, fp32 math).
     cos/sin: [L, Dh/2].  Row r has position r % L.  M and L are runtime symbols."""
+    DT = _dt(dtype)
     M, L = T.dynamic("M"), T.dynamic("L")
     half = Dh // 2
     W = 2 * H * Dh  # q and k columns
@@ -148,13 +162,14 @@ def rope_kernel(H, Dh, bm=32, threads=128):
 
 # ----------------------------------------------------------------------------- flash attention (padding mask + sliding window)
 @tilelang.jit(pass_configs=FAST)
-def attn_kernel(B, L, H, Dh, window=0, bm=64, bn=64, stages=1, threads=128):
-    """QKV: [B, L, 3, H, Dh] bf16 (a view of the packed [M, 3*H*Dh] buffer).  Lens: [B] int32 valid length.
+def attn_kernel(B, L, H, Dh, window=0, bm=64, bn=64, stages=1, threads=128, dtype="bfloat16"):
+    """QKV: [B, L, 3, H, Dh] 16-bit (a view of the packed [M, 3*H*Dh] buffer).  Lens: [B] int32 valid length.
     O: [B, L, H*Dh].  window>0 => bidirectional sliding window |i-j| <= window.  Masked scores use a large
     finite negative so fully-masked (padding) rows stay finite.
 
     B and/or L may be None: they then become runtime symbols (one compile serves every shape, at the
     cost of predicated loads -- ~4x slower for full attention at L=1024, free for short inputs)."""
+    DT = _dt(dtype)
     scale = (1.0 / Dh) ** 0.5 * 1.44269504  # log2(e)
     if B is None:
         B = T.dynamic("B")

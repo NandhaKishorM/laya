@@ -165,9 +165,38 @@ Defaults apply to every event, including the Router lifecycle events `on_load` a
 The registry is read at call time, so hooks set after an `Agent` or `Router` is built still apply.
 There is no per-instance opt-out; call `clear_default_hooks()` to turn the process-wide set off.
 
+## Async hooks
+
+An event may be a coroutine. Wrap the hook in `AsyncHook` and its `async def` methods run to
+completion in the sync core:
+
+```python
+from laya import AsyncHook
+
+class Remote:
+    async def on_predict_end(self, ctx):
+        await ship(ctx.results)
+
+agent = laya.load("convaiinnovations/laya", hooks=[AsyncHook(Remote())])
+```
+
+A plain async callable passed to `on_predict_start=` / `on_predict_end=` also works, because
+`dispatch` runs any awaitable a hook returns.
+
+Where the coroutine runs:
+
+- If the calling thread has no running loop, it is run with `asyncio.run`.
+- If it already has one (a caller inside an async function), it runs on a dedicated background
+  loop, so the calling thread can block without deadlocking. Pass `AsyncHook(hook, loop=...)` to
+  funnel onto a specific loop; it must be running, and must not be the calling thread's own loop.
+  Both are checked: a stopped loop and the caller's own loop each raise `ValueError` instead of
+  blocking forever.
+
+A hook with no `async` methods is unaffected.
+
 ## Configuration surface
 
-Every entry point accepts the same five hook parameters. `hooks` takes an object or a sequence
+Every entry point accepts the same hook parameters. `hooks` takes an object or a sequence
 of objects; `on_predict_start` / `on_predict_end` take a callable or a sequence.
 
 | parameter | type | default | meaning |
@@ -177,6 +206,7 @@ of objects; `on_predict_start` / `on_predict_end` take a callable or a sequence.
 | `on_predict_end` | `PredictHook \| Sequence[PredictHook] \| None` | `None` | convenience callables for one event. |
 | `hooks_raise` | `bool` | `True` | `True`: a hook exception propagates. `False`: warn and continue. |
 | `hooks_concurrent` | `bool` | `True` | `False`: dispatch hooks under a lock, one at a time. |
+| `hooks_timeout` | `float \| None` | `None` | per-hook time limit in seconds; `None` means no limit. |
 
 ### Agent
 
@@ -185,24 +215,24 @@ Agent(
     model_id_or_path="convaiinnovations/laya",
     device=None, token=None, subfolder=None, fast=False, compile=False,
     hooks=None, on_predict_start=None, on_predict_end=None,
-    hooks_raise=True, hooks_concurrent=True,
+    hooks_raise=True, hooks_concurrent=True, hooks_timeout=None,
 )
 
 load(..., hooks=None, on_predict_start=None, on_predict_end=None,
-     hooks_raise=True, hooks_concurrent=True)
+     hooks_raise=True, hooks_concurrent=True, hooks_timeout=None)
 
 agent.predict_batch(states, questions, batch_size=None,
                     hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
-                    max_len=None, head_max_len=None, sort_by_length=False)
+                    hooks_timeout=None, max_len=None, head_max_len=None, sort_by_length=False)
 
 agent.system_one(state, questions,
                  hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
-                 max_len=None, head_max_len=None)
+                 hooks_timeout=None, max_len=None, head_max_len=None)
 
 agent.predict(...)          # alias of system_one
 ```
 
-- `hooks_raise` on a per-call method defaults to `None`, meaning "use the instance value".
+- `hooks_raise` and `hooks_timeout` on a per-call method default to `None`, meaning "use the instance value".
 - `hooks_concurrent` is instance-level only.
 
 ### Router
@@ -220,7 +250,7 @@ router.route(state, questions=None, model=None, task=None, lang=None, lang_guess
 
 router.predict(state, questions, model=None, task=None, lang=None, lang_guess=None,
                hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
-               max_len=None, head_max_len=None)
+               hooks_timeout=None, max_len=None, head_max_len=None)
 
 router.system_one(...)      # alias of predict
 router.load(name)           # builds on first use; fires on_load
@@ -243,7 +273,7 @@ ONNXAgent(model_id_or_path, onnx_path="laya.onnx", subfolder=None,
 
 onnx_agent.system_one(state, questions,
                       hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
-                      max_len=None, head_max_len=None)
+                      hooks_timeout=None, max_len=None, head_max_len=None)
 
 onnx_agent.predict(...)     # alias of system_one
 ```
@@ -300,9 +330,16 @@ dispatch(hooks, event, ctx, *, raise_errors=True, lock=None) -> None
 aggregate_usage(results) -> {"input_tokens": int, "output_tokens": int}
 ```
 
+```python
+dispatch(hooks, event, ctx, *, raise_errors=True, lock=None, timeout=None)
+run_coroutine_sync(coro, loop=None)
+```
+
 `normalise_hooks` flattens a `hooks` object/sequence and the two callables into one ordered list.
-`dispatch` calls `event` on every hook that implements it, applying the raise policy and lock.
-`aggregate_usage` sums per-state usage blocks.
+`dispatch` calls `event` on every hook that implements it, applying the raise policy, lock and
+timeout, and runs a hook's result if it is awaitable. `run_coroutine_sync` runs an awaitable to
+completion from sync code, on the caller's loop if it is free, or on a background loop if the
+caller already has one. `aggregate_usage` sums per-state usage blocks.
 
 ```python
 from laya.hooks import normalise_hooks, dispatch, PredictContext

@@ -1,0 +1,56 @@
+name: Evals
+
+# The real-checkpoint quality gate. It downloads weights and the MASSIVE dataset, so it is kept
+# out of PR CI: it runs weekly, before a release, and on demand, and compares the fresh numbers
+# to the committed baseline in research/results/. A failure is a regression in the published
+# numbers, not a blocked PR.
+on:
+  schedule:
+    - cron: "0 3 * * 1"       # Mondays 03:00 UTC
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  english-regression:
+    name: English checkpoint vs committed baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e . datasets
+
+      - name: Evaluate the English checkpoint on MASSIVE English
+        run: |
+          python research/eval/laya_eval.py \
+            --model convaiinnovations/laya --langs en --out report.json
+
+      - name: Compare to the committed baseline
+        run: |
+          python research/evals/check_regression.py report.json \
+            research/results/eval_english_51_languages.json \
+            research/evals/thresholds.json
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: report.json
+          if-no-files-found: ignore

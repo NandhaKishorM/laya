@@ -1,0 +1,226 @@
+{
+  "meta": {
+    "timestamp": "2026-09-24 12:06:34",
+    "device": "cpu",
+    "torch": "2.14.0+cu130",
+    "threads": 4,
+    "laya": "0.3.20",
+    "note": "CPU numbers. GPU (T4) reference from the Colab run is in laya_benchmark_results.json -> latency.",
+    "instance": "AWS m7a.xlarge (us-east-1, on-demand), 4 physical cores, 16 GiB, no swap",
+    "cpu": "AMD EPYC 9R14",
+    "os": "Linux-7.0.0-1006-aws-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "transformers": "5.17.0",
+    "checkpoint_repo": "convaiinnovations/laya",
+    "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+    "laya_commit": "23a17522aa4942da6cce53a995a275760320b691",
+    "env": "OMP_NUM_THREADS=4 USE_TF=0",
+    "wall_time_s": 3446,
+    "peak_rss_gib": 9.31
+  },
+  "detection_overhead": {
+    "english": {
+      "p50_ms": 0.23,
+      "p95_ms": 0.24,
+      "mean_ms": 0.23,
+      "min_ms": 0.22
+    },
+    "hindi": {
+      "p50_ms": 0.81,
+      "p95_ms": 0.83,
+      "mean_ms": 0.81,
+      "min_ms": 0.79
+    },
+    "short english": {
+      "p50_ms": 0.01,
+      "p95_ms": 0.01,
+      "mean_ms": 0.01,
+      "min_ms": 0.01
+    },
+    "large json": {
+      "p50_ms": 1.63,
+      "p95_ms": 1.67,
+      "mean_ms": 1.63,
+      "min_ms": 1.6
+    }
+  },
+  "raw_latency": {
+    "english": {
+      "1_questions": {
+        "p50_ms": 579.95,
+        "p95_ms": 580.96,
+        "mean_ms": 580.18,
+        "min_ms": 579.59,
+        "ms_per_question": 579.95
+      },
+      "5_questions": {
+        "p50_ms": 3072.36,
+        "p95_ms": 3082.03,
+        "mean_ms": 3073.59,
+        "min_ms": 3067.73,
+        "ms_per_question": 614.47
+      },
+      "10_questions": {
+        "p50_ms": 6244.45,
+        "p95_ms": 6252.09,
+        "mean_ms": 6245.1,
+        "min_ms": 6235.24,
+        "ms_per_question": 624.44
+      },
+      "50_questions": {
+        "p50_ms": 35969.27,
+        "p95_ms": 35995.6,
+        "mean_ms": 35955.36,
+        "min_ms": 35878.51,
+        "ms_per_question": 719.39
+      }
+    },
+    "multilingual": {
+      "1_questions": {
+        "p50_ms": 193.31,
+        "p95_ms": 194.28,
+        "mean_ms": 193.4,
+        "min_ms": 192.84,
+        "ms_per_question": 193.31
+      },
+      "5_questions": {
+        "p50_ms": 912.41,
+        "p95_ms": 917.57,
+        "mean_ms": 913.22,
+        "min_ms": 911.4,
+        "ms_per_question": 182.48
+      },
+      "10_questions": {
+        "p50_ms": 1841.78,
+        "p95_ms": 1844.65,
+        "mean_ms": 1842.25,
+        "min_ms": 1840.54,
+        "ms_per_question": 184.18
+      },
+      "50_questions": {
+        "p50_ms": 11156.57,
+        "p95_ms": 11361.66,
+        "mean_ms": 11146.92,
+        "min_ms": 10913.71,
+        "ms_per_question": 223.13
+      }
+    },
+    "typed-decisions": {
+      "1_questions": {
+        "p50_ms": 583.64,
+        "p95_ms": 584.82,
+        "mean_ms": 583.71,
+        "min_ms": 582.6,
+        "ms_per_question": 583.64
+      },
+      "5_questions": {
+        "p50_ms": 2818.91,
+        "p95_ms": 2823.59,
+        "mean_ms": 2819.5,
+        "min_ms": 2817.12,
+        "ms_per_question": 563.78
+      },
+      "10_questions": {
+        "p50_ms": 6030.66,
+        "p95_ms": 6133.36,
+        "mean_ms": 6045.12,
+        "min_ms": 5990.92,
+        "ms_per_question": 603.07
+      },
+      "50_questions": {
+        "p50_ms": 35652.77,
+        "p95_ms": 35702.43,
+        "mean_ms": 35650.35,
+        "min_ms": 35603.01,
+        "ms_per_question": 713.06
+      }
+    }
+  },
+  "cold_load_ms": {
+    "english": 4440.1,
+    "multilingual": 2519.4,
+    "typed-decisions": 479.6
+  },
+  "router_hot": {
+    "english_1q": {
+      "p50_ms": 581.92,
+      "p95_ms": 583.73,
+      "mean_ms": 582.3,
+      "min_ms": 581.03,
+      "ms_per_question": 581.92
+    },
+    "english_10q": {
+      "p50_ms": 6228.23,
+      "p95_ms": 6231.12,
+      "mean_ms": 6227.9,
+      "min_ms": 6222.54,
+      "ms_per_question": 622.82
+    },
+    "hindi_1q": {
+      "p50_ms": 256.68,
+      "p95_ms": 258.77,
+      "mean_ms": 256.9,
+      "min_ms": 255.42,
+      "ms_per_question": 256.68
+    },
+    "hindi_10q": {
+      "p50_ms": 2647.34,
+      "p95_ms": 2656.49,
+      "mean_ms": 2648.45,
+      "min_ms": 2644.27,
+      "ms_per_question": 264.73
+    }
+  },
+  "routing_overhead_hot_ms": -16.22,
+  "router_cold_swap": {
+    "samples_ms": [
+      2860.5,
+      6182.8,
+      2879.8,
+      6134.8
+    ],
+    "median_ms": 4507.3
+  },
+  "mixed_workload": {
+    "0%_non_english/max_loaded=1": {
+      "total_s": 282.53,
+      "mean_ms_per_call": 2825.3,
+      "calls_per_s": 0.4
+    },
+    "0%_non_english/max_loaded=3": {
+      "total_s": 283.23,
+      "mean_ms_per_call": 2832.3,
+      "calls_per_s": 0.4
+    },
+    "10%_non_english/max_loaded=1": {
+      "total_s": 268.44,
+      "mean_ms_per_call": 2684.4,
+      "calls_per_s": 0.4
+    },
+    "10%_non_english/max_loaded=3": {
+      "total_s": 261.34,
+      "mean_ms_per_call": 2613.4,
+      "calls_per_s": 0.4
+    },
+    "30%_non_english/max_loaded=1": {
+      "total_s": 254.58,
+      "mean_ms_per_call": 2545.8,
+      "calls_per_s": 0.4
+    },
+    "30%_non_english/max_loaded=3": {
+      "total_s": 240.06,
+      "mean_ms_per_call": 2400.6,
+      "calls_per_s": 0.4
+    },
+    "50%_non_english/max_loaded=1": {
+      "total_s": 209.41,
+      "mean_ms_per_call": 2094.1,
+      "calls_per_s": 0.5
+    },
+    "50%_non_english/max_loaded=3": {
+      "total_s": 192.4,
+      "mean_ms_per_call": 1924.0,
+      "calls_per_s": 0.5
+    }
+  }
+}

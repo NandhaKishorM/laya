@@ -17,12 +17,16 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--model", default="convaiinnovations/laya"); ap.add_argument("--subfolder", default=None)
 ap.add_argument("--eval", type=int, default=0, help="samples per dataset for the accuracy comparison (0 = skip)")
 ap.add_argument("--iters", type=int, default=30); ap.add_argument("--json", default=None)
+ap.add_argument("--dtype", choices=["bf16", "fp16"], default=None, help="autocast dtype for stock and fast (default: the agent's)")
 args = ap.parse_args()
 
 agent = laya.load(args.model, subfolder=args.subfolder)
 if agent.device.type != "cuda":
     sys.exit("needs a CUDA device")
-report = {"model": args.model, "subfolder": args.subfolder, "gpu": torch.cuda.get_device_name(0), "torch": torch.__version__}
+if args.dtype:
+    agent.dtype = {"bf16": torch.bfloat16, "fp16": torch.float16}[args.dtype]
+report = {"model": args.model, "subfolder": args.subfolder, "gpu": torch.cuda.get_device_name(0), "torch": torch.__version__,
+          "dtype": str(agent.dtype)}
 
 Q = {"department": {"type": "choice", "instructions": "Which team should handle this?",
                     "criteria": {"billing": "invoices, refunds", "technical": "bugs, outages", "sales": "pricing", "shipping": "delivery"}},

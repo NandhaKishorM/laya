@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
 
+# Cancel outdated pull request runs; let runs on main finish.
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -15,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build ARM64 CUDA 13.0 image
         run: docker build --pull --build-arg TORCH_INDEX=cu130 -t laya:spark .
       - name: Check CUDA libraries and dependencies without a GPU
@@ -29,6 +34,9 @@ jobs:
           print(torch.__version__, cusparselt.version())
           '
           docker run --rm --network none laya:spark pip check
+      # torch 2.14 compiles Triton kernels on the first CUDA inference unless this is set (#365).
+      - name: A CUDA image must keep torch's native Triton JIT off
+        run: docker run --rm --network none laya:spark sh -c 'test "$TORCH_DISABLE_NATIVE_JIT" = 1'
 
   smoke:
     # Native runners for both architectures; torch wheels install for the target, so
@@ -40,7 +48,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Validate Compose and build CPU image
         run: |
           docker compose -f compose.yaml -f compose.spark.yaml config --quiet
@@ -111,7 +119,7 @@ jobs:
       LAYA_PRELOAD: "0"
       LAYA_API_KEY: ci-test-key
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Start laya-serve and wait until healthy
         run: docker compose up --build -d --wait --wait-timeout 300 laya-serve
       - name: Check binding, health and bearer auth

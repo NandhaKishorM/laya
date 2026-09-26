@@ -5,9 +5,15 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel outdated pull request runs. On main, let a started run finish: merges land minutes
+  # apart, and cancelling there left whole bursts of merges without a result of their own. A
+  # newer push still replaces a run that is queued and has not started.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   # transformers probes for TensorFlow at import; when TF is present its abseil runtime can
@@ -20,6 +26,7 @@ jobs:
   typescript:
     name: TypeScript (node${{ matrix.node }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: laya-ts
@@ -28,8 +35,8 @@ jobs:
       matrix:
         node: ["20", "22"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -43,25 +50,30 @@ jobs:
   feishu-benchmark:
     name: Chinese benchmark audit (no models or API)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - run: python research/benchmarks/feishu_zh/audit.py
       - run: python -m unittest discover -s research/benchmarks/feishu_zh/tests -v
+      # This job installs nothing, so running the audit here is what proves it needs
+      # nothing but the standard library. Its test suite imports numpy and runs in `test`.
+      - run: python research/benchmarks/zh_short_commands/audit.py
 
   test:
     name: tests (py${{ matrix.python }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         # Keep this in lockstep with pyproject classifiers; packaging tests enforce that.
         python: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -71,8 +83,12 @@ jobs:
           python -m pip install --upgrade pip
           # CPU-only torch keeps the job under a minute instead of pulling CUDA wheels
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          # Install with the mcp extra so laya[mcp] resolution and the laya.mcp layer are both exercised
-          pip install -e ".[mcp]"
+          # `mcp` so laya[mcp] resolution and the laya.mcp layer are both exercised, and
+          # `serve` because laya.serve and examples/server.py both import fastapi -- without
+          # it every test that touches them skips itself silently and passes.
+          pip install -e ".[mcp,serve]" httpx
+          # The pytest-style suites need the runner; nothing else in this job uses it.
+          pip install pytest
 
       - name: Import check
         run: python -c "import laya; print(laya.__version__); print(sorted(laya.__all__))"
@@ -82,10 +98,12 @@ jobs:
           python tests/test_router.py
           python tests/test_criteria.py
           python tests/test_batch.py
+          python tests/test_predict_long.py
           python tests/test_hooks.py
           python tests/test_hooks_api.py
           python tests/test_structured.py
           python tests/test_structured_api.py
+          python tests/test_onnx_lang_parity.py
           python tests/test_download.py
           python tests/test_shortlist.py
           python tests/test_decision_model.py
@@ -93,9 +111,12 @@ jobs:
           python tests/test_packaging.py
           python tests/test_doc_tables.py
           python tests/test_tokenizer_cache.py
+          python tests/test_tokenizer_concurrency.py
           python tests/test_lazy_import.py
           python tests/test_runtime_fixes.py
           python tests/test_lang_guess.py
+          python tests/test_identifier_complexity.py
+          python tests/test_lang_stats.py
           python tests/test_calibration_persistence.py
           python tests/test_context_manager.py
           python tests/test_criteria_normalization.py
@@ -110,9 +131,60 @@ jobs:
           python tests/test_langchain.py
           python tests/test_portability.py
           python tests/test_training.py
+          python tests/test_example_server_limits.py
 
       - name: Email cleaning tests
         run: python tests/test_email.py
+      # Full dependency tree here, so the stub pipeline and the metric pins that need numpy
+      # run instead of skipping. The audit itself runs in `feishu-benchmark`, where nothing
+      # is installed.
+      - name: Chinese short-command benchmark tests
+        run: python -m unittest discover -s research/benchmarks/zh_short_commands/tests -v
+
+      # These four are pytest suites, and `python tests/<name>.py` does not run them: it defines
+      # the test functions and exits 0, having asserted nothing. They were counted by the suite
+      # list above without ever executing, which is how the HTTP surface came to have no coverage
+      # in CI at all (#374).
+      #
+      # test_onnx.py and test_fast.py are deliberately not here: both are skip-guarded on an extra
+      # this job does not install, so they would pass trivially, and their real execution belongs
+      # in a lane that installs `onnx` or has a GPU.
+      - name: Pytest suites (serve, batch, system-one, audit regressions, truncation)
+        run: |
+          python -m pytest tests/test_serve.py \
+                           tests/test_router_batch.py \
+                           tests/test_system_one_lang.py \
+                           tests/test_audit_regressions.py \
+                           tests/test_truncation_direction.py \
+                           -q
+
+  # The eval harness needs numpy and laya only, so it stays a separate, weight-free job: metric
+  # math, dataset parsing, the CLI and the API guard. The real-checkpoint gate is the scheduled
+  # `evals` workflow, which needs weights and network.
+  evals:
+    name: evals (metric math, dataset, API guard)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e . pytest
+
+      - name: Eval harness tests
+        run: python -m pytest tests/test_evals.py -q
+
+      - name: Eval API guard
+        run: python tests/test_evals_api.py
+
+      - name: Fixture dataset validates
+        run: laya-evals validate research/evals/fixture.jsonl
 
   # Every workflow in this repo ran on ubuntu-latest only, so a test that fails off Linux was
   # invisible until a user hit it -- which is what happened to tests/test_download.py (#140).
@@ -123,20 +195,24 @@ jobs:
   test-windows:
     name: tests (windows)
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
           cache: pip
 
       # The +cpu index used on Linux is Linux/macOS only. On Windows the default PyPI wheel is
       # already CPU-only, so installing torch plainly is both correct and what a user gets.
+      # The serve extra and pytest are here for the same reason as the Linux job: the HTTP
+      # surface is otherwise skipped and the pytest suites otherwise do not run at all.
       - name: Install
         run: |
           python -m pip install --upgrade pip
           pip install torch
-          pip install -e .
+          pip install -e ".[serve]"
+          pip install pytest
         shell: bash
 
       # bash on this runner so the quoting rules match the Linux job; the default shell on a
@@ -159,6 +235,7 @@ jobs:
         run: |
           for t in test_router test_criteria test_download test_shortlist \
                    test_decision_model test_packaging test_lang_guess \
+                   test_identifier_complexity \
                    test_calibration_persistence test_context_manager \
                    test_criteria_normalization test_docker_entrypoint \
                    test_empty_questions test_router_memory test_shortlist_cosine \
@@ -177,6 +254,19 @@ jobs:
           python tests/test_hooks_api.py
         shell: bash
 
+      # Same five pytest suites as the Linux job. They are named explicitly rather than added to
+      # the loop above, because the loop runs each file as a script and that is exactly what does
+      # not execute a pytest suite (#374).
+      - name: Pytest suites (serve, batch, system-one, audit regressions, truncation)
+        run: |
+          python -m pytest tests/test_serve.py \
+                           tests/test_router_batch.py \
+                           tests/test_system_one_lang.py \
+                           tests/test_audit_regressions.py \
+                           tests/test_truncation_direction.py \
+                           -q
+        shell: bash
+
       - name: Email cleaning tests
         run: python tests/test_email.py
         shell: bash
@@ -184,9 +274,10 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - run: pip install ruff
@@ -198,9 +289,10 @@ jobs:
   build:
     name: package
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - run: pip install build twine
@@ -213,7 +305,7 @@ jobs:
           pkg=$(python -c "import re;print(re.search(r'version = \"(.*)\"', open('pyproject.toml').read()).group(1))")
           tag="${GITHUB_REF_NAME#v}"
           test "$pkg" = "$tag" || { echo "pyproject $pkg != tag $tag"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dist
           path: dist/

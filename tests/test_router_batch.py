@@ -167,6 +167,20 @@ def test_same_checkpoint_different_questions_split_agent_batches(fake_agent):
     assert calls[1][2] == q2
 
 
+def test_predict_batch_honours_hooks_timeout(fake_agent):
+    def slow_hook(ctx):
+        sleep(0.3)
+
+    router = Router(hooks_timeout=0.05, on_predict_start=slow_hook)
+    with pytest.raises(TimeoutError):
+        router.predict_batch([request("one")])
+
+    # A per-call override wins, exactly as it does on `predict`.
+    router = Router(hooks_timeout=0.05, on_predict_start=slow_hook)
+    results = router.predict_batch([request("one")], hooks_timeout=5.0)
+    assert len(results) == 1
+
+
 def test_route_batch_forwards_lang_guess(fake_agent):
     built, _ = fake_agent
     router = Router()
@@ -234,3 +248,61 @@ def test_equal_questions_with_different_option_order_score_separately(fake_agent
     # separate agent calls, each carrying its own caller's option order
     orders = [list(call[2]["intent"]["criteria"]) for call in calls]
     assert orders == [["zulu", "alpha"], ["alpha", "zulu"]]
+
+
+def _lang_recording_router(monkeypatch, lang_temperatures):
+    """A Router over a fake agent that records the `lang` each batch call received."""
+    import laya.agent
+
+    calls = []
+
+    class Agent:
+        def __init__(self, repo, *, device, token, subfolder):
+            self.checkpoint = subfolder or "english"
+            if lang_temperatures is not None:
+                self.lang_temperatures = lang_temperatures
+
+        def predict_batch(self, states, questions, batch_size=None, **overrides):
+            calls.append({"n": len(states), "lang": overrides.get("lang")})
+            return [{"model": "fake", "answers": {}} for _ in states]
+
+        def system_one(self, state, questions, **overrides):
+            calls.append({"n": 1, "lang": overrides.get("lang")})
+            return {"model": "fake", "answers": {}}
+
+    monkeypatch.setattr(laya.agent, "Agent", Agent)
+    return Router(max_loaded=1, default="english"), calls
+
+
+def test_lang_reaches_the_agent_when_it_carries_lang_temperatures(monkeypatch):
+    """`predict` forwards the request's language so per-language temperatures apply; the batch
+    path forwarded only the token budgets, so the same request scored differently depending on
+    which entry point served it. The request is routed as German either way, which is what made
+    the difference hard to see."""
+    router, calls = _lang_recording_router(monkeypatch, {"de": [1.5, 1.5, 1.5]})
+    router.predict_batch([request("a", lang="de"), request("b", lang="de"), request("c", lang="fr")])
+    assert sorted(c["lang"] for c in calls) == ["de", "fr"]
+    # requests sharing a language still share one forward pass
+    assert {"n": 2, "lang": "de"} in calls
+    assert {"n": 1, "lang": "fr"} in calls
+
+
+def test_lang_is_not_added_to_the_group_key_without_lang_temperatures(monkeypatch):
+    """An agent with no per-language temperatures does not use `lang`, so naming it must not
+    split a group that shares one forward pass today. The explicit `model` keeps every request
+    on one checkpoint, so the only thing that could split the group is the lang key."""
+    router, calls = _lang_recording_router(monkeypatch, None)
+    router.predict_batch([request("a", model="english", lang="de"),
+                          request("b", model="english", lang="fr"),
+                          request("c", model="english")])
+    assert calls == [{"n": 3, "lang": None}]
+
+
+def test_predict_and_predict_batch_pass_the_same_lang(monkeypatch):
+    """The invariant that was violated: one request, either entry point, same language."""
+    router, calls = _lang_recording_router(monkeypatch, {"de": [1.5, 1.5, 1.5]})
+    router.predict("a", Q, model="english", lang="de")
+    via_predict = calls[-1]["lang"]
+    calls.clear()
+    router.predict_batch([request("a", model="english", lang="de")])
+    assert calls[-1]["lang"] == via_predict == "de"

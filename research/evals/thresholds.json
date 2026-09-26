@@ -1,0 +1,9 @@
+{
+  "comment": "Absolute drift allowed against research/results/eval_english_51_languages.json in the scheduled gate. Derived from that baseline with headroom for run-to-run noise; tighten only with a measured run.",
+  "languages": ["en"],
+  "tolerance": {
+    "accuracy": 0.02,
+    "ece": 0.03,
+    "mean_confidence": 0.03
+  }
+}

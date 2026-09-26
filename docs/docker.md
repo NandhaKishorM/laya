@@ -48,6 +48,12 @@ The sample rejects unavailable CUDA before loading a checkpoint. Laya can still
 fall back to CPU after a memory or inference error, so inspect its warnings.
 Rebuild when switching between CPU and CUDA configurations.
 
+The image sets `TORCH_DISABLE_NATIVE_JIT=1`. PyTorch 2.14 otherwise replaces some eager
+CUDA ops with Triton kernels that it compiles on the first inference, which needs a C
+compiler the slim image does not carry: the container reports healthy and then fails every
+request (#365). The stock kernels give the same answers at the same latency. Set the same
+variable on a bare-metal install if `predict` fails with `Failed to find C compiler`.
+
 This uses [Compose GPU reservations](https://docs.docker.com/compose/how-tos/gpu-support/).
 Windows requires Docker Desktop's supported WSL2 GPU setup. Apple MPS,
 AMD/ROCm and Intel GPU containers are outside this quickstart; use CPU unless
@@ -128,10 +134,12 @@ checkpoints need no token.
 
 ## Fine-tuned checkpoints
 
-This image runs inference. Training scripts are tracked in
+This image runs inference. Fine-tuning happens outside it — the
+[fine-tuning notebook](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb)
+runs the whole loop on Kaggle's free 2xT4 GPUs and exports a checkpoint this image can
+serve. Background and open questions about the training interface stay in
 [#4](https://github.com/NandhaKishorM/laya/issues/4) and
-[#26](https://github.com/NandhaKishorM/laya/issues/26); training commands can follow
-once that interface is available.
+[#26](https://github.com/NandhaKishorM/laya/issues/26).
 
 Point `LAYA_CHECKPOINT_PATH` to an absolute host directory containing
 `rl_agent_config.json`, `model.safetensors` and matching tokenizer files:

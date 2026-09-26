@@ -53,6 +53,11 @@ describe("audit regressions", () => {
     expect(() => checkQuestion("q", { type: "choice", instructions: "?", criteria: ["yes"], labels: { false: "No", true: "Yes" } })).toThrow("labels");
   });
 
+  it("rejects a null score level, as Python does (#302)", () => {
+    expect(() => checkQuestion("q", { type: "score", instructions: "?", criteria: ["low", null, "high"] })).toThrow("level 1");
+    expect(() => checkQuestion("q", { type: "score", instructions: "?", criteria: ["low", "mid", undefined] })).toThrow("level 2");
+  });
+
   it("rejects malformed provider output", async () => {
     const agent = new Agent({ provider: {
       async runEncoder(_batch: any) { return { lastHidden: [[[0, 0]]] }; },

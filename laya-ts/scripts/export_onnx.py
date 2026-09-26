@@ -61,6 +61,14 @@ def _ensure_tokenizer_json(model_dir):
             shutil.copy(src, dest)
 
 
+def _checkpoint_weights_path(model_dir):
+    """Require the checkpoint's safetensors weights before building a model."""
+    path = os.path.join(model_dir, "model.safetensors")
+    if not os.path.isfile(path):
+        raise SystemExit("checkpoint is missing model.safetensors: %s" % model_dir)
+    return path
+
+
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     src = p.add_mutually_exclusive_group(required=True)
@@ -81,6 +89,7 @@ def main(argv=None):
     if build_model is None:
         raise SystemExit("export needs torch + laya installed: pip install torch transformers onnx onnxruntime")
     model_dir = args.model_dir or _download(args.repo or DEFAULT_REPO, args.subfolder, args.token)
+    weights_path = _checkpoint_weights_path(model_dir)
     _ensure_tokenizer_json(model_dir)
     import torch
 
@@ -132,17 +141,9 @@ def main(argv=None):
     enc_dir = os.path.join(model_dir, "encoder")
     model = build_model(cfg, encoder_dir=enc_dir if os.path.exists(enc_dir) else None,
                         pretrained=False)
-    try:
-        from safetensors.torch import load_file as _load_safetensors
+    from safetensors.torch import load_file as _load_safetensors
 
-        for name in ("model.safetensors", "pytorch_model.bin"):
-            path = os.path.join(model_dir, name)
-            if os.path.exists(path):
-                state = _load_safetensors(path) if name.endswith(".safetensors") else torch.load(path, map_location="cpu")
-                model.load_state_dict(state, strict=False)
-                break
-    except ImportError:
-        pass
+    model.load_state_dict(_load_safetensors(weights_path), strict=False)
     model.eval().float()
 
     # Batch must stay symbolic: tracing with batch=1 lets dynamo bake batch=1

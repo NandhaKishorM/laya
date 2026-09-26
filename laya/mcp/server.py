@@ -42,6 +42,7 @@ from .tools import (
     laya_predict,
     laya_preset,
     laya_route,
+    laya_shortlist,
     laya_status,
 )
 
@@ -69,7 +70,7 @@ _GUARDRAILS = (
     "noul (calibrated P(true)). One forward pass ~33ms (GPU) / ~200ms (CPU). "
     "No text generation, so no hallucination. Do NOT use for open Q&A, summarization, "
     "rewriting, code, or multi-hop reasoning. Do NOT use for >20-option choice "
-    "questions without shortlisting."
+    "questions without shortlisting (use the laya_shortlist tool)."
 )
 
 
@@ -180,6 +181,7 @@ def laya_route_tool(state: dict, questions: dict) -> str:
     description=(
         "Answer typed questions (choice/score/noul) over any state in one forward pass. "
         "questions: {name: {type: 'choice'|'score'|'noul', instructions: str, criteria?: object|array}}. "
+        "For noul, optional labels: {false: str, true: str} changes the model-facing option text. "
         "Returns answers with confidence, routing metadata and, when it can be read, the real "
         "device of the checkpoint that answered. "
         + _GUARDRAILS
@@ -193,6 +195,34 @@ def laya_predict_tool(state: dict, questions: dict, model: str = "auto") -> str:
         state=state,
         questions=questions,
         model=model,
+        router=router,
+    )
+
+
+@server.tool(
+    name="laya_shortlist",
+    description=(
+        "Shortlist a many-option choice question to its k most likely labels by embedding "
+        "similarity (mean-pooled from the answering checkpoint's own encoder, so no extra "
+        "model is downloaded), then answer in one forward pass. Use this instead of "
+        "laya_predict whenever a choice question has more options than the guardrails allow. "
+        "Returns the answers plus per-question shortlist metadata (kept labels, cosine "
+        "scores, k, option count). "
+        + _GUARDRAILS
+    ),
+)
+def laya_shortlist_tool(state: dict, questions: dict, model: str = "auto", k: int = 20) -> str:
+    """Shortlist many-option choice questions, then answer."""
+    # k's default mirrors laya.shortlist.DEFAULT_SHORTLIST_K; it is a literal
+    # here so the MCP schema carries the default without importing numpy at
+    # server start.
+    router = _router_or_error()
+    return _wrap(
+        laya_shortlist,
+        state=state,
+        questions=questions,
+        model=model,
+        k=k,
         router=router,
     )
 

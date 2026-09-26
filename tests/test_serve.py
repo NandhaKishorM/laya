@@ -4,6 +4,7 @@ A fake Router is injected so nothing loads a checkpoint; we only assert that the
 HTTP layer maps requests/responses and enforces auth as hs-jev expects.
 """
 import json
+import logging
 
 import pytest
 
@@ -97,6 +98,7 @@ def test_missing_questions_is_400(monkeypatch):
     b"",                    # empty body
     b"\xff\xfe\x00bad",     # invalid UTF-8
     b'{"questions": ',      # truncated
+    pytest.param(b"[" * 100000, id="deeply-nested"),  # raises RecursionError, not ValueError
 ])
 def test_malformed_json_body_is_400(monkeypatch, payload):
     """A body that isn't valid JSON must not fall through to an unstyled 500."""
@@ -199,10 +201,14 @@ def test_body_read_preserves_parse_error_codes(monkeypatch):
         assert r.status_code == 400, (payload, r.status_code)
 
 
-def test_health(monkeypatch):
+def test_health_supports_router_without_loaded_revisions(monkeypatch):
+    # FakeRouter deliberately has no loaded_revisions attribute. Injected test or
+    # embedding routers predating revision reporting must remain health-compatible.
     client, _ = _client(monkeypatch)
     r = client.get("/health")
-    assert r.status_code == 200 and r.json()["status"] == "ok"
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+    assert r.json()["revisions"] == {}
 
 
 def test_helpers():
@@ -315,3 +321,211 @@ def test_health_stays_available_during_inference(monkeypatch):
     assert seen["slow"] == 200
     assert seen["health"] == 200 and seen["payload"]["status"] == "ok"
     assert fake.threads and "MainThread" not in fake.threads, fake.threads
+
+
+class ExplodingRouter:
+    """Fails the way a container missing triton's C compiler does (#365).
+
+    The message is the shape a real failure takes: it names a path and a tool, which is
+    exactly what must not reach the client and exactly what the operator needs.
+    """
+
+    loaded = ["multilingual"]
+
+    def __init__(self, message):
+        self.message = message
+
+    def predict(self, state, questions, model=None):
+        raise RuntimeError(self.message)
+
+
+def test_inference_failure_is_logged_and_not_leaked(monkeypatch, caplog):
+    """A failed inference still returns a bare 500, but the cause reaches the log.
+
+    The client-facing message is deliberately fixed, so the server log is the only place
+    the real exception can appear. Before this, the log carried nothing at all: a
+    deterministic failure was visible only as `POST /v1/systemone HTTP/1.1" 500`, and the
+    cause had to be reproduced in-process to be found.
+    """
+    secret = ("Failed to find C compiler. Please specify via CC environment variable "
+              "or set triton.knobs.build.impl (/opt/venv/lib/python3.11/site-packages/triton)")
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    client = TestClient(create_app(router=ExplodingRouter(secret)), raise_server_exceptions=False)
+
+    with caplog.at_level(logging.ERROR, logger="laya.serve"):
+        response = client.post("/v1/systemone", json=REQ)
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "inference failed"}
+    for leaked in ("C compiler", "triton", "/opt/venv", "site-packages"):
+        assert leaked not in response.text, response.text
+
+    logged = "\n".join(r.getMessage() if isinstance(r.getMessage(), str) else str(r.msg)
+                       for r in caplog.records)
+    assert any(r.levelno == logging.ERROR for r in caplog.records), caplog.records
+    # the traceback has to be in the record, not only the summary line
+    assert any(r.exc_info for r in caplog.records), "no exc_info on the failure record"
+    assert "inference failed" in logged
+
+
+def test_validation_errors_are_not_logged_as_failures(monkeypatch, caplog):
+    """A 422 is the caller's mistake and must not be logged as a server error.
+
+    `ValueError` from the router is mapped to 422 with its message intact, because those
+    messages name the question and what to fix. Only the bare `except Exception` below it
+    reports a server fault, so only that branch logs.
+    """
+    class RejectingRouter:
+        loaded = ["english"]
+
+        def predict(self, state, questions, model=None):
+            raise ValueError("question 'q': a choice question needs at least one criterion")
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    client = TestClient(create_app(router=RejectingRouter()), raise_server_exceptions=False)
+
+    with caplog.at_level(logging.ERROR, logger="laya.serve"):
+        response = client.post("/v1/systemone", json=REQ)
+
+    assert response.status_code == 422, response.text
+    assert "at least one criterion" in response.text, response.text
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR], caplog.records
+
+
+def test_a_nested_choice_label_is_a_caller_error_not_a_server_fault(monkeypatch):
+    """A `criteria` list containing a list/dict label is the caller's mistake, so it must be 422.
+
+    It used to raise `TypeError: unhashable type: 'list'` from `_to_internal`, three frames below
+    `_check_question`, which names neither the question nor the label -- and `serve` maps only
+    `ValueError` to 422, so the caller got a 500 "inference failed" with the reason discarded.
+    `ValueError` is what carries the message to the client, so the guard has to raise that type.
+    """
+    class ValidatingRouter:
+        """The real guard, without a checkpoint: what `Agent.system_one` runs before encoding.
+
+        The app does not validate `criteria` itself -- the agent does -- so the stub calls the
+        same guard `system_one` calls, and any `ValueError` it raises is what `serve` has to map
+        to 422. `predict` still fails loudly if the guard lets something through.
+        """
+
+        loaded = ["english"]
+
+        def predict(self, state, questions, model=None):
+            from laya.agent import Agent
+            for qid, qdef in questions.items():
+                Agent._check_question(qid, qdef)
+            raise AssertionError("validation should have rejected this before predict()")
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    client = TestClient(create_app(router=ValidatingRouter()), raise_server_exceptions=False)
+
+    for label in (["billing"], {"billing": "x"}):
+        body = dict(REQ)
+        body["questions"] = {"dept": {"type": "choice", "instructions": "Which team?",
+                                      "criteria": [label, "tech"]}}
+        response = client.post("/v1/systemone", json=body)
+        assert response.status_code == 422, (label, response.status_code, response.text)
+        assert "choice label 0" in response.text, response.text
+
+
+def test_inference_timing_headers():
+    """POST /v1/systemone returns Server-Timing and X-Inference-Time-Ms headers."""
+    router = FakeRouter()
+    client = TestClient(create_app(router=router))
+    res = client.post("/v1/systemone", json={
+        "state": "test timing",
+        "questions": {"dept": {"type": "choice", "instructions": "which?", "criteria": {"billing": "invoices"}}}
+    })
+    assert res.status_code == 200
+    assert "Server-Timing" in res.headers
+    assert res.headers["Server-Timing"].startswith("inference;dur=")
+    assert "X-Inference-Time-Ms" in res.headers
+    dur = float(res.headers["X-Inference-Time-Ms"])
+    assert dur >= 0.0
+
+
+def test_a_missing_state_is_rejected_rather_than_answered():
+    """No `state` key, or `"state": null`, must be a 400 and not a decision about "null".
+
+    `serialize_state(None)` is `json.dumps(None)` -- the four characters `null` -- so the request
+    was answered as a decision about that literal text: HTTP 200, byte-identical to sending
+    `"state": "null"`, and at ~0.94 confidence on the real checkpoint. The caller gets an answer
+    about a state they never supplied, with nothing in the response to say so.
+    """
+    router = FakeRouter()
+    client = TestClient(create_app(router=router))
+    questions = {"dept": {"type": "choice", "instructions": "which?",
+                          "criteria": {"billing": "invoices"}}}
+
+    for body in ({"questions": questions},                      # no state key
+                 {"state": None, "questions": questions}):      # explicit null
+        res = client.post("/v1/systemone", json=body)
+        assert res.status_code == 400, (body, res.status_code, res.text)
+        assert "'state' is required" in res.text, res.text
+
+    # a state that IS a string is the caller's business, including the text "null" and ""
+    for state in ("null", "", "0"):
+        res = client.post("/v1/systemone", json={"state": state, "questions": questions})
+        assert res.status_code == 200, (state, res.status_code, res.text)
+
+
+class GatedRouter(FakeRouter):
+    """Blocks inside predict until released, so a second request arrives while
+    the first still holds its admission slot (#330)."""
+
+    def __init__(self):
+        super().__init__()
+        import threading
+        self.entered = threading.Event()
+        self.release = threading.Event()
+
+    def predict(self, state, questions, model=None):
+        self.entered.set()
+        assert self.release.wait(timeout=10), "test did not release the router"
+        return super().predict(state, questions, model=model)
+
+
+def test_admission_bound_refuses_with_503_when_full(monkeypatch):
+    """With one admission slot and inference blocked, a second concurrent
+    request gets 503 instead of queueing another body in memory."""
+    import asyncio
+
+    import httpx
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = GatedRouter()
+    app = create_app(router=fake)
+    seen = {}
+
+    async def drive():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+            first = asyncio.ensure_future(client.post("/v1/systemone", json=REQ))
+            # Poll: a blocking wait here would stall the loop the first
+            # request needs to reach inference.
+            for _ in range(200):
+                if fake.entered.is_set():
+                    break
+                await asyncio.sleep(0.05)
+            assert fake.entered.is_set(), "first request never reached inference"
+            # Give the first request a moment to settle past the gate too, so the
+            # second request deterministically finds the slot taken.
+            await asyncio.sleep(0.2)
+            seen["second"] = (await client.post("/v1/systemone", json=REQ)).status_code
+            fake.release.set()
+            seen["first"] = (await first).status_code
+
+    asyncio.run(drive())
+
+    assert seen["second"] == 503, seen
+    assert seen["first"] == 200, seen
+
+
+def test_admission_slot_is_released_after_inference(monkeypatch):
+    """Slots are reusable: sequential requests with a bound of one all pass."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    client = TestClient(create_app(router=FakeRouter()))
+    assert client.post("/v1/systemone", json=REQ).status_code == 200
+    assert client.post("/v1/systemone", json=REQ).status_code == 200

@@ -5,13 +5,28 @@ const QUOTE_HEADERS: RegExp[] = [
   /^\s*-{2,}\s*(Original|Forwarded) Message\s*-{2,}/i,
   /^\s*-{2,}\s*(Mensagem (original|encaminhada)|Mensaje (original|reenviado))\s*-{2,}/i,
   /^\s*_{8,}\s*$/,
-  /^\s*From:\s.+$/i,
+  // `From:` opens ordinary prose too ("From: my side the integration works, but please
+  // refund..."), and a reply header always carries the sender, so the header is only recognised
+  // when an address follows -- the same rule as `De:` below. A bare `From: Name` header is
+  // caught by HEADER_FROM_NAME/HEADER_NEXT instead, which need the header's own `Sent:`/`Date:`
+  // line to tell it apart from a sentence.
+  /^\s*From:\s.*[@<]/i,
+  // `De:` also opens ordinary Portuguese/Spanish lines ("De: 10/09 a 15/09"), so the Outlook
+  // header is only recognised when it carries an address
   /^\s*De:\s.*[@<]/i,
 ];
 const ATTRIBUTION_TAIL = /^.{0,120}\S@\S+\s+(wrote|escreveu|escribi[óo]):\s*$/i;
 const ATTRIBUTION_HEAD = /^\s*(On|Em|El) (?=.*\d)/i;
-const HEADER_FROM_NAME = /^\s*De:\s+\S/i;
-const HEADER_NEXT = /^\s*(Enviad[oa]( em| el)?:\s|(Data|Fecha):\s.*\d{4})/i;
+// Exchange often leaves the address out of Outlook's reply header ("De: Maria Souza"), so a bare
+// `De:` only cuts when the header's own `Enviado:` line, or a dated `Data:`/`Fecha:` line, follows
+// it. `Para:` is not enough: "De: 10/09 / Para: 15/09" is how a leave request reads.
+//
+// The same is true of a bare English `From: Maria Souza`, which is why the marker above needs
+// this rule: the English client lines are the translations of the two `De:` neighbours. A line
+// that only looks like prose still has to be told apart from a header by its neighbours, so the
+// English pair is "From: <name>" followed by "Sent:"/"Date:".
+const HEADER_FROM_NAME = /^\s*(De|From):\s+\S/i;
+const HEADER_NEXT = /^\s*(Enviad[oa]( em| el)?:\s|Sent:\s|(Data|Fecha|Date):\s.*\d{4})/i;
 // A closing line is the closing word plus punctuation and at most a name. Anything else on
 // the line is a sentence, and the case of the next word is what separates the two: a name is
 // capitalised, "for" in "Thanks for the quick reply." is not. JS regexes have no scoped
@@ -45,7 +60,15 @@ const DEVICE_FOOTER = new RegExp(
   "i",
 );
 const DISCLAIMER = new RegExp(
-  "(confidential|intended (solely )?for the (use of the )?(named )?(addressee|recipient)|" +
+  // English is tied to a disclaimer noun and a disclaimer tail, the way the Portuguese branches
+  // below are. The bare word matched any sentence that merely mentioned it, so "Is this
+  // confidential?" and "Confidential: I need a refund." were deleted whole and the model was
+  // scored on an empty state. `[^.]` rather than `[^.\n]`: a footer wraps, so "are\nconfidential"
+  // must still match.
+  "(\\b(e-?mail|message|information|communication|transmission|contents?)\\b[^.]{0,60}" +
+    "\\bconfidential\\b[^.]{0,60}\\b(intended|solely|addressee|recipient|privileged|" +
+    "disclos|unauthori[sz]ed)|" +
+    "\\bconfidential\\b[^.]{0,60}\\b(and (may|is) (also )?privileged)|" +
     "if you (have )?received this (e-?mail|message) in error|" +
     "\\b(esta|este) (mensagem|e-?mail|mensaje|correo)\\b[^.]{0,80}(confidencia|sigilos|privilegiad)|" +
     "\\b(uso exclusivo|exclusivamente|únicamente|unicamente)\\b[^.]{0,30}" +

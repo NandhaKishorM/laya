@@ -70,6 +70,9 @@ check("map/boolean is noul", questions["needs_human"]["type"], "noul")
 check("map/integer enum becomes a choice", questions["priority"]["type"], "choice")
 check("map/integer enum labels are strings", list(questions["priority"]["criteria"]), ["1", "2", "3"])
 check("map/plan has one field per property", len(plan_from_json_schema(SCHEMA)), 4)
+check("map/nullable boolean remains noul",
+      questions_from_json_schema({"type": "object", "properties": {"a": {"type": ["null", "boolean"]}}})["a"]["type"],
+      "noul")
 
 
 # --------------------------------------------------------------- projection
@@ -101,6 +104,12 @@ def _bad(schema):
 
 check_raises("reject/free string", SchemaError,
              _bad({"type": "object", "properties": {"a": {"type": "string"}}}))
+check_raises("reject/multiple non-null types", SchemaError,
+             _bad({"type": "object", "properties": {"a": {"type": ["boolean", "integer"],
+                                                              "minimum": 0, "maximum": 2}}}))
+check_raises("reject/nullable union of multiple types", SchemaError,
+             _bad({"type": "object", "properties": {"a": {"type": ["null", "integer", "boolean"],
+                                                              "minimum": 0, "maximum": 2}}}))
 check_raises("reject/array", SchemaError,
              _bad({"type": "object", "properties": {"a": {"type": "array", "items": {"type": "string"}}}}))
 check_raises("reject/nested object", SchemaError,
@@ -115,6 +124,14 @@ check_raises("reject/too many properties", SchemaError,
              _bad({"type": "object", "properties": {("p%d" % i): {"type": "boolean"} for i in range(33)}}))
 check_raises("reject/too many options", SchemaError,
              _bad({"type": "object", "properties": {"a": {"type": "string", "enum": ["v%d" % i for i in range(33)]}}}))
+for colliding in ([1, "1"], [None, "null"], [True, "True"]):
+    check_raises("reject/colliding enum %r" % colliding, SchemaError,
+                 _bad({"type": "object", "properties": {"x": {"enum": colliding}}}))
+try:
+    questions_from_json_schema({"type": "object", "properties": {"x": {"enum": [1, "1"]}}})
+except SchemaError as exc:
+    check("reject/colliding enum names the field", str(exc),
+          "properties.x: enum values produce duplicate choice labels")
 check_raises("reject/non-object root", SchemaError, _bad({"type": "array"}))
 check_raises("reject/empty properties", SchemaError, _bad({"type": "object", "properties": {}}))
 
@@ -192,6 +209,34 @@ check("method/Router.decide", callable(getattr(laya.Router, "decide", None)), Tr
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 
 check("method/ONNXAgent.decide", callable(getattr(ONNXAgent, "decide", None)), True)
+
+
+# --------------------------------------------------------------- nullable via anyOf (pydantic v2)
+# Pydantic v2 renders Optional[X] as {"anyOf": [<X>, {"type": "null"}]}, the same nullable intent
+# as the list form type:["string","null"]. Both must map to the underlying field, not raise.
+NULLABLE = {
+    "type": "object",
+    "properties": {
+        "dept": {"anyOf": [{"type": "string", "enum": ["billing", "sales"]}, {"type": "null"}],
+                 "description": "Which team?"},
+        "score": {"anyOf": [{"type": "integer", "minimum": 0, "maximum": 2}, {"type": "null"}]},
+        "flag": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
+    },
+}
+nq = questions_from_json_schema(NULLABLE)
+check("nullable/anyOf enum is a choice", nq["dept"]["type"], "choice")
+check("nullable/anyOf carries the outer description", nq["dept"]["instructions"], "Which team?")
+check("nullable/anyOf bounded integer is a score", nq["score"]["type"], "score")
+check("nullable/anyOf boolean is a noul", nq["flag"]["type"], "noul")
+# oneOf is accepted the same way
+check("nullable/oneOf enum is a choice",
+      questions_from_json_schema(
+          {"type": "object", "properties": {"a": {"oneOf": [{"enum": ["x", "y"]}, {"type": "null"}]}}}
+      )["a"]["type"], "choice")
+# a union of two real types stays ambiguous and is rejected
+check_raises("nullable/two real branches rejected", SchemaError,
+             _bad({"type": "object",
+                   "properties": {"a": {"anyOf": [{"type": "boolean"}, {"type": "integer"}]}}}))
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

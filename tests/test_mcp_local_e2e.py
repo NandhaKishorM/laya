@@ -2,7 +2,7 @@
 
 Launches ``python -m laya.mcp.server`` as a subprocess and speaks MCP over
 stdin/stdout (newline-delimited JSON-RPC), exactly like a real MCP client.
-Exercises laya_predict, laya_preset, laya_route and laya_status against the
+Exercises laya_predict, laya_preset, laya_route, laya_shortlist and laya_status against the
 live checkpoints (downloaded via huggingface_hub on first run, cached
 afterwards).
 
@@ -115,7 +115,7 @@ def main():
 
         tools = client.request("tools/list", {})
         names = sorted(t["name"] for t in tools.get("tools", []))
-        ok("e2e/tool_names", names == ["laya_predict", "laya_preset", "laya_route", "laya_status"], repr(names))
+        ok("e2e/tool_names", names == ["laya_predict", "laya_preset", "laya_route", "laya_shortlist", "laya_status"], repr(names))
 
         ticket = {
             "state": {
@@ -164,6 +164,46 @@ def main():
             payload = json.loads(result["content"][0]["text"])
             ok("e2e/route_model", payload.get("model") in ("english", "multilingual", "typed-decisions"), repr(payload))
             ok("e2e/route_reason", bool(payload.get("reason")), repr(payload))
+
+            # laya_shortlist: k < n exercises the real embedding shortlist
+            # (mean-pooled from the answering checkpoint's encoder) plus one
+            # forward pass over the kept labels. Which two labels the
+            # embeddings keep is checkpoint-dependent, so only the structural
+            # contract is asserted: 2 kept labels, descending cosine scores,
+            # and an answer drawn from the kept set.
+            shortlist_call = {
+                "state": ticket["state"],
+                "questions": {
+                    "department": {
+                        "type": "choice",
+                        "instructions": "Which team should handle this ticket?",
+                        "criteria": {
+                            "billing": "payment, invoice, refund, duplicate charge",
+                            "technical": "bug, outage, integration problem",
+                            "account": "login, password, profile settings",
+                        },
+                    },
+                },
+                "k": 2,
+            }
+            result = client.request("tools/call", {"name": "laya_shortlist", "arguments": shortlist_call})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/shortlist_not_error", not result.get("isError"), repr(result.get("isError")))
+            ans = (payload.get("answers") or {}).get("department") or {}
+            meta = (payload.get("shortlist") or {}).get("department") or {}
+            kept = meta.get("labels") or []
+            scores = meta.get("scores") or []
+            ok("e2e/shortlist_meta_shape", meta.get("k") == 2 and meta.get("n") == 3
+               and meta.get("passthrough") is False and len(kept) == 2, repr(meta))
+            ok("e2e/shortlist_scores_descending", len(scores) == 2
+               and all(isinstance(s, float) for s in scores) and scores[0] >= scores[1],
+               repr(scores))
+            ok("e2e/shortlist_choice_in_kept", ans.get("choice") in kept,
+               "choice=%r kept=%r" % (ans.get("choice"), kept))
+            ok("e2e/shortlist_routing_model", (payload.get("routing") or {}).get("model")
+               in ("english", "multilingual", "typed-decisions"), repr(payload.get("routing")))
+            ok("e2e/shortlist_latency", 0 < payload.get("latency_ms", -1) < 60_000,
+               repr(payload.get("latency_ms")))
 
             result = client.request("tools/call", {"name": "laya_status", "arguments": {}})
             payload = json.loads(result["content"][0]["text"])

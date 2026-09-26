@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Protocol, Sequence
 
 from .device import agent_device, device_report, router_agent
 
@@ -63,14 +63,14 @@ def validate_questions(questions: Any) -> dict:
                     "invalid_questions",
                     f"questions[{name}].criteria must be a non-empty object of label -> description",
                 )
-            entry["criteria"] = {str(k): str(v) for k, v in criteria.items()}
+            entry["criteria"] = {str(k): v for k, v in criteria.items()}
         elif qtype == "score":
             if not isinstance(criteria, list) or not criteria:
                 raise ToolError(
                     "invalid_questions",
                     f"questions[{name}].criteria must be a non-empty list of rubric levels",
                 )
-            entry["criteria"] = [str(x) for x in criteria]
+            entry["criteria"] = list(criteria)
         else:  # noul
             if criteria is not None:
                 if not isinstance(criteria, dict):
@@ -78,7 +78,9 @@ def validate_questions(questions: Any) -> dict:
                         "invalid_questions",
                         f"questions[{name}].criteria must be an object when present (noul)",
                     )
-                entry["criteria"] = {str(k): str(v) for k, v in criteria.items()}
+                entry["criteria"] = {str(k): v for k, v in criteria.items()}
+            if "labels" in spec:
+                entry["labels"] = spec["labels"]
         cleaned[name] = entry
     return cleaned
 
@@ -192,6 +194,124 @@ def laya_route(state: Any, questions: Any, *, router: Any = None) -> dict:
         "repo": getattr(decision, "repo", None),
         "reason": getattr(decision, "reason", None),
     }
+
+
+def _resident_or_load(router: Any, name: str) -> Any:
+    """The resident agent for checkpoint ``name``, loading on demand when possible.
+
+    Read-only lookup first: ``router_agent`` never calls ``load()``. A miss
+    falls back to ``Router.load``, the same on-demand build ``Router.predict``
+    performs after routing, so a lazily preloaded server (LAYA_PRELOAD=0, or a
+    checkpoint outside LAYA_MODELS) behaves exactly like ``laya_predict``.
+    """
+    resident = router_agent(router, name)
+    if resident is not None:
+        return resident
+    load = getattr(router, "load", None)
+    if load is None:
+        raise ToolError("models_not_ready", f"checkpoint {name!r} is not loaded")
+    return load(name)
+
+
+def laya_shortlist(
+    state: Any,
+    questions: Any,
+    model: Any = "auto",
+    k: Any = None,
+    *,
+    router: Any = None,
+    agent: Any = None,
+    embed_fn: Callable[[Sequence[str]], Any] | None = None,
+) -> dict:
+    """Shortlist many-option choice questions to ``k`` labels, then one predict.
+
+    The shared guardrails tell clients not to run >20-option choice questions
+    without shortlisting; this tool is that shortlisting (the in-process
+    ``laya.shortlist.predict_shortlist`` pattern over MCP). Embeddings come
+    from the answering checkpoint's own encoder (``embed_fn_from_agent``), so
+    no extra model is downloaded; ``embed_fn`` is injectable for tests or for
+    a dedicated bi-encoder.
+
+    ``routing`` reports the real route decision in auto mode (the forward
+    pass then runs with an explicit ``model=``, so routing happens once).
+    """
+    # Lazy: keeps numpy/shortlist out of module import for laya.mcp.tools.
+    from laya.shortlist import DEFAULT_SHORTLIST_K, embed_fn_from_agent, predict_shortlist
+
+    state_d = validate_state(state)
+    questions_d = validate_questions(questions)
+    model_name = validate_model(model)
+    if k is None:
+        k = DEFAULT_SHORTLIST_K
+    if isinstance(k, bool) or not isinstance(k, int) or k < 1:
+        raise ToolError("invalid_k", f"k must be a positive integer, got {k!r}")
+
+    routing: dict[str, Any]
+    if model_name == "auto":
+        if router is None:
+            raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
+        if not hasattr(router, "route"):
+            raise ToolError("internal_error", "router has no route() method")
+        decision = router.route(state_d, questions_d)
+        if isinstance(decision, dict):
+            routed = decision.get("model")
+            routing = {
+                "model": routed,
+                "repo": decision.get("repo"),
+                "reason": decision.get("reason"),
+            }
+        else:
+            routed = getattr(decision, "model", None)
+            routing = {
+                "model": routed,
+                "repo": getattr(decision, "repo", None),
+                "reason": getattr(decision, "reason", None),
+            }
+        if not isinstance(routed, str) or not routed:
+            raise ToolError("internal_error", "router.route returned no model")
+        predict_target = router
+        predict_kwargs: dict[str, Any] = {"model": routed}
+        embed_agent = _resident_or_load(router, routed)
+    elif agent is not None:
+        routing = {"model": model_name, "repo": None, "reason": "explicit model"}
+        predict_target = agent
+        predict_kwargs = {}
+        embed_agent = agent
+    else:
+        if router is None:
+            raise ToolError("models_not_ready", "no agent/router loaded")
+        routing = {"model": model_name, "repo": None, "reason": "explicit model"}
+        predict_target = router
+        predict_kwargs = {"model": model_name}
+        embed_agent = _resident_or_load(router, model_name)
+
+    if embed_fn is None:
+        try:
+            embed_fn = embed_fn_from_agent(embed_agent)
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise ToolError(
+                "models_not_ready",
+                f"cannot build shortlist embeddings from checkpoint {routing['model']!r}: {exc}",
+            ) from exc
+
+    started = time.perf_counter()
+    result = predict_shortlist(predict_target, state_d, questions_d, embed_fn, k=k, **predict_kwargs)
+    latency_ms = (time.perf_counter() - started) * 1000.0
+
+    if not isinstance(result, dict):
+        raise ToolError("internal_error", "predict returned non-object")
+    answers = _normalize_answers(result["answers"])
+    # The answering checkpoint is the embedding checkpoint in every branch.
+    device = agent_device(embed_agent)
+    out: dict[str, Any] = {
+        "answers": answers,
+        "routing": routing,
+        "shortlist": result.get("shortlist") or {},
+        "latency_ms": round(latency_ms, 3),
+    }
+    if device:
+        out["device"] = device
+    return out
 
 
 def laya_preset(

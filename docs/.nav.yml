@@ -1,0 +1,16 @@
+# Site navigation order. A page or folder that is not listed appears under Guides, so a new
+# guide shows up without an edit here; add it where it belongs once its place is clear.
+nav:
+  - index.md
+  - Guides:
+      - structured.md
+      - hooks
+      - langchain.md
+      - glob: "*"
+        ignore_no_matches: true
+  - Deployment:
+      - docker.md
+      - docker-platforms.md
+  - Fine-tuning:
+      - finetune_browser_agent.md
+  - reference

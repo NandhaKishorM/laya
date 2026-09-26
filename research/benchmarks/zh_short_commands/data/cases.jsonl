@@ -1,0 +1,18 @@
+{"id": "zh-cmd-001", "text": "快一点", "family": "speed", "gold": "faster", "notes": ""}
+{"id": "zh-cmd-002", "text": "加速", "family": "speed", "gold": "faster", "notes": ""}
+{"id": "zh-cmd-003", "text": "太慢了", "family": "speed", "gold": "faster", "notes": ""}
+{"id": "zh-cmd-004", "text": "再快些", "family": "speed", "gold": "faster", "notes": ""}
+{"id": "zh-cmd-005", "text": "慢一点", "family": "speed", "gold": "slower", "notes": ""}
+{"id": "zh-cmd-006", "text": "太快了", "family": "speed", "gold": "slower", "notes": "adversarial: contains 太 (degree marker) but means slow down"}
+{"id": "zh-cmd-007", "text": "减速", "family": "speed", "gold": "slower", "notes": ""}
+{"id": "zh-cmd-008", "text": "慢下来", "family": "speed", "gold": "slower", "notes": ""}
+{"id": "zh-cmd-009", "text": "停下", "family": "stop", "gold": "stop", "notes": ""}
+{"id": "zh-cmd-010", "text": "别动了", "family": "stop", "gold": "stop", "notes": "negation form"}
+{"id": "zh-cmd-011", "text": "急停", "family": "stop", "gold": "stop", "notes": ""}
+{"id": "zh-cmd-012", "text": "停下来别动", "family": "stop", "gold": "stop", "notes": "composed of two stop phrases"}
+{"id": "zh-cmd-013", "text": "左转", "family": "direction", "gold": "left", "notes": ""}
+{"id": "zh-cmd-014", "text": "往左一点", "family": "direction", "gold": "left", "notes": "with degree modifier 一点"}
+{"id": "zh-cmd-015", "text": "向右转", "family": "direction", "gold": "right", "notes": ""}
+{"id": "zh-cmd-016", "text": "往右边靠一下", "family": "direction", "gold": "right", "notes": ""}
+{"id": "zh-cmd-017", "text": "别太快了", "family": "speed", "gold": "slower", "notes": "adversarial: negation 别 + degree 太"}
+{"id": "zh-cmd-018", "text": "今天天气不错", "family": "other", "gold": "none", "notes": "chit-chat, not a command"}

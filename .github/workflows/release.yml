@@ -12,9 +12,10 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# Read-only by default. The two jobs that publish grant themselves more:
+# pypi takes id-token: write, github_release takes contents: write.
 permissions:
-  contents: write        # create the GitHub Release
-  id-token: write        # PyPI trusted publishing
+  contents: read
 
 env:
   USE_TF: "0"
@@ -24,8 +25,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
@@ -40,6 +41,8 @@ jobs:
           python tests/test_router.py
           python tests/test_criteria.py
           python tests/test_batch.py
+          python tests/test_predict_long.py
+          python tests/test_onnx_lang_parity.py
           python tests/test_email.py
           python tests/test_download.py
           python tests/test_shortlist.py
@@ -70,7 +73,7 @@ jobs:
 
       - run: python -m twine check dist/*
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dist
           path: dist/
@@ -83,14 +86,14 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: dist
           path: dist/
       # Needs a Trusted Publisher on PyPI (Publishing -> add: owner NandhaKishorM,
       # repo laya, workflow release.yml, environment pypi). Until that exists the
       # exchange fails; skip-existing also makes a re-run safe after a manual upload.
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1 (v1.14.2)
         with:
           skip-existing: true
 
@@ -101,10 +104,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: dist
           path: dist/

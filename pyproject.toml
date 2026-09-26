@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.3.13"
+version = "0.3.20"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -49,6 +49,9 @@ fast = ["tilelang>=0.1.14"]
 # `pip install laya[mcp]` adds the MCP stdio server (laya.mcp / the laya-mcp-server CLI).
 mcp = ["mcp>=2.2.0"]
 
+# `pip install laya[structured]` adds pydantic for the typed-model helpers (laya/structured.py).
+structured = ["pydantic>=2.0.0"]
+
 onnx = ["onnx", "onnxruntime"]
 
 # `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
@@ -64,6 +67,7 @@ langgraph = [
 [project.scripts]
 laya = "laya.cli:main"
 laya-serve = "laya.serve:main"
+laya-evals = "laya.evals_cli:main"
 laya-mcp-server = "laya.mcp.server:main"
 
 [project.urls]

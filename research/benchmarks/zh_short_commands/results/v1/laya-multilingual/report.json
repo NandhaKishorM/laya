@@ -1,0 +1,7620 @@
+{
+  "config": {
+    "benchmark": "zh_short_commands",
+    "cases_file": "research/benchmarks/zh_short_commands/data/cases.jsonl",
+    "cases_sha256": "2d789879fe11328fb8b8099aaf35ddf7b2e301b393f9525701368339da28181e",
+    "prompts_sha256": "d26c8357a302f887258382c5a40d1c1320adab8b3e86c364ef150a913a06686d",
+    "configs": [
+      "choice_criteria",
+      "choice_scenario",
+      "choice_json_state",
+      "noul_plain",
+      "noul_criteria",
+      "noul_scenario",
+      "noul_json_state"
+    ],
+    "unclamped": false,
+    "timestamp": "2026-09-24T08:03:26Z",
+    "checkpoint": {
+      "checkpoint": "E:/home/laya-models",
+      "subfolder": "multilingual",
+      "device": "cpu",
+      "stub": false,
+      "torch": "2.14.0+cpu",
+      "transformers": "5.17.0",
+      "laya": "0.3.20",
+      "weight_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+      "weight_bytes": 643835514
+    }
+  },
+  "report": {
+    "choice_criteria": {
+      "n": 18,
+      "accuracy": 0.7222,
+      "macro_f1": 0.7149,
+      "ece": 0.2659,
+      "mean_confidence": 0.800806,
+      "acc_at_50_coverage": 0.8889,
+      "temperature": 1.0,
+      "std_confidence": 0.172794
+    },
+    "choice_scenario": {
+      "n": 18,
+      "accuracy": 0.7778,
+      "macro_f1": 0.7942,
+      "ece": 0.1827,
+      "mean_confidence": 0.82569,
+      "acc_at_50_coverage": 0.8889,
+      "temperature": 1.0,
+      "std_confidence": 0.172482
+    },
+    "choice_json_state": {
+      "n": 18,
+      "accuracy": 0.6667,
+      "macro_f1": 0.6817,
+      "ece": 0.2484,
+      "mean_confidence": 0.796137,
+      "acc_at_50_coverage": 0.8889,
+      "temperature": 1.0,
+      "std_confidence": 0.123797
+    },
+    "noul_plain": {
+      "n_cases": 18,
+      "n_dimensions": 4,
+      "accuracy_by_dimension": {
+        "wants_faster": 0.611111,
+        "wants_slower": 0.388889,
+        "wants_stop": 0.944444,
+        "is_command": 0.722222
+      },
+      "accuracy": 0.666667,
+      "mean_confidence": 0.812754,
+      "std_confidence": 0.178601,
+      "temperature": 1.0
+    },
+    "noul_criteria": {
+      "n_cases": 18,
+      "n_dimensions": 4,
+      "accuracy_by_dimension": {
+        "wants_faster": 0.277778,
+        "wants_slower": 0.333333,
+        "wants_stop": 0.222222,
+        "is_command": 1.0
+      },
+      "accuracy": 0.458333,
+      "mean_confidence": 0.892017,
+      "std_confidence": 0.09442,
+      "temperature": 1.0
+    },
+    "noul_scenario": {
+      "n_cases": 18,
+      "n_dimensions": 4,
+      "accuracy_by_dimension": {
+        "wants_faster": 0.277778,
+        "wants_slower": 0.333333,
+        "wants_stop": 0.277778,
+        "is_command": 1.0
+      },
+      "accuracy": 0.472222,
+      "mean_confidence": 0.894393,
+      "std_confidence": 0.080708,
+      "temperature": 1.0
+    },
+    "noul_json_state": {
+      "n_cases": 18,
+      "n_dimensions": 4,
+      "accuracy_by_dimension": {
+        "wants_faster": 0.222222,
+        "wants_slower": 0.277778,
+        "wants_stop": 0.222222,
+        "is_command": 0.944444
+      },
+      "accuracy": 0.416667,
+      "mean_confidence": 0.94372,
+      "std_confidence": 0.041769,
+      "temperature": 1.0
+    }
+  },
+  "summary": {
+    "choice_criteria": {
+      "accuracy": 0.7222,
+      "mean_confidence": 0.800806
+    },
+    "choice_scenario": {
+      "accuracy": 0.7778,
+      "mean_confidence": 0.82569
+    },
+    "choice_json_state": {
+      "accuracy": 0.6667,
+      "mean_confidence": 0.796137
+    },
+    "noul_plain": {
+      "accuracy": 0.666667,
+      "mean_confidence": 0.812754
+    },
+    "noul_criteria": {
+      "accuracy": 0.458333,
+      "mean_confidence": 0.892017
+    },
+    "noul_scenario": {
+      "accuracy": 0.472222,
+      "mean_confidence": 0.894393
+    },
+    "noul_json_state": {
+      "accuracy": 0.416667,
+      "mean_confidence": 0.94372
+    }
+  },
+  "cases": [
+    {
+      "case_id": "zh-cmd-001",
+      "config": "choice_criteria",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.651619,
+      "p_gold": 0.181172,
+      "confidence": 0.651619,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "choice_criteria",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.997332,
+      "p_gold": 0.997332,
+      "confidence": 0.997332,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "choice_criteria",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.990078,
+      "p_gold": 0.001747,
+      "confidence": 0.990078,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "choice_criteria",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.812575,
+      "p_gold": 0.812575,
+      "confidence": 0.812575,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "choice_criteria",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.950299,
+      "p_gold": 0.950299,
+      "confidence": 0.950299,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "choice_criteria",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.795233,
+      "p_gold": 0.075296,
+      "confidence": 0.795233,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "choice_criteria",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.900545,
+      "p_gold": 0.900545,
+      "confidence": 0.900545,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "choice_criteria",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.672757,
+      "p_gold": 0.672757,
+      "confidence": 0.672757,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "choice_criteria",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.993855,
+      "p_gold": 0.993855,
+      "confidence": 0.993855,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "choice_criteria",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 5,
+      "pred_label": "none",
+      "probability": 0.606616,
+      "p_gold": 0.352283,
+      "confidence": 0.606616,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "choice_criteria",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.99788,
+      "p_gold": 0.99788,
+      "confidence": 0.99788,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "choice_criteria",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.972951,
+      "p_gold": 0.972951,
+      "confidence": 0.972951,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "choice_criteria",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 3,
+      "gold_label": "left",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.803919,
+      "p_gold": 0.803919,
+      "confidence": 0.803919,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "choice_criteria",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 3,
+      "gold_label": "left",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.806514,
+      "p_gold": 0.806514,
+      "confidence": 0.806514,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "choice_criteria",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 4,
+      "gold_label": "right",
+      "pred_index": 4,
+      "pred_label": "right",
+      "probability": 0.749254,
+      "p_gold": 0.749254,
+      "confidence": 0.749254,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "choice_criteria",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 4,
+      "gold_label": "right",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.395082,
+      "p_gold": 0.317776,
+      "confidence": 0.395082,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "choice_criteria",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.516001,
+      "p_gold": 0.516001,
+      "confidence": 0.516001,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "choice_criteria",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 5,
+      "gold_label": "none",
+      "pred_index": 5,
+      "pred_label": "none",
+      "probability": 0.801997,
+      "p_gold": 0.801997,
+      "confidence": 0.801997,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "choice_scenario",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.689976,
+      "p_gold": 0.18651,
+      "confidence": 0.689976,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "choice_scenario",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.995723,
+      "p_gold": 0.995723,
+      "confidence": 0.995723,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "choice_scenario",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.992945,
+      "p_gold": 0.001966,
+      "confidence": 0.992945,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "choice_scenario",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.900936,
+      "p_gold": 0.900936,
+      "confidence": 0.900936,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "choice_scenario",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.943041,
+      "p_gold": 0.943041,
+      "confidence": 0.943041,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "choice_scenario",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.900526,
+      "p_gold": 0.042301,
+      "confidence": 0.900526,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "choice_scenario",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.911091,
+      "p_gold": 0.911091,
+      "confidence": 0.911091,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "choice_scenario",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.69002,
+      "p_gold": 0.69002,
+      "confidence": 0.69002,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "choice_scenario",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.99106,
+      "p_gold": 0.99106,
+      "confidence": 0.99106,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "choice_scenario",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.567869,
+      "p_gold": 0.567869,
+      "confidence": 0.567869,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "choice_scenario",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.996281,
+      "p_gold": 0.996281,
+      "confidence": 0.996281,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "choice_scenario",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.960333,
+      "p_gold": 0.960333,
+      "confidence": 0.960333,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "choice_scenario",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 3,
+      "gold_label": "left",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.823617,
+      "p_gold": 0.823617,
+      "confidence": 0.823617,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "choice_scenario",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 3,
+      "gold_label": "left",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.793242,
+      "p_gold": 0.793242,
+      "confidence": 0.793242,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "choice_scenario",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 4,
+      "gold_label": "right",
+      "pred_index": 4,
+      "pred_label": "right",
+      "probability": 0.722302,
+      "p_gold": 0.722302,
+      "confidence": 0.722302,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "choice_scenario",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 4,
+      "gold_label": "right",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.398636,
+      "p_gold": 0.36203,
+      "confidence": 0.398636,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "choice_scenario",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.602565,
+      "p_gold": 0.602565,
+      "confidence": 0.602565,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "choice_scenario",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 5,
+      "gold_label": "none",
+      "pred_index": 5,
+      "pred_label": "none",
+      "probability": 0.98225,
+      "p_gold": 0.98225,
+      "confidence": 0.98225,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "choice_json_state",
+      "text": "快一点",
+      "state": {
+        "text": "快一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.702641,
+      "p_gold": 0.255393,
+      "confidence": 0.702641,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "choice_json_state",
+      "text": "加速",
+      "state": {
+        "text": "加速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.767622,
+      "p_gold": 0.767622,
+      "confidence": 0.767622,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "choice_json_state",
+      "text": "太慢了",
+      "state": {
+        "text": "太慢了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.898452,
+      "p_gold": 0.023512,
+      "confidence": 0.898452,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "choice_json_state",
+      "text": "再快些",
+      "state": {
+        "text": "再快些",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 0,
+      "gold_label": "faster",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.819346,
+      "p_gold": 0.819346,
+      "confidence": 0.819346,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "choice_json_state",
+      "text": "慢一点",
+      "state": {
+        "text": "慢一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.936087,
+      "p_gold": 0.936087,
+      "confidence": 0.936087,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "choice_json_state",
+      "text": "太快了",
+      "state": {
+        "text": "太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.766948,
+      "p_gold": 0.132466,
+      "confidence": 0.766948,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "choice_json_state",
+      "text": "减速",
+      "state": {
+        "text": "减速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.640793,
+      "p_gold": 0.640793,
+      "confidence": 0.640793,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "choice_json_state",
+      "text": "慢下来",
+      "state": {
+        "text": "慢下来",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 1,
+      "pred_label": "slower",
+      "probability": 0.775337,
+      "p_gold": 0.775337,
+      "confidence": 0.775337,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "choice_json_state",
+      "text": "停下",
+      "state": {
+        "text": "停下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.942234,
+      "p_gold": 0.942234,
+      "confidence": 0.942234,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "choice_json_state",
+      "text": "别动了",
+      "state": {
+        "text": "别动了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 5,
+      "pred_label": "none",
+      "probability": 0.796476,
+      "p_gold": 0.105588,
+      "confidence": 0.796476,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "choice_json_state",
+      "text": "急停",
+      "state": {
+        "text": "急停",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.961997,
+      "p_gold": 0.961997,
+      "confidence": 0.961997,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "choice_json_state",
+      "text": "停下来别动",
+      "state": {
+        "text": "停下来别动",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 2,
+      "gold_label": "stop",
+      "pred_index": 2,
+      "pred_label": "stop",
+      "probability": 0.970309,
+      "p_gold": 0.970309,
+      "confidence": 0.970309,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "choice_json_state",
+      "text": "左转",
+      "state": {
+        "text": "左转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 3,
+      "gold_label": "left",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.818902,
+      "p_gold": 0.818902,
+      "confidence": 0.818902,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "choice_json_state",
+      "text": "往左一点",
+      "state": {
+        "text": "往左一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 3,
+      "gold_label": "left",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.871877,
+      "p_gold": 0.871877,
+      "confidence": 0.871877,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "choice_json_state",
+      "text": "向右转",
+      "state": {
+        "text": "向右转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 4,
+      "gold_label": "right",
+      "pred_index": 4,
+      "pred_label": "right",
+      "probability": 0.840254,
+      "p_gold": 0.840254,
+      "confidence": 0.840254,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "choice_json_state",
+      "text": "往右边靠一下",
+      "state": {
+        "text": "往右边靠一下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 4,
+      "gold_label": "right",
+      "pred_index": 3,
+      "pred_label": "left",
+      "probability": 0.555916,
+      "p_gold": 0.211429,
+      "confidence": 0.555916,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "choice_json_state",
+      "text": "别太快了",
+      "state": {
+        "text": "别太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 1,
+      "gold_label": "slower",
+      "pred_index": 0,
+      "pred_label": "faster",
+      "probability": 0.556027,
+      "p_gold": 0.390303,
+      "confidence": 0.556027,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "choice_json_state",
+      "text": "今天天气不错",
+      "state": {
+        "text": "今天天气不错",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "other",
+      "instructions": "这条指令要求机器人做什么？",
+      "options": [
+        "faster",
+        "slower",
+        "stop",
+        "left",
+        "right",
+        "none"
+      ],
+      "gold_index": 5,
+      "gold_label": "none",
+      "pred_index": 5,
+      "pred_label": "none",
+      "probability": 0.709246,
+      "p_gold": 0.709246,
+      "confidence": 0.709246,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_plain",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.954476,
+      "confidence": 0.954476,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_plain",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.599379,
+      "confidence": 0.599379,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_plain",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": false,
+      "p_true": 0.042572,
+      "confidence": 0.957428,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_plain",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": false,
+      "p_true": 0.253537,
+      "confidence": 0.746463,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_plain",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.98982,
+      "confidence": 0.98982,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_plain",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": false,
+      "p_true": 0.483596,
+      "confidence": 0.516404,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_plain",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": false,
+      "p_true": 0.004238,
+      "confidence": 0.995762,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_plain",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.80819,
+      "confidence": 0.80819,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_plain",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": false,
+      "p_true": 0.039422,
+      "confidence": 0.960578,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_plain",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.951992,
+      "confidence": 0.951992,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_plain",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": false,
+      "p_true": 0.249589,
+      "confidence": 0.750411,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_plain",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.814598,
+      "confidence": 0.814598,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_plain",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.994174,
+      "confidence": 0.994174,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_plain",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": false,
+      "p_true": 0.472889,
+      "confidence": 0.527111,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_plain",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": false,
+      "p_true": 0.010075,
+      "confidence": 0.989925,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_plain",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.713537,
+      "confidence": 0.713537,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_plain",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.526816,
+      "confidence": 0.526816,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_plain",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.991903,
+      "confidence": 0.991903,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_plain",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": false,
+      "p_true": 0.012858,
+      "confidence": 0.987142,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_plain",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": false,
+      "p_true": 0.496322,
+      "confidence": 0.503678,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_plain",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.765595,
+      "confidence": 0.765595,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_plain",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": false,
+      "p_true": 0.014266,
+      "confidence": 0.985734,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_plain",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": false,
+      "p_true": 0.010283,
+      "confidence": 0.989717,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_plain",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.676686,
+      "confidence": 0.676686,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_plain",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": false,
+      "p_true": 0.007463,
+      "confidence": 0.992537,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_plain",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.970536,
+      "confidence": 0.970536,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_plain",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": false,
+      "p_true": 0.092154,
+      "confidence": 0.907846,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_plain",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.636748,
+      "confidence": 0.636748,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_plain",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.519541,
+      "confidence": 0.519541,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_plain",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.988187,
+      "confidence": 0.988187,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_plain",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": false,
+      "p_true": 0.327777,
+      "confidence": 0.672223,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_plain",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.620821,
+      "confidence": 0.620821,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_plain",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": false,
+      "p_true": 0.045298,
+      "confidence": 0.954702,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_plain",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.959682,
+      "confidence": 0.959682,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_plain",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.990001,
+      "confidence": 0.990001,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_plain",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.56316,
+      "confidence": 0.56316,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_plain",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": false,
+      "p_true": 0.307061,
+      "confidence": 0.692939,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_plain",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.933885,
+      "confidence": 0.933885,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_plain",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.966055,
+      "confidence": 0.966055,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_plain",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.680622,
+      "confidence": 0.680622,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_plain",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": false,
+      "p_true": 0.488016,
+      "confidence": 0.511984,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_plain",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.524,
+      "confidence": 0.524,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_plain",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.96952,
+      "confidence": 0.96952,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_plain",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.595636,
+      "confidence": 0.595636,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_plain",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": false,
+      "p_true": 0.23929,
+      "confidence": 0.76071,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_plain",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.977958,
+      "confidence": 0.977958,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_plain",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.994788,
+      "confidence": 0.994788,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_plain",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.703027,
+      "confidence": 0.703027,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_plain",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": false,
+      "p_true": 0.210506,
+      "confidence": 0.789494,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_plain",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.644998,
+      "confidence": 0.644998,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_plain",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": false,
+      "p_true": 0.007574,
+      "confidence": 0.992426,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_plain",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "left",
+      "pred_bool": false,
+      "p_true": 0.114698,
+      "confidence": 0.885302,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_plain",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.991587,
+      "confidence": 0.991587,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_plain",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.935833,
+      "confidence": 0.935833,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_plain",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": false,
+      "p_true": 0.000611,
+      "confidence": 0.999389,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_plain",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "left",
+      "pred_bool": false,
+      "p_true": 0.225746,
+      "confidence": 0.774254,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_plain",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.766413,
+      "confidence": 0.766413,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_plain",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.704833,
+      "confidence": 0.704833,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_plain",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": false,
+      "p_true": 0.00692,
+      "confidence": 0.99308,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_plain",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.565615,
+      "confidence": 0.565615,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_plain",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": false,
+      "p_true": 0.475074,
+      "confidence": 0.524926,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_plain",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.544827,
+      "confidence": 0.544827,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_plain",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": false,
+      "p_true": 0.059072,
+      "confidence": 0.940928,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_plain",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.640157,
+      "confidence": 0.640157,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_plain",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.647588,
+      "confidence": 0.647588,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_plain",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.995087,
+      "confidence": 0.995087,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_plain",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.868402,
+      "confidence": 0.868402,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_plain",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": false,
+      "p_true": 0.461903,
+      "confidence": 0.538097,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_plain",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.000733,
+      "confidence": 0.999267,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_plain",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.003372,
+      "confidence": 0.996628,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_plain",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 4.2e-05,
+      "confidence": 0.999958,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_plain",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.005458,
+      "confidence": 0.994542,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_criteria",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.805725,
+      "confidence": 0.805725,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_criteria",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.956139,
+      "confidence": 0.956139,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_criteria",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.960723,
+      "confidence": 0.960723,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_criteria",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.89739,
+      "confidence": 0.89739,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_criteria",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.947568,
+      "confidence": 0.947568,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_criteria",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.921595,
+      "confidence": 0.921595,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_criteria",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.926041,
+      "confidence": 0.926041,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_criteria",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.897551,
+      "confidence": 0.897551,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_criteria",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.55781,
+      "confidence": 0.55781,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_criteria",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.883181,
+      "confidence": 0.883181,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_criteria",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.964062,
+      "confidence": 0.964062,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_criteria",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.92244,
+      "confidence": 0.92244,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_criteria",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.861991,
+      "confidence": 0.861991,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_criteria",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.908948,
+      "confidence": 0.908948,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_criteria",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.980353,
+      "confidence": 0.980353,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_criteria",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.949627,
+      "confidence": 0.949627,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_criteria",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.900026,
+      "confidence": 0.900026,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_criteria",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.972174,
+      "confidence": 0.972174,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_criteria",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.954328,
+      "confidence": 0.954328,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_criteria",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.919837,
+      "confidence": 0.919837,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_criteria",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.666823,
+      "confidence": 0.666823,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_criteria",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.834933,
+      "confidence": 0.834933,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_criteria",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.963844,
+      "confidence": 0.963844,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_criteria",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.916419,
+      "confidence": 0.916419,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_criteria",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.936497,
+      "confidence": 0.936497,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_criteria",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.917183,
+      "confidence": 0.917183,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_criteria",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.97869,
+      "confidence": 0.97869,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_criteria",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.943498,
+      "confidence": 0.943498,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_criteria",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.857419,
+      "confidence": 0.857419,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_criteria",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.949304,
+      "confidence": 0.949304,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_criteria",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.962356,
+      "confidence": 0.962356,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_criteria",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.939307,
+      "confidence": 0.939307,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_criteria",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.842504,
+      "confidence": 0.842504,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_criteria",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.91113,
+      "confidence": 0.91113,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_criteria",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.992434,
+      "confidence": 0.992434,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_criteria",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.971271,
+      "confidence": 0.971271,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_criteria",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.776586,
+      "confidence": 0.776586,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_criteria",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.781802,
+      "confidence": 0.781802,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_criteria",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.961058,
+      "confidence": 0.961058,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_criteria",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.954891,
+      "confidence": 0.954891,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_criteria",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.902188,
+      "confidence": 0.902188,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_criteria",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.960203,
+      "confidence": 0.960203,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_criteria",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.996282,
+      "confidence": 0.996282,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_criteria",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.961597,
+      "confidence": 0.961597,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_criteria",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.923742,
+      "confidence": 0.923742,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_criteria",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.971927,
+      "confidence": 0.971927,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_criteria",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.99607,
+      "confidence": 0.99607,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_criteria",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.98296,
+      "confidence": 0.98296,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_criteria",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.592094,
+      "confidence": 0.592094,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_criteria",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.743342,
+      "confidence": 0.743342,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_criteria",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.861027,
+      "confidence": 0.861027,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_criteria",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.891144,
+      "confidence": 0.891144,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_criteria",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.710524,
+      "confidence": 0.710524,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_criteria",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.917786,
+      "confidence": 0.917786,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_criteria",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.900599,
+      "confidence": 0.900599,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_criteria",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.875497,
+      "confidence": 0.875497,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_criteria",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.727729,
+      "confidence": 0.727729,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_criteria",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.965864,
+      "confidence": 0.965864,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_criteria",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.948551,
+      "confidence": 0.948551,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_criteria",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.934045,
+      "confidence": 0.934045,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_criteria",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.74497,
+      "confidence": 0.74497,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_criteria",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.830948,
+      "confidence": 0.830948,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_criteria",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.893034,
+      "confidence": 0.893034,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_criteria",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.91249,
+      "confidence": 0.91249,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_criteria",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.826767,
+      "confidence": 0.826767,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_criteria",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.974913,
+      "confidence": 0.974913,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_criteria",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.967734,
+      "confidence": 0.967734,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_criteria",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.919886,
+      "confidence": 0.919886,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_criteria",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.117075,
+      "confidence": 0.882925,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_criteria",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.085332,
+      "confidence": 0.914668,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_criteria",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": true,
+      "p_true": 0.79433,
+      "confidence": 0.79433,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_criteria",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.346036,
+      "confidence": 0.653964,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_scenario",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.873428,
+      "confidence": 0.873428,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_scenario",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.848264,
+      "confidence": 0.848264,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_scenario",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.951039,
+      "confidence": 0.951039,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_scenario",
+      "text": "快一点",
+      "state": "快一点",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.814989,
+      "confidence": 0.814989,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_scenario",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.965392,
+      "confidence": 0.965392,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_scenario",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.929448,
+      "confidence": 0.929448,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_scenario",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.921501,
+      "confidence": 0.921501,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_scenario",
+      "text": "加速",
+      "state": "加速",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.873533,
+      "confidence": 0.873533,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_scenario",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.811005,
+      "confidence": 0.811005,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_scenario",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.883149,
+      "confidence": 0.883149,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_scenario",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.96679,
+      "confidence": 0.96679,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_scenario",
+      "text": "太慢了",
+      "state": "太慢了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.891167,
+      "confidence": 0.891167,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_scenario",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.940289,
+      "confidence": 0.940289,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_scenario",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.880876,
+      "confidence": 0.880876,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_scenario",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.979531,
+      "confidence": 0.979531,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_scenario",
+      "text": "再快些",
+      "state": "再快些",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.913644,
+      "confidence": 0.913644,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_scenario",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.948032,
+      "confidence": 0.948032,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_scenario",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.8595,
+      "confidence": 0.8595,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_scenario",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.963868,
+      "confidence": 0.963868,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_scenario",
+      "text": "慢一点",
+      "state": "慢一点",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.887192,
+      "confidence": 0.887192,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_scenario",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.856617,
+      "confidence": 0.856617,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_scenario",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.830039,
+      "confidence": 0.830039,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_scenario",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.964707,
+      "confidence": 0.964707,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_scenario",
+      "text": "太快了",
+      "state": "太快了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.886223,
+      "confidence": 0.886223,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_scenario",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.963813,
+      "confidence": 0.963813,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_scenario",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.918895,
+      "confidence": 0.918895,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_scenario",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.973649,
+      "confidence": 0.973649,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_scenario",
+      "text": "减速",
+      "state": "减速",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.909603,
+      "confidence": 0.909603,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_scenario",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.957227,
+      "confidence": 0.957227,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_scenario",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.884462,
+      "confidence": 0.884462,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_scenario",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.964297,
+      "confidence": 0.964297,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_scenario",
+      "text": "慢下来",
+      "state": "慢下来",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.88703,
+      "confidence": 0.88703,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_scenario",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.911988,
+      "confidence": 0.911988,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_scenario",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.78218,
+      "confidence": 0.78218,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_scenario",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.993699,
+      "confidence": 0.993699,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_scenario",
+      "text": "停下",
+      "state": "停下",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.908587,
+      "confidence": 0.908587,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_scenario",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.827109,
+      "confidence": 0.827109,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_scenario",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.835131,
+      "confidence": 0.835131,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_scenario",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.973559,
+      "confidence": 0.973559,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_scenario",
+      "text": "别动了",
+      "state": "别动了",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.934002,
+      "confidence": 0.934002,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_scenario",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.940393,
+      "confidence": 0.940393,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_scenario",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.911913,
+      "confidence": 0.911913,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_scenario",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.986466,
+      "confidence": 0.986466,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_scenario",
+      "text": "急停",
+      "state": "急停",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.934599,
+      "confidence": 0.934599,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_scenario",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.910335,
+      "confidence": 0.910335,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_scenario",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.867386,
+      "confidence": 0.867386,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_scenario",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.990542,
+      "confidence": 0.990542,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_scenario",
+      "text": "停下来别动",
+      "state": "停下来别动",
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.962144,
+      "confidence": 0.962144,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_scenario",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.723377,
+      "confidence": 0.723377,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_scenario",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.725028,
+      "confidence": 0.725028,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_scenario",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.956851,
+      "confidence": 0.956851,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_scenario",
+      "text": "左转",
+      "state": "左转",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.875196,
+      "confidence": 0.875196,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_scenario",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.847608,
+      "confidence": 0.847608,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_scenario",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.843815,
+      "confidence": 0.843815,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_scenario",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.967972,
+      "confidence": 0.967972,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_scenario",
+      "text": "往左一点",
+      "state": "往左一点",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.861928,
+      "confidence": 0.861928,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_scenario",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.757204,
+      "confidence": 0.757204,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_scenario",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.755771,
+      "confidence": 0.755771,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_scenario",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.96655,
+      "confidence": 0.96655,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_scenario",
+      "text": "向右转",
+      "state": "向右转",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.920208,
+      "confidence": 0.920208,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_scenario",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.789489,
+      "confidence": 0.789489,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_scenario",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.783108,
+      "confidence": 0.783108,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_scenario",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.965946,
+      "confidence": 0.965946,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_scenario",
+      "text": "往右边靠一下",
+      "state": "往右边靠一下",
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.855464,
+      "confidence": 0.855464,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_scenario",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.9697,
+      "confidence": 0.9697,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_scenario",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.960589,
+      "confidence": 0.960589,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_scenario",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.972534,
+      "confidence": 0.972534,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_scenario",
+      "text": "别太快了",
+      "state": "别太快了",
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.843961,
+      "confidence": 0.843961,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_scenario",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_faster",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.021209,
+      "confidence": 0.978791,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_scenario",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_slower",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.031402,
+      "confidence": 0.968598,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_scenario",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "wants_stop",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.189823,
+      "confidence": 0.810177,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_scenario",
+      "text": "今天天气不错",
+      "state": "今天天气不错",
+      "family": "other",
+      "dimension": "is_command",
+      "instructions": "你是一台清洁机器人的控制模块，用户通过语音发出简短指令。这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": false,
+      "p_true": 0.472774,
+      "confidence": 0.527226,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_json_state",
+      "text": "快一点",
+      "state": {
+        "text": "快一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.92522,
+      "confidence": 0.92522,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_json_state",
+      "text": "快一点",
+      "state": {
+        "text": "快一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.972345,
+      "confidence": 0.972345,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_json_state",
+      "text": "快一点",
+      "state": {
+        "text": "快一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.88568,
+      "confidence": 0.88568,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-001",
+      "config": "noul_json_state",
+      "text": "快一点",
+      "state": {
+        "text": "快一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.930986,
+      "confidence": 0.930986,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_json_state",
+      "text": "加速",
+      "state": {
+        "text": "加速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.988962,
+      "confidence": 0.988962,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_json_state",
+      "text": "加速",
+      "state": {
+        "text": "加速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.961185,
+      "confidence": 0.961185,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_json_state",
+      "text": "加速",
+      "state": {
+        "text": "加速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.961192,
+      "confidence": 0.961192,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-002",
+      "config": "noul_json_state",
+      "text": "加速",
+      "state": {
+        "text": "加速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.981096,
+      "confidence": 0.981096,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_json_state",
+      "text": "太慢了",
+      "state": {
+        "text": "太慢了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.876383,
+      "confidence": 0.876383,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_json_state",
+      "text": "太慢了",
+      "state": {
+        "text": "太慢了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.97284,
+      "confidence": 0.97284,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_json_state",
+      "text": "太慢了",
+      "state": {
+        "text": "太慢了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.934859,
+      "confidence": 0.934859,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-003",
+      "config": "noul_json_state",
+      "text": "太慢了",
+      "state": {
+        "text": "太慢了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.947968,
+      "confidence": 0.947968,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_json_state",
+      "text": "再快些",
+      "state": {
+        "text": "再快些",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.953122,
+      "confidence": 0.953122,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_json_state",
+      "text": "再快些",
+      "state": {
+        "text": "再快些",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.972354,
+      "confidence": 0.972354,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_json_state",
+      "text": "再快些",
+      "state": {
+        "text": "再快些",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.897289,
+      "confidence": 0.897289,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-004",
+      "config": "noul_json_state",
+      "text": "再快些",
+      "state": {
+        "text": "再快些",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "faster",
+      "pred_bool": true,
+      "p_true": 0.93779,
+      "confidence": 0.93779,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_json_state",
+      "text": "慢一点",
+      "state": {
+        "text": "慢一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.920528,
+      "confidence": 0.920528,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_json_state",
+      "text": "慢一点",
+      "state": {
+        "text": "慢一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.9789,
+      "confidence": 0.9789,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_json_state",
+      "text": "慢一点",
+      "state": {
+        "text": "慢一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.896125,
+      "confidence": 0.896125,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-005",
+      "config": "noul_json_state",
+      "text": "慢一点",
+      "state": {
+        "text": "慢一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.952429,
+      "confidence": 0.952429,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_json_state",
+      "text": "太快了",
+      "state": {
+        "text": "太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.891174,
+      "confidence": 0.891174,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_json_state",
+      "text": "太快了",
+      "state": {
+        "text": "太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.954349,
+      "confidence": 0.954349,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_json_state",
+      "text": "太快了",
+      "state": {
+        "text": "太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.892616,
+      "confidence": 0.892616,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-006",
+      "config": "noul_json_state",
+      "text": "太快了",
+      "state": {
+        "text": "太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.954126,
+      "confidence": 0.954126,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_json_state",
+      "text": "减速",
+      "state": {
+        "text": "减速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.915108,
+      "confidence": 0.915108,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_json_state",
+      "text": "减速",
+      "state": {
+        "text": "减速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.967634,
+      "confidence": 0.967634,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_json_state",
+      "text": "减速",
+      "state": {
+        "text": "减速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.975214,
+      "confidence": 0.975214,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-007",
+      "config": "noul_json_state",
+      "text": "减速",
+      "state": {
+        "text": "减速",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.975306,
+      "confidence": 0.975306,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_json_state",
+      "text": "慢下来",
+      "state": {
+        "text": "慢下来",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.93728,
+      "confidence": 0.93728,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_json_state",
+      "text": "慢下来",
+      "state": {
+        "text": "慢下来",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.983074,
+      "confidence": 0.983074,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_json_state",
+      "text": "慢下来",
+      "state": {
+        "text": "慢下来",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.920282,
+      "confidence": 0.920282,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-008",
+      "config": "noul_json_state",
+      "text": "慢下来",
+      "state": {
+        "text": "慢下来",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.961527,
+      "confidence": 0.961527,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_json_state",
+      "text": "停下",
+      "state": {
+        "text": "停下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.935443,
+      "confidence": 0.935443,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_json_state",
+      "text": "停下",
+      "state": {
+        "text": "停下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.980399,
+      "confidence": 0.980399,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_json_state",
+      "text": "停下",
+      "state": {
+        "text": "停下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.994605,
+      "confidence": 0.994605,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-009",
+      "config": "noul_json_state",
+      "text": "停下",
+      "state": {
+        "text": "停下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.980708,
+      "confidence": 0.980708,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_json_state",
+      "text": "别动了",
+      "state": {
+        "text": "别动了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.806499,
+      "confidence": 0.806499,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_json_state",
+      "text": "别动了",
+      "state": {
+        "text": "别动了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.914314,
+      "confidence": 0.914314,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_json_state",
+      "text": "别动了",
+      "state": {
+        "text": "别动了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.912872,
+      "confidence": 0.912872,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-010",
+      "config": "noul_json_state",
+      "text": "别动了",
+      "state": {
+        "text": "别动了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.956662,
+      "confidence": 0.956662,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_json_state",
+      "text": "急停",
+      "state": {
+        "text": "急停",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.95566,
+      "confidence": 0.95566,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_json_state",
+      "text": "急停",
+      "state": {
+        "text": "急停",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.977647,
+      "confidence": 0.977647,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_json_state",
+      "text": "急停",
+      "state": {
+        "text": "急停",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.994262,
+      "confidence": 0.994262,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-011",
+      "config": "noul_json_state",
+      "text": "急停",
+      "state": {
+        "text": "急停",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.977482,
+      "confidence": 0.977482,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_json_state",
+      "text": "停下来别动",
+      "state": {
+        "text": "停下来别动",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.953101,
+      "confidence": 0.953101,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_json_state",
+      "text": "停下来别动",
+      "state": {
+        "text": "停下来别动",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.985391,
+      "confidence": 0.985391,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_json_state",
+      "text": "停下来别动",
+      "state": {
+        "text": "停下来别动",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.993237,
+      "confidence": 0.993237,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-012",
+      "config": "noul_json_state",
+      "text": "停下来别动",
+      "state": {
+        "text": "停下来别动",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "stop",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "stop",
+      "pred_bool": true,
+      "p_true": 0.9812,
+      "confidence": 0.9812,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_json_state",
+      "text": "左转",
+      "state": {
+        "text": "左转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.933631,
+      "confidence": 0.933631,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_json_state",
+      "text": "左转",
+      "state": {
+        "text": "左转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.9547,
+      "confidence": 0.9547,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_json_state",
+      "text": "左转",
+      "state": {
+        "text": "左转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.967582,
+      "confidence": 0.967582,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-013",
+      "config": "noul_json_state",
+      "text": "左转",
+      "state": {
+        "text": "左转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.962896,
+      "confidence": 0.962896,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_json_state",
+      "text": "往左一点",
+      "state": {
+        "text": "往左一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.885004,
+      "confidence": 0.885004,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_json_state",
+      "text": "往左一点",
+      "state": {
+        "text": "往左一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.926241,
+      "confidence": 0.926241,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_json_state",
+      "text": "往左一点",
+      "state": {
+        "text": "往左一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.939696,
+      "confidence": 0.939696,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-014",
+      "config": "noul_json_state",
+      "text": "往左一点",
+      "state": {
+        "text": "往左一点",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "left",
+      "pred_bool": true,
+      "p_true": 0.962878,
+      "confidence": 0.962878,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_json_state",
+      "text": "向右转",
+      "state": {
+        "text": "向右转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.925998,
+      "confidence": 0.925998,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_json_state",
+      "text": "向右转",
+      "state": {
+        "text": "向右转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.950849,
+      "confidence": 0.950849,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_json_state",
+      "text": "向右转",
+      "state": {
+        "text": "向右转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.962676,
+      "confidence": 0.962676,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-015",
+      "config": "noul_json_state",
+      "text": "向右转",
+      "state": {
+        "text": "向右转",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.97112,
+      "confidence": 0.97112,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_json_state",
+      "text": "往右边靠一下",
+      "state": {
+        "text": "往右边靠一下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.899087,
+      "confidence": 0.899087,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_json_state",
+      "text": "往右边靠一下",
+      "state": {
+        "text": "往右边靠一下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.95283,
+      "confidence": 0.95283,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_json_state",
+      "text": "往右边靠一下",
+      "state": {
+        "text": "往右边靠一下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.962352,
+      "confidence": 0.962352,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-016",
+      "config": "noul_json_state",
+      "text": "往右边靠一下",
+      "state": {
+        "text": "往右边靠一下",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "direction",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "right",
+      "pred_bool": true,
+      "p_true": 0.970221,
+      "confidence": 0.970221,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_json_state",
+      "text": "别太快了",
+      "state": {
+        "text": "别太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.910267,
+      "confidence": 0.910267,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_json_state",
+      "text": "别太快了",
+      "state": {
+        "text": "别太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.986135,
+      "confidence": 0.986135,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_json_state",
+      "text": "别太快了",
+      "state": {
+        "text": "别太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.970576,
+      "confidence": 0.970576,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-017",
+      "config": "noul_json_state",
+      "text": "别太快了",
+      "state": {
+        "text": "别太快了",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "speed",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": true,
+      "gold_label": "slower",
+      "pred_bool": true,
+      "p_true": 0.979213,
+      "confidence": 0.979213,
+      "correct": 1,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_json_state",
+      "text": "今天天气不错",
+      "state": {
+        "text": "今天天气不错",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "other",
+      "dimension": "wants_faster",
+      "instructions": "这条指令是否要求加快速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": true,
+      "p_true": 0.887423,
+      "confidence": 0.887423,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_json_state",
+      "text": "今天天气不错",
+      "state": {
+        "text": "今天天气不错",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "other",
+      "dimension": "wants_slower",
+      "instructions": "这条指令是否要求放慢速度？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": true,
+      "p_true": 0.924268,
+      "confidence": 0.924268,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_json_state",
+      "text": "今天天气不错",
+      "state": {
+        "text": "今天天气不错",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "other",
+      "dimension": "wants_stop",
+      "instructions": "这条指令是否要求完全停止？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": true,
+      "p_true": 0.750037,
+      "confidence": 0.750037,
+      "correct": 0,
+      "temperature": 1.0
+    },
+    {
+      "case_id": "zh-cmd-018",
+      "config": "noul_json_state",
+      "text": "今天天气不错",
+      "state": {
+        "text": "今天天气不错",
+        "source": "voice",
+        "device": "vacuum"
+      },
+      "family": "other",
+      "dimension": "is_command",
+      "instructions": "这条指令是否是对机器人的运动指令？",
+      "options": [
+        "false",
+        "true"
+      ],
+      "gold_bool": false,
+      "gold_label": "none",
+      "pred_bool": true,
+      "p_true": 0.937737,
+      "confidence": 0.937737,
+      "correct": 0,
+      "temperature": 1.0
+    }
+  ]
+}

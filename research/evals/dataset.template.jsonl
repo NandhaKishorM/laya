@@ -1,0 +1,7 @@
+# One JSON object per line. Blank lines and lines starting with # are ignored.
+# Required: state, questions, expected (keyed by question id).
+# Optional: tags (list of strings), language, model.
+#
+# The answer type follows the question: a label string for choice, a number for score,
+# true/false for noul.
+{"state": "I was charged twice, please refund me.", "questions": {"intent": {"type": "choice", "instructions": "What is the user asking for?", "criteria": {"billing": "refunds or charges", "technical": "bugs or errors"}}}, "expected": {"intent": "billing"}, "tags": ["billing"], "language": "en"}

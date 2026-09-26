@@ -6,13 +6,16 @@ Everything here is pure Python: importing `laya` must not start pulling torch.
 """
 from __future__ import annotations
 
+import asyncio
+import contextvars
+import inspect
 import threading
 import time
 import uuid
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Protocol, Sequence, Union
 
 
 @dataclass(eq=False)
@@ -109,7 +112,7 @@ class _StartAdapter:
         self.fn = fn
 
     def on_predict_start(self, ctx: PredictContext) -> None:
-        self.fn(ctx)
+        return self.fn(ctx)
 
 
 class _EndAdapter:
@@ -123,7 +126,7 @@ class _EndAdapter:
         self.fn = fn
 
     def on_predict_end(self, ctx: PredictContext) -> None:
-        self.fn(ctx)
+        return self.fn(ctx)
 
 
 def _as_sequence(value: Any) -> tuple:
@@ -174,6 +177,7 @@ def normalise_hooks(
 
 _DEFAULT_HOOKS: List[Any] = []
 _DEFAULT_HOOKS_LOCK = threading.Lock()
+_SKIP_DEFAULTS = contextvars.ContextVar("laya_skip_default_hooks", default=False)
 
 
 def default_hooks() -> List[Any]:
@@ -212,7 +216,133 @@ def compose_hooks(installed, hooks=None, on_predict_start=None, on_predict_end=N
 
     Reads the process-wide defaults at call time, so hooks set after construction still apply.
     """
-    return default_hooks() + list(installed) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+    defaults = [] if _SKIP_DEFAULTS.get() else default_hooks()
+    return defaults + list(installed) + normalise_hooks(hooks, on_predict_start, on_predict_end)
+
+
+def validate_timeout(value: Optional[float]) -> Optional[float]:
+    """Return *value* as a positive float, or ``None`` for no limit.
+
+    A non-positive timeout is rejected here rather than left to
+    ``thread.join``: ``join(0)`` and ``join(-1)`` return before the hook has
+    started, so the outcome of a fast hook with such a value is a race.
+    """
+    if value is None:
+        return None
+    timeout = float(value)
+    if timeout <= 0:
+        raise ValueError("hooks_timeout must be a positive number or None; got %r" % (value,))
+    return timeout
+
+
+_BACKGROUND_LOOP: Optional[asyncio.AbstractEventLoop] = None
+_BACKGROUND_LOOP_LOCK = threading.Lock()
+
+
+def _background_loop() -> asyncio.AbstractEventLoop:
+    """A daemon event loop thread, for running coroutines when the caller already has a loop."""
+    global _BACKGROUND_LOOP
+    with _BACKGROUND_LOOP_LOCK:
+        if _BACKGROUND_LOOP is None or not _BACKGROUND_LOOP.is_running():
+            _BACKGROUND_LOOP = asyncio.new_event_loop()
+            thread = threading.Thread(target=_BACKGROUND_LOOP.run_forever, daemon=True,
+                                      name="laya-async-hooks")
+            thread.start()
+        return _BACKGROUND_LOOP
+
+
+def run_coroutine_sync(coro: Awaitable[Any], loop: Optional[asyncio.AbstractEventLoop] = None) -> Any:
+    """Run an awaitable to completion from synchronous code.
+
+    Uses `asyncio.run` when the calling thread has no running loop. When it does (a caller
+    inside an async function, or a framework that already runs a loop), the coroutine is run on
+    a dedicated background loop so the calling thread can block on it without deadlocking. Pass
+    `loop` to use a specific loop instead of the background one.
+
+    A supplied `loop` must be running somewhere, and must not be the calling thread's own
+    loop. Both are checked: the first would otherwise block forever with no coroutine ever
+    scheduled, and the second would block the only thread that could run the coroutine.
+    """
+    if loop is not None:
+        if not loop.is_running():
+            raise ValueError("run_coroutine_sync: the loop passed is not running")
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+        if loop is running:
+            raise ValueError(
+                "run_coroutine_sync: the loop passed is running in the calling thread; "
+                "blocking on it would deadlock"
+            )
+        return asyncio.run_coroutine_threadsafe(coro, loop).result()
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    return asyncio.run_coroutine_threadsafe(coro, _background_loop()).result()
+
+
+class AsyncHook:
+    """Wrap an async hook so its coroutine event methods run to completion in the sync core.
+
+    The wrapped object may implement any subset of the events as `async def` methods, or as
+    plain callables that return awaitables. Each event is run with `run_coroutine_sync`, so it
+    works whether the caller is synchronous or already inside an event loop.
+
+        from laya import AsyncHook
+
+        class Remote(BaseHook):
+            async def on_predict_end(self, ctx):
+                await ship(ctx.results)
+
+        agent = laya.load("convaiinnovations/laya", hooks=[AsyncHook(Remote())])
+
+    Pass `loop` to funnel every coroutine onto a specific loop; otherwise a background loop is
+    started on demand when the caller already has one.
+    """
+
+    __slots__ = ("hook", "loop")
+
+    def __init__(self, hook: Any, loop: Optional[asyncio.AbstractEventLoop] = None):
+        if isinstance(hook, type):
+            raise TypeError("AsyncHook wraps an instance, not a class; got %s" % hook.__name__)
+        if not any(hasattr(hook, event) for event in HOOK_EVENTS):
+            raise TypeError(
+                "AsyncHook wraps an object implementing at least one of %s; got %s"
+                % (", ".join(HOOK_EVENTS), type(hook).__name__)
+            )
+        self.hook = hook
+        self.loop = loop
+
+    def _run(self, event: str, ctx: PredictContext) -> None:
+        method = getattr(self.hook, event, None)
+        if method is None:
+            return
+        result = method(ctx)
+        if inspect.isawaitable(result):
+            run_coroutine_sync(result, loop=self.loop)
+
+    def on_predict_start(self, ctx: PredictContext) -> None:
+        self._run("on_predict_start", ctx)
+
+    def on_predict_end(self, ctx: PredictContext) -> None:
+        self._run("on_predict_end", ctx)
+
+    def on_route(self, ctx: PredictContext) -> None:
+        self._run("on_route", ctx)
+
+    def on_load(self, ctx: PredictContext) -> None:
+        self._run("on_load", ctx)
+
+    def on_evict(self, ctx: PredictContext) -> None:
+        self._run("on_evict", ctx)
+
+    def on_error(self, ctx: PredictContext) -> None:
+        self._run("on_error", ctx)
+
+    def __repr__(self) -> str:
+        return "AsyncHook(%r)" % (self.hook,)
 
 
 class HookRegistry:
@@ -278,6 +408,47 @@ def aggregate_usage(results: Sequence[Dict[str, Any]]) -> Dict[str, int]:
     return {"input_tokens": total("input_tokens"), "output_tokens": total("output_tokens")}
 
 
+def _hook_name(method: Any) -> str:
+    return (getattr(method, "__qualname__", None) or getattr(method, "__name__", None)
+            or repr(method))
+
+
+def _call_hook(method: Any, ctx: PredictContext, timeout: Optional[float]) -> None:
+    """Call one hook method, running its result if it is awaitable, under an optional timeout."""
+    timeout = validate_timeout(timeout)
+
+    def invoke():
+        result = method(ctx)
+        if inspect.isawaitable(result):
+            run_coroutine_sync(result)
+
+    if timeout is None:
+        invoke()
+        return
+
+    box: List[BaseException] = []
+
+    # Run the hook in a copy of the caller's context, so a `contextvars` value (a request id,
+    # a tracing span) set by the caller is visible to the hook even though it runs on another
+    # thread. The no-timeout path runs inline and inherits the context already.
+    context = contextvars.copy_context()
+
+    def runner():
+        try:
+            context.run(invoke)
+        except BaseException as exc:  # noqa: BLE001 -- re-raised on the caller thread
+            box.append(exc)
+
+    thread = threading.Thread(target=runner, daemon=True, name="laya-hook-timeout")
+    thread.start()
+    thread.join(timeout)
+    if thread.is_alive():
+        # The thread keeps running: Python cannot interrupt it. The timeout bounds the request.
+        raise TimeoutError("laya: hook %s exceeded %gs" % (_hook_name(method), timeout))
+    if box:
+        raise box[0]
+
+
 def dispatch(
     hooks: Sequence[Any],
     event: str,
@@ -285,11 +456,16 @@ def dispatch(
     *,
     raise_errors: bool = True,
     lock: Any = None,
+    timeout: Optional[float] = None,
 ) -> None:
     """Call `event` on every hook that implements it.
 
     `raise_errors=False` warns and continues, for hooks (telemetry) that must not fail a
     request. `lock` serialises dispatch for hooks that are not safe to run concurrently.
+    `timeout` bounds each hook call in seconds; an overrunning hook raises `TimeoutError`, or
+    warns when `raise_errors` is False. Python threads cannot be interrupted, so an overrunning
+    hook keeps running in the background: the timeout protects the request, not the process.
+    A hook that returns an awaitable is run to completion before moving on.
     """
     for hook in hooks:
         method = getattr(hook, event, None)
@@ -298,9 +474,9 @@ def dispatch(
         try:
             if lock is not None:
                 with lock:
-                    method(ctx)
+                    _call_hook(method, ctx, timeout)
             else:
-                method(ctx)
+                _call_hook(method, ctx, timeout)
         except Exception as exc:  # noqa: BLE001 -- policy depends on raise_errors
             if raise_errors:
                 raise

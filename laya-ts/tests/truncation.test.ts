@@ -95,6 +95,11 @@ describe("reported counts match the sequence", () => {
   ] as const)("accounting/%s", (_name, maxLen, headMaxLen) => {
     const { ids, stats } = buildSequence(TOK, LONG, Q as never, maxLen, headMaxLen);
     expect(ids.length).toBeLessThanOrEqual(maxLen);
+    expect(stats.state_tokens_used).toBeLessThanOrEqual(ids.length);
+    expect(stats.state_tokens_used + stats.state_tokens_dropped).toBe(stats.state_tokens);
+    expect(stats.truncated).toBe(stats.state_tokens_dropped > 0);
+  });
+});
 
 describe("systemOne reports truncation in usage", () => {
   const provider = () => ({
@@ -103,7 +108,8 @@ describe("systemOne reports truncation in usage", () => {
     },
     async runHead(_h: unknown, b: { inputIds: number[][] }) {
       return {
-        logits: b.inputIds.map(() => [0, 2]),
+        // four columns: the widest question below has four options
+        logits: b.inputIds.map(() => [0, 2, 0, 2]),
         act: b.inputIds.map(() => [1, 0]),
       };
     },
@@ -159,8 +165,25 @@ describe("systemOne reports truncation in usage", () => {
   });
 });
 
-    expect(stats.state_tokens_used).toBeLessThanOrEqual(ids.length);
-    expect(stats.state_tokens_used + stats.state_tokens_dropped).toBe(stats.state_tokens);
-    expect(stats.truncated).toBe(stats.state_tokens_dropped > 0);
+describe("array states are left-truncated", () => {
+  it("the encoder row is the tail of the state, as in Python", async () => {
+    const rows: number[][] = [];
+    const provider = {
+      async runEncoder(b: { inputIds: number[][] }) {
+        rows.push(...b.inputIds);
+        return { lastHidden: b.inputIds.map((row) => row.map(() => 0)) };
+      },
+      async runHead(_h: unknown, b: { inputIds: number[][] }) {
+        return { logits: b.inputIds.map(() => [0, 2]), act: b.inputIds.map(() => [1, 0]) };
+      },
+    };
+    const agent = () =>
+      new Agent({ provider, tok: TOK, max_len: 64, head_max_len: 48 } as never);
+    const state = Array.from({ length: 200 }, (_, i) => `w${i}`);
+    const q = { t: "noul", ins: "Refund?", crit: undefined } as const;
+    await agent().systemOne(state, { refund: { type: "noul", instructions: "Refund?" } } as never);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual(buildSequence(TOK, state, q as never, 64, 48, undefined, true).ids);
+    expect(rows[0]).not.toEqual(buildSequence(TOK, state, q as never, 64, 48).ids);
   });
 });

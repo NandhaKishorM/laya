@@ -28,7 +28,7 @@ Context for AI coding assistants (Claude Code, Codex, Cursor, Copilot, Gemini CL
 | server path | `tests/test_serve.py` | `python -m pytest tests/test_serve.py` (skips when the `serve` extra is missing) |
 | ONNX path | `tests/test_onnx.py` | `python -m pytest tests/test_onnx.py` (skips when the `onnx` extra is missing) |
 | fast/local paths | `tests/test_fast.py`, `tests/test_local_e2e.py`, `tests/test_mcp_local_e2e.py` | need CUDA or checkpoints under `~/laya_models`; skipped otherwise |
-| docs | `docs/` | — |
+| docs, docstrings in `laya/` | `docs/`, `docs/.nav.yml` for page order | `pip install -r requirements-docs.txt`, then `zensical build --strict --clean` with no `griffe:` lines in the output |
 
 Optional extras are declared in `pyproject.toml` (`serve`, `fast`, `onnx`, `langchain`, `langgraph`); install only what the change needs.
 

@@ -6,6 +6,7 @@ decision model is never constructed.
 import inspect
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -15,6 +16,7 @@ import laya  # noqa: E402
 from laya.agent import Agent  # noqa: E402
 from laya.common import DecisionModel, render_options  # noqa: E402
 from laya.shortlist import (  # noqa: E402
+    cached_embed_fn,
     embed_fn_from_agent,
     predict_shortlist,
     shortlist_choice,
@@ -123,7 +125,8 @@ def _embed_for(query_text, option_vectors):
 check_true("export/shortlist_choice", laya.shortlist_choice is shortlist_choice)
 check_true("export/predict_shortlist", laya.predict_shortlist is predict_shortlist)
 check_true("export/embed_fn_from_agent", laya.embed_fn_from_agent is embed_fn_from_agent)
-for _name in ("shortlist_choice", "predict_shortlist", "embed_fn_from_agent"):
+check_true("export/cached_embed_fn", laya.cached_embed_fn is cached_embed_fn)
+for _name in ("shortlist_choice", "predict_shortlist", "embed_fn_from_agent", "cached_embed_fn"):
     check_true("all/%s" % _name, _name in laya.__all__)
 
 _predict_src = inspect.getsource(Agent.system_one)
@@ -525,6 +528,198 @@ piped = predict_shortlist(pipe_agent, "I was charged twice", pipe_q, TableEmbed(
 scored = Agent._to_internal(pipe_agent.calls[0][1]["intent"])
 check("pipe/marker count equals k", len(scored["crit"]), 2)
 check("pipe/answer choice is inside the shortlist", piped["answers"]["intent"]["choice"] in piped["shortlist"]["intent"]["labels"], True)
+
+
+# ---------------------------------------------------------------- cached_embed_fn
+CACHE_VEC = {"pay me": [1.0, 0.0], "refund please": [0.0, 1.0]}
+CACHE_VEC.update(OPTION_TEXTS)
+CACHE_TEXTS = ["pay me", "alpha", "beta", "gamma: mid", "delta: same"]
+
+check_raises("cache/embed_fn must be callable", lambda: cached_embed_fn(None), TypeError)
+check_raises("cache/maxsize bool rejected", lambda: cached_embed_fn(TableEmbed({}), True))
+check_raises("cache/maxsize zero rejected", lambda: cached_embed_fn(TableEmbed({}), 0))
+check_raises("cache/maxsize negative rejected", lambda: cached_embed_fn(TableEmbed({}), -3))
+check_raises("cache/maxsize must be an int", lambda: cached_embed_fn(TableEmbed({}), "8"))
+
+cache_table = TableEmbed(dict(CACHE_VEC))
+wrapped = cached_embed_fn(cache_table)
+first = wrapped(CACHE_TEXTS)
+check("cache/cold call embeds every text once", cache_table.calls, [CACHE_TEXTS])
+check("cache/cold output shape", first.shape, (5, 2))
+check("cache/cold output dtype is float32", first.dtype == np.float32, True)
+check_true("cache/cold values match unwrapped", np.allclose(first, [CACHE_VEC[t] for t in CACHE_TEXTS]))
+second = wrapped(CACHE_TEXTS)
+check("cache/warm call makes no embed call", len(cache_table.calls), 1)
+check_true("cache/warm returns identical values", np.array_equal(first, second))
+third = wrapped(["refund please", "alpha", "beta"])
+check("cache/repeat embeds only the new text", cache_table.calls[-1], ["refund please"])
+check("cache/underlying calls total", len(cache_table.calls), 2)
+check_true(
+    "cache/partial rows keep request order",
+    np.allclose(third, [CACHE_VEC["refund please"], CACHE_VEC["alpha"], CACHE_VEC["beta"]]),
+)
+
+dup_table = TableEmbed(dict(CACHE_VEC))
+dup_cached = cached_embed_fn(dup_table)
+dup = dup_cached(["alpha", "beta", "alpha"])
+check("cache/duplicate text embedded once per call", dup_table.calls, [["alpha", "beta"]])
+check("cache/duplicate output keeps request length", len(dup), 3)
+check_true("cache/duplicate rows repeat the vector", np.array_equal(dup[0], dup[2]))
+
+lru_table = TableEmbed(dict(CACHE_VEC))
+lru_cached = cached_embed_fn(lru_table, maxsize=2)
+lru_cached(["alpha", "beta"])           # cache: alpha, beta
+lru_cached(["alpha"])                   # hit; alpha now newest, beta is LRU
+check("cache/lru touch needs no embed", len(lru_table.calls), 1)
+lru_cached(["gamma: mid"])              # inserts gamma, evicts beta
+check("cache/lru insert embeds the new text", lru_table.calls[-1], ["gamma: mid"])
+lru_cached(["alpha", "gamma: mid"])     # both hits
+check("cache/lru survivors are both cached", len(lru_table.calls), 2)
+lru_cached(["beta"])                    # beta was evicted
+check("cache/lru evicted entry is re-embedded", lru_table.calls[-1], ["beta"])
+check("cache/lru size stays at the bound", lru_cached.cache_info()["size"], 2)
+lru_cached(["gamma: mid", "beta"])      # both hits
+check("cache/lru most recent pair survives", len(lru_table.calls), 3)
+lru_cached(["alpha"])                   # alpha was the oldest of the three
+check("cache/lru oldest of three was evicted", lru_table.calls[-1], ["alpha"])
+
+info_table = TableEmbed(dict(CACHE_VEC))
+info_cached = cached_embed_fn(info_table, maxsize=8)
+info_cached(["alpha", "beta"])          # 2 misses
+info_cached(["alpha", "gamma: mid"])    # 1 hit + 1 miss
+info = info_cached.cache_info()
+check("cache/info size", info["size"], 3)
+check("cache/info maxsize", info["maxsize"], 8)
+check("cache/info hits", info["hits"], 1)
+check("cache/info misses", info["misses"], 3)
+info_cached.cache_clear()
+check("cache/clear resets info", info_cached.cache_info(), {"size": 0, "maxsize": 8, "hits": 0, "misses": 0})
+info_cached(["alpha"])
+check("cache/clear forces re-embed", info_table.calls[-1], ["alpha"])
+
+
+class FlakyEmbed:
+    """Fails on the first call, succeeds after."""
+
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, texts):
+        self.calls.append(list(texts))
+        if len(self.calls) == 1:
+            raise RuntimeError("boom")
+        return [[1.0, 0.0] for _text in texts]
+
+
+flaky = FlakyEmbed()
+flaky_cached = cached_embed_fn(flaky)
+check_raises("cache/embed error propagates", lambda: flaky_cached(["alpha"]), RuntimeError)
+check("cache/failed call caches nothing", flaky_cached.cache_info()["size"], 0)
+retry = flaky_cached(["alpha"])
+check("cache/retry calls embed again", len(flaky.calls), 2)
+check_true(
+    "cache/retried row is cached",
+    flaky_cached.cache_info()["size"] == 1 and np.allclose(retry[0], [1.0, 0.0]),
+)
+
+
+class BadShapeEmbed:
+    def __call__(self, texts):
+        return [[1.0, 0.0]]  # one row no matter how many texts arrive
+
+
+bad_cached = cached_embed_fn(BadShapeEmbed())
+check_raises("cache/bad shape raises", lambda: bad_cached(["alpha", "beta"]))
+check("cache/bad shape caches nothing", bad_cached.cache_info()["size"], 0)
+
+
+class FakeTensor:
+    """Mimics the detach().float().cpu().numpy() chain of a torch tensor."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def detach(self):
+        return self
+
+    def float(self):
+        return self
+
+    def cpu(self):
+        return self
+
+    def numpy(self):
+        return np.array(self._rows, dtype=np.float64)
+
+
+class TensorEmbed:
+    def __call__(self, texts):
+        return FakeTensor([[1.0, 0.0] for _text in texts])
+
+
+tensor_cached = cached_embed_fn(TensorEmbed())
+tensor_out = tensor_cached(["alpha"])
+check("cache/torch-style return accepted", tensor_out.shape, (1, 2))
+check("cache/torch-style rows stored float32", tensor_out.dtype == np.float32, True)
+
+none_table = TableEmbed({"": [1.0, 0.0]})
+none_cached = cached_embed_fn(none_table)
+none_cached([None])
+check("cache/None text normalizes to empty string", none_table.calls, [[""]])
+none_cached([""])
+check("cache/empty string hits the same entry", len(none_table.calls), 1)
+check("cache/empty input embeds nothing", none_cached([]).shape, (0, 0))
+
+nan_table = TableEmbed({"alpha": [float("nan"), 0.0], "beta": [0.0, 1.0]})
+nan_cached = cached_embed_fn(nan_table)
+nan_out = nan_cached(["alpha", "beta"])
+check_true("cache/nan row stored cleaned", bool(np.isfinite(nan_out).all()))
+nan_cached(["alpha", "beta"])
+check("cache/cleaned row served from cache", len(nan_table.calls), 1)
+
+e2e_table = TableEmbed(dict(CACHE_VEC))
+e2e_cached = cached_embed_fn(e2e_table)
+run1 = shortlist_choice("pay me", CRITERIA, e2e_cached, k=2)
+run2 = shortlist_choice("refund please", CRITERIA, e2e_cached, k=2)
+check("cache/e2e first call embeds query and options", e2e_table.calls[0], CACHE_TEXTS)
+check("cache/e2e repeat embeds only the new query", e2e_table.calls[1], ["refund please"])
+check("cache/e2e two calls total", len(e2e_table.calls), 2)
+check("cache/e2e labels match the uncached path", run1, ["alpha", "delta"])
+check("cache/e2e second query labels", run2, ["beta", "gamma"])
+
+pipe_agent2 = Recorder()
+pipe_vectors2 = dict(CACHE_VEC)
+pipe_vectors2["category\npay me"] = [1.0, 0.0]
+pipe_vectors2["category\nrefund please"] = [0.0, 1.0]
+pipe_table2 = TableEmbed(pipe_vectors2)
+pipe_cached2 = cached_embed_fn(pipe_table2)
+pipe_q2 = {"intent": {"type": "choice", "instructions": "category", "criteria": CRITERIA}}
+predict_shortlist(pipe_agent2, "pay me", pipe_q2, pipe_cached2, k=2)
+pipe_b = predict_shortlist(pipe_agent2, "refund please", pipe_q2, pipe_cached2, k=2)
+check("cache/predict repeat embeds query only", pipe_table2.calls[1], ["category\nrefund please"])
+check("cache/predict keeps shortlist metadata", pipe_b["shortlist"]["intent"]["labels"], ["beta", "gamma"])
+check("cache/predict answer comes from the shortlist", pipe_b["answers"]["intent"]["choice"], "beta")
+
+mt_table = TableEmbed(dict(CACHE_VEC))
+mt_cached = cached_embed_fn(mt_table)
+
+
+def _mt_work(i):
+    texts = ["alpha", "beta"] if i % 2 else ["beta", "gamma: mid"]
+    return texts, mt_cached(texts)
+
+
+with ThreadPoolExecutor(max_workers=4) as pool:
+    mt_results = list(pool.map(_mt_work, range(16)))
+check_true(
+    "cache/concurrent calls return correct rows",
+    all(np.allclose(rows, [CACHE_VEC[t] for t in texts]) for texts, rows in mt_results),
+)
+check_true("cache/concurrent size stays bounded", mt_cached.cache_info()["size"] <= 4096)
+check_true(
+    "cache/concurrent counters consistent",
+    mt_cached.cache_info()["hits"] + mt_cached.cache_info()["misses"] == 32,
+)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

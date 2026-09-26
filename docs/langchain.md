@@ -71,6 +71,34 @@ result = app.invoke({"input": "I was billed twice for last month's subscription.
 print(result["response"])  # -> "Handling billing..."
 ```
 
+### Routing with the full conversation
+
+When a graph state contains a `messages` list, Laya uses the newest user
+message by default. To evaluate the full conversation instead, pass a callable
+`state_key` that returns a chronological list of `role`/`content` dictionaries:
+
+```python
+router = LayaRouter(
+    criteria={
+        "billing_agent": "invoices, payment methods, duplicate charges, refunds",
+        "tech_support": "system errors, bugs, API downtime, stack traces",
+    },
+    state_key=lambda state: state["messages"],
+)
+
+route = router.invoke({
+    "messages": [
+        {"role": "user", "content": "My checkout failed yesterday."},
+        {"role": "assistant", "content": "What error did you see?"},
+        {"role": "user", "content": "It says my card was charged twice."},
+    ]
+})
+```
+
+The same callable `state_key` pattern works with `LayaGuardrail`, `LayaTriage`,
+and `LayaEvaluator`. Conversation lists are serialized in the order supplied;
+if they exceed the model context window, Laya preserves the newest turns.
+
 ---
 
 ## 2. Real-Time Prompt Guardrails

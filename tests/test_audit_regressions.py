@@ -20,6 +20,50 @@ class FakeRouter:
         }
 
 
+def test_serve_rejects_large_answer_option_map_before_inference():
+    from fastapi.testclient import TestClient
+
+    class RecordingRouter(FakeRouter):
+        def __init__(self):
+            self.calls = []
+
+        def predict(self, state, questions, model=None):
+            self.calls.append((state, questions))
+            return super().predict(state, questions, model=model)
+
+    router = RecordingRouter()
+    client = TestClient(create_app(router=router))
+    response = client.post("/v1/systemone", json={
+        "state": "hello",
+        "questions": {
+            "q": {
+                "type": "choice",
+                "instructions": "pick one",
+                "criteria": {str(i): None for i in range(101)},
+            }
+        },
+    })
+    assert response.status_code == 413
+    assert router.calls == []
+
+
+def test_serve_rejects_total_answer_option_amplification():
+    from fastapi.testclient import TestClient
+
+    client = TestClient(create_app(router=FakeRouter()))
+    questions = {
+        "q%d" % i: {
+            "type": "choice",
+            "instructions": "pick one",
+            "criteria": {str(j): None for j in range(100)},
+        }
+        for i in range(6)
+    }
+    response = client.post("/v1/systemone", json={"state": "hello", "questions": questions})
+    assert response.status_code == 413
+    assert "across questions" in response.json()["detail"]
+
+
 def test_serve_rejects_oversized_stream_without_content_length():
     from fastapi.testclient import TestClient
 
@@ -93,7 +137,15 @@ def test_onnx_long_list_state_keeps_newest_turn(monkeypatch):
     agent.cfg = {"max_len": 32, "head_max_len": 16}
     agent.temperature = [1.0, 1.0, 1.0]
     agent.temperature_by_options = {}
-    agent.tok = object()
+    class _StubTokenizer:
+        # _infer tokenizes the shared state once before build_sequence (#343), so the stub
+        # needs the two things that step reads; build_sequence itself is patched out above.
+        mask_token = "<mask>"
+
+        def __call__(self, text, add_special_tokens=False):
+            return {"input_ids": []}
+
+    agent.tok = _StubTokenizer()
     try:
         ONNXAgent._infer(agent, [{"text": "old"}, {"text": "new"}], {
             "q": {"type": "noul", "instructions": "?"}

@@ -15,7 +15,7 @@ import torch.nn as nn
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from laya.agent import MPS_AMP_MIN_ROWS_DEFAULT, Agent, _amp_context, _mps_amp_min_rows  # noqa: E402
+from laya.agent import MPS_AMP_MIN_ROWS_DEFAULT, Agent, _amp_context, _cuda_amp_dtype, _mps_amp_min_rows  # noqa: E402
 from laya.common import DecisionModel, build_sequence, serialize_state  # noqa: E402
 
 PASS, FAIL = [], []
@@ -209,6 +209,17 @@ os.environ["LAYA_MPS_AMP_MIN_ROWS"] = "nonsense"
 check("mps-gate/env invalid falls back", _mps_amp_min_rows(), MPS_AMP_MIN_ROWS_DEFAULT)
 del os.environ["LAYA_MPS_AMP_MIN_ROWS"]
 check("mps-gate/env default", _mps_amp_min_rows(), MPS_AMP_MIN_ROWS_DEFAULT)
+
+os.environ.pop("LAYA_CUDA_AMP", None)
+check("cuda-amp/checkpoint default wins when unset", _cuda_amp_dtype("bf16"), torch.bfloat16)
+check("cuda-amp/no checkpoint value means fp16", _cuda_amp_dtype(None), torch.float16)
+os.environ["LAYA_CUDA_AMP"] = "fp16"
+check("cuda-amp/env fp16 overrides a bf16 checkpoint", _cuda_amp_dtype("bf16"), torch.float16)
+os.environ["LAYA_CUDA_AMP"] = "BF16"
+check("cuda-amp/env bf16 overrides an fp16 checkpoint", _cuda_amp_dtype("fp16"), torch.bfloat16)
+os.environ["LAYA_CUDA_AMP"] = "int8"
+check("cuda-amp/env invalid falls back to the checkpoint", _cuda_amp_dtype("bf16"), torch.bfloat16)
+del os.environ["LAYA_CUDA_AMP"]
 
 
 # ------------------------------------------------------------------ amp context shape

@@ -80,6 +80,8 @@ def _enum_field(path: str, name: str, values: Sequence[Any], description: Option
     if all(isinstance(v, bool) for v in values):
         return _noul_field(path, name, description)
     options = [(("null" if v is None else str(v)), v) for v in values]
+    if len({label for label, _ in options}) != len(options):
+        raise SchemaError("%s: enum values produce duplicate choice labels" % path)
     criteria = {label: None for label, _ in options}
     question = {
         "type": "choice",
@@ -122,6 +124,22 @@ def _field(path: str, name: str, prop: Dict[str, Any]) -> _Field:
     if not isinstance(prop, dict):
         raise SchemaError("%s: property must be an object, got %s" % (path, type(prop).__name__))
     description = prop.get("description")
+    # Pydantic v2 renders `Optional[X]` as `{"anyOf": [<X>, {"type": "null"}]}` with no
+    # top-level type/enum/const, the same nullable shape the list form `type: ["string", "null"]`
+    # already handles below. Unwrap the single non-null branch (carrying the outer description)
+    # so `Optional[Literal[...]]`, `Optional[int]` and friends map instead of raising. A union of
+    # two real types is genuinely ambiguous and still rejected.
+    if not ({"const", "enum", "type"} & set(prop)):
+        union = prop.get("anyOf") or prop.get("oneOf")
+        if union is not None:
+            branches = [b for b in union if isinstance(b, dict) and b.get("type") != "null"]
+            if len(branches) != 1:
+                raise SchemaError(
+                    "%s: only 'Optional[...]' unions (one non-null branch) are supported, got %d"
+                    % (path, len(branches)))
+            branch = dict(branches[0])
+            branch.setdefault("description", description)
+            return _field(path, name, branch)
     if "const" in prop:
         return _enum_field(path, name, [prop["const"]], description)
     if "enum" in prop:
@@ -129,7 +147,10 @@ def _field(path: str, name: str, prop: Dict[str, Any]) -> _Field:
 
     jtype = prop.get("type")
     if isinstance(jtype, list):                # nullable: ["string", "null"]
-        jtype = next((t for t in jtype if t != "null"), None)
+        non_null_types = [t for t in jtype if t != "null"]
+        if len(non_null_types) > 1:
+            raise SchemaError("%s: 'type' has multiple non-null types; unions are not supported" % path)
+        jtype = non_null_types[0] if non_null_types else None
     if jtype == "boolean":
         return _noul_field(path, name, description)
     if jtype == "string":

@@ -32,6 +32,7 @@ from laya.mcp.tools import (  # noqa: E402
     laya_predict,
     laya_preset,
     laya_route,
+    laya_shortlist,
     laya_status,
     validate_model,
     validate_preset,
@@ -225,6 +226,33 @@ def test_shape():
                       "invalid_questions")
 
 
+def test_question_forwarding():
+    questions = {
+        "intent": {"type": "choice", "instructions": "Which intent?",
+                   "criteria": {"A": None, "B": {"desc": "billing"}}},
+        "urgency": {"type": "score", "instructions": "How urgent?",
+                    "criteria": ["low", {"desc": "blocking"}]},
+        "positive": {"type": "noul", "instructions": "Is this positive?",
+                     "criteria": {"false": None, "true": "yes"},
+                     "labels": {"false": "B", "true": "A"}},
+    }
+
+    class CapturingRouter(FakeRouter):
+        def predict(self, state, received, **kwargs):
+            self.predicted_questions = received
+            return super().predict(state, received, **kwargs)
+
+        def route(self, state, received):
+            self.routed_questions = received
+            return super().route(state, received)
+
+    router = CapturingRouter()
+    laya_predict(STATE, questions, router=router)
+    laya_route(STATE, questions, router=router)
+    ok("questions/predict_preserves_supported_values", router.predicted_questions == questions)
+    ok("questions/route_preserves_supported_values", router.routed_questions == questions)
+
+
 def test_real_device():
     # agent_device: the real device read from a loaded agent (no weights).
     ok("device/agent_str", agent_device(FakeAgent()) == "cpu")
@@ -297,6 +325,186 @@ def test_private_contract():
     ok("contract/alias_english", router_agent(r, "English") is fake)
 
 
+# --- shortlist tool (mocked router/agent, no weights) -------------------------
+
+SHORTLIST_QUESTIONS = {
+    "topic": {
+        "type": "choice",
+        "instructions": "Which topic?",
+        "criteria": {
+            "billing": "invoices and money",
+            "shipping": "delivery status",
+            "returns": "send items back",
+            "account": "login and profile",
+            "other": "anything else",
+        },
+    },
+    "urgency": {"type": "score", "instructions": "How urgent?", "criteria": ["low", "high"]},
+}
+
+
+class ShortlistAgent:
+    device = "cpu"
+
+
+class ShortlistDirectAgent(ShortlistAgent):
+    def __init__(self):
+        self.seen = None
+
+    def predict(self, state, questions, **kwargs):
+        self.seen = questions
+        return {"answers": {name: {"choice": list(spec["criteria"])[0], "confidence": 0.9}
+                            for name, spec in questions.items()}}
+
+
+class ShortlistRouter:
+    """Fake router recording what predict received (no weights, no torch)."""
+
+    def __init__(self, agents, routed="english"):
+        self._agents = dict(agents)
+        self._routed = routed
+        self.seen_questions = None
+        self.seen_kwargs = None
+
+    def route(self, state, questions):
+        return {"model": self._routed, "repo": "fake/repo", "reason": "unit-test route"}
+
+    def predict(self, state, questions, **kwargs):
+        self.seen_questions = questions
+        self.seen_kwargs = kwargs
+        answers = {}
+        for name, spec in questions.items():
+            if spec["type"] == "choice":
+                labels = list(spec["criteria"])
+                answers[name] = {"choice": labels[0], "confidence": 0.9,
+                                 "probs": {label: round(1.0 / len(labels), 3) for label in labels}}
+            elif spec["type"] == "score":
+                answers[name] = {"score": 1.5, "confidence": 0.8, "distribution": [0.4, 0.6]}
+            else:
+                answers[name] = {"noul": 0.7, "confidence": 0.9}
+        return {"answers": answers,
+                "routing": {"model": kwargs.get("model", "english"), "repo": "fake/repo",
+                            "reason": "explicit model"}}
+
+
+class LoadingRouter(ShortlistRouter):
+    """ShortlistRouter plus the on-demand load() Router.predict relies on."""
+
+    def __init__(self, agents, routed="english"):
+        super().__init__(agents, routed)
+        self.load_calls = []
+
+    def load(self, name):
+        self.load_calls.append(name)
+        agent = ShortlistAgent()
+        self._agents[name] = agent
+        return agent
+
+
+def _tie_embed(texts):
+    # Every text gets the zero vector, so all cosine scores tie at 0 and the
+    # documented tie rule ("ties keep the earlier label") keeps the first k.
+    return [[0.0, 0.0] for _ in texts]
+
+
+def _raising_embed(texts):
+    raise AssertionError("embed_fn must not be called when every choice passes through")
+
+
+def test_shortlist():
+    expect_tool_error("shortlist/state_bad",
+                      lambda: laya_shortlist([], SHORTLIST_QUESTIONS), "invalid_state")
+    expect_tool_error("shortlist/questions_bad",
+                      lambda: laya_shortlist(STATE, {}), "invalid_questions")
+    expect_tool_error("shortlist/model_bad",
+                      lambda: laya_shortlist(STATE, SHORTLIST_QUESTIONS, model="gpt4"), "invalid_model")
+    for bad_k in (0, -3, True, 2.5, "3"):
+        expect_tool_error("shortlist/k_bad_%r" % (bad_k,),
+                          lambda b=bad_k: laya_shortlist(
+                              STATE, SHORTLIST_QUESTIONS, k=b,
+                              router=ShortlistRouter({"english": ShortlistAgent()})),
+                          "invalid_k")
+    expect_tool_error("shortlist/auto_needs_router",
+                      lambda: laya_shortlist(STATE, SHORTLIST_QUESTIONS), "models_not_ready")
+    # Explicit model whose checkpoint is neither resident nor loadable.
+    expect_tool_error("shortlist/explicit_not_loaded",
+                      lambda: laya_shortlist(STATE, SHORTLIST_QUESTIONS, model="english",
+                                             router=ShortlistRouter({})),
+                      "models_not_ready")
+
+    # Passthrough: every choice has <= k labels, so embed_fn is never called.
+    small = {"dept": {"type": "choice", "instructions": "pick", "criteria": {"a": "A", "b": "B"}}}
+    router = ShortlistRouter({"english": ShortlistAgent()})
+    out = laya_shortlist(STATE, small, model="english", k=5, router=router, embed_fn=_raising_embed)
+    meta = out["shortlist"]["dept"]
+    ok("shortlist/passthrough_meta", meta["passthrough"] is True and meta["scores"] is None
+       and meta["k"] == 5 and meta["n"] == 2, repr(meta))
+    ok("shortlist/passthrough_labels", meta["labels"] == ["a", "b"], repr(meta["labels"]))
+    ok("shortlist/passthrough_answers", out["answers"]["dept"]["choice"] == "a", repr(out["answers"]))
+    ok("shortlist/passthrough_forwarded", list(router.seen_questions["dept"]["criteria"]) == ["a", "b"])
+    ok("shortlist/passthrough_device", out.get("device") == "cpu", repr(out.get("device")))
+    ok("shortlist/passthrough_routing",
+       out["routing"] == {"model": "english", "repo": None, "reason": "explicit model"},
+       repr(out["routing"]))
+    ok("shortlist/passthrough_latency", isinstance(out["latency_ms"], float))
+
+    # Default k comes from laya.shortlist (20): a 3-option choice passes through.
+    router = ShortlistRouter({"english": ShortlistAgent()})
+    three = {"dept": {"type": "choice", "instructions": "pick",
+                      "criteria": {"a": "A", "b": "B", "c": "C"}}}
+    out = laya_shortlist(STATE, three, model="english", router=router, embed_fn=_raising_embed)
+    ok("shortlist/default_k_passthrough", out["shortlist"]["dept"]["k"] == 20
+       and out["shortlist"]["dept"]["passthrough"] is True, repr(out["shortlist"]))
+
+    # Shortlist path: 5 options with k=2 -> predict sees exactly the kept labels.
+    calls = []
+
+    def recording_embed(texts):
+        calls.append(list(texts))
+        return _tie_embed(texts)
+
+    router = ShortlistRouter({"english": ShortlistAgent()})
+    out = laya_shortlist(STATE, SHORTLIST_QUESTIONS, model="english", k=2,
+                         router=router, embed_fn=recording_embed)
+    meta = out["shortlist"]["topic"]
+    ok("shortlist/meta_shape", meta["k"] == 2 and meta["n"] == 5 and meta["passthrough"] is False,
+       repr(meta))
+    ok("shortlist/meta_labels_tie_order", meta["labels"] == ["billing", "shipping"], repr(meta["labels"]))
+    ok("shortlist/meta_scores", meta["scores"] == [0.0, 0.0], repr(meta["scores"]))
+    ok("shortlist/predict_saw_reduced",
+       list(router.seen_questions["topic"]["criteria"]) == ["billing", "shipping"],
+       repr(router.seen_questions["topic"]))
+    ok("shortlist/embed_called_once", len(calls) == 1 and len(calls[0]) == 6,
+       repr([len(c) for c in calls]))
+    # Non-choice questions are forwarded unchanged and get no shortlist entry.
+    ok("shortlist/non_choice_forwarded", router.seen_questions["urgency"] == SHORTLIST_QUESTIONS["urgency"])
+    ok("shortlist/non_choice_no_meta", "urgency" not in out["shortlist"], repr(sorted(out["shortlist"])))
+    ok("shortlist/input_not_mutated", len(SHORTLIST_QUESTIONS["topic"]["criteria"]) == 5)
+
+    # Auto mode: route once, then answer with an explicit model= so the forward
+    # pass does not re-route; the reported routing is the real route decision.
+    router = ShortlistRouter({"multilingual": ShortlistAgent()}, routed="multilingual")
+    out = laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, router=router, embed_fn=_tie_embed)
+    ok("shortlist/auto_routing_reported",
+       out["routing"] == {"model": "multilingual", "repo": "fake/repo", "reason": "unit-test route"},
+       repr(out["routing"]))
+    ok("shortlist/auto_explicit_model", router.seen_kwargs == {"model": "multilingual"},
+       repr(router.seen_kwargs))
+
+    # Lazy server (LAYA_PRELOAD=0): a routed checkpoint that is not resident is
+    # loaded on demand, the same on-demand build Router.predict performs.
+    router = LoadingRouter({}, routed="multilingual")
+    out = laya_shortlist(STATE, SHORTLIST_QUESTIONS, k=2, router=router, embed_fn=_tie_embed)
+    ok("shortlist/lazy_load_once", router.load_calls == ["multilingual"], repr(router.load_calls))
+    ok("shortlist/lazy_device", out.get("device") == "cpu", repr(out.get("device")))
+
+    # Direct agent injection (no router), mirroring laya_predict's agent= path.
+    agent = ShortlistDirectAgent()
+    out = laya_shortlist(STATE, small, model="english", k=5, agent=agent, embed_fn=_raising_embed)
+    ok("shortlist/direct_agent", out["answers"]["dept"]["choice"] == "a"
+       and out["routing"]["reason"] == "explicit model", repr(out["routing"]))
+
+
 def test_timeout_removed():
     # The per-call timeout was removed: a ThreadPoolExecutor shutdown waits for
     # the work anyway, and MCP clients apply their own request timeout. The tool
@@ -305,7 +513,7 @@ def test_timeout_removed():
 
     import laya.mcp.tools as tools_mod
 
-    for fn in (laya_predict, laya_route, laya_preset):
+    for fn in (laya_predict, laya_route, laya_preset, laya_shortlist):
         ok("timeout/param_absent_%s" % fn.__name__, "timeout" not in inspect.signature(fn).parameters)
     ok("timeout/executor_absent", "ThreadPoolExecutor" not in inspect.getsource(tools_mod))
 
@@ -335,8 +543,8 @@ def test_models_from_env():
 def test_server_registration():
     tools = asyncio.run(mcp_server.list_tools())
     names = sorted(t.name for t in tools)
-    ok("server/tool_names", names == ["laya_predict", "laya_preset", "laya_route", "laya_status"], repr(names))
-    decision = {"laya_predict", "laya_route", "laya_preset"}
+    ok("server/tool_names", names == ["laya_predict", "laya_preset", "laya_route", "laya_shortlist", "laya_status"], repr(names))
+    decision = {"laya_predict", "laya_route", "laya_preset", "laya_shortlist"}
     for t in tools:
         desc = (t.description or "").lower()
         ok("server/desc_%s_nonempty" % t.name, bool(desc.strip()), repr(desc))
@@ -344,6 +552,8 @@ def test_server_registration():
         # laya_status reports instead of deciding.
         if t.name in decision:
             ok("server/desc_%s_guardrail" % t.name, "do not use" in desc)
+        if t.name == "laya_predict":
+            ok("server/desc_noul_labels", "optional labels" in desc)
 
 
 test_device()
@@ -351,6 +561,8 @@ test_real_device()
 test_private_contract()
 test_schema()
 test_shape()
+test_question_forwarding()
+test_shortlist()
 test_timeout_removed()
 test_models_from_env()
 test_server_registration()

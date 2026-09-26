@@ -72,6 +72,10 @@ HEADER = ("| checkpoint | type | n | max \\|p_fast - p_stock\\| | max \\|p_fast 
           "| max \\|p_stock - p_fp32\\| | argmax fast = stock | fast = fp32 |")
 
 
+FP16_HEADER = ("| checkpoint | type | n | max \\|p_fast - p_fp32\\| bf16 | max \\|p_fast - p_fp32\\| fp16 "
+               "| argmax fast = fp32, bf16 | fp16 |")
+
+
 def split_row(line: str) -> List[str]:
     return [c.strip() for c in line.strip().strip("|").split("|")]
 
@@ -153,6 +157,44 @@ def main() -> int:
                     if isinstance(v, dict) and v["d_fast_fp32"] > v["d_stock_fp32"]]
     check("the row that falsified the old sentence is still the multilingual noul one",
           contradicted, [("laya-multilingual", "noul")])
+
+    # ------------------------------------------------- the fp16 table (same files, plus fp16 runs)
+    fp16_sources = {
+        "laya": ("parity_english_rtx4070.json", "parity_english_fp16_rtx4070.json"),
+        "laya-multilingual": ("parity_multilingual_rtx4070.json", "parity_multilingual_fp16_rtx4070.json"),
+        "laya-typed-decisions": ("parity_typed_decisions_rtx4070.json", "parity_typed_decisions_fp16_rtx4070.json"),
+    }
+    pairs: Dict[str, Tuple[Dict[str, Any], Dict[str, Any]]] = {}
+    for ckpt, (bf, fp) in fp16_sources.items():
+        loaded = []
+        for name in (bf, fp):
+            with open(os.path.join(PARITY_DIR, name), encoding="utf-8") as fh:
+                loaded.append(json.load(fh))
+        check("fp16 table/%s bf16 file is a bf16 run" % ckpt, loaded[0]["dtype"], "torch.bfloat16")
+        check("fp16 table/%s fp16 file is an fp16 run" % ckpt, loaded[1]["dtype"], "torch.float16")
+        pairs[ckpt] = (loaded[0]["summary"], loaded[1]["summary"])
+    rows16 = parse_table(read(BENCHMARKS), FP16_HEADER)
+    check_true("fp16 table/parsed nine rows", len(rows16) == 9, "got %d" % len(rows16))
+    for row in rows16:
+        ckpt, qtype = row[0], row[1]
+        if ckpt not in pairs or qtype not in pairs[ckpt][0] or qtype not in pairs[ckpt][1]:
+            FAIL.append("fp16 table/unknown row %s/%s" % (ckpt, qtype))
+            continue
+        b, f = pairs[ckpt][0][qtype], pairs[ckpt][1][qtype]
+        label = "fp16 table/%s/%s" % (ckpt, qtype)
+        check(label + " n", int(row[2]), f["n"])
+        check(label + " bf16 d_fast_fp32", unstyled(row[3]), rounded(b["d_fast_fp32"]))
+        check(label + " fp16 d_fast_fp32", unstyled(row[4]), rounded(f["d_fast_fp32"]))
+        check(label + " bf16 agree_fast_fp32", unstyled(row[5]), "%d/%d" % (b["agree_fast_fp32"], b["n"]))
+        check(label + " fp16 agree_fast_fp32", unstyled(row[6]), "%d/%d" % (f["agree_fast_fp32"], f["n"]))
+    # the prose under it: fp16 fast agrees with fp16 stock everywhere, and moves nothing by more than 0.009
+    fp16_rows = [v for _, f in pairs.values() for v in f.values() if isinstance(v, dict)]
+    check("fp16 prose/argmax fast = stock on every question",
+          sum(v["agree_fast_stock"] for v in fp16_rows), sum(v["n"] for v in fp16_rows))
+    check("fp16 prose/max |fast - stock| rounds to 0.009",
+          rounded(max(v["d_fast_stock"] for v in fp16_rows)), "0.009")
+    check("fp16 prose/README's 'within 0.009 of fp32'",
+          rounded(max(v["d_fast_fp32"] for v in fp16_rows)), "0.009")
 
     # ------------------------------------------------- what this cannot check
     unbacked = [

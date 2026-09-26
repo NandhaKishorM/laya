@@ -1,5 +1,6 @@
 import { analyse, type AnalyseResult } from "./lang.js";
 import type { PredictOptions, QuestionDef, SystemOneResult } from "./agent.js";
+import { decide, type DecideOptions, type DecisionResult } from "./structured.js";
 import {
   HookRegistry,
   PredictContext,
@@ -78,13 +79,19 @@ export function matchTypedDecisionsWorkflow(
 
 const ENGLISH_SUBTAGS = new Set(["en", "eng", "english"]);
 
+// Valid `$LANG` values that name no language, so they answer nothing about the state: `C`,
+// `POSIX` and `C.UTF-8` (the official Python image's default), plus the ISO 639-2 special codes
+// `und` (undetermined), `zxx` (no linguistic content) and `mul` (multiple). They abstain like a
+// blank code instead of forcing the multilingual checkpoint on English text (Python parity).
+const LANGUAGE_AGNOSTIC_CODES = new Set(["c", "posix", "und", "zxx", "mul"]);
+
 export function englishFromCode(value: unknown): boolean | null {
   if (value === null || value === undefined) return null;
   let code = String(value).trim().toLowerCase();
   if (!code) return null;
   code = code.split(".", 1)[0]; // en_US.UTF-8 -> en_US
   const primary = code.replace(/_/g, "-").split("-", 1)[0]; // en_US -> en
-  if (!primary) return null;
+  if (!primary || LANGUAGE_AGNOSTIC_CODES.has(primary)) return null;
   return ENGLISH_SUBTAGS.has(primary);
 }
 
@@ -120,6 +127,10 @@ export interface RouterOptions {
   langGuess?: LangGuess;
   lang_guess?: LangGuess;
   loader?: AgentLoader;
+  /** Optional hub revision (commit SHA/branch/tag) applied to every checkpoint load. */
+  revision?: string | null;
+  /** Per-model revision overrides, keyed by model name or alias. */
+  revisions?: Record<string, string | null>;
   hooks?: HookArg;
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
@@ -178,6 +189,8 @@ export class Router extends HookRegistry {
   models: Record<string, ModelSpec>;
   device: string | null;
   token: string | null | undefined;
+  revision: string | null;
+  revisions: Partial<Record<ModelName, string | null>>;
   maxLoaded: number;
   default: ModelName;
   autoTaskDetection: boolean;
@@ -185,6 +198,7 @@ export class Router extends HookRegistry {
   loader: AgentLoader | null;
   _agents: Map<string, unknown> = new Map();
   _order: string[] = []; // least-recently-used first
+  private readonly _loading = new Map<string, Promise<unknown>>();
 
   constructor(opts: RouterOptions = {}) {
     super();
@@ -203,6 +217,12 @@ export class Router extends HookRegistry {
     }
     this.device = opts.device ?? null;
     this.token = opts.token ?? (typeof process !== "undefined" ? process.env?.["HF_TOKEN"] : undefined);
+    // Optional hub revision applied to every checkpoint load. Per-model overrides support
+    // standalone repositories whose reviewed commits differ.
+    this.revision = opts.revision ?? null;
+    this.revisions = Object.fromEntries(
+      Object.entries(opts.revisions ?? {}).map(([name, value]) => [normaliseName(name), value]),
+    ) as Partial<Record<ModelName, string | null>>;
     this.maxLoaded = Math.max(1, Math.trunc(Number(opts.maxLoaded ?? opts.max_loaded ?? 2)));
     this.default = normaliseName(opts.default ?? "english");
     this.autoTaskDetection = Boolean(opts.autoTaskDetection ?? opts.auto_task_detection ?? false);
@@ -221,39 +241,55 @@ export class Router extends HookRegistry {
       this._touch(key);
       return this._agents.get(key);
     }
-    let agent: unknown;
-    if (this.loader) {
-      agent = await this.loader(key, this.models[key]);
-    } else {
-      const { Agent } = await import("./agent.js");
-      const spec = this.models[key];
-      agent = await (Agent as unknown as {
-        load(repo: string, opts?: Record<string, unknown>): Promise<unknown>;
-      }).load(spec.repo, {
-        subfolder: spec.subfolder,
-        device: this.device ?? undefined,
-        token: this.token ?? undefined,
-      });
-    }
-    this._agents.set(key, agent);
-    this._order.push(key);
-    const evicted = this._evict();
-    // Lifecycle hooks fire after the maps settle, so a hook can safely call the Router.
-    for (const victim of evicted) {
+    const loading = this._loading.get(key);
+    if (loading) return loading;
+    // Start in a microtask so even a synchronous loader sees its in-flight entry.
+    const pending = Promise.resolve().then(async () => {
+      let agent: unknown;
+      if (this.loader) {
+        agent = await this.loader(key, this.models[key]);
+      } else {
+        const { Agent } = await import("./agent.js");
+        const spec = this.models[key];
+        const revision = Object.prototype.hasOwnProperty.call(this.revisions, key)
+          ? this.revisions[key]
+          : this.revision;
+        const opts: Record<string, unknown> = {
+          subfolder: spec.subfolder,
+          device: this.device ?? undefined,
+          token: this.token ?? undefined,
+        };
+        if (revision) opts.revision = revision;
+        agent = await (Agent as unknown as {
+          load(repo: string, opts?: Record<string, unknown>): Promise<unknown>;
+        }).load(spec.repo, opts);
+      }
+      this._agents.set(key, agent);
+      this._order.push(key);
+      const evicted = this._evict();
+      // Lifecycle hooks fire after the maps settle, so a hook can safely call the Router.
+      for (const victim of evicted) {
+        dispatch(
+          composeHooks(this.hooks),
+          "onEvict",
+          new PredictContext({ states: [], questions: {}, model: victim, router: this }),
+          { raiseErrors: this.hooksRaise },
+        );
+      }
       dispatch(
         composeHooks(this.hooks),
-        "onEvict",
-        new PredictContext({ states: [], questions: {}, model: victim, router: this }),
+        "onLoad",
+        new PredictContext({ states: [], questions: {}, model: key, agent, router: this }),
         { raiseErrors: this.hooksRaise },
       );
+      return agent;
+    });
+    this._loading.set(key, pending);
+    try {
+      return await pending;
+    } finally {
+      this._loading.delete(key);
     }
-    dispatch(
-      composeHooks(this.hooks),
-      "onLoad",
-      new PredictContext({ states: [], questions: {}, model: key, agent, router: this }),
-      { raiseErrors: this.hooksRaise },
-    );
-    return agent;
   }
 
   _touch(key: string): void {
@@ -387,8 +423,12 @@ export class Router extends HookRegistry {
       };
     }
 
-    if (lang !== null && lang !== undefined) {
-      const key: ModelName = englishFromCode(lang) ? "english" : "multilingual";
+    // An explicit `lang` is decisive only when the code names a language. Blank or whitespace
+    // resolves to no usable hint, so it falls through to langGuess/detection exactly as an
+    // abstaining hint does (Python parity); real English/non-English codes still route now.
+    const resolvedLang = englishFromCode(lang);
+    if (resolvedLang !== null) {
+      const key: ModelName = resolvedLang ? "english" : "multilingual";
       return {
         model: key,
         repo: repoStr(this.models[key]),
@@ -464,7 +504,11 @@ export class Router extends HookRegistry {
     // Per-call hooks apply to the whole call, including onRoute inside route().
     const decision = this.route(state, questions, opts);
     const agent = (await this.load(decision.model)) as {
-      systemOne(s: unknown, q: Record<string, QuestionDef>): Promise<SystemOneResult>;
+      systemOne(
+        s: unknown,
+        q: Record<string, QuestionDef>,
+        opts?: { lang?: string | null },
+      ): Promise<SystemOneResult>;
     };
     const ctx = new PredictContext({
       states: [state],
@@ -477,9 +521,18 @@ export class Router extends HookRegistry {
     try {
       dispatch(active, "onPredictStart", ctx, { raiseErrors });
       if (ctx.results === null) {
+        // Python parity (router.py predict): the request's language also shapes the answer
+        // distribution through the agent's lang_temperatures. An explicit lang wins;
+        // otherwise forward the language the router detected for the routing decision.
+        // TS analyse() names English "en" where Python's analyse returns None (it only
+        // ever names non-English), so a detected "en" forwards as null — in Python only an
+        // explicit lang="en" can select an "en" override.
+        const detected = decision.detection?.language;
+        const effectiveLang = opts.lang ?? (detected && detected !== "en" ? detected : null);
         const result = (await agent.systemOne(
           ctx.states[0],
           ctx.questions as Record<string, QuestionDef>,
+          { lang: effectiveLang },
         )) as RoutedResult;
         result["routing"] = { ...decision };
         ctx.results = [result as unknown as Record<string, unknown>];
@@ -511,6 +564,29 @@ export class Router extends HookRegistry {
       }
     }
     return (ctx.results as unknown as RoutedResult[])[0];
+  }
+
+  /**
+   * Answer `state` against a JSON schema (or explicit `opts.questions`) and return typed
+   * values — see `structured.ts`. Routing options (`model`, `task`, ...) are forwarded to
+   * `predict`.
+   */
+  async decide(
+    state: unknown,
+    schema: unknown,
+    opts: DecideOptions & RouteOptions & PredictOptions & { returnDetails: true },
+  ): Promise<DecisionResult>;
+  async decide(
+    state: unknown,
+    schema?: unknown,
+    opts?: DecideOptions & RouteOptions & PredictOptions,
+  ): Promise<Record<string, unknown>>;
+  async decide(
+    state: unknown,
+    schema?: unknown,
+    opts: DecideOptions & RouteOptions & PredictOptions = {},
+  ): Promise<Record<string, unknown> | DecisionResult> {
+    return decide(this, state, schema, opts);
   }
 
   async systemOne(

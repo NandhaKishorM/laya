@@ -6,3 +6,10 @@
 research/benchmarks/feishu_zh/SOURCE.json text eol=lf
 research/benchmarks/feishu_zh/data/** text eol=lf
 research/benchmarks/feishu_zh/results/** text eol=lf
+
+# Same reason in research/benchmarks/zh_short_commands: audit.py pins the sha256 of the
+# raw bytes of data/cases.jsonl and prompts.py, and a CRLF report.json would make every
+# later run on another platform look like a rewrite.
+research/benchmarks/zh_short_commands/data/** text eol=lf
+research/benchmarks/zh_short_commands/prompts.py text eol=lf
+research/benchmarks/zh_short_commands/results/** text eol=lf

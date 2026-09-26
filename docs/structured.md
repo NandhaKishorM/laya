@@ -63,6 +63,7 @@ A schema that cannot be answered from a fixed option set raises `laya.structured
 | `array` | `properties.name: arrays are not supported; ask one field per element` |
 | nested `object` | `properties.name: nested objects are not supported; flatten the schema` |
 | `$ref` / recursion | `properties.name: $ref/recursion is not supported; flatten the schema` |
+| enum values with the same choice label, such as `1` and `"1"` | `properties.name: enum values produce duplicate choice labels` |
 | unbounded number | `properties.name: a numeric field needs integer 'minimum' and 'maximum' to become a score` |
 | more than `MAX_PROPERTIES` / `MAX_OPTIONS` / `MAX_SCORE_LEVELS` | the limit is named in the message |
 

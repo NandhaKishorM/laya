@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "benchmark": "zh_short_commands",
+  "provenance": "Hand-written Chinese commands with a label policy fixed before any model was run; no private recordings, no user data. The 18 cases are fixtures for a regression diagnostic, not a held-out test set.",
+  "cases": 18,
+  "labels": {
+    "faster": 4,
+    "slower": 5,
+    "stop": 4,
+    "left": 2,
+    "right": 2,
+    "none": 1
+  },
+  "families": {
+    "speed": 9,
+    "stop": 4,
+    "direction": 4,
+    "other": 1
+  },
+  "ladder": {
+    "choice": ["choice_criteria", "choice_scenario", "choice_json_state"],
+    "noul": ["noul_plain", "noul_criteria", "noul_scenario", "noul_json_state"]
+  },
+  "cases_sha256": "2d789879fe11328fb8b8099aaf35ddf7b2e301b393f9525701368339da28181e",
+  "prompts_sha256": "d26c8357a302f887258382c5a40d1c1320adab8b3e86c364ef150a913a06686d",
+  "policy": "标签就是机器人该执行的运动意图。快一点/加速/太慢了/再快些=faster；慢一点/太快了/减速/慢下来/别太快了=slower；停下/别动了/急停/停下来别动=stop；左转/往左一点=left；向右转/往右边靠一下=right；今天天气不错=none。程度副词与否定词按整句意图判断，不按字面：太快了 是 slower 而不是 faster。",
+  "unclamped": false,
+  "scoring": "choice 取六路的 temperature-scaled softmax 的 argmax；noul 每个维度独立取 p(true) >= 0.5。温度来自 checkpoint 自己的分桶值，与 research/eval/laya_eval.py 相同，未做任何阈值拟合。",
+  "cases_without_a_dimension": "四个 noul 维度覆盖速度与停止，不覆盖方向：left/right 只应让 is_command 为真。方向标签正是 task A（六路 choice）存在的原因，两个任务不能合并成一个分数。"
+}

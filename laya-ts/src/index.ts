@@ -13,7 +13,7 @@ export type {
   AgentOptions,
   PredictOptions,
 } from "./agent.js";
-export { createNodeProvider, createWebProvider, feed, feedHead, loadNodeBundle, loadWebBundle } from "./providers.js";
+export { createNodeProvider, createWebProvider, feed, feedHead, loadNodeBundle, loadWebBundle, PINNED_REVISIONS, resolveRevision } from "./providers.js";
 export type { Batch, SessionProvider, ProviderOptions, NodeBundle, WebBundle } from "./providers.js";
 export { Router, normaliseName, DEFAULT_MODELS } from "./router.js";
 export type { RoutedResult, RouteDecision, ModelName, ModelSpec, BatchRequest } from "./router.js";
@@ -39,6 +39,17 @@ export {
 export type { Hook, HookEvent, HookArg, PredictHook, PredictHookArg } from "./hooks.js";
 export { triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions } from "./presets.js";
 export {
+  decide,
+  planFromJsonSchema,
+  questionsFromJsonSchema,
+  answersToJson,
+  SchemaError,
+  MAX_PROPERTIES,
+  MAX_OPTIONS,
+  MAX_SCORE_LEVELS,
+} from "./structured.js";
+export type { DecisionResult, DecideOptions, DecideRunner, PlannedField } from "./structured.js";
+export {
   renderOptions,
   serializeState,
   buildSequence,
@@ -46,6 +57,7 @@ export {
   sequenceWithState,
   softmax,
   confidenceFromProbs,
+  answerConfidence,
   clampTemperature,
   tempBucket,
   collateItems,

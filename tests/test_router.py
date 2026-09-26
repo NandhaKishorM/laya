@@ -13,6 +13,7 @@ from laya.router import (  # noqa: E402
     BUNDLE_REPO,
     DEFAULT_MODELS,
     STANDALONE_MODELS,
+    _english_from_code,
     _repo_str,
     Router,
     match_typed_decisions_workflow,
@@ -93,7 +94,7 @@ check("latin/diacritic rate reported", analyse("Gătește-mi o rețetă de sarma
 check("latin/english has no diacritics", analyse("Please refund the duplicate charge today")["diacritic_rate"], 0.0)
 # every branch of analyse() reports the same keys, so a caller can read one without guarding
 _KEYS = {"script", "script_profile", "language", "is_english", "language_undecided",
-         "diacritic_rate", "non_latin_fraction"}
+         "diacritic_rate", "non_latin_fraction", "mixed_segment"}
 for label, text in [("english", "Please refund the duplicate charge"), ("hindi", "ग्राहक से दो बार"),
                     ("romanian", "Gătește-mi o rețetă de sarmale"), ("no letters", "12345 ???")]:
     check("analyse/keys " + label, set(analyse(text)), _KEYS)
@@ -164,6 +165,59 @@ check("state_text/none", state_text(None), "")
 # keys must not drive detection: English keys around Hindi content stay non-English
 check("state_text/keys ignored",
       analyse({"subject": "नमस्ते", "body": "ग्राहक से दो बार शुल्क लिया गया"})["is_english"], False)
+
+# --------------------------------------------------------------------- dict-state language (#384)
+# The same German sentence must route the same way as a string and as a dict value.
+# A mapping that is not a builtin dict, a bytes value, and English sibling fields used to
+# hide that value: detection then reported language_undecided (or English) and the router
+# fell through to the English checkpoint.
+_DE = "Mein Konto wurde zweimal belastet"
+_r_de = Router()
+_de_str = _r_de.route(_DE, {})
+_de_dict = _r_de.route({"message": _DE}, {})
+check("route/dict german matches string", _de_dict.model, _de_str.model)
+check("route/dict german is multilingual", _de_dict.model, "multilingual")
+check("route/dict german names de", _de_dict["detection"]["language"], "de")
+check("route/dict german is not undecided", _de_dict["detection"]["language_undecided"], False)
+check("analyse/dict german matches string", analyse({"message": _DE})["language"], analyse(_DE)["language"])
+# English notes must not outvote the message, and a long note must not push it out of the window.
+_de_ticket = {
+    "ticket_id": "TCK-88213",
+    "channel": "web chat",
+    "agent_notes": "Please check the shipping status and refund the customer if the charge was duplicated.",
+    "message": _DE,
+}
+check("route/dict german beside english notes", _r_de.route(_de_ticket, {}).model, "multilingual")
+check("route/dict german beside english notes is not undecided",
+      _r_de.route(_de_ticket, {})["detection"]["language_undecided"], False)
+_de_long = {
+    "agent_notes": "Please check the shipping status and tell the customer about the refund. " * 80,
+    "message": _DE,
+}
+check("route/dict german after long english note", _r_de.route(_de_long, {}).model, "multilingual")
+check("route/dict german after long english note names de",
+      _r_de.route(_de_long, {})["detection"]["language"], "de")
+from collections import UserDict  # noqa: E402
+from types import MappingProxyType  # noqa: E402
+check("route/userdict german", _r_de.route(UserDict({"message": _DE}), {}).model, "multilingual")
+check("route/userdict german is not undecided",
+      _r_de.route(UserDict({"message": _DE}), {})["detection"]["language_undecided"], False)
+check("route/mappingproxy german",
+      _r_de.route(MappingProxyType({"message": _DE}), {}).model, "multilingual")
+check("route/bytes german value",
+      _r_de.route({"message": _DE.encode("utf-8")}, {}).model, "multilingual")
+# A name beside an English request is not a second message.
+check("route/dict cyrillic name stays english",
+      _r_de.route({"name": "Антон Павлович Чехов",
+                   "body": "Please refund the duplicate charge on invoice 4411 today."}, {}).model,
+      "english")
+check("route/dict jose stays english",
+      _r_de.route({"name": "José",
+                   "body": "Please refund the duplicate charge on invoice 4411 today."}, {}).model,
+      "english")
+check("route/dict english body stays english",
+      _r_de.route({"body": "Please refund the duplicate charge on invoice 4411 today."}, {}).model,
+      "english")
 
 
 # --------------------------------------------------------------------- workflow signatures
@@ -328,6 +382,101 @@ check("route/english reason unchanged",
       _r_lat.route("Please refund the duplicate charge on invoice 4411 today.").reason, "English Latin text")
 
 
+# --------------------------------------------------------------------- mixed states
+# A Portuguese ticket carrying an English stack trace, error payload or form template read as English
+# as a whole -- the English part is longer -- and went to the checkpoint that cannot read the
+# customer's own words. Any line or field that on its own is named a non-English language now wins.
+_TRACE = ("O sistema caiu de novo hoje de manhã, segue o log:\n"
+          "Traceback (most recent call last):\n"
+          "  File \"/app/main.py\", line 42, in handler\n"
+          "    return self.process(request)\n"
+          "ConnectionError: the connection to the database was refused because the pool is "
+          "exhausted and there is no available slot for this request")
+for label, state, segment in [
+    ("portuguese ticket + english traceback", _TRACE, "O sistema caiu de novo hoje de manhã, segue o log:"),
+    ("portuguese field + english error payload",
+     {"descricao": "O pagamento não foi processado",
+      "error": {"code": "card_declined", "message": "Your card was declined. Please try again with a "
+                "different card or contact your bank for more information."}},
+     "O pagamento não foi processado"),
+    ("english form template + portuguese body",
+     {"subject": "New ticket from the web form", "body": "Quero cancelar meu plano"},
+     "Quero cancelar meu plano"),
+    ("parenthesis in prose is not code",
+     {"subject": "Urgent: production is down for all customers since the last deploy and the "
+                 "status page is red for the whole region",
+      "body": "Deu erro (500) no login, alguém pode ver isso agora?"},
+     "Deu erro (500) no login, alguém pode ver isso agora?"),
+    # the rule runs both ways: an English ticket that pastes a foreign log goes to multilingual too
+    ("english ticket + portuguese error log",
+     "Our Brazilian branch cannot issue invoices since this morning. The system shows this message:\n"
+     "ERRO: Não foi possível emitir a nota fiscal, o certificado digital está vencido\n"
+     "Can you help us before the end of the day?",
+     "ERRO: Não foi possível emitir a nota fiscal, o certificado digital está vencido"),
+    ("english ticket + german error log",
+     "The nightly sync to the Munich server keeps failing and we lose the whole batch.\n"
+     "Fehler: Die Verbindung zum Server wurde unterbrochen, bitte versuchen Sie es spaeter noch einmal\n"
+     "Please check the firewall rules on your side.",
+     "Fehler: Die Verbindung zum Server wurde unterbrochen, bitte versuchen Sie es spaeter noch einmal"),
+    ("english ticket + spanish error payload",
+     {"subject": "Payment failed for a customer in Madrid",
+      "description": "The customer tried three times with the same card and each attempt was declined by "
+                     "the gateway, so we would like to know whether the problem is on our side or with the bank.",
+      "error": {"code": "card_declined",
+                "message": "La tarjeta fue rechazada por el banco emisor, contacte con su banco"}},
+     "La tarjeta fue rechazada por el banco emisor, contacte con su banco"),
+    # acronyms are dropped only from mixed-case text: a line written all in capitals keeps its words
+    ("all-caps portuguese line",
+     "This is the fourth email I have sent about the same order and nobody has answered any of them.\n"
+     "The customer wrote this in the chat and then closed the window:\n"
+     "QUERO MEU DINHEIRO DE VOLTA AGORA\n"
+     "Could someone from the billing team look at order 5512 today?",
+     "QUERO MEU DINHEIRO DE VOLTA AGORA"),
+]:
+    check("mixed/is not english: " + label, is_english(state), False)
+    check("mixed/segment reported: " + label, analyse(state)["mixed_segment"], segment)
+    check("mixed/routes multilingual: " + label, _r_lat.route(state).model, "multilingual")
+check("mixed/reason names the segment",
+      "a line or field reads as 'pt'" in _r_lat.route(_TRACE).reason, True)
+# English stays English: several English lines, a short foreign sign-off, and code pasted into a request
+# (`os.path` reads as Portuguese, `round(el, 2)` as Spanish, `np.mean(na)` as Portuguese)
+for label, state in [
+    ("multi-line english", "Hi team,\nThe export failed again last night.\nCan you check the logs?\nThanks"),
+    ("short portuguese sign-off", "Please resend the invoice for March, the amount is wrong.\nAtenciosamente, Joao"),
+    ("os.path", "The build broke after the refactor.\nREPO = os.path.dirname(os.path.dirname(__file__))\n"
+                "Please take a look at the import paths when you can."),
+    ("round(el)", "The latency script crashes on large runs.\nmix[key] = {\"total_s\": round(el, 2)}\n"
+                  "Can you check why the stream is empty?"),
+    ("np.mean(na)", "The summary is wrong for empty suites.\nif na: non[m] = round(float(np.mean(na)), 4)\n"
+                    "Please guard the empty case."),
+    ("english json", {"status": "open", "priority": "high",
+                      "message": "The customer was charged twice and wants a refund"}),
+    # a line carries far less text than a state, so its evidence must be two different words and no
+    # acronyms or slash compounds. A ham-radio listing on 20 Newsgroups (misc.forsale/76512) went to
+    # multilingual on `COM ... COM` alone; hockey picks on the team codes, OS/2 on `os` and `dos`.
+    ("same word twice (Nav/Com, COM)",
+     "I'm looking for good deals on the following (used or new):\nAviation Headsets (with mic).\n"
+     "Handheld Nav/Com tranciever (may consider COM only).\nPortable GPS or Loran Navigator."),
+    ("team codes", "Round two predictions for the pool, as promised.\nQUE  vs MON:  MON  in 7.\n"
+                   "PIT  vs NYI:  PIT  in 5."),
+    ("slash compound", "I need a converter for these image formats.\n"
+                       "DOS, OS/2 or platform independent programs if possible.\nThanks in advance."),
+    ("backslash path", "My modem stopped answering after the upgrade.\nC:\\DOS\\mode COM1:9600,n,8,1,p\n"
+                       "Is that the right line for a 9600 baud connection?"),
+]:
+    check("mixed/english stays english: " + label, is_english(state), True)
+    check("mixed/no segment: " + label, analyse(state)["mixed_segment"], None)
+# a state is user input: one long line with no joiner took 43 s at 40,000 characters when compounds
+# were stripped with an open-ended regex; the segment check now reads at most the 4,000-character cap
+import time as _time
+_t0 = _time.perf_counter()
+analyse({"subject": "The export failed again last night for the whole region", "body": "a" * 200_000})
+check("mixed/long single-line field stays fast", _time.perf_counter() - _t0 < 5.0, True)
+check("mixed/segment check reads at most the cap",
+      analyse({"log": "The export failed again last night for the whole region. " * 80,
+               "body": "Quero cancelar meu plano agora mesmo"})["mixed_segment"], None)
+
+
 # --------------------------------------------------------------------- plain-ASCII Romance (#172)
 # A state that lost its accents carries no diacritic rate for the non-English signal to read, and
 # mail clients and ticket systems strip them routinely, so the function-word lists are the only
@@ -481,6 +630,40 @@ for text in ["turn off smart lamp in den", "im so sorry, am an hour late, stuck 
 # German words that Spanish (`es`) or French (`du`) also claim would stop naming those languages
 check("latin_lang/spanish es stays evidence", guess_latin_language("que hora es en australia"), "es")
 check("latin_lang/french du stays evidence", guess_latin_language("baisse le volume du haut-parleur"), "fr")
+
+# ------------------------------------------------------------------ accented loanwords in English (#337)
+# The diacritic rate is measured over every character, so one `é` in a short English sentence
+# clears the 0.02 floor and used to veto the English resolution outright: plain English with a
+# loanword or foreign name (`café`, `résumé`, `José`, `Zürich`) went to the checkpoint the
+# README says collapses on English-heavy Latin text. English wins the veto back only through the
+# word rescue: at least two distinct function words no other list holds, and at most one word
+# carrying a non-English letter.
+for text in ["Please send me the café menu today please",
+             "Could you email me your résumé before the meeting",
+             "Send the invoice to José before Friday",
+             "We visited Zürich last summer and loved it"]:
+    check("latin_lang/loanword english stays english " + text, guess_latin_language(text), "en")
+    check("route/loanword english stays english " + text, _r_lat.route(text).model, "english")
+# Genuinely non-English accented text keeps its multilingual routing: a German sentence with
+# umlauts and no English function word is not rescued.
+check("latin_lang/accented german stays non-english",
+      is_english("Grüße aus Köln, wir melden uns wegen der Rechnung"), False)
+check("route/accented german stays multilingual",
+      _r_lat.route("Grüße aus Köln, wir melden uns wegen der Rechnung").model, "multilingual")
+# Danish and Swedish hold no list here, and their accented function-word sentences pick up just
+# one or two English-shaped words (`i`, `at`, `for`, `have`), which is not the two-distinct-word
+# English the rescue requires -- a rescue that counted them sent plain Danish to the English
+# checkpoint on the MASSIVE splits.
+for text in ["sluk lyset i soveværelset",                          # da
+             "kan jeg få en refundering for det dobbelte beløb",   # da
+             "stäng av ljuset i sovrummet",                         # sv
+             "jag vill ha en återbetalning för den dubbla avgiften"]:  # sv
+    check("latin_lang/nordic accented stays non-english " + text, is_english(text), False)
+    check("route/nordic accented stays multilingual " + text, _r_lat.route(text).model, "multilingual")
+# Two non-English-letter words is a running non-English vocabulary, not one loanword: the rescue
+# does not fire even with English function words present.
+check("latin_lang/two diacritic words are not one loanword",
+      is_english("The naïve façade needs a fresh coat of paint"), False)
 
 
 # --------------------------------------------------------------------- temperature clamp (#35)
@@ -819,6 +1002,45 @@ for label, text, script in (
     ("armenian", "Իմ հաշիվը գանձվել է երկու անգամ", "armenian"),
 ):
     check("unlisted/regression " + label + " script", detect_script(text), script)
+
+# ------------------------------------------------- lang codes that name no language (#359)
+# `C`, `POSIX` and `C.UTF-8` are valid `$LANG` values that identify nothing, and `C.UTF-8` is
+# the default in the official Python image -- which is where `laya-serve` runs. Passing one to
+# `Router(lang=...)` used to resolve to "not English" and pin every request to the multilingual
+# checkpoint, before detection ever ran. The blank-string case below already abstained; these
+# codes are the same kind of non-answer, so they abstain too. The ISO 639-2 special codes say
+# the same thing in the standard's vocabulary.
+_ENGLISH_STATE = "Please refund the duplicate charge on invoice 4411"
+for code in ("C", "POSIX", "C.UTF-8", "c.utf8", "c", "posix",
+             "und", "zxx", "mul", "UND", "Zxx", " und "):
+    check("lang-code/%r abstains at the code level" % code, _english_from_code(code), None)
+    decision = Router().route(_ENGLISH_STATE, lang=code)
+    check("lang-code/%r lets detection name the checkpoint" % code, decision.model, "english")
+    check("lang-code/%r says the hint was not used" % code,
+          "explicit" in str(decision.reason), False)
+
+# An empty hint is the case this mirrors, so it must still behave the same way.
+check("lang-code/empty string still abstains", _english_from_code(""), None)
+check("lang-code/None still abstains", _english_from_code(None), None)
+check("lang-code/whitespace still abstains", _english_from_code("   "), None)
+
+# The change must not touch codes that do name a language: English still routes now, and a
+# non-English code still forces the multilingual checkpoint rather than being second-guessed.
+for code in ("en", "eng", "english", "EN", "en-US", "en_US.UTF-8"):
+    check("lang-code/%r is still decisive English" % code, _english_from_code(code), True)
+    check("lang-code/%r routes without detection" % code,
+          Router().route(_ENGLISH_STATE, lang=code).reason.count("explicit"), 1)
+for code in ("de", "fr", "zh", "ja", "pt-BR", "de_DE.UTF-8"):
+    check("lang-code/%r is still decisive non-English" % code, _english_from_code(code), False)
+    check("lang-code/%r routes to the multilingual checkpoint" % code,
+          Router().route(_ENGLISH_STATE, lang=code).model, "multilingual")
+
+# A subtag after an agnostic primary is not itself agnostic: `C` names nothing, but the primary
+# subtag is what is compared, so a hypothetical `C-something` also abstains and is not treated
+# as a language by accident.
+check("lang-code/agnostic primary wins over its subtag", _english_from_code("C.UTF-8"), None)
+check("lang-code/posix with a modifier abstains", _english_from_code("POSIX-1"), None)
+
 
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

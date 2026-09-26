@@ -33,7 +33,12 @@ LABEL org.opencontainers.image.title="Laya Docker quickstart" \
       org.opencontainers.image.source="https://github.com/NandhaKishorM/laya" \
       org.opencontainers.image.licenses="Apache-2.0"
 
+# torch 2.14 swaps some eager CUDA ops (bmm, topk, sum, norms) for Triton kernels that it
+# compiles on the first inference, which needs a C compiler this image does not carry: the
+# container reports healthy, then every request fails (#365). The stock kernels give the same
+# answers at the same latency.
 ENV PATH="/opt/venv/bin:$PATH" \
+    TORCH_DISABLE_NATIVE_JIT=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     USE_TF=0 \

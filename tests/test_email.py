@@ -264,6 +264,65 @@ check(
     "Preciso das férias.\nDe: 10/09 a 15/09\nPode aprovar?",
 )
 
+# ------------------------------------------- `From:` starts prose, not only a quote header (#338)
+# The marker used to be `^\s*From:\s.+$`, which matched any line beginning "From: ". English
+# prose opens that way ("From: my side the integration works, but please refund ..."), so the
+# request was deleted and the model answered an empty body. A reply header always carries the
+# sender, so the marker is gated on an address -- the rule `De:` above already uses, for the
+# same reason. The suite had no `From:` case at all before this, which is why it stayed green.
+for label, body in [
+    ("the reported case",
+     "Hi team,\nFrom: my side the integration works, but please refund the duplicate charge today.\nThanks"),
+    ("lowercase", "Hi,\nfrom: my side the integration works, but please refund the charge.\nThanks"),
+    ("uppercase", "Hi,\nFROM: my side the integration works, but please refund the charge.\nThanks"),
+    ("extra spacing", "Hi,\nFrom:   my side the integration works, but please refund the charge.\nThanks"),
+    ("mid-body", "Hello,\nFrom: what I can see the charge was taken twice, please refund it.\nRegards"),
+]:
+    check_true("en/`From:` prose keeps the request: " + label,
+               "refund" in clean_email_body(body), clean_email_body(body))
+
+# The positive controls: a real quoted header block still goes, and takes its quoted request
+# with it, so the fix does not simply stop cutting on `From:`.
+for label, body in [
+    ("address then Sent:",
+     "Hi,\nPlease look at this.\n\nFrom: Alice <alice@example.com>\nSent: Monday\n"
+     "To: Bob\nSubject: Refund\n\nPlease refund the duplicate charge to my card."),
+    ("address only", "Hi,\nSee below.\n\nFrom: alice@example.com\nPlease refund the duplicate charge."),
+    ("angle address", "Hi,\nSee below.\n\nFrom: <alice@example.com>\nPlease refund the duplicate charge."),
+    ("name and address",
+     "Hi,\nSee below.\n\nFrom: Alice Smith <alice@example.com>\nPlease refund the duplicate charge."),
+]:
+    check("en/quoted block still cut: " + label, clean_email_body(body), "Hi,\nPlease look at this."
+          if label == "address then Sent:" else "Hi,\nSee below.")
+
+# ...and the request in the new part is kept even when a quoted block follows it.
+check(
+    "en/`From:` quote header keeps the new request",
+    clean_email_body("Hi,\nPlease refund the duplicate charge today.\n\n"
+                     "From: Alice <alice@example.com>\nSent: Monday\n\nOld thread: refund the first charge."),
+    "Hi,\nPlease refund the duplicate charge today.",
+)
+
+# A bare `From: Name` header, with no address, is the English counterpart of `De: Maria Souza`:
+# the marker above cannot cut it (that is the prose case), so it is recognised by its neighbours
+# instead. Before this, only the Portuguese/Spanish `Enviado:`/`Data:` pair was a neighbour, so an
+# English quote header without an address leaked its whole quoted block into the body.
+for label, body in [
+    ("then Sent:", "Hi,\nSee below.\n\nFrom: Alice Smith\nSent: Monday, 21 Sep 2026\n\nPlease refund."),
+    ("then Date:", "Hi,\nSee below.\n\nFrom: Alice Smith\nDate: 21/09/2026\n\nPlease refund."),
+    ("one-word name, then Sent:", "Hi,\nSee below.\n\nFrom: Alice\nSent: Monday\n\nPlease refund."),
+]:
+    check("en/bare `From:` header still cut: " + label, clean_email_body(body), "Hi,\nSee below.")
+
+# A bare `From:` with no header neighbour is not distinguishable from prose, and a dropped
+# request is the worse error, so it is kept.
+for label, body in [
+    ("From: Name then To:", "Hi,\nSee below.\n\nFrom: Alice Smith\nTo: Bob\n\nPlease refund the charge."),
+    ("From: Name alone", "Hi,\nSee below.\n\nFrom: Alice Smith\nPlease refund the charge."),
+]:
+    check_true("en/bare `From:` with no header neighbour is kept: " + label,
+               "refund" in clean_email_body(body), clean_email_body(body))
+
 # --------------------------------------------------------------- Brazilian clients and footers
 BOLETO = "Preciso da segunda via do boleto."
 for label, footer in [

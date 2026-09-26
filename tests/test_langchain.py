@@ -69,6 +69,19 @@ check("extract/dict_with_messages", _extract_text({"messages": msgs}), "second h
 # Custom callable extractor
 check("extract/custom_callable", _extract_text({"custom": "special"}, lambda x: x["custom"].upper()), "SPECIAL")
 
+# A callable state_key can deliberately preserve the full chronological
+# conversation instead of the default newest-user-message extraction.
+conversation = [
+    {"role": "user", "content": "My checkout failed yesterday."},
+    {"role": "assistant", "content": "What error did you see?"},
+    {"role": "user", "content": "It says my card was charged twice."},
+]
+check(
+    "extract/callable_full_conversation",
+    _extract_text({"messages": conversation}, lambda state: state["messages"]),
+    conversation,
+)
+
 
 # --------------------------------------------------------------- 2. LayaRouter
 def mock_router_response(state, questions):
@@ -118,6 +131,37 @@ check("router/callable_protocol", router({"messages": [DummyMessage("human", "re
 mapping = {"billing": "BillingNode", "technical": "TechNode", "human_agent": "HumanNode"}
 check("router/langgraph_edge_routing", mapping[router({"input": "I need an invoice refund"})], "BillingNode")
 check("router/langgraph_edge_fallback", mapping[router({"input": "lowconf question"})], "HumanNode")
+
+# The component passes a callable-selected conversation list through unchanged.
+captured_conversation = []
+
+
+def mock_conversation_router_response(state, questions):
+    captured_conversation.append(state)
+    return {
+        "model": "mock",
+        "answers": {
+            "route": {
+                "type": "choice",
+                "choice": "billing",
+                "probabilities": {"billing": 1.0},
+                "confidence": 1.0,
+            }
+        },
+    }
+
+
+conversation_router = LayaRouter(
+    criteria={"billing": "invoices and refunds"},
+    state_key=lambda state: state["messages"],
+    agent=MockLayaAgent(mock_conversation_router_response),
+)
+check(
+    "router/callable_full_conversation_route",
+    conversation_router.invoke({"messages": conversation}),
+    "billing",
+)
+check("router/callable_full_conversation_state", captured_conversation[0], conversation)
 
 
 # --------------------------------------------------------------- 3. LayaGuardrail

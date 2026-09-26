@@ -27,6 +27,17 @@ PRESETS = {
     "triage": laya.triage_questions,
 }
 
+# The state field each preset's instructions name, so the CLI puts the text where that question
+# set reads it. `router` is also the default for `--predict`, which answers
+# `laya.router_questions()`. Kept beside PRESETS so a new preset and its key arrive together.
+PRESET_STATE_KEYS = {
+    "email": "body",
+    "guard": "prompt",
+    "moderation": "post",
+    "router": "request",
+    "triage": "message",
+}
+
 
 def build_parser():
     parser = argparse.ArgumentParser(
@@ -82,10 +93,17 @@ def show_answers(result):
 def run(text, args, router=None):
     """Route or predict one request; returns 0 on success, 2 on a handled error."""
     router = router or make_router(args)
-    state = {"text": text}
     try:
         if args.predict or args.preset:
             questions = PRESETS[args.preset]() if args.preset else laya.router_questions()
+            # Each preset's instructions name the field they read -- `` `message` ``,
+            # `` `body` ``, `` `prompt` ``, `` `post` ``, `` `request` `` -- and the CLI used to
+            # send every request as `{"text": ...}`, a key none of them names, so the model was
+            # asked about a field that was not there. The state key therefore follows the
+            # question set being answered. Routing is not affected either way: `route` reads the
+            # state only for language detection, which is key-invariant, so the default path
+            # keeps `{"text": ...}`.
+            state = {PRESET_STATE_KEYS.get(args.preset, "request"): text}
             result = router.predict(state, questions,
                                     model=args.model, task=args.task, lang=args.lang)
             if args.json:
@@ -93,6 +111,7 @@ def run(text, args, router=None):
             else:
                 show_answers(result)
         else:
+            state = {"text": text}
             decision = router.route(state, model=args.model, task=args.task, lang=args.lang)
             if args.json:
                 print(json.dumps(dict(decision), ensure_ascii=False, indent=2, default=str))
@@ -126,6 +145,10 @@ def interactive(args):
 
 
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "eval":       # `laya eval ...` mirrors the `laya-evals` script
+        from .evals_cli import main as eval_main
+        return eval_main(argv[1:])
     args = build_parser().parse_args(argv)
     text = " ".join(args.text).strip()
     if not text:

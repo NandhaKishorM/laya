@@ -6,6 +6,7 @@ import {
   collateItems,
   confidenceFromProbs,
   answerConfidence,
+  renderCriterion,
   renderOptions,
   sequenceWithState,
   serializeState,
@@ -487,7 +488,15 @@ export class Agent extends HookRegistry {
         answers[qid] = {
           type: "score",
           score: r4(exp),
-          legend: Object.fromEntries((q.crit as unknown[]).map((c, i) => [String(i), c])),
+          // `renderCriterion`, not the raw `c`: a legend maps an index to the TEXT of a level, and
+          // the keys are already strings. A numeric scale written directly used to come back with
+          // the caller's own JSON types (`{"0": 1}`), so a client that reads a level as a string
+          // had to handle a number, a boolean and null as well -- and `{"0": null}` is not even
+          // parseable by a Jev client (#302). Same change as the Python `agent.py` and
+          // `onnx_agent.py` legends, so the two runtimes return the same value types.
+          legend: Object.fromEntries(
+            (q.crit as unknown[]).map((c, i) => [String(i), renderCriterion(c)]),
+          ),
           probabilities: Object.fromEntries(p.map((v, i) => [String(i), r4(v)])),
           confidence: r4(confidenceFromProbs(p)),
           answer_confidence: ansConf,

@@ -38,7 +38,14 @@ export function serializeState(state: unknown): string {
   if (typeof state === "string") return state;
   return pyJson(state) ?? String(state);
 }
-function renderCriterion(v: unknown): string {
+/** The text of a criterion: the string itself, else the JSON the model was shown.
+ *
+ * Exported because `agent.ts` needs it for a `score` answer's `legend`, which maps an index to the
+ * text of that level. Putting the raw value in made the response's JSON types depend on the
+ * caller's input -- a numeric scale came back as `{"0": 1}`, a boolean as `{"0": true}` and a null
+ * as `{"0": null}`, which a Jev client refuses to parse (#302).
+ */
+export function renderCriterion(v: unknown): string {
   return typeof v === "string" ? v : pyJson(v) ?? String(v);
 }
 export function renderOptions(q: InternalQ): string[] {

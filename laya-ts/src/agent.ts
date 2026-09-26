@@ -12,6 +12,7 @@ import {
   softmax,
   tempBucket,
 } from "./common.js";
+import type { SequenceStats } from "./common.js";
 import type { Batch, SessionProvider } from "./providers.js";
 import { encodeWithData, parseTokenizerJson, type TokenizerLike } from "./tokenizer.js";
 import { decide, type DecideOptions, type DecisionResult } from "./structured.js";
@@ -71,6 +72,13 @@ export type SystemAnswer = ChoiceAnswer | ScoreAnswer | NoulAnswer;
 export interface SystemUsage {
   input_tokens: number;
   output_tokens: number;
+  /** State-fit reporting (issue #174, mirrors Python #181). Present on inference results;
+   * absent on hook-supplied (skipped) results and empty-question early returns. */
+  state_tokens?: number;
+  /** Worst case across the questions, which share one state but not one head budget. */
+  state_tokens_dropped?: number;
+  truncated?: boolean;
+  truncated_questions?: string[];
 }
 
 export interface SystemOneResult {
@@ -126,6 +134,11 @@ export interface PredictOptions {
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
   hooksRaise?: boolean;
+  /** Per-call token-budget overrides; null = agent config. A start hook may also set them. */
+  maxLen?: number | null;
+  headMaxLen?: number | null;
+  /** predictBatch: cap on states per shared forward pass; null sends them all in one pass. */
+  batchSize?: number | null;
 }
 
 function qidStr(qid: string): string {
@@ -366,20 +379,18 @@ export class Agent extends HookRegistry {
       states,
       questions: questions as Record<string, unknown>,
       agent: this,
+      maxLen: opts.maxLen ?? null,
+      headMaxLen: opts.headMaxLen ?? null,
     });
     try {
       dispatch(active, "onPredictStart", ctx, { raiseErrors });
       if (ctx.results === null) {
-        const out: SystemOneResult[] = [];
-        for (const st of ctx.states) {
-          out.push(
-            await this._systemOneCore(
-              st,
-              ctx.questions as Record<string, QuestionDef>,
-              opts.lang ?? null,
-            ),
-          );
-        }
+        const out = await this._systemOneMany(ctx.states, ctx.questions as Record<string, QuestionDef>, {
+          maxLen: ctx.maxLen,
+          headMaxLen: ctx.headMaxLen,
+          batchSize: opts.batchSize ?? null,
+          lang: opts.lang ?? null,
+        });
         ctx.results = out as unknown as Record<string, unknown>[];
         ctx.model ??= out[0]?.model ?? null;
       }
@@ -404,108 +415,187 @@ export class Agent extends HookRegistry {
     return ctx.results as unknown as SystemOneResult[];
   }
 
-  private async _systemOneCore(
+  /** Encode one state into one sequence row per question; the state text is tokenized once. */
+  private _encodeItems(
     state: unknown,
-    questions: Record<string, QuestionDef>,
-    lang: string | null = null,
-  ): Promise<SystemOneResult> {
-    const ids = Object.keys(questions ?? {});
-    if (ids.length === 0) {
-      return { model: "laya-rl-agent", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } };
-    }
-    const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
-    const internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } }[] = [];
+    ids: string[],
+    internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } }[],
+    maxLen: number,
+    headMaxLen: number,
+  ): { items: { ids: number[]; markers: number[]; qtype: number }[]; nTokens: number; stats: SequenceStats[] } {
     // The state text is shared by every question and is usually the longest text in the
     // sequence — encode it once and compose the per-question prefixes onto it.
     const stAll = this.tok.encode(serializeState(state).split(this.tok.maskToken).join(" "));
-    for (const qid of ids) {
-      checkQuestion(qid, questions[qid]);
-      const q = toInternal(questions[qid]);
-      internals.push(q);
-      const prefix = buildQuestionPrefix(this.tok, q, this.maxLen, this.headMaxLen);
-      const { ids: seq, markers } = sequenceWithState(
-        prefix, stAll, this.tok.sepId, this.maxLen, Array.isArray(state),
-      );
-      if (markers.length !== renderOptions(q).length) {
-        throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${this.headMaxLen}`);
+    const items: { ids: number[]; markers: number[]; qtype: number }[] = [];
+    const stats: SequenceStats[] = [];
+    for (let qi = 0; qi < ids.length; qi++) {
+      const qid = ids[qi];
+      const q = internals[qi];
+      const prefix = buildQuestionPrefix(this.tok, q, maxLen, headMaxLen);
+      const seq = sequenceWithState(prefix, stAll, this.tok.sepId, maxLen, Array.isArray(state));
+      if (seq.markers.length !== renderOptions(q).length) {
+        throw new Error(`question ${qidStr(qid)} options exceed head_max_len=${headMaxLen}`);
       }
-      items.push({ ids: seq, markers, qtype: QTYPES[q.t] });
+      items.push({ ids: seq.ids, markers: seq.markers, qtype: QTYPES[q.t] });
+      stats.push(seq.stats);
     }
-    const collated = collateItems([items], this.tok.padId);
-    if (!collated) throw new Error("no items to collate");
-    const batch: Batch = collated;
-    const nTokens = batch.attentionMask.flat().reduce((a, b) => a + b, 0);
-    const { lastHidden } = await this.provider.runEncoder(batch);
-    const { logits, act } = await this.provider.runHead(lastHidden, batch);
-    if (!Array.isArray(logits) || !Array.isArray(act) || logits.length < ids.length || act.length < ids.length) {
-      throw new Error("model provider returned fewer output rows than input items");
-    }
-    for (let r = 0; r < ids.length; r++) {
-      const k = items[r].markers.length;
-      if (!Array.isArray(logits[r]) || logits[r].length < k || !Array.isArray(act[r]) || act[r].length === 0 ||
-          logits[r].some((v) => !Number.isFinite(v)) || act[r].some((v) => !Number.isFinite(v))) {
-        throw new Error(`model provider returned invalid output for question ${ids[r]}`);
-      }
-    }
+    return { items, nTokens: items.reduce((a, it) => a + it.ids.length, 0), stats };
+  }
 
-    const answers: Record<string, SystemAnswer> = {};
-    for (let r = 0; r < ids.length; r++) {
-      const qid = ids[r];
-      const q = internals[r];
-      const k = items[r].markers.length;
-      const qt = QTYPES[q.t];
-      const bucket = tempBucket(qt, k);
-      // Python parity (_decode_answers): a matching lang override replaces the scale
-      // wholesale — its own temperature_by_options first, then its 3-slot temperature —
-      // so an override without buckets intentionally ignores the base per-bucket entries.
-      const langCfg = lang ? this.langTemperatures[lang.split("-")[0].toLowerCase()] : undefined;
-      const scale = langCfg
-        ? (langCfg.temperatureByOptions[bucket] ?? langCfg.temperature[qt] ?? 1.0)
-        : (this.temperatureByOptions[bucket] ?? this.temperature[qt] ?? 1.0);
-      const z = (logits[r] as number[]).slice(0, k).map((v) => v / scale);
-      const p = softmax(z);
-      const actRow = (act[r] as number[]) ?? [1, 0];
-      const actP = softmax(actRow.slice(0, Math.max(2, actRow.length)));
-      const ext = { act_probability: r4(actP[0]) };
-      // Same quantity on every question type (max(p)), so callers can gate across types on
-      // one number; `confidence` stays as-is for existing callers (entropy for choice/score).
-      const ansConf = r4(answerConfidence(p));
-      if (q.t === "choice") {
-        const keys = Object.keys(q.crit as Record<string, unknown>);
-        let best = 0;
-        for (let i = 1; i < p.length; i++) if (p[i] > p[best]) best = i;
-        answers[qid] = {
-          type: "choice",
-          choice: keys[best],
-          probabilities: Object.fromEntries(keys.map((kk, i) => [kk, r4(p[i] ?? 0)])),
-          confidence: r4(confidenceFromProbs(p)),
-          answer_confidence: ansConf,
-          action: ext,
-        };
-      } else if (q.t === "score") {
-        const exp = p.reduce((a, v, i) => a + i * v, 0);
-        answers[qid] = {
-          type: "score",
-          score: r4(exp),
-          legend: Object.fromEntries((q.crit as unknown[]).map((c, i) => [String(i), c])),
-          probabilities: Object.fromEntries(p.map((v, i) => [String(i), r4(v)])),
-          confidence: r4(confidenceFromProbs(p)),
-          answer_confidence: ansConf,
-          action: ext,
-        };
-      } else {
-        const pt = p[1] ?? 0;
-        answers[qid] = {
-          type: "noul",
-          noul: r4(pt),
-          confidence: r4(Math.max(pt, 1 - pt)),
-          // over two options max(p_true, 1 - p_true) is max(p): identical to confidence here
-          answer_confidence: ansConf,
-          action: ext,
-        };
+  /**
+   * Evaluate one shared question schema over many states. Each chunk of up to `batchSize`
+   * states is collated into a single encoder+head forward pass; results align with `states`
+   * by index. (Python `Agent.predict_batch` parity; its `sort_by_length` is not ported.)
+   */
+  private async _systemOneMany(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+    opts: {
+      maxLen?: number | null;
+      headMaxLen?: number | null;
+      batchSize?: number | null;
+      lang?: string | null;
+    } = {},
+  ): Promise<SystemOneResult[]> {
+    if (states.length === 0) return [];
+    const ids = Object.keys(questions ?? {});
+    if (ids.length === 0) {
+      return states.map(() => ({
+        model: "laya-rl-agent",
+        answers: {},
+        usage: { input_tokens: 0, output_tokens: 0 },
+      }));
+    }
+    const maxLen = opts.maxLen ?? this.maxLen;
+    const headMaxLen = opts.headMaxLen ?? this.headMaxLen;
+    const internals = ids.map((qid) => {
+      checkQuestion(qid, questions[qid]);
+      return toInternal(questions[qid]);
+    });
+    const chunkSize =
+      opts.batchSize && opts.batchSize > 0 ? Math.floor(opts.batchSize) : states.length;
+    const out: SystemOneResult[] = [];
+    for (let start = 0; start < states.length; start += chunkSize) {
+      const chunk = states.slice(start, start + chunkSize);
+      const built = chunk.map((st) => this._encodeItems(st, ids, internals, maxLen, headMaxLen));
+      const collated = collateItems(built.map((b) => b.items), this.tok.padId);
+      if (!collated) throw new Error("no items to collate");
+      const batch: Batch = collated;
+      const { lastHidden } = await this.provider.runEncoder(batch);
+      const { logits, act } = await this.provider.runHead(lastHidden, batch);
+      const rows = chunk.length * ids.length;
+      if (!Array.isArray(logits) || !Array.isArray(act) || logits.length < rows || act.length < rows) {
+        throw new Error("model provider returned fewer output rows than input items");
+      }
+      for (let s = 0; s < chunk.length; s++) {
+        for (let qi = 0; qi < ids.length; qi++) {
+          const r = s * ids.length + qi;
+          const k = built[s].items[qi].markers.length;
+          const logitRow = logits[r] as number[];
+          const actRow = act[r] as number[];
+          if (
+            !Array.isArray(logitRow) || logitRow.length < k ||
+            !Array.isArray(actRow) || actRow.length === 0 ||
+            logitRow.some((v) => !Number.isFinite(v)) || actRow.some((v) => !Number.isFinite(v))
+          ) {
+            throw new Error(`model provider returned invalid output for question ${ids[qi]}`);
+          }
+        }
+      }
+
+      let row = 0;
+      for (let s = 0; s < chunk.length; s++) {
+        const answers: Record<string, SystemAnswer> = {};
+        for (let qi = 0; qi < ids.length; qi++) {
+          answers[ids[qi]] = this._decodeRow(
+            logits[row] as number[],
+            (act[row] as number[]) ?? [1, 0],
+            internals[qi],
+            built[s].items[qi].markers.length,
+            opts.lang ?? null,
+          );
+          row++;
+        }
+        // How much of the state actually reached the encoder. Truncation is a token budget, so it
+        // moves with maxLen, headMaxLen and each question's rendered head — a caller cannot infer
+        // it from the length of the state it sent (issue #174, Python #181 parity).
+        const st = built[s].stats;
+        const dropped = st.reduce((a, x) => Math.max(a, x.state_tokens_dropped), 0);
+        out.push({
+          model: "laya-rl-agent",
+          answers,
+          usage: {
+            input_tokens: built[s].nTokens,
+            output_tokens: 0,
+            state_tokens: st[0]?.state_tokens ?? 0,
+            state_tokens_dropped: dropped,
+            truncated: dropped > 0,
+            truncated_questions: ids.filter((_, qi) => st[qi].truncated),
+          },
+        });
       }
     }
-    return { model: "laya-rl-agent", answers, usage: { input_tokens: nTokens, output_tokens: 0 } };
+    return out;
+  }
+
+  /** Decode one head row into the answer for its question. */
+  private _decodeRow(
+    logitsRow: number[],
+    actRow: number[],
+    q: { t: "choice" | "score" | "noul"; ins: string; crit: unknown },
+    k: number,
+    lang: string | null = null,
+  ): SystemAnswer {
+    const qt = QTYPES[q.t];
+    const bucket = tempBucket(qt, k);
+    // Python parity (_decode_answers): a matching lang override replaces the scale
+    // wholesale — its own temperature_by_options first, then its 3-slot temperature —
+    // so an override without buckets intentionally ignores the base per-bucket entries.
+    const langCfg = lang ? this.langTemperatures[lang.split("-")[0].toLowerCase()] : undefined;
+    const scale = langCfg
+      ? (langCfg.temperatureByOptions[bucket] ?? langCfg.temperature[qt] ?? 1.0)
+      : (this.temperatureByOptions[bucket] ?? this.temperature[qt] ?? 1.0);
+    const z = logitsRow.slice(0, k).map((v) => v / scale);
+    const p = softmax(z);
+    const actP = softmax(actRow.slice(0, Math.max(2, actRow.length)));
+    const ext = { act_probability: r4(actP[0]) };
+    // Same quantity on every question type (max(p)), so callers can gate across types on
+    // one number; `confidence` stays as-is for existing callers (entropy for choice/score).
+    const ansConf = r4(answerConfidence(p));
+    if (q.t === "choice") {
+      const keys = Object.keys(q.crit as Record<string, unknown>);
+      let best = 0;
+      for (let i = 1; i < p.length; i++) if (p[i] > p[best]) best = i;
+      return {
+        type: "choice",
+        choice: keys[best],
+        probabilities: Object.fromEntries(keys.map((kk, i) => [kk, r4(p[i] ?? 0)])),
+        confidence: r4(confidenceFromProbs(p)),
+        answer_confidence: ansConf,
+        action: ext,
+      };
+    }
+    if (q.t === "score") {
+      const exp = p.reduce((a, v, i) => a + i * v, 0);
+      return {
+        type: "score",
+        score: r4(exp),
+        legend: Object.fromEntries((q.crit as unknown[]).map((c, i) => [String(i), c])),
+        probabilities: Object.fromEntries(p.map((v, i) => [String(i), r4(v)])),
+        confidence: r4(confidenceFromProbs(p)),
+        answer_confidence: ansConf,
+        action: ext,
+      };
+    }
+    const pt = p[1] ?? 0;
+    return {
+      type: "noul",
+      noul: r4(pt),
+      confidence: r4(Math.max(pt, 1 - pt)),
+      // over two options max(p_true, 1 - p_true) is max(p): identical to confidence here
+      answer_confidence: ansConf,
+      action: ext,
+    };
   }
 
   async predict(
@@ -514,6 +604,24 @@ export class Agent extends HookRegistry {
     opts: PredictOptions = {},
   ): Promise<SystemOneResult> {
     return this.systemOne(state, questions, opts);
+  }
+  /**
+   * Evaluate the same questions over many states, packing each chunk of up to
+   * `opts.batchSize` states into one shared forward pass (Python `Agent.predict_batch`
+   * parity). This is the throughput path: `systemOne`/`predict` run one state per forward
+   * pass, which leaves most of the batch dimension idle on GPU. Results align with
+   * `states` by index and are identical in shape to `systemOne`'s output.
+   *
+   * `opts.maxLen` / `opts.headMaxLen` override the agent config for this call; a start
+   * hook may also set `ctx.maxLen` / `ctx.headMaxLen` or call `ctx.skip(results)`.
+   * Python's `sort_by_length` grouping is not ported.
+   */
+  async predictBatch(
+    states: unknown[],
+    questions: Record<string, QuestionDef>,
+    opts: PredictOptions = {},
+  ): Promise<SystemOneResult[]> {
+    return this._predictHooked(states, questions, opts);
   }
 
   /**

@@ -89,19 +89,45 @@ export function buildQuestionPrefix(tok: TokenizerLike, q: InternalQ,
   ids.push(tok.sepId);
   return { ids, markers, nOptions: opts.length };
 }
+export interface SequenceStats {
+  /** Encoded length of the full state, before the window clamp. */
+  state_tokens: number;
+  /** State tokens that actually reached the encoder after the final maxLen clamp. */
+  state_tokens_used: number;
+  /** State tokens dropped by the clamp: state_tokens - state_tokens_used. */
+  state_tokens_dropped: number;
+  /** True when the clamp dropped any state token. */
+  truncated: boolean;
+}
+
 /** Append pre-encoded state tokens to a question prefix. Identical output to building the
  * whole sequence in one pass, but the state only needs encoding once per state, not once
- * per (state, question) pair. */
+ * per (state, question) pair.
+ *
+ * The state is clamped to whatever room the head leaves; `stats` reports that clamp so callers
+ * never have to guess it from the character length of what they sent (issue #174, Python #181). */
 export function sequenceWithState(prefix: QuestionPrefix, stateIds: number[], sepId: number,
-    maxLen = 512, truncateLeft = false): { ids: number[]; markers: number[] } {
+    maxLen = 512, truncateLeft = false): { ids: number[]; markers: number[]; stats: SequenceStats } {
   const room = Math.max(0, maxLen - prefix.ids.length - 1);
   // not stateIds.slice(-room): with no room left, slice(-0) is the whole state rather than none of it
-  const st = truncateLeft ? stateIds.slice(Math.max(0, stateIds.length - room)) : stateIds.slice(0, room);
-  const ids = [...prefix.ids, ...st, sepId].slice(0, maxLen);
-  return { ids, markers: prefix.markers.filter((m) => m < maxLen) };
+  const kept = truncateLeft ? stateIds.slice(Math.max(0, stateIds.length - room)) : stateIds.slice(0, room);
+  const ids = [...prefix.ids, ...kept, sepId].slice(0, maxLen);
+  // Count against the final clamp rather than `kept`: ids.slice(0, maxLen) is what actually
+  // discards the state when the prefix alone leaves no room.
+  const used = Math.max(0, Math.min(kept.length, maxLen - prefix.ids.length));
+  return {
+    ids,
+    markers: prefix.markers.filter((m) => m < maxLen),
+    stats: {
+      state_tokens: stateIds.length,
+      state_tokens_used: used,
+      state_tokens_dropped: stateIds.length - used,
+      truncated: used < stateIds.length,
+    },
+  };
 }
 export function buildSequence(tok: TokenizerLike, state: unknown, q: InternalQ,
-    maxLen = 512, headMaxLen = 192, optionOrder?: number[], truncateLeft = false): { ids: number[]; markers: number[] } {
+    maxLen = 512, headMaxLen = 192, optionOrder?: number[], truncateLeft = false): { ids: number[]; markers: number[]; stats: SequenceStats } {
   const stAll = tok.encode(serializeState(state).split(tok.maskToken).join(" "));
   return sequenceWithState(buildQuestionPrefix(tok, q, maxLen, headMaxLen, optionOrder), stAll, tok.sepId, maxLen, truncateLeft);
 }

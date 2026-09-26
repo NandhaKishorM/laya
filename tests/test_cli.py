@@ -84,6 +84,68 @@ check("error: points at the fix", "Hugging Face hub" in err, err)
 code, out, err, stub = run_cli(["--model", "english", "charged twice"])
 check("flags: --model forwarded", stub.route_calls[0][1]["model"] == "english")
 
+# ------------------------------------------------- --model is core's registry, not a copy of it
+# `choices=` compared strings exactly, so the flag knew three spellings while the router it feeds
+# has always resolved a dozen more. The names and aliases are imported from `laya.router` rather
+# than written out, so this sweep follows the registry instead of drifting from it.
+from laya.router import DEFAULT_MODELS, _ALIASES  # noqa: E402
+
+
+def parse_model(argv):
+    """What `--model` settles to, or "REJECTED" when argparse exits 2 on it.
+
+    The value is produced by the real parser `main()` uses, so these checks cover the flag as a
+    user types it; `run_cli` cannot see it, because argparse stops before the router is called.
+    """
+    try:
+        with redirect_stderr(io.StringIO()):
+            return cli.build_parser().parse_args(argv).model
+    except SystemExit:
+        return "REJECTED"
+
+
+for name in sorted(DEFAULT_MODELS):
+    got = parse_model(["t", "--model", name])
+    check("model: %s accepted" % name, got == name, repr(got))
+for alias, canonical in sorted(_ALIASES.items()):
+    got = parse_model(["t", "--model", alias])
+    check("model: alias %s is %s" % (alias, canonical), got == canonical, repr(got))
+for spelling, want in (("EN", "english"), (" Multilingual ", "multilingual"),
+                       ("Typed-Decisions", "typed-decisions"), ("laya-MULTILINGUAL", "multilingual")):
+    got = parse_model(["t", "--model", spelling])
+    check("model: casing and spacing %r" % spelling, got == want, repr(got))
+for auto in ("auto", "AUTO", " Auto "):
+    got = parse_model(["t", "--model", auto])
+    check("model: %r pins nothing" % auto, got is None, repr(got))
+check("model: omitting it pins nothing either", parse_model(["t"]) is None)
+for bad in ("gpt4", "english-ish", "laya-typed", ""):
+    got = parse_model(["t", "--model", bad])
+    check("model: %r rejected" % bad, got == "REJECTED", repr(got))
+
+# The message is now core's, so it has to carry everything a user can name.
+err = io.StringIO()
+try:
+    with redirect_stderr(err):
+        cli.build_parser().parse_args(["t", "--model", "gpt4"])
+except SystemExit:
+    pass
+text = err.getvalue()
+check("model: error names the checkpoints",
+      all(n in text for n in sorted(DEFAULT_MODELS)), text)
+check("model: error names the aliases", "alias" in text and "'en'" in text, text)
+check("model: error names auto", "'auto'" in text, text)
+
+# And what reaches the router is the canonical name, whichever spelling was typed.
+code, out, err, stub = run_cli(["charged twice", "--model", "en"])
+check("model: alias forwarded canonical to route",
+      code == 0 and stub.route_calls[0][1]["model"] == "english", str(stub.route_calls))
+code, out, err, stub = run_cli(["charged twice", "--predict", "--model", "ML"])
+check("model: alias forwarded canonical to predict",
+      code == 0 and stub.predict_calls[0][1]["model"] == "multilingual", str(stub.predict_calls))
+code, out, err, stub = run_cli(["charged twice", "--model", "auto"])
+check("model: auto forwarded as no pin",
+      code == 0 and stub.route_calls[0][1]["model"] is None, str(stub.route_calls))
+
 # --------------------------------------------------------------------- presets
 class QuestionRecorder:
     def __init__(self):

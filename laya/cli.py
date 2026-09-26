@@ -4,6 +4,7 @@
     laya "Refactor this service" --predict              # full answers, loads the checkpoint
     laya                                                # interactive mode
     laya "Mein Konto wurde zweimal belastet" --lang de  # explicit language
+    laya "My payment failed twice" --model ml           # pin a checkpoint, by name or alias
     laya "My payment failed twice" --preset triage      # a ready-made question preset
 
 Routing (the default) never downloads a checkpoint, so it works offline and
@@ -39,6 +40,26 @@ PRESET_STATE_KEYS = {
 }
 
 
+def model_name(value):
+    """Resolve a `--model` argument the way core resolves it: same names, same aliases, same casing.
+
+    ``argparse``'s ``choices=`` compared strings exactly, so ``--model en`` was rejected with
+    "invalid choice" even though the call this flag feeds -- ``router.predict(model=...)`` --
+    has always accepted it. ``laya.router.normalise_name`` is the one registry of checkpoints and
+    aliases, so delegating here cannot fall behind it, and the name that reaches the router is
+    already canonical: what a caller prints is the checkpoint, not its spelling. ``auto`` means
+    "do not pin one", which is what omitting the flag means, so it maps to ``None``.
+    """
+    if value.strip().lower() == "auto":
+        return None
+    from laya.router import normalise_name
+
+    try:
+        return normalise_name(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("%s, or 'auto'" % error) from None
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="laya",
@@ -47,8 +68,9 @@ def build_parser():
     parser.add_argument("text", nargs="*", help="the request text (omit for interactive mode)")
     parser.add_argument("--predict", action="store_true",
                         help="run the full prediction, not just the routing decision (downloads the checkpoint on first use)")
-    parser.add_argument("--model", choices=sorted(laya.DEFAULT_MODELS),
-                        help="force a checkpoint instead of auto-routing")
+    parser.add_argument("--model", type=model_name, metavar="NAME",
+                        help="force a checkpoint instead of auto-routing: a checkpoint name or any of "
+                             "core's aliases, in any casing, or 'auto' to route it (the default)")
     parser.add_argument("--lang", help="force a language, e.g. en or de, instead of detecting it")
     parser.add_argument("--task", help="force a typed-decisions workflow instead of detecting it")
     parser.add_argument("--preset", choices=sorted(PRESETS), metavar="NAME",

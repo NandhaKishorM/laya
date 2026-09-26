@@ -5,11 +5,17 @@ HTTP layer maps requests/responses and enforces auth as hs-jev expects.
 """
 import json
 import logging
+import os
+import subprocess
+import sys
+from types import SimpleNamespace
 
 import pytest
 
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from laya.serve import (  # noqa: E402
     MAX_BODY_BYTES,
@@ -199,6 +205,119 @@ def test_body_read_preserves_parse_error_codes(monkeypatch):
         r = client.post("/v1/systemone", content=payload,
                         headers={"content-type": "application/json"})
         assert r.status_code == 400, (payload, r.status_code)
+
+
+class DeviceRouter:
+    """A Router with resident checkpoints whose real devices are known.
+
+    `Agent.device` is a `torch.device`; `laya.mcp.device.agent_device` also accepts the
+    plain string, which keeps this stub free of torch and of checkpoint weights.
+    """
+
+    def __init__(self, **devices):
+        self._agents = {name: SimpleNamespace(device=device)
+                        for name, device in devices.items()}
+        self.loaded = list(devices)
+
+    def predict(self, state, questions, model=None):
+        return {"model": "laya-rl-agent",
+                "answers": {"dept": {"type": "choice", "choice": "billing",
+                                     "probabilities": {"billing": 1.0}, "confidence": 1.0}},
+                "usage": {"input_tokens": 1, "output_tokens": 0},
+                "routing": {"model": (self.loaded or ["english"])[0]}}
+
+
+def test_health_reports_where_inference_actually_runs(monkeypatch):
+    """`LAYA_DEVICE` is a request, not a fact: the Agent falls back to CPU silently."""
+    monkeypatch.setenv("LAYA_DEVICE", "cuda")
+    fake = DeviceRouter(english="cpu")            # asked for cuda, ended up on cpu
+    body = TestClient(create_app(router=fake)).get("/health").json()
+    assert body["device"] == "cpu", body
+    assert body["device_is_preference"] is False, body
+    assert body["checkpoint_devices"] == {"english": "cpu"}, body
+
+
+def test_health_names_each_checkpoint_device(monkeypatch):
+    monkeypatch.setenv("LAYA_DEVICE", "cuda")
+    fake = DeviceRouter(english="cpu", multilingual="cuda")
+    body = TestClient(create_app(router=fake)).get("/health").json()
+    assert body["checkpoint_devices"] == {"english": "cpu", "multilingual": "cuda"}, body
+    # The top-level answer is the first resident one, exactly as `laya_status` reports it.
+    assert body["device"] == body["checkpoint_devices"][body["loaded"][0]], body
+
+
+def test_health_without_a_resident_checkpoint_flags_the_preference(monkeypatch):
+    monkeypatch.setenv("LAYA_DEVICE", "cuda")
+    body = TestClient(create_app(router=FakeRouter())).get("/health").json()
+    assert body["device_is_preference"] is True, body
+    assert body["checkpoint_devices"] == {}, body
+    assert body["device"] == "cuda", body          # what was asked for, labelled as such
+
+
+def test_health_agrees_with_the_mcp_status_tool(monkeypatch):
+    """One fact about the device, reported the same way by both surfaces."""
+    pytest.importorskip("mcp")
+    from laya.mcp.tools import laya_status
+
+    monkeypatch.setenv("LAYA_DEVICE", "cuda")
+    fake = DeviceRouter(english="cpu")
+    body = TestClient(create_app(router=fake)).get("/health").json()
+    status = laya_status(router=fake, loaded=list(fake.loaded))
+    assert body["device"] == status["device"], (body["device"], status["device"])
+    assert body["checkpoint_devices"] == status["checkpoint_devices"], body
+    assert body["device_is_preference"] == status["device_is_preference"], body
+
+
+def test_health_needs_neither_the_mcp_extra_nor_torch():
+    """`laya.mcp.device` is documented as importable without `mcp`; prove the server agrees."""
+    probe = r'''
+import sys
+class Blocker:
+    def find_spec(self, name, path=None, target=None):
+        if name == "mcp" or name.startswith("mcp."):
+            raise ImportError("mcp blocked")
+sys.meta_path.insert(0, Blocker())
+sys.path.insert(0, %r)
+from laya.mcp.device import agent_device, env_device, resolve_device, router_agent
+assert agent_device(type("A", (), {"device": "cpu"})()) == "cpu"
+assert env_device.__module__ == "laya.mcp.device"
+import laya.serve
+assert "mcp" not in sys.modules, "laya.mcp.device reached the mcp distribution"
+from fastapi.testclient import TestClient
+client = TestClient(laya.serve.create_app(router=type("R", (), {"loaded": ["english"],
+    "_agents": {"english": type("A", (), {"device": "cpu"})()}})()))
+body = client.get("/health").json()
+assert body["device"] == "cpu" and body["checkpoint_devices"] == {"english": "cpu"}, body
+print("ok")
+''' % ROOT
+    out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr[-2000:]
+    assert "ok" in out.stdout, out.stdout
+
+
+def test_build_router_strips_the_device_before_torch_sees_it(monkeypatch):
+    """A value pasted from a Dockerfile or a `.env` file carries a trailing newline."""
+    import laya.router
+    import laya.serve
+
+    seen = {}
+
+    class RecordingRouter:
+        def __init__(self, device=None, **kwargs):
+            seen["device"] = device
+
+        def preload(self, names=None):
+            seen["preloaded"] = names
+
+    monkeypatch.setattr(laya.router, "Router", RecordingRouter)
+    monkeypatch.setenv("LAYA_PRELOAD", "0")
+    for raw, want in ((" cpu\n", "cpu"), ("cuda ", "cuda"), ("   ", None), ("cpu", "cpu")):
+        monkeypatch.setenv("LAYA_DEVICE", raw)
+        laya.serve.build_router()
+        assert seen["device"] == want, "%r -> %r" % (raw, seen["device"])
+    monkeypatch.delenv("LAYA_DEVICE")
+    laya.serve.build_router()
+    assert seen["device"] is None, repr(seen["device"])      # unset means auto
 
 
 def test_health_supports_router_without_loaded_revisions(monkeypatch):

@@ -30,6 +30,11 @@ env var                 meaning                                        default
                         gets 503 (see below)
 ======================  ============================================  =========
 
+``LAYA_DEVICE`` is a preference, not a guarantee: an ``Agent`` that asks for a
+GPU it cannot get falls back to CPU silently and keeps answering correctly.
+``/health`` reports where a resident checkpoint actually computes, using the
+same helpers the MCP status tool uses (``laya.mcp.device``).
+
 Imports of heavy dependencies (fastapi, uvicorn, torch via Router) are all
 deferred into the functions that need them, so ``import laya.serve`` stays cheap
 and touches no GPU -- which is what keeps the Nix ``pythonImportsCheck`` honest.
@@ -229,10 +234,14 @@ def _apply_thread_limit():
 
 def build_router():
     """Build a Router from the environment, preloading unless told otherwise."""
+    from .mcp.device import env_device
     from .router import Router
 
     _apply_thread_limit()
-    device = os.environ.get("LAYA_DEVICE") or None
+    # `env_device` rather than a raw read: it strips, the way `LAYA_MODELS` two lines
+    # below is stripped. A value copied out of a Dockerfile or a `.env` file carries a
+    # trailing newline, and torch refuses that as an invalid device string.
+    device = env_device()
     models_env = os.environ.get("LAYA_MODELS", "").strip()
     preload_names = [m.strip() for m in models_env.split(",") if m.strip()] or None
     router = Router(device=device, auto_task_detection=_env_bool("LAYA_AUTO_TASK", False))
@@ -248,6 +257,8 @@ def create_app(router: Optional[Any] = None):
     from concurrent.futures import ThreadPoolExecutor
 
     from fastapi import FastAPI, Header, HTTPException, Request
+
+    from .mcp.device import agent_device, resolve_device, router_agent
 
     if router is None:
         router = build_router()
@@ -306,11 +317,24 @@ def create_app(router: Optional[Any] = None):
 
     @app.get("/health")
     def health() -> Dict[str, Any]:
+        # `device` is where a resident checkpoint really computes, not what was asked for:
+        # `Agent.device` reflects the silent GPU -> CPU fallback, so a container that asked
+        # for a GPU it did not get says so. With nothing resident it is the configured
+        # preference, and `device_is_preference` tells the reader which of the two it is
+        # looking at. Same convention, and the same three keys, as `laya_status` over MCP.
+        checkpoint_devices: Dict[str, str] = {}
+        for name in (router.loaded or []):
+            device = agent_device(router_agent(router, name))
+            if device:
+                checkpoint_devices[name] = device
+        actual = next(iter(checkpoint_devices.values()), None)
         return {
             "status": "ok",
             "loaded": router.loaded,
             "revisions": getattr(router, "loaded_revisions", {}),
-            "device": os.environ.get("LAYA_DEVICE") or "auto",
+            "device": actual or resolve_device(),
+            "device_is_preference": actual is None,
+            "checkpoint_devices": checkpoint_devices,
         }
 
     @app.post("/v1/systemone")

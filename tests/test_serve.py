@@ -209,6 +209,25 @@ def test_health_supports_router_without_loaded_revisions(monkeypatch):
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
     assert r.json()["revisions"] == {}
+    # Same for the #351 fallback counters: a router with no _agents and no agents
+    # with counters still reports a stable, all-zero shape.
+    assert r.json()["cpu_fallbacks"] == {"english": {"count": 0, "last_reason": None}}
+
+
+def test_health_reports_cpu_fallback_counters(monkeypatch):
+    """A resident agent that triggered the scoped CPU fallback shows it in /health."""
+    from types import SimpleNamespace
+
+    client, fake = _client(monkeypatch)
+    fake._agents = {"english": SimpleNamespace(
+        cpu_fallback_count=2,
+        last_fallback_reason="CUDA out of memory. Tried to allocate 1.00 GiB",
+    )}
+    r = client.get("/health")
+    assert r.status_code == 200
+    fb = r.json()["cpu_fallbacks"]
+    assert fb["english"]["count"] == 2, fb
+    assert "out of memory" in fb["english"]["last_reason"], fb
 
 
 def test_helpers():

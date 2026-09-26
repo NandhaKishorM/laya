@@ -306,11 +306,26 @@ def create_app(router: Optional[Any] = None):
 
     @app.get("/health")
     def health() -> Dict[str, Any]:
+        from .mcp.device import router_agent
+
+        # Per-agent CPU-fallback counters, read through the same side-effect-free
+        # accessor the MCP status tool uses -- never Router.load(), which reorders the
+        # LRU and rebuilds evicted checkpoints. Every access is getattr-guarded so
+        # injected routers predating the counters stay health-compatible, like `revisions`.
+        # This counts the *scoped* fallback in _infer (a request that demotes to CPU and
+        # restores the device); a checkpoint built on CPU because the GPU was never
+        # available is reported by `device`, not here -- see #574.
+        fallbacks = {}
+        for name in router.loaded or []:
+            agent = router_agent(router, name)
+            fallbacks[name] = {"count": getattr(agent, "cpu_fallback_count", 0),
+                               "last_reason": getattr(agent, "last_fallback_reason", None)}
         return {
             "status": "ok",
             "loaded": router.loaded,
             "revisions": getattr(router, "loaded_revisions", {}),
             "device": os.environ.get("LAYA_DEVICE") or "auto",
+            "cpu_fallbacks": fallbacks,
         }
 
     @app.post("/v1/systemone")

@@ -21,6 +21,10 @@
 
 </div>
 
+## One-click Deployment
+
+[![Deploy on InstaCloud](https://cdn.jsdelivr.net/gh/InsForge/instacloud-oss@main/assets/deploy-button.svg)](https://instacloud.com/templates/laya)
+
 ## Installation
 
 ```bash

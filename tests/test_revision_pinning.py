@@ -183,5 +183,122 @@ class RouterRevisionTests(unittest.TestCase):
         self.assertEqual(router.loaded_revisions, {"english": "sha-english"})
 
 
+class RouterAgentKwargsTests(unittest.TestCase):
+    """`agent_kwargs` is how a Router user reaches the rest of `Agent`'s constructor.
+
+    Before it, `Router.load` built every checkpoint with exactly four arguments, so
+    `lang_temperatures`, `expected_sha256`, `fast` and `compile` could only be set by giving up the
+    Router and hand-building an `Agent` -- which also left the per-language grouping in
+    `Router.predict_batch` unable to fire for any agent the Router owned.
+    """
+
+    TABLE = {"de": {"temperature": [2.0, 2.0, 2.0], "temperature_by_options": {"choice:2": 3.0}}}
+
+    @staticmethod
+    def _fake_agent():
+        """(module holding Agent, the fake, the list each build is appended to).
+
+        `check_agent_kwargs` reads the option names out of whatever `laya.agent.Agent` currently
+        is, so the stand-in has to carry the real signature or these tests would be refused before
+        they ever reached a build.
+        """
+        import inspect
+
+        import laya.agent
+
+        captured = []
+
+        class FakeAgent:
+            def __init__(self, repo, **kwargs):
+                captured.append((repo, kwargs))
+
+            __init__.__signature__ = inspect.signature(Agent.__init__)
+
+        return laya.agent, FakeAgent, captured
+
+    def test_agent_kwargs_reach_the_agent_build(self):
+        module, fake, captured = self._fake_agent()
+        with patch.object(module, "Agent", fake):
+            Router(agent_kwargs={"lang_temperatures": self.TABLE}).load("english")
+        self.assertEqual(captured[0][1]["lang_temperatures"], self.TABLE)
+
+    def test_applied_to_every_checkpoint_the_router_builds(self):
+        module, fake, captured = self._fake_agent()
+        with patch.object(module, "Agent", fake):
+            router = Router(agent_kwargs={"expected_sha256": {"model.safetensors": "0" * 64}})
+            router.load("english")
+            router.load("multi")
+        self.assertEqual(len(captured), 2)
+        for _repo, kwargs in captured:
+            self.assertEqual(kwargs["expected_sha256"], {"model.safetensors": "0" * 64})
+
+    def test_passing_nothing_leaves_the_build_exactly_as_it_was(self):
+        module, fake, captured = self._fake_agent()
+        with patch.object(module, "Agent", fake):
+            Router().load("english")
+            Router(revision="sha").load("english")
+        self.assertEqual(sorted(captured[0][1]), ["device", "subfolder", "token"])
+        self.assertEqual(sorted(captured[1][1]), ["device", "revision", "subfolder", "token"])
+
+    def test_a_router_value_is_never_shadowed_by_an_agent_kwarg(self):
+        module, fake, captured = self._fake_agent()
+        with patch.object(module, "Agent", fake):
+            Router(device="cuda", revisions={"english": "sha"},
+                   agent_kwargs={"lang_temperatures": self.TABLE}).load("english")
+        self.assertEqual(captured[0][1]["device"], "cuda")
+        self.assertEqual(captured[0][1]["revision"], "sha")
+
+    def test_router_owned_names_are_refused(self):
+        owned = ("model_id_or_path", "device", "token", "subfolder", "revision", "hooks",
+                 "on_predict_start", "on_predict_end", "hooks_raise", "hooks_concurrent",
+                 "hooks_timeout")
+        for name in owned:
+            with self.assertRaises(ValueError) as ctx:
+                Router(agent_kwargs={name: "x"})
+            self.assertIn(name, str(ctx.exception))
+            self.assertIn("Router(...)", str(ctx.exception))
+
+    def test_refusal_happens_at_construction_not_at_the_first_load(self):
+        module, fake, captured = self._fake_agent()
+        with patch.object(module, "Agent", fake):
+            with self.assertRaises(ValueError):
+                Router(agent_kwargs={"device": "cpu"}).load("english")
+        self.assertEqual(captured, [])
+
+    def test_unknown_option_is_refused_with_the_names_that_do_exist(self):
+        with self.assertRaises(ValueError) as ctx:
+            Router(agent_kwargs={"lang_tempertaures": self.TABLE})
+        message = str(ctx.exception)
+        self.assertIn("lang_tempertaures", message)
+        # The typo is refused, and the accepted list carries the spelling the caller meant.
+        self.assertIn("lang_temperatures", message)
+
+    def test_accepted_names_are_read_from_agent_rather_than_copied_here(self):
+        """The anti-drift check: this file must not grow its own list of checkpoint options."""
+        import inspect
+
+        from laya.router import _ROUTER_OWNED_AGENT_ARGS, check_agent_kwargs
+
+        owned = set(_ROUTER_OWNED_AGENT_ARGS)
+        accepted = set(inspect.signature(Agent.__init__).parameters) - {"self"} - owned
+        self.assertTrue(accepted, "expected some Agent options to be reachable")
+        for name in ("fast", "compile", "expected_sha256", "lang_temperatures"):
+            self.assertIn(name, accepted)
+        check_agent_kwargs({name: None for name in accepted})
+
+    def test_the_callers_dict_is_copied_not_aliased(self):
+        module, fake, captured = self._fake_agent()
+        options = {"lang_temperatures": self.TABLE}
+        with patch.object(module, "Agent", fake):
+            router = Router(agent_kwargs=options)
+            options["compile"] = True
+            router.load("english")
+        self.assertNotIn("compile", captured[0][1])
+
+    def test_default_is_an_empty_build(self):
+        self.assertEqual(Router().agent_kwargs, {})
+        self.assertEqual(Router(agent_kwargs={}).agent_kwargs, {})
+
+
 if __name__ == "__main__":
     unittest.main()

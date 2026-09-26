@@ -28,6 +28,7 @@ primary routing signal.
 synthetic workflows and should not be a silent default.
 """
 import gc
+import inspect
 import json
 import os
 import threading
@@ -174,6 +175,40 @@ def _english_from_code(value: Any) -> Optional[bool]:
     return primary in _ENGLISH_SUBTAGS
 
 
+# Checkpoint options a Router will not accept through `agent_kwargs`: the ones it sets for itself
+# on every `Agent(...)` it builds, plus the hook family, which has its own home in `Router(hooks=)`
+# and would otherwise fire from two registries at once.
+_ROUTER_OWNED_AGENT_ARGS = frozenset({
+    "model_id_or_path", "device", "token", "subfolder", "revision",
+    "hooks", "on_predict_start", "on_predict_end", "hooks_raise", "hooks_concurrent",
+    "hooks_timeout",
+})
+
+
+def check_agent_kwargs(agent_kwargs: Dict[str, Any]) -> None:
+    """Reject `agent_kwargs` names a Router cannot honour, before any checkpoint is loaded.
+
+    The accepted names are read out of `Agent.__init__`'s signature rather than written down here:
+    the whole point of `agent_kwargs` is that this file stops keeping its own list of checkpoint
+    options, so a hard-coded copy of them would go stale in exactly the way this argument removes.
+    The import is only reached when a caller passes the argument, which is also the moment torch is
+    about to be loaded anyway.
+    """
+    from .agent import Agent
+
+    accepted = set(inspect.signature(Agent.__init__).parameters) - {"self"}
+    reserved = sorted(set(agent_kwargs) & _ROUTER_OWNED_AGENT_ARGS)
+    if reserved:
+        raise ValueError(
+            "Router sets %s itself; pass them to Router(...) instead of in agent_kwargs"
+            % (", ".join(repr(n) for n in reserved),))
+    unknown = sorted(set(agent_kwargs) - accepted)
+    if unknown:
+        raise ValueError(
+            "Agent accepts none of %s; it accepts %s"
+            % (", ".join(repr(n) for n in unknown), sorted(accepted - _ROUTER_OWNED_AGENT_ARGS)))
+
+
 class Router(HookRegistry):
     """Lazily loads Laya checkpoints and sends each request to the right one.
 
@@ -207,6 +242,18 @@ class Router(HookRegistry):
     which is useful when standalone repositories were reviewed at different commits.
     Without either, huggingface_hub's normal default and existing offline cache are used.
 
+    Anything else `laya.Agent` accepts is reachable through `agent_kwargs`, which is merged into
+    every checkpoint the Router builds:
+
+        Router(agent_kwargs={"lang_temperatures": {"de": {"temperature": [1.0, 1.4, 2.0]}}})
+        Router(agent_kwargs={"expected_sha256": {"model.safetensors": "a3f1..."}})
+        Router(agent_kwargs={"fast": True})
+
+    The names the Router sets for itself -- `model_id_or_path`, `device`, `token`, `subfolder`,
+    `revision` and the hook arguments -- are refused here rather than silently shadowed, and the
+    remaining names are checked against `Agent.__init__` at construction, so a misspelled option
+    fails on the `Router(...)` line instead of on the first request.
+
     Hooks are opt-in and run at the Router level: `on_route` sees the routing decision,
     `on_load` / `on_evict` see model lifecycle, and `on_predict_start` / `on_predict_end`
     wrap the whole route+infer call. See `laya.hooks`.
@@ -218,6 +265,7 @@ class Router(HookRegistry):
     hooks_concurrent = True
     hooks_timeout = None
     _hooks_lock = None
+    agent_kwargs: Dict[str, Any] = {}
 
     def __init__(
         self,
@@ -226,6 +274,7 @@ class Router(HookRegistry):
         token: Optional[str] = None,
         revision: Optional[str] = None,
         revisions: Optional[Dict[str, Optional[str]]] = None,
+        agent_kwargs: Optional[Dict[str, Any]] = None,
         max_loaded: int = 2,
         default: str = "english",
         auto_task_detection: bool = False,
@@ -257,6 +306,11 @@ class Router(HookRegistry):
         self.revisions: Dict[str, Optional[str]] = {
             normalise_name(k): v for k, v in (revisions or {}).items()
         }
+        # Options forwarded to every `Agent` this Router builds, checked now so a bad name fails on
+        # this line rather than the first request that happens to load a checkpoint.
+        self.agent_kwargs: Dict[str, Any] = dict(agent_kwargs or {})
+        if self.agent_kwargs:
+            check_agent_kwargs(self.agent_kwargs)
         self.max_loaded = max(1, int(max_loaded))
         self.default = normalise_name(default)
         self.auto_task_detection = bool(auto_task_detection)
@@ -292,6 +346,8 @@ class Router(HookRegistry):
             model_revision = self.revisions.get(key, self.revision)
             if model_revision is not None:
                 kwargs["revision"] = model_revision
+            # Safe to merge last: the names this method just set are refused in `agent_kwargs`.
+            kwargs.update(self.agent_kwargs)
             agent = Agent(repo, **kwargs)
             self._agents[key] = agent
             self._order.append(key)

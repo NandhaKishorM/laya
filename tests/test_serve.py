@@ -12,9 +12,11 @@ fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
 from laya.serve import (  # noqa: E402
+    DEFAULT_MAX_TOKEN_BUDGET,
     MAX_BODY_BYTES,
     _apply_thread_limit,
     _env_bool,
+    _resolve_max_token_budget,
     _resolve_model,
     create_app,
 )
@@ -41,6 +43,15 @@ class FakeRouter:
         }
 
 
+class BudgetRouter(FakeRouter):
+    """A router whose predict() takes token-budget keywords and records them."""
+
+    def predict(self, state, questions, model=None, **kwargs):
+        out = super().predict(state, questions, model=model)
+        self.calls[-1].update(kwargs)
+        return out
+
+
 def _client(monkeypatch, api_key=None):
     if api_key is None:
         monkeypatch.delenv("LAYA_API_KEY", raising=False)
@@ -48,6 +59,16 @@ def _client(monkeypatch, api_key=None):
         monkeypatch.setenv("LAYA_API_KEY", api_key)
     fake = FakeRouter()
     return TestClient(create_app(router=fake)), fake
+
+
+def _budget_client(monkeypatch, api_key=None):
+    if api_key is None:
+        monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    else:
+        monkeypatch.setenv("LAYA_API_KEY", api_key)
+    fake = BudgetRouter()
+    return TestClient(create_app(router=fake)), fake
+
 
 
 REQ = {
@@ -224,6 +245,7 @@ def test_helpers():
 
 
 def test_thread_limit(monkeypatch):
+    pytest.importorskip("torch")
     monkeypatch.delenv("LAYA_THREADS", raising=False)
     assert _apply_thread_limit() is None  # unset -> no-op, no torch import
     for bad in ("0", "-4", "abc", ""):
@@ -400,6 +422,7 @@ def test_a_nested_choice_label_is_a_caller_error_not_a_server_fault(monkeypatch)
     `ValueError` to 422, so the caller got a 500 "inference failed" with the reason discarded.
     `ValueError` is what carries the message to the client, so the guard has to raise that type.
     """
+    pytest.importorskip("torch")  # laya.agent imports torch at module level
     class ValidatingRouter:
         """The real guard, without a checkpoint: what `Agent.system_one` runs before encoding.
 
@@ -529,3 +552,74 @@ def test_admission_slot_is_released_after_inference(monkeypatch):
     client = TestClient(create_app(router=FakeRouter()))
     assert client.post("/v1/systemone", json=REQ).status_code == 200
     assert client.post("/v1/systemone", json=REQ).status_code == 200
+
+
+def test_no_budget_keeps_the_call_unchanged(monkeypatch):
+    """An injected router whose predict() takes no kwargs continues to work when body sends no budget."""
+    client, fake = _client(monkeypatch)
+    for body in (REQ, dict(REQ, max_len=None, head_max_len=None)):
+        assert client.post("/v1/systemone", json=body).status_code == 200
+    assert len(fake.calls) == 2
+
+
+def test_token_budget_forwarded(monkeypatch):
+    client, fake = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": 4096, "head_max_len": 256})
+    assert r.status_code == 200
+    assert fake.calls[0]["max_len"] == 4096
+    assert fake.calls[0]["head_max_len"] == 256
+
+
+@pytest.mark.parametrize("bad_budget", ["fast", True, 3.14])
+def test_token_budget_validation_type(monkeypatch, bad_budget):
+    client, fake = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": bad_budget})
+    assert r.status_code == 422
+    assert "must be an integer" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("bad_val", [0, -10])
+def test_token_budget_validation_positive(monkeypatch, bad_val):
+    client, fake = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": bad_val})
+    assert r.status_code == 422
+    assert "must be a positive integer" in r.json()["detail"]
+
+
+def test_token_budget_exceeds_server_cap(monkeypatch):
+    client, fake = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": 9000})
+    assert r.status_code == 422
+    assert "exceeds server limit" in r.json()["detail"]
+
+
+def test_token_budget_head_max_len_equal_to_max_len(monkeypatch):
+    """Core accepts head_max_len == max_len; serve forwards both without artificial restriction."""
+    client, fake = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": 512, "head_max_len": 512})
+    assert r.status_code == 200
+    assert fake.calls[0]["max_len"] == 512
+    assert fake.calls[0]["head_max_len"] == 512
+
+
+def test_token_budget_env_cap_override(monkeypatch):
+    monkeypatch.setenv("LAYA_MAX_TOKEN_BUDGET", "2048")
+    client, fake = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "max_len": 4096})
+    assert r.status_code == 422
+    assert "exceeds server limit" in r.json()["detail"]
+
+    r2 = client.post("/v1/systemone", json={**REQ, "max_len": 2048})
+    assert r2.status_code == 200
+    assert fake.calls[0]["max_len"] == 2048
+
+
+def test_resolve_max_token_budget_fallback(monkeypatch, caplog):
+    monkeypatch.delenv("LAYA_MAX_TOKEN_BUDGET", raising=False)
+    assert _resolve_max_token_budget() == DEFAULT_MAX_TOKEN_BUDGET
+    for bad in ("abc", "-10", "0"):
+        monkeypatch.setenv("LAYA_MAX_TOKEN_BUDGET", bad)
+        assert _resolve_max_token_budget() == DEFAULT_MAX_TOKEN_BUDGET
+    assert "invalid LAYA_MAX_TOKEN_BUDGET" in caplog.text
+    assert "LAYA_MAX_TOKEN_BUDGET must be positive" in caplog.text
+

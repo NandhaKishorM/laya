@@ -11,24 +11,25 @@ probe.
 Configuration is entirely via environment variables so the same entry point
 serves a laptop dev run and a systemd unit:
 
-======================  ============================================  =========
-env var                 meaning                                        default
-======================  ============================================  =========
-``LAYA_HOST``           bind address                                   0.0.0.0
-``LAYA_PORT``           bind port                                      8000
-``LAYA_DEVICE``         torch device for every checkpoint              (auto)
-``LAYA_PRELOAD``        build the checkpoints at startup, not lazily   1
-``LAYA_MODELS``         comma list to preload (english,multilingual,   (all)
-                        typed-decisions); empty = every checkpoint
-``LAYA_THREADS``        cap torch intra-op threads (CPU inference).    (torch
-                        Keep <= physical cores; oversubscribing the     default)
-                        logical/hyperthread count is a large regression.
-``LAYA_AUTO_TASK``      auto-route to the typed-decisions checkpoint   0
-``LAYA_API_KEY``        if set, require ``Authorization: Bearer <it>``  (none)
-``LAYA_LOG_LEVEL``      uvicorn log level                              info
-``LAYA_MAX_CONCURRENT`` cap on requests past auth at once; excess      16
-                        gets 503 (see below)
-======================  ============================================  =========
+=========================  ============================================  =========
+env var                    meaning                                        default
+=========================  ============================================  =========
+``LAYA_HOST``              bind address                                   0.0.0.0
+``LAYA_PORT``              bind port                                      8000
+``LAYA_DEVICE``            torch device for every checkpoint              (auto)
+``LAYA_PRELOAD``           build the checkpoints at startup, not lazily   1
+``LAYA_MODELS``            comma list to preload (english,multilingual,   (all)
+                           typed-decisions); empty = every checkpoint
+``LAYA_THREADS``           cap torch intra-op threads (CPU inference).    (torch
+                           Keep <= physical cores; oversubscribing the     default)
+                           logical/hyperthread count is a large regression.
+``LAYA_AUTO_TASK``         auto-route to the typed-decisions checkpoint   0
+``LAYA_API_KEY``           if set, require ``Authorization: Bearer <it>``  (none)
+``LAYA_LOG_LEVEL``         uvicorn log level                              info
+``LAYA_MAX_CONCURRENT``    cap on requests past auth at once; excess      16
+                           gets 503 (see below)
+``LAYA_MAX_TOKEN_BUDGET``  cap on per-request max_len / head_max_len       8192
+=========================  ============================================  =========
 
 Imports of heavy dependencies (fastapi, uvicorn, torch via Router) are all
 deferred into the functions that need them, so ``import laya.serve`` stays cheap
@@ -68,6 +69,8 @@ MAX_TOTAL_OPTIONS = 512
 # before inference, so without a bound many concurrent near-cap requests OOM
 # the worker even though every request is individually valid (#330).
 DEFAULT_MAX_CONCURRENT = 16
+# Server-side ceiling on per-request max_len/head_max_len token budget overrides.
+DEFAULT_MAX_TOKEN_BUDGET = 8192
 # Public Hugging Face ids, accepted so a client can name a checkpoint. The root bundle is
 # deliberately absent: the documented ``convaiinnovations/laya`` value means
 # "let the Router choose", rather than pinning the English checkpoint.
@@ -113,6 +116,43 @@ def _resolve_max_concurrent() -> int:
     except ValueError:
         return DEFAULT_MAX_CONCURRENT
     return n if n > 0 else DEFAULT_MAX_CONCURRENT
+
+
+def _resolve_max_token_budget() -> int:
+    """Server-side cap on per-request max_len from LAYA_MAX_TOKEN_BUDGET."""
+    raw = os.environ.get("LAYA_MAX_TOKEN_BUDGET")
+    if not raw:
+        return DEFAULT_MAX_TOKEN_BUDGET
+    try:
+        n = int(str(raw).strip())
+    except (TypeError, ValueError):
+        _log.warning("invalid LAYA_MAX_TOKEN_BUDGET %r; falling back to %d", raw, DEFAULT_MAX_TOKEN_BUDGET)
+        return DEFAULT_MAX_TOKEN_BUDGET
+    if n <= 0:
+        _log.warning("LAYA_MAX_TOKEN_BUDGET must be positive (got %d); falling back to %d", n, DEFAULT_MAX_TOKEN_BUDGET)
+        return DEFAULT_MAX_TOKEN_BUDGET
+    return n
+
+
+def _validate_budget_param(body: Dict[str, Any], key: str, max_cap: int) -> Optional[int]:
+    """Validate optional integer budget parameters (max_len / head_max_len) from request body (422)."""
+    from fastapi import HTTPException
+
+    if key not in body:
+        return None
+    val = body[key]
+    if val is None:
+        return None
+    if not isinstance(val, int) or isinstance(val, bool):
+        raise HTTPException(status_code=422, detail="%s must be an integer" % key)
+    if val <= 0:
+        raise HTTPException(status_code=422, detail="%s must be a positive integer" % key)
+    if val > max_cap:
+        raise HTTPException(
+            status_code=422,
+            detail="%s exceeds server limit (%d > %d)" % (key, val, max_cap),
+        )
+    return val
 
 
 def _resolve_port() -> int:
@@ -355,6 +395,14 @@ def create_app(router: Optional[Any] = None):
         questions = body["questions"]
         _check_request_limits(state, questions)
         model = _resolve_model(body.get("model"))
+        max_budget_cap = _resolve_max_token_budget()
+        max_len = _validate_budget_param(body, "max_len", max_budget_cap)
+        head_max_len = _validate_budget_param(body, "head_max_len", max_budget_cap)
+        predict_kwargs = {}
+        if max_len is not None:
+            predict_kwargs["max_len"] = max_len
+        if head_max_len is not None:
+            predict_kwargs["head_max_len"] = head_max_len
         if gate is None:
             gate = asyncio.Lock()
         try:
@@ -363,8 +411,12 @@ def create_app(router: Optional[Any] = None):
             async with gate:
                 loop = asyncio.get_running_loop()
                 t0 = time.perf_counter()
-                result = await loop.run_in_executor(
-                    pool, lambda: router.predict(state, questions, model=model))
+                if predict_kwargs:
+                    result = await loop.run_in_executor(
+                        pool, lambda: router.predict(state, questions, model=model, **predict_kwargs))
+                else:
+                    result = await loop.run_in_executor(
+                        pool, lambda: router.predict(state, questions, model=model))
                 infer_ms = (time.perf_counter() - t0) * 1000.0
                 from fastapi.responses import JSONResponse
                 return JSONResponse(

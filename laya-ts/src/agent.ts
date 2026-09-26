@@ -157,6 +157,16 @@ export function checkQuestion(qid: string, qdef: unknown): void {
     if (Object.keys(crit as object).length === 0) {
       throw new Error(`question ${qidStr(qid)}: a choice question needs at least one criterion`);
     }
+    if (Array.isArray(crit)) {
+      crit.forEach((label: unknown, i) => {
+        if (typeof label !== "object" || label === null) return;
+        throw new Error(
+          `question ${qidStr(qid)}: choice label ${i} is a ${Array.isArray(label) ? "list" : "dict"}; a label is ` +
+            `rendered as option text and used as the answer key, so it must be a scalar (a string, number or ` +
+            `null), got ${JSON.stringify(label)}`,
+        );
+      });
+    }
   } else if (t === "score") {
     if (!Array.isArray(crit)) {
       throw new Error(

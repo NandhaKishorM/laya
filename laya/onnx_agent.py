@@ -16,6 +16,7 @@ from laya.common import (
     QTYPES,
     answer_confidence,
     build_sequence,
+    collapsed_options,
     collate_items,
     confidence_from_probs,
     encode_text,
@@ -299,13 +300,13 @@ class ONNXAgent(HookRegistry):
 
         for qid in ids:
             q = self._to_internal(questions[qid])
-            seq, markers = build_sequence(
+            seq, markers, stats = build_sequence(
                 self.tok, state, q, max_len, head_max_len,
-                truncate_left=truncate_left, state_ids=state_ids,
+                truncate_left=truncate_left, state_ids=state_ids, return_stats=True,
             )
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
-            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
+            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]], "options": stats})
 
         b = collate_items([items], self.tok.pad_token_id)
         
@@ -379,10 +380,14 @@ class ONNXAgent(HookRegistry):
                     "action": ext,
                 }
 
+        usage = {"input_tokens": n_tokens, "output_tokens": 0}
+        collapsed = collapsed_options(ids, items)
+        if collapsed:
+            usage["options"] = collapsed
         return {
             "model": "laya-rl-agent-onnx",
             "answers": answers,
-            "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+            "usage": usage,
         }
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,

@@ -114,6 +114,7 @@ jobs:
           python tests/test_tokenizer_concurrency.py
           python tests/test_lazy_import.py
           python tests/test_runtime_fixes.py
+          python tests/test_option_collapse.py
           python tests/test_lang_guess.py
           python tests/test_identifier_complexity.py
           python tests/test_lang_stats.py

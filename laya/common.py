@@ -100,11 +100,16 @@ def build_sequence(
     option_order: Optional[List[int]] = None,
     truncate_left: bool = False,
     state_ids: Optional[List[int]] = None,
+    return_stats: bool = False,
 ):
     """Format: [CLS] <type> instructions [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] state [SEP].
 
     `state_ids` lets a caller tokenize the shared state once and reuse it across every question,
     instead of re-serializing and re-tokenizing the same document per question.
+
+    `return_stats` adds a third return value describing what the head budget did to the options:
+    `options` (how many the question defines), `options_distinct` (how many still have a token
+    span of their own) and `tokens_per_option` (the cap applied to each, or None when none was).
     """
     mask_tok = tok.mask_token
     opts = render_options(q)
@@ -125,8 +130,10 @@ def build_sequence(
         )["input_ids"]
         opt_ids.append([tok.mask_token_id] + opt_tokens)
     opt_budget = head_max_len - sum(len(o) for o in opt_ids)
+    per_option = None
     if opt_budget < 16:
         per = max(4, (head_max_len - 16) // max(1, len(opt_ids)))
+        per_option = per
         opt_ids = [o[:per] for o in opt_ids]
         opt_budget = head_max_len - sum(len(o) for o in opt_ids)
     head_ids = head_ids[: max(8, opt_budget)]
@@ -143,7 +150,36 @@ def build_sequence(
     # not state_ids[-room:]: with no room left, state_ids[-0:] is the whole state rather than none of it
     st = state_ids[max(0, len(state_ids) - room):] if truncate_left else state_ids[:room]
     ids = ids + st + [tok.sep_token_id]
-    return ids[:max_len], [m for m in markers if m < max_len]
+    ids, markers = ids[:max_len], [m for m in markers if m < max_len]
+    if not return_stats:
+        return ids, markers
+    # Two options that share a prefix can come out of the cut as the same token span: the marker
+    # count still matches the option count, so the guard in `Agent._encode_state` passes and
+    # nothing downstream can tell that the question lost the ability to name them apart. Counted
+    # on the capped option ids, before assembly: re-slicing the finished sequence cannot close
+    # the last option's span -- it runs on into the serialized state, which differs per request,
+    # so the last option always looks distinguishable however it collided (#538).
+    return ids, markers, {
+        "options": len(opt_ids),
+        "options_distinct": len({tuple(o) for o in opt_ids}),
+        "tokens_per_option": per_option,
+    }
+
+
+def collapsed_options(qids, items) -> Dict[str, Dict[str, Optional[int]]]:
+    """The questions whose options no longer have a token span each, from per-item stats.
+
+    `total` is the number of options the question defines, not the number of markers that
+    reached the sequence: a report counted from the markers would say "43/58" about a request
+    where 28 options never made it into the input at all.
+    """
+    out = {}
+    for qid, item in zip(qids, items):
+        stats = item.get("options")
+        if stats and stats["options_distinct"] < stats["options"]:
+            out[qid] = {"total": stats["options"], "distinct": stats["options_distinct"],
+                        "tokens_per_option": stats["tokens_per_option"]}
+    return out
 
 
 class DecisionModel(nn.Module):

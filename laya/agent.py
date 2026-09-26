@@ -18,6 +18,7 @@ from .common import (
     amp_dtype,
     build_model,
     build_sequence,
+    collapsed_options,
     clamp_temperature,
     collate_items,
     answer_confidence,
@@ -670,11 +671,12 @@ class Agent(HookRegistry):
         items = []
         for qid in ids:
             q = internal[qid]
-            seq, markers = build_sequence(self.tok, state, q, max_len, head_max_len,
-                                          truncate_left=truncate_left, state_ids=state_ids)
+            seq, markers, stats = build_sequence(self.tok, state, q, max_len, head_max_len,
+                                                 truncate_left=truncate_left, state_ids=state_ids,
+                                                 return_stats=True)
             if len(markers) != len(render_options(q)):
                 raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
-            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]]})
+            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]], "options": stats})
         return items
 
     def _amp_enabled_for(self, rows: int) -> bool:
@@ -923,10 +925,19 @@ class Agent(HookRegistry):
                                     n_tokens = int(att[row:row + nrows].sum())
                                     answers = self._decode_answers(logits, act, items, ids, internal, row,
                                                                   **({"lang": lang} if lang else {}))
+                                    usage = {"input_tokens": n_tokens, "output_tokens": 0}
+                                    # Only when a question actually lost options to the head
+                                    # budget: an answer chosen from 42 distinguishable spans of
+                                    # 58 has a ceiling the caller cannot otherwise see, and a
+                                    # key that is always present would be noise on the
+                                    # overwhelming majority of requests that never collapse.
+                                    collapsed = collapsed_options(ids, items)
+                                    if collapsed:
+                                        usage["options"] = collapsed
                                     window_results[index] = {
                                         "model": "laya-rl-agent",
                                         "answers": answers,
-                                        "usage": {"input_tokens": n_tokens, "output_tokens": 0},
+                                        "usage": usage,
                                     }
                                     row += nrows
                             results.extend(window_results)
@@ -1081,6 +1092,12 @@ class Agent(HookRegistry):
             Dictionary with answers, probabilities, calibrated confidence, and token usage.
             Empty questions return empty answers and zero token usage without tokenization
             or a model forward pass.
+
+            When the head budget leaves two options with the same token span, `usage` carries
+            an `options` entry for each question it happened to -- `total`, `distinct` and
+            `tokens_per_option` -- because an answer chosen among 42 distinguishable spans of
+            58 has a ceiling that is the budget's and not the model's. Questions whose options
+            all survive are absent, so a request that collapses nothing is unchanged.
 
         To score many states at once, see `predict_batch`, which shares forward passes across them.
         """

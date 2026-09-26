@@ -59,13 +59,13 @@ def test_agent_list_vs_string_truncation_direction():
     list_capture = {}
     string_capture = {}
 
-    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, state_ids=None):
+    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, **kwargs):
         if isinstance(state, list):
             list_capture["truncate_left"] = truncate_left
         else:
             string_capture["truncate_left"] = truncate_left
         return build_sequence(tok, state, q, max_len, head_max_len,
-                              truncate_left=truncate_left, state_ids=state_ids)
+                              truncate_left=truncate_left, **kwargs)
 
     with patch("laya.agent.build_sequence", side_effect=fake_build):
         agent.system_one([{"role": "user", "content": "hi"}, {"role": "user", "content": "newest"}], questions)
@@ -85,11 +85,11 @@ def test_agent_system_one_passes_truncate_left_for_list():
 
     captured = {}
 
-    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, state_ids=None):
+    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, **kwargs):
         captured["truncate_left"] = truncate_left
         captured["state"] = state
         return build_sequence(tok, state, q, max_len, head_max_len,
-                              truncate_left=truncate_left, state_ids=state_ids)
+                              truncate_left=truncate_left, **kwargs)
 
     with patch("laya.agent.build_sequence", side_effect=fake_build):
         agent.system_one(conversation, questions)
@@ -107,10 +107,10 @@ def test_agent_system_one_string_state_default_truncation():
 
     captured = {}
 
-    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, state_ids=None):
+    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, **kwargs):
         captured["truncate_left"] = truncate_left
         return build_sequence(tok, state, q, max_len, head_max_len,
-                              truncate_left=truncate_left, state_ids=state_ids)
+                              truncate_left=truncate_left, **kwargs)
 
     with patch("laya.agent.build_sequence", side_effect=fake_build):
         agent.system_one("just a string state", questions)

@@ -50,6 +50,7 @@ jobs:
           python tests/test_packaging.py
           python tests/test_doc_tables.py
           python tests/test_lang_guess.py
+          python tests/test_option_collapse.py
           python tests/test_calibration_persistence.py
           python tests/test_context_manager.py
           python tests/test_criteria_normalization.py

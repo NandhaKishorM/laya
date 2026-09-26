@@ -176,6 +176,138 @@ for label, s, want in BEFORE:
     check("unchanged/" + label, r0.route(s, GENERIC)["model"], want)
 
 
+# ------------------------------------------------------------------ Hindi (Devanagari script)
+# Hindi uses Devanagari (U+0900-U+097F), which is in _SCRIPT_RANGES. The English
+# checkpoint (ModernBERT-large, 50k English BPE) has no Devanagari tokens, so any
+# state written in Hindi must reach the multilingual checkpoint. These cases cover
+# the four main customer-support scenarios: billing, technical, account and cancellation.
+
+HINDI_CASES = [
+    # billing & payment
+    ("hindi/billing duplicate charge",
+     "मुझसे मार्च महीने में दो बार शुल्क लिया गया है, कृपया डुप्लिकेट राशि वापस करें।",
+     "multilingual"),
+    ("hindi/payment failed refund",
+     "मेरा भुगतान विफल हो गया लेकिन पैसे कट गए, मुझे तुरंत वापसी चाहिए।",
+     "multilingual"),
+    ("hindi/invoice not received",
+     "मुझे अप्रैल माह का इनवॉइस अभी तक नहीं मिला है, कृपया भेजें।",
+     "multilingual"),
+    # technical support
+    ("hindi/app crash on settings",
+     "एप्लिकेशन हर बार सेटिंग खोलने पर बंद हो जाती है, कृपया जल्दी ठीक करें।",
+     "multilingual"),
+    ("hindi/login failure",
+     "मैं अपने खाते में लॉग इन नहीं कर पा रहा हूँ, पासवर्ड सही है फिर भी एरर आ रहा है।",
+     "multilingual"),
+    ("hindi/OTP not received",
+     "OTP मेरे मोबाइल पर नहीं आ रहा, मैं सत्यापन पूरा नहीं कर पा रहा।",
+     "multilingual"),
+    # account & cancellation
+    ("hindi/cancel threat",
+     "अगर यह समस्या जल्द हल नहीं हुई तो मैं अपनी सदस्यता रद्द कर दूँगा।",
+     "multilingual"),
+    ("hindi/plan upgrade enquiry",
+     "मैं अपना प्लान अपग्रेड करना चाहता हूँ, प्रीमियम के क्या फायदे हैं?",
+     "multilingual"),
+    # short utterances (still Devanagari -- script detection is exact, not length-dependent)
+    ("hindi/short help request",
+     "नमस्ते, मुझे मदद चाहिए।",
+     "multilingual"),
+    ("hindi/single word",
+     "धन्यवाद",
+     "multilingual"),
+]
+
+for label, text, want in HINDI_CASES:
+    check(label, r0.route(text, GENERIC)["model"], want)
+
+# lang_guess codes for Hindi
+check("hindi/lang_guess hi routes multilingual",
+      r0.route("मुझे मदद चाहिए।", GENERIC, lang_guess="hi")["model"], "multilingual")
+check("hindi/lang_guess hi-IN routes multilingual",
+      r0.route("मुझे मदद चाहिए।", GENERIC, lang_guess="hi-IN")["model"], "multilingual")
+
+# script is reported correctly
+check("hindi/script detected as devanagari",
+      r0.route("यह एक हिंदी वाक्य है।", GENERIC)["detection"]["script"], "devanagari")
+
+# one Devanagari field in a mixed dict is enough to reach multilingual
+check("hindi/mixed Hindi-English dict reaches multilingual",
+      r0.route({"subject": "Payment issue", "body": "मेरा भुगतान विफल हो गया।"}, GENERIC)["model"],
+      "multilingual")
+
+
+# ------------------------------------------------------------------ Marathi (Devanagari script)
+# Marathi shares Devanagari with Hindi (same Unicode block, U+0900-U+097F) but is a
+# distinct language spoken by ~90 million people. Routing must reach multilingual for
+# both -- any regression sending Devanagari to the English checkpoint collapses
+# accuracy to near-random (measured at 0.100 on Hindi on MASSIVE at 20 options).
+
+MARATHI_CASES = [
+    # billing & payment
+    ("marathi/billing duplicate charge",
+     "मला मार्च महिन्यात दोनदा शुल्क आकारले गेले आहे, कृपया अतिरिक्त रक्कम परत करा.",
+     "multilingual"),
+    ("marathi/payment failed refund",
+     "माझे पेमेंट अयशस्वी झाले पण पैसे कापले गेले, कृपया परतावा द्या.",
+     "multilingual"),
+    ("marathi/invoice not received",
+     "मला एप्रिल महिन्याचे बिल अजून मिळाले नाही, कृपया पाठवा.",
+     "multilingual"),
+    # technical support
+    ("marathi/app crash on open",
+     "अॅप्लिकेशन उघडत नाही, प्रत्येक वेळी बंद होते, कृपया लवकर सोडवा.",
+     "multilingual"),
+    ("marathi/login error",
+     "मी माझ्या खात्यात लॉग इन करू शकत नाही, पासवर्ड बरोबर असूनही चूक येते.",
+     "multilingual"),
+    ("marathi/OTP not received",
+     "OTP माझ्या मोबाईलवर येत नाही, मी पडताळणी पूर्ण करू शकत नाही.",
+     "multilingual"),
+    # account & cancellation
+    ("marathi/cancel threat",
+     "जर ही समस्या लवकर सुटली नाही तर मी माझी सदस्यता रद्द करेन.",
+     "multilingual"),
+    ("marathi/plan upgrade enquiry",
+     "मला माझा प्लान अपग्रेड करायचा आहे, प्रीमियमचे काय फायदे आहेत?",
+     "multilingual"),
+    # short utterances
+    ("marathi/short help request",
+     "नमस्कार, मला मदत हवी आहे.",
+     "multilingual"),
+    ("marathi/single word",
+     "धन्यवाद",
+     "multilingual"),
+]
+
+for label, text, want in MARATHI_CASES:
+    check(label, r0.route(text, GENERIC)["model"], want)
+
+# lang_guess codes for Marathi
+check("marathi/lang_guess mr routes multilingual",
+      r0.route("मला मदत हवी आहे.", GENERIC, lang_guess="mr")["model"], "multilingual")
+check("marathi/lang_guess mr-IN routes multilingual",
+      r0.route("मला मदत हवी आहे.", GENERIC, lang_guess="mr-IN")["model"], "multilingual")
+
+# script is reported correctly for Marathi too
+check("marathi/script detected as devanagari",
+      r0.route("माझे पेमेंट अयशस्वी झाले.", GENERIC)["detection"]["script"], "devanagari")
+
+# one Marathi field in a mixed dict reaches multilingual
+check("marathi/mixed Marathi-English dict reaches multilingual",
+      r0.route({"subject": "Billing problem", "body": "मला दोनदा शुल्क आकारले गेले."}, GENERIC)["model"],
+      "multilingual")
+
+
+# ------------------------------------------------------------------ Hindi vs Marathi consistency
+# Both languages use Devanagari. The router decides on script, not language identity,
+# so routing must be identical for both.
+check("hindi_marathi/same checkpoint regardless of language",
+      r0.route("मुझे मदद चाहिए।", GENERIC)["model"],
+      r0.route("मला मदत हवी आहे.", GENERIC)["model"])
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

@@ -68,6 +68,8 @@ for label, fn in (("Agent.__init__", Agent.__init__), ("load", load),
 # Router keeps lang_guess and explicit per-model revisions too
 check_param("Router.__init__", Router.__init__, "lang_guess", None)
 check_param("Router.__init__", Router.__init__, "revisions", None)
+# ...and the per-checkpoint digests that `revisions` has always had a sibling need for
+check_param("Router.__init__", Router.__init__, "sha256_digests", None)
 
 # --------------------------------------------------------------- predict surfaces
 for label, fn in (("Agent.predict_batch", Agent.predict_batch),

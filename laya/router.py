@@ -207,6 +207,15 @@ class Router(HookRegistry):
     which is useful when standalone repositories were reviewed at different commits.
     Without either, huggingface_hub's normal default and existing offline cache are used.
 
+    Artifact digests are opt-in and only ever per model: `sha256_digests={"english": {...}}`
+    passes that `{path relative to the checkpoint dir: hexdigest}` map to the `Agent` that
+    loads it, so a tampered or substituted weight file is refused before it is parsed. There
+    is no Router-wide equivalent of `revision` because digests, unlike a commit SHA, are not
+    shareable: the bundled repository ships a separate `model.safetensors` for each of
+    `english`, `multilingual` and `typed-decisions`, so one flat map can only ever match one
+    of them. A model listed with `None` or `{}` is loaded unverified, which also masks the
+    `LAYA_SHA256_DIGESTS` environment default for that one checkpoint.
+
     Hooks are opt-in and run at the Router level: `on_route` sees the routing decision,
     `on_load` / `on_evict` see model lifecycle, and `on_predict_start` / `on_predict_end`
     wrap the whole route+infer call. See `laya.hooks`.
@@ -226,6 +235,7 @@ class Router(HookRegistry):
         token: Optional[str] = None,
         revision: Optional[str] = None,
         revisions: Optional[Dict[str, Optional[str]]] = None,
+        sha256_digests: Optional[Dict[str, Optional[Dict[str, str]]]] = None,
         max_loaded: int = 2,
         default: str = "english",
         auto_task_detection: bool = False,
@@ -256,6 +266,11 @@ class Router(HookRegistry):
         self.revision = revision
         self.revisions: Dict[str, Optional[str]] = {
             normalise_name(k): v for k, v in (revisions or {}).items()
+        }
+        # Per checkpoint SHA-256 map. Keyed and normalised exactly like `revisions`, so a
+        # misspelled model name fails here rather than leaving that checkpoint unverified.
+        self.sha256_digests: Dict[str, Optional[Dict[str, str]]] = {
+            normalise_name(k): v for k, v in (sha256_digests or {}).items()
         }
         self.max_loaded = max(1, int(max_loaded))
         self.default = normalise_name(default)
@@ -292,6 +307,10 @@ class Router(HookRegistry):
             model_revision = self.revisions.get(key, self.revision)
             if model_revision is not None:
                 kwargs["revision"] = model_revision
+            if key in self.sha256_digests:
+                # `or {}` is deliberate: an explicit None still has to reach Agent as a map, or
+                # `verify_digests` would fall back to the environment default it is masking.
+                kwargs["expected_sha256"] = self.sha256_digests[key] or {}
             agent = Agent(repo, **kwargs)
             self._agents[key] = agent
             self._order.append(key)

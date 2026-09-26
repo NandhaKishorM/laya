@@ -343,9 +343,9 @@ requests = [
 results = Router(max_loaded=1).predict_batch(requests)
 # results stay in input order while compatible requests are batched by checkpoint
 ```
-Each item can independently set `model`, `task`, `lang`, or `lang_guess`. Use `route_batch(requests)` when you only want the ordered routing decisions without loading any checkpoint. `predict_many` is an alias for `predict_batch`.
+Each item can independently set `model`, `task`, `lang`, `lang_guess`, or the token budget (`max_len`, `head_max_len`). Use `route_batch(requests)` when you only want the ordered routing decisions without loading any checkpoint. `predict_many` is an alias for `predict_batch`.
 
-Requests are validated before model loading. Different requests may use different question schemas; requests sharing both a checkpoint and question schema are passed together to `Agent.predict_batch()`.
+Requests are validated before model loading. Different requests may use different question schemas; requests sharing a checkpoint, question schema and token budget are passed together to `Agent.predict_batch()`.
 
 [Prediction hooks](#prediction-hooks) installed on the `Router` run once per request, as they do for `predict()`, so a redaction hook rewrites every state before the model sees it. Requests that share a checkpoint run all their start hooks before their shared forward pass; see [`docs/hooks/lifecycle.md`](docs/hooks/lifecycle.md#routerpredict_batch).
 

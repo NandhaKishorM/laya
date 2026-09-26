@@ -210,8 +210,8 @@ Routing alone never downloads a checkpoint, so it returns in milliseconds. `--pr
 `request`. It implies `--predict`, and a question set with many labels usually wants
 `--head-max-len` with it: on 58 MASSIVE-INTENT labels written as one choice question, the English
 checkpoint goes from 24/58 correct at its default 192-token option budget to 34/58 at
-`--head-max-len 384` (163 ms to 235 ms per request, CPU). Widening it further costs the accuracy
-back, because `max_len` then leaves fewer tokens for the request itself. [Honest
+`--head-max-len 384`, for about 1.4x the per-request time on CPU. Widening it further costs the
+accuracy back, because `max_len` then leaves fewer tokens for the request itself. [Honest
 limits](#honest-limits) describes the same budget ceiling for a 77-option question.
 
 ---

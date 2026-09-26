@@ -12,6 +12,7 @@ is explicitly best-effort: pass an explicit model or `lang=` when you already kn
 """
 import re
 import unicodedata
+from collections import Counter
 from collections.abc import Mapping
 from typing import Dict, List, Optional, Union
 
@@ -176,6 +177,18 @@ _SHARED_WORDS = {w for w in {word for words in _STOP.values() for word in words}
 # English function words no other list holds (`in`, `is`, `as`, `was` are shared with German,
 # Dutch and Portuguese). They alone carry the English rescue of `latin_profile`.
 _EN_ONLY_WORDS = _STOP["en"] - _SHARED_WORDS
+# A few of these function words are also ordinary English words: `come` (Italian), `son` (Spanish),
+# `do` (Portuguese), `care` (Romanian), `todo` (a to-do list), `per`, `plus`, and `im` -- German
+# `im`, and also how `I'm` is written without the apostrophe. For those a repeat is evidence of the
+# foreign language exactly once: "do more, do less" repeats an English word, and counting both hits
+# let one such word clear the `best >= 2` bar below and send plain English to the multilingual
+# checkpoint. Every other word keeps counting occurrences: `der`, `los` and `sa` are nobody's
+# English, so a request whose only evidence is `der` twice ("reduzieren der helligkeit der lichter")
+# is still German, and deduping every word instead sent 791 of 148,700 non-English MASSIVE test rows
+# to the English checkpoint. Dutch `van` is the word this list deliberately leaves out: "liedje van
+# ... van" is ordinary Dutch, and deduping it moved 14 of those rows while rescuing no English one.
+_EN_COLLISION_WORDS = {"come", "son", "do", "care", "todo", "im", "per", "plus"} & {
+    w for lg, sw in _STOP.items() if lg != "en" for w in sw}
 
 _WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
 # A token whose dot or @ joins word characters is an identifier, not prose: `github.com`,
@@ -400,7 +413,10 @@ def latin_profile(text: str) -> Dict[str, object]:
         return {"language": None, "english_hits": 0, "diacritic_rate": diac_rate,
                 "looks_non_english": non_english}
 
-    scores = {lg: sum(1 for w in words if w in sw) for lg, sw in _STOP.items()}
+    # A collision word counts once however often it repeats; every other word counts its hits.
+    counts = Counter(words)
+    scores = {lg: sum(1 if w in _EN_COLLISION_WORDS else n for w, n in counts.items() if w in sw)
+              for lg, sw in _STOP.items()}
     en = scores.get("en", 0)
     # Only a language that matched at least one word no other list claims may be named. Without
     # that condition the top score can be pure overlap -- `la` and `e` in Romanian text made

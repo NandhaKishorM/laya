@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from laya.router import Router, _english_from_code  # noqa: E402
+from laya.lang import analyse  # noqa: E402
 
 PASS, FAIL = [], []
 
@@ -174,6 +175,51 @@ BEFORE = [("plain english", "I was charged twice and want a refund", "english"),
           ("digits", "12345", "english")]
 for label, s, want in BEFORE:
     check("unchanged/" + label, r0.route(s, GENERIC)["model"], want)
+
+
+# A foreign function word that is also an ordinary English word (`come` it, `son` es, `do` pt,
+# `care` ro, `todo`/`im`/`per`/`plus`) used to name that language when it merely appeared
+# twice, because the score counted occurrences and `best >= 2` was reached by one repeated word.
+# Ordinary English then routed to the multilingual checkpoint. Such a word now counts once however
+# often it repeats, so one collision no longer clears the bar.
+ENGLISH_ON_A_REPEAT = [
+    "Come one, come all",                      # come (it) x2
+    "My son, your son",                        # son (es) x2
+    "Do more, do less",                        # do (pt) x2
+    "Care more, care less",                    # care (ro) x2
+    "Add a todo, then another todo item",      # todo (es) x2
+    "im not able to log in, im stuck",         # im (de) x2
+    "add 45 to 87 plus 54 plus 43 plus 22",    # plus (de, fr) x3 -- a CLINC150 test row
+]
+for s in ENGLISH_ON_A_REPEAT:
+    check("repeat/plain english stays english: %r" % s, analyse(s)["is_english"], True)
+
+# The dedupe is limited to those words. A function word that is nobody's English -- `der`, `des`,
+# `di`, `sa` -- still counts every occurrence, so a real request whose only evidence is one such
+# word repeated stays foreign. Rows from the MASSIVE test splits, which is where deduping every
+# word instead of the collisions cost 791 of 148,700 non-English texts their checkpoint.
+REPEAT_STAYS_FOREIGN = [
+    ("de", "reduzieren der helligkeit der lichter"),
+    ("es", "enumerar todos los horarios de los tren a nueva york"),
+    ("fr", "jouer des chansons des beatles"),
+    ("it", "numero di telefono di giacomo"),
+    ("pt", "pede um pacote de massa chinesa faz um pedido takeaway"),
+    ("ro", "ar trebui sa port o pelerina de ploaie inainte sa ies afara"),
+    ("nl", "herinner me eraan dat ik dat liedje leuk vind"),
+    # `van` is left out of the collision list for exactly this row: it is ordinary Dutch
+    ("nl", "hey olly ik hou van muziek van frans bauer"),
+]
+for want, s in REPEAT_STAYS_FOREIGN:
+    check("repeat/%s on a repeated word is still foreign" % want, analyse(s)["is_english"], False)
+
+# and real foreign requests -- two different function words each -- are still detected
+STILL_FOREIGN = [
+    ("es", "Hola, necesito cancelar mi pedido por favor ahora mismo gracias"),
+    ("pt", "Eu quero cancelar o meu pedido por favor agora mesmo obrigado"),
+    ("it", "Vorrei annullare il mio ordine per favore adesso grazie mille"),
+]
+for want, s in STILL_FOREIGN:
+    check("repeat/genuine %s still foreign" % want, analyse(s)["is_english"], False)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

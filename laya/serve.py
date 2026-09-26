@@ -11,25 +11,25 @@ probe.
 Configuration is entirely via environment variables so the same entry point
 serves a laptop dev run and a systemd unit:
 
-======================  ============================================  =========
-env var                 meaning                                        default
-======================  ============================================  =========
-``LAYA_HOST``           bind address                                   0.0.0.0
-``LAYA_PORT``           bind port                                      8000
-``LAYA_DEVICE``         torch device for every checkpoint              (auto)
-``LAYA_PRELOAD``        build the checkpoints at startup, not lazily   1
-``LAYA_MODELS``         comma list to preload (english,multilingual,   (all)
-                        typed-decisions); empty = every checkpoint
-``LAYA_THREADS``        cap torch intra-op threads (CPU inference).    (torch
-                        Keep <= physical cores; oversubscribing the     default)
-                        logical/hyperthread count is a large regression.
-``LAYA_AUTO_TASK``      auto-route to the typed-decisions checkpoint   0
-``LAYA_API_KEY``        if set, require ``Authorization: Bearer <it>``  (none)
-``LAYA_LOG_LEVEL``      uvicorn log level                              info
-``LAYA_MAX_CONCURRENT`` cap on requests past auth at once; excess      16
-                        gets 503 (see below)
+=========================  ============================================  =========
+env var                    meaning                                        default
+=========================  ============================================  =========
+``LAYA_HOST``              bind address                                   0.0.0.0
+``LAYA_PORT``              bind port                                      8000
+``LAYA_DEVICE``            torch device for every checkpoint              (auto)
+``LAYA_PRELOAD``           build the checkpoints at startup, not lazily   1
+``LAYA_MODELS``            comma list to preload (english,multilingual,   (all)
+                           typed-decisions); empty = every checkpoint
+``LAYA_THREADS``           cap torch intra-op threads (CPU inference).    (torch
+                           Keep <= physical cores; oversubscribing the     default)
+                           logical/hyperthread count is a large regression.
+``LAYA_AUTO_TASK``         auto-route to the typed-decisions checkpoint   0
+``LAYA_API_KEY``           if set, require ``Authorization: Bearer <it>``  (none)
+``LAYA_LOG_LEVEL``         uvicorn log level                              info
+``LAYA_MAX_CONCURRENT``    cap on requests past auth at once; excess      16
+                           gets 503 (see below)
 ``LAYA_MAX_TOKEN_BUDGET``  cap on per-request max_len / head_max_len       8192
-======================  ============================================  =========
+=========================  ============================================  =========
 
 Imports of heavy dependencies (fastapi, uvicorn, torch via Router) are all
 deferred into the functions that need them, so ``import laya.serve`` stays cheap
@@ -126,8 +126,12 @@ def _resolve_max_token_budget() -> int:
     try:
         n = int(str(raw).strip())
     except (TypeError, ValueError):
+        _log.warning("invalid LAYA_MAX_TOKEN_BUDGET %r; falling back to %d", raw, DEFAULT_MAX_TOKEN_BUDGET)
         return DEFAULT_MAX_TOKEN_BUDGET
-    return n if n > 0 else DEFAULT_MAX_TOKEN_BUDGET
+    if n <= 0:
+        _log.warning("LAYA_MAX_TOKEN_BUDGET must be positive (got %d); falling back to %d", n, DEFAULT_MAX_TOKEN_BUDGET)
+        return DEFAULT_MAX_TOKEN_BUDGET
+    return n
 
 
 def _validate_budget_param(body: Dict[str, Any], key: str, max_cap: int) -> Optional[int]:

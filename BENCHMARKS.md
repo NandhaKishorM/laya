@@ -1,4 +1,4 @@
-# Laya benchmarks
+﻿# Laya benchmarks
 
 Every checkpoint answered **byte-identical questions** in each run (fixed seed). Jev figures are **third-party published, never measured here** — no TypeSafe API access — so sample sizes and prompts differ; treat them as indicative.
 
@@ -382,7 +382,7 @@ From [@CodyQin](https://github.com/CodyQin)'s [zh-decision-bench](https://github
 219 items / 284 questions: MASSIVE zh-CN dev (quality-filtered, 6-domain routing) plus human-adjudicated synthetic e-commerce CS and content-moderation items. Ships in this harness's format as `research/evals/zh_decision_bench.jsonl`:
 
 ```bash
-laya-evals run research/evals/zh_decision_bench.jsonl --model multilingual --slice tags
+laya-evals run research/evals/zh_decision_bench.jsonl --model multilingual --slice tag
 ```
 
 Results (laya 0.3.20, CUDA; bootstrap CIs and raw predictions in the source repo):

@@ -1,8 +1,8 @@
 """Example 23 -- where the weights come from: ./models, or the Hub.
 
-Laya takes either a local directory (no network, no token) once `setup_laya.sh` has downloaded
-one, or a Hub repo id. This prints what each name resolves to, cross-checks the local weights
-against verify/checkpoints.json when they are there, and runs one prediction.
+Laya takes either a local directory (no network, no token) when a copy is in `models/`, or a Hub
+repo id. This prints what each name resolves to, cross-checks the local weights against
+verify/checkpoints.json when they are there, and runs one prediction.
 """
 import json
 import os
@@ -11,9 +11,9 @@ from _common import (LOCAL_MODELS, MODELS, ROOT, STATE_EN, banner, describe, has
                      laya, load, router)
 
 banner("23", "Where the weights come from: ./models or the Hub", """
-    `setup_laya.sh` downloads the three checkpoints into `models/`, and `_common` prefers them:
-    an absolute directory means `Agent` stops at `os.path.exists`, so nothing touches the
-    network and no token is needed.
+    Keep the three checkpoints in `models/` and `_common` prefers them: an absolute directory
+    means `Agent` stops at `os.path.exists`, so nothing touches the network and no token is
+    needed.
 
     Without `models/` the same code falls back to the Hub bundle (`convaiinnovations/laya`,
     with a subfolder per checkpoint), which downloads on first use. Same checkpoints either

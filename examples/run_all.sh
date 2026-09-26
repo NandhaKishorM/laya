@@ -9,12 +9,16 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PY="$ROOT/.venv/bin/python"
+# Prefer a virtualenv at the repository root when there is one; otherwise any Python on PATH.
+PY="${PYTHON:-$ROOT/.venv/bin/python}"
+if [ ! -x "$PY" ]; then
+  PY="$(command -v python3 || command -v python || true)"
+fi
 PATTERN="${1:-[0-9][0-9]_*.py}"
 LOG="$(mktemp -t laya_examples.XXXXXX)"
 
-if [ ! -x "$PY" ]; then
-  echo "no virtualenv at $ROOT/.venv -- run ./setup_laya.sh first" >&2
+if [ -z "$PY" ] || [ ! -x "$PY" ]; then
+  echo "no python found -- set PYTHON=/path/to/python" >&2
   exit 2
 fi
 

@@ -3,14 +3,13 @@
 41 runnable scripts arranged as eight stages. Each stage assumes the one before it and adds one
 idea, so you can stop wherever you already have what you need. Every script runs against the real
 checkpoints and prints real output — nothing here is a mock, and the numbers you see come from the
-model on your machine. `_common.py` prefers `../models` when `setup_laya.sh` has downloaded them
-and otherwise loads the same checkpoints from the Hub (`convaiinnovations/laya`) on first use, so
-these run after a plain `pip install laya`.
+model on your machine. `_common.py` prefers `../models` when a local copy is there and otherwise
+loads the same checkpoints from the Hub (`convaiinnovations/laya`) on first use, so these run after
+a plain `pip install laya`.
 
 ```bash
 cd ..                                            # repository root
-./setup_laya.sh                                  # optional: venv + local checkpoints
-.venv/bin/python examples/01_first_call_minimal.py
+python examples/01_first_call_minimal.py         # any Python with torch + transformers
 ./examples/run_all.sh                            # all of them, pass/fail (non-zero exit on failure)
 ./examples/run_all.sh 2[0-4]                     # just stage 5, by basename glob
 ```

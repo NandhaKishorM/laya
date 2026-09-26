@@ -7,7 +7,7 @@ Each example is a standalone script:
 Run it from anywhere -- paths resolve from this file, and Python puts the examples/ directory
 on `sys.path` automatically, so `from _common import ...` just works.
 
-Checkpoints come from `models/` when `setup_laya.sh` has downloaded them, and from the Hub bundle
+Checkpoints come from `models/` when a local copy is there, and from the Hub bundle
 (`convaiinnovations/laya`, with a subfolder per checkpoint) otherwise, so the examples run after a
 plain `pip install laya`. Loading one takes a few seconds -- plus the first download when there is
 no local copy -- and the first MPS call pays Metal kernel compilation, so anything that reports
@@ -47,7 +47,7 @@ LOCAL_MODELS = {
 
 
 def has_local(name="english"):
-    """True when setup_laya.sh has already downloaded this checkpoint into `models/`."""
+    """True when a local copy of this checkpoint is in `models/`."""
     return os.path.exists(os.path.join(LOCAL_MODELS[name], "model.safetensors"))
 
 
@@ -58,7 +58,7 @@ def checkpoint(name="english"):
     return (BUNDLE_REPO, _SUBFOLDER[name])
 
 
-# What `Router(models=...)` takes: absolute local paths in a checkout that ran setup_laya.sh,
+# What `Router(models=...)` takes: absolute local paths in a checkout that has `models/`,
 # Hub specs otherwise.
 MODELS = {name: checkpoint(name) for name in LOCAL_MODELS}
 

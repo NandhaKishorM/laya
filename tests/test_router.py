@@ -321,6 +321,14 @@ check("route/td workflow, auto ON",
       r_auto.route({"body": "I was charged twice"}, Q_TD)["model"], "typed-decisions")
 check("route/auto ON but generic questions",
       r_auto.route({"body": "I was charged twice"}, Q_GENERIC)["model"], "english")
+# the auto-detected workflow decision must carry a repo string like every other branch
+check("route/td workflow repo is a string",
+      r_auto.route({"body": "I was charged twice"}, Q_TD)["repo"],
+      "convaiinnovations/laya/typed-decisions")
+check("route/td workflow repo standalone",
+      Router(auto_task_detection=True, standalone_repos=True)
+      .route({"body": "I was charged twice"}, Q_TD)["repo"],
+      "convaiinnovations/laya-typed-decisions")
 # explicit model still beats auto-detected workflow
 check("route/explicit beats workflow",
       r_auto.route({"body": "x"}, Q_TD, model="multilingual")["model"], "multilingual")

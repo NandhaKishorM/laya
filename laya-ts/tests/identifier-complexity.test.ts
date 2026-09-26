@@ -47,17 +47,27 @@ describe("identifier stripping: parity with the previous pattern", () => {
 
   it("agrees with the previous pattern on 20 000 random strings", () => {
     let seed = 12345;
-    const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    // `Math.imul`, not `seed * 1103515245`: that product reaches 2^61, past the 2^53 a double
+    // holds exactly, so its low bits round away and the generator collapses into a cycle of
+    // 10 466 states -- the 20 000 iterations below then cover 540 distinct strings instead of
+    // 19 004. Dividing by 2^32 also closes the old `/ 0x7fffffff`, which returns exactly 1.0 at
+    // state 0x7fffffff and would index one past the alphabet. Same form as bpe-complexity.test.ts.
+    const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296);
     const alphabets = ["aA1._@- ", "._@-", "áéÜß._@-", "abcXYZ019._@- -_"];
     let mismatch: string | null = null;
+    const seen = new Set<string>();
     for (let i = 0; i < 20_000 && mismatch === null; i++) {
       const alphabet = alphabets[i % alphabets.length]!;
       const len = Math.floor(rnd() * 60);
       let s = "";
       for (let j = 0; j < len; j++) s += alphabet[Math.floor(rnd() * alphabet.length)];
+      seen.add(s);
       if (strip(CURRENT, s) !== strip(PREVIOUS, s)) mismatch = s;
     }
     expect(mismatch).toBeNull();
+    // Pin the coverage the assertion above depends on, so a generator that collapses again is a
+    // failure rather than a quietly smaller differential test. 19 004 here, 540 before the fix.
+    expect(seen.size).toBeGreaterThan(15_000);
   });
 
   it("leaves detection of ordinary prose unchanged", () => {

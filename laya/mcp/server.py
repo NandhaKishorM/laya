@@ -39,6 +39,7 @@ from laya.serve import _apply_thread_limit, _env_bool
 from .device import env_device
 from .tools import (
     ToolError,
+    get_available_presets,
     laya_predict,
     laya_preset,
     laya_route,
@@ -239,16 +240,35 @@ def laya_shortlist_tool(state: dict, questions: dict, model: str = "auto", k: in
     )
 
 
+_PRESET_INFO = get_available_presets()
+
+# Built from tools.get_available_presets() rather than typed out, because the names in a
+# tools/list description are what a client sends back: a hand-written list here could advertise a
+# preset the tool rejects, or miss one it accepts. The field each preset reads is the field its own
+# instructions name, so this line cannot go stale against laya/presets.py either.
+_PRESET_DOC = (
+    "Run a built-in workflow: %s. "
+    "Use when the task matches one of those presets instead of hand-writing questions. "
+    "state: each preset reads one field (%s); a state holding a single string is placed under it "
+    "for you, and a state with more keys is passed through as given, so put your text under the "
+    "field that applies. Aliases: %s. "
+    % (
+        " | ".join("'%s'" % name for name in _PRESET_INFO),
+        ", ".join("'%s' reads `%s`" % (name, info["state_field"])
+                  for name, info in _PRESET_INFO.items() if info.get("state_field")),
+        ", ".join("'%s' is '%s'" % (alias, name)
+                  for name, info in _PRESET_INFO.items()
+                  for alias in info.get("aliases", [])),
+    )
+) + _GUARDRAILS
+
+
 @server.tool(
     name="laya_preset",
-    description=(
-        "Run a built-in workflow: 'guard' | 'moderation' | 'triage' | 'model_router'. "
-        "Use when the task matches one of those presets instead of hand-writing questions. "
-        + _GUARDRAILS
-    ),
+    description=_PRESET_DOC,
 )
 def laya_preset_tool(preset: str, state: dict) -> str:
-    """Run a built-in workflow: 'guard' | 'moderation' | 'triage' | 'model_router'."""
+    """Run a built-in workflow preset; the tool description carries the names and state fields."""
     router = _router_or_error()
     return _wrap(
         laya_preset,

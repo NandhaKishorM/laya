@@ -5,7 +5,9 @@ from __future__ import annotations
 import time
 from typing import Any, Callable, Protocol, Sequence
 
+from ..presets import state_field
 from .device import agent_device, device_report, router_agent
+
 
 class ToolError(Exception):
     """Raised for user-facing tool failures. Message is safe to return to the LLM."""
@@ -25,7 +27,45 @@ PRESETS: dict[str, str] = {
     "moderation": "moderation_questions",
     "triage": "triage_questions",
     "model_router": "router_questions",
+    "email": "email_questions",
 }
+
+# `router` is what the CLI calls this preset, and it is the word a caller reaches for first;
+# `model_router` stayed because clients already have it in their prompts. Both name one preset,
+# and the canonical key is what comes back in the result.
+PRESET_ALIASES: dict[str, str] = {"router": "model_router"}
+
+
+def get_available_presets() -> dict[str, dict[str, Any]]:
+    """The built-in presets a ``laya_preset`` call can name, with what each one reads.
+
+    The state field comes from the questions themselves rather than from a table beside them, so
+    this cannot drift from the presets: a caller that has to hand-build a state (and the MCP
+    ``tools/list`` description, which is built from here) sees the field each preset actually asks
+    about. Builders are resolved through ``laya`` at call time, the way ``laya.mcp.server`` resolves
+    them, so a preset added in a newer version shows up here as soon as it is importable.
+    """
+    import laya
+
+    aliases: dict[str, list[str]] = {}
+    for alias, target in PRESET_ALIASES.items():
+        aliases.setdefault(target, []).append(alias)
+
+    out: dict[str, dict[str, Any]] = {}
+    for name, attr in sorted(PRESETS.items()):
+        entry: dict[str, Any] = {"questions": attr}
+        if name in aliases:
+            entry["aliases"] = sorted(aliases[name])
+        builder = getattr(laya, attr, None)
+        if builder is not None:
+            questions = builder()
+            entry["n_questions"] = len(questions)
+            field = state_field(questions)
+            if field is not None:
+                entry["state_field"] = field
+        out[name] = entry
+    return out
+
 
 VALID_TYPES = {"choice", "score", "noul"}
 # `auto` is this layer's own sentinel -- "route it, do not pin a checkpoint". Every other value is a
@@ -97,12 +137,21 @@ def validate_state(state: Any) -> dict:
 
 
 def validate_preset(preset: Any) -> str:
-    if preset not in PRESETS:
+    """Canonical :data:`PRESETS` key for a preset argument.
+
+    The one spelling a caller reaches for that is not a table key is ``router`` -- what the CLI
+    calls ``model_router``. Aliases resolve here so both names work, and the canonical key is what
+    comes back, so the preset a caller reads is not the one it happened to type.
+    """
+    name = PRESET_ALIASES.get(preset, preset) if isinstance(preset, str) else preset
+    if not isinstance(name, str) or name not in PRESETS:
+        # The arguments arrive from a model, so a JSON list or object is a real possibility and
+        # belongs in the same invalid_preset as an unknown name.
         raise ToolError(
             "invalid_preset",
             f"preset must be one of {sorted(PRESETS)}, got {preset!r}",
         )
-    return preset
+    return name
 
 
 def validate_model(model: Any) -> str:
@@ -338,12 +387,24 @@ def laya_preset(
     agent: Any = None,
     preset_builder: Callable[[str], dict] | None = None,
 ) -> dict:
-    """Run a built-in workflow preset (guard / moderation / triage / model_router)."""
+    """Run a built-in workflow preset (guard / moderation / triage / model_router / email).
+
+    A preset's questions read one named field of the state -- ``guard`` asks about `` `prompt` ``,
+    ``triage`` about `` `message` `` -- and a caller that hands over its text under any other key is
+    asked to trust an answer about a field that is not there. So a state that is one string gets
+    placed under the field the questions actually name; anything richer than that is the caller's
+    shape and is passed through untouched.
+    """
     preset_name = validate_preset(preset)
     state_d = validate_state(state)
     if preset_builder is None:
         raise ToolError("internal_error", "preset_builder is not configured")
     questions = preset_builder(PRESETS[preset_name])
+    field = state_field(questions)
+    if field is not None and field not in state_d and len(state_d) == 1:
+        (key, value), = state_d.items()
+        if isinstance(value, str):
+            state_d = {field: value}
     return laya_predict(
         state_d,
         questions,

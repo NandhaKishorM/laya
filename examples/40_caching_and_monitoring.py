@@ -1,7 +1,8 @@
 """Example 40 -- caching answers and monitoring confidence.
 
-Two operational patterns: an in-memory answer cache keyed by the state and question ids,
-and a confidence monitor that buckets a batch of answers into auto, review and escalate.
+Two operational patterns: an in-memory answer cache keyed by the state and the question
+definitions, and a confidence monitor that buckets a batch of answers into auto, review and
+escalate.
 """
 import hashlib
 import json
@@ -11,9 +12,9 @@ import time
 from _common import laya, banner, device_line, heading, load
 
 banner("40", "Caching and monitoring", """
-    The model is stateless and deterministic, so the same state plus the same question ids
-    always returns the same answer. That makes the call trivially cacheable: hash the
-    inputs, keep the result, and pay for the forward pass once.
+    The model is stateless and deterministic, so the same state and the same question
+    definitions always return the same answer. That makes the call trivially cacheable: hash
+    the inputs, keep the result, and pay for the forward pass once.
 
     Part A measures a real forward pass against a cache hit. Part B runs 15 tickets through
     the triage preset and gates on `answer_confidence`, the calibrated probability of the
@@ -27,8 +28,8 @@ QUESTIONS = laya.triage_questions()
 
 # --- Part A: an in-memory answer cache -----------------------------------------------------
 def cache_key(state, questions):
-    """Hash exactly the inputs that determine the answer: state + question ids."""
-    payload = json.dumps({"state": state, "questions": sorted(questions)}, sort_keys=True)
+    """Hash exactly the inputs that determine the answer: the state and the question definitions."""
+    payload = json.dumps({"state": state, "questions": questions}, sort_keys=True, default=str)
     return hashlib.sha256(payload.encode()).hexdigest()[:12]
 
 
@@ -67,21 +68,27 @@ for _ in range(REPEATS):
 hit_us = (time.perf_counter() - t0) * 1e6 / REPEATS
 
 heading("part A: cache miss vs cache hit")
-print("   key (state + question ids) : %s" % miss_key)
+print("   key (state + questions) : %s" % miss_key)
 print("   first call  : served_from_cache=%-5s  %7.2f ms   one forward pass" % (miss_hit, miss_ms))
 print("   repeat call : served_from_cache=%-5s  %7.3f us   once, then %7.3f us averaged"
       % (hit, hit_once_us, hit_us))
 print("   speed-up    : %.0fx" % (miss_ms * 1000 / hit_us))
 print("   answers identical: %s" % (miss_result == hit_result))
 print("   keys match       : %s" % (miss_key == hit_key))
-print("   same ids, different state -> a different key: %s"
+print("   different state -> a different key: %s"
       % (cache_key(OTHER, QUESTIONS) != miss_key))
+
+# Editing a question while keeping its id must invalidate the entry: the key hashes the
+# definitions, not the ids.
+EDITED = {qid: dict(q) for qid, q in QUESTIONS.items()}
+EDITED["intent"]["criteria"] = dict(EDITED["intent"]["criteria"], other="anything else")
+print("   same id, edited criteria -> a different key: %s" % (cache_key(STATE, EDITED) != miss_key))
 print("   cache size after the miss: %d entry (the cached state)" % len(CACHE))
-print("   A hit still re-hashes the state and question ids, which is where the microseconds")
-print("   go; the forward pass it avoids is the milliseconds. The key is exactly the state")
-print("   plus the question ids, as promised. A question whose criteria changed but whose id")
-print("   did not would collide, so a real service should salt the key with the schema version")
-print("   and the checkpoint name.")
+print("   A hit re-hashes the state and the whole question set, which is where the microseconds")
+print("   go; the forward pass it avoids is the milliseconds. Hashing the definitions rather")
+print("   than their ids means an edited criterion or instruction invalidates the entry instead")
+print("   of quietly serving a stale answer. A cache shared across checkpoints should still be")
+print("   salted with the checkpoint name.")
 
 # --- Part B: confidence monitor over a batch ----------------------------------------------
 AUTO_CONFIDENCE = 0.80            # at or above: act without a human

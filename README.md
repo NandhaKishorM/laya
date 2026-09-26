@@ -570,12 +570,18 @@ per question:
 ```python
 result = agent.predict_long(state, questions)              # windows the state, one result back
 result = agent.predict_long(state, questions, window=256)  # smaller window isolates a localized span
+result = agent.predict_long(state, questions, hooks=[AuditLog()])   # the scan, instrumented
 ```
 
 - `noul` takes the strongest window (the statement holds if any window supports it).
 - `choice` / `score` take the most-confident window — averaging over a long, mostly-neutral
   document lets the neutral majority out-vote the one window that saw the deciding span.
 - A state that already fits one window is passed straight to `system_one` (identical output).
+- Hooks wrap the inference that answers the state, so on a scanned document `on_predict_start`
+  fires once with `ctx.states` holding the decoded windows, not the state you passed in (it was
+  tokenized to produce them). A start hook that answers with `ctx.skip(...)` is answering the
+  whole document: its result comes back with no `answer["window"]` and `usage["windows"]` at 0,
+  because no window scored it.
 
 A smaller `window` isolates a short deciding span better (it becomes a larger fraction of its
 window); the default (`max_len - head_max_len`) favors context and throughput. Output shape matches

@@ -229,11 +229,22 @@ agent.system_one(state, questions,
                  hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
                  hooks_timeout=None, max_len=None, head_max_len=None)
 
+agent.predict_long(state, questions, window=None, stride=None, aggregate="auto",
+                   batch_size=None, lang=None,
+                   hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
+                   hooks_timeout=None)
+
 agent.predict(...)          # alias of system_one
 ```
 
 - `hooks_raise` and `hooks_timeout` on a per-call method default to `None`, meaning "use the instance value".
 - `hooks_concurrent` is instance-level only.
+- On `predict_long` the hooks wrap the inference that answers the state, which for a document
+  needing several windows is the single shared `predict_batch` over them: `on_predict_start` fires
+  once, and `ctx.states` holds the decoded window texts in scan order rather than the caller's
+  state, which was tokenized to produce them. A start hook that answers with `ctx.skip(...)` is
+  answering the document, so its one result is returned as-is with no `window` key and
+  `usage["windows"]` at `0` -- no window scored it.
 
 ### Router
 

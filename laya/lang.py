@@ -382,8 +382,9 @@ def _english_rescued_by_words(words: List[str], diac_rate: float) -> bool:
 def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
 
-    Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate` and
-    `looks_non_english`. `analyse` needs the evidence and not just the verdict, because
+    Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate`,
+    `looks_non_english` and `n_words` (tokens left after identifiers are stripped; under four
+    the guess is skipped). `analyse` needs the evidence and not just the verdict, because
     "undecided" and "English" are different answers and only one of them is safe to send to the
     English checkpoint.
 
@@ -398,7 +399,7 @@ def latin_profile(text: str) -> Dict[str, object]:
     non_english = diac_rate >= NON_EN_DIACRITIC_RATE
     if len(words) < 4:
         return {"language": None, "english_hits": 0, "diacritic_rate": diac_rate,
-                "looks_non_english": non_english}
+                "looks_non_english": non_english, "n_words": len(words)}
 
     scores = {lg: sum(1 for w in words if w in sw) for lg, sw in _STOP.items()}
     en = scores.get("en", 0)
@@ -422,7 +423,7 @@ def latin_profile(text: str) -> Dict[str, object]:
     elif en and (not non_english or _english_rescued_by_words(words, diac_rate)):
         lang = "en"
     return {"language": lang, "english_hits": en, "diacritic_rate": diac_rate,
-            "looks_non_english": non_english}
+            "looks_non_english": non_english, "n_words": len(words)}
 
 
 def guess_latin_language(text: str) -> Optional[str]:
@@ -527,10 +528,14 @@ def _analyse_text(text: str) -> Dict[str, object]:
     lang = prof_lat["language"]
     # Undecided is not English. Treating it as English sent every Latin-script language we hold no
     # stopwords for to the checkpoint that cannot read it, silently. When nothing identifies the
-    # language, non-English letters are enough to prefer the multilingual checkpoint; text with no
-    # such letters (including short English) still goes to the English one.
+    # language, non-English letters are enough to prefer the multilingual checkpoint. Plain text
+    # with none of those letters is the same call once it is long enough for the stopword
+    # heuristic to have tried: four or more words go to the multilingual checkpoint (#54, the
+    # follow-up to #130), and shorter text (including short English) still goes to the English one.
     undecided = lang is None
-    english = lang == "en" or (undecided and not prof_lat["looks_non_english"])
+    plain_ascii_long = (undecided and float(prof_lat["diacritic_rate"]) == 0.0
+                        and int(prof_lat["n_words"]) >= 4)
+    english = (lang == "en" or (undecided and not prof_lat["looks_non_english"])) and not plain_ascii_long
     return {"script": "latin", "script_profile": prof, "language": lang,
             "is_english": english, "language_undecided": undecided,
             "diacritic_rate": round(float(prof_lat["diacritic_rate"]), 4),

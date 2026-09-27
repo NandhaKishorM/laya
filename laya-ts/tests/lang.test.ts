@@ -81,6 +81,33 @@ describe("lang", () => {
   });
   // `es` and `du` are German function words, but Spanish and French claim them, and a word two
   // lists share names neither language. They stay out of the German list.
+  // Undecided plain-ASCII of four or more words is not English (#54). Shorter text still is,
+  // and one English function word is enough to name English so the rule does not apply.
+  it("routes undecided plain-ASCII of four or more words off English", () => {
+    for (const text of [
+      "Fui cobrado duas vezes",
+      "lampen dimmen wohnzimmer abends",
+      "alpha bravo charlie delta",
+    ]) {
+      const a = analyse(text);
+      expect(a.language, text).toBe(null);
+      expect(a.languageUndecided, text).toBe(true);
+      expect(a.diacriticRate, text).toBe(0);
+      expect(a.isEnglish, text).toBe(false);
+    }
+  });
+  it("keeps undecided plain-ASCII under four words on English", () => {
+    for (const text of ["alpha bravo charlie", "Quero cancelar", "refund me"]) {
+      const a = analyse(text);
+      expect(a.language, text).toBe(null);
+      expect(a.isEnglish, text).toBe(true);
+    }
+  });
+  it("keeps identified English on English", () => {
+    const a = analyse("I would like to book a flight to Berlin tomorrow");
+    expect(a.language).toBe("en");
+    expect(a.isEnglish).toBe(true);
+  });
   it("does not pull es or du into German", () => {
     expect(analyse("que hora es en australia").language).toBe("es");
     expect(analyse("baisse le volume du haut-parleur").language).toBe("fr");

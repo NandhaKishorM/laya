@@ -364,13 +364,13 @@ check("route/english still english",
       _r_lat.route("Please refund the duplicate charge on invoice 4411 today.").model, "english")
 check("route/short english still english", _r_lat.route("refund me").model, "english")
 
-# Undecided Latin text follows `default`, as a state with no letters already did. Short messages made
-# only of content words carry nothing that names their language, and hard-coding English for them
-# sent every short Portuguese message to the checkpoint that is 0.97 confident at 0.47 accuracy on
-# `pt`, whatever the router was configured with.
+# Undecided Latin text under four words follows `default`, as a state with no letters already did.
+# The stopword heuristic skips anything shorter, so the text carries nothing that names a language,
+# and hard-coding English for it sent every short Portuguese message to the checkpoint that is 0.97
+# confident at 0.47 accuracy on `pt`, whatever the router was configured with. Four or more words
+# are a different call (#54) and are pinned further down.
 _r_ml = Router(default="multilingual")
-for text in ["Quero cancelar", "Esqueci minha senha", "Fui cobrado duas vezes",
-             "Produto veio quebrado, quero trocar", "refund me"]:
+for text in ["Quero cancelar", "Esqueci minha senha", "refund me"]:
     check("route/undecided follows default " + text[:24], _r_ml.route(text).model, "multilingual")
     check("route/undecided stock default " + text[:24], _r_lat.route(text).model, "english")
 check("route/undecided reason names the default",
@@ -508,16 +508,16 @@ for lang, text in [
 ]:
     check("route/accented " + lang, _r_lat.route(text).model, "multilingual")
 
-# English must not move for this. The added words are ordinary English tokens as well -- `de facto`,
-# `et al.`, `e.g.`, `la carte`, `UN`, `MI5`, `DOS` -- and a state carrying none of them is the case
-# that has to keep routing to English.
+# English the heuristic names must not move for this. The added words are ordinary English tokens
+# as well -- `de facto`, `et al.`, `e.g.`, `la carte`, `UN`, `MI5`, `DOS`. A four-word state with
+# no function word at all ("no refund no reply") is undecided plain ASCII, so #54 sends it to the
+# multilingual checkpoint; that case is pinned below rather than here.
 for text in [
     "The customer was charged twice and wants a refund for this invoice",
     "Please cancel my subscription and refund the duplicate charge today",
     "The report by Smith et al. shows the de facto standard, e.g. the LA office and Rio",
     "Our MI5 and UN contacts discussed the DOS attack in LA last month",
     "No refund was issued, so I am writing to you again about invoice 4411",
-    "no refund no reply",
     "The son of the director filed a complaint about the duplicate invoice",
 ]:
     check("is_english/romance control " + text[:32], is_english(text), True)
@@ -630,6 +630,65 @@ for text in ["turn off smart lamp in den", "im so sorry, am an hour late, stuck 
 # German words that Spanish (`es`) or French (`du`) also claim would stop naming those languages
 check("latin_lang/spanish es stays evidence", guess_latin_language("que hora es en australia"), "es")
 check("latin_lang/french du stays evidence", guess_latin_language("baisse le volume du haut-parleur"), "fr")
+
+# --------------------------------------------------------------------- undecided plain-ASCII (#54)
+# Path 2 above is German the stopword list names. Path 1 is what the lists do not name and that
+# has no non-English letter: #42 left it on the English checkpoint. On #54 the maintainer chose
+# multilingual at four or more words, and English (the stock default) when the text is shorter.
+# The four-word gate is the same one `latin_profile` already uses before it will name a language.
+for text in ["Fui cobrado duas vezes",
+             "Produto veio quebrado, quero trocar",
+             "lampen dimmen wohnzimmer abends",
+             "alpha bravo charlie delta",
+             # four content words and no function word: English-looking, but not identified as
+             # English, which is the cost accepted on #54 (8% of MASSIVE en-US)
+             "no refund no reply"]:
+    det = analyse(text)
+    check("undecided4/language " + text, det["language"], None)
+    check("undecided4/flagged " + text, det["language_undecided"], True)
+    check("undecided4/no diacritics " + text, det["diacritic_rate"], 0.0)
+    check("undecided4/not english " + text, det["is_english"], False)
+    check("undecided4/route " + text, _r_lat.route(text).model, "multilingual")
+    # not via `default`: a multilingual default and the stock default agree
+    check("undecided4/ignores default " + text, _r_ml.route(text).model, "multilingual")
+check("undecided4/reason names the rule",
+      _r_lat.route("Fui cobrado duas vezes").reason,
+      "Latin script, language not identified; four or more words and no "
+      "non-English letters, not safe for the English checkpoint")
+# three words is still the short case, including a token string no list will ever claim
+for text in ["alpha bravo charlie", "Quero cancelar", "Esqueci minha senha", "refund me"]:
+    det = analyse(text)
+    check("undecided-short/language " + text, det["language"], None)
+    check("undecided-short/english " + text, det["is_english"], True)
+    check("undecided-short/stock route " + text, _r_lat.route(text).model, "english")
+# one English function word names the language, so the four-word rule does not apply
+check("undecided4/identified english",
+      analyse("I would like to book a flight to Berlin tomorrow")["language"], "en")
+check("undecided4/identified english route",
+      _r_lat.route("I would like to book a flight to Berlin tomorrow").model, "english")
+check("undecided4/one english hit stays english",
+      _r_lat.route("turn off smart lamp in den").model, "english")
+# a non-English letter keeps the diacritic rule. Under the 0.02 floor this stays English;
+# the four-word rule is only for text with no such letter.
+_LOW_DIAC = "alpha bravo charlie delta echo foxtrot golf hotel café"
+_low = analyse(_LOW_DIAC)
+check("undecided4/low diacritic stays undecided", _low["language"], None)
+check("undecided4/low diacritic rate under the floor",
+      0.0 < _low["diacritic_rate"] < 0.02, True)
+check("undecided4/low diacritic stays english", _low["is_english"], True)
+check("undecided4/low diacritic stock route", _r_lat.route(_LOW_DIAC).model, "english")
+# an English ticket is not flipped by one undecided field; the leaf scan still wants a
+# named language or a real diacritic rate
+check("undecided4/english ticket keeps an undecided field",
+      _r_lat.route({"body": "Please refund the duplicate charge on invoice 4411 today.",
+                    "note": "Fui cobrado duas vezes"}).model, "english")
+# a non-Latin field that does not win the script vote is still multilingual, and the reason
+# stays the letter one: the four-word wording is only for plain ASCII
+_buried_han = {"body": "Please refund the duplicate charge on invoice 4411 today. " * 5,
+               "message": "我的订单已经两个星期了还没有到"}
+check("undecided4/buried non-latin still multilingual", _r_lat.route(_buried_han).model, "multilingual")
+check("undecided4/buried non-latin is not the four-word reason",
+      "four or more words" not in _r_lat.route(_buried_han).reason, True)
 
 # ------------------------------------------------------------------ accented loanwords in English (#337)
 # The diacritic rate is measured over every character, so one `é` in a short English sentence

@@ -270,6 +270,8 @@ export interface LatinProfile {
   englishHits: number;
   diacriticRate: number;
   looksNonEnglish: boolean;
+  /** Tokens left after identifiers are stripped. Under four, the guess is skipped. */
+  wordCount: number;
 }
 
 export function latinProfile(text: string): LatinProfile {
@@ -284,7 +286,10 @@ export function latinProfile(text: string): LatinProfile {
   const diacRate = diac / Math.max(1, lowered.length);
   const nonEnglish = diacRate >= NON_EN_DIACRITIC_RATE;
   if (words.length < 4) {
-    return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
+    return {
+      language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish,
+      wordCount: words.length,
+    };
   }
   const scores: Record<string, number> = {};
   for (const [lg, sw] of Object.entries(STOP)) {
@@ -310,7 +315,10 @@ export function latinProfile(text: string): LatinProfile {
   } else if (en && !nonEnglish) {
     lang = "en";
   }
-  return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
+  return {
+    language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish,
+    wordCount: words.length,
+  };
 }
 
 export function guessLatinLanguage(text: string): string | null {
@@ -370,7 +378,11 @@ function analyseText(text: string): AnalyseResult {
   const profLat = latinProfile(text);
   const lang = profLat.language;
   const undecided = lang === null;
-  const english = lang === "en" || (undecided && !profLat.looksNonEnglish);
+  // Same call as Python's `_analyse_text`: undecided plain-ASCII of four or more words is not
+  // safe for the English checkpoint (#54). Shorter plain text still is. A non-English letter
+  // keeps the diacritic rule rather than this one.
+  const plainAsciiLong = undecided && profLat.diacriticRate === 0 && profLat.wordCount >= 4;
+  const english = (lang === "en" || (undecided && !profLat.looksNonEnglish)) && !plainAsciiLong;
   return {
     script: "latin", scriptProfile: prof, language: lang,
     isEnglish: english, languageUndecided: undecided,

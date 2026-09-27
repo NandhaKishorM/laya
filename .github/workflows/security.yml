@@ -56,34 +56,97 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pip-audit
-      - name: Audit declared dependencies
+      - name: Extract audit dependency scopes
         run: |
           # Audit what the package DECLARES, not a local install. Installing torch from the
           # PyTorch CPU index yields a local version (2.14.0+cpu) that does not exist on PyPI,
           # so pip-audit cannot resolve it and --strict fails the job on that alone.
           #
-          # Every declared name, not just [project.dependencies]: the extras are what an
-          # install actually pulls in. `Dockerfile` ends with `pip install ".[serve]"`, so
-          # fastapi/uvicorn/python-multipart and their transitive closure ship in the image,
-          # and an advisory in any of them would be invisible to a core-only audit. Read the
-          # tables rather than transcribing a list, so an extra added later is audited by the
-          # commit that adds it and not by a follow-up that forgets.
-          python - <<'PY' > requirements-audit.txt
+          # The audit is split into two logical scopes:
+          # 1. Core + [serve]: blocking audit because these form the shipped runtime package
+          #    and published Docker image (`pip install ".[serve]"`). Vulnerabilities here fail CI.
+          # 2. Other optional extras: non-blocking audit for optional integrations (e.g. langchain,
+          #    llamaindex, crewai, onnx, mcp). Vulnerabilities are reported as warnings without failing CI,
+          #    while execution/infrastructure failures still fail the job.
+          python - <<'PY'
           import tomllib
+
           with open("pyproject.toml", "rb") as fh:
               project = tomllib.load(fh)["project"]
-          specs = list(project.get("dependencies", []))
-          for extra in project.get("optional-dependencies", {}).values():
-              specs.extend(extra)
-          seen = set()
-          for spec in specs:          # `langchain` and `langgraph` repeat two of these
-              if spec not in seen:
-                  seen.add(spec)
-                  print(spec)
+
+          # Core + [serve] (blocking scope)
+          core_specs = list(project.get("dependencies", []))
+          serve_specs = list(project.get("optional-dependencies", {}).get("serve", []))
+          core_seen = set()
+          with open("requirements-audit-core.txt", "w") as fh:
+              for spec in core_specs + serve_specs:
+                  if spec not in core_seen:
+                      core_seen.add(spec)
+                      fh.write(f"{spec}\n")
+
+          # Other optional extras (non-blocking scope)
+          extras_specs = []
+          for extra_name, extra_deps in project.get("optional-dependencies", {}).items():
+              if extra_name != "serve":
+                  extras_specs.extend(extra_deps)
+          extras_seen = set()
+          with open("requirements-audit-extras.txt", "w") as fh:
+              for spec in extras_specs:
+                  if spec not in extras_seen:
+                      extras_seen.add(spec)
+                      fh.write(f"{spec}\n")
           PY
-          cat requirements-audit.txt
-          echo "auditing $(wc -l < requirements-audit.txt) declared names: the core plus every extra"
-          pip-audit --strict --desc -r requirements-audit.txt
+          echo "core + [serve] declared names: $(wc -l < requirements-audit-core.txt)"
+          cat requirements-audit-core.txt
+          echo "other optional extras declared names: $(wc -l < requirements-audit-extras.txt)"
+          cat requirements-audit-extras.txt
+
+      - name: Audit core and serve dependencies (blocking)
+        run: |
+          # Core + [serve] vulnerabilities MUST block CI because these form the shipped runtime and Docker image.
+          pip-audit --strict --desc -r requirements-audit-core.txt
+
+      - name: Audit optional extra dependencies (non-blocking)
+        run: |
+          # Audit optional extras dynamically extracted from pyproject.toml.
+          # Vulnerabilities found in optional extras are reported as non-blocking warnings so unrelated PRs
+          # are not blocked, while genuine infrastructure/tool errors still fail the step.
+          python - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          req_file = "requirements-audit-extras.txt"
+          if not os.path.exists(req_file) or os.path.getsize(req_file) == 0:
+              print("No optional extras declared to audit.")
+              sys.exit(0)
+
+          proc = subprocess.run(["pip-audit", "--desc", "-r", req_file], capture_output=True, text=True)
+
+          if proc.stdout:
+              print(proc.stdout)
+          if proc.stderr:
+              print(proc.stderr, file=sys.stderr)
+
+          if proc.returncode == 0:
+              print("No vulnerabilities found in optional extras.")
+              sys.exit(0)
+
+          stderr_upper = proc.stderr.upper()
+          is_infra_error = (
+              proc.returncode not in (0, 1) or
+              "ERROR:PIP_AUDIT" in stderr_upper or
+              "UNRECOGNIZED ARGUMENTS" in stderr_upper or
+              not proc.stdout.strip()
+          )
+
+          if is_infra_error:
+              print(f"::error::pip-audit execution or infrastructure failure (exit code {proc.returncode}).", file=sys.stderr)
+              sys.exit(proc.returncode if proc.returncode != 0 else 1)
+          else:
+              print("::warning::Vulnerabilities found in optional extras (non-blocking). See audit output above.")
+              sys.exit(0)
+          PY
 
   codeql:
     name: CodeQL

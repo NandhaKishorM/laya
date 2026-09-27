@@ -88,12 +88,27 @@ describe("lang", () => {
       "Fui cobrado duas vezes",
       "lampen dimmen wohnzimmer abends",
       "alpha bravo charlie delta",
+      "turn off wohnzimmer lights",
     ]) {
       const a = analyse(text);
       expect(a.language, text).toBe(null);
       expect(a.languageUndecided, text).toBe(true);
       expect(a.diacriticRate, text).toBe(0);
       expect(a.isEnglish, text).toBe(false);
+    }
+  });
+  it("keeps all-English-vocabulary commands on English", () => {
+    for (const text of [
+      "cancel my seven am alarm",
+      "play my rock playlist",
+      "turn off room lights",
+      "no refund no reply",
+      "tell me today's date",
+    ]) {
+      const a = analyse(text);
+      expect(a.language, text).toBe(null);
+      expect(a.isEnglish, text).toBe(true);
+      expect(a.languageUndecided, text).toBe(false);
     }
   });
   it("keeps undecided plain-ASCII under four words on English", () => {

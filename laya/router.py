@@ -546,6 +546,8 @@ class Router(HookRegistry):
             # A deployment that serves mostly non-English traffic sets
             # `Router(default="multilingual")`; the stock default keeps it English.
             # Plain-ASCII text of four or more words does not reach this branch (#54).
+            # If every word of that text is English vocabulary, `analyse` reports it as
+            # English rather than undecided, so it does not follow `default` either.
             key = self.default
             reason = ("Latin script, language not identified and no non-English letters; "
                       "using default (%s)" % key)

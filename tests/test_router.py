@@ -509,9 +509,9 @@ for lang, text in [
     check("route/accented " + lang, _r_lat.route(text).model, "multilingual")
 
 # English the heuristic names must not move for this. The added words are ordinary English tokens
-# as well -- `de facto`, `et al.`, `e.g.`, `la carte`, `UN`, `MI5`, `DOS`. A four-word state with
-# no function word at all ("no refund no reply") is undecided plain ASCII, so #54 sends it to the
-# multilingual checkpoint; that case is pinned below rather than here.
+# as well -- `de facto`, `et al.`, `e.g.`, `la carte`, `UN`, `MI5`, `DOS`. A four-word command
+# with no function word ("no refund no reply") is still English vocabulary, so the #54 exception
+# keeps it on English; that case is pinned below.
 for text in [
     "The customer was charged twice and wants a refund for this invoice",
     "Please cancel my subscription and refund the duplicate charge today",
@@ -633,16 +633,15 @@ check("latin_lang/french du stays evidence", guess_latin_language("baisse le vol
 
 # --------------------------------------------------------------------- undecided plain-ASCII (#54)
 # Path 2 above is German the stopword list names. Path 1 is what the lists do not name and that
-# has no non-English letter: #42 left it on the English checkpoint. On #54 the maintainer chose
-# multilingual at four or more words, and English (the stock default) when the text is shorter.
+# has no non-English letter. On #54 the maintainer chose multilingual at four or more words.
+# On #600 that rule gains an exception: if every word is English vocabulary, stay on English.
 # The four-word gate is the same one `latin_profile` already uses before it will name a language.
 for text in ["Fui cobrado duas vezes",
              "Produto veio quebrado, quero trocar",
              "lampen dimmen wohnzimmer abends",
              "alpha bravo charlie delta",
-             # four content words and no function word: English-looking, but not identified as
-             # English, which is the cost accepted on #54 (8% of MASSIVE en-US)
-             "no refund no reply"]:
+             # one word from outside the vocabulary is enough
+             "turn off wohnzimmer lights"]:
     det = analyse(text)
     check("undecided4/language " + text, det["language"], None)
     check("undecided4/flagged " + text, det["language_undecided"], True)
@@ -668,6 +667,24 @@ check("undecided4/identified english route",
       _r_lat.route("I would like to book a flight to Berlin tomorrow").model, "english")
 check("undecided4/one english hit stays english",
       _r_lat.route("turn off smart lamp in den").model, "english")
+# 4-5 word commands with no stopword hit, but every word in the English lexicon (#600)
+for text in ["cancel my seven am alarm",
+             "play my rock playlist",
+             "turn off room lights",
+             "no refund no reply",
+             "tell me today's date"]:
+    det = analyse(text)
+    check("lexicon/language " + text, det["language"], None)
+    check("lexicon/english " + text, det["is_english"], True)
+    check("lexicon/not the short-text default " + text, det["language_undecided"], False)
+    check("lexicon/route " + text, _r_lat.route(text).model, "english")
+    check("lexicon/ignores default " + text, _r_ml.route(text).model, "english")
+from laya.english_lexicon import ENGLISH_LEXICON  # noqa: E402
+_ts_lex = open(os.path.join(os.path.dirname(__file__), "..", "laya-ts", "src", "english-lexicon.ts"),
+               encoding="utf-8").read()
+_lex_at = _ts_lex.index("ENGLISH_LEXICON_TEXT = `") + len("ENGLISH_LEXICON_TEXT = `")
+check("lexicon/ts matches python",
+      frozenset(_ts_lex[_lex_at:_ts_lex.index("`", _lex_at)].split()), ENGLISH_LEXICON)
 # a non-English letter keeps the diacritic rule. Under the 0.02 floor this stays English;
 # the four-word rule is only for text with no such letter.
 _LOW_DIAC = "alpha bravo charlie delta echo foxtrot golf hotel café"

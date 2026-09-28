@@ -1,0 +1,17 @@
+{
+  "generator": "tools/dump_routing_golden.py",
+  "laya_version": "0.3.6",
+  "default_shortlist_k": 20,
+  "notes": {
+    "route_probe": "RouteDecision is serialized as {model, reason, detection, workflow}; 'repo' is intentionally omitted (not part of the ported RouteDecision).",
+    "shortlist_probe": "Non-finite floats (NaN, +Inf, -Inf) inside a case's 'vectors' matrix are encoded as the JSON strings \"nan\", \"inf\", \"-inf\" because JSON has no native literal for them; a case with vectors=null is a k>=n passthrough case where embed_fn must never be called."
+  },
+  "counts": {
+    "lang_probe": 134,
+    "route_probe": 72,
+    "email_probe_clean": 47,
+    "email_probe_state": 8,
+    "shortlist_probe": 22,
+    "hashing_embedder_probe": 22
+  }
+}

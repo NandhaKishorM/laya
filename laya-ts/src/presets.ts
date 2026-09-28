@@ -23,7 +23,11 @@ export function triageQuestions(language = "en"): Record<string, unknown> {
       },
       is_urgent: {
         type: "noul",
-        instructions: "Framgår det av `message` att en tidsfrist eller pågående påverkan kräver skyndsam hantering?",
+        instructions: "Finns det en tidsfrist eller pågående påverkan i `message` som kräver att ärendet hanteras skyndsamt?",
+        criteria: {
+          true: "Meddelandet anger en nära tidsfrist eller en pågående påverkan som behöver hanteras snabbt",
+          false: "Ingen nära tidsfrist eller pågående påverkan som kräver snabb hantering framgår av meddelandet",
+        },
       },
       frustration: {
         type: "score",

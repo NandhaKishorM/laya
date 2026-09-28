@@ -104,6 +104,11 @@ check("router/Swedish difficulty preserves the four ordered meanings",
 check("router/Swedish domain keys remain stable",
       sorted(laya.router_questions("sv")["domain"]["criteria"]),
       sorted(laya.router_questions("en")["domain"]["criteria"]))
+check_true("triage/Swedish churn question separates intent from terms questions",
+           "avsikt att lämna tjänsten" in laya.triage_questions("sv")["churn_risk"]["instructions"]
+           and "uppsägningsvillkor" in laya.triage_questions("sv")["churn_risk"]["instructions"])
+check("triage/Swedish churn polarity is explicit",
+      sorted(laya.triage_questions("sv")["churn_risk"]["criteria"]), ["false", "true"])
 
 if FAIL:
     print("\n%d failed, %d passed" % (len(FAIL), len(PASS)))

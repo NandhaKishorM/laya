@@ -1,0 +1,3496 @@
+{
+  "cases": [
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 1.0,
+        "choice": "fakturering",
+        "confidence": 1.0,
+        "probabilities": {
+          "fakturering": 1.0,
+          "försäljning": 0.0,
+          "konto": 0.0,
+          "leverans": 0.0,
+          "teknik": 0.0,
+          "uppsägning": 0.0
+        },
+        "type": "choice"
+      },
+      "confidence": 1.0,
+      "correct": true,
+      "expected": "fakturering",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 1.0,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "dubbeldragning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3708,
+        "confidence": 0.1431,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0425,
+          "1": 0.3708,
+          "2": 0.337,
+          "3": 0.1583,
+          "4": 0.0914
+        },
+        "score": 1.8853,
+        "type": "score"
+      },
+      "confidence": 0.3708,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3708,
+        "noul_accuracy": null,
+        "score_mae": 0.11470000000000002
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "dubbeldragning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 1.0,
+        "confidence": 1.0,
+        "noul": 0.0,
+        "type": "noul"
+      },
+      "confidence": 1.0,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 1.0,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "dubbeldragning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 1.0,
+        "choice": "fakturering",
+        "confidence": 1.0,
+        "probabilities": {
+          "fakturering": 1.0,
+          "försäljning": 0.0,
+          "konto": 0.0,
+          "leverans": 0.0,
+          "teknik": 0.0,
+          "uppsägning": 0.0
+        },
+        "type": "choice"
+      },
+      "confidence": 1.0,
+      "correct": true,
+      "expected": "fakturering",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 1.0,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "påminnelse"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3864,
+        "confidence": 0.1821,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0231,
+          "1": 0.2207,
+          "2": 0.3864,
+          "3": 0.3119,
+          "4": 0.058
+        },
+        "score": 2.1609,
+        "type": "score"
+      },
+      "confidence": 0.3864,
+      "correct": null,
+      "expected": 3,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3864,
+        "noul_accuracy": null,
+        "score_mae": 0.8391000000000002
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "påminnelse"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9421,
+        "confidence": 0.9421,
+        "noul": 0.0579,
+        "type": "noul"
+      },
+      "confidence": 0.9421,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9421,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "påminnelse"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.8222,
+        "choice": "konto",
+        "confidence": 0.5974,
+        "probabilities": {
+          "fakturering": 0.0352,
+          "försäljning": 0.02,
+          "konto": 0.8222,
+          "leverans": 0.0205,
+          "teknik": 0.0812,
+          "uppsägning": 0.0209
+        },
+        "type": "choice"
+      },
+      "confidence": 0.8222,
+      "correct": false,
+      "expected": "fakturering",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.8222,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "återbetalning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3611,
+        "confidence": 0.1604,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0184,
+          "1": 0.3319,
+          "2": 0.3611,
+          "3": 0.1902,
+          "4": 0.0984
+        },
+        "score": 2.0183,
+        "type": "score"
+      },
+      "confidence": 0.3611,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3611,
+        "noul_accuracy": null,
+        "score_mae": 0.018299999999999983
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "återbetalning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9488,
+        "confidence": 0.9488,
+        "noul": 0.0512,
+        "type": "noul"
+      },
+      "confidence": 0.9488,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9488,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "återbetalning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.8378,
+        "choice": "fakturering",
+        "confidence": 0.6261,
+        "probabilities": {
+          "fakturering": 0.8378,
+          "försäljning": 0.011,
+          "konto": 0.0702,
+          "leverans": 0.0123,
+          "teknik": 0.0342,
+          "uppsägning": 0.0344
+        },
+        "type": "choice"
+      },
+      "confidence": 0.8378,
+      "correct": true,
+      "expected": "fakturering",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.8378,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "moms"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3601,
+        "confidence": 0.1326,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.017,
+          "1": 0.2406,
+          "2": 0.3601,
+          "3": 0.2465,
+          "4": 0.1358
+        },
+        "score": 2.2436,
+        "type": "score"
+      },
+      "confidence": 0.3601,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3601,
+        "noul_accuracy": null,
+        "score_mae": 0.24359999999999982
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "moms"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.7194,
+        "confidence": 0.7194,
+        "noul": 0.2806,
+        "type": "noul"
+      },
+      "confidence": 0.7194,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.7194,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "moms"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.7911,
+        "choice": "fakturering",
+        "confidence": 0.5797,
+        "probabilities": {
+          "fakturering": 0.7911,
+          "försäljning": 0.0056,
+          "konto": 0.0232,
+          "leverans": 0.0044,
+          "teknik": 0.0882,
+          "uppsägning": 0.0875
+        },
+        "type": "choice"
+      },
+      "confidence": 0.7911,
+      "correct": true,
+      "expected": "fakturering",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.7911,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "provperiod"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4316,
+        "confidence": 0.18,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0243,
+          "1": 0.2927,
+          "2": 0.4316,
+          "3": 0.1676,
+          "4": 0.0838
+        },
+        "score": 1.9942,
+        "type": "score"
+      },
+      "confidence": 0.4316,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4316,
+        "noul_accuracy": null,
+        "score_mae": 0.005800000000000027
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "provperiod"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.994,
+        "confidence": 0.994,
+        "noul": 0.006,
+        "type": "noul"
+      },
+      "confidence": 0.994,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.994,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "fakturering",
+        "provperiod"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9295,
+        "choice": "teknik",
+        "confidence": 0.8297,
+        "probabilities": {
+          "fakturering": 0.0018,
+          "försäljning": 0.0019,
+          "konto": 0.0082,
+          "leverans": 0.0018,
+          "teknik": 0.9295,
+          "uppsägning": 0.0568
+        },
+        "type": "choice"
+      },
+      "confidence": 0.9295,
+      "correct": true,
+      "expected": "teknik",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.9295,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "appkrasch"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.2944,
+        "confidence": 0.1192,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0179,
+          "1": 0.2758,
+          "2": 0.2944,
+          "3": 0.2702,
+          "4": 0.1416
+        },
+        "score": 2.2418,
+        "type": "score"
+      },
+      "confidence": 0.2944,
+      "correct": null,
+      "expected": 3,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.2944,
+        "noul_accuracy": null,
+        "score_mae": 0.7582
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "appkrasch"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9859,
+        "confidence": 0.9859,
+        "noul": 0.0141,
+        "type": "noul"
+      },
+      "confidence": 0.9859,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9859,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "appkrasch"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.5661,
+        "choice": "konto",
+        "confidence": 0.3833,
+        "probabilities": {
+          "fakturering": 0.0385,
+          "försäljning": 0.0143,
+          "konto": 0.5661,
+          "leverans": 0.059,
+          "teknik": 0.3058,
+          "uppsägning": 0.0165
+        },
+        "type": "choice"
+      },
+      "confidence": 0.5661,
+      "correct": false,
+      "expected": "teknik",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.5661,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "vit_skärm"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3765,
+        "confidence": 0.1803,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0066,
+          "1": 0.2466,
+          "2": 0.2805,
+          "3": 0.3765,
+          "4": 0.0898
+        },
+        "score": 2.2963,
+        "type": "score"
+      },
+      "confidence": 0.3765,
+      "correct": null,
+      "expected": 3,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3765,
+        "noul_accuracy": null,
+        "score_mae": 0.7037
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "vit_skärm"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.7184,
+        "confidence": 0.7184,
+        "noul": 0.7184,
+        "type": "noul"
+      },
+      "confidence": 0.7184,
+      "correct": false,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.7184,
+        "noul_accuracy": 0.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "vit_skärm"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4683,
+        "choice": "teknik",
+        "confidence": 0.4027,
+        "probabilities": {
+          "fakturering": 0.0051,
+          "försäljning": 0.007,
+          "konto": 0.3865,
+          "leverans": 0.0039,
+          "teknik": 0.4683,
+          "uppsägning": 0.1292
+        },
+        "type": "choice"
+      },
+      "confidence": 0.4683,
+      "correct": true,
+      "expected": "teknik",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.4683,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "driftstopp"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.339,
+        "confidence": 0.116,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0181,
+          "1": 0.2545,
+          "2": 0.2095,
+          "3": 0.339,
+          "4": 0.1789
+        },
+        "score": 2.4062,
+        "type": "score"
+      },
+      "confidence": 0.339,
+      "correct": null,
+      "expected": 4,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.339,
+        "noul_accuracy": null,
+        "score_mae": 1.5937999999999999
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "driftstopp"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.5637,
+        "confidence": 0.5637,
+        "noul": 0.5637,
+        "type": "noul"
+      },
+      "confidence": 0.5637,
+      "correct": false,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.5637,
+        "noul_accuracy": 0.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "driftstopp"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3606,
+        "choice": "teknik",
+        "confidence": 0.1685,
+        "probabilities": {
+          "fakturering": 0.3299,
+          "försäljning": 0.047,
+          "konto": 0.081,
+          "leverans": 0.0427,
+          "teknik": 0.3606,
+          "uppsägning": 0.1388
+        },
+        "type": "choice"
+      },
+      "confidence": 0.3606,
+      "correct": true,
+      "expected": "teknik",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.3606,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "exportfel"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4877,
+        "confidence": 0.224,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0226,
+          "1": 0.4877,
+          "2": 0.2586,
+          "3": 0.1778,
+          "4": 0.0533
+        },
+        "score": 1.7514,
+        "type": "score"
+      },
+      "confidence": 0.4877,
+      "correct": null,
+      "expected": 1,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4877,
+        "noul_accuracy": null,
+        "score_mae": 0.7514000000000001
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "exportfel"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9604,
+        "confidence": 0.9604,
+        "noul": 0.0396,
+        "type": "noul"
+      },
+      "confidence": 0.9604,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9604,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "exportfel"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.6376,
+        "choice": "uppsägning",
+        "confidence": 0.4481,
+        "probabilities": {
+          "fakturering": 0.0393,
+          "försäljning": 0.0008,
+          "konto": 0.2313,
+          "leverans": 0.0027,
+          "teknik": 0.0883,
+          "uppsägning": 0.6376
+        },
+        "type": "choice"
+      },
+      "confidence": 0.6376,
+      "correct": false,
+      "expected": "teknik",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.6376,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "dataförlust"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3496,
+        "confidence": 0.1407,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0239,
+          "1": 0.2634,
+          "2": 0.2695,
+          "3": 0.3496,
+          "4": 0.0936
+        },
+        "score": 2.2256,
+        "type": "score"
+      },
+      "confidence": 0.3496,
+      "correct": null,
+      "expected": 4,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3496,
+        "noul_accuracy": null,
+        "score_mae": 1.7744
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "dataförlust"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.7362,
+        "confidence": 0.7362,
+        "noul": 0.7362,
+        "type": "noul"
+      },
+      "confidence": 0.7362,
+      "correct": true,
+      "expected": true,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.7362,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "teknik",
+        "dataförlust"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.7244,
+        "choice": "teknik",
+        "confidence": 0.453,
+        "probabilities": {
+          "fakturering": 0.0355,
+          "försäljning": 0.0354,
+          "konto": 0.0372,
+          "leverans": 0.1308,
+          "teknik": 0.7244,
+          "uppsägning": 0.0367
+        },
+        "type": "choice"
+      },
+      "confidence": 0.7244,
+      "correct": false,
+      "expected": "leverans",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.7244,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "spårning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3507,
+        "confidence": 0.1272,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0122,
+          "1": 0.3507,
+          "2": 0.2398,
+          "3": 0.2135,
+          "4": 0.1838
+        },
+        "score": 2.2059,
+        "type": "score"
+      },
+      "confidence": 0.3507,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3507,
+        "noul_accuracy": null,
+        "score_mae": 0.2059000000000002
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "spårning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9805,
+        "confidence": 0.9805,
+        "noul": 0.0195,
+        "type": "noul"
+      },
+      "confidence": 0.9805,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9805,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "spårning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.992,
+        "choice": "leverans",
+        "confidence": 0.9707,
+        "probabilities": {
+          "fakturering": 0.0004,
+          "försäljning": 0.0004,
+          "konto": 0.0004,
+          "leverans": 0.992,
+          "teknik": 0.0065,
+          "uppsägning": 0.0004
+        },
+        "type": "choice"
+      },
+      "confidence": 0.992,
+      "correct": true,
+      "expected": "leverans",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.992,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "retur"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3436,
+        "confidence": 0.1142,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0271,
+          "1": 0.2875,
+          "2": 0.3436,
+          "3": 0.1546,
+          "4": 0.1872
+        },
+        "score": 2.1873,
+        "type": "score"
+      },
+      "confidence": 0.3436,
+      "correct": null,
+      "expected": 1,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3436,
+        "noul_accuracy": null,
+        "score_mae": 1.1873
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "retur"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9264,
+        "confidence": 0.9264,
+        "noul": 0.0736,
+        "type": "noul"
+      },
+      "confidence": 0.9264,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9264,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "retur"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9692,
+        "choice": "leverans",
+        "confidence": 0.903,
+        "probabilities": {
+          "fakturering": 0.0007,
+          "försäljning": 0.0027,
+          "konto": 0.0016,
+          "leverans": 0.9692,
+          "teknik": 0.0109,
+          "uppsägning": 0.0149
+        },
+        "type": "choice"
+      },
+      "confidence": 0.9692,
+      "correct": true,
+      "expected": "leverans",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.9692,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "försvunnet_paket"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3071,
+        "confidence": 0.1132,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0201,
+          "1": 0.2606,
+          "2": 0.3071,
+          "3": 0.262,
+          "4": 0.1502
+        },
+        "score": 2.2615,
+        "type": "score"
+      },
+      "confidence": 0.3071,
+      "correct": null,
+      "expected": 3,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3071,
+        "noul_accuracy": null,
+        "score_mae": 0.7385000000000002
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "försvunnet_paket"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.6135,
+        "confidence": 0.6135,
+        "noul": 0.6135,
+        "type": "noul"
+      },
+      "confidence": 0.6135,
+      "correct": false,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.6135,
+        "noul_accuracy": 0.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "försvunnet_paket"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 1.0,
+        "choice": "leverans",
+        "confidence": 1.0,
+        "probabilities": {
+          "fakturering": 0.0,
+          "försäljning": 0.0,
+          "konto": 0.0,
+          "leverans": 1.0,
+          "teknik": 0.0,
+          "uppsägning": 0.0
+        },
+        "type": "choice"
+      },
+      "confidence": 1.0,
+      "correct": true,
+      "expected": "leverans",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 1.0,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "adressändring"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3969,
+        "confidence": 0.1759,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.012,
+          "1": 0.2987,
+          "2": 0.3969,
+          "3": 0.1952,
+          "4": 0.0971
+        },
+        "score": 2.0666,
+        "type": "score"
+      },
+      "confidence": 0.3969,
+      "correct": null,
+      "expected": 3,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3969,
+        "noul_accuracy": null,
+        "score_mae": 0.9333999999999998
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "adressändring"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.8466,
+        "confidence": 0.8466,
+        "noul": 0.1534,
+        "type": "noul"
+      },
+      "confidence": 0.8466,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.8466,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "adressändring"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9973,
+        "choice": "leverans",
+        "confidence": 0.9877,
+        "probabilities": {
+          "fakturering": 0.0002,
+          "försäljning": 0.0006,
+          "konto": 0.0002,
+          "leverans": 0.9973,
+          "teknik": 0.0016,
+          "uppsägning": 0.0002
+        },
+        "type": "choice"
+      },
+      "confidence": 0.9973,
+      "correct": true,
+      "expected": "leverans",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.9973,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "saknad_del"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3899,
+        "confidence": 0.1347,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0294,
+          "1": 0.2565,
+          "2": 0.3899,
+          "3": 0.2142,
+          "4": 0.11
+        },
+        "score": 2.1189,
+        "type": "score"
+      },
+      "confidence": 0.3899,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3899,
+        "noul_accuracy": null,
+        "score_mae": 0.1189
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "saknad_del"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.984,
+        "confidence": 0.984,
+        "noul": 0.016,
+        "type": "noul"
+      },
+      "confidence": 0.984,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.984,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "leverans",
+        "saknad_del"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.804,
+        "choice": "fakturering",
+        "confidence": 0.6106,
+        "probabilities": {
+          "fakturering": 0.804,
+          "försäljning": 0.0004,
+          "konto": 0.0577,
+          "leverans": 0.0005,
+          "teknik": 0.0354,
+          "uppsägning": 0.102
+        },
+        "type": "choice"
+      },
+      "confidence": 0.804,
+      "correct": false,
+      "expected": "konto",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.804,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "tvåfaktor"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4424,
+        "confidence": 0.1879,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0347,
+          "1": 0.1551,
+          "2": 0.3021,
+          "3": 0.4424,
+          "4": 0.0657
+        },
+        "score": 2.3493,
+        "type": "score"
+      },
+      "confidence": 0.4424,
+      "correct": null,
+      "expected": 4,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4424,
+        "noul_accuracy": null,
+        "score_mae": 1.6507
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "tvåfaktor"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9949,
+        "confidence": 0.9949,
+        "noul": 0.0051,
+        "type": "noul"
+      },
+      "confidence": 0.9949,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9949,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "tvåfaktor"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9686,
+        "choice": "konto",
+        "confidence": 0.9079,
+        "probabilities": {
+          "fakturering": 0.0003,
+          "försäljning": 0.0003,
+          "konto": 0.9686,
+          "leverans": 0.0002,
+          "teknik": 0.0128,
+          "uppsägning": 0.0178
+        },
+        "type": "choice"
+      },
+      "confidence": 0.9686,
+      "correct": true,
+      "expected": "konto",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.9686,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "e-postbyte"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.6761,
+        "confidence": 0.4082,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0043,
+          "1": 0.1016,
+          "2": 0.1805,
+          "3": 0.6761,
+          "4": 0.0375
+        },
+        "score": 2.641,
+        "type": "score"
+      },
+      "confidence": 0.6761,
+      "correct": null,
+      "expected": 1,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.6761,
+        "noul_accuracy": null,
+        "score_mae": 1.641
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "e-postbyte"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9706,
+        "confidence": 0.9706,
+        "noul": 0.0294,
+        "type": "noul"
+      },
+      "confidence": 0.9706,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9706,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "e-postbyte"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.983,
+        "choice": "konto",
+        "confidence": 0.9451,
+        "probabilities": {
+          "fakturering": 0.0006,
+          "försäljning": 0.0001,
+          "konto": 0.983,
+          "leverans": 0.0001,
+          "teknik": 0.0036,
+          "uppsägning": 0.0126
+        },
+        "type": "choice"
+      },
+      "confidence": 0.983,
+      "correct": true,
+      "expected": "konto",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.983,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "låst_konto"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3468,
+        "confidence": 0.1306,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0121,
+          "1": 0.202,
+          "2": 0.3468,
+          "3": 0.2668,
+          "4": 0.1723
+        },
+        "score": 2.3853,
+        "type": "score"
+      },
+      "confidence": 0.3468,
+      "correct": null,
+      "expected": 3,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3468,
+        "noul_accuracy": null,
+        "score_mae": 0.6147
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "låst_konto"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9813,
+        "confidence": 0.9813,
+        "noul": 0.0187,
+        "type": "noul"
+      },
+      "confidence": 0.9813,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9813,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "låst_konto"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.673,
+        "choice": "konto",
+        "confidence": 0.6035,
+        "probabilities": {
+          "fakturering": 0.0007,
+          "försäljning": 0.0006,
+          "konto": 0.673,
+          "leverans": 0.0006,
+          "teknik": 0.3088,
+          "uppsägning": 0.0163
+        },
+        "type": "choice"
+      },
+      "confidence": 0.673,
+      "correct": true,
+      "expected": "konto",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.673,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "mobilinloggning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.7194,
+        "confidence": 0.4524,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0064,
+          "1": 0.0511,
+          "2": 0.1673,
+          "3": 0.7194,
+          "4": 0.0557
+        },
+        "score": 2.767,
+        "type": "score"
+      },
+      "confidence": 0.7194,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.7194,
+        "noul_accuracy": null,
+        "score_mae": 0.7669999999999999
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "mobilinloggning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9959,
+        "confidence": 0.9959,
+        "noul": 0.0041,
+        "type": "noul"
+      },
+      "confidence": 0.9959,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9959,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "mobilinloggning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.998,
+        "choice": "uppsägning",
+        "confidence": 0.9914,
+        "probabilities": {
+          "fakturering": 0.0,
+          "försäljning": 0.0,
+          "konto": 0.0003,
+          "leverans": 0.0,
+          "teknik": 0.0016,
+          "uppsägning": 0.998
+        },
+        "type": "choice"
+      },
+      "confidence": 0.998,
+      "correct": false,
+      "expected": "konto",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.998,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "profilinställning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.482,
+        "confidence": 0.2593,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0091,
+          "1": 0.2392,
+          "2": 0.2357,
+          "3": 0.482,
+          "4": 0.0338
+        },
+        "score": 2.2922,
+        "type": "score"
+      },
+      "confidence": 0.482,
+      "correct": null,
+      "expected": 0,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.482,
+        "noul_accuracy": null,
+        "score_mae": 2.2922
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "profilinställning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9334,
+        "confidence": 0.9334,
+        "noul": 0.0666,
+        "type": "noul"
+      },
+      "confidence": 0.9334,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9334,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "konto",
+        "profilinställning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 1.0,
+        "choice": "uppsägning",
+        "confidence": 1.0,
+        "probabilities": {
+          "fakturering": 0.0,
+          "försäljning": 0.0,
+          "konto": 0.0,
+          "leverans": 0.0,
+          "teknik": 0.0,
+          "uppsägning": 1.0
+        },
+        "type": "choice"
+      },
+      "confidence": 1.0,
+      "correct": true,
+      "expected": "uppsägning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 1.0,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "direkt_uppsägning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4902,
+        "confidence": 0.246,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0087,
+          "1": 0.1688,
+          "2": 0.2726,
+          "3": 0.4902,
+          "4": 0.0598
+        },
+        "score": 2.4236,
+        "type": "score"
+      },
+      "confidence": 0.4902,
+      "correct": null,
+      "expected": 1,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4902,
+        "noul_accuracy": null,
+        "score_mae": 1.4236
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "direkt_uppsägning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.5176,
+        "confidence": 0.5176,
+        "noul": 0.5176,
+        "type": "noul"
+      },
+      "confidence": 0.5176,
+      "correct": true,
+      "expected": true,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.5176,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "direkt_uppsägning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9592,
+        "choice": "uppsägning",
+        "confidence": 0.8913,
+        "probabilities": {
+          "fakturering": 0.0341,
+          "försäljning": 0.0002,
+          "konto": 0.0018,
+          "leverans": 0.0004,
+          "teknik": 0.0043,
+          "uppsägning": 0.9592
+        },
+        "type": "choice"
+      },
+      "confidence": 0.9592,
+      "correct": true,
+      "expected": "uppsägning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.9592,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "direkt_uppsägning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4239,
+        "confidence": 0.2259,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0069,
+          "1": 0.1637,
+          "2": 0.4239,
+          "3": 0.3361,
+          "4": 0.0694
+        },
+        "score": 2.2974,
+        "type": "score"
+      },
+      "confidence": 0.4239,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4239,
+        "noul_accuracy": null,
+        "score_mae": 0.2974000000000001
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "direkt_uppsägning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.7293,
+        "confidence": 0.7293,
+        "noul": 0.2707,
+        "type": "noul"
+      },
+      "confidence": 0.7293,
+      "correct": false,
+      "expected": true,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.7293,
+        "noul_accuracy": 0.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "direkt_uppsägning"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.8054,
+        "choice": "teknik",
+        "confidence": 0.6988,
+        "probabilities": {
+          "fakturering": 0.002,
+          "försäljning": 0.0018,
+          "konto": 0.0028,
+          "leverans": 0.002,
+          "teknik": 0.8054,
+          "uppsägning": 0.186
+        },
+        "type": "choice"
+      },
+      "confidence": 0.8054,
+      "correct": false,
+      "expected": "uppsägning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.8054,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningshot"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4422,
+        "confidence": 0.1943,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0107,
+          "1": 0.2077,
+          "2": 0.2515,
+          "3": 0.4422,
+          "4": 0.0879
+        },
+        "score": 2.3888,
+        "type": "score"
+      },
+      "confidence": 0.4422,
+      "correct": null,
+      "expected": 4,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4422,
+        "noul_accuracy": null,
+        "score_mae": 1.6112000000000002
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningshot"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.8893,
+        "confidence": 0.8893,
+        "noul": 0.8893,
+        "type": "noul"
+      },
+      "confidence": 0.8893,
+      "correct": true,
+      "expected": true,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.8893,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningshot"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9156,
+        "choice": "uppsägning",
+        "confidence": 0.7697,
+        "probabilities": {
+          "fakturering": 0.0133,
+          "försäljning": 0.0131,
+          "konto": 0.0231,
+          "leverans": 0.0045,
+          "teknik": 0.0305,
+          "uppsägning": 0.9156
+        },
+        "type": "choice"
+      },
+      "confidence": 0.9156,
+      "correct": true,
+      "expected": "uppsägning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.9156,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningshot"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4408,
+        "confidence": 0.2001,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0075,
+          "1": 0.2357,
+          "2": 0.4408,
+          "3": 0.2301,
+          "4": 0.0859
+        },
+        "score": 2.1512,
+        "type": "score"
+      },
+      "confidence": 0.4408,
+      "correct": null,
+      "expected": 3,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4408,
+        "noul_accuracy": null,
+        "score_mae": 0.8488000000000002
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningshot"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.5136,
+        "confidence": 0.5136,
+        "noul": 0.4864,
+        "type": "noul"
+      },
+      "confidence": 0.5136,
+      "correct": false,
+      "expected": true,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.5136,
+        "noul_accuracy": 0.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningshot"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 1.0,
+        "choice": "uppsägning",
+        "confidence": 0.9999,
+        "probabilities": {
+          "fakturering": 0.0,
+          "försäljning": 0.0,
+          "konto": 0.0,
+          "leverans": 0.0,
+          "teknik": 0.0,
+          "uppsägning": 1.0
+        },
+        "type": "choice"
+      },
+      "confidence": 1.0,
+      "correct": true,
+      "expected": "uppsägning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 1.0,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningsvillkor"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3377,
+        "confidence": 0.151,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0101,
+          "1": 0.2382,
+          "2": 0.3377,
+          "3": 0.2969,
+          "4": 0.1171
+        },
+        "score": 2.2728,
+        "type": "score"
+      },
+      "confidence": 0.3377,
+      "correct": null,
+      "expected": 2,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3377,
+        "noul_accuracy": null,
+        "score_mae": 0.27280000000000015
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningsvillkor"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.8448,
+        "confidence": 0.8448,
+        "noul": 0.1552,
+        "type": "noul"
+      },
+      "confidence": 0.8448,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.8448,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "uppsägning",
+        "uppsägningsvillkor"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4556,
+        "choice": "teknik",
+        "confidence": 0.1819,
+        "probabilities": {
+          "fakturering": 0.2143,
+          "försäljning": 0.0918,
+          "konto": 0.1472,
+          "leverans": 0.0304,
+          "teknik": 0.4556,
+          "uppsägning": 0.0607
+        },
+        "type": "choice"
+      },
+      "confidence": 0.4556,
+      "correct": false,
+      "expected": "försäljning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.4556,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "planfråga"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3705,
+        "confidence": 0.1724,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0077,
+          "1": 0.3705,
+          "2": 0.2743,
+          "3": 0.2517,
+          "4": 0.0957
+        },
+        "score": 2.0572,
+        "type": "score"
+      },
+      "confidence": 0.3705,
+      "correct": null,
+      "expected": 1,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3705,
+        "noul_accuracy": null,
+        "score_mae": 1.0572
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "planfråga"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.9481,
+        "confidence": 0.9481,
+        "noul": 0.0519,
+        "type": "noul"
+      },
+      "confidence": 0.9481,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.9481,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "planfråga"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.5507,
+        "choice": "teknik",
+        "confidence": 0.3299,
+        "probabilities": {
+          "fakturering": 0.05,
+          "försäljning": 0.2849,
+          "konto": 0.0245,
+          "leverans": 0.0299,
+          "teknik": 0.5507,
+          "uppsägning": 0.06
+        },
+        "type": "choice"
+      },
+      "confidence": 0.5507,
+      "correct": false,
+      "expected": "försäljning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.5507,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "planuppgradering"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4135,
+        "confidence": 0.1782,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0111,
+          "1": 0.2583,
+          "2": 0.4135,
+          "3": 0.2218,
+          "4": 0.0953
+        },
+        "score": 2.132,
+        "type": "score"
+      },
+      "confidence": 0.4135,
+      "correct": null,
+      "expected": 1,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4135,
+        "noul_accuracy": null,
+        "score_mae": 1.1320000000000001
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "planuppgradering"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.632,
+        "confidence": 0.632,
+        "noul": 0.368,
+        "type": "noul"
+      },
+      "confidence": 0.632,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.632,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "planuppgradering"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.8438,
+        "choice": "fakturering",
+        "confidence": 0.6427,
+        "probabilities": {
+          "fakturering": 0.8438,
+          "försäljning": 0.0119,
+          "konto": 0.0727,
+          "leverans": 0.0057,
+          "teknik": 0.0377,
+          "uppsägning": 0.0282
+        },
+        "type": "choice"
+      },
+      "confidence": 0.8438,
+      "correct": false,
+      "expected": "försäljning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.8438,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "företagsplan"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4432,
+        "confidence": 0.207,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0077,
+          "1": 0.2275,
+          "2": 0.2449,
+          "3": 0.4432,
+          "4": 0.0768
+        },
+        "score": 2.354,
+        "type": "score"
+      },
+      "confidence": 0.4432,
+      "correct": null,
+      "expected": 1,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4432,
+        "noul_accuracy": null,
+        "score_mae": 1.354
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "företagsplan"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.8437,
+        "confidence": 0.8437,
+        "noul": 0.1563,
+        "type": "noul"
+      },
+      "confidence": 0.8437,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.8437,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "företagsplan"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.7495,
+        "choice": "fakturering",
+        "confidence": 0.5361,
+        "probabilities": {
+          "fakturering": 0.7495,
+          "försäljning": 0.0073,
+          "konto": 0.1379,
+          "leverans": 0.0832,
+          "teknik": 0.0088,
+          "uppsägning": 0.0133
+        },
+        "type": "choice"
+      },
+      "confidence": 0.7495,
+      "correct": false,
+      "expected": "försäljning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 0.0,
+        "mean_confidence": 0.7495,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "prisjämförelse"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.3235,
+        "confidence": 0.2021,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.0128,
+          "1": 0.3085,
+          "2": 0.3114,
+          "3": 0.3235,
+          "4": 0.0439
+        },
+        "score": 2.0774,
+        "type": "score"
+      },
+      "confidence": 0.3235,
+      "correct": null,
+      "expected": 0,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.3235,
+        "noul_accuracy": null,
+        "score_mae": 2.0774
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "prisjämförelse"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.5604,
+        "confidence": 0.5604,
+        "noul": 0.4396,
+        "type": "noul"
+      },
+      "confidence": 0.5604,
+      "correct": true,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.5604,
+        "noul_accuracy": 1.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "prisjämförelse"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.939,
+        "choice": "försäljning",
+        "confidence": 0.823,
+        "probabilities": {
+          "fakturering": 0.014,
+          "försäljning": 0.939,
+          "konto": 0.0024,
+          "leverans": 0.0125,
+          "teknik": 0.0084,
+          "uppsägning": 0.0237
+        },
+        "type": "choice"
+      },
+      "confidence": 0.939,
+      "correct": true,
+      "expected": "försäljning",
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "kategori",
+      "scores": {
+        "choice_accuracy": 1.0,
+        "mean_confidence": 0.939,
+        "noul_accuracy": null,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "licensköp"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.4732,
+        "confidence": 0.2379,
+        "legend": {
+          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
+          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
+          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
+          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
+          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+        },
+        "probabilities": {
+          "0": 0.005,
+          "1": 0.2675,
+          "2": 0.4732,
+          "3": 0.189,
+          "4": 0.0653
+        },
+        "score": 2.042,
+        "type": "score"
+      },
+      "confidence": 0.4732,
+      "correct": null,
+      "expected": 1,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "brådska",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.4732,
+        "noul_accuracy": null,
+        "score_mae": 1.0419999999999998
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "licensköp"
+      ]
+    },
+    {
+      "answer": {
+        "action": {
+          "act_probability": 1.0
+        },
+        "answer_confidence": 0.5529,
+        "confidence": 0.5529,
+        "noul": 0.5529,
+        "type": "noul"
+      },
+      "confidence": 0.5529,
+      "correct": false,
+      "expected": false,
+      "language": "sv-SE",
+      "model": "multilingual",
+      "qid": "uppsägningshot",
+      "scores": {
+        "choice_accuracy": null,
+        "mean_confidence": 0.5529,
+        "noul_accuracy": 0.0,
+        "score_mae": null
+      },
+      "tags": [
+        "synthetic",
+        "försäljning",
+        "licensköp"
+      ]
+    }
+  ],
+  "config": {
+    "dataset": "research/evals/swedish_support.jsonl",
+    "device": "cpu",
+    "model": "multilingual",
+    "revisions": {
+      "multilingual": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851"
+    },
+    "timing": {
+      "batch_form": null,
+      "batch_size": null,
+      "chunks": 30,
+      "cost_metric": "per decision: that call divided by its own chunk size",
+      "latency_metric": "per request: the wall time of the call that returned it, unsplit",
+      "max_chunk": 1,
+      "rows_alone": 30,
+      "rows_grouped": 0
+    }
+  },
+  "overall": {
+    "choice_accuracy": 0.6333333333333333,
+    "cost_per_decision_p50_ms": 162.0423125000001,
+    "cost_per_decision_p95_ms": 176.16862499999985,
+    "ece": 0.15878999999999996,
+    "latency_p50_ms": 162.0423125000001,
+    "latency_p95_ms": 176.16862499999985,
+    "mean_confidence": 0.6882222222222222,
+    "noul_accuracy": 0.8,
+    "score_mae": 0.9356333333333333
+  },
+  "slices": {
+    "language": {
+      "sv-SE": {
+        "choice_accuracy": 0.6333333333333333,
+        "ece": 0.15878999999999996,
+        "mean_confidence": 0.6882222222222222,
+        "noul_accuracy": 0.8,
+        "score_mae": 0.9356333333333333
+      }
+    },
+    "model": {
+      "multilingual": {
+        "choice_accuracy": 0.6333333333333333,
+        "ece": 0.15878999999999996,
+        "mean_confidence": 0.6882222222222222,
+        "noul_accuracy": 0.8,
+        "score_mae": 0.9356333333333333
+      }
+    },
+    "qid": {
+      "brådska": {
+        "mean_confidence": 0.41236,
+        "score_mae": 0.9356333333333333
+      },
+      "kategori": {
+        "choice_accuracy": 0.6333333333333333,
+        "ece": 0.2797833333333334,
+        "mean_confidence": 0.8247166666666667
+      },
+      "uppsägningshot": {
+        "ece": 0.11379666666666668,
+        "mean_confidence": 0.82759,
+        "noul_accuracy": 0.8
+      }
+    },
+    "tag": {
+      "adressändring": {
+        "choice_accuracy": 1.0,
+        "ece": 0.07669999999999999,
+        "mean_confidence": 0.7478333333333333,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.9333999999999998
+      },
+      "appkrasch": {
+        "choice_accuracy": 1.0,
+        "ece": 0.042300000000000004,
+        "mean_confidence": 0.7366,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.7582
+      },
+      "dataförlust": {
+        "choice_accuracy": 0.0,
+        "ece": 0.4507,
+        "mean_confidence": 0.5744666666666666,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.7744
+      },
+      "direkt_uppsägning": {
+        "choice_accuracy": 1.0,
+        "ece": 0.313125,
+        "mean_confidence": 0.6867,
+        "noul_accuracy": 0.5,
+        "score_mae": 0.8605
+      },
+      "driftstopp": {
+        "choice_accuracy": 1.0,
+        "ece": 0.5477000000000001,
+        "mean_confidence": 0.457,
+        "noul_accuracy": 0.0,
+        "score_mae": 1.5937999999999999
+      },
+      "dubbeldragning": {
+        "choice_accuracy": 1.0,
+        "ece": 0.0,
+        "mean_confidence": 0.7902666666666667,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.11470000000000002
+      },
+      "e-postbyte": {
+        "choice_accuracy": 1.0,
+        "ece": 0.030399999999999983,
+        "mean_confidence": 0.8717666666666667,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.641
+      },
+      "exportfel": {
+        "choice_accuracy": 1.0,
+        "ece": 0.33949999999999997,
+        "mean_confidence": 0.6029,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.7514000000000001
+      },
+      "fakturering": {
+        "choice_accuracy": 0.8,
+        "ece": 0.12646000000000002,
+        "mean_confidence": 0.7310266666666667,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.24430000000000002
+      },
+      "företagsplan": {
+        "choice_accuracy": 0.0,
+        "ece": 0.34375,
+        "mean_confidence": 0.7102333333333334,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.354
+      },
+      "försvunnet_paket": {
+        "choice_accuracy": 1.0,
+        "ece": 0.32215000000000005,
+        "mean_confidence": 0.6299333333333333,
+        "noul_accuracy": 0.0,
+        "score_mae": 0.7385000000000002
+      },
+      "försäljning": {
+        "choice_accuracy": 0.2,
+        "ece": 0.3037500000000001,
+        "mean_confidence": 0.6066400000000001,
+        "noul_accuracy": 0.8,
+        "score_mae": 1.33252
+      },
+      "konto": {
+        "choice_accuracy": 0.6,
+        "ece": 0.19566999999999996,
+        "mean_confidence": 0.79796,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.3931200000000001
+      },
+      "leverans": {
+        "choice_accuracy": 0.8,
+        "ece": 0.16419000000000003,
+        "mean_confidence": 0.7214733333333334,
+        "noul_accuracy": 0.8,
+        "score_mae": 0.6368
+      },
+      "licensköp": {
+        "choice_accuracy": 1.0,
+        "ece": 0.30695,
+        "mean_confidence": 0.6550333333333332,
+        "noul_accuracy": 0.0,
+        "score_mae": 1.0419999999999998
+      },
+      "låst_konto": {
+        "choice_accuracy": 1.0,
+        "ece": 0.017850000000000033,
+        "mean_confidence": 0.7703666666666665,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.6147
+      },
+      "mobilinloggning": {
+        "choice_accuracy": 1.0,
+        "ece": 0.16554999999999997,
+        "mean_confidence": 0.7961,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.7669999999999999
+      },
+      "moms": {
+        "choice_accuracy": 1.0,
+        "ece": 0.22139999999999999,
+        "mean_confidence": 0.6391,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.24359999999999982
+      },
+      "planfråga": {
+        "choice_accuracy": 0.0,
+        "ece": 0.25375,
+        "mean_confidence": 0.5914,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.0572
+      },
+      "planuppgradering": {
+        "choice_accuracy": 0.0,
+        "ece": 0.45935,
+        "mean_confidence": 0.5320666666666667,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.1320000000000001
+      },
+      "prisjämförelse": {
+        "choice_accuracy": 0.0,
+        "ece": 0.59455,
+        "mean_confidence": 0.5444666666666667,
+        "noul_accuracy": 1.0,
+        "score_mae": 2.0774
+      },
+      "profilinställning": {
+        "choice_accuracy": 0.0,
+        "ece": 0.4657,
+        "mean_confidence": 0.8044666666666668,
+        "noul_accuracy": 1.0,
+        "score_mae": 2.2922
+      },
+      "provperiod": {
+        "choice_accuracy": 1.0,
+        "ece": 0.10744999999999999,
+        "mean_confidence": 0.7389,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.005800000000000027
+      },
+      "påminnelse": {
+        "choice_accuracy": 1.0,
+        "ece": 0.02895000000000003,
+        "mean_confidence": 0.7761666666666667,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.8391000000000002
+      },
+      "retur": {
+        "choice_accuracy": 1.0,
+        "ece": 0.0408,
+        "mean_confidence": 0.754,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.1873
+      },
+      "saknad_del": {
+        "choice_accuracy": 1.0,
+        "ece": 0.00934999999999997,
+        "mean_confidence": 0.7904,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.1189
+      },
+      "spårning": {
+        "choice_accuracy": 0.0,
+        "ece": 0.37195,
+        "mean_confidence": 0.6852,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.2059000000000002
+      },
+      "synthetic": {
+        "choice_accuracy": 0.6333333333333333,
+        "ece": 0.15878999999999996,
+        "mean_confidence": 0.6882222222222222,
+        "noul_accuracy": 0.8,
+        "score_mae": 0.9356333333333333
+      },
+      "teknik": {
+        "choice_accuracy": 0.6,
+        "ece": 0.40449,
+        "mean_confidence": 0.5849266666666666,
+        "noul_accuracy": 0.6,
+        "score_mae": 1.1163
+      },
+      "tvåfaktor": {
+        "choice_accuracy": 0.0,
+        "ece": 0.40455,
+        "mean_confidence": 0.7471,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.6507
+      },
+      "uppsägning": {
+        "choice_accuracy": 0.8,
+        "ece": 0.16465999999999995,
+        "mean_confidence": 0.6873066666666666,
+        "noul_accuracy": 0.6,
+        "score_mae": 0.8907600000000002
+      },
+      "uppsägningshot": {
+        "choice_accuracy": 0.5,
+        "ece": 0.378525,
+        "mean_confidence": 0.6678166666666666,
+        "noul_accuracy": 0.5,
+        "score_mae": 1.2300000000000002
+      },
+      "uppsägningsvillkor": {
+        "choice_accuracy": 1.0,
+        "ece": 0.0776,
+        "mean_confidence": 0.7275,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.27280000000000015
+      },
+      "vit_skärm": {
+        "choice_accuracy": 0.0,
+        "ece": 0.64225,
+        "mean_confidence": 0.5536666666666666,
+        "noul_accuracy": 0.0,
+        "score_mae": 0.7037
+      },
+      "återbetalning": {
+        "choice_accuracy": 0.0,
+        "ece": 0.43670000000000003,
+        "mean_confidence": 0.7107,
+        "noul_accuracy": 1.0,
+        "score_mae": 0.018299999999999983
+      }
+    }
+  }
+}

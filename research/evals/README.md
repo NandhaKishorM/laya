@@ -82,10 +82,10 @@ MASSIVE English suite through `research/eval/laya_eval.py` against
 
 `swedish_support.jsonl` is a small, hand-written diagnostic set of 30 synthetic
 Swedish support messages. It has five examples for each of six request categories
-and labels three independent decisions per message: category, urgency and an
-explicit threat to cancel. The score levels run from 0 (not urgent) to 4 (critical).
-The cancellation question is deliberately separate from category: a technical
-problem can include a cancellation threat without becoming a cancellation request.
+and labels three independent decisions per message: category, urgency and churn risk
+(an expressed intention or conditional threat to leave the service). The score levels run from 0 (not urgent) to 4 (critical).
+The churn question is deliberately separate from category: a technical problem can
+include a cancellation threat without becoming a cancellation request.
 The urgency rubric describes concrete impact and deadline conditions at each level;
 the instruction asks the model to judge those facts rather than a customer's tone or
 word choice. Score criteria should stand alone as ordered descriptions of distinct
@@ -141,10 +141,20 @@ development set, not an independent quality estimate. Its full report is
 the initial report is retained as
 [`swedish_support_multilingual_cpu_initial_rubric.json`](../results/swedish_support_multilingual_cpu_initial_rubric.json).
 
-The cancellation result is driven by false positives: all 3 explicit threats were
-detected, but 17 of the 27 non-threat messages were also marked positive. This is a
-clear failure signal for that question on this sample and was unchanged by the rubric
-revision.
+The original cancellation question had a clear failure signal: all 3 explicit threats
+were detected, but 17 of the 27 non-threat messages were also marked positive (13/30
+accuracy). In a follow-up, the target was clarified as churn risk: either an expressed
+intention to leave or a conditional cancellation threat, while questions about terms and
+hypotheticals remain negative. Updating the two direct-cancellation labels accordingly
+and adding explicit positive/negative criteria raised accuracy to 24/30 (80%) on the
+same synthetic cases. However, several severe service problems without any expressed
+intent were still false positives. A further wording change that explicitly excluded
+severity and frustration fell to 14/30 (46.7%). The two follow-up reports are preserved
+as [`churn revision 1`](../results/swedish_support_multilingual_cpu_churn_revision.json)
+and [`churn revision 2`](../results/swedish_support_multilingual_cpu_churn_revision2.json).
+This prompt sensitivity means the diagnostic does not establish reliable churn detection;
+review the target labels and wording with a Swedish support specialist and evaluate on
+independently collected, adjudicated tickets before relying on it.
 Category accuracy was strongest for delivery and cancellation (4/5 each) and weakest
 for sales inquiries (1/5). This points to useful follow-up cases around Swedish
 product-plan and pricing language, but the set needs independent review before any

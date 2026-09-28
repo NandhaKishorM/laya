@@ -81,9 +81,14 @@ def triage_questions(language: str = "en") -> Dict:
             "churn_risk": {
                 "type": "noul",
                 "instructions": (
-                    "Tyder `message` på att kunden kan lämna tjänsten, välja en konkurrent eller "
-                    "säga upp abonnemanget?"
+                    "Uttrycker kunden i `message` en avsikt att lämna tjänsten eller ett villkorat "
+                    "hot om uppsägning? Räkna inte frågor om uppsägningsvillkor, hypotetiska "
+                    "scenarier eller önskemål om att avsluta ett annat ärende som churn-risk."
                 ),
+                "criteria": {
+                    "true": "Kunden säger att hen tänker lämna eller säga upp tjänsten, eller hotar att göra det om ett villkor inte uppfylls",
+                    "false": "Ingen uttryckt avsikt eller villkorat uppsägningshot; problemets allvar, frustration eller en fråga om villkor räcker inte",
+                },
             },
         }
     if language != "en":

@@ -89,6 +89,11 @@ match the built-in `triage_questions()` preset, whose intent labels differ and w
 answer is boolean. Its results therefore do not measure the built-in preset's accuracy. A separate
 evaluation of that preset needs representative, independently labelled messages using its actual
 questions and answer labels.
+There is no safe one-to-one remapping by category name: `teknik` roughly overlaps with
+`technical_help` and `uppsägning` with `cancellation`, but diagnostic `fakturering` combines cases
+that the preset separates into `refund` and `billing_question`; `försäljning` only partly overlaps
+with `information`; `leverans` and `konto` have no dedicated preset choice; and `other` is absent
+from the diagnostic. Review each message against the preset's question before assigning a label.
 The churn question is deliberately separate from category: a technical problem can
 include a cancellation threat without becoming a cancellation request.
 The urgency rubric describes concrete impact and deadline conditions at each level;

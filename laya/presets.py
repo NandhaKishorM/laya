@@ -314,8 +314,8 @@ def moderation_questions(language: str = "en") -> Dict:
             "toxic": {
                 "type": "noul",
                 "instructions": (
-                    "Är `post` kränkande eller respektlöst, eller så otrevligt att någon kan "
-                    "lämna diskussionen?"
+                    "Är tonen i `post` kränkande eller respektlös, eller så otrevlig att den "
+                    "kan få någon att lämna diskussionen?"
                 ),
             },
             "harassment": {

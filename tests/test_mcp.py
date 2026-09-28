@@ -396,7 +396,9 @@ def test_presets():
        "For any built-in preset" in description, description)
     ok("preset/desc says result IDs are stable",
        "question IDs and choice keys remain stable" in description, description)
-    ok("preset/desc points to shared Swedish triage labels",
+    ok("preset/desc points to shared Swedish labels for every preset",
+       "laya.preset_labels(preset, 'sv-SE')" in description, description)
+    ok("preset/desc retains triage shortcut guidance",
        "laya.triage_labels('sv-SE')" in description, description)
 
 

@@ -183,6 +183,13 @@ check("triage_questions/Swedish billing includes plans",
       sv_triage["intent"]["criteria"]["billing_question"],
       "fråga om faktura, abonnemangsplan eller betalningssätt")
 check("triage_questions/Swedish keeps the message state field", state_field(sv_triage), "message")
+check_true("triage_questions/Swedish urgency names message",
+           "`message`" in sv_triage["is_urgent"]["instructions"])
+check_true("triage_questions/Swedish urgency asks about urgency and deadlines",
+           "vänta" in sv_triage["is_urgent"]["instructions"] and
+           "snart" in sv_triage["is_urgent"]["instructions"])
+check_true("triage_questions/Swedish refund question names message",
+           "`message`" in sv_triage["refund_requested"]["instructions"])
 try:
     laya.triage_questions("de")
 except ValueError:

@@ -51,7 +51,7 @@ def triage_questions(language: str = "en") -> Dict:
             },
             "is_urgent": {
                 "type": "noul",
-                "instructions": "Framgår tidspress eller en tidsfrist i `message`?",
+                "instructions": "Kan ärendet vänta, eller måste det lösas snart enligt `message`?",
             },
             "frustration": {
                 "type": "score",
@@ -65,7 +65,7 @@ def triage_questions(language: str = "en") -> Dict:
             },
             "refund_requested": {
                 "type": "noul",
-                "instructions": "Ber kunden om att få pengar tillbaka?",
+                "instructions": "Ber kunden om att få pengar tillbaka i `message`?",
             },
             "churn_risk": {
                 "type": "noul",

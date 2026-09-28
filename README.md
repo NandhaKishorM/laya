@@ -993,6 +993,18 @@ For Swedish support triage, call `laya_preset` with `preset="triage"` or `preset
 preset questions. A Python client can localize stable result keys with
 `laya.preset_labels("triage", "sv-SE")` or the corresponding preset name.
 
+For example, after the MCP client receives the `laya_preset` result:
+
+```python
+import laya
+
+labels_sv = laya.preset_labels("triage", "sv-SE")
+intent_key = result["answers"]["intent"]["choice"]
+intent_text = labels_sv.get(intent_key, intent_key)  # e.g. "refund" -> "Återbetalning"
+```
+
+The MCP response keeps its stable machine key; the client uses the label only for display.
+
 The tools return structured JSON (answers with probabilities, routing metadata, device,
 `latency_ms`). `laya_predict_batch` and `laya_route_batch` are the MCP form of
 [`Router.predict_batch` / `route_batch`](#batch-mode-score-many-states-in-one-forward-pass):

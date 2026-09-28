@@ -380,6 +380,19 @@ def test_batched_latency_is_what_a_request_waited(monkeypatch):
         "batching trades request latency for throughput; the report has to say so"
 
 
+def test_p95_is_nearest_rank_when_the_sample_size_is_a_multiple_of_20():
+    # 0.95 * 20 = 19 exactly: the 19th smallest, not the 20th (#680 -- int(n * 0.95) landed
+    # one rank too high whenever the product was whole).
+    from laya.evals import _percentiles
+
+    assert _percentiles([float(i) for i in range(1, 21)])[1] == 19.0
+    assert _percentiles([float(i) for i in range(1, 41)])[1] == 38.0
+    # Away from the exact boundary the rank is unchanged, and the ends hold.
+    assert _percentiles([float(i) for i in range(1, 22)])[1] == 20.0
+    assert _percentiles([10.0])[1] == 10.0
+    assert _percentiles([3.0, 7.0])[1] == 7.0
+
+
 def test_the_throughput_share_keeps_its_own_metric(monkeypatch):
     solo, _ = _timed_pair(monkeypatch, None)
     batched, _ = _timed_pair(monkeypatch, 8)

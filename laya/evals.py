@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import math
 import statistics
 import time
 from dataclasses import dataclass, field
@@ -290,8 +291,10 @@ def _group_cases(cases: Sequence[Dict[str, Any]], key: str) -> Dict[str, List[Di
 def _percentiles(values: Sequence[float]) -> Tuple[float, float]:
     """(median, 95th) using the nearest-rank rule the report has always used for latency."""
     ordered = sorted(values)
+    # Nearest-rank: the ceil(0.95 * n)-th smallest. int(n * 0.95) would land one rank too high
+    # whenever 0.95 * n is whole -- every sample size that is a multiple of 20 (#680).
     return (float(statistics.median(ordered)),
-            float(ordered[min(len(ordered) - 1, int(len(ordered) * 0.95))]))
+            float(ordered[math.ceil(len(ordered) * 0.95) - 1]))
 
 
 def _aggregate(cases: Sequence[Dict[str, Any]], evaluators: Sequence[Evaluator]) -> Dict[str, float]:

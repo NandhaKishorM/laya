@@ -333,9 +333,10 @@ def main() -> int:
     if bounded:
         schema = {"type": "object", "properties": {"field": {"type": "integer",
                                                              "minimum": 3, "maximum": 7}}}
-        for score, want in ((3, 3), (5, 5), (7, 7)):
-            got = S.answers_to_json({"field": {"type": "score", "score": score}}, schema)
-            check("projection/minimum + argmax for score %d" % score, got, {"field": want})
+        # `score` is the 0-based level index, so a level L is reported as score = L - minimum.
+        for level, want in ((3, 3), (5, 5), (7, 7)):
+            got = S.answers_to_json({"field": {"type": "score", "score": level - 3}}, schema)
+            check("projection/minimum + round(score) for level %d" % level, got, {"field": want})
 
     noul = re.search(r"a boolean is `noul >= ([\d.]+)`", text)
     check_true("projection/sentence about a boolean parses", noul is not None,

@@ -211,7 +211,11 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
             if probs:
                 idx = max(range(len(probs)), key=lambda i: float(probs.get(str(i), probs.get(i, 0.0))))
             else:
-                idx = int(round(float(answer.get("score", 0.0)))) - int(f.minimum or 0)
+                # `score` is the expected 0-based level index (what
+                # DecisionModel._decode_answers reports), so `minimum`
+                # goes straight back on top; subtracting it here would
+                # cancel the `+ minimum` below and drop the offset.
+                idx = int(round(float(answer.get("score", 0.0))))
             values[f.name] = int(f.minimum or 0) + idx
         else:  # choice
             label = str(answer.get("choice"))

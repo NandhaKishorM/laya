@@ -96,6 +96,13 @@ check("project/false noul",
       answers_to_json({"x": {"type": "noul", "noul": 0.2}},
                       {"type": "object", "properties": {"x": {"type": "boolean"}}})["x"],
       False)
+# `score` stays the 0-based level index when probabilities are absent (a cached/replayed
+# decision, or a runner that reports only the score), so the value is minimum + round(score).
+SCORE_SCHEMA = {"type": "object", "properties": {"severity": {"type": "integer", "minimum": 3, "maximum": 7}}}
+for bare_score, want_level in ((0, 3), (2.4, 5), (4, 7)):
+    check("project/bare score %s offsets minimum" % bare_score,
+          answers_to_json({"severity": {"type": "score", "score": bare_score}}, SCORE_SCHEMA)["severity"],
+          want_level)
 
 
 # --------------------------------------------------------------- rejections

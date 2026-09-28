@@ -99,9 +99,9 @@ For a future evaluation of the built-in Swedish triage preset, use
 of `refund`, `technical_help`, `billing_question`, `information`, `cancellation` or `other`;
 `is_urgent` and `refund_requested` as booleans; `frustration` as a score from 0 to 3; and
 `churn_risk` as a boolean for an expressed intention or conditional threat to leave. Have a
-Swedish support specialist review the target definitions, label cases independently, and
-adjudicate disagreements before evaluating; keep any cases used to revise wording out of the
-held-out evaluation set.
+Swedish support specialist review the target definitions. Then obtain independent labels for the
+cases and adjudicate disagreements before evaluating; keep any cases used to revise wording out
+of the held-out evaluation set.
 The churn question is deliberately separate from category: a technical problem can
 include a cancellation threat without becoming a cancellation request.
 The urgency rubric describes concrete impact and deadline conditions at each level;

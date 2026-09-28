@@ -416,8 +416,12 @@ class LayaTaskGuard:
         is_safe = len(violations) == 0
 
         if not is_safe and self.action == "raise":
+            if self.language == "sv":
+                message = "Laya upptäckte en överträdelse av skyddsreglerna: %s" % list(violations.keys())
+            else:
+                message = "Laya task guardrail policy violation detected: %s" % list(violations.keys())
             raise LayaTaskGuardError(
-                f"Laya task guardrail policy violation detected: {list(violations.keys())}",
+                message,
                 violations=violations,
                 raw_decision=res,
             )

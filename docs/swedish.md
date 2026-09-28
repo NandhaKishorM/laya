@@ -116,6 +116,8 @@ guard = LayaTaskGuard(language="sv-SE")
 Anpassade frågor lämnas som de är. Se guiderna för [LangChain/LangGraph](langchain.md) och
 [CrewAI](crewai.md) för resten av integrationen. Standardmeddelandet vid avvisning visas på
 svenska när språket är valt; ett eget `rejection_message` behålls som det är.
+Med `action="raise"` visas även undantagets sammanfattning på svenska; maskinnycklarna i
+`violations` ändras inte.
 
 ### Välj agent i ett CrewAI-team
 

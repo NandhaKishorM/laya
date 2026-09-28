@@ -173,7 +173,7 @@ _STOP = {
 # users commonly type without Swedish characters.
 _SHORT_SWEDISH_WORDS = {
     "åtkomst", "atkomst", "lösenord", "losenord", "fakturan", "betalningen", "inloggningen",
-    "glömt", "glomt", "behöver", "behover", "återbetalning", "aterbetalning", "kvitto",
+    "glömt", "glomt", "behöver", "behover", "återbetalning", "aterbetalning", "kvitto", "kvittot",
     "spårningen", "sparningen", "inställningen", "installningen", "felmeddelande",
     "abonnemanget",
 }

@@ -31,6 +31,10 @@ env var                    meaning                                        defaul
 ``LAYA_MAX_CONCURRENT``    cap on requests past auth at once; excess      16
                            gets 503 (see below)
 ``LAYA_MAX_TOKEN_BUDGET``  cap on per-request max_len / head_max_len       8192
+``LAYA_NORMALISE_STATE``   reorder dict state/instructions to a fixed      1
+                           field order (scalar fields first, structured
+                           instructions ``question``-first), so hash-ordered
+                           client maps cannot change answers run to run
 =========================  ============================================  =========
 
 ``LAYA_DEVICE`` is a preference, not a guarantee: an ``Agent`` that asks for a
@@ -120,6 +124,73 @@ def _resolve_model(model: Optional[str]) -> Optional[str]:
     except Exception:
         return None
     return key if key in _KNOWN_MODELS else None
+
+
+def _is_scalar(value) -> bool:
+    """A leaf value: rendered as one JSON token run, not a nested structure."""
+    return value is None or isinstance(value, (str, int, float, bool))
+
+
+def _normalise_state(state):
+    """Reorder a dict state deterministically: scalar-valued fields first, container
+    fields after, each group key-sorted; nested dicts and dicts inside lists likewise.
+
+    A JSON object's key order carries no meaning, but the prompt it renders into is
+    positional: the same fields with ``user_request`` after a long ``available_tools``
+    list measurably change the answers (an applicability noul was observed falling from
+    ~0.9 to ~0.01 when the request text moved behind the catalogue it is judged against).
+    Clients that build state from hash-ordered maps -- Java's ``Map.of`` randomises its
+    iteration order per JVM run -- therefore get different answers run to run for byte-
+    identical intent. Pinning one order at the server boundary makes every arrival order
+    answer the same. Scalar-first puts the operative text before the context collections,
+    which is also the layout the Jev judge-input convention uses (question/answer before
+    context/tool_calls). ``LAYA_NORMALISE_STATE=0`` restores raw arrival order where a
+    client means to control it.
+    """
+    if isinstance(state, dict):
+        scalars = sorted((k, v) for k, v in state.items() if _is_scalar(v))
+        containers = sorted((k, v) for k, v in state.items() if not _is_scalar(v))
+        return {k: _normalise_state(v) for k, v in scalars + containers}
+    if isinstance(state, list):
+        return [_normalise_state(v) for v in state]
+    return state
+
+
+def _normalise_instructions(instructions):
+    """Reorder a structured (dict) instruction deterministically: the ``question`` key
+    first when present, the rest key-sorted.
+
+    Same rationale as :func:`_normalise_state`: hash-ordered client maps randomise which
+    of question/inspect/focus renders first, and the position of the operative question
+    moves noul values by up to ~0.3. Plain-text instructions pass through untouched.
+    Sorting alone would put the question last (focus < inspect < question), which
+    measurably flattens the very discrimination the question exists to make, so
+    ``question`` is pinned first instead of relying on the alphabet.
+    """
+    if not isinstance(instructions, dict):
+        return instructions
+    ordered = {}
+    if "question" in instructions:
+        ordered["question"] = instructions["question"]
+    ordered.update(sorted((k, v) for k, v in instructions.items() if k != "question"))
+    return ordered
+
+
+def _normalise_questions(questions):
+    """Normalise structured instructions across a questions dict, leaving criteria alone.
+
+    Criteria order is protocol semantics -- choice options, score levels and noul
+    true/false carry their declared order into the scoring head -- so it is preserved
+    exactly as the client sent it. Only the free-form instruction objects, whose key
+    order is an accident of the client's map implementation, are pinned.
+    """
+    normalised = {}
+    for qid, qdef in questions.items():
+        if isinstance(qdef, dict) and isinstance(qdef.get("instructions"), dict):
+            qdef = dict(qdef)
+            qdef["instructions"] = _normalise_instructions(qdef["instructions"])
+        normalised[qid] = qdef
+    return normalised
 
 
 def _resolve_max_concurrent() -> int:
@@ -343,6 +414,10 @@ def create_app(router: Optional[Any] = None):
     if router is None:
         router = build_router()
     api_key = os.environ.get("LAYA_API_KEY") or None
+    # See _normalise_state: pin one field order so hash-ordered client maps cannot
+    # change answers run to run. Read once here, like the key, so tests can flip it
+    # per app instance.
+    normalise_state = _env_bool("LAYA_NORMALISE_STATE", True)
 
     # Inference is synchronous torch, and a CPU call takes hundreds of milliseconds to
     # seconds, so it must not run on the event loop: one request would stall every
@@ -480,6 +555,9 @@ def create_app(router: Optional[Any] = None):
             raise HTTPException(status_code=400, detail="request body must be an object with a 'questions' field")
         state = body.get("state")
         questions = body["questions"]
+        if normalise_state:
+            state = _normalise_state(state)
+            questions = _normalise_questions(questions)
         _check_request_limits(state, questions)
         model = _resolve_model(body.get("model"))
         max_budget_cap = _resolve_max_token_budget()

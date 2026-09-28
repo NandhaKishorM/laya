@@ -92,11 +92,12 @@ questions and answer labels.
 Published research describes larger Swedish support-email corpora from a telecom company, including
 51,682 emails with 36 company-defined topics and a later 43,523-customer-email subset. The papers
 describe the data and experiments, but I found no downloadable corpus in their publication pages.
-Their company-specific topic or response-time labels also do not provide gold labels for Laya's
-triage questions. They are useful evidence that suitable Swedish support text has existed, but not
-a dataset this project can currently evaluate against: [Borg et al. (2020), *Predicting e-Mail
-Response Time in Corporate Customer Support*](https://doi.org/10.5220/0009347303050314) and
-[Borg & Ahlstrand (2021), *Detecting Non-routine Customer Support E-Mails*](https://doi.org/10.5220/0010396203870394).
+The 43,523-email study also removed Swedish stop words from the message text. The company-specific
+topic or response-time labels do not provide gold labels for Laya's triage questions. These corpora
+show that Swedish support text has existed, but they are not datasets this project can currently
+evaluate against: [Borg et al. (2020), *Predicting e-Mail Response Time in Corporate Customer
+Support*](https://doi.org/10.5220/0009347303050314) and [Borg & Ahlstrand (2021), *Detecting
+Non-routine Customer Support E-Mails*](https://doi.org/10.5220/0010396203870394).
 There is no safe one-to-one remapping by category name: `teknik` roughly overlaps with
 `technical_help` and `uppsägning` with `cancellation`, but diagnostic `fakturering` combines cases
 that the preset separates into `refund` and `billing_question`; `försäljning` only partly overlaps

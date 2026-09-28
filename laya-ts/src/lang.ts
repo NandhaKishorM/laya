@@ -77,6 +77,16 @@ const STOP: Record<string, Set<string>> = {
     "delle", "dello", "degli", "agli", "alle", "col"]),
   nl: new Set(["het", "een", "van", "is", "op", "te", "dat", "niet", "met", "voor", "zijn", "aan",
     "door", "maar", "ook", "worden", "deze", "naar", "wordt"]),
+  // Keep Swedish routing in parity with Python. Distinctive words help ASCII-normalised ticket text;
+  // shared Nordic words are tracked separately so Danish and Norwegian are not named Swedish.
+  sv: new Set(["jag", "är", "och", "inte", "att", "från", "till", "behöver", "får", "skulle", "ska",
+    "vill", "måste", "också", "dessa", "detta", "säger", "upp", "utan", "mitt", "min", "om",
+    "kommer", "här", "två", "vi", "nästa", "gör", "göra", "hjälp", "hjälpa", "mig",
+    "återbetalning", "återbetala", "faktura", "gång", "gånger", "hittar", "inställningen",
+    "inställningarna", "lösenord", "när", "öppnar", "spårningen", "aterbetalning", "aterbetala",
+    "behover", "fel", "ganger", "hjalp", "hjalpa", "installningen", "installningarna", "kraschar",
+    "kvittot", "losenord", "nar", "oppnar", "paket", "skicka", "sparningen", "tva", "uppdaterats",
+    "blivit", "debiterade", "appen"]),
   ro: new Set(["și", "să", "este", "sunt", "care", "pentru", "din", "dar", "după", "până", "fără",
     "ale", "lui", "în", "fost", "acum", "vreau", "trebuie", "foarte", "acest", "această",
     "acesta", "aceasta", "mi", "ți", "vă", "nu"]),
@@ -137,7 +147,18 @@ const SHARED_WORDS: Set<string> = (() => {
   for (const [w, n] of counts) if (n > 1) out.add(w);
   return out;
 })();
+// Danish and Norwegian share many common words with Swedish; they can add score but cannot name sv alone.
+const NORDIC_OVERLAP_WORDS = new Set(["hej", "ja", "nej", "jo", "tack", "mig", "min", "om", "kommer", "får", "skulle", "vi"]);
+for (const word of NORDIC_OVERLAP_WORDS) SHARED_WORDS.add(word);
 const EN_ONLY_WORDS = new Set([...STOP["en"]].filter((w) => !SHARED_WORDS.has(w)));
+
+// Short support fragments need a narrower vocabulary than the general four-word language guess.
+// Generic words such as "fel" and "hjälp" are deliberately omitted from this subset.
+const SHORT_SWEDISH_WORDS = new Set([
+  "åtkomst", "atkomst", "lösenord", "losenord", "fakturan", "betalningen", "inloggningen",
+  "glömt", "glomt", "behöver", "behover", "återbetalning", "aterbetalning", "kvitto", "kvittot",
+  "spårningen", "sparningen", "inställningen", "installningen", "felmeddelande", "abonnemanget",
+]);
 
 // JS `\w` is ASCII-only, so Python's `[^\W\d_]` needs the Unicode classes spelled out (Nl/No are in Python's `\w`).
 const WORD_RE = /[\p{L}\p{Nl}\p{No}]+/gu;
@@ -298,8 +319,13 @@ export function latinProfile(text: string): LatinProfile {
   }
   const diacRate = diac / Math.max(1, lowered.length);
   const nonEnglish = diacRate >= NON_EN_DIACRITIC_RATE;
+  const nordicOverlap = words.some((w) => NORDIC_OVERLAP_WORDS.has(w)) &&
+    !words.some((w) => EN_ONLY_WORDS.has(w));
+  if (words.length > 1 && words.length < 4 && words.some((w) => SHORT_SWEDISH_WORDS.has(w))) {
+    return { language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
+  }
   if (words.length < 4) {
-    return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
+    return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap };
   }
   const scores: Record<string, number> = {};
   for (const [lg, sw] of Object.entries(STOP)) {
@@ -320,12 +346,16 @@ export function latinProfile(text: string): LatinProfile {
   let lang: string | null = null;
   if (bestLg && best >= Math.max(2, en + 2)) {
     lang = bestLg;
+  } else if (bestLg === "sv" && words.includes("inte") && words.includes("kan") &&
+      ["kan", "jag", "vi"].includes(words[0]) && en <= 1) {
+    // Short login requests like "kan inte logga in" contain one English-shaped token (`in`).
+    lang = bestLg;
   } else if (bestLg && nonEnglish && best >= Math.max(2, en)) {
     lang = bestLg;
   } else if (en && (!nonEnglish || englishRescuedByWords(wordSet, diacRate))) {
     lang = "en";
   }
-  return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
+  return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish || (lang === null && nordicOverlap) };
 }
 
 export function guessLatinLanguage(text: string): string | null {

@@ -320,7 +320,7 @@ def moderation_questions(language: str = "en") -> Dict:
             },
             "harassment": {
                 "type": "noul",
-                "instructions": "Riktar sig `post` mot eller trakasserar en viss person?",
+                "instructions": "Innehåller `post` angrepp eller trakasserier riktade mot en viss person?",
             },
             "threat": {
                 "type": "noul",
@@ -336,7 +336,7 @@ def moderation_questions(language: str = "en") -> Dict:
                 "criteria": [
                     "inget regelbrott: vanligt och relevant inlägg",
                     "lindrigt regelbrott: otrevlig ton eller utanför ämnet, utan angrepp på någon",
-                    "allvarligt regelbrott: riktade förolämpningar, trakasserier eller spam",
+                    "allvarligt regelbrott: riktade förolämpningar, trakasserier eller spam som riktas mot en viss person",
                     "mycket allvarligt regelbrott: hot, hatpropaganda eller uppmaning till våld",
                 ],
             },

@@ -1,8 +1,22 @@
 # Använd Laya på svenska
 
-Laya kan routa svenska ärenden till den flerspråkiga modellen och har färdiga svenska frågor
-för supporttriage, mejl, skyddsräcken, moderering och modellval. Ange `sv-SE` när texten säkert
-är svenska; automatisk språkidentifiering är en heuristik och kan vara osäker på korta texter.
+Laya kan routa svenska ärenden till den flerspråkiga modellen och har färdiga frågepaket på
+svenska för supporttriage, mejl, skydd mot promptinjektion, moderering och modellval. Ange `sv-SE`
+när texten säkert är svenska; automatisk språkidentifiering är en heuristik och kan vara osäker
+på korta texter.
+
+Installera grundpaketet med:
+
+```bash
+python -m pip install laya
+```
+
+För integrationerna, installera respektive tillval:
+
+```bash
+python -m pip install "laya[langchain]" "laya[crewai]"  # LangChain/LangGraph och CrewAI
+python -m pip install "laya[mcp]"                       # MCP-server
+```
 
 ## Supporttriage i Python
 
@@ -65,16 +79,35 @@ guard = LayaTaskGuard(language="sv-SE")
 Anpassade frågor lämnas som de är. Se guiderna för [LangChain/LangGraph](langchain.md) och
 [CrewAI](crewai.md) för resten av integrationen.
 
+## MCP
+
+Med Laya MCP-servern anger du `preset`, ett JSON-objekt i `state` och språkkoden `lang`.
+Triagefrågorna läser texten från fältet `message`:
+
+```json
+{
+  "preset": "triage",
+  "state": {
+    "message": "Jag har debiterats två gånger. Kan ni återbetala den ena?"
+  },
+  "lang": "sv-SE"
+}
+```
+
+Svaret innehåller strukturerade värden och sannolikheter. Följ guiden för
+[MCP-servern](../README.md#mcp-server-optional) för anslutning.
+
 ## Språkidentifiering och kvalitet
 
 `lang="sv-SE"` gör modellvalet deterministiskt när anroparen redan vet att texten är svenska.
-Utan en sådan hint försöker Laya känna igen språket från texten. Kort text som bara består av
+Utan en sådan språkhint försöker Laya känna igen språket från texten. Kort text som bara består av
 gemensamma nordiska ord kan routas till flerspråksmodellen utan att språkheuristiken kan avgöra
 om den är svenska eller danska.
 
 Den svenska supportutvärderingen i repot består av 30 syntetiska exempel och är ett
 utvecklingsunderlag, inte ett representativt eller oberoende kvalitetstest. Resultaten visar
-bland annat att churn-bedömningen varierar tydligt med frågeformuleringen. Använd inte dessa
-siffror som produktionsgaranti. Läs [utvärderingsrapporten](https://github.com/NandhaKishorM/laya/blob/main/research/evals/README.md#swedish-support-diagnostic)
+bland annat att bedömningen av uppsägningsrisk varierar tydligt med frågeformuleringen. Använd
+inte dessa siffror som produktionsgaranti. Läs
+[utvärderingsrapporten](https://github.com/NandhaKishorM/laya/blob/main/research/evals/README.md#swedish-support-diagnostic)
 för mätvärden, felanalys och begränsningar; MASSIVE-resultaten där mäter språkroutern på
 röstassistentdata, inte kvaliteten på svensk supporttriage.

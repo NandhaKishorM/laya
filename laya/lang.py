@@ -123,9 +123,11 @@ _STOP = {
     "sv": {"jag", "är", "och", "inte", "att", "från", "till", "behöver", "får", "skulle", "ska",
            "vill", "måste", "också", "dessa", "detta", "säger", "upp", "utan", "mitt", "min", "om",
            "kommer", "här", "två", "vi", "nästa", "gör", "göra",
+           "hjälp", "hjälpa", "mig", "återbetalning", "återbetala", "faktura", "gång", "gånger",
+           "hittar", "inställningen", "inställningarna", "lösenord", "när", "öppnar", "spårningen",
            # Common spellings from ticket systems that strip Swedish diacritics.
-           "aterbetalning", "aterbetala", "behover", "fel", "faktura", "ganger", "hjalp", "hjalpa",
-           "hittar", "installningen", "installningarna", "kraschar", "kvittot", "losenord", "nar",
+           "aterbetalning", "aterbetala", "behover", "fel", "ganger", "hjalp", "hjalpa",
+           "installningen", "installningarna", "kraschar", "kvittot", "losenord", "nar",
            "oppnar", "paket", "skicka", "sparningen", "tva", "uppdaterats", "blivit", "debiterade",
            "appen"},
     # Romanian words that its Romance neighbours do not share, so adding `ro` cannot steal a

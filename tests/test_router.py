@@ -731,8 +731,17 @@ for text in ["Om ni inte kan få tillbaka de raderade filerna i dag avslutar jag
     check("latin_lang/swedish is named " + text, guess_latin_language(text), "sv")
     check("route/swedish uses multilingual " + text, _r_lat.route(text).model, "multilingual")
     check("route/swedish detection reports sv " + text, _r_lat.route(text)["detection"]["language"], "sv")
-# Common ticketing pipelines strip å/ä/ö. Distinctive Swedish words should still identify the
-# language across billing, account, technical and delivery support, even without diacritics.
+# Common Swedish support phrasing should identify the language across billing, account, technical
+# and delivery messages, both with and without Swedish diacritics.
+for text in ["Kan ni hjälpa mig?", "Min faktura är fel", "Jag behöver hjälp med betalningen",
+             "Kan ni skicka kvittot igen?", "Jag vill byta lösenord",
+             "Appen kraschar när jag öppnar inställningarna",
+             "Var hittar jag inställningen för tvåfaktorsinloggning?",
+             "Vi har debiterats två gånger för mars",
+             "Var är mitt paket? Spårningen har inte uppdaterats"]:
+    check("latin_lang/swedish support is named " + text, guess_latin_language(text), "sv")
+    check("route/swedish support uses multilingual " + text,
+          _r_lat.route(text).model, "multilingual")
 for text in ["min faktura ar fel", "jag behover hjalp med betalningen",
              "kan ni skicka kvittot igen", "jag vill byta losenord",
              "appen kraschar nar jag oppnar installningarna",

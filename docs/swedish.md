@@ -114,6 +114,25 @@ Triagefrågorna läser texten från fältet `message`:
 
 Svaret innehåller strukturerade värden och sannolikheter. Följ guiden för
 [MCP-servern](https://github.com/NandhaKishorM/laya#mcp-server-optional) för anslutning.
+Triage-svaret behåller samma stabila nycklar som Python-integrationen, till exempel
+`answers.intent.choice == "refund"`. Översätt dem i MCP-klienten när de visas för användaren:
+
+```python
+intent_labels_sv = {
+    "refund": "Återbetalning",
+    "technical_help": "Tekniskt problem",
+    "billing_question": "Fakturafråga",
+    "information": "Information",
+    "cancellation": "Uppsägning eller nedgradering",
+    "other": "Annat ärende",
+}
+
+intent_key = result["answers"]["intent"]["choice"]
+intent_label = intent_labels_sv.get(intent_key, "Annat ärende")
+```
+
+MCP-resultatet innehåller också frågornas sannolikheter. Klienten kan använda dem för att visa
+osäkerhet eller skicka tveksamma ärenden vidare till en människa.
 
 ## Språkidentifiering och kvalitet
 

@@ -157,7 +157,10 @@ MCP-svaret använder samma nycklar som Python-integrationen, till exempel
 `answers.intent.choice == "refund"`. Översätt dem i MCP-klienten när de visas för användaren:
 
 ```python
-intent_labels_sv = laya.triage_labels("sv-SE")
+# result är laya_preset-svaret, avkodat till ett Python-objekt i MCP-klienten.
+from laya import triage_labels
+
+intent_labels_sv = triage_labels("sv-SE")
 intent_key = result["answers"]["intent"]["choice"]
 intent_label = intent_labels_sv.get(intent_key, "Annat ärende")
 ```

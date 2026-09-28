@@ -121,17 +121,25 @@ _PRESET_LABELS = {
     }
 }
 
+_PRESET_LABEL_ALIASES = {"model_router": "router"}
+
 
 def preset_labels(preset: str, language: str = "en") -> Dict[str, str]:
     """Display labels for stable question and choice keys in a built-in preset.
 
     The returned keys are machine identifiers; values are suitable for a localized UI.
-    Regional language tags such as ``"sv-SE"`` are accepted.
+    Regional language tags such as ``"sv-SE"`` are accepted. The MCP preset name
+    ``"model_router"`` is accepted as an alias for ``"router"``.
     """
     language = _preset_language(language)
-    if not isinstance(preset, str) or preset.strip().lower() not in _PRESET_LABELS:
+    if not isinstance(preset, str):
         raise ValueError("preset must be one of %s" % ", ".join(sorted(_PRESET_LABELS)))
-    return dict(_PRESET_LABELS[preset.strip().lower()][language])
+    name = preset.strip().lower()
+    name = _PRESET_LABEL_ALIASES.get(name, name)
+    if name not in _PRESET_LABELS:
+        valid_names = sorted(set(_PRESET_LABELS) | set(_PRESET_LABEL_ALIASES))
+        raise ValueError("preset must be one of %s" % ", ".join(valid_names))
+    return dict(_PRESET_LABELS[name][language])
 
 
 def triage_questions(language: str = "en") -> Dict:

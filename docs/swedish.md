@@ -74,6 +74,7 @@ triageetiketter = laya.preset_labels("triage", "sv-SE")
 print(triageetiketter["refund"])  # Återbetalning
 ```
 
+För router-presetet fungerar både namnen `"router"` (CLI/SDK) och `"model_router"` (MCP).
 `triage_labels("sv-SE")` finns kvar som ett bakåtkompatibelt genvägs-API för triageetiketter.
 
 Egna frågedefinitioner och kategoribeskrivningar ändras inte automatiskt. Översätt dem själv

@@ -70,7 +70,16 @@ check("route: common reason is translated in Swedish", cli._swedish_route_reason
       "Engelsk text med latinskt alfabet")
 check("route: translated reason keeps diagnostic detail in Swedish",
       cli._swedish_route_reason("non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it"),
-      "Icke-latinskt skriftsystem: arabic, 100% of letters; den engelska modellen kan inte läsa texten")
+      "Icke-latinskt skriftsystem (arabic, 100% av bokstäverna); den engelska modellen kan inte läsa texten")
+for source, expected in [
+    ("no letters detected in state; using default (english)",
+     "Ingen text att språkidentifiera; standardmodell: english"),
+    ("Latin script, language not identified and no non-English letters; using default (english)",
+     "Latinsk text utan identifierat språk eller tydliga bokstäver som inte är engelska; standardmodell: english"),
+    ("Latin script, language not identified but 12% non-English letters; not safe for the English checkpoint",
+     "Latinsk text med oidentifierat språk och 12% bokstäver som inte är engelska; olämpligt för den engelska modellen"),
+]:
+    check("route: Swedish reason template " + source[:24], cli._swedish_route_reason(source), expected)
 
 # --------------------------------------------------------------------- full prediction
 code, out, err, stub = run_cli(["--predict", "Refactor this service"])

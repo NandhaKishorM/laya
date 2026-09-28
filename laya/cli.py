@@ -152,7 +152,7 @@ def _swedish_route_reason(reason):
         return exact[reason]
     prefixes = (
         ("no letters detected in state; using default (", "Ingen text att språkidentifiera; standardmodell: "),
-        ("non-Latin script (", "Icke-latinskt skriftsystem: "),
+        ("non-Latin script (", "Icke-latinskt skriftsystem ("),
         ("Latin script but language looks like ", "Latinsk text som verkar vara "),
         ("Latin script, language not identified but ", "Latinsk text med oidentifierat språk och "),
         ("Latin script, language not identified and no non-English letters; using default (",
@@ -179,9 +179,12 @@ def _swedish_route_reason(reason):
                 ("the English checkpoint cannot read it", "den engelska modellen kan inte läsa texten"),
                 (", not English", ", inte engelska"),
                 ("; not safe for the English checkpoint", "; olämpligt för den engelska modellen"),
+                ("; using default (", "; standardmodell: "),
+                ("of letters", "av bokstäverna"),
+                ("non-English letters", "bokstäver som inte är engelska"),
             ):
                 remainder = remainder.replace(source, target)
-            return translated + remainder
+            return translated + remainder.rstrip(")")
     return reason
 
 

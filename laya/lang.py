@@ -122,7 +122,12 @@ _STOP = {
     # ASCII-normalising ticket pipeline without treating one stray Nordic letter as the only hint.
     "sv": {"jag", "är", "och", "inte", "att", "från", "till", "behöver", "får", "skulle", "ska",
            "vill", "måste", "också", "dessa", "detta", "säger", "upp", "utan", "mitt", "min", "om",
-           "kommer", "här", "två", "vi", "nästa", "gör", "göra", "kan"},
+           "kommer", "här", "två", "vi", "nästa", "gör", "göra",
+           # Common spellings from ticket systems that strip Swedish diacritics.
+           "aterbetalning", "aterbetala", "behover", "fel", "faktura", "ganger", "hjalp", "hjalpa",
+           "hittar", "installningen", "installningarna", "kraschar", "kvittot", "losenord", "nar",
+           "oppnar", "paket", "skicka", "sparningen", "tva", "uppdaterats", "blivit", "debiterade",
+           "appen"},
     # Romanian words that its Romance neighbours do not share, so adding `ro` cannot steal a
     # French/Spanish/Italian/Portuguese state: `la`, `o`, `un`, `de`, `pe`, `ca` are deliberately
     # left out for that reason, and the diacritic signal below carries the rest.
@@ -421,9 +426,11 @@ def latin_profile(text: str) -> Dict[str, object]:
     if best_lg and best >= max(2, en + 2):
         # a non-English language needs a clear margin over English function words
         lang = best_lg
-    elif best_lg == "sv" and best >= 2 and best > en:
-        # Short Swedish support requests such as "kan inte logga in" can contain the English
-        # token `in`; two Swedish hits and a lead over English are enough to route multilingual.
+    elif (best_lg == "sv" and "inte" in words and "kan" in words
+          and words[0] in {"kan", "jag", "vi"} and en <= 1):
+        # Short login requests such as "kan inte logga in" carry a distinctive Swedish phrase
+        # but also one English-shaped token (`in`). Do not treat `kan` alone as Swedish: it is
+        # common in Danish and Norwegian too.
         lang = best_lg
     elif best_lg and non_english and best >= max(2, en):
         # Needs two hits here too. One shared function word ("para" in Turkish text) named Spanish

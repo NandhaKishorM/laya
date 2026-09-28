@@ -731,9 +731,20 @@ for text in ["Om ni inte kan få tillbaka de raderade filerna i dag avslutar jag
     check("latin_lang/swedish is named " + text, guess_latin_language(text), "sv")
     check("route/swedish uses multilingual " + text, _r_lat.route(text).model, "multilingual")
     check("route/swedish detection reports sv " + text, _r_lat.route(text)["detection"]["language"], "sv")
+# Common ticketing pipelines strip å/ä/ö. Distinctive Swedish words should still identify the
+# language across billing, account, technical and delivery support, even without diacritics.
+for text in ["min faktura ar fel", "jag behover hjalp med betalningen",
+             "kan ni skicka kvittot igen", "jag vill byta losenord",
+             "appen kraschar nar jag oppnar installningarna",
+             "var hittar jag installningen for tva faktorsinloggning",
+             "vi har blivit debiterade tva ganger for mars",
+             "var ar mitt paket sparningen har inte uppdaterats"]:
+    check("latin_lang/ascii swedish support is named " + text, guess_latin_language(text), "sv")
+    check("route/ascii swedish support uses multilingual " + text,
+          _r_lat.route(text).model, "multilingual")
 # Short login failures often contain English technical vocabulary and can arrive without Swedish
 # diacritics. Swedish `kan` + `inte` must outweigh the incidental English token `in`.
-for text in ["Kan inte logga in", "kan inte logga in", "Jag kan inte logga in"]:
+for text in ["Kan inte logga in", "kan inte logga in", "Jag kan inte logga in", "Vi kan inte logga in"]:
     check("latin_lang/short swedish login is named " + text, guess_latin_language(text), "sv")
     check("route/short swedish login uses multilingual " + text,
           _r_lat.route(text).model, "multilingual")
@@ -745,6 +756,8 @@ check("route/english login stays english",
       _r_lat.route("I cannot login to my account").model, "english")
 check("latin_lang/danish login is not called swedish",
       guess_latin_language("Jeg kan ikke logge inn"), None)
+check("latin_lang/danish account login is not called swedish",
+      guess_latin_language("Jeg kan ikke logge ind på min konto"), None)
 # Two non-English-letter words is a running non-English vocabulary, not one loanword: the rescue
 # does not fire even with English function words present.
 check("latin_lang/two diacritic words are not one loanword",

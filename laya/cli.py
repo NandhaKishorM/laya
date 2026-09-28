@@ -4,6 +4,7 @@
     laya "Refactor this service" --predict              # full answers, loads the checkpoint
     laya                                                # interactive mode
     laya "Mein Konto wurde zweimal belastet" --lang de  # explicit language
+    laya "Jag har debiterats två gånger" --preset triage --lang sv-SE  # Swedish triage
     laya "My payment failed twice" --model ml           # pin a checkpoint, by name or alias
     laya "My payment failed twice" --preset triage      # a ready-made question preset
     laya --batch tickets.txt --predict                  # a file of requests, one per line
@@ -80,7 +81,7 @@ def build_parser():
     parser.add_argument("--model", type=model_name, metavar="NAME",
                         help="force a checkpoint instead of auto-routing: a checkpoint name or any of "
                              "core's aliases, in any casing, or 'auto' to route it (the default)")
-    parser.add_argument("--lang", help="force a language, e.g. en or de, instead of detecting it")
+    parser.add_argument("--lang", help="force a language, e.g. sv-SE, en or de, instead of detecting it")
     parser.add_argument("--task", help="force a typed-decisions workflow instead of detecting it")
     parser.add_argument("--preset", choices=sorted(PRESETS), metavar="NAME",
                         help="answer a ready-made question preset (%s) instead of the router questions; implies --predict"

@@ -375,6 +375,24 @@ def test_health_reports_cpu_fallback_counters(monkeypatch):
     assert "out of memory" in fb["english"]["last_reason"], fb
 
 
+def test_models_lists_checkpoints(monkeypatch):
+    client, _ = _client(monkeypatch)
+    r = client.get("/v1/models")
+    assert r.status_code == 200
+    names = [m["name"] for m in r.json()["models"]]
+    # exactly the names _resolve_model honours as explicit checkpoints
+    assert names == ["english", "multilingual", "typed-decisions"]
+    for m in r.json()["models"]:
+        assert m["description"]
+
+
+def test_models_requires_auth_when_key_set(monkeypatch):
+    client, _ = _client(monkeypatch, api_key="s3cret")
+    assert client.get("/v1/models").status_code == 401
+    ok = client.get("/v1/models", headers={"Authorization": "Bearer s3cret"})
+    assert ok.status_code == 200
+
+
 def test_helpers():
     assert _resolve_model("multilingual") == "multilingual"
     assert _resolve_model("convaiinnovations/laya-multilingual") == "multilingual"

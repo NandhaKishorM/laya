@@ -5,8 +5,8 @@ API -- ``choice`` / ``score`` / ``noul`` answers and a ``{input_tokens,
 output_tokens}`` usage block -- so a client written against Jev (for example the
 `hs-jev` Haskell client) can point its ``baseUrl`` at this server and keep
 working unchanged. All this module adds is the HTTP surface Laya itself does not
-ship: a ``POST /v1/systemone`` route, an optional bearer check, and a health
-probe.
+ship: a ``POST /v1/systemone`` route, a ``GET /v1/models`` listing, an optional
+bearer check, and a health probe.
 
 Configuration is entirely via environment variables so the same entry point
 serves a laptop dev run and a systemd unit:
@@ -84,6 +84,15 @@ DEFAULT_MAX_TOKEN_BUDGET = 8192
 _PUBLISHED_MODEL_IDS = {
     "convaiinnovations/laya-multilingual": "multilingual",
     "convaiinnovations/laya-typed-decisions": "typed-decisions",
+}
+
+# What ``GET /v1/models`` advertises: the three checkpoints the Router understands, in
+# the shape of Jev's ModelMetadata (name/description; ``release_date`` is omitted because
+# a checkpoint has no single release timestamp, and the Java SDK maps absence to null).
+_MODEL_DESCRIPTIONS = {
+    "english": "421M-parameter English checkpoint of convaiinnovations/laya",
+    "multilingual": "322M-parameter multilingual checkpoint of convaiinnovations/laya",
+    "typed-decisions": "421M-parameter checkpoint tuned for the built-in typed-decision workflows",
 }
 
 
@@ -421,6 +430,12 @@ def create_app(router: Optional[Any] = None):
             "checkpoint_devices": checkpoint_devices,
             "cpu_fallbacks": fallbacks,
         }
+
+    @app.get("/v1/models")
+    def models(authorization: Optional[str] = Header(default=None)) -> Dict[str, Any]:
+        _check_auth(authorization)
+        return {"models": [{"name": name, "description": desc}
+                           for name, desc in _MODEL_DESCRIPTIONS.items()]}
 
     @app.post("/v1/systemone")
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):

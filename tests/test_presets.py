@@ -112,6 +112,18 @@ check_true("triage/Swedish churn question separates intent from terms questions"
            and "uppsägningsvillkor" in laya.triage_questions("sv")["churn_risk"]["instructions"])
 check("triage/Swedish churn polarity is explicit",
       sorted(laya.triage_questions("sv")["churn_risk"]["criteria"]), ["false", "true"])
+check_true("triage/Swedish frustration separates tone from issue severity",
+           "inte hur allvarligt själva problemet är" in
+           laya.triage_questions("sv")["frustration"]["instructions"])
+check("triage/Swedish frustration has four distinct increasing anchors",
+      laya.triage_questions("sv")["frustration"]["criteria"],
+      ["ingen frustration uttrycks: kunden är lugn och saklig",
+       "lätt frustration: viss oro eller otålighet, men tonen är fortsatt saklig",
+       "tydlig frustration: kunden uttrycker irritation eller missnöje",
+       "stark frustration: kunden uttrycker stor ilska eller använder starka uttryck"])
+check("triage/English frustration remains unchanged",
+      laya.triage_questions("en")["frustration"]["criteria"],
+      ["calm and neutral", "concerned but civil", "clearly annoyed", "very angry or using strong language"])
 
 if FAIL:
     print("\n%d failed, %d passed" % (len(FAIL), len(PASS)))

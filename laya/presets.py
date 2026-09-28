@@ -66,12 +66,15 @@ def triage_questions(language: str = "en") -> Dict:
             },
             "frustration": {
                 "type": "score",
-                "instructions": "Hur frustrerad verkar kunden vara i `message`?",
+                "instructions": (
+                    "Hur mycket frustration uttrycker kunden i tonen i `message`? Bedöm kundens "
+                    "ordval och ton, inte hur allvarligt själva problemet är."
+                ),
                 "criteria": [
-                    "lugn och neutral",
-                    "orolig men saklig",
-                    "tydligt irriterad",
-                    "mycket arg eller använder starka uttryck",
+                    "ingen frustration uttrycks: kunden är lugn och saklig",
+                    "lätt frustration: viss oro eller otålighet, men tonen är fortsatt saklig",
+                    "tydlig frustration: kunden uttrycker irritation eller missnöje",
+                    "stark frustration: kunden uttrycker stor ilska eller använder starka uttryck",
                 ],
             },
             "refund_requested": {

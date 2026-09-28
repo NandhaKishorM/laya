@@ -179,6 +179,9 @@ check("triage_questions/Swedish instruction is localized",
 check("triage_questions/Swedish choice keys remain stable",
       sorted(sv_triage["intent"]["criteria"]),
       ["billing_question", "cancellation", "information", "other", "refund", "technical_help"])
+check("triage_questions/Swedish billing includes plans",
+      sv_triage["intent"]["criteria"]["billing_question"],
+      "fråga om faktura, abonnemangsplan eller betalningssätt")
 check("triage_questions/Swedish keeps the message state field", state_field(sv_triage), "message")
 try:
     laya.triage_questions("de")

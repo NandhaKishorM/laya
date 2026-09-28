@@ -43,7 +43,7 @@ def triage_questions(language: str = "en") -> Dict:
                 "criteria": {
                     "refund": "återbetalning eller rättelse av en dubbel debitering",
                     "technical_help": "tekniskt fel, driftstopp eller problem med en integration",
-                    "billing_question": "fråga om faktura, betalning eller betalningssätt",
+                    "billing_question": "fråga om faktura, abonnemangsplan eller betalningssätt",
                     "information": "allmän information, priser eller instruktioner",
                     "cancellation": "vill säga upp tjänsten eller byta till en lägre plan",
                     "other": "inget av alternativen passar",

@@ -69,6 +69,26 @@ class MetricsHook extends BaseHook {
 setDefaultHooks([new MetricsHook()]);  // addDefaultHook(...) appends; clearDefaultHooks() resets
 ```
 
+## Localized question presets
+
+Built-in presets accept `"en"` (the default) or `"sv"`. Language tags such as `"sv-SE"` are
+accepted, while question and choice keys stay stable for application logic. `presetLabels` returns
+Swedish display labels for those keys:
+
+```ts
+import { triageQuestions, triageLabels } from "laya-ts";
+
+const questions = triageQuestions("sv");
+const labels = triageLabels("sv-SE");
+const out = await agent.predict({ message: "Jag har debiterats två gånger." }, questions);
+console.log(labels[out.answers.intent]);
+```
+
+The same language argument is available on `emailQuestions(categories, language)`,
+`guardQuestions(language)`, `moderationQuestions(language)`, and `routerQuestions(language)`.
+`presetLabels(preset, language)` supports `triage`, `email`, `guard`, `moderation`, and `router`.
+Custom email category labels are preserved as provided.
+
 ## Structured decisions (`decide`)
 
 Turn a JSON schema into typed values in one call — the port of Python's `laya.structured`

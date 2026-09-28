@@ -165,7 +165,12 @@ class QuestionRecorder:
         self.kwargs = kwargs
         self.questions = questions
         self.states.append(state)
-        return {"answers": {"intent": {"choice": "refund", "probabilities": {"refund": 0.9}}}}
+        return {"answers": {
+            "intent": {"choice": "refund", "probabilities": {"refund": 0.9}},
+            "is_urgent": {"noul": 0.82},
+            "churn_risk": {"noul": 0.21},
+            "refund_requested": {"noul": 0.95},
+        }}
 
 
 code, out, err, stub = run_cli(["My payment failed twice", "--preset", "triage"],
@@ -183,6 +188,8 @@ check("preset: Swedish triage output localizes question label", "Ärende" in out
 check("preset: Swedish triage output localizes choice", "Återbetalning" in out, out)
 check("preset: Swedish triage output retains probability", "p=0.900" in out, out)
 check("preset: Swedish triage output omits internal intent key", "intent" not in out, out)
+check("preset: Swedish yes/no answers use Swedish labels", "Ja (p=0.820)" in out
+      and "Nej (p=0.210)" in out, out)
 code, out, err, stub = run_cli(["Jag har debiterats två gånger", "--preset", "triage",
                                "--lang", "sv-SE", "--json"], router=QuestionRecorder())
 check("preset: Swedish JSON keeps machine question key", '"intent"' in out, out)

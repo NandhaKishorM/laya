@@ -189,7 +189,8 @@ def show_swedish_triage_answers(result):
         elif "score" in answer:
             detail = "%.2f" % answer["score"]
         elif "noul" in answer:
-            detail = "%.3f" % answer["noul"]
+            value = answer["noul"]
+            detail = "%s (p=%.3f)" % ("Ja" if value >= 0.5 else "Nej", value)
         else:
             detail = json.dumps(answer, ensure_ascii=False)
         print("%-18s: %s" % (label, detail))

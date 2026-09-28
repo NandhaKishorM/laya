@@ -95,7 +95,7 @@ Triagefrågorna läser texten från fältet `message`:
 ```
 
 Svaret innehåller strukturerade värden och sannolikheter. Följ guiden för
-[MCP-servern](../README.md#mcp-server-optional) för anslutning.
+[MCP-servern](https://github.com/NandhaKishorM/laya#mcp-server-optional) för anslutning.
 
 ## Språkidentifiering och kvalitet
 

@@ -101,6 +101,16 @@ controls. These routing examples informed the detector changes and are developme
 not an independent quality estimate. Language identification remains best-effort; pass
 `lang="sv-SE"` when the caller knows the language and needs deterministic routing.
 
+As a separate routing diagnostic, the MASSIVE test split at dataset revision
+`940fd47a81eaa7f2cc7b129674d945d618ac38c2` contains 2,974 examples each for Swedish, Danish,
+and English. The current router sent 2,554 Swedish and 1,580 Danish examples to the multilingual
+checkpoint, and all 2,974 English examples to the English checkpoint. It explicitly named Swedish
+for 901 examples; many of the remaining Swedish examples were still routed multilingual from
+non-English letters or shared Nordic wording. This voice-assistant set is a language-routing
+control, not an evaluation of support quality. Reproduce these model-free counts with
+`python research/evals/swedish_route_diagnostic.py`; the script pins the dataset revision and does
+not load model weights.
+
 Validate the file, then run it against the multilingual checkpoint:
 
 ```bash

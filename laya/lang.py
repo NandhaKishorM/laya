@@ -198,6 +198,11 @@ _NON_EN_DIACRITICS = set(
 # way), though it still counts toward the total of a language that also matched a word of its own.
 _SHARED_WORDS = {w for w in {word for words in _STOP.values() for word in words}
                  if sum(w in words for words in _STOP.values()) > 1}
+# Danish is not in `_STOP`, but several of its common words also occur in the Swedish list.
+# Do not let these words alone name a Danish sentence as Swedish; they remain useful score hits
+# when another, more distinctive Swedish word is present.
+_NORDIC_OVERLAP_WORDS = {"mig", "min", "om", "kommer", "får", "skulle", "vi"}
+_SHARED_WORDS.update(_NORDIC_OVERLAP_WORDS)
 # English function words no other list holds (`in`, `is`, `as`, `was` are shared with German,
 # Dutch and Portuguese). They alone carry the English rescue of `latin_profile`.
 _EN_ONLY_WORDS = _STOP["en"] - _SHARED_WORDS
@@ -408,9 +413,10 @@ def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
 
     Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate` and
-    `looks_non_english`. `analyse` needs the evidence and not just the verdict, because
-    "undecided" and "English" are different answers and only one of them is safe to send to the
-    English checkpoint.
+    `looks_non_english`. The latter can be true for non-English diacritics or an overlapping
+    Swedish-Danish marker even when this heuristic cannot name the language. `analyse` needs the
+    evidence and not just the verdict, because "undecided" and "English" are different answers
+    and only one of them is safe to send to the English checkpoint.
 
     A non-English language is only named when it matched at least one word that no other list
     claims: shared function words alone (`la`, `e`, `o`) identify no particular language.
@@ -421,12 +427,13 @@ def latin_profile(text: str) -> Dict[str, object]:
     diac = sum(1 for ch in lowered if ch in _NON_EN_DIACRITICS)
     diac_rate = diac / max(1, len(lowered))
     non_english = diac_rate >= NON_EN_DIACRITIC_RATE
+    nordic_overlap = bool(set(words) & _NORDIC_OVERLAP_WORDS)
     if 1 < len(words) < 4 and set(words) & _SHORT_SWEDISH_WORDS:
         return {"language": "sv", "english_hits": 0, "diacritic_rate": diac_rate,
                 "looks_non_english": non_english}
     if len(words) < 4:
         return {"language": None, "english_hits": 0, "diacritic_rate": diac_rate,
-                "looks_non_english": non_english}
+                "looks_non_english": non_english or nordic_overlap}
 
     scores = {lg: sum(1 for w in words if w in sw) for lg, sw in _STOP.items()}
     en = scores.get("en", 0)
@@ -456,7 +463,7 @@ def latin_profile(text: str) -> Dict[str, object]:
     elif en and (not non_english or _english_rescued_by_words(words, diac_rate)):
         lang = "en"
     return {"language": lang, "english_hits": en, "diacritic_rate": diac_rate,
-            "looks_non_english": non_english}
+            "looks_non_english": non_english or (lang is None and nordic_overlap)}
 
 
 def guess_latin_language(text: str) -> Optional[str]:
@@ -561,8 +568,8 @@ def _analyse_text(text: str) -> Dict[str, object]:
     lang = prof_lat["language"]
     # Undecided is not English. Treating it as English sent every Latin-script language we hold no
     # stopwords for to the checkpoint that cannot read it, silently. When nothing identifies the
-    # language, non-English letters are enough to prefer the multilingual checkpoint; text with no
-    # such letters (including short English) still goes to the English one.
+    # language, non-English letters or a shared Swedish-Danish marker can still prefer the
+    # multilingual checkpoint; text with neither signal still goes to the English one.
     undecided = lang is None
     english = lang == "en" or (undecided and not prof_lat["looks_non_english"])
     return {"script": "latin", "script_profile": prof, "language": lang,

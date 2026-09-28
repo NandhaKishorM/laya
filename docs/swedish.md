@@ -187,8 +187,11 @@ uppsägningsrisk varierar dessutom tydligt med frågeformuleringen. Använd inte
 produktionsgaranti; låt en människa granska uppsägningsrisk tills funktionen har utvärderats på
 oberoende, representativa ärenden med granskade etiketter. Läs
 [utvärderingsrapporten](https://github.com/NandhaKishorM/laya/blob/main/research/evals/README.md#swedish-support-diagnostic)
-för mätvärden, felanalys och begränsningar; MASSIVE-resultaten där mäter språkroutern på
-röstassistentdata, inte kvaliteten på triagering av svenska supportärenden.
+för mätvärden, felanalys och begränsningar. Rapporten skiljer mellan språkrouterns
+routningsresultat och MASSIVE-resultat där modellen klassificerar röstassistentfrågor; inget av
+dem mäter triagering av svenska supportärenden. En separat, explorativ jämförelse på 100 svenska
+MASSIVE-exempel gav 49 procent korrekta svar med engelsk instruktion och 53 procent med svensk
+instruktion. Det är fyra fler rätt på ett litet urval, inte belägg för en generell förbättring.
 Supportdiagnostikens sex ärendekategorier och femgradiga brådskeskala skiljer sig från
 standardfrågorna i `triage_questions()`, som har en annan ärendetaxonomi och bedömer om ärendet
 är brådskande med ett ja/nej-svar. Diagnostikens kategorimått visar därför inte hur

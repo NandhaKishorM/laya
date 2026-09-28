@@ -232,6 +232,7 @@ laya "Mein Konto wurde zweimal belastet" --lang de   # force a language instead 
 laya "My payment failed twice" --model ml            # pin a checkpoint: names, aliases and casing all resolve as the SDK resolves them
 laya "My payment failed twice" --preset triage       # answer a ready-made preset (triage, email, guard, moderation, router)
 laya "Jag har debiterats två gånger" --preset triage --lang sv-SE  # Swedish triage questions
+laya "Fakturan är fel" --preset email --lang sv-SE                # Swedish email triage
 laya --batch tickets.txt --predict                   # score a file of requests, one per line, in one batch
 cat tickets.txt | laya --batch - --predict --json    # stdin; one JSON line of answers per request
 laya "Where is my card" --questions intents.json     # answer your own questions, written in a JSON file
@@ -837,6 +838,18 @@ triage = router.predict(
 print(triage["answers"]["intent"]["choice"])  # refund
 ```
 
+Inbound email triage accepts the same language tag. The standard email categories, phishing
+criteria, and urgency levels are localized; custom category descriptions stay as provided:
+
+```python
+email_questions = laya.email_questions(language="sv-SE")
+email = router.predict(
+    {"body": "Jag känner inte igen den här länken och ombeds lämna mitt lösenord."},
+    email_questions,
+    lang="sv-SE",
+)
+```
+
 ---
 
 ## LangChain and LangGraph Integration
@@ -956,8 +969,9 @@ package:
 | `LAYA_THREADS` | (torch default) | Same as `laya.serve`: cap torch intra-op threads for CPU inference; keep it at or below the physical core count |
 | `LAYA_AUTO_TASK` | `0` | Same as `laya.serve`: `1` lets a request whose question ids match a typed-decisions workflow route to that checkpoint, which is then loaded on demand; it never joins the preload list |
 
-For Swedish support triage, call `laya_preset` with `preset="triage"` and `lang="sv-SE"`;
-the language hint both routes to the multilingual checkpoint and localizes the preset questions.
+For Swedish support triage, call `laya_preset` with `preset="triage"` or `preset="email"` and
+`lang="sv-SE"`; the language hint both routes to the multilingual checkpoint and localizes the
+preset questions.
 
 The tools return structured JSON (answers with probabilities, routing metadata, device,
 `latency_ms`). `laya_predict_batch` and `laya_route_batch` are the MCP form of

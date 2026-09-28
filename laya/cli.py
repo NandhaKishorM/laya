@@ -191,7 +191,7 @@ def resolve_questions(args):
     if args.questions:
         return load_questions(args.questions)
     if args.preset:
-        if args.preset == "triage" and args.lang:
+        if args.preset in ("email", "triage") and args.lang:
             language = args.lang.strip().lower().replace("_", "-").split("-", 1)[0]
             if language == "sv":
                 return PRESETS[args.preset](language=args.lang), PRESET_STATE_KEYS[args.preset]

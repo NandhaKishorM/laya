@@ -527,6 +527,30 @@ check(
     email_module.email_questions({"legal": "contracts"})["category"]["criteria"],
     laya.email_questions({"legal": "contracts"})["category"]["criteria"],
 )
+_email_en = laya.email_questions()
+_email_sv = laya.email_questions(language="sv-SE")
+check("email_questions/Swedish keys remain stable", sorted(_email_sv), sorted(_email_en))
+check("email_questions/Swedish category names body field",
+      _email_sv["category"]["instructions"], "Vilket team bör hantera mejlet i `body`?")
+check_true("email_questions/Swedish questions all name body",
+           all("`body`" in question["instructions"] for question in _email_sv.values()))
+check("email_questions/Swedish state field is body",
+      presets.state_field(_email_sv), "body")
+check("email_questions/Swedish security categories are translated",
+      _email_sv["category"]["criteria"]["security"],
+      "nätfiske, bedrägerier och kapade konton")
+check("email_questions/Swedish urgency keeps score levels",
+      _email_sv["urgency"]["criteria"],
+      ["ingen tidspress", "behöver uppmärksamhet snart", "hindrande problem eller fast tidsfrist"])
+check("email_questions/custom categories are preserved in Swedish",
+      laya.email_questions({"juridik": "avtal"}, language="sv")["category"]["criteria"],
+      {"juridik": "avtal"})
+try:
+    laya.email_questions(language="de")
+except ValueError:
+    check_true("email_questions/unsupported language rejected", True)
+else:
+    check_true("email_questions/unsupported language rejected", False)
 
 
 # --------------------------------- email_state owns the body budget (a `clean_email_body` control)

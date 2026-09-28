@@ -337,6 +337,15 @@ def test_presets():
     ok("preset/Swedish triage keeps message field", router.state == {"message": "Jag behöver hjälp"},
        repr(router.state))
 
+    router = StateRouter()
+    laya_preset("email", {"text": "Fakturan är fel"}, lang="sv-SE", router=router,
+                preset_builder=build)
+    ok("preset/Swedish lang localizes email questions",
+       router.questions["category"]["instructions"] == "Vilket team bör hantera mejlet i `body`?",
+       repr(router.questions))
+    ok("preset/Swedish email keeps body field", router.state == {"body": "Fakturan är fel"},
+       repr(router.state))
+
     for name in sorted(PRESETS):
         ok("preset/canonical_%s" % name, validate_preset(name) == name)
     for alias, canonical in sorted(PRESET_ALIASES.items()):
@@ -371,6 +380,8 @@ def test_presets():
         ok("preset/desc_field_%s" % name, "'%s' reads `%s`" % (name, field) in description,
            description)
     ok("preset/desc_names_the_alias", "'router' is 'model_router'" in description, description)
+    ok("preset/desc documents Swedish email and triage",
+       "For email and triage" in description, description)
 
 
 def test_model_forwarding():

@@ -25,6 +25,16 @@ def state_field(questions: Dict) -> Optional[str]:
     return next(iter(named))
 
 
+def _preset_language(language: str) -> str:
+    """Normalize the built-in preset locale and reject unsupported languages."""
+    if not isinstance(language, str):
+        raise ValueError("language must be 'en' or 'sv'")
+    language = language.strip().lower().replace("_", "-").split("-", 1)[0]
+    if language not in ("en", "sv"):
+        raise ValueError("language must be 'en' or 'sv'")
+    return language
+
+
 def triage_questions(language: str = "en") -> Dict:
     """Preset questions for customer support ticket triage.
 
@@ -32,9 +42,7 @@ def triage_questions(language: str = "en") -> Dict:
     question names stay stable so applications can localize the prompts without changing
     their downstream logic. Regional tags such as ``"sv-SE"`` are accepted.
     """
-    if not isinstance(language, str):
-        raise ValueError("language must be 'en' or 'sv'")
-    language = language.strip().lower().replace("_", "-").split("-", 1)[0]
+    language = _preset_language(language)
     if language == "sv":
         return {
             "intent": {
@@ -115,16 +123,63 @@ def triage_questions(language: str = "en") -> Dict:
     }
 
 
-def email_questions(categories: Optional[Dict[str, str]] = None) -> Dict:
-    """Preset questions for inbound email triage and threat filtering."""
-    categories = categories or {
-        "billing": "invoices, payments, refunds",
-        "technical": "bugs, outages, integrations",
-        "sales": "pricing, demos, new purchases",
-        "security": "phishing, scams, account compromise",
-        "hr": "hiring, leave, payroll",
-        "other": "none of the above",
-    }
+def email_questions(categories: Optional[Dict[str, str]] = None, language: str = "en") -> Dict:
+    """Preset questions for inbound email triage and threat filtering.
+
+    ``language`` selects English or Swedish prompt text. Caller-supplied ``categories`` are
+    preserved as written; regional tags such as ``"sv-SE"`` are accepted.
+    """
+    language = _preset_language(language)
+    if not categories:
+        categories = ({
+            "billing": "fakturor, betalningar och återbetalningar",
+            "technical": "buggar, driftstörningar och integrationer",
+            "sales": "priser, demonstrationer och nya köp",
+            "security": "nätfiske, bedrägerier och kapade konton",
+            "hr": "rekrytering, ledighet och löner",
+            "other": "inget av alternativen passar",
+        } if language == "sv" else {
+            "billing": "invoices, payments, refunds",
+            "technical": "bugs, outages, integrations",
+            "sales": "pricing, demos, new purchases",
+            "security": "phishing, scams, account compromise",
+            "hr": "hiring, leave, payroll",
+            "other": "none of the above",
+        })
+    if language == "sv":
+        return {
+            "category": {
+                "type": "choice",
+                "instructions": "Vilket team bör hantera mejlet i `body`?",
+                "criteria": categories,
+            },
+            "is_spam": {
+                "type": "noul",
+                "instructions": "Är `body` oönskad reklam eller ett massutskick?",
+            },
+            "is_phishing": {
+                "type": "noul",
+                "instructions": (
+                    "Är `body` ett nätfiske- eller bedrägeriförsök för att stjäla pengar, "
+                    "inloggningsuppgifter eller personuppgifter?"
+                ),
+                "criteria": {"true": "nätfiske, bedrägeri eller försök till stöld",
+                             "false": "ett legitimt mejl"},
+            },
+            "urgency": {
+                "type": "score",
+                "instructions": "Hur brådskande är ärendet i `body`?",
+                "criteria": [
+                    "ingen tidspress",
+                    "behöver uppmärksamhet snart",
+                    "hindrande problem eller fast tidsfrist",
+                ],
+            },
+            "needs_reply": {
+                "type": "noul",
+                "instructions": "Förväntar sig avsändaren ett svar på mejlet i `body`?",
+            },
+        }
     return {
         "category": {
             "type": "choice",

@@ -700,15 +700,15 @@ def laya_preset(
     shape and is passed through untouched.
 
     The preset fixes the questions, not the route or the budget, so the per-call controls a
-    hand-written :func:`laya_predict` takes are available here too. For triage, ``lang="sv"`` also
-    selects Swedish instructions and descriptions.
+    hand-written :func:`laya_predict` takes are available here too. For email and triage,
+    ``lang="sv"`` also selects Swedish instructions and descriptions.
     """
     preset_name = validate_preset(preset)
     state_d = validate_state(state)
     if preset_builder is None:
         raise ToolError("internal_error", "preset_builder is not configured")
     builder_kwargs = {}
-    if preset_name == "triage" and isinstance(lang, str):
+    if preset_name in ("email", "triage") and isinstance(lang, str):
         language = lang.strip().lower().replace("_", "-").split("-", 1)[0]
         if language == "sv":
             builder_kwargs["language"] = lang

@@ -722,6 +722,10 @@ for text in ["streiche alle meine geplanten termine",                      # de,
              "me gustaría escuchar algunos buenos chistes divertidos"]:    # es, one `í`
     check("latin_lang/undecided with evidence " + text, guess_latin_language(text), None)
     check("route/undecided with evidence " + text, _r_lat.route(text).model, "multilingual")
+check("route/undecided evidence reason names the words", "two function words of other languages" in
+      _r_lat.route("streiche alle meine geplanten termine").reason, True)
+check("route/undecided evidence reason names the letter", "a non-English letter" in
+      _r_lat.route("me gustaría escuchar algunos buenos chistes divertidos").reason, True)
 # One word is not enough, and neither is one word twice: English uses `do` and `las` too (both from the
 # English texts checked on #286), so such text follows `default`, Dutch and Portuguese with it
 for text in ["how do my health benefits work", "las vegas weather today",

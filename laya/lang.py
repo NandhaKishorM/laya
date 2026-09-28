@@ -429,7 +429,7 @@ def latin_profile(text: str) -> Dict[str, object]:
     diac = sum(1 for ch in lowered if ch in _NON_EN_DIACRITICS)
     diac_rate = diac / max(1, len(lowered))
     non_english = diac_rate >= NON_EN_DIACRITIC_RATE
-    nordic_overlap = bool(set(words) & _NORDIC_OVERLAP_WORDS)
+    nordic_overlap = bool(set(words) & _NORDIC_OVERLAP_WORDS) and not bool(set(words) & _EN_ONLY_WORDS)
     if 1 < len(words) < 4 and set(words) & _SHORT_SWEDISH_WORDS:
         return {"language": "sv", "english_hits": 0, "diacritic_rate": diac_rate,
                 "looks_non_english": non_english}

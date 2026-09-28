@@ -1,0 +1,198 @@
+{
+  "name": "choice_criteria_list",
+  "state": "I would like to upgrade to the enterprise plan.",
+  "serialized_state": "I would like to upgrade to the enterprise plan.",
+  "questions": {
+    "intent": {
+      "type": "choice",
+      "instructions": "Classify the intent.",
+      "criteria": [
+        "upgrade",
+        "downgrade",
+        "cancel",
+        "support"
+      ]
+    }
+  },
+  "per_question": [
+    {
+      "id": "intent",
+      "type": "choice",
+      "qtype": 0,
+      "instructions": "Classify the intent.",
+      "head_text": "choice question: Classify the intent.",
+      "options": [
+        "upgrade",
+        "downgrade",
+        "cancel",
+        "support"
+      ],
+      "input_ids": [
+        2,
+        6241,
+        2872,
+        235292,
+        51110,
+        4739,
+        573,
+        13503,
+        235265,
+        1,
+        4,
+        18100,
+        4,
+        115214,
+        4,
+        12459,
+        4,
+        2676,
+        1,
+        590,
+        1134,
+        1154,
+        577,
+        18100,
+        577,
+        573,
+        22391,
+        1780,
+        235265,
+        1
+      ],
+      "markers": [
+        10,
+        12,
+        14,
+        16
+      ]
+    }
+  ],
+  "batch": {
+    "input_ids": [
+      [
+        2,
+        6241,
+        2872,
+        235292,
+        51110,
+        4739,
+        573,
+        13503,
+        235265,
+        1,
+        4,
+        18100,
+        4,
+        115214,
+        4,
+        12459,
+        4,
+        2676,
+        1,
+        590,
+        1134,
+        1154,
+        577,
+        18100,
+        577,
+        573,
+        22391,
+        1780,
+        235265,
+        1
+      ]
+    ],
+    "attention_mask": [
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    "marker_pos": [
+      [
+        10,
+        12,
+        14,
+        16
+      ]
+    ],
+    "marker_mask": [
+      [
+        true,
+        true,
+        true,
+        true
+      ]
+    ],
+    "qtype": [
+      0
+    ]
+  },
+  "marker_axis_padded": false,
+  "logits": [
+    [
+      5.808926582336426,
+      -2.2279748916625977,
+      -2.176790952682495,
+      -1.2747193574905396
+    ]
+  ],
+  "act_logits": [
+    [
+      1330.54052734375,
+      -1583.9449462890625
+    ]
+  ],
+  "result": {
+    "model": "laya-rl-agent",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "upgrade",
+        "probabilities": {
+          "upgrade": 0.9985,
+          "downgrade": 0.0003,
+          "cancel": 0.0003,
+          "support": 0.0008
+        },
+        "confidence": 0.9908,
+        "answer_confidence": 0.9985,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 30,
+      "output_tokens": 0
+    }
+  }
+}

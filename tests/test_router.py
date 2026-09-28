@@ -759,6 +759,21 @@ for text in ["Kan inte logga in", "kan inte logga in", "Jag kan inte logga in", 
           _r_lat.route(text).model, "multilingual")
     check("route/short swedish login detection reports sv " + text,
           _r_lat.route(text)["detection"]["language"], "sv")
+# Two- and three-word Swedish support fragments do not reach the general four-word evidence
+# threshold. Only distinctly Swedish terms should name them; generic words and Nordic controls
+# remain undecided rather than being guessed as Swedish.
+for text in ["Ingen åtkomst", "Ingen atkomst", "Fakturan är fel", "Betalningen nekades",
+             "Behöver hjälp", "Behover hjalp", "Glömt lösenord", "Glomt losenord",
+             "Felmeddelande igen", "Kvitto saknas", "Inloggningen fungerar"]:
+    check("latin_lang/short Swedish support is named " + text, guess_latin_language(text), "sv")
+    check("route/short Swedish support uses multilingual " + text,
+          _r_lat.route(text).model, "multilingual")
+    check("route/short Swedish support detection reports sv " + text,
+          _r_lat.route(text)["detection"]["language"], "sv")
+for text in ["Ingen adgang", "Fakturaen feil", "Glemt passord", "Pakken forsinket",
+             "No account access", "Password forgotten"]:
+    check("latin_lang/short non-Swedish stays undecided " + text,
+          guess_latin_language(text), None)
 check("latin_lang/english login stays english",
       guess_latin_language("I cannot login to my account"), "en")
 check("route/english login stays english",

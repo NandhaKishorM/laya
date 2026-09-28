@@ -165,6 +165,18 @@ _STOP = {
            "hər", "nə", "kimi", "görə", "sonra", "əgər", "eger", "deyil", "lakin", "amma",
            "ancaq", "artıq", "artiq", "də", "isə", "həm", "yalnız", "yalniz"},
 }
+
+# Short support fragments often consist of only two or three words, so they do not reach the
+# four-token minimum used by the general language guess. These spellings are specific enough to
+# identify Swedish in that narrow case; generic words such as `fel`, `hjälp`, `paket` and `appen`
+# are deliberately not sufficient on their own. Keep ASCII-normalised variants beside the forms
+# users commonly type without Swedish characters.
+_SHORT_SWEDISH_WORDS = {
+    "åtkomst", "atkomst", "lösenord", "losenord", "fakturan", "betalningen", "inloggningen",
+    "glömt", "glomt", "behöver", "behover", "återbetalning", "aterbetalning", "kvitto",
+    "spårningen", "sparningen", "inställningen", "installningen", "felmeddelande",
+    "abonnemanget",
+}
 # Letters that ordinary English does not use. This is the signal that catches a Latin-script
 # language we hold no stopwords for at all (Romanian, Polish, Czech, Turkish, Baltic, ...),
 # which is the difference between routing it to the multilingual checkpoint and silently
@@ -409,6 +421,9 @@ def latin_profile(text: str) -> Dict[str, object]:
     diac = sum(1 for ch in lowered if ch in _NON_EN_DIACRITICS)
     diac_rate = diac / max(1, len(lowered))
     non_english = diac_rate >= NON_EN_DIACRITIC_RATE
+    if 1 < len(words) < 4 and set(words) & _SHORT_SWEDISH_WORDS:
+        return {"language": "sv", "english_hits": 0, "diacritic_rate": diac_rate,
+                "looks_non_english": non_english}
     if len(words) < 4:
         return {"language": None, "english_hits": 0, "diacritic_rate": diac_rate,
                 "looks_non_english": non_english}

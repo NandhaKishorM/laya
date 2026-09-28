@@ -189,9 +189,11 @@ oberoende, representativa ärenden med granskade etiketter. Läs
 [utvärderingsrapporten](https://github.com/NandhaKishorM/laya/blob/main/research/evals/README.md#swedish-support-diagnostic)
 för mätvärden, felanalys och begränsningar. Rapporten skiljer mellan språkrouterns
 routningsresultat och MASSIVE-resultat där modellen klassificerar röstassistentfrågor; inget av
-dem mäter triagering av svenska supportärenden. En separat, explorativ jämförelse på 100 svenska
-MASSIVE-exempel gav 49 procent korrekta svar med engelsk instruktion och 53 procent med svensk
-instruktion. Det är fyra fler rätt på ett litet urval, inte belägg för en generell förbättring.
+dem mäter triagering av svenska supportärenden. En separat, explorativ
+[jämförelse av instruktionerna](https://github.com/NandhaKishorM/laya/blob/main/research/eval/README.md#swedish-prompt-language-ablation)
+på 100 svenska MASSIVE-exempel gav 49 procent korrekta svar med engelsk instruktion och
+53 procent med svensk instruktion. Det är fyra fler rätt på ett litet urval, inte belägg för en
+generell förbättring.
 Supportdiagnostikens sex ärendekategorier och femgradiga brådskeskala skiljer sig från
 standardfrågorna i `triage_questions()`, som har en annan ärendetaxonomi och bedömer om ärendet
 är brådskande med ett ja/nej-svar. Diagnostikens kategorimått visar därför inte hur

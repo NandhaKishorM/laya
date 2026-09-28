@@ -50,17 +50,23 @@ def export_to_onnx(model_id_or_path: str, output_path: str):
     agent = Agent(model_id_or_path, compile=False, device="cpu")
     
     print("Creating dummy input tensors...")
-    # 1. Dummy tensors for tracing
-    # (batch_size=1, seq_len=16)
-    dummy_input_ids = torch.randint(0, 100, (1, 16), dtype=torch.long)
-    dummy_attention_mask = torch.ones((1, 16), dtype=torch.long)
+    # 1. Dummy tensors for tracing.
+    # The batch must be 2, not 1. With a batch of 1 the exporter cannot tell a real
+    # batch axis from a size-1 broadcast axis in the intermediates that
+    # `_DynamicMultiheadAttention` builds (`unflatten` then `permute`), so it bakes
+    # batch=1 into them while the declared graph inputs stay symbolic. The graph then
+    # loads, answers a single row, and fails on the second one inside the head's
+    # attention: `Add` gets a mask of seq_len against scores of seq_len * batch.
+    # (batch_size=2, seq_len=16)
+    dummy_input_ids = torch.randint(0, 100, (2, 16), dtype=torch.long)
+    dummy_attention_mask = torch.ones((2, 16), dtype=torch.long)
     
-    # (batch_size=1, num_markers=2)
-    dummy_marker_pos = torch.tensor([[1, 5]], dtype=torch.long)
-    dummy_marker_mask = torch.tensor([[True, True]], dtype=torch.bool)
+    # (batch_size=2, num_markers=2)
+    dummy_marker_pos = torch.tensor([[1, 5], [2, 6]], dtype=torch.long)
+    dummy_marker_mask = torch.tensor([[True, True], [True, True]], dtype=torch.bool)
     
-    # (batch_size=1)
-    dummy_qtype = torch.tensor([0], dtype=torch.long)
+    # (batch_size=2)
+    dummy_qtype = torch.tensor([0, 0], dtype=torch.long)
     
     inputs = (
         dummy_input_ids,

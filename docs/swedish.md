@@ -80,6 +80,28 @@ För frågeuppsättningen för modellval fungerar både namnen `"router"` (CLI/S
 `"model_router"` (MCP).
 `triage_labels("sv-SE")` finns kvar som ett bakåtkompatibelt genvägs-API för triageetiketter.
 
+### TypeScript
+
+TypeScript-paketet har samma språkval för sina inbyggda frågeuppsättningar. Engelska är standard;
+ange `"sv-SE"` när du vill ha svenska instruktioner och kategoribeskrivningar:
+
+```ts
+import { Agent, triageLabels, triageQuestions } from "laya-ts";
+
+const agent = await Agent.load("./model");
+const result = await agent.predict(
+  { message: "Jag har debiterats två gånger. Kan ni återbetala den ena?" },
+  triageQuestions("sv-SE"),
+);
+const labels = triageLabels("sv-SE");
+const intent = result.answers.intent;
+if (intent.type === "choice") console.log(labels[intent.choice]); // Återbetalning
+```
+
+`emailQuestions(categories, language)`, `guardQuestions(language)`,
+`moderationQuestions(language)` och `routerQuestions(language)` accepterar samma språkval.
+`presetLabels(preset, language)` ger svenska etiketter för deras stabila fråge- och valnycklar.
+
 Egna frågedefinitioner och kategoribeskrivningar ändras inte automatiskt. Översätt dem själv
 om du vill att även den texten ska vara på svenska.
 

@@ -81,7 +81,8 @@ import { triageQuestions, triageLabels } from "laya-ts";
 const questions = triageQuestions("sv");
 const labels = triageLabels("sv-SE");
 const out = await agent.predict({ message: "Jag har debiterats två gånger." }, questions);
-console.log(labels[out.answers.intent]);
+const intent = out.answers.intent;
+if (intent.type === "choice") console.log(labels[intent.choice]);
 ```
 
 The same language argument is available on `emailQuestions(categories, language)`,

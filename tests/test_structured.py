@@ -97,6 +97,22 @@ check("project/false noul",
                       {"type": "object", "properties": {"x": {"type": "boolean"}}})["x"],
       False)
 
+# A score answer's `score` is the 0-based level index (the agent's `legend` keys levels 0..k-1),
+# so the projected value is `minimum + round(score)` even when `probabilities` is absent.
+# Subtracting `minimum` and adding it back used to cancel out, returning `round(score)` for any
+# non-zero minimum.
+_shifted = {"type": "object", "properties": {"level": {"type": "integer", "minimum": 1, "maximum": 3}}}
+check("project/score without probabilities honours minimum",
+      answers_to_json({"level": {"type": "score", "score": 2.0, "confidence": 0.9}}, _shifted)["level"],
+      3)
+check("project/score index 0 maps to minimum",
+      answers_to_json({"level": {"type": "score", "score": 0.0, "confidence": 0.9}}, _shifted)["level"],
+      1)
+check("project/score with probabilities still honours minimum",
+      answers_to_json({"level": {"type": "score", "score": 2.0,
+                                 "probabilities": {"0": 0.0, "1": 0.0, "2": 1.0}}}, _shifted)["level"],
+      3)
+
 
 # --------------------------------------------------------------- rejections
 def _bad(schema):

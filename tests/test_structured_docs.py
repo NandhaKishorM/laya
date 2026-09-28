@@ -333,7 +333,9 @@ def main() -> int:
     if bounded:
         schema = {"type": "object", "properties": {"field": {"type": "integer",
                                                              "minimum": 3, "maximum": 7}}}
-        for score, want in ((3, 3), (5, 5), (7, 7)):
+        # `score` is the 0-based level index the agent reports (its `legend` keys levels 0..k-1),
+        # so the projected value is `minimum + round(score)`: index 0 -> 3, index 2 -> 5, index 4 -> 7.
+        for score, want in ((0, 3), (2, 5), (4, 7)):
             got = S.answers_to_json({"field": {"type": "score", "score": score}}, schema)
             check("projection/minimum + argmax for score %d" % score, got, {"field": want})
 

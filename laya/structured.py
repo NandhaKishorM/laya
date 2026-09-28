@@ -211,7 +211,11 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
             if probs:
                 idx = max(range(len(probs)), key=lambda i: float(probs.get(str(i), probs.get(i, 0.0))))
             else:
-                idx = int(round(float(answer.get("score", 0.0)))) - int(f.minimum or 0)
+                # `score` is the 0-based level index (the agent's expected level), so the
+                # projected value is `minimum + round(score)`. Subtracting `minimum` here and
+                # adding it back below cancelled out, returning `round(score)` for any
+                # non-zero minimum.
+                idx = int(round(float(answer.get("score", 0.0))))
             values[f.name] = int(f.minimum or 0) + idx
         else:  # choice
             label = str(answer.get("choice"))

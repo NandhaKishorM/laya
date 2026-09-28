@@ -324,7 +324,7 @@ def moderation_questions(language: str = "en") -> Dict:
             },
             "threat": {
                 "type": "noul",
-                "instructions": "Hotar `post` med våld, skada eller skrämsel?",
+                "instructions": "Innehåller `post` hot om våld eller annan skada, eller försök att skrämma någon?",
             },
             "spam": {
                 "type": "noul",

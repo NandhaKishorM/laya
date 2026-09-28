@@ -93,6 +93,9 @@ check("moderation/Swedish severity preserves the four ordered meanings",
           "allvarligt regelbrott: riktade förolämpningar, trakasserier eller spam",
           "mycket allvarligt regelbrott: hot, hatpropaganda eller uppmaning till våld",
       ])
+check("moderation/Swedish threat covers harm and intimidation naturally",
+      laya.moderation_questions("sv")["threat"]["instructions"],
+      "Innehåller `post` hot om våld eller annan skada, eller försök att skrämma någon?")
 check("router/Swedish difficulty preserves the four ordered meanings",
       laya.router_questions("sv")["difficulty"]["criteria"],
       [

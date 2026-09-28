@@ -117,6 +117,25 @@ Anpassade frågor lämnas som de är. Se guiderna för [LangChain/LangGraph](lan
 [CrewAI](crewai.md) för resten av integrationen. Standardmeddelandet vid avvisning visas på
 svenska när språket är valt; ett eget `rejection_message` behålls som det är.
 
+### Välj agent i ett CrewAI-team
+
+`LayaCrewRouter` använder en engelsk standardinstruktion. Om uppgiften och agenternas
+rollbeskrivningar är på svenska, ange även en svensk `instructions`-text:
+
+```python
+from laya.integrations.crewai import LayaCrewRouter
+
+router = LayaCrewRouter(
+    instructions="Vilken agent i teamet är bäst lämpad att utföra uppgiften?",
+)
+agenter = [
+    {"role": "Ekonom", "goal": "Analysera intäkter, kostnader och marginaler."},
+    {"role": "Utvecklare", "goal": "Bygga och felsöka programvara."},
+]
+beslut = router.route("Sammanfatta företagets senaste kvartalsresultat.", agenter)
+print(beslut.role)
+```
+
 ## MCP
 
 Med Laya MCP-servern anger du `preset`, ett JSON-objekt i `state` och språkkoden `lang`.

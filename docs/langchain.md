@@ -176,9 +176,22 @@ questions. For example:
 ```python
 sv_triage = LayaTriage(language="sv-SE")
 sv_result = sv_triage.invoke({"message": "Jag kommer inte in på kontot före mötet."})
+print(sv_result["triage"]["intent"])  # stable machine key, for example "technical_help"
+print(sv_result["triage"]["is_urgent"])  # True when the message describes a deadline or ongoing impact
+
+intent_labels_sv = {
+    "refund": "Återbetalning",
+    "technical_help": "Tekniskt problem",
+    "billing_question": "Fakturafråga",
+    "information": "Information",
+    "cancellation": "Uppsägning eller nedgradering",
+    "other": "Annat ärende",
+}
+intent_sv = intent_labels_sv.get(sv_result["triage"]["intent"], "Okänt ärende")
 ```
 
-In the Swedish triage preset, `is_urgent=True` means the message describes a deadline or
+The built-in intent keys stay English so existing integrations remain stable; map them to display
+labels in your application as above. `is_urgent=True` means the message describes a deadline or
 ongoing impact that requires prompt handling. English remains the default, and caller-supplied
 questions are used as provided.
 

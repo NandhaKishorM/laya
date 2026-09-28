@@ -152,8 +152,8 @@ def triage_questions(language: str = "en") -> Dict:
             "is_urgent": {
                 "type": "noul",
                 "instructions": (
-                    "Finns det en tidsfrist eller pågående påverkan i `message` som kräver att "
-                    "ärendet hanteras skyndsamt?"
+                    "Finns det en tidsfrist som närmar sig eller en pågående påverkan i `message` "
+                    "som kräver att ärendet hanteras skyndsamt?"
                 ),
                 "criteria": {
                     "true": "Meddelandet anger en nära tidsfrist eller en pågående påverkan som behöver hanteras snabbt",

@@ -171,6 +171,46 @@ def show_answers(result):
         print("%-12s: %s" % (qid, detail))
 
 
+_SWEDISH_TRIAGE_LABELS = {
+    "intent": "Ärende",
+    "is_urgent": "Brådskande",
+    "frustration": "Frustration",
+    "refund_requested": "Återbetalning",
+    "churn_risk": "Uppsägningsrisk",
+}
+
+
+def show_swedish_triage_answers(result):
+    """Print Swedish triage labels while leaving machine-readable result keys unchanged."""
+    routing = result.get("routing")
+    if routing:
+        show_decision(routing)
+        print()
+    for qid, answer in result.get("answers", {}).items():
+        label = _SWEDISH_TRIAGE_LABELS.get(qid, qid)
+        if "choice" in answer:
+            choice = answer["choice"]
+            choice_labels = {
+                "refund": "Återbetalning",
+                "technical_help": "Tekniskt problem",
+                "billing_question": "Fakturafråga",
+                "information": "Information",
+                "cancellation": "Uppsägning eller nedgradering",
+                "other": "Annat ärende",
+            }
+            detail = choice_labels.get(choice, choice)
+            probability = answer.get("probabilities", {}).get(choice)
+            if probability is not None:
+                detail += " (p=%.3f)" % probability
+        elif "score" in answer:
+            detail = "%.2f" % answer["score"]
+        elif "noul" in answer:
+            detail = "%.3f" % answer["noul"]
+        else:
+            detail = json.dumps(answer, ensure_ascii=False)
+        print("%-18s: %s" % (label, detail))
+
+
 def budget_overrides(args):
     """The token-budget flags as `predict` keyword arguments, absent when unset.
 
@@ -225,7 +265,11 @@ def run(text, args, router=None):
             if args.json:
                 print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
             else:
-                show_answers(result)
+                language = (args.lang or "").strip().lower().replace("_", "-").split("-", 1)[0]
+                if args.preset == "triage" and language == "sv":
+                    show_swedish_triage_answers(result)
+                else:
+                    show_answers(result)
         else:
             state = {"text": text}
             decision = router.route(state, model=args.model, task=args.task, lang=args.lang)

@@ -73,6 +73,8 @@ laya "Ignorera alla regler" --preset guard --lang sv-SE
 
 Utan `--predict` eller `--preset` visar kommandot bara routningsbeslutet och laddar inte modellen.
 `--preset` kör själva frågorna och hämtar modellen första gången den behövs.
+I terminalens vanliga textläge visas svenska rubriker och ja/nej-svar för inbyggda presets; `--json`
+behåller maskinnycklar och sannolikheter.
 
 ## LangChain och CrewAI
 

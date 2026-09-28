@@ -171,9 +171,57 @@ def show_answers(result):
         print("%-12s: %s" % (qid, detail))
 
 
-def show_swedish_triage_answers(result):
-    """Print Swedish triage labels while leaving machine-readable result keys unchanged."""
-    labels = laya.triage_labels("sv")
+_SWEDISH_PRESET_LABELS = {
+    "email": {
+        "category": "Team",
+        "is_spam": "Skräppost",
+        "is_phishing": "Nätfiske",
+        "urgency": "Brådska",
+        "needs_reply": "Svar behövs",
+        "billing": "Fakturor och betalningar",
+        "technical": "Teknisk support",
+        "sales": "Försäljning",
+        "security": "Säkerhet",
+        "hr": "Personalfrågor",
+        "other": "Annat",
+    },
+    "guard": {
+        "jailbreak": "Försök att kringgå regler",
+        "prompt_injection": "Promptinjektion",
+        "sensitive_data": "Känsliga uppgifter",
+        "harm_severity": "Skaderisk",
+        "topic": "Ämne",
+        "product_support": "Produktsupport",
+        "coding": "Programmering",
+        "general_knowledge": "Allmän kunskap",
+        "personal_advice": "Personliga råd",
+        "security_testing": "Säkerhetstestning",
+        "other": "Annat",
+    },
+    "moderation": {
+        "toxic": "Kränkande ton",
+        "harassment": "Trakasserier",
+        "threat": "Hot",
+        "spam": "Skräppost",
+        "severity": "Allvar",
+    },
+    "router": {
+        "difficulty": "Svårighetsgrad",
+        "domain": "Ämnesområde",
+        "needs_tools": "Verktyg behövs",
+        "is_sensitive": "Känsligt ärende",
+        "code": "Programmering",
+        "math_or_logic": "Matematik och logik",
+        "writing": "Skrivande",
+        "factual_lookup": "Faktasökning",
+        "data_analysis": "Dataanalys",
+        "chitchat": "Småprat",
+    },
+}
+
+
+def show_localized_answers(result, labels):
+    """Print localized labels without changing machine-readable result keys."""
     routing = result.get("routing")
     if routing:
         show_decision(routing)
@@ -194,6 +242,12 @@ def show_swedish_triage_answers(result):
         else:
             detail = json.dumps(answer, ensure_ascii=False)
         print("%-18s: %s" % (label, detail))
+
+
+def show_swedish_preset_answers(result, preset):
+    labels = (laya.triage_labels("sv") if preset == "triage"
+              else _SWEDISH_PRESET_LABELS.get(preset, {}))
+    show_localized_answers(result, labels)
 
 
 def budget_overrides(args):
@@ -251,8 +305,8 @@ def run(text, args, router=None):
                 print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
             else:
                 language = (args.lang or "").strip().lower().replace("_", "-").split("-", 1)[0]
-                if args.preset == "triage" and language == "sv":
-                    show_swedish_triage_answers(result)
+                if language == "sv" and not args.questions:
+                    show_swedish_preset_answers(result, args.preset or "router")
                 else:
                     show_answers(result)
         else:
@@ -304,8 +358,8 @@ def run_batch(lines, args, router=None):
                 else:
                     print("# %s" % (line if len(line) <= 72 else line[:69] + "..."))
                     language = (args.lang or "").strip().lower().replace("_", "-").split("-", 1)[0]
-                    if args.preset == "triage" and language == "sv":
-                        show_swedish_triage_answers(result)
+                    if language == "sv" and not getattr(args, "questions", None):
+                        show_swedish_preset_answers(result, args.preset or "router")
                     else:
                         show_answers(result)
                     print()

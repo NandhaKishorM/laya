@@ -5,20 +5,13 @@ import tempfile
 import threading
 import time
 import warnings
-from contextlib import ExitStack, nullcontext
-from contextvars import ContextVar
+from contextlib import nullcontext
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
 
 from ._compile import compile_model, independent_dims
-from .calibrate import (
-    _install_temperatures,
-    apply_calibration_payload,
-    calibration_payload,
-    fit_temperature_map,
-)
 from .common import (
     QTYPES,
     TEMP_MAX,
@@ -35,12 +28,9 @@ from .common import (
     _reuse_question_tokens,
     _disable_question_token_reuse,
     encode_text,
-    render_criterion,
     render_options,
-    resolve_lang_temperatures,
     serialize_state,
     temp_bucket,
-    unpermute_probs,
 )
 from .confidence import check_min_confidence, flag_low_confidence
 from .hooks import (
@@ -158,8 +148,7 @@ _TOKENIZERS_LOCK = threading.Lock()
 # The per-inference CPU fallback rewrites shared runtime state (device, dtype, amp) and moves the
 # model while other threads may be running their own forward, so the demotion and the restore are
 # serialised. A second request that hits OOM waits here and re-demotes only if it needs to.
-_OOM_FALLBACK_LOCK = threading.Lock()
-_BATCH_AUTOCAST_CACHE = ContextVar("laya_batch_autocast_cache", default=False)
+_OOM_FALLBACK_LOCK = threading.RLock()
 
 
 def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
@@ -209,9 +198,6 @@ def _amp_context(device, dtype, enabled: bool):
 
 
 MPS_AMP_MIN_ROWS_DEFAULT = 5
-# An unsupported autocast op fails the same way on every request. Retry that request in
-# full precision, and only turn AMP off after this many failures in a row (#351).
-_AMP_FAIL_LIMIT = 3
 
 
 def _mps_amp_min_rows() -> int:
@@ -234,17 +220,6 @@ def _cuda_amp_dtype(checkpoint_default: Optional[str]) -> torch.dtype:
         return torch.bfloat16
     return amp_dtype(checkpoint_default)
 
-def _option_count(qdef: Dict) -> int:
-    """How many options a validated question definition renders to.
-
-    Mirrors `render_options`: a choice has one option per criterion, a score one per level,
-    and a noul is always the pair [false, true].
-    """
-    if qdef.get("type") == "noul":
-        return 2
-    crit = qdef.get("criteria")
-    return len(crit) if isinstance(crit, (dict, list, tuple)) else 0
-
 
 def _start_evidence():
     """A recorder for `predict_long`: what the start-hook chain left for inference to run on.
@@ -264,18 +239,11 @@ def _start_evidence():
     inference, `states` is a snapshot of the states that reached it (`None` if the probe never ran,
     which means `predict_batch` was replaced and no hook chain was dispatched).
     """
-    evidence = {"answered": False, "states": None, "question_types": None}
+    evidence = {"answered": False, "states": None}
 
     def probe(ctx):
         evidence["answered"] = ctx.results is not None
         evidence["states"] = list(ctx.states)
-        # Snapshot only the inference schema; leave malformed questions to predict_batch's
-        # validator, and do not inspect questions when a hook has already answered the call.
-        if ctx.results is None and isinstance(ctx.questions, dict):
-            evidence["question_types"] = {
-                qid: qdef.get("type") if isinstance(qdef, dict) else None
-                for qid, qdef in ctx.questions.items()
-            }
 
     return probe, evidence
 
@@ -285,22 +253,10 @@ def _with_start_probe(hook_kwargs, probe):
     kwargs = dict(hook_kwargs)
     kwargs["on_predict_start"] = list(_as_sequence(hook_kwargs.get("on_predict_start"))) + [probe]
     return kwargs
-def _option_logits(logits, items, offset):
-    """Raw per-option logits, the rows `_decode_answers` divides by temperature.
-
-    Calibration record collection slices with this same helper, so a fitted map sees the
-    option width the decoder scales and not a second tokenization of the state.
-    """
-    return [logits[offset + j, : len(item["markers"])] for j, item in enumerate(items)]
 
 
 class Agent(HookRegistry):
-    """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions.
-
-    `dtype` is the autocast target, not the precision of every call. On MPS a call
-    autocasts only at or above `mps_amp_min_rows` rows, so `dtype` can say float16 while
-    a call runs in float32. `dtype_for(rows)` returns the precision of a call with `rows` rows.
-    """
+    """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions."""
 
     # Hooks are opt-in. `hooks`/`_hooks_mutex` defaults come from HookRegistry; the rest keep a
     # hand-built instance (`Agent.__new__` in tests) working and make an unset hook a no-op.
@@ -308,12 +264,15 @@ class Agent(HookRegistry):
     hooks_concurrent = True
     hooks_timeout = None
     _hooks_lock = None
+    # A fallback moves the shared model between devices. Instances built without __init__ use the
+    # fallback lock in _infer; normal Agents receive a private lock so unrelated checkpoints do
+    # not serialize their forwards.
+    _infer_lock = None
     model_id = None
     # Autocast is chosen per device in __init__; this default covers instances built
     # without it (for example a hand-constructed runtime in tests).
     amp_enabled = False
     mps_amp_min_rows = MPS_AMP_MIN_ROWS_DEFAULT
-    _amp_failures = 0
     # The stock forward is also used by lightweight runtimes built with __new__ in tests.
     _fast = None
     # Scoped CPU-fallback observability: how often _infer's per-request OOM fallback fired
@@ -341,7 +300,6 @@ class Agent(HookRegistry):
         hooks_raise: bool = True,
         hooks_concurrent: bool = True,
         hooks_timeout: Optional[float] = None,
-        calibration: Optional[str] = None,
     ):
         """Load a Laya checkpoint.
 
@@ -365,10 +323,6 @@ class Agent(HookRegistry):
         `Agent("convaiinnovations/laya", subfolder="multilingual")`. Only that subfolder is
         downloaded, so bundling does not cost every user the whole family.
 
-        `calibration` is an optional JSON path with `temperature` and `temperature_by_options`.
-        It is applied after the checkpoint config, so a fitted map overrides shipped scalars
-        without rewriting `model.safetensors`.
-
         `hooks` / `on_predict_start` / `on_predict_end` observe or shape every prediction; see
         `laya.hooks`. `hooks_raise=False` warns and continues when a hook fails,
         `hooks_concurrent=False` serialises hooks that are not safe to run in parallel, and
@@ -380,10 +334,8 @@ class Agent(HookRegistry):
         self.hooks_timeout = None if hooks_timeout is None else validate_timeout(hooks_timeout)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
         self._hooks_mutex = threading.Lock()
+        self._infer_lock = threading.RLock()
         self.model_id = model_id_or_path
-        # Retained so `save_calibration` can record which checkpoint the map was fitted for.
-        self.model_id_or_path = model_id_or_path
-        self.subfolder = subfolder
 
         from safetensors.torch import load_file
 
@@ -510,10 +462,17 @@ class Agent(HookRegistry):
         self.temperature_by_options = {k: clamp_temperature(v)
                                        for k, v in self.temperature_by_options_raw.items()}
 
-        # Shared with `ONNXAgent` so both backends accept the same option and produce the same
-        # confidences; see `common.resolve_lang_temperatures` for why the shape is checked before
-        # it is read.
-        self.lang_temperatures = resolve_lang_temperatures(lang_temperatures, self.temperature_raw)
+        self.lang_temperatures = {}
+        for l, cfg in (lang_temperatures or {}).items():
+            norm_l = l.split("-")[0].lower()
+            t_raw = cfg.get("temperature", self.temperature_raw)
+            if len(t_raw) != 3:
+                raise ValueError("Language override %r temperature must be a list of 3 floats" % l)
+            tbo_raw = cfg.get("temperature_by_options", {})
+            self.lang_temperatures[norm_l] = {
+                "temperature": [clamp_temperature(t) for t in t_raw],
+                "temperature_by_options": {k: clamp_temperature(v) for k, v in tbo_raw.items()}
+            }
         entries = [(k, v, self.temperature_by_options[k]) for k, v in self.temperature_by_options_raw.items()]
         entries += [("temperature[%d]" % i, t, self.temperature[i]) for i, t in enumerate(self.temperature_raw)]
         rejected = []
@@ -532,8 +491,6 @@ class Agent(HookRegistry):
                 "using %s. Treat confidence from the affected entries as uncalibrated."
                 % (TEMP_MIN, TEMP_MAX, ", ".join(rejected)),
                 RuntimeWarning, stacklevel=2)
-        if calibration:
-            self.load_calibration(calibration)
         # Autocast policy. CUDA, MPS and XPU all support fp16/bf16 autocast and the shipped
         # checkpoints are trained in reduced precision; on CUDA the checkpoint's `amp_dtype`
         # (bf16) is the default and LAYA_CUDA_AMP=fp16|bf16 overrides it. CPU bf16 is only a win
@@ -633,37 +590,6 @@ class Agent(HookRegistry):
         self.model.forward = self._fast.forward
         return True
 
-    # (rows, tokens, markers) run by `warmup()`: one row, which torch specialises into a graph of
-    # its own, and a small batch. The three sizes differ within each shape, so none are tied.
-    WARMUP_SHAPES = ((1, 64, 3), (4, 128, 5))
-
-    @torch.no_grad()
-    def warmup(self, shapes=None) -> float:
-        """Run the forward on synthetic input of each shape now and return the seconds it took.
-
-        `compile=True` traces and compiles on the first request that needs a graph (tens of
-        seconds on a GPU), and `fast=True` builds its kernels and CUDA graphs per shape bucket on
-        first use. Calling this after loading, before serving, moves that cost out of the first
-        requests. With the stock forward it is a few ordinary forward passes. `shapes` is a list
-        of (rows, tokens, markers); tokens are capped at the agent's `max_len`. Nothing is
-        returned to or recorded for any caller, and hooks do not run.
-        """
-        max_len = int(self.cfg.get("max_len", 512))
-        fill = self.tok.cls_token_id or 0
-        t0 = time.perf_counter()
-        for rows, tokens, markers in (self.WARMUP_SHAPES if shapes is None else shapes):
-            tokens = max(markers + 2, min(int(tokens), max_len))
-            self._infer({
-                "input_ids": torch.full((rows, tokens), fill, dtype=torch.long),
-                "attention_mask": torch.ones((rows, tokens), dtype=torch.long),
-                "marker_pos": torch.arange(1, markers + 1, dtype=torch.long).repeat(rows, 1),
-                "marker_mask": torch.ones((rows, markers), dtype=torch.bool),
-                "qtype": torch.zeros(rows, dtype=torch.long),
-            })
-        if self.device.type == "cuda":
-            torch.cuda.synchronize(self.device)
-        return time.perf_counter() - t0
-
     def deaccelerate(self):
         """Restore the stock forward."""
         if self._fast is not None:
@@ -703,28 +629,14 @@ class Agent(HookRegistry):
         'NoneType' object has no attribute 'items'`, `KeyError: 'bool'`, or a `selected index k out
         of range` raised inside the model for a question that ended up with no options at all.
         """
-        if qid is None:
-            raise ValueError("question id must not be None")
-        if not isinstance(qid, (str, int)) or (isinstance(qid, str) and not qid.strip()):
-            raise ValueError("question id must be a non-empty string, got %r" % (qid,))
         if not isinstance(qdef, dict):
             raise ValueError("question %r: definition must be a dict, got %s"
                              % (qid, type(qdef).__name__))
         t = qdef.get("type")
-        if not isinstance(t, str) or t not in QTYPES:
+        if t not in QTYPES:
             raise ValueError("question %r: unknown type %r; use one of %s" % (qid, t, sorted(QTYPES)))
         if "instructions" not in qdef:
             raise ValueError("question %r: no 'instructions'; add the text the model should answer" % (qid,))
-        ins = qdef["instructions"]
-        if ins is None:
-            raise ValueError("question %r: 'instructions' must not be None; add the text the model should answer" % (qid,))
-        if isinstance(ins, str) and not ins.strip():
-            raise ValueError("question %r: 'instructions' must not be empty; add the text the model should answer" % (qid,))
-        if isinstance(ins, (list, dict)) and not ins:
-            raise ValueError("question %r: 'instructions' must not be empty; add the text the model should answer" % (qid,))
-        if not isinstance(ins, (str, dict, list, int, float)):
-            raise ValueError("question %r: 'instructions' must be a string, dict, or list, got %s"
-                             % (qid, type(ins).__name__))
         crit = qdef.get("criteria")
         if t == "choice":
             if not isinstance(crit, (dict, list)):
@@ -812,18 +724,6 @@ class Agent(HookRegistry):
                     "reads; any other key was silently dropped and replaced with the defaults. If you "
                     "want the answer worded differently, keep 'criteria' keyed 'true'/'false' and set "
                     "'labels' instead." % (qid, sorted(keys)))
-        if "option_order" in qdef:
-            # Slot s shows option `order[s]`. Anything other than a permutation of the option
-            # indices would either drop an option or show one twice, so reject it here rather
-            # than let it reach the encoder.
-            order = qdef["option_order"]
-            n = _option_count(qdef)
-            if (not isinstance(order, (list, tuple))
-                    or len(order) != n
-                    or sorted(int(i) for i in order if isinstance(i, int) and not isinstance(i, bool)) != list(range(n))):
-                raise ValueError(
-                    "question %r: 'option_order' must be a permutation of range(%d) -- one slot per "
-                    "option, each option once -- got %r" % (qid, n, order))
         if "labels" in qdef:
             if t != "noul":
                 raise ValueError("question %r: 'labels' is only supported for noul questions" % (qid,))
@@ -852,8 +752,6 @@ class Agent(HookRegistry):
         q = {"t": t, "ins": ins, "crit": crit}
         if "labels" in qdef:
             q["labels"] = qdef["labels"]
-        if "option_order" in qdef:
-            q["option_order"] = [int(i) for i in qdef["option_order"]]
         return q
 
     def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict],
@@ -881,29 +779,12 @@ class Agent(HookRegistry):
         items = []
         for qid in ids:
             q = internal[qid]
-            seq, markers, stats, state_stats = build_sequence(self.tok, state, q, max_len, head_max_len,
-                                                              option_order=q.get("option_order"),
-                                                              truncate_left=truncate_left, state_ids=state_ids,
-                                                              return_stats=True, return_truncation_stats=True)
-            n_opts = len(render_options(q))
-            if len(markers) != n_opts:
-                # The markers are placed at absolute positions and `build_sequence` then drops the
-                # ones past `max_len`, so this is about the question fitting in the sequence --
-                # `head_max_len` is how much of it the options were given, and `max_len` is the
-                # ceiling that dropped them. Naming only `head_max_len` pointed at the wrong knob
-                # in both directions: lowering it shortens the option block and can make the
-                # call succeed, while raising it makes the overflow worse.
-                #
-                # The count reported is the markers that SURVIVED, not `len(seq)`: `build_sequence`
-                # truncates to `max_len` first, so `len(seq)` is always exactly `max_len` here and
-                # would state the ceiling as though it were the requirement.
-                raise ValueError(
-                    "question %r: only %d of its %d option markers fit in max_len=%d with "
-                    "head_max_len=%d spent on the question; lower head_max_len, raise max_len, "
-                    "or use fewer options"
-                    % (qid, len(markers), n_opts, max_len, head_max_len))
-            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]], "options": stats,
-                          "state_stats": state_stats})
+            seq, markers, stats = build_sequence(self.tok, state, q, max_len, head_max_len,
+                                                 truncate_left=truncate_left, state_ids=state_ids,
+                                                 return_stats=True)
+            if len(markers) != len(render_options(q)):
+                raise ValueError("question %r options exceed head_max_len=%d" % (qid, head_max_len))
+            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]], "options": stats})
         return items
 
     def _amp_enabled_for(self, rows: int) -> bool:
@@ -918,16 +799,6 @@ class Agent(HookRegistry):
             return False
         return True
 
-    def dtype_for(self, rows: int) -> torch.dtype:
-        """Precision that a forward pass with `rows` question rows runs in.
-
-        `dtype` is the autocast target, set once at load time. Whether a forward autocasts is
-        decided per call: on MPS only at or above `mps_amp_min_rows` rows. This returns `dtype`
-        when a forward with `rows` rows autocasts, and `torch.float32` when it does not. A
-        `predict` call runs one row per question.
-        """
-        return self.dtype if self._amp_enabled_for(rows) else torch.float32
-
     def _infer(self, b: Dict):
         """Run the forward pass under autocast, degrading gracefully on OOM or unsupported autocast."""
         use_amp = self._amp_enabled_for(b["input_ids"].shape[0])
@@ -939,12 +810,10 @@ class Agent(HookRegistry):
                 % (self._fast.max_len, b["input_ids"].shape[1], self._fast.max_len)
             )
 
-        def run(enabled=None):
-            # Recomputed inside run() so a fallback that moves to CPU takes effect on the
-            # retry. A disabled gate never enters torch.autocast at all. `enabled=False`
-            # retries one request in full precision without reading the agent's AMP flag.
-            if enabled is None:
-                enabled = self._amp_enabled_for(b["input_ids"].shape[0])
+        def run():
+            # Recomputed inside run() so a fallback that disables amp (or moves to CPU) takes
+            # effect on the retry. A disabled gate never enters torch.autocast at all.
+            enabled = self._amp_enabled_for(b["input_ids"].shape[0])
             dims = independent_dims() if self._compiled else nullcontext()
             with _amp_context(self.device, self.dtype, enabled), dims:
                 return self.model(
@@ -955,62 +824,53 @@ class Agent(HookRegistry):
                     b["qtype"].to(self.device),
                 )
 
-        try:
-            out = run()
-        except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
-            low = str(e).lower()
-            # An OOM is `torch.cuda.OutOfMemoryError` or says so in its message. The bare
-            # "cuda" substring used to be accepted too, so any CUDA-shaped RuntimeError (a
-            # shape, assert or kernel error) silently and permanently demoted the agent.
-            if self.device.type != "cpu" and (isinstance(e, torch.cuda.OutOfMemoryError) or "memory" in low):
-                print("Warning: GPU memory exceeded during inference. Retrying this request on CPU...")
-                # Scoped, not permanent: the demotion used to rewrite device/dtype/amp and move
-                # the model for the life of the process, so one oversized request left every
-                # later call ~10-15x slower on CPU. Demote under the lock, answer this request
-                # on CPU, then put the runtime back the way it was.
-                with _OOM_FALLBACK_LOCK:
-                    # Recorded on entry, under the same lock as the demotion: the count and
-                    # reason must be readable by /health without racing a concurrent fallback.
-                    self.cpu_fallback_count += 1
-                    self.last_fallback_reason = str(e)
-                    held_device, held_dtype, held_amp = self.device, self.dtype, self.amp_enabled
-                    had_fast = self._fast is not None
-                    # Only our batch scope can retain BF16 copies after this failed forward.
-                    # Release them before moving the model and retrying on CPU.
-                    if self.device.type == "cuda" and _BATCH_AUTOCAST_CACHE.get():
-                        torch.clear_autocast_cache()
-                    # FastLaya keeps copied CUDA weights and replaces model.forward.  Move
-                    # the model first without that replacement, or the retry would still
-                    # execute on the failed CUDA fast path.
-                    self.deaccelerate()
-                    self.device = torch.device("cpu")
-                    self.dtype = torch.float32
-                    self.amp_enabled = False
-                    self.model.to(self.device)
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-                    try:
-                        return run()
-                    finally:
-                        self._restore_runtime(held_device, held_dtype, held_amp, had_fast)
-            if use_amp and self.device.type in ("mps", "cpu"):
-                # Not every MPS/CPU build implements autocast for every op. Retry this
-                # request in full precision. One miss must not turn AMP off; a build that
-                # lacks the op fails the same way every time, so after a short streak the
-                # process drops to full precision instead of paying for two forwards (#351).
-                try:
-                    return run(enabled=False)
-                finally:
-                    self._amp_failures += 1
-                    if self._amp_failures >= _AMP_FAIL_LIMIT:
-                        print("Warning: autocast failed %d times in a row. Disabling mixed precision."
-                              % self._amp_failures)
-                        self.amp_enabled = False
+        # Hold the instance lock across the first forward and any CPU retry. Otherwise another
+        # thread can prepare CUDA inputs, then observe this request moving the shared model to CPU
+        # and fail with a device-mismatch error. The fallback lock remains separate so its
+        # observability and cross-agent transition bookkeeping stay serialized as before.
+        infer_lock = getattr(self, "_infer_lock", None) or _OOM_FALLBACK_LOCK
+        with infer_lock:
+            try:
+                return run()
+            except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
+                low = str(e).lower()
+                # An OOM is `torch.cuda.OutOfMemoryError` or says so in its message. The bare
+                # "cuda" substring used to be accepted too, so any CUDA-shaped RuntimeError (a
+                # shape, assert or kernel error) silently and permanently demoted the agent.
+                if self.device.type != "cpu" and (isinstance(e, torch.cuda.OutOfMemoryError) or "memory" in low):
+                    print("Warning: GPU memory exceeded during inference. Retrying this request on CPU...")
+                    # Scoped, not permanent: the demotion used to rewrite device/dtype/amp and move
+                    # the model for the life of the process, so one oversized request left every
+                    # later call ~10-15x slower on CPU. Demote under the lock, answer this request
+                    # on CPU, then put the runtime back the way it was.
+                    with _OOM_FALLBACK_LOCK:
+                        # Recorded on entry, under the same lock as the demotion: the count and
+                        # reason must be readable by /health without racing a concurrent fallback.
+                        self.cpu_fallback_count += 1
+                        self.last_fallback_reason = str(e)
+                        held_device, held_dtype, held_amp = self.device, self.dtype, self.amp_enabled
+                        had_fast = self._fast is not None
+                        # FastLaya keeps copied CUDA weights and replaces model.forward.  Move
+                        # the model first without that replacement, or the retry would still
+                        # execute on the failed CUDA fast path.
+                        self.deaccelerate()
+                        self.device = torch.device("cpu")
                         self.dtype = torch.float32
-            raise
-        else:
-            self._amp_failures = 0
-            return out
+                        self.amp_enabled = False
+                        self.model.to(self.device)
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                        try:
+                            return run()
+                        finally:
+                            self._restore_runtime(held_device, held_dtype, held_amp, had_fast)
+                if use_amp and self.device.type in ("mps", "cpu"):
+                    # Not every MPS/CPU build implements autocast for every op. Drop to full
+                    # precision once rather than failing the request.
+                    self.amp_enabled = False
+                    self.dtype = torch.float32
+                    return run()
+                raise
 
     def _forward(self, b: Dict):
         """Run the model on a collated batch, with the GPU->CPU OOM fallback, and return numpy outputs."""
@@ -1021,7 +881,6 @@ class Agent(HookRegistry):
                         internal: Dict[str, Dict], offset: int, lang: Optional[str] = None) -> Dict[str, Any]:
         """Turn one state's logit rows (starting at `offset`) into typed answers."""
         answers = {}
-        raw_rows = _option_logits(logits, items, offset)
         for j, qid in enumerate(ids):
             r = offset + j
             q = internal[qid]
@@ -1031,12 +890,9 @@ class Agent(HookRegistry):
             if lang and lang.split("-")[0].lower() in self.lang_temperatures:
                 l_cfg = self.lang_temperatures[lang.split("-")[0].lower()]
                 t_scale = l_cfg["temperature_by_options"].get(temp_bucket(qt, k), l_cfg["temperature"][qt])
-            z = raw_rows[j] / t_scale
+            z = logits[r, :k] / t_scale
             p = np.exp(z - z.max())
             p = p / p.sum()
-
-            # The row comes back in slot order; everything below indexes by option.
-            p = unpermute_probs(p, q.get("option_order"))
 
             # `confidence` means one thing for `noul` (max(p)) and another for `choice` and
             # `score` (normalized entropy), and only the first is the quantity temperature
@@ -1061,15 +917,7 @@ class Agent(HookRegistry):
                 answers[qid] = {
                     "type": "score",
                     "score": round(exp_score, 4),
-                    # A legend maps an index to the text of a level, and the keys are already
-                    # strings. `render_criterion` rather than `str`: a dict or list level then
-                    # comes back as the same JSON text the model was shown, where `str` produced
-                    # a Python repr. A numeric scale passed as `[1, 2, 3]` used to come back as
-                    # `{"0": 1, "1": 2, "2": 3}`, so the response's JSON types depended on what
-                    # the caller happened to pass; `structured` stringifies every level it builds
-                    # and `probabilities` stringifies its keys right below, so this was the one
-                    # path that did not.
-                    "legend": {str(i): render_criterion(c) for i, c in enumerate(q["crit"])},
+                    "legend": {str(i): c for i, c in enumerate(q["crit"])},
                     "probabilities": {str(i): round(float(v), 4) for i, v in enumerate(p)},
                     "confidence": round(confidence_from_probs(p, k), 4),
                     "answer_confidence": ans_conf,
@@ -1138,7 +986,6 @@ class Agent(HookRegistry):
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
         ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self,
                              max_len=max_len, head_max_len=head_max_len)
-        amp_stack = ExitStack()
         try:
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             states, questions = ctx.states, ctx.questions
@@ -1178,18 +1025,6 @@ class Agent(HookRegistry):
                         internal = {qid: self._to_internal(questions[qid]) for qid in ids}
                         chunk = batch_size if (batch_size and batch_size > 0) else len(states)
 
-                        # Keep inner _infer weight casts cached across CUDA eager forwards.
-                        # A disabled outer scope leaves encoding/decoding in their usual
-                        # precision and inherits the caller's cache_enabled setting. If the
-                        # caller already owns a CUDA autocast scope, its cache is sufficient.
-                        if (chunk < len(states) and getattr(self, "device", None) is not None
-                                and self.device.type == "cuda" and self.amp_enabled
-                                and self._fast is None and not self._compiled
-                                and not torch.is_autocast_enabled()):
-                            amp_stack.enter_context(torch.autocast(device_type="cuda", dtype=self.dtype,
-                                                                   enabled=False))
-                            amp_stack.callback(_BATCH_AUTOCAST_CACHE.reset, _BATCH_AUTOCAST_CACHE.set(True))
-
                         # Per-call token-budget overrides (a start hook may have set them).
                         overrides: Dict[str, int] = {}
                         if ctx.max_len is not None:
@@ -1223,21 +1058,7 @@ class Agent(HookRegistry):
                                     n_tokens = int(att[row:row + nrows].sum())
                                     answers = self._decode_answers(logits, act, items, ids, internal, row,
                                                                   **({"lang": lang} if lang else {}))
-                                    # Truncation is a token budget that moves with max_len, head_max_len
-                                    # and each question's head, so only build_sequence knows it (#174).
-                                    stats = [item["state_stats"] for item in items]
-                                    dropped = max(s["state_tokens_dropped"] for s in stats)
-                                    usage = {
-                                        "input_tokens": n_tokens,
-                                        "output_tokens": 0,
-                                        "state_tokens": stats[0]["state_tokens"],
-                                        # worst case: the questions share one state, not one head budget
-                                        "state_tokens_dropped": dropped,
-                                        "truncated": dropped > 0,
-                                        "truncated_questions": [
-                                            qid for qid, s in zip(ids, stats) if s["truncated"]
-                                        ],
-                                    }
+                                    usage = {"input_tokens": n_tokens, "output_tokens": 0}
                                     # Only when a question actually lost options to the head
                                     # budget: an answer chosen from 42 distinguishable spans of
                                     # 58 has a ceiling the caller cannot otherwise see, and a
@@ -1255,7 +1076,6 @@ class Agent(HookRegistry):
                             results.extend(window_results)
                         ctx.results = results
         except BaseException as exc:
-            amp_stack.close()
             ctx.error = exc
             try:
                 dispatch(active, "on_error", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
@@ -1264,7 +1084,6 @@ class Agent(HookRegistry):
                 exc.__context__ = hook_exc
             raise
         finally:
-            amp_stack.close()
             ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
             if ctx.results is not None:
                 ctx.usage = aggregate_usage(ctx.results)
@@ -1349,21 +1168,7 @@ class Agent(HookRegistry):
         the `N` a start hook rewrote them to), and `0` when a start hook answered the document, or
         left no states to score, before any window was read -- on either path, so a cached answer
         never reads as a window the model read.
-
-        Across several windows the truncation keys are combined like every other `usage` field:
-        `truncated`, `state_tokens` and `state_tokens_dropped` are summed (so `truncated` is the
-        number of windows that were cut, and the token counts include the overlap), and
-        `truncated_questions` is the last window's list. The two can disagree: when only an
-        earlier window was cut, `truncated` is above 0 and `truncated_questions` is empty. A
-        window is cut when it is larger than the room a question's head leaves, from a `window`
-        above the default or a start hook that narrows `max_len` / `head_max_len`. Test
-        `usage["truncated"] > 0` here, not `is True`.
         """
-        if state is None:
-            raise TypeError("state must not be None; pass a string, dict, or list")
-        if not isinstance(questions, dict):
-            raise TypeError("questions must be a dict of question id -> definition, got %s"
-                            % type(questions).__name__)
         if aggregate != "auto":
             raise ValueError("predict_long: only aggregate='auto' is supported")
         hook_kwargs = {"hooks": hooks, "on_predict_start": on_predict_start,
@@ -1452,13 +1257,12 @@ class Agent(HookRegistry):
             return {"model": "laya-rl-agent", "answers": {},
                     "usage": {**aggregate_usage(results), "windows": 0}}
 
-        question_types = evidence["question_types"]
-        if question_types is None:       # a replacement predict_batch may not dispatch hooks
-            question_types = {qid: self._to_internal(qdef)["t"] for qid, qdef in questions.items()}
+        ids = list(questions.keys())
+        internal = {qid: self._to_internal(questions[qid]) for qid in ids}
         answers = {}
-        for qid, qtype in question_types.items():
+        for qid in ids:
             per = [r["answers"][qid] for r in results]
-            if qtype == "noul":
+            if internal[qid]["t"] == "noul":
                 # Evidence anywhere: the strongest window decides. Its own P(true) and confidence
                 # (and act) are carried through, so the fields stay mutually consistent.
                 best = max(range(len(per)), key=lambda j: float(per[j]["noul"]))
@@ -1475,26 +1279,13 @@ class Agent(HookRegistry):
                                  "token_end": min(starts[best] + budget, len(state_ids)),
                                  "count": len(results)}
             answers[qid] = ans
-        # Aggregate usage generically so fields predict_batch may grow later (e.g. the
-        # fallback counters from #351) are propagated, not silently dropped: sum numeric
-        # fields across windows, merge the per-question records, then record the window
-        # count.
-        # A per-question field has to be merged rather than replaced. `usage["options"]` is a
-        # dict keyed by question id, set only on the windows where option spans actually
-        # collapsed, so replacing it left the caller holding whichever collapsing window came
-        # last. The deciding window is the most confident one, not the last one, so that could
-        # report a collapse for a window that did not decide while the deciding window's own
-        # record was gone.
+        # Aggregate usage generically so fields predict_batch may grow later (e.g. the fallback
+        # counters from #351) are propagated, not silently dropped: sum numeric fields across
+        # windows, carry any non-numeric field through, then record the window count.
         usage: Dict[str, Any] = {}
         for r in results:
             for key, val in r["usage"].items():
-                prev = usage.get(key)
-                if isinstance(val, (int, float)):
-                    usage[key] = (prev if isinstance(prev, (int, float)) else 0) + val
-                elif isinstance(val, dict) and isinstance(prev, dict):
-                    usage[key] = {**prev, **val}
-                else:
-                    usage[key] = val
+                usage[key] = (usage.get(key, 0) + val) if isinstance(val, (int, float)) else val
         usage["output_tokens"] = 0
         usage["windows"] = len(results)
         return {"model": "laya-rl-agent", "answers": answers, "usage": usage}
@@ -1532,11 +1323,6 @@ class Agent(HookRegistry):
             `tokens_per_option` -- because an answer chosen among 42 distinguishable spans of
             58 has a ceiling that is the budget's and not the model's. Questions whose options
             all survive are absent, so a request that collapses nothing is unchanged.
-
-            `usage` also reports whether the state fit: `truncated`, `state_tokens`,
-            `state_tokens_dropped`, and `truncated_questions` (the questions whose head left
-            too little room). A caller that cares whether the answer saw the whole state should
-            read `usage["truncated"]` rather than estimate from the length of what it sent.
 
         To score many states at once, see `predict_batch`, which shares forward passes across them.
         """
@@ -1601,44 +1387,6 @@ class Agent(HookRegistry):
 
     predict = system_one
 
-    def fit_temperatures(self, records, compute_ece: bool = False, seed: int = 0) -> Dict[str, Any]:
-        """Fit per-bucket temperatures from CPU records and store them on this agent.
-
-        `records` are `(qtype, logits, target, k)`. Build them with
-        `laya.calibrate.records_from_labeled` when you have labeled forwards; this method
-        does not download weights or write `model.safetensors`. `seed` only affects the
-        held-out ECE split when `compute_ece` is true. The checkpoint `cfg` is left as loaded.
-        """
-        result = fit_temperature_map(records, compute_ece=compute_ece, seed=seed)
-        # Already clamped inside the fitter; don't report that as a bad calibration file.
-        _install_temperatures(self, result["temperature"], result["temperature_by_options"], warn=False)
-        return result
-
-    def save_calibration(self, path: str) -> None:
-        """Write temperatures and the checkpoint they were fitted for. Does not write weights."""
-        payload = calibration_payload(
-            self.temperature,
-            self.temperature_by_options,
-            model_id_or_path=getattr(self, "model_id_or_path", None),
-            subfolder=getattr(self, "subfolder", None),
-            config=getattr(self, "cfg", None),
-        )
-        with open(path, "w") as f:
-            json.dump(payload, f, indent=2)
-            f.write("\n")
-
-    def load_calibration(self, path: str) -> None:
-        """Read a JSON map written by `save_calibration` onto this agent.
-
-        A file with no `version` is treated as version 1 and still loads. A newer file
-        whose recorded checkpoint does not match this agent warns and still loads.
-        Values that are not numbers, or that sit outside `[TEMP_MIN, TEMP_MAX]`, are clamped
-        with `clamp_temperature` the same way checkpoint load is.
-        """
-        with open(path) as f:
-            payload = json.load(f)
-        apply_calibration_payload(self, payload)
-
 
 RLAgent = Agent
 
@@ -1650,8 +1398,7 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
          lang_temperatures: Optional[Dict[str, Dict[str, Any]]] = None,
          hooks=None, on_predict_start=None, on_predict_end=None,
          hooks_raise: bool = True, hooks_concurrent: bool = True,
-         hooks_timeout: Optional[float] = None,
-         calibration: Optional[str] = None) -> Agent:
+         hooks_timeout: Optional[float] = None) -> Agent:
     """Load a Laya agent.
 
     `subfolder` picks one checkpoint out of a repo that bundles several:
@@ -1663,7 +1410,7 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
 
     `revision`/`expected_sha256` pin and verify the downloaded artifacts; see `Agent`.
     `hooks` / `on_predict_start` / `on_predict_end` observe or shape every prediction; see
-    `laya.hooks`. `calibration` is the same optional JSON path accepted by `Agent`.
+    `laya.hooks`.
     """
     return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast,
                  compile=compile,
@@ -1671,4 +1418,4 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
                  lang_temperatures=lang_temperatures,
                  hooks=hooks, on_predict_start=on_predict_start, on_predict_end=on_predict_end,
                  hooks_raise=hooks_raise, hooks_concurrent=hooks_concurrent,
-                 hooks_timeout=hooks_timeout, calibration=calibration)
+                 hooks_timeout=hooks_timeout)

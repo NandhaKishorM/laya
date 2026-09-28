@@ -7,6 +7,9 @@ Covers:
 """
 import os
 import sys
+import concurrent.futures
+import threading
+import time
 from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -352,6 +355,75 @@ finally:
     _BATCH_AUTOCAST_CACHE.reset(token)
 check("oom-fallback/batch copies cleared before CPU move", fallback_events[:2], ["clear", "move-cpu"])
 check("oom-fallback/second OOM counts too", oom.cpu_fallback_count, 2)
+
+
+class ConcurrentOOMModel(ImmovableModel):
+    """Make an in-flight GPU call fail if another call reaches the shared model."""
+
+    def __init__(self):
+        self.active = 0
+        self.guard = threading.Lock()
+        self.first_gpu_started = threading.Event()
+        self.release_first = threading.Event()
+        self.placed = "cuda"
+
+    def __call__(self, *args):
+        with self.guard:
+            self.active += 1
+            concurrent_call = self.active > 1 and self.placed == "cuda"
+        first_gpu_call = self.placed == "cuda" and not self.first_gpu_started.is_set()
+        if first_gpu_call:
+            self.first_gpu_started.set()
+            self.release_first.wait(2)
+        try:
+            if concurrent_call:
+                raise RuntimeError("Expected all tensors to be on the same device, cuda:0 and cpu")
+            if self.placed == "cuda":
+                raise RuntimeError("CUDA out of memory. Tried to allocate 2.00 GiB")
+            return torch.zeros((1, 2)), torch.zeros((1, 2))
+        finally:
+            with self.guard:
+                self.active -= 1
+
+
+race_model = ConcurrentOOMModel()
+race_agent = _bare_agent(race_model, dtype=torch.float16)
+race_agent.device = torch.device("cuda")
+race_agent._infer_lock = threading.RLock()
+
+
+class DeviceAgnosticInput:
+    shape = (1, 8)
+
+    def to(self, device):
+        return self
+
+
+race_batch = {key: DeviceAgnosticInput() for key in batch}
+
+
+def run_race_request():
+    # Set an independent ready flag before entering _infer so the second worker is definitely
+    # submitted while the first worker is still inside the shared model.
+    second_ready.set()
+    return race_agent._infer(race_batch)
+
+
+second_ready = threading.Event()
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+    first = pool.submit(race_agent._infer, race_batch)
+    check("oom-race/first GPU call started", race_model.first_gpu_started.wait(1), True)
+    second = pool.submit(run_race_request)
+    check("oom-race/second request submitted", second_ready.wait(1), True)
+    time.sleep(0.05)
+    race_model.release_first.set()
+    try:
+        first.result(timeout=3)
+        second.result(timeout=3)
+        race_ok = True
+    except Exception:
+        race_ok = False
+check("oom-race/concurrent requests stay on matching devices", race_ok, True)
 
 # a plain forward never touches the counters
 check("oom-fallback/plain CPU infer stays 0", cpu_disabled.cpu_fallback_count, 0)

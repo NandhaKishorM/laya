@@ -35,7 +35,7 @@ print(resultat["answers"]["is_urgent"]["noul"])
 print(resultat["routing"]["model"])  # multilingual
 ```
 
-Frågetexterna är svenska, men fråge-ID:n och valnycklarna är oförändrade för befintliga
+Frågetexterna är på svenska, men fråge-ID:n och valnycklarna är oförändrade för befintliga
 integrationer. Exempelvis blir en återbetalning fortfarande `refund`; nyckeln översätts inte.
 Om gränssnittet ska visa svenska kategorinamn kan appen mappa nycklarna efter beslutet:
 
@@ -172,10 +172,10 @@ granska tveksamma ärenden.
 
 ## Språkidentifiering och kvalitet
 
-`lang="sv-SE"` gör modellvalet deterministiskt när anroparen redan vet att texten är svenska.
+`lang="sv-SE"` gör modellvalet deterministiskt när anroparen redan vet att texten är på svenska.
 Utan en sådan språkangivelse försöker Laya känna igen språket från texten. Kort text som bara
 består av gemensamma nordiska ord kan styras till flerspråksmodellen utan att språkheuristiken kan
-avgöra om den är svenska eller danska.
+avgöra om texten är på svenska eller danska.
 
 Den svenska supportutvärderingen i repot består av 30 syntetiska exempel och är ett
 utvecklingsunderlag, inte ett representativt eller oberoende kvalitetstest. Resultaten visar

@@ -838,7 +838,6 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
     on_predict_end: Optional[Any] = None
     hooks_raise: Optional[bool] = None
     hooks_timeout: Optional[float] = None
-    language: str = "en"
 
     class Config:
         arbitrary_types_allowed = True
@@ -859,7 +858,6 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
         on_predict_end: Optional[Any] = None,
         hooks_raise: Optional[bool] = None,
         hooks_timeout: Optional[float] = None,
-        language: str = "en",
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -877,7 +875,6 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
                 on_predict_end=on_predict_end,
                 hooks_raise=hooks_raise,
                 hooks_timeout=hooks_timeout,
-                language=language,
                 **kwargs,
             )
         else:
@@ -894,7 +891,6 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
             self.on_predict_end = on_predict_end
             self.hooks_raise = hooks_raise
             self.hooks_timeout = hooks_timeout
-            self.language = language
 
     def evaluate_strings(self, *, prediction: str, input: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
         """LangChain standard string evaluation interface."""

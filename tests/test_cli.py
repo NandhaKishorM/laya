@@ -60,6 +60,17 @@ check("route: exit code", code == 0, "got %r" % code)
 check("route: prints the chosen checkpoint", "multilingual" in out, out)
 check("route: state carries the text", stub.route_calls[0][0] == {"text": "Ich wurde doppelt belastet"})
 check("route: never loads a checkpoint", stub.predict_calls == [])
+code, out, err, stub = run_cli(["Jag behöver hjälp", "--lang", "sv-SE"])
+check("route: Swedish terminal headings are localized", "Modell" in out and "Orsak" in out, out)
+check("route: Swedish route keeps canonical model name", "multilingual" in out, out)
+english_route_output = run_cli(["hello there"])[1]
+check("route: English terminal headings remain unchanged",
+      "Model" in english_route_output and "Reason" in english_route_output, True)
+check("route: common reason is translated in Swedish", cli._swedish_route_reason("English Latin text"),
+      "Engelsk text med latinskt alfabet")
+check("route: translated reason keeps diagnostic detail in Swedish",
+      cli._swedish_route_reason("non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it"),
+      "Icke-latinskt skriftsystem: arabic, 100% of letters; den engelska modellen kan inte läsa texten")
 
 # --------------------------------------------------------------------- full prediction
 code, out, err, stub = run_cli(["--predict", "Refactor this service"])

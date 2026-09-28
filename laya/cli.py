@@ -144,12 +144,58 @@ def load_questions(path):
     return questions, state_key
 
 
-def show_decision(decision):
-    print("Model     :", decision["model"])
-    print("Reason    :", decision["reason"])
+def _swedish_route_reason(reason):
+    exact = {
+        "English Latin text": "Engelsk text med latinskt alfabet",
+    }
+    if reason in exact:
+        return exact[reason]
+    prefixes = (
+        ("no letters detected in state; using default (", "Ingen text att språkidentifiera; standardmodell: "),
+        ("non-Latin script (", "Icke-latinskt skriftsystem: "),
+        ("Latin script but language looks like ", "Latinsk text som verkar vara "),
+        ("Latin script, language not identified but ", "Latinsk text med oidentifierat språk och "),
+        ("Latin script, language not identified and no non-English letters; using default (",
+         "Latinsk text utan identifierat språk eller tydliga icke-engelska bokstäver; standardmodell: "),
+        ("Latin script, mostly English, but a line or field reads as ",
+         "Mest engelsk text med latinskt alfabet, men en rad eller ett fält verkar vara "),
+        ("explicit model=", "Modell vald uttryckligen: "),
+        ("explicit task=", "Uppgift vald uttryckligen: "),
+        ("explicit lang=", "Språk angivet uttryckligen: "),
+        ("question ids match the ", "Fråge-ID:n matchar arbetsflödet "),
+        ("lang_guess: the caller identified this as English text",
+         "Språkhint: anroparen angav engelska"),
+        ("lang_guess: the caller identified this as non-English text",
+         "Språkhint: anroparen angav ett annat språk än engelska"),
+        ("Router(lang_guess=...): the caller identified this as English text",
+         "Router(lang_guess=...): anroparen angav engelska"),
+        ("Router(lang_guess=...): the caller identified this as non-English text",
+         "Router(lang_guess=...): anroparen angav ett annat språk än engelska"),
+    )
+    for prefix, translated in prefixes:
+        if reason.startswith(prefix):
+            remainder = reason[len(prefix):]
+            for source, target in (
+                ("the English checkpoint cannot read it", "den engelska modellen kan inte läsa texten"),
+                (", not English", ", inte engelska"),
+                ("; not safe for the English checkpoint", "; olämpligt för den engelska modellen"),
+            ):
+                remainder = remainder.replace(source, target)
+            return translated + remainder
+    return reason
+
+
+def show_decision(decision, language=None):
+    if language == "sv":
+        print("Modell    :", decision["model"])
+        print("Orsak     :", _swedish_route_reason(decision["reason"]))
+    else:
+        print("Model     :", decision["model"])
+        print("Reason    :", decision["reason"])
     detection = decision.get("detection")
     if detection:
-        print("Detected  :", json.dumps(detection, ensure_ascii=False))
+        print("Språkdetektion:" if language == "sv" else "Detected  :",
+              json.dumps(detection, ensure_ascii=False))
 
 
 def show_answers(result):
@@ -224,7 +270,7 @@ def show_localized_answers(result, labels):
     """Print localized labels without changing machine-readable result keys."""
     routing = result.get("routing")
     if routing:
-        show_decision(routing)
+        show_decision(routing, language="sv")
         print()
     for qid, answer in result.get("answers", {}).items():
         label = labels.get(qid, qid)
@@ -315,7 +361,8 @@ def run(text, args, router=None):
             if args.json:
                 print(json.dumps(dict(decision), ensure_ascii=False, indent=2, default=str))
             else:
-                show_decision(decision)
+                language = (args.lang or "").strip().lower().replace("_", "-").split("-", 1)[0]
+                show_decision(decision, language=language if language == "sv" else None)
     except ValueError as error:
         print("laya: %s" % error, file=sys.stderr)
         return 2

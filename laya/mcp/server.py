@@ -362,6 +362,8 @@ _PRESET_DOC = (
     "Run a built-in workflow: %s. "
     "Use when the task matches one of those presets instead of hand-writing questions. "
     "For any built-in preset, set lang='sv' or 'sv-SE' to localize instructions and descriptions. "
+    "Result question IDs and choice keys remain stable machine-readable values and are not translated. "
+    "For a Swedish triage UI in a Python client, use laya.triage_labels('sv-SE') to map them to display text. "
     "state: each preset reads one field (%s); a state holding a single string is placed under it "
     "for you, and a state with more keys is passed through as given, so put your text under the "
     "field that applies. Aliases: %s. "

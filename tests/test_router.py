@@ -1,6 +1,7 @@
 """Routing and language-detection tests. No model weights are loaded: `Router.route` is pure."""
 import sys
 import os
+import json
 import threading
 import time as _time
 from unittest.mock import patch
@@ -774,6 +775,15 @@ for text in ["Ingen adgang", "Fakturaen feil", "Glemt passord", "Pakken forsinke
              "No account access", "Password forgotten"]:
     check("latin_lang/short non-Swedish stays undecided " + text,
           guess_latin_language(text), None)
+with open(os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                       "research", "evals", "swedish_support.jsonl"), encoding="utf-8") as f:
+    _swedish_eval_rows = [json.loads(line) for line in f if line.strip()]
+for _i, _row in enumerate(_swedish_eval_rows, start=1):
+    _detection = _r_lat.route(_row["state"], _row["questions"])
+    check("route/Swedish support eval case %02d uses multilingual" % _i,
+          _detection["model"], "multilingual")
+    check("route/Swedish support eval case %02d names sv without a hint" % _i,
+          (_detection.get("detection") or {}).get("language"), "sv")
 check("latin_lang/english login stays english",
       guess_latin_language("I cannot login to my account"), "en")
 check("route/english login stays english",

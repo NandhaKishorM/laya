@@ -35,6 +35,7 @@ from .common import (
     _resolve_noul_labels,
     _reuse_question_tokens,
     _disable_question_token_reuse,
+    encode_state_head,
     encode_text,
     render_criterion,
     render_options,
@@ -1030,13 +1031,19 @@ class Agent(HookRegistry):
         truncate_left = isinstance(state, list)
         # Tokenize the shared state once. The ids are identical for every question, so
         # re-serializing and re-tokenizing it inside build_sequence per question was pure
-        # duplicated work. Tokenize in full and let build_sequence slice per question, so
+        # duplicated work. One tokenization here, sliced per question by build_sequence, so
         # left-truncation for conversation lists keeps its meaning.
-        state_ids = encode_text(
-            self.tok,
-            serialize_state(state).replace(self.tok.mask_token, " "),
-            add_special_tokens=False,
-        )["input_ids"]
+        #
+        # A list is truncated from the left, so the tokens it keeps are at the end of the
+        # document and every one of them has to be produced. Every other state shape keeps a
+        # prefix (`state_ids[:room]`, room < max_len), so the tail past that was tokenized only
+        # to be discarded: `encode_state_head` stops once `max_len` state tokens exist and
+        # returns the same ids up to that point.
+        text = serialize_state(state).replace(self.tok.mask_token, " ")
+        if truncate_left:
+            state_ids = encode_text(self.tok, text, add_special_tokens=False)["input_ids"]
+        else:
+            state_ids = encode_state_head(self.tok, text, max_len)
         items = []
         for qid in ids:
             q = internal[qid]

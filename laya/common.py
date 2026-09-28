@@ -78,6 +78,334 @@ def serialize_state(state: Union[str, dict, list]) -> str:
     return json.dumps(state, ensure_ascii=False)
 
 
+# First estimate of how many characters of serialized state buy one token of sequence budget
+# (`encode_state_head`). This is a STARTING POINT, not an upper bound: if the prefix it selects
+# comes up short, the next attempt is sized from the density that attempt just measured, and the
+# `len(head) >= need` check below is what makes any under-estimate safe. So this wants to be near
+# real text, not above all of it.
+#
+# Measured densities (chars per token):
+#
+#   English prose, english tokenizer ........  5.3
+#   Russian prose, multilingual tokenizer ...  3.8
+#   flat JSON dict of short fields ..........  1.5-2.2 either way
+#
+# (Re-measured 2026-09-28 on the shipped tokenizers with varied prose. An earlier note here
+# claimed 7.4 and 16.0; neither reproduced. The lower real densities only make 8 safer.)
+#
+# 8 therefore clears the budget on the first attempt for all of these, which is the common case,
+# and costs a quarter of what a bound of 32 did. Dense text takes one more attempt.
+#
+# An upper bound is not available anyway: the most source characters one token can stand for is 31
+# on the multilingual tokenizer (16 for any token bearing a letter or digit) but 512 on the english
+# one -- a 512-space token, a 257-character dash token -- so no multiplier is a proof there. That is
+# why the retry and the length check exist rather than a bigger constant.
+STATE_HEAD_CHARS_PER_TOKEN = 8
+
+# How many prefix attempts before giving up and tokenizing the whole state. Each attempt costs one
+# tokenization of a prefix, so this trades a bounded amount of repeated work for a much smaller
+# first guess. Three is measured to be enough: prose and JSON land on attempt 1, the densest real
+# text on attempt 2, and pathological states (a 256-character dash run per token) exhaust it and
+# take the full tokenization -- correct, just not faster.
+_STATE_HEAD_MAX_ATTEMPTS = 3
+
+# How much bigger than the first budget a state must be before a prefix is worth taking at all.
+# Below this the "prefix" is nearly the whole state, so the head tokenizes almost the same text and
+# the cut scan plus the three soundness gates are pure overhead. Measured just above the budget
+# without this margin: 0.94x on english at 1.01x the budget and 0.88x on multilingual -- a real,
+# if narrow, regression against simply tokenizing the state. At 1.25x the budget the head is
+# already ahead (1.11x english, 1.06x multilingual), so that is where the gate sits.
+_STATE_HEAD_MIN_RATIO = 1.25
+
+# Smallest density probe, in characters. An eighth of the budget is used when that is larger. Small
+# enough that a wasted probe is noise against the state it is measuring, large enough to contain a
+# cut point and several tokens in ordinary text.
+_STATE_HEAD_PROBE_CHARS = 512
+
+# Floor for the probe, so it still spans a cut point and a few tokens on a small state. 64
+# characters is enough to measure density on every shape checked: it reaches ~6 tokens on a
+# 16-character dash run and ~12 on English prose.
+_STATE_HEAD_PROBE_MIN = 64
+
+# How many candidate cut points to probe before giving up and tokenizing the whole state. One
+# probe answers ordinary text. Each extra one steps back one character, not one run -- inside a
+# contiguous space run `str.rfind(" ", 1, i)` returns `i - 1` -- so this tolerates a budget
+# landing at most this many characters past a whitespace run's first character. Measured: a
+# 100-space run is still cut when the budget sits 63 characters into it and not at 64 -- the first
+# probe consumes one of them -- where
+# `_state_cut` returns 0 and the state is tokenized in full (correct, just not faster). Ordinary
+# indented or padded JSON is far inside that; do not lower it on the belief that one probe skips
+# a whole run.
+_STATE_CUT_PROBES = 64
+
+
+def _state_cut(text: str, budget: int) -> int:
+    r"""The largest `i <= budget` at which slicing `text` cannot change how it tokenizes.
+
+    A cut is safe when `text[i]` is a plain space and `text[i - 1]` is not whitespace: `text[:i]`
+    then tokenizes to a prefix of `text`'s ids. Three things have to hold for that, and all three
+    were checked against the shipped tokenizers rather than assumed:
+
+      * No added token can straddle the cut. Both checkpoints carry added tokens that are runs of
+        one whitespace character (2-24 spaces on english, 1-31 newlines or tabs on multilingual),
+        and the trie matches them greedily before anything else -- which is what makes a cut in
+        the middle of a run unsafe, and why `text[i - 1]` must not be whitespace. Every
+        space-bearing added token in both checkpoints is a run of a single whitespace character
+        (23 of english's 116 added tokens hold a space, and each is 2-24 spaces and nothing
+        else), so a token covering `i` would have to begin inside the run -- which the
+        `text[i - 1]` test excludes. `_added_tokens_permit_cut` checks that property rather than
+        trusting it, because a checkpoint may add tokens of its own.
+      * No pre-token can straddle the cut. Metaspace (multilingual) rewrites each space to U+2581
+        and splits on it. The ByteLevel regex (english) only ever puts a space first in a piece
+        (` ?\p{L}+`, ` ?\p{N}+`, ` ?[^\s\p{L}\p{N}]+`, `\s+`). Either way the space at `i` opens
+        a piece, and BPE merges never cross a piece. `_pre_tokenizer_permits_cut` checks this too,
+        because a T5-shaped tokenizer puts Metaspace in the normalizer and splits nowhere.
+      * Normalization must not reach across the cut. The english tokenizer normalizes NFC; a
+        space is a starter with combining class 0, so it never composes with what precedes it.
+        The multilingual normalizer only rewrites single spaces.
+
+    Returns 0 when there is no such point in reach -- a state with no spaces, or one whose only
+    spaces sit inside a long run -- and the caller must then tokenize the whole state.
+    """
+    i = text.rfind(" ", 1, budget + 1)
+    for _ in range(_STATE_CUT_PROBES):
+        if i < 1:
+            break
+        if not text[i - 1].isspace():
+            return i
+        # Inside a whitespace run: the run's own tokenization depends on how long it is, so only
+        # its first character is a cut, and that one is what the next probe looks for.
+        i = text.rfind(" ", 1, i)
+    return 0
+
+
+# Characters that can carry a cut. U+0020 is the one `_state_cut` slices at; U+2581 is what a
+# Metaspace-style normalizer rewrites it to, which is how a sentencepiece checkpoint spells the same
+# boundary inside an added token.
+_CUT_CHARS = (" ", "\u2581")
+
+
+def _added_tokens_permit_cut(tok) -> bool:
+    r"""Whether `_state_cut`'s rule is sound for the added tokens *this* tokenizer carries.
+
+    The rule cuts at a space whose predecessor is not whitespace, and that is safe only if no
+    added token can cover that space. An added token can only do so by holding a space somewhere
+    after its first character whose predecessor *inside the token* is not whitespace -- which is
+    exactly what this tests, mirroring `_state_cut`'s own `text[i - 1].isspace()`.
+
+    Both shipped checkpoints pass: every space-bearing added token is a run of one whitespace
+    character. A checkpoint that adds a domain phrase does not -- `add_tokens(["New York"])`, or a
+    sentencepiece user-defined symbol -- and `Agent` loads any directory a training run wrote, so
+    this is checked rather than assumed. Without the check such a tokenizer silently returns ids
+    that are not a prefix of the full tokenization, which the `len(head) >= need` test below
+    cannot catch: the head is long enough, just wrong.
+
+    Deliberately not cached: this costs 53 us on english and 91 us on multilingual against the
+    tokenization it guards, and a cache keyed on the tokenizer would go stale the moment a caller
+    added a token to it. The head path is only entered for a state well past the budget
+    (`_STATE_HEAD_MIN_RATIO`), where that tokenization is milliseconds.
+    """
+    get = getattr(tok, "get_added_vocab", None)
+    if get is None:
+        # Cannot establish the property, so do not rely on it -- the same answer the `except`
+        # below gives, and the same as the other two gates give for an uninspectable tokenizer.
+        return False
+    try:
+        added = get()
+    except Exception:
+        # Cannot establish the property, so do not rely on it.
+        return False
+    for piece in added:
+        # Only a piece containing a space can cover a cut, and `in` is a C-level scan, so this
+        # skips almost every added token before the character loop below runs: 93 of english's 116
+        # and all 249 of multilingual's. Measured, it takes this function from 69 to 53 us on
+        # english and 147 to 91 us on multilingual. What is left is `get_added_vocab()` rebuilding
+        # its dict (72 us on multilingual), not the scan -- so this is not cached, on the grounds
+        # that a cache keyed on the tokenizer goes stale the moment a caller adds a token, and the
+        # remaining cost is under 6% of the one tokenization the gate protects.
+        #
+        # U+2581 counts as a space here, not only U+0020. A sentencepiece-derived checkpoint spells
+        # its added tokens against the *normalized* text, where a Metaspace-style normalizer has
+        # already rewritten " " to "\u2581" -- so the phrase this gate exists to catch arrives as
+        # `\u2581New\u2581York` and contains no U+0020 at all. Checking only U+0020 let exactly
+        # that tokenizer through: measured, the gate returned True and the head stopped being a
+        # prefix of the full tokenization.
+        if not any(c in piece for c in _CUT_CHARS):
+            continue
+        for k in range(1, len(piece)):
+            if piece[k] in _CUT_CHARS and not (piece[k - 1].isspace() or piece[k - 1] in _CUT_CHARS):
+                return False
+    return True
+
+
+def _splits_on_whitespace(pt) -> bool:
+    """Whether this pre-tokenizer guarantees a space always opens a piece."""
+    name = type(pt).__name__
+    if name == "ByteLevel":
+        # Its regex is what puts a space first in every piece; without it nothing splits.
+        return bool(getattr(pt, "use_regex", False))
+    if name == "Metaspace":
+        # `split=False` rewrites spaces to U+2581 but leaves one piece, so merges cross it.
+        return bool(getattr(pt, "split", False))
+    if name in ("Whitespace", "WhitespaceSplit", "BertPreTokenizer"):
+        return True
+    if name == "Sequence":
+        try:
+            members = list(pt)
+        except Exception:
+            return False
+        return any(_splits_on_whitespace(m) for m in members)
+    return False
+
+
+def _normalizer_permits_cut(tok) -> bool:
+    r"""Whether `_state_cut`'s rule survives this tokenizer's *normalization*.
+
+    The third of the three properties `_state_cut` documents, and the last one still assumed. The
+    rule cuts at a plain space, so normalization must leave that space as a single boundary
+    character the pre-tokenizer can still split on. Both shipped checkpoints do, for different
+    reasons: english normalizes NFC and leaves the space alone, multilingual rewrites it to U+2581
+    one-for-one, which is exactly what its Metaspace pre-tokenizer then splits on.
+
+    This is a behavioural probe rather than a list of allowed normalizer classes, because the class
+    does not decide it: `Replace` is the multilingual checkpoint's own normalizer and is safe, while
+    `Replace(Regex(r"\s+"), "")` -- a plausible CJK-oriented finetune -- deletes the cut entirely.
+    With the space gone the pre-tokenizer has no boundary there and a single BPE piece spans it, so
+    the head stops being a prefix while staying long enough for `len(head) >= need` to wave it
+    through. Measured on a tokenizer built that way: divergence at token 0.
+
+    A normalizer that cannot be probed, or one that does anything to the probe other than keep the
+    space as one whitespace or U+2581 character in the same position, is treated as unverifiable.
+    """
+    bt = getattr(tok, "backend_tokenizer", None)
+    if bt is None:
+        return False
+    try:
+        normalizer = bt.normalizer
+    except Exception:
+        return False
+    if normalizer is None:
+        return True                      # nothing runs, so nothing can move the cut
+    try:
+        for head, rest in (("ab", " cd"), ("x1", " y2 z3"), ("ąę", " żź")):
+            probe = head + rest
+            out = normalizer.normalize_str(probe)
+            cut_at = len(normalizer.normalize_str(head))
+            # The space has to survive, in place, as exactly one character the pre-tokenizer can
+            # split on -- and the text before it must still normalize to a prefix of the whole.
+            if not out.startswith(normalizer.normalize_str(head)):
+                return False
+            if cut_at >= len(out):
+                return False
+            if not (out[cut_at].isspace() or out[cut_at] == "▁"):
+                return False
+    except Exception:
+        return False
+    return True
+
+
+def _pre_tokenizer_permits_cut(tok) -> bool:
+    r"""Whether `_state_cut`'s rule survives this tokenizer's *pre-tokenization*.
+
+    The second of the three properties `_state_cut` documents: no pre-token may straddle the cut.
+    Both shipped checkpoints give it -- ByteLevel's regex only ever puts a space first in a piece,
+    and Metaspace with `split=True` splits on U+2581 -- but it is a property of those tokenizers,
+    not of tokenizers in general, and `Agent` loads any directory a training run wrote.
+
+    A T5- or Llama-shaped tokenizer is the case that breaks it: Metaspace sits in the *normalizer*
+    as `Prepend` + `Replace`, `pre_tokenizer` is null, so BPE merges run over the whole string and
+    the vocabulary holds pieces that span what used to be a space. Cutting inside one changes the
+    ids *before* the cut -- measured: divergence at token 0 -- and `len(head) >= need` cannot catch
+    it, because the head is long enough, merely wrong.
+
+    A tokenizer whose pre-tokenizer cannot be inspected (a slow, pure-Python one has no
+    `backend_tokenizer`) is treated as unverifiable and gets the full tokenization.
+    """
+    bt = getattr(tok, "backend_tokenizer", None)
+    if bt is None:
+        return False
+    try:
+        return _splits_on_whitespace(bt.pre_tokenizer)
+    except Exception:
+        return False
+
+
+def encode_state_head(tok, text: str, need: int) -> List[int]:
+    """Tokenize `text` far enough to fill `need` tokens of state budget, and no further.
+
+    Returns ids that agree with `encode_text(tok, text)` on their first `need` entries -- either
+    the whole state's ids, or a prefix of them. `build_sequence` slices at most `max_len` state
+    tokens off the front, so tokenizing the rest of a large document was work whose only use was
+    to be thrown away: on the english checkpoint a 50000-character state (the cap `laya.serve`
+    enforces) tokenized in 10.30 ms and its first 16384 characters in 3.24 ms.
+
+    Only valid where the slice `build_sequence` takes is a prefix. A conversation list is
+    truncated from the left, so `truncate_left=True` callers must keep tokenizing in full -- the
+    tokens they keep are at the end of the document, not the start.
+    """
+    full = lambda: encode_text(tok, text, add_special_tokens=False)["input_ids"]
+    if need <= 0 or len(text) <= need * STATE_HEAD_CHARS_PER_TOKEN * _STATE_HEAD_MIN_RATIO:
+        return full()
+
+    # Measure the state's density on a SMALL probe before committing to a full-size prefix. A first
+    # attempt sized at `need * 8` characters is wasted work when the state turns out denser than
+    # that, and the waste is proportional to the attempt: a 256-character dash run per token
+    # tokenized 3 854 characters, came up short, and then the whole 6 000-character state anyway --
+    # 1.64x the characters for a measured 0.57x slowdown. The probe bounds that waste to its own
+    # size, a sixty-fourth of the state at most. Measured, shrinking it also made the wins bigger,
+    # because the probe is pure overhead on states that go on to succeed: English prose at 6 000
+    # characters went 1.50x -> 1.64x and at 50 000, 11.72x -> 12.15x.
+    budget = need * STATE_HEAD_CHARS_PER_TOKEN
+    probe_budget = max(_STATE_HEAD_PROBE_MIN, min(_STATE_HEAD_PROBE_CHARS, budget // 8,
+                                                 len(text) // 64))
+    cut = _state_cut(text, probe_budget)
+    if not cut:
+        return full()                      # no safe cut point even near the start
+    probe = encode_text(tok, text[:cut], add_special_tokens=False)["input_ids"]
+    if not probe:
+        return full()                      # nothing measurable, so nothing to extrapolate from
+    density = cut / len(probe)
+
+    # How much text a prefix covering the budget would need. 1.25x margin because density is not
+    # uniform across a document, and a floor of 64 so a tiny budget still moves.
+    want = need * density * 1.25 + 64
+    # A prefix that large is not worth taking: paying for it and then the whole state would cost
+    # more than the state alone. Decided BEFORE the soundness gates, because they cost 53-91 us and
+    # a state that will not be cut does not need them answered. A dense state tokenizes few ids from
+    # many characters, so its own tokenization is cheap and that fixed cost showed up as a 0.82x
+    # regression when the gates ran first.
+    if len(probe) < need and want * _STATE_HEAD_MIN_RATIO >= len(text):
+        return full()
+
+    # Only now, with a cut in hand and a prefix worth taking, are the three soundness gates asked.
+    if not (_added_tokens_permit_cut(tok)
+            and _pre_tokenizer_permits_cut(tok)
+            and _normalizer_permits_cut(tok)):
+        return full()
+    if len(probe) >= need:
+        return probe                       # the probe alone already covers the budget
+
+    last_cut = cut
+    for _ in range(_STATE_HEAD_MAX_ATTEMPTS):
+        if want * _STATE_HEAD_MIN_RATIO >= len(text):
+            break
+        cut = _state_cut(text, int(want))
+        # `_state_cut` clamps to the last space at or before `want`, so a larger `want` can select
+        # the same cut -- if the text past it holds no further space, every attempt would tokenize
+        # an identical prefix. Stop instead of paying for it two more times.
+        if not cut or cut <= last_cut:
+            break
+        last_cut = cut
+        head = encode_text(tok, text[:cut], add_special_tokens=False)["input_ids"]
+        if len(head) >= need:
+            return head
+        if not head:
+            break
+        density = max(density, cut / len(head))
+        want = need * density * 1.25 + 64
+    return full()
+
+
 def render_criterion(value) -> str:
     """Render one criterion value as text.
 

@@ -19,6 +19,7 @@ from laya.common import (
     collapsed_options,
     collate_items,
     confidence_from_probs,
+    encode_state_head,
     encode_text,
     render_criterion,
     render_options,
@@ -606,12 +607,14 @@ class ONNXAgent(HookRegistry):
         truncate_left = isinstance(state, list)
         # Tokenize the shared state once and reuse it across questions, instead of
         # re-serializing and re-tokenizing the same document inside build_sequence per
-        # question (the PyTorch Agent already does this via `state_ids`).
-        state_ids = encode_text(
-            self.tok,
-            serialize_state(state).replace(self.tok.mask_token, " "),
-            add_special_tokens=False,
-        )["input_ids"]
+        # question (the PyTorch Agent already does this via `state_ids`). And, for the shapes
+        # whose slice is a prefix, only as far as the sequence can hold -- see
+        # `Agent._encode_state`, which takes the same two paths for the same reason.
+        text = serialize_state(state).replace(self.tok.mask_token, " ")
+        if truncate_left:
+            state_ids = encode_text(self.tok, text, add_special_tokens=False)["input_ids"]
+        else:
+            state_ids = encode_state_head(self.tok, text, max_len)
 
         items = []
         for qid in ids:

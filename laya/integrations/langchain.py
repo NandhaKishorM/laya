@@ -564,6 +564,9 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
                 "säkerhetsreglerna."
             )
         if not 0.0 <= threshold <= 1.0:
+            if language == "sv":
+                raise ValueError("gränsvärdet måste vara en sannolikhet mellan 0 och 1; angivet värde: %r"
+                                 % (threshold,))
             raise ValueError("threshold must be a probability in [0, 1]; got %r" % (threshold,))
         if _RUNNABLE_AVAILABLE:
             super().__init__(

@@ -92,6 +92,9 @@ r = router.predict("Jag har debiterats två gånger för mars.", questions,
 print(r["routing"]["model"])  # multilingual
 ```
 
+See the [Swedish quickstart](docs/swedish.md) for localized presets, CLI and integration examples,
+and the limits of the current Swedish support evaluation.
+
 From the command line, `laya "My payment failed twice" --preset triage` answers a ready-made question set. More in the [full quickstart](#quickstart-route-mode-recommended) and the [docs](https://nandhakishorm.github.io/laya/).
 
 ## Fine-tune for better accuracy

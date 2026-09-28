@@ -26,6 +26,7 @@ is one copy to keep current.
 | build for ARM64 hosts or DGX Spark | [ARM64 and DGX Spark containers](docker-platforms.md) |
 | specialise a checkpoint for your own decisions | [Browser-agent fine-tuning example](finetune_browser_agent.md) and the [fine-tuning notebook](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb) |
 | judge benchmark results and deployment limits | [Benchmarks and known limits](benchmarks.md) |
+| use Laya's built-in questions in Swedish | [Använd Laya på svenska](swedish.md) |
 | look up a class, function or parameter | [Python API reference](reference/index.md) |
 | score a labelled dataset, compare to a baseline, or gate a build on it | [Evaluation harness](evals.md) |
 

@@ -88,7 +88,10 @@ if (intent.type === "choice") console.log(labels[intent.choice]);
 The same language argument is available on `emailQuestions(categories, language)`,
 `guardQuestions(language)`, `moderationQuestions(language)`, and `routerQuestions(language)`.
 `presetLabels(preset, language)` supports `triage`, `email`, `guard`, `moderation`, and `router`.
-Custom email category labels are preserved as provided.
+Custom email category labels are preserved as provided. The TypeScript language detector also
+recognizes Swedish support wording, including common ASCII-normalized forms. Automatic detection is
+best-effort; when the language is known, pass `{ lang: "sv-SE" }` to `Router.predict` for explicit
+routing. Very short phrases shared with Danish or Norwegian may remain undecided.
 
 ## Structured decisions (`decide`)
 

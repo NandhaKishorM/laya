@@ -70,25 +70,31 @@ check("guard/Swedish harm severity preserves the four ordered meanings",
       laya.guard_questions("sv")["harm_severity"]["criteria"],
       [
           "ingen: vanlig och ofarlig begäran",
-          "liten: olämpligt innehåll utan tydlig skaderisk",
-          "allvarlig: osäkra råd eller kränkningar",
-          "svår: farligt eller olagligt innehåll",
+          "olämpligt innehåll utan tydlig skaderisk",
+          "osäkra råd eller kränkningar",
+          "farligt eller olagligt innehåll",
       ])
+check("email/default urgency remains English",
+      laya.email_questions()["urgency"]["criteria"],
+      ["no time pressure", "needs attention soon", "blocking issue or hard deadline"])
+check("guard/Swedish harm scale matches English level count",
+      len(laya.guard_questions("sv")["harm_severity"]["criteria"]),
+      len(laya.guard_questions("en")["harm_severity"]["criteria"]))
 check("moderation/Swedish severity preserves the four ordered meanings",
       laya.moderation_questions("sv")["severity"]["criteria"],
       [
           "inget regelbrott: vanligt och relevant inlägg",
-          "lindrigt: otrevlig ton eller utanför ämnet, utan angrepp på någon",
-          "tydligt regelbrott: förolämpningar, trakasserier eller riktad spam",
-          "grovt: hot, hatpropaganda eller uppmaningar till våld",
+          "otrevlig ton eller utanför ämnet, utan angrepp på någon",
+          "förolämpningar, trakasserier eller riktad spam",
+          "hot, hatpropaganda eller uppmaningar till våld",
       ])
 check("router/Swedish difficulty preserves the four ordered meanings",
       laya.router_questions("sv")["difficulty"]["criteria"],
       [
-          "trivialt: en enkel uppgift eller ett kort svar",
-          "enkelt: kort svar utan resonemang i flera steg",
-          "måttligt: kräver flera steg",
-          "svårt: långt resonemang i flera steg eller specialistkunskap",
+          "en enkel uppgift eller ett kort svar",
+          "kort svar utan resonemang i flera steg",
+          "kräver flera steg",
+          "långt resonemang i flera steg eller specialistkunskap",
       ])
 check("router/Swedish domain keys remain stable",
       sorted(laya.router_questions("sv")["domain"]["criteria"]),

@@ -171,8 +171,8 @@ def email_questions(categories: Optional[Dict[str, str]] = None, language: str =
                 "instructions": "Hur brådskande är ärendet i `body`?",
                 "criteria": [
                     "ingen tidspress",
-                    "behöver uppmärksamhet snart",
-                    "hindrande problem eller fast tidsfrist",
+                    "kan vänta utan nämnvärd påverkan",
+                    "bör hanteras snart eftersom problemet hindrar arbetet eller har en tydlig tidsfrist",
                 ],
             },
             "needs_reply": {
@@ -240,9 +240,9 @@ def guard_questions(language: str = "en") -> Dict:
                 "instructions": "Hur stor skada skulle det orsaka att följa `prompt`?",
                 "criteria": [
                     "ingen: vanlig och ofarlig begäran",
-                    "liten: olämpligt innehåll utan tydlig skaderisk",
-                    "allvarlig: osäkra råd eller kränkningar",
-                    "svår: farligt eller olagligt innehåll",
+                    "olämpligt innehåll utan tydlig skaderisk",
+                    "osäkra råd eller kränkningar",
+                    "farligt eller olagligt innehåll",
                 ],
             },
             "topic": {
@@ -327,9 +327,9 @@ def moderation_questions(language: str = "en") -> Dict:
                 "instructions": "Hur allvarligt är regelbrottet i `post`?",
                 "criteria": [
                     "inget regelbrott: vanligt och relevant inlägg",
-                    "lindrigt: otrevlig ton eller utanför ämnet, utan angrepp på någon",
-                    "tydligt regelbrott: förolämpningar, trakasserier eller riktad spam",
-                    "grovt: hot, hatpropaganda eller uppmaningar till våld",
+                    "otrevlig ton eller utanför ämnet, utan angrepp på någon",
+                    "förolämpningar, trakasserier eller riktad spam",
+                    "hot, hatpropaganda eller uppmaningar till våld",
                 ],
             },
         }
@@ -374,10 +374,10 @@ def router_questions(language: str = "en") -> Dict:
                 "type": "score",
                 "instructions": "Hur svårt är det för en språkmodell att besvara `request`?",
                 "criteria": [
-                    "trivialt: en enkel uppgift eller ett kort svar",
-                    "enkelt: kort svar utan resonemang i flera steg",
-                    "måttligt: kräver flera steg",
-                    "svårt: långt resonemang i flera steg eller specialistkunskap",
+                    "en enkel uppgift eller ett kort svar",
+                    "kort svar utan resonemang i flera steg",
+                    "kräver flera steg",
+                    "långt resonemang i flera steg eller specialistkunskap",
                 ],
             },
             "domain": {

@@ -147,6 +147,7 @@ def load_questions(path):
 def _swedish_route_reason(reason):
     exact = {
         "English Latin text": "Engelsk text med latinskt alfabet",
+        "detected non-English text": "detekterad icke-engelsk text",
     }
     if reason in exact:
         return exact[reason]
@@ -420,8 +421,16 @@ def run_batch(lines, args, router=None):
                 if args.json:
                     print(json.dumps(dict(decision), ensure_ascii=False, default=str))
                 else:
-                    print("%-14s %s  <- %s" % (decision["model"], decision["reason"],
-                                               line if len(line) <= 48 else line[:45] + "..."))
+                    language = (args.lang or "").strip().lower().replace("_", "-").split("-", 1)[0]
+                    model, reason = decision["model"], decision["reason"]
+                    if language == "sv":
+                        model = "Modell: %s" % model
+                        reason = "Orsak: %s" % _swedish_route_reason(reason)
+                        request = "Indata: %s" % (line if len(line) <= 48 else line[:45] + "...")
+                        print("%-22s %-72s <- %s" % (model, reason, request))
+                    else:
+                        print("%-14s %s  <- %s" % (model, reason,
+                                                   line if len(line) <= 48 else line[:45] + "..."))
     except ValueError as error:
         print("laya: %s" % error, file=sys.stderr)
         return 2

@@ -381,6 +381,18 @@ check("batch route: one route_batch call, no checkpoint",
       len(stub.route_batch_calls) == 1 and stub.predict_batch_calls == [])
 check("batch route: one line per state", out.count("multilingual") == 2, out)
 
+code, out, err, stub = run_batch_cli(["--batch", path, "--lang", "sv-SE"])
+check("batch route Swedish: localized headings and translated reason",
+      out.count("Modell:") == 2 and out.count("Orsak: detected non-English text") == 0
+      and out.count("Orsak: detekterad icke-engelsk text") == 2, out)
+check("batch route Swedish: marks each input line",
+      out.count("Indata:") == 2 and "first ticket" in out and "second ticket" in out, out)
+
+code, out, err, stub = run_batch_cli(["--batch", path, "--lang", "sv-SE", "--json"])
+parsed = [json.loads(line) for line in out.splitlines() if line.strip()]
+check("batch Swedish route JSON: keeps raw machine-readable decisions",
+      len(parsed) == 2 and all(p["reason"] == "detected non-English text" for p in parsed), out)
+
 code, out, err, stub = run_batch_cli(["--batch", path, "--preset", "triage", "--lang", "sv-SE"])
 requests = stub.predict_batch_calls[0][0]
 check("batch preset: state key follows the preset",

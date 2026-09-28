@@ -12,7 +12,6 @@ import numpy as np
 import torch
 
 from .common import (
-    HEAD_OPTION_SLACK,
     QTYPES,
     TEMP_MAX,
     TEMP_MIN,
@@ -26,6 +25,7 @@ from .common import (
     _resolve_noul_labels,
     encode_text,
     head_budget_for,
+    head_budget_usage,
     render_options,
     serialize_state,
     temp_bucket,
@@ -653,7 +653,13 @@ class Agent(HookRegistry):
 
         Does not load weights. `questions` is the public predict dict. One forward
         uses one cfg, so the returned head is the max required across questions
-        that can still fit 4 tokens per option in the encoder.
+        that can still fit 4 tokens per option in the encoder. Every question is
+        encoded with that head; a question with `ok` False does not lower it.
+
+        The report is per question and describes that request. `head_max_len` and
+        `max_len` are the values passed to `build_sequence`, not the baseline
+        `head_budget_for` keeps when `ok` is False. `raised` and `ok` stay on the
+        question, so a small question does not inherit `raised` from a larger one.
         """
         head0 = int(cfg.get("head_max_len", 192))
         max0 = int(cfg.get("max_len", 512))
@@ -671,26 +677,10 @@ class Agent(HookRegistry):
                     applied_head = b.head_max_len
                 if b.max_len > applied_max:
                     applied_max = b.max_len
-        raised_call = applied_head != head0 or applied_max != max0
-        report = {}
-        for qid, b in budgets.items():
-            if b.ok:
-                tpo = max(1, (applied_head - HEAD_OPTION_SLACK) // max(1, b.k)) if b.k else 0
-                report[qid] = {
-                    "k": b.k,
-                    "tokens_per_option": tpo,
-                    "head_max_len": applied_head,
-                    "max_len": applied_max,
-                    "raised": raised_call,
-                }
-            else:
-                report[qid] = {
-                    "k": b.k,
-                    "tokens_per_option": b.tokens_per_option,
-                    "head_max_len": b.head_max_len,
-                    "max_len": b.max_len,
-                    "raised": False,
-                }
+        report = {
+            qid: head_budget_usage(b, applied_head, applied_max)
+            for qid, b in budgets.items()
+        }
         return applied_head, applied_max, report
 
     def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict],
@@ -905,10 +895,14 @@ class Agent(HookRegistry):
             auto_head_budget: Raise head_max_len for this call when options would otherwise get
                     fewer than 4 tokens. Also honors cfg["auto_head_budget"]. Default False, so
                     existing calls stay byte-identical. An explicit head_max_len / max_len, or a
-                    start hook that sets them, is the baseline this only raises. If 4 tokens per
-                    option cannot fit in the encoder, that baseline stays and predict still raises
-                    rather than truncating below the floor. `predict_shortlist` narrows options
-                    before this runs, so the allocator sees the kept labels.
+                    start hook that sets them, is the baseline this only raises. One forward uses
+                    one head: the max that still fits 4 tokens per option in the encoder. A
+                    question that cannot fit stays unraised (`ok` false) and does not lower that
+                    head. `build_sequence` keeps its own 4-token floor, so the call succeeds when
+                    every marker fits and raises only when one does not. `usage["head_budget"]` is
+                    per question: the head and max that question ran with, plus its own `raised`
+                    and `ok`. `predict_shortlist` narrows options before this runs, so the
+                    allocator sees the kept labels.
             persist: Write the allocated head_max_len / max_len back to self.cfg. Default False.
 
         Returns:
@@ -1161,8 +1155,12 @@ class Agent(HookRegistry):
                 otherwise get fewer than 4 tokens. Also honors cfg["auto_head_budget"].
                 Default False, so existing predict calls stay byte-identical. An explicit
                 head_max_len / max_len, or a start hook that sets them, is the baseline
-                this only raises. If 4 tokens per option cannot fit in the encoder, that
-                baseline stays and predict still raises rather than truncating below the floor.
+                this only raises. One forward uses one head. A question that cannot fit
+                4 tokens per option in the encoder stays unraised (`ok` false) and does
+                not lower that head. `build_sequence` keeps its own 4-token floor, so
+                the call succeeds when every marker fits and raises only when one does
+                not. `usage["head_budget"]` is per question: the head that ran, plus
+                that question's own `raised` and `ok`.
             persist: Write the allocated head_max_len / max_len back to self.cfg.
                 Default False.
 

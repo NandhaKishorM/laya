@@ -122,6 +122,7 @@ head, mx, report = Agent._resolve_head_budget(low, cfg)
 check("resolve/k4 head unchanged", head, 256)
 check("resolve/k4 max unchanged", mx, 1024)
 check("resolve/k4 raised", report["dept"]["raised"], False)
+check("resolve/k4 ok", report["dept"]["ok"], True)
 check("resolve/k4 k", report["dept"]["k"], 4)
 
 labels = ["l%02d" % i for i in range(77)]
@@ -143,16 +144,43 @@ check("resolve/k77 head", head, 324)
 check("resolve/k77 max_len", mx, 1024)
 check("resolve/k77 tpo", report["intent"]["tokens_per_option"], 4)
 check("resolve/k77 report", report["intent"], {
-    "k": 77, "tokens_per_option": 4, "head_max_len": 324, "max_len": 1024, "raised": True,
+    "k": 77, "tokens_per_option": 4, "head_max_len": 324, "max_len": 1024, "raised": True, "ok": True,
 })
 
-# one forward, one cfg: mixed low+high takes the max required head
+# one forward, one cfg: both questions run at the max head, but raised stays
+# on the question that needed it
 mixed = dict(low)
 mixed.update(high)
 head, mx, report = Agent._resolve_head_budget(mixed, cfg)
-check("resolve/mixed shares raised head", report["dept"]["head_max_len"], report["intent"]["head_max_len"])
-check("resolve/mixed raised on both", report["dept"]["raised"] and report["intent"]["raised"], True)
+check("resolve/mixed shares applied head", report["dept"]["head_max_len"], report["intent"]["head_max_len"])
+check("resolve/mixed applied head", head, 324)
+check("resolve/mixed small not raised", report["dept"]["raised"], False)
+check("resolve/mixed large raised", report["intent"]["raised"], True)
+check("resolve/mixed ok", (report["dept"]["ok"], report["intent"]["ok"]), (True, True))
 check("resolve/mixed k preserved", (report["dept"]["k"], report["intent"]["k"]), (4, 77))
+check("resolve/mixed small tpo uses applied head", report["dept"]["tokens_per_option"], (324 - 16) // 4)
+
+# a question the allocator refuses still reports the head the call runs with,
+# not the baseline head_budget_for kept for it
+wide_mixed = {
+    "dept": low["dept"],
+    "intent": high["intent"],
+    "wide": {
+        "type": "choice",
+        "instructions": "pick",
+        "criteria": ["c%d" % i for i in range(130)],
+    },
+}
+head, mx, report = Agent._resolve_head_budget(
+    wide_mixed, {"head_max_len": 192, "max_len": 512, "encoder_max": 512})
+check("resolve/wide applied head", head, 324)
+check("resolve/wide report head is applied", report["wide"]["head_max_len"], 324)
+check("resolve/wide report max is applied", report["wide"]["max_len"], 512)
+check("resolve/wide ok", report["wide"]["ok"], False)
+check("resolve/wide not raised", report["wide"]["raised"], False)
+check("resolve/wide floor tokens", report["wide"]["tokens_per_option"], MIN_OPTION_TOKENS)
+check("resolve/wide small not raised", report["dept"]["raised"], False)
+check("resolve/wide large raised", report["intent"]["raised"], True)
 
 # overflow stays at defaults so predict can still raise
 overflow = {
@@ -165,6 +193,9 @@ overflow = {
 head, mx, report = Agent._resolve_head_budget(overflow, {"head_max_len": 192, "max_len": 512, "encoder_max": 512})
 check("resolve/255 keeps default head", head, 192)
 check("resolve/255 report raised", report["huge"]["raised"], False)
+check("resolve/255 ok", report["huge"]["ok"], False)
+check("resolve/255 floor tokens", report["huge"]["tokens_per_option"], MIN_OPTION_TOKENS)
+check("resolve/255 report head", report["huge"]["head_max_len"], head)
 check("resolve/255 k", report["huge"]["k"], 255)
 
 # noul is 2 options; never needs a raise at defaults
@@ -172,6 +203,7 @@ noul = {"flag": {"type": "noul", "instructions": "is this true?"}}
 head, mx, report = Agent._resolve_head_budget(noul, {"head_max_len": 192, "max_len": 512})
 check("resolve/noul k", report["flag"]["k"], 2)
 check("resolve/noul raised", report["flag"]["raised"], False)
+check("resolve/noul ok", report["flag"]["ok"], True)
 
 
 # --------------------------------------------------------------- predict wiring (batching + hooks)
@@ -276,7 +308,7 @@ out = _run(agent, q77, auto_head_budget=True)
 check("auto/head raised", _captured[-1]["head_max_len"], 324)
 check("auto/max stays encoder", _captured[-1]["max_len"], 1024)
 check("auto/report", out["usage"]["head_budget"]["intent"], {
-    "k": 77, "tokens_per_option": 4, "head_max_len": 324, "max_len": 1024, "raised": True,
+    "k": 77, "tokens_per_option": 4, "head_max_len": 324, "max_len": 1024, "raised": True, "ok": True,
 })
 check("auto/cfg not persisted", (agent.cfg["head_max_len"], agent.cfg["max_len"]), (256, 1024))
 
@@ -386,6 +418,80 @@ err = check_raises(
 check_true("validate/names criteria", err is not None and "criteria" in str(err), str(err))
 
 
+# a small question in the same call does not inherit raised from a larger one,
+# and both report the head build_sequence was actually called with
+agent = _bare(ML)
+same_call = {}
+same_call.update(_choice(4, "dept"))
+same_call.update(_choice(77, "intent"))
+out = _run(agent, same_call, auto_head_budget=True)
+check("usage/small not raised", out["usage"]["head_budget"]["dept"]["raised"], False)
+check("usage/large raised", out["usage"]["head_budget"]["intent"]["raised"], True)
+check("usage/small ok", out["usage"]["head_budget"]["dept"]["ok"], True)
+check("usage/large ok", out["usage"]["head_budget"]["intent"]["ok"], True)
+check("usage/both ran at applied head", [c["head_max_len"] for c in _captured], [324, 324])
+check("usage/reports match the head that ran",
+      (out["usage"]["head_budget"]["dept"]["head_max_len"],
+       out["usage"]["head_budget"]["intent"]["head_max_len"]),
+      (324, 324))
+
+# ok=False does not keep the allocator baseline in the report when a sibling raised the call
+agent = _bare({"head_max_len": 192, "max_len": 512, "encoder_max": 512})
+same_call = {}
+same_call.update(_choice(4, "dept"))
+same_call.update(_choice(77, "intent"))
+same_call.update(_choice(130, "wide"))
+out = _run(agent, same_call, auto_head_budget=True)
+check("usage/wide ran at applied head", [c["head_max_len"] for c in _captured], [324, 324, 324])
+check("usage/wide small not raised", out["usage"]["head_budget"]["dept"]["raised"], False)
+check("usage/wide large raised", out["usage"]["head_budget"]["intent"]["raised"], True)
+check("usage/wide report", out["usage"]["head_budget"]["wide"], {
+    "k": 130, "tokens_per_option": MIN_OPTION_TOKENS, "head_max_len": 324, "max_len": 512,
+    "raised": False, "ok": False,
+})
+
+
+def _spy_build(tok, state, q, max_len, head_max_len, option_order=None, truncate_left=False, state_ids=None):
+    seq, markers = build_sequence(
+        tok, state, q, max_len, head_max_len,
+        option_order=option_order, truncate_left=truncate_left, state_ids=state_ids,
+    )
+    _captured.append({
+        "max_len": max_len,
+        "head_max_len": head_max_len,
+        "k": len(render_options(q)),
+        "markers": len(markers),
+        "gap": (markers[1] - markers[0]) if len(markers) >= 2 else None,
+    })
+    return seq, markers
+
+
+def _long_choice(k, qid="wide"):
+    # Long enough that build_sequence's cap, not the raw label, sets the gap.
+    labels = [("word " * 30).strip() + " %d" % i for i in range(k)]
+    return {qid: {"type": "choice", "instructions": "Which?", "criteria": labels}}
+
+
+# 16 + 4*125 = 516 > encoder 512, so the allocator returns ok=False and leaves
+# the baseline head. The 4-token floor still keeps every marker inside max_len.
+agent = _bare({"head_max_len": 192, "max_len": 512, "encoder_max": 512})
+wide_q = _long_choice(125)
+check("floor/allocator refuses", head_budget_for(125, 192, 512, 512).ok, False)
+_captured.clear()
+with patch("laya.agent.build_sequence", side_effect=_spy_build):
+    out = agent.system_one("state", wide_q, auto_head_budget=True)
+check("floor/request succeeds", out["answers"]["wide"], {"ok": True})
+check("floor/markers kept", _captured[-1]["markers"], 125)
+check("floor/gap is the 4-token floor", _captured[-1]["gap"], MIN_OPTION_TOKENS)
+check("floor/ran at baseline head", _captured[-1]["head_max_len"], 192)
+check("floor/ran at baseline max", _captured[-1]["max_len"], 512)
+check("floor/report", out["usage"]["head_budget"]["wide"], {
+    "k": 125, "tokens_per_option": MIN_OPTION_TOKENS, "head_max_len": 192, "max_len": 512,
+    "raised": False, "ok": False,
+})
+check("floor/cfg unchanged", (agent.cfg["head_max_len"], agent.cfg["max_len"]), (192, 512))
+
+
 # --------------------------------------------------------------- shortlist runs first (#106)
 def _embed(texts):
     arr = np.zeros((len(texts), 2), dtype=np.float64)
@@ -404,6 +510,7 @@ check("shortlist/allocator sees kept labels", _captured[-1]["k"], 4)
 check("shortlist/no raise after narrowing", _captured[-1]["head_max_len"], 256)
 check("shortlist/report k", short["usage"]["head_budget"]["intent"]["k"], 4)
 check("shortlist/report not raised", short["usage"]["head_budget"]["intent"]["raised"], False)
+check("shortlist/report ok", short["usage"]["head_budget"]["intent"]["ok"], True)
 check("shortlist/meta n", short["shortlist"]["intent"]["n"], 77)
 check("shortlist/caller criteria intact", len(caller["intent"]["criteria"]), 77)
 

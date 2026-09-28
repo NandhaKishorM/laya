@@ -32,8 +32,9 @@ def head_budget_for(k, head_max_len, max_len, encoder_max) -> HeadBudget:
     """Allocate a head budget that keeps at least MIN_OPTION_TOKENS per option.
 
     Pure arithmetic: no tokenizer, no torch. If 4 tokens per option cannot fit in
-    `encoder_max`, `ok` is False and the original head/max_len are returned so
-    `predict` still raises rather than silently truncating below the floor.
+    `encoder_max`, `ok` is False and the original head/max_len are returned. That
+    does not drop options by itself: `build_sequence` still floors each option at
+    MIN_OPTION_TOKENS, and predict raises only when a marker falls past `max_len`.
     """
     k = int(k)
     head_max_len = int(head_max_len)
@@ -74,6 +75,38 @@ def head_budget_for(k, head_max_len, max_len, encoder_max) -> HeadBudget:
         raised=True,
         ok=True,
     )
+
+
+def head_budget_usage(budget: HeadBudget, head_max_len: int, max_len: int) -> dict:
+    """Per-question usage for the head and max `build_sequence` actually ran with.
+
+    `budget` is that question's `head_budget_for` result. `head_max_len` and
+    `max_len` are the call's applied values: one forward, one cfg, which a
+    sibling may have raised. `raised` and `ok` stay on this question, so a
+    small question does not inherit `raised` from a larger one. When `ok` is
+    False the reported `tokens_per_option` is the floor `build_sequence` still
+    applies (`max(MIN_OPTION_TOKENS, (head - slack) // k)`), not the share that
+    does not fit in the head.
+    """
+    head_max_len = int(head_max_len)
+    max_len = int(max_len)
+    k = int(budget.k)
+    if k < 1:
+        tokens_per_option = 0
+    else:
+        share = (head_max_len - HEAD_OPTION_SLACK) // k
+        if budget.ok:
+            tokens_per_option = max(1, share)
+        else:
+            tokens_per_option = max(MIN_OPTION_TOKENS, share)
+    return {
+        "k": k,
+        "tokens_per_option": tokens_per_option,
+        "head_max_len": head_max_len,
+        "max_len": max_len,
+        "raised": budget.raised,
+        "ok": budget.ok,
+    }
 
 
 _DEFAULT_NOUL_LABELS = {"false": "false", "true": "true"}

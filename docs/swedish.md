@@ -47,6 +47,8 @@ print(svenska_intentnamn[intent])
 
 Etiketten `refund` är kategorin ”Återbetalning”; fältet `refund_requested` visas separat som
 ”Begäran om återbetalning” och anger om kunden faktiskt ber om pengar tillbaka.
+Fältet `churn_risk` visas som ”Uppsägningsavsikt” och avser en uttryckt avsikt att lämna tjänsten
+eller ett villkorat uppsägningshot, inte en generell riskbedömning utifrån missnöje.
 
 På samma sätt kan appen formatera sannolikheter och poäng för sitt gränssnitt; Laya returnerar
 strukturerade värden, inte en översatt svarstext.

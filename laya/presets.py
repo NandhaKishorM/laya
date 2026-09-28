@@ -50,7 +50,7 @@ _PRESET_LABELS = {
             "is_urgent": "Brådskande",
             "frustration": "Frustration",
             "refund_requested": "Begäran om återbetalning",
-            "churn_risk": "Uppsägningsrisk",
+            "churn_risk": "Uppsägningsavsikt",
             "refund": "Återbetalning",
             "technical_help": "Tekniskt problem",
             "billing_question": "Fakturafråga",

@@ -84,6 +84,14 @@ python scripts/export_onnx.py --model convaiinnovations/laya --output laya.onnx 
 laya-evals run data.jsonl --onnx laya.int8.onnx --max-ece 0.05
 ```
 
+The export **verifies itself before it exits**: it runs the graph it just wrote in ONNX Runtime at
+batch 1, 2 and 3 and compares against PyTorch, and with `--quantize` it does the same for the INT8
+copy at a looser tolerance. A graph that cannot serve more than one question fails the export instead
+of being written and deployed. That needs `onnxruntime` (`pip install laya[onnx]`); pass
+`--no-verify` to skip it if you only have the exporter installed. Marker width is not dynamic in the
+exported graph — it is fixed at the traced value — so a one-criterion `score` question is not
+servable from ONNX; use the torch path for those.
+
 `--model` names the checkpoint the export came from — a Hub id or local path, not a Router
 short name like `english`, since there is no Router on this path (default
 `convaiinnovations/laya`). Its config and tokenizer are loaded from there. The agent serves one checkpoint, so a dataset row

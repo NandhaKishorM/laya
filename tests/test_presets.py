@@ -117,10 +117,10 @@ check_true("triage/Swedish frustration separates tone from issue severity",
            laya.triage_questions("sv")["frustration"]["instructions"])
 check("triage/Swedish frustration has four distinct increasing anchors",
       laya.triage_questions("sv")["frustration"]["criteria"],
-      ["ingen frustration uttrycks: kunden är lugn och saklig",
-       "lätt frustration: viss oro eller otålighet, men tonen är fortsatt saklig",
-       "tydlig frustration: kunden uttrycker irritation eller missnöje",
-       "stark frustration: kunden uttrycker stor ilska eller använder starka uttryck"])
+      ["saklig beskrivning av problemet utan uttryckt oro, irritation eller missnöje",
+       "kunden uttrycker oro eller otålighet men håller en hövlig och återhållsam ton",
+       "kunden uttrycker tydligt missnöje eller irritation, till exempel genom skarp kritik, men använder inte grovt språk eller personangrepp",
+       "kunden uttrycker stark ilska, använder grovt språk eller riktar förolämpningar mot någon"])
 check("triage/English frustration remains unchanged",
       laya.triage_questions("en")["frustration"]["criteria"],
       ["calm and neutral", "concerned but civil", "clearly annoyed", "very angry or using strong language"])

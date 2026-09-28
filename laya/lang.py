@@ -201,7 +201,7 @@ _SHARED_WORDS = {w for w in {word for words in _STOP.values() for word in words}
 # Danish is not in `_STOP`, but several of its common words also occur in the Swedish list.
 # Do not let these words alone name a Danish sentence as Swedish; they remain useful score hits
 # when another, more distinctive Swedish word is present.
-_NORDIC_OVERLAP_WORDS = {"mig", "min", "om", "kommer", "får", "skulle", "vi"}
+_NORDIC_OVERLAP_WORDS = {"hej", "mig", "min", "om", "kommer", "får", "skulle", "vi"}
 _SHARED_WORDS.update(_NORDIC_OVERLAP_WORDS)
 # English function words no other list holds (`in`, `is`, `as`, `was` are shared with German,
 # Dutch and Portuguese). They alone carry the English rescue of `latin_profile`.

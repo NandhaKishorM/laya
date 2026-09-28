@@ -95,15 +95,16 @@ The Latin-script detector now has Swedish-specific vocabulary, including a conse
 two- or three-word path for short support fragments such as `Ingen åtkomst` and
 `Glömt lösenord`. The current model-free routing pass selects the multilingual checkpoint
 and names Swedish for all 30 messages. An earlier pass named Swedish for 29; adding support
-vocabulary resolved the remaining Spanish guess on a billing message. Regression checks
-cover Swedish with and without diacritics, short fragments, and Danish, Norwegian and English
-controls. These routing examples informed the detector changes and are development diagnostics,
-not an independent quality estimate. Language identification remains best-effort; pass
+vocabulary resolved the remaining Spanish guess on a billing message. Short Nordic greetings
+such as `Hej` route to the multilingual checkpoint without being misidentified specifically as
+Swedish. Regression checks cover Swedish with and without diacritics, short fragments, and Danish,
+Norwegian and English controls. These routing examples informed the detector changes and are
+development diagnostics, not an independent quality estimate. Language identification remains best-effort; pass
 `lang="sv-SE"` when the caller knows the language and needs deterministic routing.
 
 As a separate routing diagnostic, the MASSIVE test split at dataset revision
 `940fd47a81eaa7f2cc7b129674d945d618ac38c2` contains 2,974 examples each for Swedish, Danish,
-and English. The current router sent 2,554 Swedish and 1,580 Danish examples to the multilingual
+and English. The current router sent 2,560 Swedish and 1,587 Danish examples to the multilingual
 checkpoint, and all 2,974 English examples to the English checkpoint. It explicitly named Swedish
 for 901 examples; many of the remaining Swedish examples were still routed multilingual from
 non-English letters or shared Nordic wording. This voice-assistant set is a language-routing

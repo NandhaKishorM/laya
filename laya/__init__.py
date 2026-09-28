@@ -9,6 +9,7 @@ from .presets import (
     guard_questions,
     moderation_questions,
     router_questions,
+    triage_labels,
     triage_questions,
 )
 from .router import DEFAULT_MODELS, RouteDecision, Router
@@ -82,6 +83,7 @@ __all__ = [
     "guard_questions",
     "moderation_questions",
     "router_questions",
+    "triage_labels",
     "triage_questions",
     "proper_reward",
     "td_lambda_targets",

@@ -35,6 +35,41 @@ def _preset_language(language: str) -> str:
     return language
 
 
+def triage_labels(language: str = "en") -> Dict[str, str]:
+    """Display labels for the stable question and intent keys in :func:`triage_questions`.
+
+    The keys remain suitable for application logic; callers can use the values in a localized UI.
+    """
+    language = _preset_language(language)
+    if language == "sv":
+        return {
+            "intent": "Ärende",
+            "is_urgent": "Brådskande",
+            "frustration": "Frustration",
+            "refund_requested": "Återbetalning",
+            "churn_risk": "Uppsägningsrisk",
+            "refund": "Återbetalning",
+            "technical_help": "Tekniskt problem",
+            "billing_question": "Fakturafråga",
+            "information": "Information",
+            "cancellation": "Uppsägning eller nedgradering",
+            "other": "Annat ärende",
+        }
+    return {
+        "intent": "Intent",
+        "is_urgent": "Urgent",
+        "frustration": "Frustration",
+        "refund_requested": "Refund requested",
+        "churn_risk": "Churn risk",
+        "refund": "Refund",
+        "technical_help": "Technical issue",
+        "billing_question": "Billing question",
+        "information": "Information",
+        "cancellation": "Cancellation or downgrade",
+        "other": "Other request",
+    }
+
+
 def triage_questions(language: str = "en") -> Dict:
     """Preset questions for customer support ticket triage.
 

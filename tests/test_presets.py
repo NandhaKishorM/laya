@@ -124,6 +124,19 @@ check("triage/Swedish frustration has four distinct increasing anchors",
 check("triage/English frustration remains unchanged",
       laya.triage_questions("en")["frustration"]["criteria"],
       ["calm and neutral", "concerned but civil", "clearly annoyed", "very angry or using strong language"])
+check("triage display labels preserve machine keys",
+      sorted(laya.triage_labels("sv-SE")),
+      sorted(set(laya.triage_questions("sv-SE")) |
+             set(laya.triage_questions("sv-SE")["intent"]["criteria"])))
+check("triage display labels localize Swedish names",
+      laya.triage_labels("sv-SE")["refund"], "Återbetalning")
+check("triage display labels support English names",
+      laya.triage_labels("en"),
+      {"intent": "Intent", "is_urgent": "Urgent", "frustration": "Frustration",
+       "refund_requested": "Refund requested", "churn_risk": "Churn risk",
+       "refund": "Refund", "technical_help": "Technical issue",
+       "billing_question": "Billing question", "information": "Information",
+       "cancellation": "Cancellation or downgrade", "other": "Other request"})
 
 if FAIL:
     print("\n%d failed, %d passed" % (len(FAIL), len(PASS)))

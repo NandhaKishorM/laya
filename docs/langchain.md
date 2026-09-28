@@ -153,6 +153,7 @@ print(annotated["guardrails"]["passed"])  # True
 Extract multiple business signals in a single forward pass without schema parsing:
 
 ```python
+from laya import triage_labels
 from laya.integrations.langchain import LayaTriage
 
 triage = LayaTriage(state_key="message")
@@ -183,14 +184,7 @@ print(sv_result["triage"]["intent"])  # stable machine key, for example "technic
 print(sv_result["triage"]["is_urgent_probability"])  # probability that the message is urgent
 print(sv_result["triage"]["churn_risk_probability"])  # inspect or apply an app-specific threshold
 
-intent_labels_sv = {
-    "refund": "Återbetalning",
-    "technical_help": "Tekniskt problem",
-    "billing_question": "Fakturafråga",
-    "information": "Information",
-    "cancellation": "Uppsägning eller nedgradering",
-    "other": "Annat ärende",
-}
+intent_labels_sv = triage_labels("sv-SE")
 intent_sv = intent_labels_sv.get(sv_result["triage"]["intent"], "Okänt ärende")
 ```
 

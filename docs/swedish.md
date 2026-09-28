@@ -40,15 +40,7 @@ integrationer. Exempelvis blir en återbetalning fortfarande `refund`; nyckeln �
 Om gränssnittet ska visa svenska kategorinamn kan appen mappa nycklarna efter beslutet:
 
 ```python
-svenska_intentnamn = {
-    "refund": "Återbetalning",
-    "technical_help": "Tekniskt problem",
-    "billing_question": "Fakturafråga",
-    "information": "Information",
-    "cancellation": "Uppsägning eller nedgradering",
-    "other": "Annat ärende",
-}
-
+svenska_intentnamn = laya.triage_labels("sv-SE")
 intent = resultat["answers"]["intent"]["choice"]
 print(svenska_intentnamn[intent])
 ```
@@ -118,15 +110,7 @@ Triage-svaret behåller samma stabila nycklar som Python-integrationen, till exe
 `answers.intent.choice == "refund"`. Översätt dem i MCP-klienten när de visas för användaren:
 
 ```python
-intent_labels_sv = {
-    "refund": "Återbetalning",
-    "technical_help": "Tekniskt problem",
-    "billing_question": "Fakturafråga",
-    "information": "Information",
-    "cancellation": "Uppsägning eller nedgradering",
-    "other": "Annat ärende",
-}
-
+intent_labels_sv = laya.triage_labels("sv-SE")
 intent_key = result["answers"]["intent"]["choice"]
 intent_label = intent_labels_sv.get(intent_key, "Annat ärende")
 ```

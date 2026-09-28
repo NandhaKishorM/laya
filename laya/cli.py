@@ -171,34 +171,18 @@ def show_answers(result):
         print("%-12s: %s" % (qid, detail))
 
 
-_SWEDISH_TRIAGE_LABELS = {
-    "intent": "Ärende",
-    "is_urgent": "Brådskande",
-    "frustration": "Frustration",
-    "refund_requested": "Återbetalning",
-    "churn_risk": "Uppsägningsrisk",
-}
-
-
 def show_swedish_triage_answers(result):
     """Print Swedish triage labels while leaving machine-readable result keys unchanged."""
+    labels = laya.triage_labels("sv")
     routing = result.get("routing")
     if routing:
         show_decision(routing)
         print()
     for qid, answer in result.get("answers", {}).items():
-        label = _SWEDISH_TRIAGE_LABELS.get(qid, qid)
+        label = labels.get(qid, qid)
         if "choice" in answer:
             choice = answer["choice"]
-            choice_labels = {
-                "refund": "Återbetalning",
-                "technical_help": "Tekniskt problem",
-                "billing_question": "Fakturafråga",
-                "information": "Information",
-                "cancellation": "Uppsägning eller nedgradering",
-                "other": "Annat ärende",
-            }
-            detail = choice_labels.get(choice, choice)
+            detail = labels.get(choice, choice)
             probability = answer.get("probabilities", {}).get(choice)
             if probability is not None:
                 detail += " (p=%.3f)" % probability

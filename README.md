@@ -842,6 +842,9 @@ triage = router.predict(
 print(triage["answers"]["intent"]["choice"])  # refund
 ```
 
+Use `triage_labels("sv-SE")` to map the stable triage fields and intent keys to display labels in a
+Swedish UI; the helper returns labels for both the question names and the intent choices.
+
 Inbound email triage accepts the same language tag. The standard email categories, phishing
 criteria, and urgency levels are localized; custom category descriptions stay as provided:
 

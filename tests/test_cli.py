@@ -295,6 +295,25 @@ check("predict: Swedish default router keeps request state",
 check("predict: Swedish default router localizes terminal labels",
       "Svårighetsgrad" in out and "Ämnesområde" in out and "Skrivande" in out, out)
 
+class ScoreLegendRouter(QuestionRecorder):
+    def predict(self, state, questions, **kwargs):
+        self.states.append(state)
+        self.questions = questions
+        return {"answers": {"difficulty": {
+            "score": 1.4,
+            "probabilities": {"0": 0.1, "1": 0.7, "2": 0.2},
+            "legend": {"0": "direkt faktasvar", "1": "kort svar med viss tolkning",
+                       "2": "flera steg krävs"},
+        }}}
+
+
+code, out, err, stub = run_cli(["--predict", "request", "--lang", "sv-SE"], router=ScoreLegendRouter())
+check("predict: Swedish score shows expected value and most likely criterion",
+      "1.40 — kort svar med viss tolkning (p=0.700)" in out, out)
+code, out, err, stub = run_cli(["--predict", "request"], router=ScoreLegendRouter())
+check("predict: English score output remains numeric and unchanged",
+      "difficulty  : 1.40" in out and "kort svar med viss tolkning" not in out, out)
+
 # every preset's key must be one its own instructions actually name, so the two cannot drift
 import re as _re  # noqa: E402
 for preset, fn in sorted(cli.PRESETS.items()):

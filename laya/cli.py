@@ -286,6 +286,13 @@ def show_localized_answers(result, labels):
                 detail += " (p=%.3f)" % probability
         elif "score" in answer:
             detail = "%.2f" % answer["score"]
+            probabilities = answer.get("probabilities") or {}
+            legend = answer.get("legend") or {}
+            if probabilities and legend:
+                level = max(probabilities, key=lambda key: probabilities[key])
+                level_label = legend.get(str(level), legend.get(level))
+                if level_label:
+                    detail += " — %s (p=%.3f)" % (level_label, probabilities[level])
         elif "noul" in answer:
             value = answer["noul"]
             detail = "%s (p=%.3f)" % ("Ja" if value >= 0.5 else "Nej", value)

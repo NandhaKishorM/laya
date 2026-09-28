@@ -406,10 +406,11 @@ def _print_cli_error(message, args):
                 "fältet 'questions' i --questions-filen måste vara ett objekt",
             "--questions file holds no questions":
                 "filen som anges med --questions innehåller inga frågor",
-            "'state_key' must be a non-empty string, got":
-                "'state_key' måste vara en icke-tom sträng; angivet värde",
-            "could not read": "det gick inte att läsa",
-            "no requests found in": "hittade inga förfrågningar i",
+            "Expecting value": "Ogiltig JSON: ett värde förväntades",
+            "Expecting property name enclosed in double quotes":
+                "Ogiltig JSON: objektnamn måste stå inom dubbla citattecken",
+            "Unterminated string starting at": "Ogiltig JSON: textsträngen avslutades inte",
+            "Extra data": "Ogiltig JSON: oväntat innehåll efter objektet",
         }
         for source, target in translations.items():
             message = message.replace(source, target)

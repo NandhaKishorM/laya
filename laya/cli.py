@@ -314,6 +314,28 @@ def budget_overrides(args):
     return overrides
 
 
+def _is_swedish(args):
+    language = (getattr(args, "lang", None) or "").strip().lower().replace("_", "-").split("-", 1)[0]
+    return language == "sv"
+
+
+def _print_cli_error(message, args):
+    """Print a localized CLI message while retaining technical error details."""
+    if _is_swedish(args):
+        translations = {
+            "could not run Laya": "det gick inte att köra Laya",
+            "Check that the dependencies are installed and the checkpoints can be downloaded from the Hugging Face hub (network access is needed on first use).":
+                "Kontrollera att beroendena är installerade och att kontrollpunkterna kan hämtas från Hugging Face Hub (nätverksåtkomst behövs första gången).",
+            "pass either a text or --batch FILE, not both.":
+                "ange antingen en text eller --batch FIL, inte båda.",
+            "could not read": "det gick inte att läsa",
+            "no requests found in": "hittade inga förfrågningar i",
+        }
+        for source, target in translations.items():
+            message = message.replace(source, target)
+    print("laya: %s" % message, file=sys.stderr)
+
+
 def resolve_questions(args):
     """The question set to answer and the state field it reads, from the flags given."""
     if args.questions and args.preset:
@@ -368,13 +390,12 @@ def run(text, args, router=None):
                 language = (args.lang or "").strip().lower().replace("_", "-").split("-", 1)[0]
                 show_decision(decision, language=language if language == "sv" else None)
     except ValueError as error:
-        print("laya: %s" % error, file=sys.stderr)
+        _print_cli_error(str(error), args)
         return 2
     except (ImportError, OSError, RuntimeError) as error:
-        print("laya: could not run Laya (%s)." % error, file=sys.stderr)
-        print("Check that the dependencies are installed and the checkpoints can be "
-              "downloaded from the Hugging Face hub (network access is needed on first use).",
-              file=sys.stderr)
+        _print_cli_error("could not run Laya (%s)." % error, args)
+        _print_cli_error("Check that the dependencies are installed and the checkpoints can be downloaded from the "
+                         "Hugging Face hub (network access is needed on first use).", args)
         return 2
     return 0
 
@@ -432,27 +453,33 @@ def run_batch(lines, args, router=None):
                         print("%-14s %s  <- %s" % (model, reason,
                                                    line if len(line) <= 48 else line[:45] + "..."))
     except ValueError as error:
-        print("laya: %s" % error, file=sys.stderr)
+        _print_cli_error(str(error), args)
         return 2
     except (ImportError, OSError, RuntimeError) as error:
-        print("laya: could not run Laya (%s)." % error, file=sys.stderr)
-        print("Check that the dependencies are installed and the checkpoints can be "
-              "downloaded from the Hugging Face hub (network access is needed on first use).",
-              file=sys.stderr)
+        _print_cli_error("could not run Laya (%s)." % error, args)
+        _print_cli_error("Check that the dependencies are installed and the checkpoints can be downloaded from the "
+                         "Hugging Face hub (network access is needed on first use).", args)
         return 2
     return 0
 
 
 def interactive(args):
-    print("Laya interactive mode. Type a request and press Enter; Ctrl-D or 'quit' to exit.")
+    if _is_swedish(args):
+        print("Layas interaktiva läge. Skriv en förfrågan och tryck på Retur; Ctrl-D eller 'avsluta' stänger.")
+        prompt = "laya> "
+        quit_words = ("quit", "exit", "avsluta")
+    else:
+        print("Laya interactive mode. Type a request and press Enter; Ctrl-D or 'quit' to exit.")
+        prompt = "laya> "
+        quit_words = ("quit", "exit")
     router = make_router(args)
     while True:
         try:
-            text = input("laya> ").strip()
+            text = input(prompt).strip()
         except (EOFError, KeyboardInterrupt):
             print()
             break
-        if not text or text.lower() in ("quit", "exit"):
+        if not text or text.lower() in quit_words:
             break
         run(text, args, router)
     return 0
@@ -467,15 +494,15 @@ def main(argv=None):
     text = " ".join(args.text).strip()
     if args.batch:
         if text:
-            print("laya: pass either a text or --batch FILE, not both.", file=sys.stderr)
+            _print_cli_error("pass either a text or --batch FILE, not both.", args)
             return 2
         try:
             lines = read_batch_lines(args.batch)
         except OSError as error:
-            print("laya: could not read %s (%s)." % (args.batch, error), file=sys.stderr)
+            _print_cli_error("could not read %s (%s)." % (args.batch, error), args)
             return 2
         if not lines:
-            print("laya: no requests found in %s." % args.batch, file=sys.stderr)
+            _print_cli_error("no requests found in %s." % args.batch, args)
             return 2
         return run_batch(lines, args)
     if not text:

@@ -102,6 +102,10 @@ code, out, err, stub = run_cli(["some text"], router=BrokenRouter())
 check("error: exit code 2", code == 2, "got %r" % code)
 check("error: names the failure", "could not run Laya" in err, err)
 check("error: points at the fix", "Hugging Face hub" in err, err)
+code, out, err, stub = run_cli(["some text", "--lang", "sv"], router=BrokenRouter())
+check("error: Swedish failure text is localized and keeps diagnostics",
+      code == 2 and "det gick inte att köra Laya (connection failed)" in err
+      and "nätverksåtkomst behövs första gången" in err, err)
 
 # --------------------------------------------------------------------- explicit flags
 code, out, err, stub = run_cli(["--model", "english", "charged twice"])
@@ -426,6 +430,27 @@ code, out, err, stub = run_batch_cli(["--batch", empty, "--predict"])
 check("batch empty file: exit 2, no calls",
       code == 2 and "no requests" in err and stub.predict_batch_calls == [],
       "code %r err %r" % (code, err))
+
+code, out, err, stub = run_batch_cli(["--batch", empty, "--lang", "sv"])
+check("batch empty file Swedish: localizes error", code == 2 and "hittade inga förfrågningar" in err, err)
+
+_original_stdin = sys.stdin
+_original_input = __builtins__.input
+_original_make_router = cli.make_router
+sys.stdin = io.StringIO("")
+input_prompts = []
+__builtins__.input = lambda prompt="": (input_prompts.append(prompt) or "avsluta")
+cli.make_router = lambda args: StubRouter()
+try:
+    with redirect_stdout(io.StringIO()) as interactive_output:
+        code = cli.main(["--lang", "sv"])
+finally:
+    sys.stdin = _original_stdin
+    __builtins__.input = _original_input
+    cli.make_router = _original_make_router
+check("interactive Swedish: translated intro, prompt and quit word",
+      code == 0 and "Layas interaktiva läge" in interactive_output.getvalue()
+      and input_prompts == ["laya> "], interactive_output.getvalue())
 
 _original_stdin = sys.stdin
 sys.stdin = io.StringIO("piped one\npiped two\n")

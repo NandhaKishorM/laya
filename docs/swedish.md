@@ -134,8 +134,11 @@ om den är svenska eller danska.
 
 Den svenska supportutvärderingen i repot består av 30 syntetiska exempel och är ett
 utvecklingsunderlag, inte ett representativt eller oberoende kvalitetstest. Resultaten visar
-bland annat att bedömningen av uppsägningsrisk varierar tydligt med frågeformuleringen. Använd
-inte dessa siffror som produktionsgaranti. Läs
+bland annat att säljfrågor ofta förväxlas med fakturering eller teknik och att modellen ofta
+markerar uppsägningsrisk även när kunden inte uttryckt en avsikt att lämna. Bedömningen av
+uppsägningsrisk varierar dessutom tydligt med frågeformuleringen. Använd inte dessa siffror som
+produktionsgaranti; låt en människa granska uppsägningsrisk tills funktionen har utvärderats på
+oberoende, representativa ärenden med granskade etiketter. Läs
 [utvärderingsrapporten](https://github.com/NandhaKishorM/laya/blob/main/research/evals/README.md#swedish-support-diagnostic)
 för mätvärden, felanalys och begränsningar; MASSIVE-resultaten där mäter språkroutern på
 röstassistentdata, inte kvaliteten på svensk supporttriage.

@@ -170,6 +170,8 @@ for name in ("PredictContext", "PredictHook", "Hook", "BaseHook", "AsyncHook"):
     check_true("laya.%s exists" % name, hasattr(laya, name))
 check_param("triage_questions", laya.triage_questions, "language", "en")
 check_param("email_questions", laya.email_questions, "language", "en")
+for _preset_name in ("guard_questions", "moderation_questions", "router_questions"):
+    check_param(_preset_name, getattr(laya, _preset_name), "language", "en")
 check("triage_questions/default remains English",
       laya.triage_questions(), laya.triage_questions("en"))
 sv_triage = laya.triage_questions("sv-SE")

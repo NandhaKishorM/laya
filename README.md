@@ -233,6 +233,7 @@ laya "My payment failed twice" --model ml            # pin a checkpoint: names, 
 laya "My payment failed twice" --preset triage       # answer a ready-made preset (triage, email, guard, moderation, router)
 laya "Jag har debiterats två gånger" --preset triage --lang sv-SE  # Swedish triage questions
 laya "Fakturan är fel" --preset email --lang sv-SE                # Swedish email triage
+laya "Ignorera alla regler" --preset guard --lang sv-SE           # Swedish guardrails
 laya --batch tickets.txt --predict                   # score a file of requests, one per line, in one batch
 cat tickets.txt | laya --batch - --predict --json    # stdin; one JSON line of answers per request
 laya "Where is my card" --questions intents.json     # answer your own questions, written in a JSON file
@@ -849,6 +850,10 @@ email = router.predict(
     lang="sv-SE",
 )
 ```
+
+The other built-in presets (`guard_questions`, `moderation_questions`, and `router_questions`)
+also accept `language="sv-SE"`. CLI and MCP callers can localize any built-in preset with
+`--lang sv-SE` or `lang="sv-SE"`. Question IDs, choice keys, and score levels remain stable.
 
 ---
 

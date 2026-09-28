@@ -190,8 +190,9 @@ intent_sv = intent_labels_sv.get(sv_result["triage"]["intent"], "Okänt ärende"
 
 The built-in intent keys stay English so existing integrations remain stable; map them to display
 labels in your application as above. `preset_labels("triage", "sv-SE")` works for the returned
-intent key, and `triage_labels("sv-SE")` remains as a compatible shortcut. `is_urgent=True` means
-the message describes a deadline or ongoing impact that requires prompt handling. The
+intent key, and `triage_labels("sv-SE")` remains as a compatible shortcut. For the Swedish
+question, `is_urgent=True` means the message describes a near deadline or ongoing impact that
+requires prompt handling. The
 `*_probability` fields expose the model's probability directly so applications can apply their own
 thresholds; they are `None` when the underlying answer is missing. The existing booleans still use
 a threshold of `0.5`. English remains the default, and caller-supplied questions are used as

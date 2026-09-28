@@ -1,0 +1,395 @@
+{
+  "clean": [
+    {
+      "label": "inline_footer_no_blank_line",
+      "body": "My account is locked.\nThis email is confidential and intended solely for the named addressee.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please unlock it."
+    },
+    {
+      "label": "inline_footer_no_terminal_punctuation",
+      "body": "My account is locked\nThis email is confidential and intended solely for the named addressee.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "Please unlock it."
+    },
+    {
+      "label": "inline_footer_body_never_emptied",
+      "body": "My account is locked. This email is confidential and intended solely for the named addressee.",
+      "max_chars": 3000,
+      "result": "My account is locked."
+    },
+    {
+      "label": "standalone_footer_paragraph_dropped",
+      "body": "My account is locked.\n\nThis email is confidential and intended solely for the named addressee.",
+      "max_chars": 3000,
+      "result": "My account is locked."
+    },
+    {
+      "label": "wrapped_standalone_footer_dropped",
+      "body": "My account is locked.\n\nThis email and any files transmitted with it are\nconfidential and intended solely for the named addressee.",
+      "max_chars": 3000,
+      "result": "My account is locked."
+    },
+    {
+      "label": "received_in_error_footer_dropped",
+      "body": "Please reopen ticket 4411.\n\nIf you have received this message in error, delete it.",
+      "max_chars": 3000,
+      "result": "Please reopen ticket 4411."
+    },
+    {
+      "label": "quoted_history_removed",
+      "body": "Thanks for the update.\nOn Mon, Sep 20, Bob wrote:\n> original text",
+      "max_chars": 3000,
+      "result": "Thanks for the update."
+    },
+    {
+      "label": "signature_block_removed",
+      "body": "Hi team,\nCan you confirm the refund?\nRegards,\nAlice",
+      "max_chars": 3000,
+      "result": "Hi team,\nCan you confirm the refund?"
+    },
+    {
+      "label": "empty_body",
+      "body": "",
+      "max_chars": 3000,
+      "result": ""
+    },
+    {
+      "label": "quote_header_on_wrote_long_name",
+      "body": "Please see below.\nOn Mon, Jan 5, 2026 at 3:00 PM, Bob Smith <bob@example.com> wrote:\n> old text here",
+      "max_chars": 3000,
+      "result": "Please see below."
+    },
+    {
+      "label": "quote_header_original_message",
+      "body": "Approved.\n----- Original Message -----\nFrom: alice@example.com\nSubject: Re: Invoice",
+      "max_chars": 3000,
+      "result": "Approved."
+    },
+    {
+      "label": "quote_header_forwarded_message",
+      "body": "See below for context.\n---------- Forwarded Message ----------\nFrom: bob@example.com",
+      "max_chars": 3000,
+      "result": "See below for context."
+    },
+    {
+      "label": "quote_header_underscores",
+      "body": "My reply is above.\n________________________________\nFrom: system@example.com",
+      "max_chars": 3000,
+      "result": "My reply is above."
+    },
+    {
+      "label": "quote_header_from_line",
+      "body": "Confirmed, thanks.\nFrom: support@example.com\nSubject: Ticket 4411 update\nDate: today",
+      "max_chars": 3000,
+      "result": "Confirmed, thanks."
+    },
+    {
+      "label": "quote_header_only_no_body_before_kept",
+      "body": "On Mon, Jan 5, 2026, Bob wrote:\n> quoted only, no lines before it to break on",
+      "max_chars": 3000,
+      "result": "On Mon, Jan 5, 2026, Bob wrote:"
+    },
+    {
+      "label": "quote_marker_gt_lines_stripped",
+      "body": "My reply.\n> quoted line one\n> quoted line two\nMore of my reply.",
+      "max_chars": 3000,
+      "result": "My reply.\nMore of my reply."
+    },
+    {
+      "label": "signature_dash_dash",
+      "body": "Hi,\nPlease confirm.\n--\nAlice Smith\nSupport Team",
+      "max_chars": 3000,
+      "result": "Hi,\nPlease confirm."
+    },
+    {
+      "label": "signature_best_regards",
+      "body": "Hi,\nCan you confirm the refund?\nBest regards,\nAlice",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_kind_regards",
+      "body": "Hi,\nCan you confirm the refund?\nKind regards,\nBob",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_warm_regards",
+      "body": "Hi,\nCan you confirm the refund?\nWarm regards,\nCarol",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_many_thanks",
+      "body": "Hi,\nCan you confirm the refund?\nMany thanks,\nDave",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_thanks",
+      "body": "Hi,\nCan you confirm the refund?\nThanks,\nEve",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_thank_you",
+      "body": "Hi,\nCan you confirm the refund?\nThank you,\nFrank",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_cheers",
+      "body": "Hi,\nCan you confirm the refund?\nCheers,\nGrace",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_sincerely",
+      "body": "Hi,\nCan you confirm the refund?\nSincerely,\nHeidi",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_sent_from_iphone",
+      "body": "On the go, will follow up later.\nSent from my iPhone",
+      "max_chars": 3000,
+      "result": "On the go, will follow up later."
+    },
+    {
+      "label": "signature_sent_from_android",
+      "body": "Quick reply here.\nSent from my Android",
+      "max_chars": 3000,
+      "result": "Quick reply here."
+    },
+    {
+      "label": "signature_too_early_kept_as_body",
+      "body": "Thanks,\nfor looking into this.\nMy account is still locked after the reset.\nPlease escalate this to the on-call engineer today.\nRegards,\nIvan",
+      "max_chars": 3000,
+      "result": "Thanks,\nfor looking into this.\nMy account is still locked after the reset.\nPlease escalate this to the on-call engineer today."
+    },
+    {
+      "label": "disclaimer_mid_paragraph_request_survives",
+      "body": "My account is locked.\nThis email is confidential and intended solely for the named addressee.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please unlock it."
+    },
+    {
+      "label": "disclaimer_two_sentences_only_boilerplate_dropped",
+      "body": "My account is locked. This email is confidential and intended solely for the named addressee. Please help urgently.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please help urgently."
+    },
+    {
+      "label": "disclaimer_across_two_paragraphs_only_its_own_paragraph_affected",
+      "body": "Please reopen ticket 4411 as soon as you can.\n\nThis email and any attachments are confidential and intended solely for the addressee.\n\nIf you have received this message in error, please delete it.\n\nLet me know once it is done.",
+      "max_chars": 3000,
+      "result": "Please reopen ticket 4411 as soon as you can.\n\nLet me know once it is done."
+    },
+    {
+      "label": "disclaimer_received_in_error_variant_2",
+      "body": "Approve the refund please.\n\nIf you received this e-mail in error, notify the sender immediately.",
+      "max_chars": 3000,
+      "result": "Approve the refund please."
+    },
+    {
+      "label": "crlf_line_endings",
+      "body": "My account is locked.\r\nPlease unlock it.\r\nRegards,\r\nAlice",
+      "max_chars": 3000,
+      "result": "My account is locked.\nPlease unlock it."
+    },
+    {
+      "label": "crlf_with_quote_header",
+      "body": "Thanks for the update.\r\nOn Mon, Sep 20, Bob wrote:\r\n> original text",
+      "max_chars": 3000,
+      "result": "Thanks for the update."
+    },
+    {
+      "label": "literal_backslash_n_becomes_newline",
+      "body": "My account is locked.\\nPlease unlock it.\\nRegards,\\nAlice",
+      "max_chars": 3000,
+      "result": "My account is locked.\nPlease unlock it."
+    },
+    {
+      "label": "literal_backslash_n_with_disclaimer",
+      "body": "My account is locked.\\nThis email is confidential and intended solely for the named addressee.\\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please unlock it."
+    },
+    {
+      "label": "mixed_real_and_literal_newlines",
+      "body": "Line one.\nLine two.\\nLine three (literal escape).\nLine four.",
+      "max_chars": 3000,
+      "result": "Line one.\nLine two.\nLine three (literal escape).\nLine four."
+    },
+    {
+      "label": "unicode_nbsp_not_collapsed",
+      "body": "My account is locked.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked.\nPlease unlock it."
+    },
+    {
+      "label": "unicode_em_space_and_ideographic_space",
+      "body": "My account is　locked.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is　locked.\nPlease unlock it."
+    },
+    {
+      "label": "unicode_whitespace_leading_trailing_stripped",
+      "body": "  My account is locked. \n Please unlock it.  ",
+      "max_chars": 3000,
+      "result": "My account is locked.\n Please unlock it."
+    },
+    {
+      "label": "unicode_zero_width_space_kept",
+      "body": "My​account is locked.\nPlease​unlock it.",
+      "max_chars": 3000,
+      "result": "My​account is locked.\nPlease​unlock it."
+    },
+    {
+      "label": "max_chars_tiny_cuts_mid_word",
+      "body": "Please refund the duplicate charge on invoice 4411 today.",
+      "max_chars": 10,
+      "result": "Please ref"
+    },
+    {
+      "label": "max_chars_default_no_truncation_needed",
+      "body": "Short message that fits easily.",
+      "max_chars": 3000,
+      "result": "Short message that fits easily."
+    },
+    {
+      "label": "max_chars_large_no_op",
+      "body": "Please refund the duplicate charge on invoice 4411 today.",
+      "max_chars": 100000,
+      "result": "Please refund the duplicate charge on invoice 4411 today."
+    },
+    {
+      "label": "max_chars_exact_boundary",
+      "body": "01234567890123456789012345678901234567890123456789",
+      "max_chars": 50,
+      "result": "01234567890123456789012345678901234567890123456789"
+    },
+    {
+      "label": "max_chars_one_over_boundary",
+      "body": "01234567890123456789012345678901234567890123456789X",
+      "max_chars": 50,
+      "result": "01234567890123456789012345678901234567890123456789"
+    },
+    {
+      "label": "kitchen_sink_quote_signature_disclaimer",
+      "body": "Hi team,\n\nMy account was charged twice for the Pro plan this month and the refund has not arrived yet. Could you please look into this today?\n\nBest regards,\nPriya Sharma\nSent from my iPhone\n\nThis email and any files transmitted with it are confidential and intended solely for the use of the individual or entity to whom they are addressed. If you have received this email in error please notify the sender.\n\nOn Tue, Sep 22, 2026 at 9:14 AM, Support <support@example.com> wrote:\n> Hi Priya, thanks for reaching out, we are looking into it.\n> - Support Team\n",
+      "max_chars": 3000,
+      "result": "Hi team,\n\nMy account was charged twice for the Pro plan this month and the refund has not arrived yet. Could you please look into this today?"
+    }
+  ],
+  "state": [
+    {
+      "label": "basic_clean_true",
+      "subject": "Locked out",
+      "body": "My account is locked. This email is confidential and intended solely for the named addressee.",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked."
+      }
+    },
+    {
+      "label": "basic_clean_false_keeps_raw_body",
+      "subject": "Locked out",
+      "body": "My account is locked.\nThis email is confidential and intended solely for the named addressee.",
+      "sender": null,
+      "clean": false,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked.\nThis email is confidential and intended solely for the named addressee."
+      }
+    },
+    {
+      "label": "with_sender",
+      "subject": "Refund request",
+      "body": "Please refund invoice 4411.",
+      "sender": "user@example.com",
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Refund request",
+        "body": "Please refund invoice 4411.",
+        "from": "user@example.com"
+      }
+    },
+    {
+      "label": "subject_whitespace_stripped",
+      "subject": "   Refund request   ",
+      "body": "Please help.",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Refund request",
+        "body": "Please help."
+      }
+    },
+    {
+      "label": "extra_fields_kept_when_not_none",
+      "subject": "Ticket",
+      "body": "Body text.",
+      "sender": "user@example.com",
+      "clean": true,
+      "extra": {
+        "priority": "high",
+        "ticket_id": 4411
+      },
+      "result": {
+        "subject": "Ticket",
+        "body": "Body text.",
+        "from": "user@example.com",
+        "priority": "high",
+        "ticket_id": 4411
+      }
+    },
+    {
+      "label": "extra_none_values_dropped",
+      "subject": "Ticket",
+      "body": "Body text.",
+      "sender": null,
+      "clean": true,
+      "extra": {
+        "nullable": null,
+        "kept": "value"
+      },
+      "result": {
+        "subject": "Ticket",
+        "body": "Body text.",
+        "kept": "value"
+      }
+    },
+    {
+      "label": "empty_subject_and_body",
+      "subject": "",
+      "body": "",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "",
+        "body": ""
+      }
+    },
+    {
+      "label": "hindi_subject_and_body",
+      "subject": "सहायता चाहिए",
+      "body": "मुझसे दो बार शुल्क लिया गया, कृपया रिफंड करें।",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "सहायता चाहिए",
+        "body": "मुझसे दो बार शुल्क लिया गया, कृपया रिफंड करें।"
+      }
+    }
+  ]
+}

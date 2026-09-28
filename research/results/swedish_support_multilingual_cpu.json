@@ -83,21 +83,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.9755,
-        "confidence": 0.9755,
-        "noul": 0.0245,
+        "answer_confidence": 0.9738,
+        "confidence": 0.9738,
+        "noul": 0.9738,
         "type": "noul"
       },
-      "confidence": 0.9755,
-      "correct": true,
+      "confidence": 0.9738,
+      "correct": false,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.9755,
-        "noul_accuracy": 1.0,
+        "mean_confidence": 0.9738,
+        "noul_accuracy": 0.0,
         "score_mae": null
       },
       "tags": [
@@ -189,21 +189,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.9105,
-        "confidence": 0.9105,
-        "noul": 0.0895,
+        "answer_confidence": 0.7763,
+        "confidence": 0.7763,
+        "noul": 0.7763,
         "type": "noul"
       },
-      "confidence": 0.9105,
-      "correct": true,
+      "confidence": 0.7763,
+      "correct": false,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.9105,
-        "noul_accuracy": 1.0,
+        "mean_confidence": 0.7763,
+        "noul_accuracy": 0.0,
         "score_mae": null
       },
       "tags": [
@@ -295,21 +295,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.8379,
-        "confidence": 0.8379,
-        "noul": 0.1621,
+        "answer_confidence": 0.8941,
+        "confidence": 0.8941,
+        "noul": 0.8941,
         "type": "noul"
       },
-      "confidence": 0.8379,
-      "correct": true,
+      "confidence": 0.8941,
+      "correct": false,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.8379,
-        "noul_accuracy": 1.0,
+        "mean_confidence": 0.8941,
+        "noul_accuracy": 0.0,
         "score_mae": null
       },
       "tags": [
@@ -401,21 +401,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.887,
-        "confidence": 0.887,
-        "noul": 0.113,
+        "answer_confidence": 0.8945,
+        "confidence": 0.8945,
+        "noul": 0.8945,
         "type": "noul"
       },
-      "confidence": 0.887,
-      "correct": true,
+      "confidence": 0.8945,
+      "correct": false,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.887,
-        "noul_accuracy": 1.0,
+        "mean_confidence": 0.8945,
+        "noul_accuracy": 0.0,
         "score_mae": null
       },
       "tags": [
@@ -507,21 +507,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.5085,
-        "confidence": 0.5085,
-        "noul": 0.4915,
+        "answer_confidence": 0.8072,
+        "confidence": 0.8072,
+        "noul": 0.8072,
         "type": "noul"
       },
-      "confidence": 0.5085,
-      "correct": true,
+      "confidence": 0.8072,
+      "correct": false,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.5085,
-        "noul_accuracy": 1.0,
+        "mean_confidence": 0.8072,
+        "noul_accuracy": 0.0,
         "score_mae": null
       },
       "tags": [
@@ -613,21 +613,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.6587,
-        "confidence": 0.6587,
-        "noul": 0.6587,
+        "answer_confidence": 0.6107,
+        "confidence": 0.6107,
+        "noul": 0.3893,
         "type": "noul"
       },
-      "confidence": 0.6587,
-      "correct": false,
+      "confidence": 0.6107,
+      "correct": true,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.6587,
-        "noul_accuracy": 0.0,
+        "mean_confidence": 0.6107,
+        "noul_accuracy": 1.0,
         "score_mae": null
       },
       "tags": [
@@ -719,21 +719,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.8627,
-        "confidence": 0.8627,
-        "noul": 0.8627,
+        "answer_confidence": 0.7945,
+        "confidence": 0.7945,
+        "noul": 0.2055,
         "type": "noul"
       },
-      "confidence": 0.8627,
-      "correct": false,
+      "confidence": 0.7945,
+      "correct": true,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.8627,
-        "noul_accuracy": 0.0,
+        "mean_confidence": 0.7945,
+        "noul_accuracy": 1.0,
         "score_mae": null
       },
       "tags": [
@@ -825,12 +825,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7862,
-        "confidence": 0.7862,
-        "noul": 0.7862,
+        "answer_confidence": 0.528,
+        "confidence": 0.528,
+        "noul": 0.528,
         "type": "noul"
       },
-      "confidence": 0.7862,
+      "confidence": 0.528,
       "correct": false,
       "expected": false,
       "language": "sv-SE",
@@ -838,7 +838,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7862,
+        "mean_confidence": 0.528,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -931,12 +931,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7092,
-        "confidence": 0.7092,
-        "noul": 0.2908,
+        "answer_confidence": 0.9603,
+        "confidence": 0.9603,
+        "noul": 0.0397,
         "type": "noul"
       },
-      "confidence": 0.7092,
+      "confidence": 0.9603,
       "correct": true,
       "expected": false,
       "language": "sv-SE",
@@ -944,7 +944,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7092,
+        "mean_confidence": 0.9603,
         "noul_accuracy": 1.0,
         "score_mae": null
       },
@@ -1037,12 +1037,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.9798,
-        "confidence": 0.9798,
-        "noul": 0.9798,
+        "answer_confidence": 0.9278,
+        "confidence": 0.9278,
+        "noul": 0.9278,
         "type": "noul"
       },
-      "confidence": 0.9798,
+      "confidence": 0.9278,
       "correct": true,
       "expected": true,
       "language": "sv-SE",
@@ -1050,7 +1050,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.9798,
+        "mean_confidence": 0.9278,
         "noul_accuracy": 1.0,
         "score_mae": null
       },
@@ -1143,12 +1143,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.6548,
-        "confidence": 0.6548,
-        "noul": 0.6548,
+        "answer_confidence": 0.6477,
+        "confidence": 0.6477,
+        "noul": 0.6477,
         "type": "noul"
       },
-      "confidence": 0.6548,
+      "confidence": 0.6477,
       "correct": false,
       "expected": false,
       "language": "sv-SE",
@@ -1156,7 +1156,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.6548,
+        "mean_confidence": 0.6477,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -1249,12 +1249,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7914,
-        "confidence": 0.7914,
-        "noul": 0.7914,
+        "answer_confidence": 0.679,
+        "confidence": 0.679,
+        "noul": 0.679,
         "type": "noul"
       },
-      "confidence": 0.7914,
+      "confidence": 0.679,
       "correct": false,
       "expected": false,
       "language": "sv-SE",
@@ -1262,7 +1262,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7914,
+        "mean_confidence": 0.679,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -1355,12 +1355,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.649,
-        "confidence": 0.649,
-        "noul": 0.649,
+        "answer_confidence": 0.9662,
+        "confidence": 0.9662,
+        "noul": 0.9662,
         "type": "noul"
       },
-      "confidence": 0.649,
+      "confidence": 0.9662,
       "correct": false,
       "expected": false,
       "language": "sv-SE",
@@ -1368,7 +1368,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.649,
+        "mean_confidence": 0.9662,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -1461,21 +1461,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7077,
-        "confidence": 0.7077,
-        "noul": 0.7077,
+        "answer_confidence": 0.6166,
+        "confidence": 0.6166,
+        "noul": 0.3834,
         "type": "noul"
       },
-      "confidence": 0.7077,
-      "correct": false,
+      "confidence": 0.6166,
+      "correct": true,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7077,
-        "noul_accuracy": 0.0,
+        "mean_confidence": 0.6166,
+        "noul_accuracy": 1.0,
         "score_mae": null
       },
       "tags": [
@@ -1567,21 +1567,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.5734,
-        "confidence": 0.5734,
-        "noul": 0.4266,
+        "answer_confidence": 0.8844,
+        "confidence": 0.8844,
+        "noul": 0.8844,
         "type": "noul"
       },
-      "confidence": 0.5734,
-      "correct": true,
+      "confidence": 0.8844,
+      "correct": false,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.5734,
-        "noul_accuracy": 1.0,
+        "mean_confidence": 0.8844,
+        "noul_accuracy": 0.0,
         "score_mae": null
       },
       "tags": [
@@ -1652,7 +1652,7 @@
       },
       "confidence": 0.4424,
       "correct": null,
-      "expected": 4,
+      "expected": 3,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "brådska",
@@ -1660,7 +1660,7 @@
         "choice_accuracy": null,
         "mean_confidence": 0.4424,
         "noul_accuracy": null,
-        "score_mae": 1.6507
+        "score_mae": 0.6507000000000001
       },
       "tags": [
         "synthetic",
@@ -1673,12 +1673,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.9654,
-        "confidence": 0.9654,
-        "noul": 0.0346,
+        "answer_confidence": 0.8961,
+        "confidence": 0.8961,
+        "noul": 0.1039,
         "type": "noul"
       },
-      "confidence": 0.9654,
+      "confidence": 0.8961,
       "correct": true,
       "expected": false,
       "language": "sv-SE",
@@ -1686,7 +1686,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.9654,
+        "mean_confidence": 0.8961,
         "noul_accuracy": 1.0,
         "score_mae": null
       },
@@ -1779,21 +1779,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.8211,
-        "confidence": 0.8211,
-        "noul": 0.8211,
+        "answer_confidence": 0.866,
+        "confidence": 0.866,
+        "noul": 0.134,
         "type": "noul"
       },
-      "confidence": 0.8211,
-      "correct": false,
+      "confidence": 0.866,
+      "correct": true,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.8211,
-        "noul_accuracy": 0.0,
+        "mean_confidence": 0.866,
+        "noul_accuracy": 1.0,
         "score_mae": null
       },
       "tags": [
@@ -1885,12 +1885,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.5272,
-        "confidence": 0.5272,
-        "noul": 0.4728,
+        "answer_confidence": 0.652,
+        "confidence": 0.652,
+        "noul": 0.348,
         "type": "noul"
       },
-      "confidence": 0.5272,
+      "confidence": 0.652,
       "correct": true,
       "expected": false,
       "language": "sv-SE",
@@ -1898,7 +1898,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.5272,
+        "mean_confidence": 0.652,
         "noul_accuracy": 1.0,
         "score_mae": null
       },
@@ -1991,21 +1991,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.9351,
-        "confidence": 0.9351,
-        "noul": 0.9351,
+        "answer_confidence": 0.9759,
+        "confidence": 0.9759,
+        "noul": 0.0241,
         "type": "noul"
       },
-      "confidence": 0.9351,
-      "correct": false,
+      "confidence": 0.9759,
+      "correct": true,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.9351,
-        "noul_accuracy": 0.0,
+        "mean_confidence": 0.9759,
+        "noul_accuracy": 1.0,
         "score_mae": null
       },
       "tags": [
@@ -2067,7 +2067,7 @@
         "probabilities": {
           "0": 0.0091,
           "1": 0.2392,
-          "2": 0.2357,
+          "2": 0.2358,
           "3": 0.482,
           "4": 0.0338
         },
@@ -2097,21 +2097,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.9579,
-        "confidence": 0.9579,
-        "noul": 0.9579,
+        "answer_confidence": 0.8865,
+        "confidence": 0.8865,
+        "noul": 0.1135,
         "type": "noul"
       },
-      "confidence": 0.9579,
-      "correct": false,
+      "confidence": 0.8865,
+      "correct": true,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.9579,
-        "noul_accuracy": 0.0,
+        "mean_confidence": 0.8865,
+        "noul_accuracy": 1.0,
         "score_mae": null
       },
       "tags": [
@@ -2203,20 +2203,20 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7358,
-        "confidence": 0.7358,
-        "noul": 0.7358,
+        "answer_confidence": 0.9545,
+        "confidence": 0.9545,
+        "noul": 0.0455,
         "type": "noul"
       },
-      "confidence": 0.7358,
+      "confidence": 0.9545,
       "correct": false,
-      "expected": false,
+      "expected": true,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7358,
+        "mean_confidence": 0.9545,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -2309,20 +2309,20 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.8299,
-        "confidence": 0.8299,
-        "noul": 0.8299,
+        "answer_confidence": 0.9332,
+        "confidence": 0.9332,
+        "noul": 0.0668,
         "type": "noul"
       },
-      "confidence": 0.8299,
+      "confidence": 0.9332,
       "correct": false,
-      "expected": false,
+      "expected": true,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.8299,
+        "mean_confidence": 0.9332,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -2415,12 +2415,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.9607,
-        "confidence": 0.9607,
-        "noul": 0.9607,
+        "answer_confidence": 0.9434,
+        "confidence": 0.9434,
+        "noul": 0.9434,
         "type": "noul"
       },
-      "confidence": 0.9607,
+      "confidence": 0.9434,
       "correct": true,
       "expected": true,
       "language": "sv-SE",
@@ -2428,7 +2428,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.9607,
+        "mean_confidence": 0.9434,
         "noul_accuracy": 1.0,
         "score_mae": null
       },
@@ -2521,12 +2521,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7895,
-        "confidence": 0.7895,
-        "noul": 0.7895,
+        "answer_confidence": 0.8743,
+        "confidence": 0.8743,
+        "noul": 0.8743,
         "type": "noul"
       },
-      "confidence": 0.7895,
+      "confidence": 0.8743,
       "correct": true,
       "expected": true,
       "language": "sv-SE",
@@ -2534,7 +2534,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7895,
+        "mean_confidence": 0.8743,
         "noul_accuracy": 1.0,
         "score_mae": null
       },
@@ -2627,21 +2627,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.9883,
-        "confidence": 0.9883,
-        "noul": 0.0117,
+        "answer_confidence": 0.9347,
+        "confidence": 0.9347,
+        "noul": 0.9347,
         "type": "noul"
       },
-      "confidence": 0.9883,
-      "correct": true,
+      "confidence": 0.9347,
+      "correct": false,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.9883,
-        "noul_accuracy": 1.0,
+        "mean_confidence": 0.9347,
+        "noul_accuracy": 0.0,
         "score_mae": null
       },
       "tags": [
@@ -2733,21 +2733,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7375,
-        "confidence": 0.7375,
-        "noul": 0.7375,
+        "answer_confidence": 0.8239,
+        "confidence": 0.8239,
+        "noul": 0.1761,
         "type": "noul"
       },
-      "confidence": 0.7375,
-      "correct": false,
+      "confidence": 0.8239,
+      "correct": true,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7375,
-        "noul_accuracy": 0.0,
+        "mean_confidence": 0.8239,
+        "noul_accuracy": 1.0,
         "score_mae": null
       },
       "tags": [
@@ -2839,12 +2839,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7376,
-        "confidence": 0.7376,
-        "noul": 0.7376,
+        "answer_confidence": 0.8495,
+        "confidence": 0.8495,
+        "noul": 0.8495,
         "type": "noul"
       },
-      "confidence": 0.7376,
+      "confidence": 0.8495,
       "correct": false,
       "expected": false,
       "language": "sv-SE",
@@ -2852,7 +2852,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7376,
+        "mean_confidence": 0.8495,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -2945,21 +2945,21 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7015,
-        "confidence": 0.7015,
-        "noul": 0.7015,
+        "answer_confidence": 0.8016,
+        "confidence": 0.8016,
+        "noul": 0.1984,
         "type": "noul"
       },
-      "confidence": 0.7015,
-      "correct": false,
+      "confidence": 0.8016,
+      "correct": true,
       "expected": false,
       "language": "sv-SE",
       "model": "multilingual",
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7015,
-        "noul_accuracy": 0.0,
+        "mean_confidence": 0.8016,
+        "noul_accuracy": 1.0,
         "score_mae": null
       },
       "tags": [
@@ -3051,12 +3051,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.8128,
-        "confidence": 0.8128,
-        "noul": 0.8128,
+        "answer_confidence": 0.8554,
+        "confidence": 0.8554,
+        "noul": 0.8554,
         "type": "noul"
       },
-      "confidence": 0.8128,
+      "confidence": 0.8554,
       "correct": false,
       "expected": false,
       "language": "sv-SE",
@@ -3064,7 +3064,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.8128,
+        "mean_confidence": 0.8554,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -3157,12 +3157,12 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.8292,
-        "confidence": 0.8292,
-        "noul": 0.8292,
+        "answer_confidence": 0.9504,
+        "confidence": 0.9504,
+        "noul": 0.9504,
         "type": "noul"
       },
-      "confidence": 0.8292,
+      "confidence": 0.9504,
       "correct": false,
       "expected": false,
       "language": "sv-SE",
@@ -3170,7 +3170,7 @@
       "qid": "uppsägningshot",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.8292,
+        "mean_confidence": 0.9504,
         "noul_accuracy": 0.0,
         "score_mae": null
       },
@@ -3201,38 +3201,38 @@
   },
   "overall": {
     "choice_accuracy": 0.6333333333333333,
-    "cost_per_decision_p50_ms": 159.40627050000035,
-    "cost_per_decision_p95_ms": 166.9147500000001,
-    "ece": 0.3591483333333334,
-    "latency_p50_ms": 159.40627050000035,
-    "latency_p95_ms": 166.9147500000001,
-    "mean_confidence": 0.6770455555555556,
-    "noul_accuracy": 0.43333333333333335,
-    "score_mae": 0.9356333333333333
+    "cost_per_decision_p50_ms": 156.8820835018414,
+    "cost_per_decision_p95_ms": 162.88241599977482,
+    "ece": 0.3031033333333333,
+    "latency_p50_ms": 156.8820835018414,
+    "latency_p95_ms": 162.88241599977482,
+    "mean_confidence": 0.6918977777777778,
+    "noul_accuracy": 0.4666666666666667,
+    "score_mae": 0.9023
   },
   "slices": {
     "language": {
       "sv-SE": {
         "choice_accuracy": 0.6333333333333333,
-        "ece": 0.3591483333333334,
-        "mean_confidence": 0.6770455555555556,
-        "noul_accuracy": 0.43333333333333335,
-        "score_mae": 0.9356333333333333
+        "ece": 0.3031033333333333,
+        "mean_confidence": 0.6918977777777778,
+        "noul_accuracy": 0.4666666666666667,
+        "score_mae": 0.9023
       }
     },
     "model": {
       "multilingual": {
         "choice_accuracy": 0.6333333333333333,
-        "ece": 0.3591483333333334,
-        "mean_confidence": 0.6770455555555556,
-        "noul_accuracy": 0.43333333333333335,
-        "score_mae": 0.9356333333333333
+        "ece": 0.3031033333333333,
+        "mean_confidence": 0.6918977777777778,
+        "noul_accuracy": 0.4666666666666667,
+        "score_mae": 0.9023
       }
     },
     "qid": {
       "brådska": {
         "mean_confidence": 0.41236,
-        "score_mae": 0.9356333333333333
+        "score_mae": 0.9023
       },
       "kategori": {
         "choice_accuracy": 0.6333333333333333,
@@ -3240,255 +3240,255 @@
         "mean_confidence": 0.8247166666666667
       },
       "uppsägningshot": {
-        "ece": 0.4669533333333333,
-        "mean_confidence": 0.79406,
-        "noul_accuracy": 0.43333333333333335
+        "ece": 0.4034833333333333,
+        "mean_confidence": 0.8386166666666667,
+        "noul_accuracy": 0.4666666666666667
       }
     },
     "tag": {
       "adressändring": {
         "choice_accuracy": 1.0,
-        "ece": 0.35385,
-        "mean_confidence": 0.7015333333333333,
-        "noul_accuracy": 0.0,
+        "ece": 0.19169999999999998,
+        "mean_confidence": 0.6711666666666667,
+        "noul_accuracy": 1.0,
         "score_mae": 0.9333999999999998
       },
       "appkrasch": {
         "choice_accuracy": 1.0,
-        "ece": 0.3646,
-        "mean_confidence": 0.6275333333333334,
-        "noul_accuracy": 0.0,
+        "ece": 0.2299,
+        "mean_confidence": 0.6115333333333334,
+        "noul_accuracy": 1.0,
         "score_mae": 0.7582
       },
       "dataförlust": {
         "choice_accuracy": 0.0,
-        "ece": 0.32889999999999997,
-        "mean_confidence": 0.6556666666666667,
+        "ece": 0.3549,
+        "mean_confidence": 0.6383333333333333,
         "noul_accuracy": 1.0,
         "score_mae": 1.7744
       },
       "direkt_uppsägning": {
         "choice_accuracy": 1.0,
-        "ece": 0.401625,
-        "mean_confidence": 0.7398333333333333,
+        "ece": 0.461725,
+        "mean_confidence": 0.7935,
         "noul_accuracy": 0.0,
         "score_mae": 0.8605
       },
       "driftstopp": {
         "choice_accuracy": 1.0,
-        "ece": 0.65895,
-        "mean_confidence": 0.5311666666666667,
+        "ece": 0.0018500000000000183,
+        "mean_confidence": 0.44510000000000005,
         "noul_accuracy": 0.0,
         "score_mae": 1.5937999999999999
       },
       "dubbeldragning": {
         "choice_accuracy": 1.0,
-        "ece": 0.012249999999999983,
-        "mean_confidence": 0.7821000000000001,
-        "noul_accuracy": 1.0,
+        "ece": 0.4869,
+        "mean_confidence": 0.7815333333333333,
+        "noul_accuracy": 0.0,
         "score_mae": 0.11470000000000002
       },
       "e-postbyte": {
         "choice_accuracy": 1.0,
-        "ece": 0.42625,
-        "mean_confidence": 0.8219333333333334,
-        "noul_accuracy": 0.0,
+        "ece": 0.0827,
+        "mean_confidence": 0.8369,
+        "noul_accuracy": 1.0,
         "score_mae": 1.641
       },
       "exportfel": {
         "choice_accuracy": 1.0,
-        "ece": 0.46509999999999996,
-        "mean_confidence": 0.5191666666666667,
+        "ece": 0.33954999999999996,
+        "mean_confidence": 0.6028666666666667,
         "noul_accuracy": 1.0,
         "score_mae": 0.7514000000000001
       },
       "fakturering": {
         "choice_accuracy": 0.8,
-        "ece": 0.14253,
-        "mean_confidence": 0.6987,
-        "noul_accuracy": 1.0,
+        "ece": 0.4797,
+        "mean_confidence": 0.7138000000000001,
+        "noul_accuracy": 0.0,
         "score_mae": 0.24430000000000002
       },
       "företagsplan": {
         "choice_accuracy": 0.0,
-        "ece": 0.7726500000000001,
-        "mean_confidence": 0.6628333333333333,
-        "noul_accuracy": 0.0,
+        "ece": 0.3227,
+        "mean_confidence": 0.6962,
+        "noul_accuracy": 1.0,
         "score_mae": 1.354
       },
       "försvunnet_paket": {
         "choice_accuracy": 1.0,
-        "ece": 0.33990000000000004,
-        "mean_confidence": 0.6417666666666667,
+        "ece": 0.4677,
+        "mean_confidence": 0.7474999999999999,
         "noul_accuracy": 0.0,
         "score_mae": 0.7385000000000002
       },
       "försäljning": {
         "choice_accuracy": 0.2,
-        "ece": 0.64792,
-        "mean_confidence": 0.6254066666666667,
-        "noul_accuracy": 0.0,
+        "ece": 0.48194000000000004,
+        "mean_confidence": 0.6562199999999999,
+        "noul_accuracy": 0.4,
         "score_mae": 1.33252
       },
       "konto": {
         "choice_accuracy": 0.6,
-        "ece": 0.52329,
-        "mean_confidence": 0.7533333333333334,
-        "noul_accuracy": 0.4,
-        "score_mae": 1.3931200000000001
+        "ece": 0.24879000000000007,
+        "mean_confidence": 0.7579866666666667,
+        "noul_accuracy": 1.0,
+        "score_mae": 1.19312
       },
       "leverans": {
         "choice_accuracy": 0.8,
-        "ece": 0.39954,
-        "mean_confidence": 0.6564933333333334,
+        "ece": 0.34767999999999993,
+        "mean_confidence": 0.6843333333333333,
         "noul_accuracy": 0.2,
         "score_mae": 0.6368
       },
       "licensköp": {
         "choice_accuracy": 1.0,
-        "ece": 0.44510000000000005,
-        "mean_confidence": 0.7471333333333333,
+        "ece": 0.4447,
+        "mean_confidence": 0.7875333333333333,
         "noul_accuracy": 0.0,
         "score_mae": 1.0419999999999998
       },
       "låst_konto": {
         "choice_accuracy": 1.0,
-        "ece": 0.2449,
-        "mean_confidence": 0.619,
+        "ece": 0.1825,
+        "mean_confidence": 0.6606,
         "noul_accuracy": 1.0,
         "score_mae": 0.6147
       },
       "mobilinloggning": {
         "choice_accuracy": 1.0,
-        "ece": 0.63105,
-        "mean_confidence": 0.7758333333333334,
-        "noul_accuracy": 0.0,
+        "ece": 0.17554999999999998,
+        "mean_confidence": 0.7894333333333333,
+        "noul_accuracy": 1.0,
         "score_mae": 0.7669999999999999
       },
       "moms": {
         "choice_accuracy": 1.0,
-        "ece": 0.1376,
-        "mean_confidence": 0.6949666666666667,
-        "noul_accuracy": 1.0,
+        "ece": 0.52835,
+        "mean_confidence": 0.6974666666666667,
+        "noul_accuracy": 0.0,
         "score_mae": 0.24359999999999982
       },
       "planfråga": {
         "choice_accuracy": 0.0,
-        "ece": 0.59655,
-        "mean_confidence": 0.5212,
-        "noul_accuracy": 0.0,
+        "ece": 0.31585,
+        "mean_confidence": 0.5499999999999999,
+        "noul_accuracy": 1.0,
         "score_mae": 1.0572
       },
       "planuppgradering": {
         "choice_accuracy": 0.0,
-        "ece": 0.64415,
-        "mean_confidence": 0.5672666666666667,
+        "ece": 0.7001,
+        "mean_confidence": 0.6045666666666666,
         "noul_accuracy": 0.0,
         "score_mae": 1.1320000000000001
       },
       "prisjämförelse": {
         "choice_accuracy": 0.0,
-        "ece": 0.78115,
-        "mean_confidence": 0.6286,
+        "ece": 0.8024500000000001,
+        "mean_confidence": 0.6428,
         "noul_accuracy": 0.0,
         "score_mae": 2.0774
       },
       "profilinställning": {
         "choice_accuracy": 0.0,
-        "ece": 0.97795,
-        "mean_confidence": 0.8126333333333333,
-        "noul_accuracy": 0.0,
+        "ece": 0.55575,
+        "mean_confidence": 0.7888333333333333,
+        "noul_accuracy": 1.0,
         "score_mae": 2.2922
       },
       "provperiod": {
         "choice_accuracy": 1.0,
-        "ece": 0.3502,
-        "mean_confidence": 0.5770666666666666,
-        "noul_accuracy": 1.0,
+        "ece": 0.50805,
+        "mean_confidence": 0.6766333333333333,
+        "noul_accuracy": 0.0,
         "score_mae": 0.005800000000000027
       },
       "påminnelse": {
         "choice_accuracy": 1.0,
-        "ece": 0.04475000000000001,
-        "mean_confidence": 0.7656333333333333,
-        "noul_accuracy": 1.0,
+        "ece": 0.38815,
+        "mean_confidence": 0.7209,
+        "noul_accuracy": 0.0,
         "score_mae": 0.8391000000000002
       },
       "retur": {
         "choice_accuracy": 1.0,
-        "ece": 0.3997,
-        "mean_confidence": 0.709,
+        "ece": 0.3435,
+        "mean_confidence": 0.6715333333333334,
         "noul_accuracy": 0.0,
         "score_mae": 1.1873
       },
       "saknad_del": {
         "choice_accuracy": 1.0,
-        "ece": 0.21465,
-        "mean_confidence": 0.6535333333333333,
-        "noul_accuracy": 1.0,
+        "ece": 0.44355,
+        "mean_confidence": 0.7572,
+        "noul_accuracy": 0.0,
         "score_mae": 0.1189
       },
       "spårning": {
         "choice_accuracy": 0.0,
-        "ece": 0.6896,
-        "mean_confidence": 0.5766333333333334,
+        "ece": 0.68605,
+        "mean_confidence": 0.5742666666666667,
         "noul_accuracy": 0.0,
         "score_mae": 0.2059000000000002
       },
       "synthetic": {
         "choice_accuracy": 0.6333333333333333,
-        "ece": 0.3591483333333334,
-        "mean_confidence": 0.6770455555555556,
-        "noul_accuracy": 0.43333333333333335,
-        "score_mae": 0.9356333333333333
+        "ece": 0.3031033333333333,
+        "mean_confidence": 0.6918977777777778,
+        "noul_accuracy": 0.4666666666666667,
+        "score_mae": 0.9023
       },
       "teknik": {
         "choice_accuracy": 0.6,
-        "ece": 0.50639,
-        "mean_confidence": 0.5870599999999999,
-        "noul_accuracy": 0.4,
+        "ece": 0.18454000000000004,
+        "mean_confidence": 0.5753733333333333,
+        "noul_accuracy": 0.8,
         "score_mae": 1.1163
       },
       "tvåfaktor": {
         "choice_accuracy": 0.0,
-        "ece": 0.4193,
-        "mean_confidence": 0.7372666666666667,
+        "ece": 0.45395,
+        "mean_confidence": 0.7141666666666667,
         "noul_accuracy": 1.0,
-        "score_mae": 1.6507
+        "score_mae": 0.6507000000000001
       },
       "uppsägning": {
         "choice_accuracy": 0.8,
-        "ece": 0.23368000000000005,
-        "mean_confidence": 0.7412799999999999,
-        "noul_accuracy": 0.6,
+        "ece": 0.33203000000000005,
+        "mean_confidence": 0.7636733333333333,
+        "noul_accuracy": 0.4,
         "score_mae": 0.8907600000000002
       },
       "uppsägningshot": {
         "choice_accuracy": 0.5,
-        "ece": 0.28490000000000004,
-        "mean_confidence": 0.7256999999999999,
+        "ece": 0.26802500000000007,
+        "mean_confidence": 0.7369499999999999,
         "noul_accuracy": 1.0,
         "score_mae": 1.2300000000000002
       },
       "uppsägningsvillkor": {
         "choice_accuracy": 1.0,
-        "ece": 0.005850000000000022,
-        "mean_confidence": 0.7753333333333333,
-        "noul_accuracy": 1.0,
+        "ece": 0.46734999999999993,
+        "mean_confidence": 0.7574666666666667,
+        "noul_accuracy": 0.0,
         "score_mae": 0.27280000000000015
       },
       "vit_skärm": {
         "choice_accuracy": 0.0,
-        "ece": 0.7144,
-        "mean_confidence": 0.6017666666666667,
-        "noul_accuracy": 0.0,
+        "ece": 0.38580000000000003,
+        "mean_confidence": 0.5790333333333334,
+        "noul_accuracy": 1.0,
         "score_mae": 0.7037
       },
       "återbetalning": {
         "choice_accuracy": 0.0,
-        "ece": 0.33004999999999995,
-        "mean_confidence": 0.6737333333333333,
-        "noul_accuracy": 1.0,
+        "ece": 0.85815,
+        "mean_confidence": 0.6924666666666667,
+        "noul_accuracy": 0.0,
         "score_mae": 0.018299999999999983
       }
     }

@@ -158,12 +158,14 @@ Initial CPU run with the first urgency rubric (Laya 0.3.21, multilingual revisio
 | Overall ECE | 0.3591 |
 | CPU latency, p50 / p95 per case | 88.4 / 91.7 ms |
 
-After clarifying the Swedish urgency criteria and rerunning the same 30 examples
-against the same pinned checkpoint, urgency MAE was 0.9356 (0–4), category accuracy
-remained 0.6333, and cancellation-threat accuracy remained 0.4333. The updated run's
-CPU latency was 159.4 / 166.9 ms (p50 / p95). The score MAE is not directly comparable
-to the initial run because the rubric wording changed; this remains a small synthetic
-development set, not an independent quality estimate. Its full report is
+After clarifying the Swedish urgency criteria and correcting one inconsistent target during
+annotation review, the same 30 examples scored urgency MAE 0.9023 (0–4), category accuracy
+0.6333, and cancellation-threat accuracy 0.4667 on the same pinned checkpoint. The corrected
+target is row 16: one person's account lockout without a deadline is high urgency (3), while the
+rubric reserves critical urgency (4) for multi-user impact or a deadline requiring immediate
+action. CPU latency was 156.9 / 162.9 ms (p50 / p95). These scores do not establish model quality:
+the set remains synthetic, small, and not independently labelled. The previous run, with the old
+urgency label, is preserved in the churn-revision-2 report linked below. The corrected full report is
 [`swedish_support_multilingual_cpu.json`](../results/swedish_support_multilingual_cpu.json);
 the initial report is retained as
 [`swedish_support_multilingual_cpu_initial_rubric.json`](../results/swedish_support_multilingual_cpu_initial_rubric.json).

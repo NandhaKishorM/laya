@@ -414,8 +414,18 @@ def _print_cli_error(message, args):
             "Expecting property name enclosed in double quotes":
                 "Ogiltig JSON: objektnamn måste stå inom dubbla citattecken",
             "Unterminated string starting at": "Ogiltig JSON: textsträngen avslutades inte",
+            "Invalid \\escape": "Ogiltig JSON: felaktig escape-sekvens",
+            "Invalid \\uXXXX escape": "Ogiltig JSON: felaktig Unicode-escape-sekvens",
+            "Invalid control character": "Ogiltig JSON: otillåtet kontrolltecken",
             "Extra data": "Ogiltig JSON: oväntat innehåll efter objektet",
         }
+        json_error_prefixes = (
+            "Expecting ", "Unterminated string", "Invalid \\", "Invalid control character", "Extra data",
+        )
+        if message.startswith(json_error_prefixes):
+            message = (message.replace("line ", "rad ")
+                       .replace(" column ", " kolumn ")
+                       .replace(" (char ", " (tecken "))
         for source, target in translations.items():
             message = message.replace(source, target)
     print("laya: %s" % message, file=sys.stderr)

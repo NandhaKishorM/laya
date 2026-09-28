@@ -347,7 +347,9 @@ class BatchRouter:
         self.predict_batch_calls.append((requests, batch_size))
         return [{"model": "laya-rl", "answers": {
                     "intent": {"choice": "refund", "probabilities": {"refund": 0.9}},
-                    "difficulty": {"score": float(i)}}, "usage": {}}
+                    "difficulty": {"score": float(i), "probabilities": {"0": 0.1, "1": 0.7, "2": 0.2},
+                                   "legend": {"0": "direkt faktasvar", "1": "kort svar med viss tolkning",
+                                              "2": "flera steg krävs"}}, "usage": {}}}
                 for i in range(len(requests))]
 
     def route_batch(self, requests):
@@ -423,6 +425,10 @@ check("batch preset: state key follows the preset",
 check("batch preset: Swedish triage localizes labels", out.count("Ärende") == 2, out)
 check("batch preset: Swedish triage localizes choice", out.count("Återbetalning") == 2, out)
 check("batch preset: Swedish triage omits machine label", "intent" not in out, out)
+
+code, out, err, stub = run_batch_cli(["--batch", path, "--predict", "--lang", "sv-SE"])
+check("batch predict Swedish: shows score criterion from legend",
+      out.count("kort svar med viss tolkning (p=0.700)") == 2, out)
 
 code, out, err, stub = run_batch_cli(["--batch", path, "--preset", "triage", "--lang", "sv-SE", "--json"])
 parsed = [json.loads(line) for line in out.splitlines() if line.strip()]

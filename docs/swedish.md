@@ -187,3 +187,7 @@ oberoende, representativa ärenden med granskade etiketter. Läs
 [utvärderingsrapporten](https://github.com/NandhaKishorM/laya/blob/main/research/evals/README.md#swedish-support-diagnostic)
 för mätvärden, felanalys och begränsningar; MASSIVE-resultaten där mäter språkroutern på
 röstassistentdata, inte kvaliteten på triagering av svenska supportärenden.
+Supportdiagnostikens sex ärendekategorier och femgradiga brådskeskala skiljer sig från
+standardfrågorna i `triage_questions()`, som har en annan ärendetaxonomi och bedömer om ärendet
+är brådskande med ett ja/nej-svar. Diagnostikens kategorimått visar därför inte hur
+standardfrågorna presterar.

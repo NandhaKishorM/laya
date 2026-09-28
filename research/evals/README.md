@@ -84,6 +84,11 @@ MASSIVE English suite through `research/eval/laya_eval.py` against
 Swedish support messages. It has five examples for each of six request categories
 and labels three independent decisions per message: category, urgency and churn risk
 (an expressed intention or conditional threat to leave the service). The score levels run from 0 (not urgent) to 4 (critical).
+This diagnostic uses its own six-category taxonomy and a five-level urgency score; these do not
+match the built-in `triage_questions()` preset, whose intent labels differ and whose urgency
+answer is boolean. Its results therefore do not measure the built-in preset's accuracy. A separate
+evaluation of that preset needs representative, independently labelled messages using its actual
+questions and answer labels.
 The churn question is deliberately separate from category: a technical problem can
 include a cancellation threat without becoming a cancellation request.
 The urgency rubric describes concrete impact and deadline conditions at each level;

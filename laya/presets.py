@@ -40,22 +40,7 @@ def triage_labels(language: str = "en") -> Dict[str, str]:
 
     The keys remain suitable for application logic; callers can use the values in a localized UI.
     """
-    language = _preset_language(language)
-    if language == "sv":
-        return {
-            "intent": "Ärende", "is_urgent": "Brådskande", "frustration": "Frustration",
-            "refund_requested": "Begäran om återbetalning", "churn_risk": "Uppsägningsrisk",
-            "refund": "Återbetalning", "technical_help": "Tekniskt problem",
-            "billing_question": "Fakturafråga", "information": "Information",
-            "cancellation": "Uppsägning eller nedgradering", "other": "Annat ärende",
-        }
-    return {
-        "intent": "Intent", "is_urgent": "Urgent", "frustration": "Frustration",
-        "refund_requested": "Refund requested", "churn_risk": "Churn risk",
-        "refund": "Refund", "technical_help": "Technical issue",
-        "billing_question": "Billing question", "information": "Information",
-        "cancellation": "Cancellation or downgrade", "other": "Other request",
-    }
+    return preset_labels("triage", language)
 
 
 _PRESET_LABELS = {

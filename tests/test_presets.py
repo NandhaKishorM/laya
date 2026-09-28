@@ -66,8 +66,30 @@ for name, build in PRESETS.items():
 check("guard/Swedish topic descriptions are localized",
       laya.guard_questions("sv")["topic"]["criteria"]["product_support"],
       "produkthjälp och kundsupport")
-check("moderation/Swedish severity stays four levels",
-      len(laya.moderation_questions("sv")["severity"]["criteria"]), 4)
+check("guard/Swedish harm severity preserves the four ordered meanings",
+      laya.guard_questions("sv")["harm_severity"]["criteria"],
+      [
+          "ingen: vanlig och ofarlig begäran",
+          "liten: olämpligt innehåll utan tydlig skaderisk",
+          "allvarlig: osäkra råd eller kränkningar",
+          "svår: farligt eller olagligt innehåll",
+      ])
+check("moderation/Swedish severity preserves the four ordered meanings",
+      laya.moderation_questions("sv")["severity"]["criteria"],
+      [
+          "inget regelbrott: vanligt och relevant inlägg",
+          "lindrigt: otrevlig ton eller utanför ämnet, utan angrepp på någon",
+          "tydligt regelbrott: förolämpningar, trakasserier eller riktad spam",
+          "grovt: hot, hatpropaganda eller uppmaningar till våld",
+      ])
+check("router/Swedish difficulty preserves the four ordered meanings",
+      laya.router_questions("sv")["difficulty"]["criteria"],
+      [
+          "trivialt: en enkel uppgift eller ett kort svar",
+          "enkelt: kort svar utan resonemang i flera steg",
+          "måttligt: kräver flera steg",
+          "svårt: långt resonemang i flera steg eller specialistkunskap",
+      ])
 check("router/Swedish domain keys remain stable",
       sorted(laya.router_questions("sv")["domain"]["criteria"]),
       sorted(laya.router_questions("en")["domain"]["criteria"]))

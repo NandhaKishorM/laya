@@ -277,7 +277,9 @@ class BatchRouter:
 
     def predict_batch(self, requests, batch_size=None):
         self.predict_batch_calls.append((requests, batch_size))
-        return [{"model": "laya-rl", "answers": {"difficulty": {"score": float(i)}}, "usage": {}}
+        return [{"model": "laya-rl", "answers": {
+                    "intent": {"choice": "refund", "probabilities": {"refund": 0.9}},
+                    "difficulty": {"score": float(i)}}, "usage": {}}
                 for i in range(len(requests))]
 
     def route_batch(self, requests):
@@ -326,16 +328,26 @@ code, out, err, stub = run_batch_cli(["--batch", path, "--predict", "--json"])
 parsed = [json.loads(line) for line in out.splitlines() if line.strip()]
 check("batch --json: one JSONL record per state", len(parsed) == 2
       and all("answers" in p for p in parsed), out)
+check("batch --json: preserves machine question key",
+      all("intent" in p["answers"] and p["answers"]["intent"]["choice"] == "refund" for p in parsed), out)
 
 code, out, err, stub = run_batch_cli(["--batch", path])
 check("batch route: one route_batch call, no checkpoint",
       len(stub.route_batch_calls) == 1 and stub.predict_batch_calls == [])
 check("batch route: one line per state", out.count("multilingual") == 2, out)
 
-code, out, err, stub = run_batch_cli(["--batch", path, "--preset", "triage"])
+code, out, err, stub = run_batch_cli(["--batch", path, "--preset", "triage", "--lang", "sv-SE"])
 requests = stub.predict_batch_calls[0][0]
 check("batch preset: state key follows the preset",
       all(set(r["state"]) == {"message"} for r in requests), str([r["state"] for r in requests]))
+check("batch preset: Swedish triage localizes labels", out.count("Ärende") == 2, out)
+check("batch preset: Swedish triage localizes choice", out.count("Återbetalning") == 2, out)
+check("batch preset: Swedish triage omits machine label", "intent" not in out, out)
+
+code, out, err, stub = run_batch_cli(["--batch", path, "--preset", "triage", "--lang", "sv-SE", "--json"])
+parsed = [json.loads(line) for line in out.splitlines() if line.strip()]
+check("batch Swedish JSON: machine-readable labels preserved",
+      len(parsed) == 2 and all(p["answers"]["intent"]["choice"] == "refund" for p in parsed), out)
 
 code, out, err, stub = run_batch_cli(["--batch", path, "--predict", "--model", "english",
                                       "--lang", "de"])

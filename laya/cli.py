@@ -318,7 +318,11 @@ def run_batch(lines, args, router=None):
                     print(json.dumps(result, ensure_ascii=False, default=str))
                 else:
                     print("# %s" % (line if len(line) <= 72 else line[:69] + "..."))
-                    show_answers(result)
+                    language = (args.lang or "").strip().lower().replace("_", "-").split("-", 1)[0]
+                    if args.preset == "triage" and language == "sv":
+                        show_swedish_triage_answers(result)
+                    else:
+                        show_answers(result)
                     print()
         else:
             decisions = router.route_batch([{"state": {"text": line}, "questions": {},

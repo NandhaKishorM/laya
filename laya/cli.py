@@ -221,55 +221,6 @@ def show_answers(result):
         print("%-12s: %s" % (qid, detail))
 
 
-_SWEDISH_PRESET_LABELS = {
-    "email": {
-        "category": "Team",
-        "is_spam": "Skräppost",
-        "is_phishing": "Nätfiske",
-        "urgency": "Brådska",
-        "needs_reply": "Svar behövs",
-        "billing": "Fakturor och betalningar",
-        "technical": "Teknisk support",
-        "sales": "Försäljning",
-        "security": "Säkerhet",
-        "hr": "Personalfrågor",
-        "other": "Annat",
-    },
-    "guard": {
-        "jailbreak": "Försök att kringgå regler",
-        "prompt_injection": "Promptinjektion",
-        "sensitive_data": "Känsliga uppgifter",
-        "harm_severity": "Skaderisk",
-        "topic": "Ämne",
-        "product_support": "Produktsupport",
-        "coding": "Programmering",
-        "general_knowledge": "Allmän kunskap",
-        "personal_advice": "Personliga råd",
-        "security_testing": "Säkerhetstestning",
-        "other": "Annat",
-    },
-    "moderation": {
-        "toxic": "Kränkande ton",
-        "harassment": "Trakasserier",
-        "threat": "Hot",
-        "spam": "Skräppost",
-        "severity": "Allvar",
-    },
-    "router": {
-        "difficulty": "Svårighetsgrad",
-        "domain": "Ämnesområde",
-        "needs_tools": "Verktyg behövs",
-        "is_sensitive": "Känsligt ärende",
-        "code": "Programmering",
-        "math_or_logic": "Matematik och logik",
-        "writing": "Skrivande",
-        "factual_lookup": "Faktasökning",
-        "data_analysis": "Dataanalys",
-        "chitchat": "Småprat",
-    },
-}
-
-
 def show_localized_answers(result, labels):
     """Print localized labels without changing machine-readable result keys."""
     routing = result.get("routing")
@@ -302,8 +253,7 @@ def show_localized_answers(result, labels):
 
 
 def show_swedish_preset_answers(result, preset):
-    labels = (laya.triage_labels("sv") if preset == "triage"
-              else _SWEDISH_PRESET_LABELS.get(preset, {}))
+    labels = laya.preset_labels(preset, "sv")
     show_localized_answers(result, labels)
 
 

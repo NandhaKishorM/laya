@@ -60,6 +60,19 @@ laya.moderation_questions(language="sv-SE")
 laya.router_questions(language="sv-SE")
 ```
 
+Använd `preset_labels` för att visa fråge- och kategorinycklar med svenska namn i en egen app:
+
+```python
+etiketter = laya.preset_labels("email", "sv-SE")
+print(etiketter["category"])  # Team
+print(etiketter["billing"])   # Fakturor och betalningar
+
+triageetiketter = laya.preset_labels("triage", "sv-SE")
+print(triageetiketter["refund"])  # Återbetalning
+```
+
+`triage_labels("sv-SE")` finns kvar som ett bakåtkompatibelt genvägs-API för triageetiketter.
+
 Egna frågedefinitioner och kategoribeskrivningar ändras inte automatiskt. Översätt dem själv
 om du vill att även den texten ska vara på svenska.
 

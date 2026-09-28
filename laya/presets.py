@@ -43,6 +43,24 @@ def triage_labels(language: str = "en") -> Dict[str, str]:
     language = _preset_language(language)
     if language == "sv":
         return {
+            "intent": "Ärende", "is_urgent": "Brådskande", "frustration": "Frustration",
+            "refund_requested": "Återbetalning", "churn_risk": "Uppsägningsrisk",
+            "refund": "Återbetalning", "technical_help": "Tekniskt problem",
+            "billing_question": "Fakturafråga", "information": "Information",
+            "cancellation": "Uppsägning eller nedgradering", "other": "Annat ärende",
+        }
+    return {
+        "intent": "Intent", "is_urgent": "Urgent", "frustration": "Frustration",
+        "refund_requested": "Refund requested", "churn_risk": "Churn risk",
+        "refund": "Refund", "technical_help": "Technical issue",
+        "billing_question": "Billing question", "information": "Information",
+        "cancellation": "Cancellation or downgrade", "other": "Other request",
+    }
+
+
+_PRESET_LABELS = {
+    "triage": {
+        "sv": {
             "intent": "Ärende",
             "is_urgent": "Brådskande",
             "frustration": "Frustration",
@@ -54,20 +72,66 @@ def triage_labels(language: str = "en") -> Dict[str, str]:
             "information": "Information",
             "cancellation": "Uppsägning eller nedgradering",
             "other": "Annat ärende",
-        }
-    return {
-        "intent": "Intent",
-        "is_urgent": "Urgent",
-        "frustration": "Frustration",
-        "refund_requested": "Refund requested",
-        "churn_risk": "Churn risk",
-        "refund": "Refund",
-        "technical_help": "Technical issue",
-        "billing_question": "Billing question",
-        "information": "Information",
-        "cancellation": "Cancellation or downgrade",
-        "other": "Other request",
+        },
+        "en": {
+            "intent": "Intent", "is_urgent": "Urgent", "frustration": "Frustration",
+            "refund_requested": "Refund requested", "churn_risk": "Churn risk",
+            "refund": "Refund", "technical_help": "Technical issue",
+            "billing_question": "Billing question", "information": "Information",
+            "cancellation": "Cancellation or downgrade", "other": "Other request",
+        },
+    },
+    "email": {
+        "sv": {"category": "Team", "is_spam": "Skräppost", "is_phishing": "Nätfiske",
+               "urgency": "Brådska", "needs_reply": "Svar behövs", "billing": "Fakturor och betalningar",
+               "technical": "Teknisk support", "sales": "Försäljning", "security": "Säkerhet",
+               "hr": "Personalfrågor", "other": "Annat"},
+        "en": {"category": "Team", "is_spam": "Spam", "is_phishing": "Phishing",
+               "urgency": "Urgency", "needs_reply": "Reply needed", "billing": "Billing and payments",
+               "technical": "Technical support", "sales": "Sales", "security": "Security",
+               "hr": "Human resources", "other": "Other"},
+    },
+    "guard": {
+        "sv": {"jailbreak": "Försök att kringgå regler", "prompt_injection": "Promptinjektion",
+               "sensitive_data": "Känsliga uppgifter", "harm_severity": "Skaderisk", "topic": "Ämne",
+               "product_support": "Produktsupport", "coding": "Programmering",
+               "general_knowledge": "Allmän kunskap", "personal_advice": "Personliga råd",
+               "security_testing": "Säkerhetstestning", "other": "Annat"},
+        "en": {"jailbreak": "Jailbreak", "prompt_injection": "Prompt injection",
+               "sensitive_data": "Sensitive data", "harm_severity": "Harm severity", "topic": "Topic",
+               "product_support": "Product support", "coding": "Coding",
+               "general_knowledge": "General knowledge", "personal_advice": "Personal advice",
+               "security_testing": "Security testing", "other": "Other"},
+    },
+    "moderation": {
+        "sv": {"toxic": "Kränkande ton", "harassment": "Trakasserier", "threat": "Hot",
+               "spam": "Skräppost", "severity": "Allvar"},
+        "en": {"toxic": "Toxicity", "harassment": "Harassment", "threat": "Threat",
+               "spam": "Spam", "severity": "Severity"},
+    },
+    "router": {
+        "sv": {"difficulty": "Svårighetsgrad", "domain": "Ämnesområde", "needs_tools": "Verktyg behövs",
+               "is_sensitive": "Känsligt ärende", "code": "Programmering", "math_or_logic": "Matematik och logik",
+               "writing": "Skrivande", "factual_lookup": "Faktasökning", "data_analysis": "Dataanalys",
+               "chitchat": "Småprat"},
+        "en": {"difficulty": "Difficulty", "domain": "Domain", "needs_tools": "Tools needed",
+               "is_sensitive": "Sensitive", "code": "Code", "math_or_logic": "Math or logic",
+               "writing": "Writing", "factual_lookup": "Factual lookup", "data_analysis": "Data analysis",
+               "chitchat": "Chitchat"},
     }
+}
+
+
+def preset_labels(preset: str, language: str = "en") -> Dict[str, str]:
+    """Display labels for stable question and choice keys in a built-in preset.
+
+    The returned keys are machine identifiers; values are suitable for a localized UI.
+    Regional language tags such as ``"sv-SE"`` are accepted.
+    """
+    language = _preset_language(language)
+    if not isinstance(preset, str) or preset.strip().lower() not in _PRESET_LABELS:
+        raise ValueError("preset must be one of %s" % ", ".join(sorted(_PRESET_LABELS)))
+    return dict(_PRESET_LABELS[preset.strip().lower()][language])
 
 
 def triage_questions(language: str = "en") -> Dict:

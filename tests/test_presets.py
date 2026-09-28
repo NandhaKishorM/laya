@@ -138,6 +138,30 @@ check("triage display labels support English names",
        "billing_question": "Billing question", "information": "Information",
        "cancellation": "Cancellation or downgrade", "other": "Other request"})
 
+check("preset_labels/triage preserves the legacy API",
+      laya.preset_labels("triage", "sv-SE"), laya.triage_labels("sv-SE"))
+for preset, builder in PRESETS.items():
+    questions = builder(language="sv-SE")
+    labels = laya.preset_labels(preset, "sv-SE")
+    expected_keys = set(questions)
+    for question in questions.values():
+        criteria = question.get("criteria")
+        if isinstance(criteria, dict):
+            if not {"true", "false"} <= set(criteria):
+                expected_keys.update(criteria)
+    check_true("preset_labels/%s covers question and choice keys" % preset,
+               expected_keys <= set(labels))
+    check("preset_labels/%s locale alias" % preset,
+          labels, laya.preset_labels(preset, "sv"))
+    check_true("preset_labels/%s returns a fresh mapping" % preset,
+               labels is not laya.preset_labels(preset, "sv"))
+try:
+    laya.preset_labels("unknown", "sv")
+except ValueError:
+    check_true("preset_labels/rejects unknown preset", True)
+else:
+    check_true("preset_labels/rejects unknown preset", False)
+
 if FAIL:
     print("\n%d failed, %d passed" % (len(FAIL), len(PASS)))
     print("\n".join(FAIL))

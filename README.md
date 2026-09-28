@@ -956,6 +956,9 @@ package:
 | `LAYA_THREADS` | (torch default) | Same as `laya.serve`: cap torch intra-op threads for CPU inference; keep it at or below the physical core count |
 | `LAYA_AUTO_TASK` | `0` | Same as `laya.serve`: `1` lets a request whose question ids match a typed-decisions workflow route to that checkpoint, which is then loaded on demand; it never joins the preload list |
 
+For Swedish support triage, call `laya_preset` with `preset="triage"` and `lang="sv-SE"`;
+the language hint both routes to the multilingual checkpoint and localizes the preset questions.
+
 The tools return structured JSON (answers with probabilities, routing metadata, device,
 `latency_ms`). `laya_predict_batch` and `laya_route_batch` are the MCP form of
 [`Router.predict_batch` / `route_batch`](#batch-mode-score-many-states-in-one-forward-pass):

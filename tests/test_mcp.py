@@ -288,8 +288,8 @@ def test_presets():
     import laya
     from laya.presets import state_field
 
-    def build(attr):
-        return getattr(laya, attr)()
+    def build(attr, **kwargs):
+        return getattr(laya, attr)(**kwargs)
 
     class StateRouter(FakeRouter):
         def predict(self, state, questions, **kwargs):
@@ -327,6 +327,15 @@ def test_presets():
            router.state == {"payload": {"nested": 1}}, repr(router.state))
         # the questions that get answered are the preset's own, not a hand-copied set
         ok("preset/questions_forwarded_%s" % name, router.questions == build(PRESETS[name]))
+
+    router = StateRouter()
+    laya_preset("triage", {"text": "Jag behöver hjälp"}, lang="sv-SE", router=router,
+                preset_builder=build)
+    ok("preset/Swedish lang localizes triage questions",
+       router.questions["intent"]["instructions"] == "Vad vill kunden få hjälp med i `message`?",
+       repr(router.questions))
+    ok("preset/Swedish triage keeps message field", router.state == {"message": "Jag behöver hjälp"},
+       repr(router.state))
 
     for name in sorted(PRESETS):
         ok("preset/canonical_%s" % name, validate_preset(name) == name)

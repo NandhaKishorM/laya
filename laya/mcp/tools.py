@@ -689,7 +689,7 @@ def laya_preset(
     head_max_len: Any = None,
     router: Any = None,
     agent: Any = None,
-    preset_builder: Callable[[str], dict] | None = None,
+    preset_builder: Callable[..., dict] | None = None,
 ) -> dict:
     """Run a built-in workflow preset (guard / moderation / triage / model_router / email).
 
@@ -700,14 +700,19 @@ def laya_preset(
     shape and is passed through untouched.
 
     The preset fixes the questions, not the route or the budget, so the per-call controls a
-    hand-written :func:`laya_predict` takes are available here too -- most usefully ``lang``, since
-    a preset's instructions are English text whatever state they read.
+    hand-written :func:`laya_predict` takes are available here too. For triage, ``lang="sv"`` also
+    selects Swedish instructions and descriptions.
     """
     preset_name = validate_preset(preset)
     state_d = validate_state(state)
     if preset_builder is None:
         raise ToolError("internal_error", "preset_builder is not configured")
-    questions = preset_builder(PRESETS[preset_name])
+    builder_kwargs = {}
+    if preset_name == "triage" and isinstance(lang, str):
+        language = lang.strip().lower().replace("_", "-").split("-", 1)[0]
+        if language == "sv":
+            builder_kwargs["language"] = lang
+    questions = preset_builder(PRESETS[preset_name], **builder_kwargs)
     field = state_field(questions)
     if field is not None and field not in state_d and len(state_d) == 1:
         (key, value), = state_d.items()

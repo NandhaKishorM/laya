@@ -161,13 +161,13 @@ def _router_or_error() -> Any:
         raise McpToolError(_dump({"error": exc.code, "message": exc.message})) from exc
 
 
-def _preset_builder(attr_name: str) -> dict:
+def _preset_builder(attr_name: str, **kwargs) -> dict:
     import laya
 
     builder = getattr(laya, attr_name, None)
     if builder is None:
         raise ToolError("internal_error", f"laya.{attr_name} is not available in this version")
-    return builder()
+    return builder(**kwargs)
 
 
 def _wrap(fn, **kwargs) -> str:
@@ -361,6 +361,7 @@ _PRESET_INFO = get_available_presets()
 _PRESET_DOC = (
     "Run a built-in workflow: %s. "
     "Use when the task matches one of those presets instead of hand-writing questions. "
+    "For triage, set lang='sv' or 'sv-SE' to localize its instructions and descriptions. "
     "state: each preset reads one field (%s); a state holding a single string is placed under it "
     "for you, and a state with more keys is passed through as given, so put your text under the "
     "field that applies. Aliases: %s. "

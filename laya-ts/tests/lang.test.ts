@@ -208,7 +208,7 @@ describe("lang", () => {
     ["sluk lyset i soveværelset", null],
     ["kan jeg få en refundering for det dobbelte beløb", null],
     ["stäng av ljuset i sovrummet", null],
-    ["jag vill ha en återbetalning för den dubbla avgiften", null],
+    ["jag vill ha en återbetalning för den dubbla avgiften", "sv"],
     ["The naïve façade needs a fresh coat of paint", null],
   ])("does not rescue accented non-English text: %s", (text, language) => {
     expect(guessLatinLanguage(text)).toBe(language);

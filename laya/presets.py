@@ -44,7 +44,7 @@ def triage_labels(language: str = "en") -> Dict[str, str]:
     if language == "sv":
         return {
             "intent": "Ärende", "is_urgent": "Brådskande", "frustration": "Frustration",
-            "refund_requested": "Återbetalning", "churn_risk": "Uppsägningsrisk",
+            "refund_requested": "Begäran om återbetalning", "churn_risk": "Uppsägningsrisk",
             "refund": "Återbetalning", "technical_help": "Tekniskt problem",
             "billing_question": "Fakturafråga", "information": "Information",
             "cancellation": "Uppsägning eller nedgradering", "other": "Annat ärende",
@@ -64,7 +64,7 @@ _PRESET_LABELS = {
             "intent": "Ärende",
             "is_urgent": "Brådskande",
             "frustration": "Frustration",
-            "refund_requested": "Återbetalning",
+            "refund_requested": "Begäran om återbetalning",
             "churn_risk": "Uppsägningsrisk",
             "refund": "Återbetalning",
             "technical_help": "Tekniskt problem",

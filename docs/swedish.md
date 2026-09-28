@@ -45,6 +45,9 @@ intent = resultat["answers"]["intent"]["choice"]
 print(svenska_intentnamn[intent])
 ```
 
+Etiketten `refund` är kategorin ”Återbetalning”; fältet `refund_requested` visas separat som
+”Begäran om återbetalning” och anger om kunden faktiskt ber om pengar tillbaka.
+
 På samma sätt kan appen formatera sannolikheter och poäng för sitt gränssnitt; Laya returnerar
 strukturerade värden, inte en översatt svarstext.
 

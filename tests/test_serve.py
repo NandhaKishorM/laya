@@ -375,6 +375,96 @@ def test_health_reports_cpu_fallback_counters(monkeypatch):
     assert "out of memory" in fb["english"]["last_reason"], fb
 
 
+def test_models_lists_checkpoints(monkeypatch):
+    client, _ = _client(monkeypatch)
+    r = client.get("/v1/models")
+    assert r.status_code == 200
+    names = [m["name"] for m in r.json()["models"]]
+    # exactly the names _resolve_model honours as explicit checkpoints
+    assert names == ["english", "multilingual", "typed-decisions"]
+    for m in r.json()["models"]:
+        assert m["description"]
+
+
+def test_models_requires_auth_when_key_set(monkeypatch):
+    client, _ = _client(monkeypatch, api_key="s3cret")
+    assert client.get("/v1/models").status_code == 401
+    ok = client.get("/v1/models", headers={"Authorization": "Bearer s3cret"})
+    assert ok.status_code == 200
+
+
+# --- state/instructions normalisation -------------------------------------------
+# A JSON object's key order carries no meaning, but the prompt rendered from it is
+# positional, and clients built on hash-ordered maps (Java's Map.of randomises its
+# iteration order per JVM run) send a different order every run. These tests pin the
+# server-side fix: one deterministic field order regardless of arrival order.
+
+DICT_INS_REQ = {
+    "state": {"available_tools": [{"name": "sendEmail", "does": "Sends email"}],
+              "user_request": "drop a line to the team"},
+    "questions": {"applies": {
+        "type": "noul",
+        "instructions": {"focus": "actionable or not", "inspect": "available_tools",
+                         "question": "Does any tool serve the request?"},
+        "criteria": {"true": "yes", "false": "no"},
+    }},
+}
+
+
+def test_state_key_order_is_normalised(monkeypatch):
+    """Two arrival orders of the same state must reach the router identically,
+    with scalar fields ahead of the collections they are judged against."""
+    client, fake = _client(monkeypatch)
+    tools = [{"name": "sendEmail", "does": "Sends email"}]
+    for state in (
+        {"user_request": "drop a line to the team", "available_tools": tools},
+        {"available_tools": tools, "user_request": "drop a line to the team"},
+    ):
+        client.post("/v1/systemone", json={"state": state,
+                                           "questions": DICT_INS_REQ["questions"]})
+    first, second = fake.calls[0]["state"], fake.calls[1]["state"]
+    assert list(first) == ["user_request", "available_tools"]
+    assert first == second
+
+
+def test_structured_instructions_are_question_first(monkeypatch):
+    """The operative `question` key renders before focus/inspect, whatever the arrival
+    order; criteria keep their declared order untouched."""
+    client, fake = _client(monkeypatch)
+    client.post("/v1/systemone", json=DICT_INS_REQ)
+    ins = fake.calls[0]["questions"]["applies"]["instructions"]
+    assert list(ins) == ["question", "focus", "inspect"]
+    assert list(fake.calls[0]["questions"]["applies"]["criteria"]) == ["true", "false"]
+
+
+def test_normalisation_can_be_disabled(monkeypatch):
+    """LAYA_NORMALISE_STATE=0 restores raw arrival order for clients that mean it."""
+    monkeypatch.setenv("LAYA_NORMALISE_STATE", "0")
+    client, fake = _client(monkeypatch)
+    client.post("/v1/systemone", json=DICT_INS_REQ)
+    assert list(fake.calls[0]["state"]) == ["available_tools", "user_request"]
+    ins = fake.calls[0]["questions"]["applies"]["instructions"]
+    assert list(ins) == ["focus", "inspect", "question"]
+
+
+def test_normalise_state_unit():
+    from laya.serve import _normalise_state
+
+    messy = {
+        "tools": [{"z": 1, "a": 2}],
+        "request": "text",
+        "nested": {"b": {"y": [0], "x": [1]}, "a": [2, {"q": 1, "p": 2}]},
+    }
+    assert _normalise_state(messy) == {
+        "request": "text",
+        "nested": {"a": [2, {"p": 2, "q": 1}], "b": {"x": [1], "y": [0]}},
+        "tools": [{"a": 2, "z": 1}],
+    }
+    # scalars pass through untouched; lists normalise their elements
+    assert _normalise_state("plain text") == "plain text"
+    assert _normalise_state([{"b": 1, "a": 2}, 3]) == [{"a": 2, "b": 1}, 3]
+
+
 def test_helpers():
     assert _resolve_model("multilingual") == "multilingual"
     assert _resolve_model("convaiinnovations/laya-multilingual") == "multilingual"

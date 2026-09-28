@@ -778,13 +778,20 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
         """Project one triage decision onto the graph state."""
         ans = result.get("answers", {})
 
+        urgency_probability = ans.get("is_urgent", {}).get("noul")
+        churn_probability = ans.get("churn_risk", {}).get("noul")
+        refund_probability = ans.get("refund_requested", {}).get("noul")
+
         triage_info = {
             "intent": ans.get("intent", {}).get("choice"),
             "intent_confidence": ans.get("intent", {}).get("confidence"),
-            "is_urgent": ans.get("is_urgent", {}).get("noul", 0.0) >= 0.5,
+            "is_urgent": (urgency_probability or 0.0) >= 0.5,
+            "is_urgent_probability": urgency_probability,
             "frustration_score": ans.get("frustration", {}).get("score"),
-            "churn_risk": ans.get("churn_risk", {}).get("noul", 0.0) >= 0.5,
-            "refund_requested": ans.get("refund_requested", {}).get("noul", 0.0) >= 0.5,
+            "churn_risk": (churn_probability or 0.0) >= 0.5,
+            "churn_risk_probability": churn_probability,
+            "refund_requested": (refund_probability or 0.0) >= 0.5,
+            "refund_requested_probability": refund_probability,
         }
 
         if isinstance(state, dict):

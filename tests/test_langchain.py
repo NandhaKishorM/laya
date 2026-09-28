@@ -339,9 +339,20 @@ triage_node = LayaTriage(agent=triage_agent)
 triage_res = triage_node.invoke({"message": "I was double billed, refund now!"})
 check("triage/intent", triage_res["triage"]["intent"], "refund")
 check("triage/is_urgent", triage_res["triage"]["is_urgent"], True)
+check("triage/is_urgent_probability", triage_res["triage"]["is_urgent_probability"], 0.85)
 check("triage/churn_risk", triage_res["triage"]["churn_risk"], True)
+check("triage/churn_risk_probability", triage_res["triage"]["churn_risk_probability"], 0.65)
 check("triage/refund_requested", triage_res["triage"]["refund_requested"], True)
+check("triage/refund_requested_probability", triage_res["triage"]["refund_requested_probability"], 0.95)
 check("triage/frustration", triage_res["triage"]["frustration_score"], 2.7)
+
+missing_triage_node = LayaTriage(agent=MockLayaAgent(lambda state, questions: {"answers": {}}))
+missing_triage = missing_triage_node.invoke({"message": "A new request"})["triage"]
+check("triage/missing urgency remains false", missing_triage["is_urgent"], False)
+check("triage/missing urgency probability is null", missing_triage["is_urgent_probability"], None)
+check("triage/missing churn remains false", missing_triage["churn_risk"], False)
+check("triage/missing churn probability is null", missing_triage["churn_risk_probability"], None)
+check("triage/missing refund probability is null", missing_triage["refund_requested_probability"], None)
 
 
 # --------------------------------------------------------------- 5. LayaEvaluator

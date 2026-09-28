@@ -164,9 +164,12 @@ print(enriched["triage"])
 #   "intent": "technical_help",
 #   "intent_confidence": 0.94,
 #   "is_urgent": True,
+#   "is_urgent_probability": 0.91,
 #   "frustration_score": 2.8,
 #   "churn_risk": True,
-#   "refund_requested": False
+#   "churn_risk_probability": 0.72,
+#   "refund_requested": False,
+#   "refund_requested_probability": 0.08,
 # }
 ```
 
@@ -177,7 +180,8 @@ questions. For example:
 sv_triage = LayaTriage(language="sv-SE")
 sv_result = sv_triage.invoke({"message": "Jag kommer inte in på kontot före mötet."})
 print(sv_result["triage"]["intent"])  # stable machine key, for example "technical_help"
-print(sv_result["triage"]["is_urgent"])  # True when the message describes a deadline or ongoing impact
+print(sv_result["triage"]["is_urgent_probability"])  # probability that the message is urgent
+print(sv_result["triage"]["churn_risk_probability"])  # inspect or apply an app-specific threshold
 
 intent_labels_sv = {
     "refund": "Återbetalning",
@@ -192,8 +196,10 @@ intent_sv = intent_labels_sv.get(sv_result["triage"]["intent"], "Okänt ärende"
 
 The built-in intent keys stay English so existing integrations remain stable; map them to display
 labels in your application as above. `is_urgent=True` means the message describes a deadline or
-ongoing impact that requires prompt handling. English remains the default, and caller-supplied
-questions are used as provided.
+ongoing impact that requires prompt handling. The `*_probability` fields expose the model's
+probability directly so applications can apply their own thresholds; they are `None` when the
+underlying answer is missing. The existing booleans still use a threshold of `0.5`. English remains
+the default, and caller-supplied questions are used as provided.
 
 ---
 

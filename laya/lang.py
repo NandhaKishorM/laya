@@ -221,6 +221,10 @@ _EN_ONLY_WORDS = _STOP["en"] - _SHARED_WORDS
 # ... van" is ordinary Dutch, and deduping it moved 14 of those rows while rescuing no English one.
 _EN_COLLISION_WORDS = {"come", "son", "do", "care", "todo", "im", "per", "plus"} & {
     w for lg, sw in _STOP.items() if lg != "en" for w in sw}
+# Every word a non-English list holds. In text with no English function word, two different ones are
+# evidence the text is not English, even when it is too thin to say which language (#54). One is not:
+# English uses `do`, `todo` and `van` too ("how do my health benefits work").
+_OTHER_WORDS = frozenset(w for lg, words in _STOP.items() if lg != "en" for w in words)
 
 _WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
 # A token whose dot or @ joins word characters is an identifier, not prose: `github.com`,
@@ -427,11 +431,11 @@ def _english_rescued_by_words(words: List[str], diac_rate: float) -> bool:
 def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
 
-    Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate` and
-    `looks_non_english`. The latter can be true for non-English diacritics or an overlapping
-    Swedish-Danish marker even when this heuristic cannot name the language. `analyse` needs the
-    evidence and not just the verdict, because "undecided" and "English" are different answers
-    and only one of them is safe to send to the English checkpoint.
+    Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate`,
+    `looks_non_english` and `other_evidence`. `looks_non_english` can be true for non-English
+    diacritics or an overlapping Swedish-Danish marker even when this heuristic cannot name the
+    language. `analyse` needs the evidence and not just the verdict, because "undecided" and
+    "English" are different answers and only one of them is safe to send to the English checkpoint.
 
     A non-English language is only named when it matched at least one word that no other list
     claims: shared function words alone (`la`, `e`, `o`) identify no particular language.
@@ -445,10 +449,10 @@ def latin_profile(text: str) -> Dict[str, object]:
     nordic_overlap = bool(set(words) & _NORDIC_OVERLAP_WORDS) and not bool(set(words) & _EN_ONLY_WORDS)
     if 1 < len(words) < 4 and set(words) & _SHORT_SWEDISH_WORDS:
         return {"language": "sv", "english_hits": 0, "diacritic_rate": diac_rate,
-                "looks_non_english": non_english}
+                "looks_non_english": non_english, "other_evidence": False}
     if len(words) < 4:
         return {"language": None, "english_hits": 0, "diacritic_rate": diac_rate,
-                "looks_non_english": non_english or nordic_overlap}
+                "looks_non_english": non_english or nordic_overlap, "other_evidence": False}
 
     # A collision word counts once however often it repeats; every other word counts its hits.
     counts = Counter(words)
@@ -480,8 +484,11 @@ def latin_profile(text: str) -> Dict[str, object]:
         lang = best_lg
     elif en and (not non_english or _english_rescued_by_words(words, diac_rate)):
         lang = "en"
+    # a non-English letter too rare for the rate counts as evidence too
+    other = diac > 0 or len(_OTHER_WORDS.intersection(words)) >= 2
     return {"language": lang, "english_hits": en, "diacritic_rate": diac_rate,
-            "looks_non_english": non_english or (lang is None and nordic_overlap)}
+            "looks_non_english": non_english or (lang is None and nordic_overlap),
+            "other_evidence": other}
 
 
 def guess_latin_language(text: str) -> Optional[str]:
@@ -587,9 +594,13 @@ def _analyse_text(text: str) -> Dict[str, object]:
     # Undecided is not English. Treating it as English sent every Latin-script language we hold no
     # stopwords for to the checkpoint that cannot read it, silently. When nothing identifies the
     # language, non-English letters or a shared Swedish-Danish marker can still prefer the
-    # multilingual checkpoint; text with neither signal still goes to the English one.
+    # multilingual checkpoint. So is weaker evidence of another language at four or more words,
+    # where text left undecided has no English function word, since one would have named it `en`
+    # (#54). Text with none of these, like short English and English commands without a function
+    # word, still goes to the English one.
     undecided = lang is None
-    english = lang == "en" or (undecided and not prof_lat["looks_non_english"])
+    english = lang == "en" or (undecided and not prof_lat["looks_non_english"]
+                               and not prof_lat["other_evidence"])
     return {"script": "latin", "script_profile": prof, "language": lang,
             "is_english": english, "language_undecided": undecided,
             "diacritic_rate": round(float(prof_lat["diacritic_rate"]), 4),

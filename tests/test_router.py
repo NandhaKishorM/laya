@@ -715,6 +715,32 @@ for text in ["turn off smart lamp in den", "im so sorry, am an hour late, stuck 
 # German words that Spanish (`es`) or French (`du`) also claim would stop naming those languages
 check("latin_lang/spanish es stays evidence", guess_latin_language("que hora es en australia"), "es")
 check("latin_lang/french du stays evidence", guess_latin_language("baisse le volume du haut-parleur"), "fr")
+# Undecided at four or more words (#54). Such text has no English function word, since one would name
+# it `en`. Two different words from other languages' lists, or a non-English letter too rare for the
+# rate, are evidence it is not English even when too thin to say which language. MASSIVE test utterances:
+for text in ["streiche alle meine geplanten termine",                      # de, `alle` (it) and `meine` (de)
+             "me gustaría escuchar algunos buenos chistes divertidos"]:    # es, one `í`
+    check("latin_lang/undecided with evidence " + text, guess_latin_language(text), None)
+    check("route/undecided with evidence " + text, _r_lat.route(text).model, "multilingual")
+# One word is not enough, and neither is one word twice: English uses `do` and `las` too (both from the
+# English texts checked on #286), so such text follows `default`, Dutch and Portuguese with it
+for text in ["how do my health benefits work", "las vegas weather today",
+             "vertel me wat er gebeurt op instagram",                      # nl, `op`
+             "verificar qualquer email da amazon",                         # pt, `da`
+             "apaga la luz de la cocina"]:                                 # es, `la` twice
+    check("route/one list word follows default " + text, _r_ml.route(text).model, "multilingual")
+    check("route/one list word stock default " + text, _r_lat.route(text).model, "english")
+# Under four words the text is not scored, so two such words are no evidence yet
+check("route/undecided three words follow default", _r_lat.route("wecke mich auf").model, "english")
+# No evidence, no move: English with no function word stays English (the first three are from the 20,000
+# English texts checked on #286, the last from en-US MASSIVE) ...
+for text in ["tell me my current savings account's interest rate", "play recently added music",
+             "how many days before my credit card arrives", "turn off lobby light"]:
+    check("route/english without a function word " + text, _r_lat.route(text).model, "english")
+# ... and so, kept visible on purpose, does a language with no list here and no accents to show for it.
+# `lang_guess=` or `Router(default="multilingual")` is the way round it.
+check("route/KNOWN GAP indonesian without evidence",
+      _r_lat.route("tolong mainkan lagu dari bruno mars").model, "english")
 
 # ------------------------------------------------------------------ accented loanwords in English (#337)
 # The diacritic rate is measured over every character, so one `é` in a short English sentence

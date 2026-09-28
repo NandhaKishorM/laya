@@ -99,7 +99,9 @@ except LayaTaskGuardError as e:
 ```
 
 `language="sv-SE"` selects the built-in Swedish guard questions; English is the default.
-If you pass `questions=...`, those caller-provided definitions are used as written.
+It also localizes the default rejection message. Set `rejection_message=...` to provide your own
+text; an explicit value is preserved. If you pass `questions=...`, those caller-provided
+definitions are used as written.
 
 ---
 

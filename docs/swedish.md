@@ -37,6 +37,24 @@ print(resultat["routing"]["model"])  # multilingual
 
 Frågetexterna är svenska, men fråge-ID:n och valnycklarna är oförändrade för befintliga
 integrationer. Exempelvis blir en återbetalning fortfarande `refund`; nyckeln översätts inte.
+Om gränssnittet ska visa svenska kategorinamn kan appen mappa nycklarna efter beslutet:
+
+```python
+svenska_intentnamn = {
+    "refund": "Återbetalning",
+    "technical_help": "Tekniskt problem",
+    "billing_question": "Fakturafråga",
+    "information": "Information",
+    "cancellation": "Uppsägning eller nedgradering",
+    "other": "Annat ärende",
+}
+
+intent = resultat["answers"]["intent"]["choice"]
+print(svenska_intentnamn[intent])
+```
+
+På samma sätt kan appen formatera sannolikheter och poäng för sitt gränssnitt; Laya returnerar
+strukturerade värden, inte en översatt svarstext.
 
 ## Välj ett färdigt frågepaket
 

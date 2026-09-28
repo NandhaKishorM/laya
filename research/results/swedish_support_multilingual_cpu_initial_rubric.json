@@ -41,26 +41,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3708,
-        "confidence": 0.1431,
+        "answer_confidence": 0.4962,
+        "confidence": 0.2529,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0425,
-          "1": 0.3708,
-          "2": 0.337,
-          "3": 0.1583,
-          "4": 0.0914
+          "0": 0.045,
+          "1": 0.2783,
+          "2": 0.166,
+          "3": 0.4962,
+          "4": 0.0144
         },
-        "score": 1.8853,
+        "score": 2.1565,
         "type": "score"
       },
-      "confidence": 0.3708,
+      "confidence": 0.4962,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -68,9 +68,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3708,
+        "mean_confidence": 0.4962,
         "noul_accuracy": null,
-        "score_mae": 0.11470000000000002
+        "score_mae": 0.15649999999999986
       },
       "tags": [
         "synthetic",
@@ -147,26 +147,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3864,
-        "confidence": 0.1821,
+        "answer_confidence": 0.7551,
+        "confidence": 0.5377,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0231,
-          "1": 0.2207,
-          "2": 0.3864,
-          "3": 0.3119,
-          "4": 0.058
+          "0": 0.0048,
+          "1": 0.0539,
+          "2": 0.7551,
+          "3": 0.1772,
+          "4": 0.009
         },
-        "score": 2.1609,
+        "score": 2.1317,
         "type": "score"
       },
-      "confidence": 0.3864,
+      "confidence": 0.7551,
       "correct": null,
       "expected": 3,
       "language": "sv-SE",
@@ -174,9 +174,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3864,
+        "mean_confidence": 0.7551,
         "noul_accuracy": null,
-        "score_mae": 0.8391000000000002
+        "score_mae": 0.8683000000000001
       },
       "tags": [
         "synthetic",
@@ -253,26 +253,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3611,
-        "confidence": 0.1604,
+        "answer_confidence": 0.4077,
+        "confidence": 0.2501,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0184,
-          "1": 0.3319,
-          "2": 0.3611,
-          "3": 0.1902,
-          "4": 0.0984
+          "0": 0.0193,
+          "1": 0.2878,
+          "2": 0.2735,
+          "3": 0.4077,
+          "4": 0.0117
         },
-        "score": 2.0183,
+        "score": 2.1046,
         "type": "score"
       },
-      "confidence": 0.3611,
+      "confidence": 0.4077,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -280,9 +280,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3611,
+        "mean_confidence": 0.4077,
         "noul_accuracy": null,
-        "score_mae": 0.018299999999999983
+        "score_mae": 0.10460000000000003
       },
       "tags": [
         "synthetic",
@@ -359,26 +359,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3601,
-        "confidence": 0.1326,
+        "answer_confidence": 0.5345,
+        "confidence": 0.2819,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.017,
-          "1": 0.2406,
-          "2": 0.3601,
-          "3": 0.2465,
-          "4": 0.1358
+          "0": 0.0236,
+          "1": 0.2909,
+          "2": 0.1104,
+          "3": 0.5345,
+          "4": 0.0406
         },
-        "score": 2.2436,
+        "score": 2.2776,
         "type": "score"
       },
-      "confidence": 0.3601,
+      "confidence": 0.5345,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -386,9 +386,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3601,
+        "mean_confidence": 0.5345,
         "noul_accuracy": null,
-        "score_mae": 0.24359999999999982
+        "score_mae": 0.27760000000000007
       },
       "tags": [
         "synthetic",
@@ -465,26 +465,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4316,
-        "confidence": 0.18,
+        "answer_confidence": 0.4975,
+        "confidence": 0.325,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0243,
-          "1": 0.2927,
-          "2": 0.4316,
-          "3": 0.1676,
-          "4": 0.0838
+          "0": 0.0088,
+          "1": 0.0925,
+          "2": 0.3695,
+          "3": 0.4975,
+          "4": 0.0317
         },
-        "score": 1.9942,
+        "score": 2.4508,
         "type": "score"
       },
-      "confidence": 0.4316,
+      "confidence": 0.4975,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -492,9 +492,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4316,
+        "mean_confidence": 0.4975,
         "noul_accuracy": null,
-        "score_mae": 0.005800000000000027
+        "score_mae": 0.4508000000000001
       },
       "tags": [
         "synthetic",
@@ -571,26 +571,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.2944,
-        "confidence": 0.1192,
+        "answer_confidence": 0.5326,
+        "confidence": 0.3381,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0179,
-          "1": 0.2758,
-          "2": 0.2944,
-          "3": 0.2702,
-          "4": 0.1416
+          "0": 0.0123,
+          "1": 0.0661,
+          "2": 0.5326,
+          "3": 0.349,
+          "4": 0.0399
         },
-        "score": 2.2418,
+        "score": 2.3382,
         "type": "score"
       },
-      "confidence": 0.2944,
+      "confidence": 0.5326,
       "correct": null,
       "expected": 3,
       "language": "sv-SE",
@@ -598,9 +598,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.2944,
+        "mean_confidence": 0.5326,
         "noul_accuracy": null,
-        "score_mae": 0.7582
+        "score_mae": 0.6617999999999999
       },
       "tags": [
         "synthetic",
@@ -677,26 +677,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3765,
-        "confidence": 0.1803,
+        "answer_confidence": 0.5776,
+        "confidence": 0.3455,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0066,
-          "1": 0.2466,
-          "2": 0.2805,
-          "3": 0.3765,
-          "4": 0.0898
+          "0": 0.0092,
+          "1": 0.1063,
+          "2": 0.2795,
+          "3": 0.5776,
+          "4": 0.0274
         },
-        "score": 2.2963,
+        "score": 2.5077,
         "type": "score"
       },
-      "confidence": 0.3765,
+      "confidence": 0.5776,
       "correct": null,
       "expected": 3,
       "language": "sv-SE",
@@ -704,9 +704,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3765,
+        "mean_confidence": 0.5776,
         "noul_accuracy": null,
-        "score_mae": 0.7037
+        "score_mae": 0.4923000000000002
       },
       "tags": [
         "synthetic",
@@ -783,26 +783,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.339,
-        "confidence": 0.116,
+        "answer_confidence": 0.4419,
+        "confidence": 0.2554,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0181,
-          "1": 0.2545,
-          "2": 0.2095,
-          "3": 0.339,
-          "4": 0.1789
+          "0": 0.0207,
+          "1": 0.1632,
+          "2": 0.4419,
+          "3": 0.3486,
+          "4": 0.0257
         },
-        "score": 2.4062,
+        "score": 2.1954,
         "type": "score"
       },
-      "confidence": 0.339,
+      "confidence": 0.4419,
       "correct": null,
       "expected": 4,
       "language": "sv-SE",
@@ -810,9 +810,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.339,
+        "mean_confidence": 0.4419,
         "noul_accuracy": null,
-        "score_mae": 1.5937999999999999
+        "score_mae": 1.8046000000000002
       },
       "tags": [
         "synthetic",
@@ -889,26 +889,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4877,
-        "confidence": 0.224,
+        "answer_confidence": 0.4284,
+        "confidence": 0.213,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0226,
-          "1": 0.4877,
-          "2": 0.2586,
-          "3": 0.1778,
-          "4": 0.0533
+          "0": 0.0412,
+          "1": 0.3495,
+          "2": 0.141,
+          "3": 0.4284,
+          "4": 0.0398
         },
-        "score": 1.7514,
+        "score": 2.076,
         "type": "score"
       },
-      "confidence": 0.4877,
+      "confidence": 0.4284,
       "correct": null,
       "expected": 1,
       "language": "sv-SE",
@@ -916,9 +916,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4877,
+        "mean_confidence": 0.4284,
         "noul_accuracy": null,
-        "score_mae": 0.7514000000000001
+        "score_mae": 1.076
       },
       "tags": [
         "synthetic",
@@ -995,26 +995,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3496,
-        "confidence": 0.1407,
+        "answer_confidence": 0.6111,
+        "confidence": 0.2962,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0239,
-          "1": 0.2634,
-          "2": 0.2695,
-          "3": 0.3496,
-          "4": 0.0936
+          "0": 0.0639,
+          "1": 0.1098,
+          "2": 0.1874,
+          "3": 0.6111,
+          "4": 0.0278
         },
-        "score": 2.2256,
+        "score": 2.4291,
         "type": "score"
       },
-      "confidence": 0.3496,
+      "confidence": 0.6111,
       "correct": null,
       "expected": 4,
       "language": "sv-SE",
@@ -1022,9 +1022,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3496,
+        "mean_confidence": 0.6111,
         "noul_accuracy": null,
-        "score_mae": 1.7744
+        "score_mae": 1.5709
       },
       "tags": [
         "synthetic",
@@ -1101,26 +1101,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3507,
-        "confidence": 0.1272,
+        "answer_confidence": 0.5927,
+        "confidence": 0.3606,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0122,
-          "1": 0.3507,
-          "2": 0.2398,
-          "3": 0.2135,
-          "4": 0.1838
+          "0": 0.0118,
+          "1": 0.1961,
+          "2": 0.1937,
+          "3": 0.5927,
+          "4": 0.0057
         },
-        "score": 2.2059,
+        "score": 2.3844,
         "type": "score"
       },
-      "confidence": 0.3507,
+      "confidence": 0.5927,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -1128,9 +1128,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3507,
+        "mean_confidence": 0.5927,
         "noul_accuracy": null,
-        "score_mae": 0.2059000000000002
+        "score_mae": 0.38439999999999985
       },
       "tags": [
         "synthetic",
@@ -1207,26 +1207,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3436,
-        "confidence": 0.1142,
+        "answer_confidence": 0.7988,
+        "confidence": 0.5474,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0271,
-          "1": 0.2875,
-          "2": 0.3436,
-          "3": 0.1546,
-          "4": 0.1872
+          "0": 0.0201,
+          "1": 0.1061,
+          "2": 0.0594,
+          "3": 0.7988,
+          "4": 0.0155
         },
-        "score": 2.1873,
+        "score": 2.6836,
         "type": "score"
       },
-      "confidence": 0.3436,
+      "confidence": 0.7988,
       "correct": null,
       "expected": 1,
       "language": "sv-SE",
@@ -1234,9 +1234,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3436,
+        "mean_confidence": 0.7988,
         "noul_accuracy": null,
-        "score_mae": 1.1873
+        "score_mae": 1.6836000000000002
       },
       "tags": [
         "synthetic",
@@ -1313,26 +1313,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3071,
-        "confidence": 0.1132,
+        "answer_confidence": 0.7188,
+        "confidence": 0.4299,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0201,
-          "1": 0.2606,
-          "2": 0.3071,
-          "3": 0.262,
-          "4": 0.1502
+          "0": 0.0086,
+          "1": 0.0964,
+          "2": 0.123,
+          "3": 0.7188,
+          "4": 0.0532
         },
-        "score": 2.2615,
+        "score": 2.7116,
         "type": "score"
       },
-      "confidence": 0.3071,
+      "confidence": 0.7188,
       "correct": null,
       "expected": 3,
       "language": "sv-SE",
@@ -1340,9 +1340,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3071,
+        "mean_confidence": 0.7188,
         "noul_accuracy": null,
-        "score_mae": 0.7385000000000002
+        "score_mae": 0.2884000000000002
       },
       "tags": [
         "synthetic",
@@ -1419,26 +1419,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3969,
-        "confidence": 0.1759,
+        "answer_confidence": 0.5121,
+        "confidence": 0.4151,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.012,
-          "1": 0.2987,
-          "2": 0.3969,
-          "3": 0.1952,
-          "4": 0.0971
+          "0": 0.004,
+          "1": 0.0626,
+          "2": 0.4134,
+          "3": 0.5121,
+          "4": 0.0079
         },
-        "score": 2.0666,
+        "score": 2.4573,
         "type": "score"
       },
-      "confidence": 0.3969,
+      "confidence": 0.5121,
       "correct": null,
       "expected": 3,
       "language": "sv-SE",
@@ -1446,9 +1446,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3969,
+        "mean_confidence": 0.5121,
         "noul_accuracy": null,
-        "score_mae": 0.9333999999999998
+        "score_mae": 0.5427
       },
       "tags": [
         "synthetic",
@@ -1525,26 +1525,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3899,
-        "confidence": 0.1347,
+        "answer_confidence": 0.3744,
+        "confidence": 0.2396,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0294,
-          "1": 0.2565,
-          "2": 0.3899,
-          "3": 0.2142,
-          "4": 0.11
+          "0": 0.0152,
+          "1": 0.2605,
+          "2": 0.3307,
+          "3": 0.3744,
+          "4": 0.0192
         },
-        "score": 2.1189,
+        "score": 2.1219,
         "type": "score"
       },
-      "confidence": 0.3899,
+      "confidence": 0.3744,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -1552,9 +1552,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3899,
+        "mean_confidence": 0.3744,
         "noul_accuracy": null,
-        "score_mae": 0.1189
+        "score_mae": 0.12190000000000012
       },
       "tags": [
         "synthetic",
@@ -1631,26 +1631,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4424,
-        "confidence": 0.1879,
+        "answer_confidence": 0.5281,
+        "confidence": 0.2258,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0347,
-          "1": 0.1551,
-          "2": 0.3021,
-          "3": 0.4424,
-          "4": 0.0657
+          "0": 0.0371,
+          "1": 0.1382,
+          "2": 0.2341,
+          "3": 0.5281,
+          "4": 0.0624
         },
-        "score": 2.3493,
+        "score": 2.4404,
         "type": "score"
       },
-      "confidence": 0.4424,
+      "confidence": 0.5281,
       "correct": null,
       "expected": 4,
       "language": "sv-SE",
@@ -1658,9 +1658,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4424,
+        "mean_confidence": 0.5281,
         "noul_accuracy": null,
-        "score_mae": 1.6507
+        "score_mae": 1.5596
       },
       "tags": [
         "synthetic",
@@ -1737,26 +1737,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.6761,
-        "confidence": 0.4082,
+        "answer_confidence": 0.4554,
+        "confidence": 0.1811,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0043,
-          "1": 0.1016,
-          "2": 0.1805,
-          "3": 0.6761,
-          "4": 0.0375
+          "0": 0.0304,
+          "1": 0.2628,
+          "2": 0.1739,
+          "3": 0.4554,
+          "4": 0.0774
         },
-        "score": 2.641,
+        "score": 2.2865,
         "type": "score"
       },
-      "confidence": 0.6761,
+      "confidence": 0.4554,
       "correct": null,
       "expected": 1,
       "language": "sv-SE",
@@ -1764,9 +1764,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.6761,
+        "mean_confidence": 0.4554,
         "noul_accuracy": null,
-        "score_mae": 1.641
+        "score_mae": 1.2865000000000002
       },
       "tags": [
         "synthetic",
@@ -1843,26 +1843,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3468,
-        "confidence": 0.1306,
+        "answer_confidence": 0.6708,
+        "confidence": 0.4192,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0121,
-          "1": 0.202,
-          "2": 0.3468,
-          "3": 0.2668,
-          "4": 0.1723
+          "0": 0.0037,
+          "1": 0.0837,
+          "2": 0.2095,
+          "3": 0.6708,
+          "4": 0.0323
         },
-        "score": 2.3853,
+        "score": 2.6443,
         "type": "score"
       },
-      "confidence": 0.3468,
+      "confidence": 0.6708,
       "correct": null,
       "expected": 3,
       "language": "sv-SE",
@@ -1870,9 +1870,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3468,
+        "mean_confidence": 0.6708,
         "noul_accuracy": null,
-        "score_mae": 0.6147
+        "score_mae": 0.3557000000000001
       },
       "tags": [
         "synthetic",
@@ -1949,26 +1949,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.7194,
-        "confidence": 0.4524,
+        "answer_confidence": 0.6292,
+        "confidence": 0.3466,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0064,
-          "1": 0.0511,
-          "2": 0.1673,
-          "3": 0.7194,
-          "4": 0.0557
+          "0": 0.0115,
+          "1": 0.2022,
+          "2": 0.1112,
+          "3": 0.6292,
+          "4": 0.0459
         },
-        "score": 2.767,
+        "score": 2.4959,
         "type": "score"
       },
-      "confidence": 0.7194,
+      "confidence": 0.6292,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -1976,9 +1976,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.7194,
+        "mean_confidence": 0.6292,
         "noul_accuracy": null,
-        "score_mae": 0.7669999999999999
+        "score_mae": 0.4958999999999998
       },
       "tags": [
         "synthetic",
@@ -2055,26 +2055,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.482,
-        "confidence": 0.2593,
+        "answer_confidence": 0.9273,
+        "confidence": 0.7845,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0091,
-          "1": 0.2392,
-          "2": 0.2357,
-          "3": 0.482,
-          "4": 0.0338
+          "0": 0.0027,
+          "1": 0.0273,
+          "2": 0.0275,
+          "3": 0.9273,
+          "4": 0.0153
         },
-        "score": 2.2922,
+        "score": 2.9253,
         "type": "score"
       },
-      "confidence": 0.482,
+      "confidence": 0.9273,
       "correct": null,
       "expected": 0,
       "language": "sv-SE",
@@ -2082,9 +2082,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.482,
+        "mean_confidence": 0.9273,
         "noul_accuracy": null,
-        "score_mae": 2.2922
+        "score_mae": 2.9253
       },
       "tags": [
         "synthetic",
@@ -2161,26 +2161,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4902,
-        "confidence": 0.246,
+        "answer_confidence": 0.7053,
+        "confidence": 0.481,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0087,
-          "1": 0.1688,
-          "2": 0.2726,
-          "3": 0.4902,
-          "4": 0.0598
+          "0": 0.0042,
+          "1": 0.039,
+          "2": 0.2213,
+          "3": 0.7053,
+          "4": 0.0302
         },
-        "score": 2.4236,
+        "score": 2.7182,
         "type": "score"
       },
-      "confidence": 0.4902,
+      "confidence": 0.7053,
       "correct": null,
       "expected": 1,
       "language": "sv-SE",
@@ -2188,9 +2188,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4902,
+        "mean_confidence": 0.7053,
         "noul_accuracy": null,
-        "score_mae": 1.4236
+        "score_mae": 1.7182
       },
       "tags": [
         "synthetic",
@@ -2267,26 +2267,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4239,
-        "confidence": 0.2259,
+        "answer_confidence": 0.7811,
+        "confidence": 0.566,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0069,
-          "1": 0.1637,
-          "2": 0.4239,
-          "3": 0.3361,
-          "4": 0.0694
+          "0": 0.0015,
+          "1": 0.0415,
+          "2": 0.1581,
+          "3": 0.7811,
+          "4": 0.0179
         },
-        "score": 2.2974,
+        "score": 2.7724,
         "type": "score"
       },
-      "confidence": 0.4239,
+      "confidence": 0.7811,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -2294,9 +2294,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4239,
+        "mean_confidence": 0.7811,
         "noul_accuracy": null,
-        "score_mae": 0.2974000000000001
+        "score_mae": 0.7724000000000002
       },
       "tags": [
         "synthetic",
@@ -2373,26 +2373,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4422,
-        "confidence": 0.1943,
+        "answer_confidence": 0.9226,
+        "confidence": 0.7722,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0107,
-          "1": 0.2077,
-          "2": 0.2515,
-          "3": 0.4422,
-          "4": 0.0879
+          "0": 0.0034,
+          "1": 0.0233,
+          "2": 0.0204,
+          "3": 0.9226,
+          "4": 0.0304
         },
-        "score": 2.3888,
+        "score": 2.9534,
         "type": "score"
       },
-      "confidence": 0.4422,
+      "confidence": 0.9226,
       "correct": null,
       "expected": 4,
       "language": "sv-SE",
@@ -2400,9 +2400,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4422,
+        "mean_confidence": 0.9226,
         "noul_accuracy": null,
-        "score_mae": 1.6112000000000002
+        "score_mae": 1.0466000000000002
       },
       "tags": [
         "synthetic",
@@ -2479,26 +2479,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4408,
-        "confidence": 0.2001,
+        "answer_confidence": 0.5292,
+        "confidence": 0.2204,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0075,
-          "1": 0.2357,
-          "2": 0.4408,
-          "3": 0.2301,
-          "4": 0.0859
+          "0": 0.0144,
+          "1": 0.1514,
+          "2": 0.1721,
+          "3": 0.5292,
+          "4": 0.133
         },
-        "score": 2.1512,
+        "score": 2.615,
         "type": "score"
       },
-      "confidence": 0.4408,
+      "confidence": 0.5292,
       "correct": null,
       "expected": 3,
       "language": "sv-SE",
@@ -2506,9 +2506,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4408,
+        "mean_confidence": 0.5292,
         "noul_accuracy": null,
-        "score_mae": 0.8488000000000002
+        "score_mae": 0.3849999999999998
       },
       "tags": [
         "synthetic",
@@ -2585,26 +2585,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3377,
-        "confidence": 0.151,
+        "answer_confidence": 0.7595,
+        "confidence": 0.5252,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0101,
-          "1": 0.2382,
-          "2": 0.3377,
-          "3": 0.2969,
-          "4": 0.1171
+          "0": 0.0042,
+          "1": 0.06,
+          "2": 0.1587,
+          "3": 0.7595,
+          "4": 0.0176
         },
-        "score": 2.2728,
+        "score": 2.7261,
         "type": "score"
       },
-      "confidence": 0.3377,
+      "confidence": 0.7595,
       "correct": null,
       "expected": 2,
       "language": "sv-SE",
@@ -2612,9 +2612,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3377,
+        "mean_confidence": 0.7595,
         "noul_accuracy": null,
-        "score_mae": 0.27280000000000015
+        "score_mae": 0.7261000000000002
       },
       "tags": [
         "synthetic",
@@ -2691,26 +2691,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3705,
-        "confidence": 0.1724,
+        "answer_confidence": 0.4544,
+        "confidence": 0.2295,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0077,
-          "1": 0.3705,
-          "2": 0.2743,
-          "3": 0.2517,
-          "4": 0.0957
+          "0": 0.0123,
+          "1": 0.3027,
+          "2": 0.1747,
+          "3": 0.4544,
+          "4": 0.0559
         },
-        "score": 2.0572,
+        "score": 2.239,
         "type": "score"
       },
-      "confidence": 0.3705,
+      "confidence": 0.4544,
       "correct": null,
       "expected": 1,
       "language": "sv-SE",
@@ -2718,9 +2718,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3705,
+        "mean_confidence": 0.4544,
         "noul_accuracy": null,
-        "score_mae": 1.0572
+        "score_mae": 1.2389999999999999
       },
       "tags": [
         "synthetic",
@@ -2797,26 +2797,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4135,
-        "confidence": 0.1782,
+        "answer_confidence": 0.7218,
+        "confidence": 0.4366,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0111,
-          "1": 0.2583,
-          "2": 0.4135,
-          "3": 0.2218,
-          "4": 0.0953
+          "0": 0.0222,
+          "1": 0.1576,
+          "2": 0.0429,
+          "3": 0.7218,
+          "4": 0.0555
         },
-        "score": 2.132,
+        "score": 2.6307,
         "type": "score"
       },
-      "confidence": 0.4135,
+      "confidence": 0.7218,
       "correct": null,
       "expected": 1,
       "language": "sv-SE",
@@ -2824,9 +2824,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4135,
+        "mean_confidence": 0.7218,
         "noul_accuracy": null,
-        "score_mae": 1.1320000000000001
+        "score_mae": 1.6307
       },
       "tags": [
         "synthetic",
@@ -2903,26 +2903,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4432,
-        "confidence": 0.207,
+        "answer_confidence": 0.642,
+        "confidence": 0.3365,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0077,
-          "1": 0.2275,
-          "2": 0.2449,
-          "3": 0.4432,
-          "4": 0.0768
+          "0": 0.0068,
+          "1": 0.0949,
+          "2": 0.1373,
+          "3": 0.642,
+          "4": 0.119
         },
-        "score": 2.354,
+        "score": 2.7715,
         "type": "score"
       },
-      "confidence": 0.4432,
+      "confidence": 0.642,
       "correct": null,
       "expected": 1,
       "language": "sv-SE",
@@ -2930,9 +2930,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4432,
+        "mean_confidence": 0.642,
         "noul_accuracy": null,
-        "score_mae": 1.354
+        "score_mae": 1.7715
       },
       "tags": [
         "synthetic",
@@ -3009,26 +3009,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.3235,
-        "confidence": 0.2021,
+        "answer_confidence": 0.46,
+        "confidence": 0.2359,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.0128,
-          "1": 0.3085,
-          "2": 0.3114,
-          "3": 0.3235,
-          "4": 0.0439
+          "0": 0.0116,
+          "1": 0.1597,
+          "2": 0.311,
+          "3": 0.46,
+          "4": 0.0577
         },
-        "score": 2.0774,
+        "score": 2.3924,
         "type": "score"
       },
-      "confidence": 0.3235,
+      "confidence": 0.46,
       "correct": null,
       "expected": 0,
       "language": "sv-SE",
@@ -3036,9 +3036,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.3235,
+        "mean_confidence": 0.46,
         "noul_accuracy": null,
-        "score_mae": 2.0774
+        "score_mae": 2.3924
       },
       "tags": [
         "synthetic",
@@ -3115,26 +3115,26 @@
         "action": {
           "act_probability": 1.0
         },
-        "answer_confidence": 0.4732,
-        "confidence": 0.2379,
+        "answer_confidence": 0.5029,
+        "confidence": 0.2617,
         "legend": {
-          "0": "ingen brådska: ärendet kan vänta och en fördröjning ger ingen märkbar påverkan",
-          "1": "låg brådska: påverkan är begränsad och ärendet kan hanteras när möjlighet ges",
-          "2": "måttlig brådska: tydlig olägenhet, men tjänsten kan fortfarande användas eller en lösning finns",
-          "3": "hög brådska: en viktig funktion hindrar arbetet nu eller en nära tidsfrist riskerar att missas",
-          "4": "kritisk brådska: allvarlig pågående påverkan på flera användare eller en tidsfrist kräver omedelbar åtgärd"
+          "0": "Inte brådskande",
+          "1": "Låg: kan vänta",
+          "2": "Måttlig: bör hanteras snart",
+          "3": "Hög: påverkar användningen nu",
+          "4": "Kritisk: allvarlig pågående påverkan eller omedelbar tidsfrist"
         },
         "probabilities": {
-          "0": 0.005,
-          "1": 0.2675,
-          "2": 0.4732,
-          "3": 0.189,
-          "4": 0.0653
+          "0": 0.0262,
+          "1": 0.3248,
+          "2": 0.0677,
+          "3": 0.5029,
+          "4": 0.0783
         },
-        "score": 2.042,
+        "score": 2.2823,
         "type": "score"
       },
-      "confidence": 0.4732,
+      "confidence": 0.5029,
       "correct": null,
       "expected": 1,
       "language": "sv-SE",
@@ -3142,9 +3142,9 @@
       "qid": "brådska",
       "scores": {
         "choice_accuracy": null,
-        "mean_confidence": 0.4732,
+        "mean_confidence": 0.5029,
         "noul_accuracy": null,
-        "score_mae": 1.0419999999999998
+        "score_mae": 1.2823000000000002
       },
       "tags": [
         "synthetic",
@@ -3201,38 +3201,38 @@
   },
   "overall": {
     "choice_accuracy": 0.6333333333333333,
-    "cost_per_decision_p50_ms": 159.40627050000035,
-    "cost_per_decision_p95_ms": 166.9147500000001,
+    "cost_per_decision_p50_ms": 88.43091699236538,
+    "cost_per_decision_p95_ms": 91.70633299800102,
     "ece": 0.3591483333333334,
-    "latency_p50_ms": 159.40627050000035,
-    "latency_p95_ms": 166.9147500000001,
-    "mean_confidence": 0.6770455555555556,
+    "latency_p50_ms": 88.43091699236538,
+    "latency_p95_ms": 91.70633299800102,
+    "mean_confidence": 0.7392477777777778,
     "noul_accuracy": 0.43333333333333335,
-    "score_mae": 0.9356333333333333
+    "score_mae": 1.0023866666666668
   },
   "slices": {
     "language": {
       "sv-SE": {
         "choice_accuracy": 0.6333333333333333,
         "ece": 0.3591483333333334,
-        "mean_confidence": 0.6770455555555556,
+        "mean_confidence": 0.7392477777777778,
         "noul_accuracy": 0.43333333333333335,
-        "score_mae": 0.9356333333333333
+        "score_mae": 1.0023866666666668
       }
     },
     "model": {
       "multilingual": {
         "choice_accuracy": 0.6333333333333333,
         "ece": 0.3591483333333334,
-        "mean_confidence": 0.6770455555555556,
+        "mean_confidence": 0.7392477777777778,
         "noul_accuracy": 0.43333333333333335,
-        "score_mae": 0.9356333333333333
+        "score_mae": 1.0023866666666668
       }
     },
     "qid": {
       "brådska": {
-        "mean_confidence": 0.41236,
-        "score_mae": 0.9356333333333333
+        "mean_confidence": 0.5989666666666668,
+        "score_mae": 1.0023866666666668
       },
       "kategori": {
         "choice_accuracy": 0.6333333333333333,
@@ -3249,247 +3249,247 @@
       "adressändring": {
         "choice_accuracy": 1.0,
         "ece": 0.35385,
-        "mean_confidence": 0.7015333333333333,
+        "mean_confidence": 0.7399333333333334,
         "noul_accuracy": 0.0,
-        "score_mae": 0.9333999999999998
+        "score_mae": 0.5427
       },
       "appkrasch": {
         "choice_accuracy": 1.0,
         "ece": 0.3646,
-        "mean_confidence": 0.6275333333333334,
+        "mean_confidence": 0.7069333333333333,
         "noul_accuracy": 0.0,
-        "score_mae": 0.7582
+        "score_mae": 0.6617999999999999
       },
       "dataförlust": {
         "choice_accuracy": 0.0,
         "ece": 0.32889999999999997,
-        "mean_confidence": 0.6556666666666667,
+        "mean_confidence": 0.7428333333333333,
         "noul_accuracy": 1.0,
-        "score_mae": 1.7744
+        "score_mae": 1.5709
       },
       "direkt_uppsägning": {
         "choice_accuracy": 1.0,
         "ece": 0.401625,
-        "mean_confidence": 0.7398333333333333,
+        "mean_confidence": 0.8352166666666667,
         "noul_accuracy": 0.0,
-        "score_mae": 0.8605
+        "score_mae": 1.2453
       },
       "driftstopp": {
         "choice_accuracy": 1.0,
         "ece": 0.65895,
-        "mean_confidence": 0.5311666666666667,
+        "mean_confidence": 0.5654666666666667,
         "noul_accuracy": 0.0,
-        "score_mae": 1.5937999999999999
+        "score_mae": 1.8046000000000002
       },
       "dubbeldragning": {
         "choice_accuracy": 1.0,
         "ece": 0.012249999999999983,
-        "mean_confidence": 0.7821000000000001,
+        "mean_confidence": 0.8239000000000001,
         "noul_accuracy": 1.0,
-        "score_mae": 0.11470000000000002
+        "score_mae": 0.15649999999999986
       },
       "e-postbyte": {
         "choice_accuracy": 1.0,
         "ece": 0.42625,
-        "mean_confidence": 0.8219333333333334,
+        "mean_confidence": 0.7483666666666666,
         "noul_accuracy": 0.0,
-        "score_mae": 1.641
+        "score_mae": 1.2865000000000002
       },
       "exportfel": {
         "choice_accuracy": 1.0,
         "ece": 0.46509999999999996,
-        "mean_confidence": 0.5191666666666667,
+        "mean_confidence": 0.4994,
         "noul_accuracy": 1.0,
-        "score_mae": 0.7514000000000001
+        "score_mae": 1.076
       },
       "fakturering": {
         "choice_accuracy": 0.8,
         "ece": 0.14253,
-        "mean_confidence": 0.6987,
+        "mean_confidence": 0.7507666666666667,
         "noul_accuracy": 1.0,
-        "score_mae": 0.24430000000000002
+        "score_mae": 0.37156
       },
       "företagsplan": {
         "choice_accuracy": 0.0,
         "ece": 0.7726500000000001,
-        "mean_confidence": 0.6628333333333333,
+        "mean_confidence": 0.7291,
         "noul_accuracy": 0.0,
-        "score_mae": 1.354
+        "score_mae": 1.7715
       },
       "försvunnet_paket": {
         "choice_accuracy": 1.0,
         "ece": 0.33990000000000004,
-        "mean_confidence": 0.6417666666666667,
+        "mean_confidence": 0.7789999999999999,
         "noul_accuracy": 0.0,
-        "score_mae": 0.7385000000000002
+        "score_mae": 0.2884000000000002
       },
       "försäljning": {
         "choice_accuracy": 0.2,
         "ece": 0.64792,
-        "mean_confidence": 0.6254066666666667,
+        "mean_confidence": 0.6758866666666667,
         "noul_accuracy": 0.0,
-        "score_mae": 1.33252
+        "score_mae": 1.6631799999999999
       },
       "konto": {
         "choice_accuracy": 0.6,
         "ece": 0.52329,
-        "mean_confidence": 0.7533333333333334,
+        "mean_confidence": 0.7896066666666667,
         "noul_accuracy": 0.4,
-        "score_mae": 1.3931200000000001
+        "score_mae": 1.3246
       },
       "leverans": {
         "choice_accuracy": 0.8,
         "ece": 0.39954,
-        "mean_confidence": 0.6564933333333334,
+        "mean_confidence": 0.7370666666666666,
         "noul_accuracy": 0.2,
-        "score_mae": 0.6368
+        "score_mae": 0.6042000000000001
       },
       "licensköp": {
         "choice_accuracy": 1.0,
         "ece": 0.44510000000000005,
-        "mean_confidence": 0.7471333333333333,
+        "mean_confidence": 0.7570333333333333,
         "noul_accuracy": 0.0,
-        "score_mae": 1.0419999999999998
+        "score_mae": 1.2823000000000002
       },
       "låst_konto": {
         "choice_accuracy": 1.0,
         "ece": 0.2449,
-        "mean_confidence": 0.619,
+        "mean_confidence": 0.727,
         "noul_accuracy": 1.0,
-        "score_mae": 0.6147
+        "score_mae": 0.3557000000000001
       },
       "mobilinloggning": {
         "choice_accuracy": 1.0,
         "ece": 0.63105,
-        "mean_confidence": 0.7758333333333334,
+        "mean_confidence": 0.7457666666666668,
         "noul_accuracy": 0.0,
-        "score_mae": 0.7669999999999999
+        "score_mae": 0.4958999999999998
       },
       "moms": {
         "choice_accuracy": 1.0,
         "ece": 0.1376,
-        "mean_confidence": 0.6949666666666667,
+        "mean_confidence": 0.7531,
         "noul_accuracy": 1.0,
-        "score_mae": 0.24359999999999982
+        "score_mae": 0.27760000000000007
       },
       "planfråga": {
         "choice_accuracy": 0.0,
         "ece": 0.59655,
-        "mean_confidence": 0.5212,
+        "mean_confidence": 0.5491666666666667,
         "noul_accuracy": 0.0,
-        "score_mae": 1.0572
+        "score_mae": 1.2389999999999999
       },
       "planuppgradering": {
         "choice_accuracy": 0.0,
         "ece": 0.64415,
-        "mean_confidence": 0.5672666666666667,
+        "mean_confidence": 0.6700333333333334,
         "noul_accuracy": 0.0,
-        "score_mae": 1.1320000000000001
+        "score_mae": 1.6307
       },
       "prisjämförelse": {
         "choice_accuracy": 0.0,
         "ece": 0.78115,
-        "mean_confidence": 0.6286,
+        "mean_confidence": 0.6741,
         "noul_accuracy": 0.0,
-        "score_mae": 2.0774
+        "score_mae": 2.3924
       },
       "profilinställning": {
         "choice_accuracy": 0.0,
         "ece": 0.97795,
-        "mean_confidence": 0.8126333333333333,
+        "mean_confidence": 0.9610666666666666,
         "noul_accuracy": 0.0,
-        "score_mae": 2.2922
+        "score_mae": 2.9253
       },
       "provperiod": {
         "choice_accuracy": 1.0,
         "ece": 0.3502,
-        "mean_confidence": 0.5770666666666666,
+        "mean_confidence": 0.5990333333333333,
         "noul_accuracy": 1.0,
-        "score_mae": 0.005800000000000027
+        "score_mae": 0.4508000000000001
       },
       "påminnelse": {
         "choice_accuracy": 1.0,
         "ece": 0.04475000000000001,
-        "mean_confidence": 0.7656333333333333,
+        "mean_confidence": 0.8885333333333333,
         "noul_accuracy": 1.0,
-        "score_mae": 0.8391000000000002
+        "score_mae": 0.8683000000000001
       },
       "retur": {
         "choice_accuracy": 1.0,
         "ece": 0.3997,
-        "mean_confidence": 0.709,
+        "mean_confidence": 0.8607333333333332,
         "noul_accuracy": 0.0,
-        "score_mae": 1.1873
+        "score_mae": 1.6836000000000002
       },
       "saknad_del": {
         "choice_accuracy": 1.0,
         "ece": 0.21465,
-        "mean_confidence": 0.6535333333333333,
+        "mean_confidence": 0.6483666666666666,
         "noul_accuracy": 1.0,
-        "score_mae": 0.1189
+        "score_mae": 0.12190000000000012
       },
       "spårning": {
         "choice_accuracy": 0.0,
         "ece": 0.6896,
-        "mean_confidence": 0.5766333333333334,
+        "mean_confidence": 0.6573000000000001,
         "noul_accuracy": 0.0,
-        "score_mae": 0.2059000000000002
+        "score_mae": 0.38439999999999985
       },
       "synthetic": {
         "choice_accuracy": 0.6333333333333333,
         "ece": 0.3591483333333334,
-        "mean_confidence": 0.6770455555555556,
+        "mean_confidence": 0.7392477777777778,
         "noul_accuracy": 0.43333333333333335,
-        "score_mae": 0.9356333333333333
+        "score_mae": 1.0023866666666668
       },
       "teknik": {
         "choice_accuracy": 0.6,
         "ece": 0.50639,
-        "mean_confidence": 0.5870599999999999,
+        "mean_confidence": 0.6366866666666666,
         "noul_accuracy": 0.4,
-        "score_mae": 1.1163
+        "score_mae": 1.1211200000000001
       },
       "tvåfaktor": {
         "choice_accuracy": 0.0,
         "ece": 0.4193,
-        "mean_confidence": 0.7372666666666667,
+        "mean_confidence": 0.7658333333333335,
         "noul_accuracy": 1.0,
-        "score_mae": 1.6507
+        "score_mae": 1.5596
       },
       "uppsägning": {
         "choice_accuracy": 0.8,
         "ece": 0.23368000000000005,
-        "mean_confidence": 0.7412799999999999,
+        "mean_confidence": 0.8454733333333333,
         "noul_accuracy": 0.6,
-        "score_mae": 0.8907600000000002
+        "score_mae": 0.9296600000000002
       },
       "uppsägningshot": {
         "choice_accuracy": 0.5,
         "ece": 0.28490000000000004,
-        "mean_confidence": 0.7256999999999999,
+        "mean_confidence": 0.8205,
         "noul_accuracy": 1.0,
-        "score_mae": 1.2300000000000002
+        "score_mae": 0.7158
       },
       "uppsägningsvillkor": {
         "choice_accuracy": 1.0,
         "ece": 0.005850000000000022,
-        "mean_confidence": 0.7753333333333333,
+        "mean_confidence": 0.9159333333333333,
         "noul_accuracy": 1.0,
-        "score_mae": 0.27280000000000015
+        "score_mae": 0.7261000000000002
       },
       "vit_skärm": {
         "choice_accuracy": 0.0,
         "ece": 0.7144,
-        "mean_confidence": 0.6017666666666667,
+        "mean_confidence": 0.6688000000000001,
         "noul_accuracy": 0.0,
-        "score_mae": 0.7037
+        "score_mae": 0.4923000000000002
       },
       "återbetalning": {
         "choice_accuracy": 0.0,
         "ece": 0.33004999999999995,
-        "mean_confidence": 0.6737333333333333,
+        "mean_confidence": 0.6892666666666667,
         "noul_accuracy": 1.0,
-        "score_mae": 0.018299999999999983
+        "score_mae": 0.10460000000000003
       }
     }
   }

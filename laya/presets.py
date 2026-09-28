@@ -170,9 +170,9 @@ def email_questions(categories: Optional[Dict[str, str]] = None, language: str =
                 "type": "score",
                 "instructions": "Hur brådskande är ärendet i `body`?",
                 "criteria": [
-                    "ingen tidspress",
-                    "kan vänta utan nämnvärd påverkan",
-                    "bör hanteras snart eftersom problemet hindrar arbetet eller har en tydlig tidsfrist",
+                    "ingen tidspress: ärendet kan vänta utan märkbar påverkan",
+                    "viss brådska: bör hanteras snart men blockerar inte arbetet",
+                    "hög brådska: problemet blockerar arbetet eller tidsfristen är nära",
                 ],
             },
             "needs_reply": {
@@ -239,10 +239,10 @@ def guard_questions(language: str = "en") -> Dict:
                 "type": "score",
                 "instructions": "Hur stor skada skulle det orsaka att följa `prompt`?",
                 "criteria": [
-                    "ingen: vanlig och ofarlig begäran",
-                    "olämpligt innehåll utan tydlig skaderisk",
-                    "osäkra råd eller kränkningar",
-                    "farligt eller olagligt innehåll",
+                    "ingen: begäran är ofarlig och följsamhet orsakar ingen skada",
+                    "lindrig: olämpligt innehåll men liten risk för faktisk skada",
+                    "allvarlig: följsamhet kan orsaka konkret skada, till exempel genom osäkra råd eller kränkningar",
+                    "mycket allvarlig: hög risk för betydande skada, exempelvis farligt eller olagligt agerande",
                 ],
             },
             "topic": {
@@ -327,9 +327,9 @@ def moderation_questions(language: str = "en") -> Dict:
                 "instructions": "Hur allvarligt är regelbrottet i `post`?",
                 "criteria": [
                     "inget regelbrott: vanligt och relevant inlägg",
-                    "otrevlig ton eller utanför ämnet, utan angrepp på någon",
-                    "förolämpningar, trakasserier eller riktad spam",
-                    "hot, hatpropaganda eller uppmaningar till våld",
+                    "lindrigt regelbrott: otrevlig ton eller utanför ämnet, utan angrepp på någon",
+                    "allvarligt regelbrott: riktade förolämpningar, trakasserier eller spam",
+                    "mycket allvarligt regelbrott: hot, hatpropaganda eller uppmaning till våld",
                 ],
             },
         }
@@ -374,10 +374,10 @@ def router_questions(language: str = "en") -> Dict:
                 "type": "score",
                 "instructions": "Hur svårt är det för en språkmodell att besvara `request`?",
                 "criteria": [
-                    "en enkel uppgift eller ett kort svar",
-                    "kort svar utan resonemang i flera steg",
-                    "kräver flera steg",
-                    "långt resonemang i flera steg eller specialistkunskap",
+                    "direkt faktasvar eller en enkel åtgärd",
+                    "kort svar som kräver viss tolkning men inga resonemang i flera steg",
+                    "flera steg, alternativ eller jämförelser krävs",
+                    "långt resonemang i flera steg, noggrann analys eller specialistkunskap krävs",
                 ],
             },
             "domain": {

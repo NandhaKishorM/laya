@@ -541,8 +541,9 @@ check("email_questions/Swedish security categories are translated",
       "nätfiske, bedrägerier och kapade konton")
 check("email_questions/Swedish urgency keeps score levels",
       _email_sv["urgency"]["criteria"],
-      ["ingen tidspress", "kan vänta utan nämnvärd påverkan",
-       "bör hanteras snart eftersom problemet hindrar arbetet eller har en tydlig tidsfrist"])
+      ["ingen tidspress: ärendet kan vänta utan märkbar påverkan",
+       "viss brådska: bör hanteras snart men blockerar inte arbetet",
+       "hög brådska: problemet blockerar arbetet eller tidsfristen är nära"])
 check("email_questions/custom categories are preserved in Swedish",
       laya.email_questions({"juridik": "avtal"}, language="sv")["category"]["criteria"],
       {"juridik": "avtal"})

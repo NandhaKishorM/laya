@@ -86,6 +86,10 @@ and labels three independent decisions per message: category, urgency and an
 explicit threat to cancel. The score levels run from 0 (not urgent) to 4 (critical).
 The cancellation question is deliberately separate from category: a technical
 problem can include a cancellation threat without becoming a cancellation request.
+The urgency rubric describes concrete impact and deadline conditions at each level;
+the instruction asks the model to judge those facts rather than a customer's tone or
+word choice. Score criteria should stand alone as ordered descriptions of distinct
+situations, as recommended by TypeSafe's [Score guidance](https://docs.typesafe.ai/primitives/score.md).
 
 The Latin-script detector now has Swedish-specific vocabulary, including a conservative
 two- or three-word path for short support fragments such as `Ingen åtkomst` and
@@ -106,7 +110,7 @@ laya-evals run research/evals/swedish_support.jsonl --model multilingual --devic
     --slice qid --slice tag --json research/results/swedish_support_multilingual_cpu.json
 ```
 
-First CPU run (Laya 0.3.21, multilingual revision
+Initial CPU run with the first urgency rubric (Laya 0.3.21, multilingual revision
 `55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851`, 2026-09-28):
 
 | decision | result |
@@ -117,10 +121,20 @@ First CPU run (Laya 0.3.21, multilingual revision
 | Overall ECE | 0.3591 |
 | CPU latency, p50 / p95 per case | 88.4 / 91.7 ms |
 
+After clarifying the Swedish urgency criteria and rerunning the same 30 examples
+against the same pinned checkpoint, urgency MAE was 0.9356 (0–4), category accuracy
+remained 0.6333, and cancellation-threat accuracy remained 0.4333. The updated run's
+CPU latency was 159.4 / 166.9 ms (p50 / p95). The score MAE is not directly comparable
+to the initial run because the rubric wording changed; this remains a small synthetic
+development set, not an independent quality estimate. Its full report is
+[`swedish_support_multilingual_cpu.json`](../results/swedish_support_multilingual_cpu.json);
+the initial report is retained as
+[`swedish_support_multilingual_cpu_initial_rubric.json`](../results/swedish_support_multilingual_cpu_initial_rubric.json).
+
 The cancellation result is driven by false positives: all 3 explicit threats were
 detected, but 17 of the 27 non-threat messages were also marked positive. This is a
-clear failure signal for that question on this sample. The full machine-readable
-report is [`swedish_support_multilingual_cpu.json`](../results/swedish_support_multilingual_cpu.json).
+clear failure signal for that question on this sample and was unchanged by the rubric
+revision.
 Category accuracy was strongest for delivery and cancellation (4/5 each) and weakest
 for sales inquiries (1/5). This points to useful follow-up cases around Swedish
 product-plan and pricing language, but the set needs independent review before any
@@ -138,5 +152,5 @@ For context, the committed multilingual MASSIVE sweep reports Swedish accuracy 0
 macro-F1 0.5240 and ECE 0.2757 on those 100 test utterances (CPU, 20 choices).
 That is a useful existing language-level reference, but it does not measure support
 triage, urgency or cancellation detection. The source is
-[`cpu_51_language_sweep.json`](../results/cpu_51_language_sweep.json); a fresh run of
-`swedish_support.jsonl` is still needed before reporting results for these tasks.
+[`cpu_51_language_sweep.json`](../results/cpu_51_language_sweep.json); the separate
+support diagnostic has been rerun with the clarified rubric as described above.

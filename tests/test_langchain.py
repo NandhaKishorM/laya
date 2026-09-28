@@ -233,10 +233,18 @@ check("triage/Swedish default questions",
       "Vad vill kunden få hjälp med i `message`?")
 bad_language_rejected = False
 try:
-    LayaTriage(language="de")._questions()
+    LayaTriage(language="de", questions={"custom": {"type": "noul", "instructions": "Custom?"}})
 except ValueError:
     bad_language_rejected = True
-check_true("triage/unsupported language rejected", bad_language_rejected)
+check_true("triage/unsupported language rejected during construction", bad_language_rejected)
+check("triage/region locale is normalized",
+      LayaTriage(language="SV_se").language, "sv")
+bad_guard_language_rejected = False
+try:
+    LayaGuardrail(language="de", questions={"custom": {"type": "noul", "instructions": "Custom?"}})
+except ValueError:
+    bad_guard_language_rejected = True
+check_true("guard/unsupported language rejected during construction", bad_guard_language_rejected)
 
 # Action: raise
 guard_raise = LayaGuardrail(agent=guard_agent, action="raise", threshold=0.5)

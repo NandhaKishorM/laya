@@ -361,9 +361,12 @@ class LayaTaskGuard:
         model: Optional[str] = None,
         language: str = "en",
     ):
-        language_code = language.strip().lower().replace("_", "-").split("-", 1)[0]
+        from ..presets import guard_questions
+
+        guard_questions(language=language)  # validate and normalize the supported preset locale
+        language = language.strip().lower().replace("_", "-").split("-", 1)[0]
         if rejection_message == "This task cannot be executed because it violates safety guidelines." \
-                and language_code == "sv":
+                and language == "sv":
             rejection_message = "Uppgiften kan inte utföras eftersom den bryter mot säkerhetsreglerna."
         self.questions = questions
         self.action = action

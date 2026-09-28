@@ -192,10 +192,11 @@ check("guard/explicit rejection message overrides Swedish default",
       "Custom notice")
 bad_guard_language_rejected = False
 try:
-    LayaTaskGuard(language="de")._default_questions()
+    LayaTaskGuard(language="de", questions={"custom": {"type": "noul", "instructions": "Custom?"}})
 except ValueError:
     bad_guard_language_rejected = True
-check_true("guard/unsupported language rejected", bad_guard_language_rejected)
+check_true("guard/unsupported language rejected during construction", bad_guard_language_rejected)
+check("guard/region locale is normalized", LayaTaskGuard(language="SV_se").language, "sv")
 
 def mock_guard_response(state, questions):
     text = str(state).lower()

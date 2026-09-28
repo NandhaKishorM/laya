@@ -553,6 +553,10 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
         language: str = "en",
         **kwargs: Any,
     ):
+        from ..presets import guard_questions
+
+        guard_questions(language=language)  # validate and normalize the supported preset locale
+        language = language.strip().lower().replace("_", "-").split("-", 1)[0]
         if not 0.0 <= threshold <= 1.0:
             raise ValueError("threshold must be a probability in [0, 1]; got %r" % (threshold,))
         if _RUNNABLE_AVAILABLE:
@@ -737,6 +741,10 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
         language: str = "en",
         **kwargs: Any,
     ):
+        from ..presets import triage_questions
+
+        triage_questions(language=language)  # validate and normalize the supported preset locale
+        language = language.strip().lower().replace("_", "-").split("-", 1)[0]
         if _RUNNABLE_AVAILABLE:
             super().__init__(
                 state_key=state_key,

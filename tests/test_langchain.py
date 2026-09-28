@@ -224,6 +224,19 @@ def mock_guard_response(state, questions):
 
 guard_agent = MockLayaAgent(mock_guard_response)
 
+check("guard/Swedish default questions",
+      LayaGuardrail(language="sv-SE")._questions()["jailbreak"]["instructions"],
+      LayaGuardrail(language="sv-SE")._questions()["jailbreak"]["instructions"])
+check("triage/Swedish default questions",
+      LayaTriage(language="sv-SE")._questions()["intent"]["instructions"],
+      "Vad vill kunden få hjälp med i `message`?")
+bad_language_rejected = False
+try:
+    LayaTriage(language="de")._questions()
+except ValueError:
+    bad_language_rejected = True
+check_true("triage/unsupported language rejected", bad_language_rejected)
+
 # Action: raise
 guard_raise = LayaGuardrail(agent=guard_agent, action="raise", threshold=0.5)
 check("guard/safe_passes", guard_raise.invoke("What is the capital of France?"), "What is the capital of France?")

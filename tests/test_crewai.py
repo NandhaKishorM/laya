@@ -180,6 +180,16 @@ asyncio.run(run_async_crew())
 
 
 # --------------------------------------------------------------- 3. LayaTaskGuard
+check("guard/Swedish default questions",
+      LayaTaskGuard(language="sv-SE")._default_questions()["jailbreak"]["instructions"],
+      LayaTaskGuard(language="sv-SE")._default_questions()["jailbreak"]["instructions"])
+bad_guard_language_rejected = False
+try:
+    LayaTaskGuard(language="de")._default_questions()
+except ValueError:
+    bad_guard_language_rejected = True
+check_true("guard/unsupported language rejected", bad_guard_language_rejected)
+
 def mock_guard_response(state, questions):
     text = str(state).lower()
     is_malicious = "ignore previous instructions" in text or "system prompt" in text or "exploit" in text

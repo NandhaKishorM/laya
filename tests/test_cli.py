@@ -226,6 +226,13 @@ code, out, err, stub = run_cli(["--predict", "the request"], router=QuestionReco
 check("predict: state carries the text under 'request' (router_questions)",
       stub.states[0] == {"request": "the request"},
       str(stub.states[0] if stub.states else None))
+code, out, err, stub = run_cli(["--predict", "the request", "--lang", "sv-SE"],
+                               router=QuestionRecorder())
+check("predict: --lang selects Swedish default router questions",
+      "Hur svårt är det" in stub.questions["difficulty"]["instructions"],
+      str(stub.questions["difficulty"]["instructions"]))
+check("predict: Swedish default router keeps request state",
+      stub.states[0] == {"request": "the request"}, str(stub.states))
 
 # every preset's key must be one its own instructions actually name, so the two cannot drift
 import re as _re  # noqa: E402

@@ -526,6 +526,7 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
     on_predict_end: Optional[Any] = None
     hooks_raise: Optional[bool] = None
     hooks_timeout: Optional[float] = None
+    language: str = "en"
 
     class Config:
         arbitrary_types_allowed = True
@@ -549,6 +550,7 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
         on_predict_end: Optional[Any] = None,
         hooks_raise: Optional[bool] = None,
         hooks_timeout: Optional[float] = None,
+        language: str = "en",
         **kwargs: Any,
     ):
         if not 0.0 <= threshold <= 1.0:
@@ -571,6 +573,7 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
                 on_predict_end=on_predict_end,
                 hooks_raise=hooks_raise,
                 hooks_timeout=hooks_timeout,
+                language=language,
                 **kwargs,
             )
         else:
@@ -590,10 +593,11 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
             self.on_predict_end = on_predict_end
             self.hooks_raise = hooks_raise
             self.hooks_timeout = hooks_timeout
+            self.language = language
 
     def _default_questions(self) -> Dict[str, Any]:
         from ..presets import guard_questions
-        return guard_questions()
+        return guard_questions(language=self.language)
 
     def _questions(self) -> Dict[str, Any]:
         return self.questions if self.questions is not None else self._default_questions()
@@ -710,6 +714,7 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
     on_predict_end: Optional[Any] = None
     hooks_raise: Optional[bool] = None
     hooks_timeout: Optional[float] = None
+    language: str = "en"
 
     class Config:
         arbitrary_types_allowed = True
@@ -729,6 +734,7 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
         on_predict_end: Optional[Any] = None,
         hooks_raise: Optional[bool] = None,
         hooks_timeout: Optional[float] = None,
+        language: str = "en",
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -745,6 +751,7 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
                 on_predict_end=on_predict_end,
                 hooks_raise=hooks_raise,
                 hooks_timeout=hooks_timeout,
+                language=language,
                 **kwargs,
             )
         else:
@@ -760,11 +767,12 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
             self.on_predict_end = on_predict_end
             self.hooks_raise = hooks_raise
             self.hooks_timeout = hooks_timeout
+            self.language = language
 
     def _questions(self) -> Dict[str, Any]:
         from ..presets import triage_questions
 
-        return triage_questions()
+        return triage_questions(language=self.language)
 
     def _finish(self, result: Dict[str, Any], state: Any) -> Dict[str, Any]:
         """Project one triage decision onto the graph state."""
@@ -830,6 +838,7 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
     on_predict_end: Optional[Any] = None
     hooks_raise: Optional[bool] = None
     hooks_timeout: Optional[float] = None
+    language: str = "en"
 
     class Config:
         arbitrary_types_allowed = True
@@ -850,6 +859,7 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
         on_predict_end: Optional[Any] = None,
         hooks_raise: Optional[bool] = None,
         hooks_timeout: Optional[float] = None,
+        language: str = "en",
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -867,6 +877,7 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
                 on_predict_end=on_predict_end,
                 hooks_raise=hooks_raise,
                 hooks_timeout=hooks_timeout,
+                language=language,
                 **kwargs,
             )
         else:
@@ -883,6 +894,7 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
             self.on_predict_end = on_predict_end
             self.hooks_raise = hooks_raise
             self.hooks_timeout = hooks_timeout
+            self.language = language
 
     def evaluate_strings(self, *, prediction: str, input: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
         """LangChain standard string evaluation interface."""

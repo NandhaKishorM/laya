@@ -874,6 +874,8 @@ workflow.add_conditional_edges("triage", router)
 
 # 2. Inline prompt guardrails
 guard = LayaGuardrail(action="raise")  # raises LayaGuardrailError on jailbreak/injection
+sv_guard = LayaGuardrail(action="raise", language="sv-SE")  # localized built-in safety questions
+sv_triage = LayaTriage(language="sv-SE")  # localized built-in support triage questions
 
 # 3. Schema-driven decisions: a JSON schema in, schema-shaped values out
 decide = LayaDecision({
@@ -899,6 +901,8 @@ preset, with every route label and guardrail flag unchanged. On CPU the same wor
 2.2-2.4x over the one-by-one loop and 1.1-1.5x over the thread pool.
 
 See [**`docs/langchain.md`**](docs/langchain.md) for full guide, support ticket triage nodes, and remote HTTP server configuration.
+
+`LayaGuardrail`, `LayaTriage`, and CrewAI's `LayaTaskGuard` accept `language="sv-SE"` to use Swedish built-in questions. Custom question definitions remain caller-provided.
 
 ---
 

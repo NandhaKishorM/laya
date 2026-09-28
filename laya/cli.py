@@ -196,6 +196,10 @@ def resolve_questions(args):
             if language == "sv":
                 return PRESETS[args.preset](language=args.lang), PRESET_STATE_KEYS[args.preset]
         return PRESETS[args.preset](), PRESET_STATE_KEYS[args.preset]
+    if args.lang:
+        language = args.lang.strip().lower().replace("_", "-").split("-", 1)[0]
+        if language == "sv":
+            return laya.router_questions(language=args.lang), PRESET_STATE_KEYS["router"]
     return laya.router_questions(), PRESET_STATE_KEYS["router"]
 
 

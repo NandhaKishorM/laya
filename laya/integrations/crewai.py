@@ -359,6 +359,7 @@ class LayaTaskGuard:
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        language: str = "en",
     ):
         self.questions = questions
         self.action = action
@@ -368,11 +369,12 @@ class LayaTaskGuard:
         self.base_url = base_url
         self.api_key = api_key
         self.model = model
+        self.language = language
         self.last_decision: Optional[Dict[str, Any]] = None
 
     def _default_questions(self) -> Dict[str, Any]:
         from ..presets import guard_questions
-        return guard_questions()
+        return guard_questions(language=self.language)
 
     def screen(self, task: Union[str, CrewTask, Dict[str, Any], Any]) -> Any:
         """Screen task against safety policies."""

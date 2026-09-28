@@ -840,10 +840,14 @@ triage = router.predict(
     lang="sv-SE",
 )
 print(triage["answers"]["intent"]["choice"])  # refund
+labels = laya.preset_labels("triage", "sv-SE")
+print(labels[triage["answers"]["intent"]["choice"]])  # Återbetalning
 ```
 
-Use `triage_labels("sv-SE")` to map the stable triage fields and intent keys to display labels in a
-Swedish UI; the helper returns labels for both the question names and the intent choices.
+Use `preset_labels("triage", "sv-SE")` to map stable triage fields and intent keys to Swedish
+display labels. `triage_labels("sv-SE")` remains as a backward-compatible shortcut. The same
+helper covers every built-in preset; for example, `preset_labels("email", "sv-SE")` includes
+labels for `category` and `billing`.
 
 Inbound email triage accepts the same language tag. The standard email categories, phishing
 criteria, and urgency levels are localized; custom category descriptions stay as provided:
@@ -986,7 +990,8 @@ package:
 
 For Swedish support triage, call `laya_preset` with `preset="triage"` or `preset="email"` and
 `lang="sv-SE"`; the language hint both routes to the multilingual checkpoint and localizes the
-preset questions.
+preset questions. A Python client can localize stable result keys with
+`laya.preset_labels("triage", "sv-SE")` or the corresponding preset name.
 
 The tools return structured JSON (answers with probabilities, routing metadata, device,
 `latency_ms`). `laya_predict_batch` and `laya_route_batch` are the MCP form of

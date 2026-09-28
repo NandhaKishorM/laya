@@ -132,6 +132,13 @@ class LayaArgumentParser(argparse.ArgumentParser):
             ("argument --preset: expected one argument", "--preset måste följas av ett namn"),
             ("argument --questions: expected one argument", "--questions måste följas av en fil"),
             ("argument --lang: expected one argument", "--lang måste följas av en språkkod"),
+            ("argument --", "argumentet --"),
+            (": expected one argument", ": saknar ett värde"),
+            (": invalid int value: ", ": måste vara ett heltal; angivet värde: "),
+            ("unknown model ", "okänd modell "),
+            ("; choose one of ", "; välj bland "),
+            ("(or an alias: ", "(eller alias: "),
+            (", or 'auto'", "; ange 'auto' för automatisk routning"),
             ("unrecognized arguments: ", "okända argument: "),
         )
         for source, target in translations:

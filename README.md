@@ -75,11 +75,21 @@ The same call works in any of 100+ languages. The `Router` detects the script an
 
 ```python
 for text in ["मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
-             "La aplicación se cierra cada vez que abro la configuración."]:
+             "La aplicación se cierra cada vez que abro la configuración.",
+             "Jag har debiterats två gånger för mars. Kan ni återbetala den ena?"]:
     r = router.predict(text, {"department": questions["department"]})
     print(r["routing"]["model"], r["answers"]["department"]["choice"])
 # multilingual billing
 # multilingual technical
+# multilingual billing
+```
+
+For text known to be Swedish, you can pass `lang="sv-SE"` to bypass language detection:
+
+```python
+r = router.predict("Jag har debiterats två gånger för mars.", questions,
+                   lang="sv-SE")
+print(r["routing"]["model"])  # multilingual
 ```
 
 From the command line, `laya "My payment failed twice" --preset triage` answers a ready-made question set. More in the [full quickstart](#quickstart-route-mode-recommended) and the [docs](https://nandhakishorm.github.io/laya/).

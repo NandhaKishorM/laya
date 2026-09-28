@@ -117,6 +117,12 @@ _STOP = {
            "delle", "dello", "degli", "agli", "alle", "col"},
     "nl": {"het", "een", "van", "is", "op", "te", "dat", "niet", "met", "voor", "zijn", "aan",
            "door", "maar", "ook", "worden", "deze", "naar", "wordt"},
+    # Swedish function words and common auxiliaries. Several overlap with English or German
+    # (`i`, `kan`, `har`), so the distinctive words below are what lets Swedish text survive an
+    # ASCII-normalising ticket pipeline without treating one stray Nordic letter as the only hint.
+    "sv": {"jag", "är", "och", "inte", "att", "från", "till", "behöver", "får", "skulle", "ska",
+           "vill", "måste", "också", "dessa", "detta", "säger", "upp", "utan", "mitt", "min", "om",
+           "kommer", "här", "två", "vi", "nästa", "gör", "göra"},
     # Romanian words that its Romance neighbours do not share, so adding `ro` cannot steal a
     # French/Spanish/Italian/Portuguese state: `la`, `o`, `un`, `de`, `pe`, `ca` are deliberately
     # left out for that reason, and the diacritic signal below carries the rest.

@@ -87,6 +87,13 @@ explicit threat to cancel. The score levels run from 0 (not urgent) to 4 (critic
 The cancellation question is deliberately separate from category: a technical
 problem can include a cancellation threat without becoming a cancellation request.
 
+The Latin-script detector now has Swedish-specific vocabulary. A model-free routing
+pass selected the multilingual checkpoint for all 30 messages and named Swedish for
+29; one billing message received a Spanish language guess but still reached the right
+checkpoint. The regression checks also cover Swedish text with diacritics stripped.
+Language identification remains best-effort; pass `lang="sv-SE"` when the caller
+knows the language and needs deterministic routing.
+
 Validate the file, then run it against the multilingual checkpoint:
 
 ```bash

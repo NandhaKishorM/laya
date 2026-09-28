@@ -714,16 +714,23 @@ check("latin_lang/accented german stays non-english",
       is_english("Grüße aus Köln, wir melden uns wegen der Rechnung"), False)
 check("route/accented german stays multilingual",
       _r_lat.route("Grüße aus Köln, wir melden uns wegen der Rechnung").model, "multilingual")
-# Danish and Swedish hold no list here, and their accented function-word sentences pick up just
-# one or two English-shaped words (`i`, `at`, `for`, `have`), which is not the two-distinct-word
-# English the rescue requires -- a rescue that counted them sent plain Danish to the English
-# checkpoint on the MASSIVE splits.
+# Danish still has no list here, and its accented sentences pick up just one or two English-shaped
+# words (`i`, `at`, `for`, `have`), which is not the two-distinct-word English the rescue requires.
 for text in ["sluk lyset i soveværelset",                          # da
              "kan jeg få en refundering for det dobbelte beløb",   # da
-             "stäng av ljuset i sovrummet",                         # sv
-             "jag vill ha en återbetalning för den dubbla avgiften"]:  # sv
+             "stäng av ljuset i sovrummet"]:                        # sv
     check("latin_lang/nordic accented stays non-english " + text, is_english(text), False)
     check("route/nordic accented stays multilingual " + text, _r_lat.route(text).model, "multilingual")
+
+# Swedish-specific words now identify both normal text and ASCII-normalised support prose. The
+# second sample is the real false-negative shape: `få` alone was too weak to stop its two English-
+# shaped words (`i`, `kan`) from pulling the request onto the English checkpoint.
+for text in ["Om ni inte kan få tillbaka de raderade filerna i dag avslutar jag mitt abonnemang.",
+             "Om ni inte kan fa tillbaka de raderade filerna i dag avslutar jag mitt abonnemang.",
+             "jag vill att ni hjalper mig med detta"]:
+    check("latin_lang/swedish is named " + text, guess_latin_language(text), "sv")
+    check("route/swedish uses multilingual " + text, _r_lat.route(text).model, "multilingual")
+    check("route/swedish detection reports sv " + text, _r_lat.route(text)["detection"]["language"], "sv")
 # Two non-English-letter words is a running non-English vocabulary, not one loanword: the rescue
 # does not fire even with English function words present.
 check("latin_lang/two diacritic words are not one loanword",

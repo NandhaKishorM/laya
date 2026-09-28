@@ -75,7 +75,7 @@ _SWEDISH_HELP_TRANSLATIONS = (
     ("torch device, e.g. cpu or cuda", "beräkningsenhet, till exempel cpu eller cuda"),
     ("print the raw result as JSON", "skriv ut råresultatet som JSON"),
     ("score a file of requests, one per line (use '-' for stdin), instead of a single text; implies neither --predict nor --preset, but the same modes apply: routing by default, answers with --predict/--preset",
-     "bearbeta en fil med texter, en per rad (använd '-' för standardindata), i stället för en text. Aktiverar inte --predict eller --preset: standard är val av modell, med flaggorna besvaras frågor"),
+     "bearbeta en fil med texter, en per rad (använd '-' för standardindata), i stället för en text. Utan --predict eller --preset väljs bara modell; med någon av flaggorna besvaras också frågor"),
     ("states per forward pass in --batch mode; the default sends each routed group in one pass",
      "antal texter per modellkörning i --batch-läge; standardvärdet skickar varje routad grupp i en körning"),
 )
@@ -119,7 +119,7 @@ class LayaArgumentParser(argparse.ArgumentParser):
         for group in self._action_groups:
             if group.title == "positional arguments":
                 group.title = "textargument"
-            elif group.title == "options":
+            elif group.title in ("options", "optional arguments"):
                 group.title = "flaggor"
         self._help_localized = True
 

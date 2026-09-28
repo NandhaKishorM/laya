@@ -80,6 +80,9 @@ guard = LayaTaskGuard(
     threshold=0.5,
 )
 
+# Localize the built-in guard questions when screening Swedish tasks.
+sv_guard = LayaTaskGuard(action="raise", language="sv-SE")
+
 # Safe task
 safe_task = Task(description="Review software architecture for microservices API.")
 guard.screen(safe_task)
@@ -94,6 +97,9 @@ try:
 except LayaTaskGuardError as e:
     print(f"Blocked by LayaTaskGuard! Violations: {e.violations}")
 ```
+
+`language="sv-SE"` selects the built-in Swedish guard questions; English is the default.
+If you pass `questions=...`, those caller-provided definitions are used as written.
 
 ---
 

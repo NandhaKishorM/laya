@@ -25,8 +25,58 @@ def state_field(questions: Dict) -> Optional[str]:
     return next(iter(named))
 
 
-def triage_questions() -> Dict:
-    """Preset questions for customer support ticket triage."""
+def triage_questions(language: str = "en") -> Dict:
+    """Preset questions for customer support ticket triage.
+
+    ``language`` selects the prompt language (``"en"`` or ``"sv"``). Choice keys and
+    question names stay stable so applications can localize the prompts without changing
+    their downstream logic. Regional tags such as ``"sv-SE"`` are accepted.
+    """
+    if not isinstance(language, str):
+        raise ValueError("language must be 'en' or 'sv'")
+    language = language.strip().lower().replace("_", "-").split("-", 1)[0]
+    if language == "sv":
+        return {
+            "intent": {
+                "type": "choice",
+                "instructions": "Vad vill kunden få hjälp med i `message`?",
+                "criteria": {
+                    "refund": "återbetalning eller rättelse av en dubbel debitering",
+                    "technical_help": "tekniskt fel, driftstopp eller problem med en integration",
+                    "billing_question": "fråga om faktura, betalning eller betalningssätt",
+                    "information": "allmän information, priser eller instruktioner",
+                    "cancellation": "vill säga upp tjänsten eller byta till en lägre plan",
+                    "other": "inget av alternativen passar",
+                },
+            },
+            "is_urgent": {
+                "type": "noul",
+                "instructions": "Framgår tidspress eller en tidsfrist i `message`?",
+            },
+            "frustration": {
+                "type": "score",
+                "instructions": "Hur frustrerad verkar kunden vara i `message`?",
+                "criteria": [
+                    "lugn och neutral",
+                    "orolig men saklig",
+                    "tydligt irriterad",
+                    "mycket arg eller använder starka uttryck",
+                ],
+            },
+            "refund_requested": {
+                "type": "noul",
+                "instructions": "Ber kunden om att få pengar tillbaka?",
+            },
+            "churn_risk": {
+                "type": "noul",
+                "instructions": (
+                    "Tyder `message` på att kunden kan lämna tjänsten, välja en konkurrent eller "
+                    "säga upp abonnemanget?"
+                ),
+            },
+        }
+    if language != "en":
+        raise ValueError("language must be 'en' or 'sv'")
     return {
         "intent": {
             "type": "choice",

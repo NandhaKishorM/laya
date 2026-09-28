@@ -191,6 +191,10 @@ def resolve_questions(args):
     if args.questions:
         return load_questions(args.questions)
     if args.preset:
+        if args.preset == "triage" and args.lang:
+            language = args.lang.strip().lower().replace("_", "-").split("-", 1)[0]
+            if language == "sv":
+                return PRESETS[args.preset](language=args.lang), PRESET_STATE_KEYS[args.preset]
         return PRESETS[args.preset](), PRESET_STATE_KEYS[args.preset]
     return laya.router_questions(), PRESET_STATE_KEYS["router"]
 

@@ -175,6 +175,12 @@ check("preset: implies --predict", stub.questions is not None)
 check("preset: triage questions passed to predict",
       sorted(stub.questions) == sorted(cli.PRESETS["triage"]()),
       str(sorted(stub.questions or {})))
+code, out, err, stub = run_cli(["Jag har debiterats två gånger", "--preset", "triage",
+                               "--lang", "sv-SE"], router=QuestionRecorder())
+check("preset: Swedish language selects localized triage questions",
+      stub.questions["intent"]["instructions"], "Vad vill kunden få hjälp med i `message`?")
+check("preset: Swedish CLI keeps triage state field",
+      stub.states[0], {"message": "Jag har debiterats två gånger"})
 check("preset: no standalone route call", stub.route_calls == [])
 check("preset: prints answers", "intent" in out, out)
 

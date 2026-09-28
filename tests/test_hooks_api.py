@@ -26,6 +26,7 @@ import laya  # noqa: E402
 from laya import Agent, AsyncHook, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
 from laya.hooks import HOOK_EVENTS, Hook  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
+from laya.presets import state_field  # noqa: E402
 from laya.router import _question_schema  # noqa: E402
 
 PASS, FAIL = [], []
@@ -167,6 +168,24 @@ check_true("PredictHook is callable-typed", callable(PredictHook))
 for name in ("PredictContext", "PredictHook", "Hook", "BaseHook", "AsyncHook"):
     check_true("__all__/%s" % name, name in laya.__all__)
     check_true("laya.%s exists" % name, hasattr(laya, name))
+check_param("triage_questions", laya.triage_questions, "language", "en")
+check("triage_questions/default remains English",
+      laya.triage_questions(), laya.triage_questions("en"))
+sv_triage = laya.triage_questions("sv-SE")
+check("triage_questions/Swedish keys remain stable", sorted(sv_triage),
+      ["churn_risk", "frustration", "intent", "is_urgent", "refund_requested"])
+check("triage_questions/Swedish instruction is localized",
+      sv_triage["intent"]["instructions"], "Vad vill kunden få hjälp med i `message`?")
+check("triage_questions/Swedish choice keys remain stable",
+      sorted(sv_triage["intent"]["criteria"]),
+      ["billing_question", "cancellation", "information", "other", "refund", "technical_help"])
+check("triage_questions/Swedish keeps the message state field", state_field(sv_triage), "message")
+try:
+    laya.triage_questions("de")
+except ValueError:
+    check_true("triage_questions/unsupported language rejected", True)
+else:
+    check_true("triage_questions/unsupported language rejected", False)
 check_true("laya.hooks/run_coroutine_sync exists",
            callable(getattr(__import__("laya.hooks", fromlist=["run_coroutine_sync"]),
                             "run_coroutine_sync", None)))

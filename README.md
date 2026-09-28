@@ -231,6 +231,7 @@ laya "Refactor this service" --predict               # full answers (downloads t
 laya "Mein Konto wurde zweimal belastet" --lang de   # force a language instead of detecting it
 laya "My payment failed twice" --model ml            # pin a checkpoint: names, aliases and casing all resolve as the SDK resolves them
 laya "My payment failed twice" --preset triage       # answer a ready-made preset (triage, email, guard, moderation, router)
+laya "Jag har debiterats två gånger" --preset triage --lang sv-SE  # Swedish triage questions
 laya --batch tickets.txt --predict                   # score a file of requests, one per line, in one batch
 cat tickets.txt | laya --batch - --predict --json    # stdin; one JSON line of answers per request
 laya "Where is my card" --questions intents.json     # answer your own questions, written in a JSON file
@@ -821,6 +822,19 @@ safety = agent.predict({"post": "User comment text"}, laya.moderation_questions(
 
 # 4. Support Ticket Triage (intent, urgency, frustration, churn)
 triage = agent.predict({"message": "My payment failed twice"}, laya.triage_questions())
+```
+
+For Swedish tickets, `triage_questions` localizes the instructions and answer descriptions while
+keeping the same machine-readable question and choice keys:
+
+```python
+router = laya.Router()
+triage = router.predict(
+    {"message": "Jag har debiterats två gånger för mars."},
+    laya.triage_questions(language="sv-SE"),
+    lang="sv-SE",
+)
+print(triage["answers"]["intent"]["choice"])  # refund
 ```
 
 ---

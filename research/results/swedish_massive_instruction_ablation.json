@@ -1,0 +1,49 @@
+{
+  "dataset": {
+    "id": "mteb/amazon_massive_intent",
+    "source": "https://huggingface.co/datasets/AmazonScience/massive",
+    "license": "CC-BY-4.0",
+    "split": "test",
+    "language_config": "sv",
+    "note": "Swedish localized general voice-assistant utterances; not support tickets."
+  },
+  "checkpoint": {
+    "repo": "convaiinnovations/laya",
+    "subfolder": "multilingual",
+    "revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+    "laya_version": "0.3.21",
+    "device": "cpu"
+  },
+  "sampling": {
+    "split": "test",
+    "n": 100,
+    "seed": 13,
+    "options": 20,
+    "max_len": 1024,
+    "head_max_len": 256,
+    "same_rows_and_options_for_both_prompts": true
+  },
+  "results": {
+    "english_instruction": {
+      "instruction": "What is the user asking for in `utterance`?",
+      "n": 100,
+      "accuracy": 0.49,
+      "macro_f1": 0.4496,
+      "ece": 0.341,
+      "mean_confidence": 0.8215,
+      "acc_at_50_coverage": 0.74,
+      "temperature": 1.0
+    },
+    "swedish_instruction": {
+      "instruction": "Vad ber användaren om i `utterance`?",
+      "n": 100,
+      "accuracy": 0.53,
+      "macro_f1": 0.4947,
+      "ece": 0.316,
+      "mean_confidence": 0.846,
+      "acc_at_50_coverage": 0.78,
+      "temperature": 1.0
+    }
+  },
+  "interpretation": "Exploratory paired prompt ablation only: +4 correct cases on 100 examples is modest and does not establish a general gain. MASSIVE is voice-assistant intent data, not customer-support triage; no prompt was selected or tuned on this result."
+}

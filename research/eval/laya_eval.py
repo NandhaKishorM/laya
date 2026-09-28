@@ -65,7 +65,7 @@ def render_label(key: str) -> str:
 
 
 def build_case(text: str, gold: str, pool: Sequence[str], rng: random.Random,
-               n_opts: int) -> Tuple[Dict[str, Any], Dict[str, Any], int]:
+               n_opts: int, instruction: str = INSTRUCTIONS) -> Tuple[Dict[str, Any], Dict[str, Any], int]:
     """One case: a state, a 20-option choice question, and the gold option index."""
     keys = [gold] + rng.sample(list(pool), min(n_opts - 1, len(pool)))
     rng.shuffle(keys)
@@ -73,7 +73,7 @@ def build_case(text: str, gold: str, pool: Sequence[str], rng: random.Random,
     question = {
         "intent": {
             "type": "choice",
-            "instructions": INSTRUCTIONS,
+            "instructions": instruction,
             "criteria": {k: render_label(k) for k in keys},
         }
     }
@@ -81,7 +81,8 @@ def build_case(text: str, gold: str, pool: Sequence[str], rng: random.Random,
 
 
 def build_suite(rows: Sequence[Dict[str, Any]], labels: Sequence[str],
-                per_lang: int, n_opts: int, seed: int = SEED):
+                per_lang: int, n_opts: int, seed: int = SEED,
+                instruction: str = INSTRUCTIONS):
     """Deterministic suite for one language. Returns (cases, gold, option_keys)."""
     labels = sorted(labels)
     rng = random.Random(seed)                      # fresh per language, as upstream
@@ -89,7 +90,7 @@ def build_suite(rows: Sequence[Dict[str, Any]], labels: Sequence[str],
     for row in list(rows)[:per_lang]:
         pool = [x for x in labels if x != row["label_text"]]
         state, question, gold_idx = build_case(row["text"], row["label_text"],
-                                               pool, rng, n_opts)
+                                               pool, rng, n_opts, instruction)
         keys = list(question["intent"]["criteria"])
         cases.append((state, question))
         gold.append(gold_idx)
@@ -230,14 +231,15 @@ def summarise(confidences, corrects, golds, preds) -> Dict[str, float]:
 
 # ------------------------------------------------------------------------ runner
 def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
-                 unclamped: bool = False) -> Dict[str, Any]:
+                 unclamped: bool = False,
+                 instruction: str = INSTRUCTIONS) -> Dict[str, Any]:
     """Evaluate one language and return its report plus per-case records."""
     import numpy as np
     from laya.common import QTYPES
 
     rows = load_language(lang)
     cases, gold, option_keys = build_suite(
-        rows, sorted({r["label_text"] for r in rows}), per_lang, n_opts, seed)
+        rows, sorted({r["label_text"] for r in rows}), per_lang, n_opts, seed, instruction)
     logits = score_cases(agent, cases)
 
     confidences, corrects, preds, records = [], [], [], []
@@ -254,7 +256,7 @@ def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
             "lang": lang,
             "index": i,
             "state": cases[i][0],
-            "instructions": INSTRUCTIONS,
+            "instructions": instruction,
             "options": option_keys[i],
             "gold_index": int(gold[i]),
             "gold_label": option_keys[i][gold[i]],
@@ -279,6 +281,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Per-language accuracy and calibration report for a Laya checkpoint.")
     parser.add_argument("--model", default="convaiinnovations/laya",
                         help="checkpoint repo id or local path")
+    parser.add_argument("--revision", default=None,
+                        help="optional model commit SHA, branch or tag")
     parser.add_argument("--subfolder", default=None,
                         help="checkpoint subfolder, e.g. multilingual")
     parser.add_argument("--device", default=None, help="cpu, cuda, mps (default: auto)")
@@ -287,6 +291,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--per-lang", type=int, default=PER_LANG)
     parser.add_argument("--n-opts", type=int, default=N_OPTS)
     parser.add_argument("--seed", type=int, default=SEED)
+    parser.add_argument("--instruction", default=INSTRUCTIONS,
+                        help="question instruction; default preserves the benchmark's English prompt")
     parser.add_argument("--out", default=None, help="write the JSON report here")
     parser.add_argument("--no-cases", action="store_true",
                         help="omit per-case records (smaller file)")
@@ -311,11 +317,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     import laya
 
     started = time.time()
-    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder)
+    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder,
+                      revision=args.revision)
     agent.model.eval()
     payload: Dict[str, Any] = {
         "config": {
             "model": args.model,
+            "revision": agent.revision,
             "subfolder": args.subfolder,
             "device": str(agent.device),
             "max_len": agent.cfg.get("max_len"),
@@ -325,7 +333,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "per_lang": args.per_lang,
             "n_opts": args.n_opts,
             "seed": args.seed,
-            "instructions": INSTRUCTIONS,
+            "instructions": args.instruction,
             "temperatures": dict(agent.temperature_by_options_raw) if args.unclamped
             else dict(agent.temperature_by_options),
             "laya_version": getattr(laya, "__version__", "unknown"),
@@ -338,7 +346,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         t0 = time.time()
         try:
             out = run_language(agent, lang, args.per_lang, args.n_opts,
-                               args.seed, args.unclamped)
+                               args.seed, args.unclamped, args.instruction)
         except Exception as exc:
             print("  %-8s FAILED: %s" % (lang, str(exc)[:110]), file=sys.stderr)
             payload["report"][lang] = {"error": str(exc)[:200]}

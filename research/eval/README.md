@@ -44,6 +44,11 @@ python research/eval/laya_eval.py --model convaiinnovations/laya --langs all --o
 python research/eval/laya_eval.py --model convaiinnovations/laya \
     --subfolder multilingual --langs all --out multilingual.json
 
+# compare the Swedish prompt on a pinned multilingual checkpoint
+python research/eval/laya_eval.py --model convaiinnovations/laya \
+    --subfolder multilingual --revision 55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851 \
+    --langs sv --instruction 'Vad ber användaren om i `utterance`?' --out sv.json
+
 # a local checkpoint
 python research/eval/laya_eval.py --model ./my-finetune --langs en
 ```
@@ -60,7 +65,7 @@ and a JSON document with four parts:
 
 | key | contents |
 |---|---|
-| `config` | checkpoint, device, `max_len`, `head_max_len`, dataset, `per_lang`, `n_opts`, seed, the fixed instructions, the temperatures in force, laya version |
+| `config` | checkpoint and resolved revision, device, `max_len`, `head_max_len`, dataset, `per_lang`, `n_opts`, seed, instruction, temperatures, Laya version |
 | `report` | per language: `n`, `accuracy`, `macro_f1`, `ece`, `mean_confidence`, `acc_at_50_coverage`, `temperature` |
 | `summary` | macro accuracy / ECE / macro-F1 over the languages that ran |
 | `cases` | every individual decision |
@@ -88,7 +93,7 @@ second implementation:
 | dataset | `mteb/amazon_massive_intent`, split `test` |
 | sampling | first `--per-lang` rows (default 100); `random.Random(13)` created **fresh per language** |
 | options | `--n-opts` (default 20): the gold label plus `rng.sample` of the others, then shuffled |
-| prompt | `What is the user asking for in \`utterance\`?` |
+| default prompt | `What is the user asking for in \`utterance\`?` |
 | option text | label with `_` → space and `.` → `: ` |
 | metrics | accuracy, macro-F1, ECE over 15 equal-width confidence bins, mean confidence, accuracy at 50% coverage |
 | temperature | the bucket `Agent` would apply, selected by `(question type, option count)` |
@@ -96,6 +101,20 @@ second implementation:
 `--unclamped` scores with the checkpoint's **raw** bucket temperatures instead of the
 clamped ones `Agent` applies. That is what reproduces the committed sweep, and it is
 also how the two can be compared.
+
+`--instruction` overrides the default prompt for a controlled language-prompt ablation;
+the exact text is saved in the report. `--revision` pins a Hub commit and the resolved
+revision is also recorded. Defaults preserve the original benchmark setup.
+
+## Swedish prompt-language ablation
+
+`research/results/swedish_massive_instruction_ablation.json` compares the default English
+instruction with `Vad ber användaren om i \`utterance\`?` on the same 100 Swedish MASSIVE
+test rows, option sets, and multilingual checkpoint revision. Accuracy was 0.49 with the
+English instruction and 0.53 with the Swedish one; ECE was 0.341 and 0.316 respectively.
+This is a modest four-case difference on a single 100-example sample, not evidence of a
+general gain. The report stores aggregate metrics only, not the utterances. MASSIVE is
+CC-BY-4.0 general voice-assistant intent data, not customer-support tickets.
 
 ## Verification
 
@@ -166,7 +185,7 @@ forcing 256 or 512 drops it to 0.79.
 checkpoint, no network:
 
 ```bash
-python research/eval/test_laya_eval.py     # 64 passed, 0 failed
+python research/eval/test_laya_eval.py     # 66 passed, 0 failed
 ```
 
 It pins the upstream constants (seed 13, 20 options, the exact instruction string),

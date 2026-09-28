@@ -56,6 +56,14 @@ check("case/option count", len(_q["intent"]["criteria"]), 4)
 check("case/gold is present", "alarm_set" in _q["intent"]["criteria"], True)
 check("case/gold index points at gold",
       list(_q["intent"]["criteria"])[_gold_idx], "alarm_set")
+_localized_instruction = "Vad ber användaren om i `utterance`?"
+_localized_state, _localized_q, _localized_gold = build_case(
+    "ställ ett alarm", "alarm_set", ["alarm_remove", "calendar_set"],
+    random.Random(SEED), 3, _localized_instruction)
+check("case/custom instruction is used",
+      _localized_q["intent"]["instructions"], _localized_instruction)
+check("case/custom instruction preserves the gold option",
+      list(_localized_q["intent"]["criteria"])[_localized_gold], "alarm_set")
 
 
 # ------------------------------------------------- determinism and seed parity

@@ -557,6 +557,12 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
 
         guard_questions(language=language)  # validate and normalize the supported preset locale
         language = language.strip().lower().replace("_", "-").split("-", 1)[0]
+        if rejection_message == "I cannot fulfill this request because it violates safety guidelines." \
+                and language == "sv":
+            rejection_message = (
+                "Jag kan inte hjälpa till med den här begäran eftersom den strider mot "
+                "säkerhetsreglerna."
+            )
         if not 0.0 <= threshold <= 1.0:
             raise ValueError("threshold must be a probability in [0, 1]; got %r" % (threshold,))
         if _RUNNABLE_AVAILABLE:

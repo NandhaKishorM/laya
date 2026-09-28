@@ -90,7 +90,7 @@ check("moderation/Swedish severity preserves the four ordered meanings",
       [
           "inget regelbrott: vanligt och relevant inlägg",
           "lindrigt regelbrott: otrevlig ton eller utanför ämnet, utan angrepp på någon",
-          "allvarligt regelbrott: riktade förolämpningar, trakasserier eller spam som riktas mot en viss person",
+          "allvarligt regelbrott: riktade förolämpningar, trakasserier eller upprepade oönskade meddelanden till en viss person",
           "mycket allvarligt regelbrott: hot, hatpropaganda eller uppmaning till våld",
       ])
 check("moderation/Swedish threat covers harm and intimidation naturally",

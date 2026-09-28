@@ -50,6 +50,43 @@ PRESET_STATE_KEYS = {
 }
 
 
+class LayaArgumentParser(argparse.ArgumentParser):
+    """Translate common argument errors when the caller explicitly selects Swedish."""
+
+    def parse_args(self, args=None, namespace=None):
+        tokens = list(sys.argv[1:] if args is None else args)
+        self._swedish_errors = False
+        for index, token in enumerate(tokens):
+            if token == "--":
+                break
+            if token.startswith("--lang="):
+                value = token.split("=", 1)[1]
+            elif token == "--lang" and index + 1 < len(tokens):
+                value = tokens[index + 1]
+            else:
+                continue
+            language = value.strip().lower().replace("_", "-").split("-", 1)[0]
+            self._swedish_errors = language == "sv"
+        return super().parse_args(tokens, namespace)
+
+    def error(self, message):
+        if not getattr(self, "_swedish_errors", False):
+            return super().error(message)
+        translations = (
+            ("argument --preset: invalid choice:", "argumentet --preset har ogiltigt värde:"),
+            ("(choose from ", "(välj mellan "),
+            ("argument --preset: expected one argument", "--preset måste följas av ett namn"),
+            ("argument --questions: expected one argument", "--questions måste följas av en fil"),
+            ("argument --lang: expected one argument", "--lang måste följas av en språkkod"),
+            ("unrecognized arguments: ", "okända argument: "),
+        )
+        for source, target in translations:
+            message = message.replace(source, target)
+        usage = super().format_usage().replace("usage:", "användning:", 1)
+        self._print_message(usage, sys.stderr)
+        self.exit(2, "%s: fel: %s\n" % (self.prog, message))
+
+
 def model_name(value):
     """Resolve a `--model` argument the way core resolves it: same names, same aliases, same casing.
 
@@ -71,7 +108,7 @@ def model_name(value):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(
+    parser = LayaArgumentParser(
         prog="laya",
         description="Test Laya locally: route or answer a request from the command line.",
     )
@@ -183,6 +220,7 @@ def _swedish_route_reason(reason):
                 ("; using default (", "; standardmodell: "),
                 ("of letters", "av bokstäverna"),
                 ("non-English letters", "bokstäver som inte är engelska"),
+                (" typed-decisions workflow", " för strukturerade beslut"),
             ):
                 remainder = remainder.replace(source, target)
             return translated + remainder.rstrip(")")
@@ -279,12 +317,30 @@ def _is_swedish(args):
 def _print_cli_error(message, args):
     """Print a localized CLI message while retaining technical error details."""
     if _is_swedish(args):
+        question_error = "question "
+        type_marker = " must map to an object, got "
+        if message.startswith(question_error) and type_marker in message:
+            question_id, question_type = message[len(question_error):].split(type_marker, 1)
+            message = "frågan %s måste vara ett objekt; angiven typ: %s" % (
+                question_id, question_type)
         translations = {
             "could not run Laya": "det gick inte att köra Laya",
             "Check that the dependencies are installed and the checkpoints can be downloaded from the Hugging Face hub (network access is needed on first use).":
-                "Kontrollera att beroendena är installerade och att kontrollpunkterna kan hämtas från Hugging Face Hub (nätverksåtkomst behövs första gången).",
+                "Kontrollera att beroendena är installerade och att modellfilerna kan hämtas från Hugging Face Hub (nätverksåtkomst behövs första gången).",
             "pass either a text or --batch FILE, not both.":
                 "ange antingen en text eller --batch FIL, inte båda.",
+            "--questions and --preset choose different question sets; pass one":
+                "ange antingen --questions eller --preset; de väljer olika frågeuppsättningar",
+            "no such --questions file": "filen som anges med --questions finns inte",
+            "--questions file must be a JSON object of question id -> definition":
+                ("filen som anges med --questions måste innehålla ett JSON-objekt där "
+                 "fråge-ID:n kopplas till definitioner"),
+            "the 'questions' field of the --questions file must be an object":
+                "fältet 'questions' i --questions-filen måste vara ett objekt",
+            "--questions file holds no questions":
+                "filen som anges med --questions innehåller inga frågor",
+            "'state_key' must be a non-empty string, got":
+                "'state_key' måste vara en icke-tom sträng; angivet värde",
             "could not read": "det gick inte att läsa",
             "no requests found in": "hittade inga förfrågningar i",
         }
@@ -422,7 +478,8 @@ def run_batch(lines, args, router=None):
 
 def interactive(args):
     if _is_swedish(args):
-        print("Layas interaktiva läge. Skriv en förfrågan och tryck på Retur; Ctrl-D eller 'avsluta' stänger.")
+        print("Layas interaktiva läge. Skriv in en text och tryck på Retur. "
+              "Avsluta med Ctrl-D eller skriv 'avsluta'.")
         prompt = "laya> "
         quit_words = ("quit", "exit", "avsluta")
     else:

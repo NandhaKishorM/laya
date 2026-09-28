@@ -59,7 +59,10 @@ def triage_questions(language: str = "en") -> Dict:
             },
             "is_urgent": {
                 "type": "noul",
-                "instructions": "Kan ärendet vänta, eller måste det lösas snart enligt `message`?",
+                "instructions": (
+                    "Finns det en tidsfrist eller pågående påverkan som gör att ärendet måste "
+                    "hanteras skyndsamt enligt `message`?"
+                ),
             },
             "frustration": {
                 "type": "score",

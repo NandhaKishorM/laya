@@ -189,8 +189,11 @@ check("triage_questions/Swedish keeps the message state field", state_field(sv_t
 check_true("triage_questions/Swedish urgency names message",
            "`message`" in sv_triage["is_urgent"]["instructions"])
 check_true("triage_questions/Swedish urgency asks about urgency and deadlines",
-           "vänta" in sv_triage["is_urgent"]["instructions"] and
-           "snart" in sv_triage["is_urgent"]["instructions"])
+           "tidsfrist" in sv_triage["is_urgent"]["instructions"] and
+           "hanteras skyndsamt" in sv_triage["is_urgent"]["instructions"])
+check_true("triage_questions/Swedish urgency has a positive yes polarity",
+           sv_triage["is_urgent"]["instructions"].startswith("Finns det en tidsfrist") and
+           "Kan ärendet vänta" not in sv_triage["is_urgent"]["instructions"])
 check_true("triage_questions/Swedish refund question names message",
            "`message`" in sv_triage["refund_requested"]["instructions"])
 try:

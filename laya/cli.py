@@ -50,12 +50,43 @@ PRESET_STATE_KEYS = {
 }
 
 
+_SWEDISH_HELP_TRANSLATIONS = (
+    ("Test Laya locally: route or answer a request from the command line.",
+     "Testa Laya lokalt: låt den välja modell för en text eller besvara frågor från kommandoraden."),
+    ("the request text (omit for interactive mode)",
+     "texten som ska behandlas (utelämna för interaktivt läge)"),
+    ("show this help message and exit", "visa den här hjälpen och avsluta"),
+    ("run the full prediction, not just the routing decision (downloads the checkpoint on first use)",
+     "kör hela analysen, inte bara modellvalet (hämtar modellen första gången)"),
+    ("force a checkpoint instead of auto-routing: a checkpoint name or any of core's aliases, in any casing, or 'auto' to route it (the default)",
+     "välj modell i stället för automatisk routning: modellnamn eller alias oavsett skiftläge; ange 'auto' för automatisk routning (standard)"),
+    ("force a language, e.g. sv-SE, en or de, instead of detecting it",
+     "ange språk, till exempel sv-SE, en eller de, i stället för att identifiera det automatiskt"),
+    ("force a typed-decisions workflow instead of detecting it",
+     "ange ett arbetsflöde för strukturerade beslut i stället för att identifiera det automatiskt"),
+    ("answer a ready-made question preset", "besvara frågor med en inbyggd frågeuppsättning"),
+    ("instead of the router questions; implies --predict", "i stället för routerns frågor; innebär --predict"),
+    ("a JSON file of your own typed questions to answer instead of the router questions or a preset; implies --predict",
+     "en JSON-fil med egna strukturerade frågor att besvara i stället för routerns frågor eller en frågeuppsättning; innebär --predict"),
+    ("token budget for the whole request (state plus options); defaults to the checkpoint's own budget",
+     "tokenbudget för hela begäran (text och svarsalternativ); standardvärdet hämtas från modellen"),
+    ("token budget the choice options share; raise it when a question has many labels, so each keeps enough tokens to stay distinct",
+     "tokenbudget som delas mellan svarsalternativen; höj den vid många alternativ så att de förblir tydliga"),
+    ("torch device, e.g. cpu or cuda", "beräkningsenhet, till exempel cpu eller cuda"),
+    ("print the raw result as JSON", "skriv ut råresultatet som JSON"),
+    ("score a file of requests, one per line (use '-' for stdin), instead of a single text; implies neither --predict nor --preset, but the same modes apply: routing by default, answers with --predict/--preset",
+     "bearbeta en fil med texter, en per rad (använd '-' för standardindata), i stället för en text. Aktiverar inte --predict eller --preset: standard är val av modell, med flaggorna besvaras frågor"),
+    ("states per forward pass in --batch mode; the default sends each routed group in one pass",
+     "antal texter per modellkörning i --batch-läge; standardvärdet skickar varje routad grupp i en körning"),
+)
+
+
 class LayaArgumentParser(argparse.ArgumentParser):
     """Translate common argument errors when the caller explicitly selects Swedish."""
 
     def parse_args(self, args=None, namespace=None):
         tokens = list(sys.argv[1:] if args is None else args)
-        self._swedish_errors = False
+        self._swedish_locale = False
         for index, token in enumerate(tokens):
             if token == "--":
                 break
@@ -66,11 +97,34 @@ class LayaArgumentParser(argparse.ArgumentParser):
             else:
                 continue
             language = value.strip().lower().replace("_", "-").split("-", 1)[0]
-            self._swedish_errors = language == "sv"
+            self._swedish_locale = language == "sv"
+        if self._swedish_locale:
+            self._localize_help()
         return super().parse_args(tokens, namespace)
 
+    @staticmethod
+    def _translate_help(text):
+        for source, target in _SWEDISH_HELP_TRANSLATIONS:
+            text = text.replace(source, target)
+        return text
+
+    def _localize_help(self):
+        if getattr(self, "_help_localized", False):
+            return
+        if self.description:
+            self.description = self._translate_help(self.description)
+        for action in self._actions:
+            if action.help:
+                action.help = self._translate_help(action.help)
+        for group in self._action_groups:
+            if group.title == "positional arguments":
+                group.title = "textargument"
+            elif group.title == "options":
+                group.title = "flaggor"
+        self._help_localized = True
+
     def error(self, message):
-        if not getattr(self, "_swedish_errors", False):
+        if not getattr(self, "_swedish_locale", False):
             return super().error(message)
         translations = (
             ("argument --preset: invalid choice:", "argumentet --preset har ogiltigt värde:"),
@@ -85,6 +139,12 @@ class LayaArgumentParser(argparse.ArgumentParser):
         usage = super().format_usage().replace("usage:", "användning:", 1)
         self._print_message(usage, sys.stderr)
         self.exit(2, "%s: fel: %s\n" % (self.prog, message))
+
+    def format_help(self):
+        help_text = super().format_help()
+        if not getattr(self, "_swedish_locale", False):
+            return help_text
+        return help_text.replace("usage:", "användning:", 1)
 
 
 def model_name(value):

@@ -578,7 +578,7 @@ router.route({"body": "Der Kunde wurde zweimal belastet"}, questions).reason
 # "Latin script but language looks like 'de', not English"
 ```
 
-Very short Latin-script text often carries nothing that identifies its language (`"Quero cancelar"`, `"Esqueci minha senha"`). Such text goes to `default`, which is `"multilingual"` since 0.4.0. Text the detector *can* place is unaffected: identified English still goes to the English checkpoint.
+Very short Latin-script text often carries nothing that identifies its language (`"Quero cancelar"`, `"Esqueci minha senha"`). Such text goes to `default`, which is `"multilingual"` since 0.4.0. Text the detector *can* place is unaffected: identified English still goes to the English checkpoint. From four words up, text that names no language and has no English function word, but does contain two different words from other languages' lists or a non-English letter, goes to the multilingual checkpoint regardless of `default` (`"streiche alle meine geplanten termine"`). One such word is not enough, because English uses `do`, `todo` and `van` too.
 
 ```python
 router = Router()                                                   # default="multilingual"

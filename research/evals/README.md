@@ -94,6 +94,14 @@ There is no safe one-to-one remapping by category name: `teknik` roughly overlap
 that the preset separates into `refund` and `billing_question`; `försäljning` only partly overlaps
 with `information`; `leverans` and `konto` have no dedicated preset choice; and `other` is absent
 from the diagnostic. Review each message against the preset's question before assigning a label.
+For a future evaluation of the built-in Swedish triage preset, use
+`laya.triage_questions(language="sv-SE")` unchanged and label its exact outputs: `intent` as one
+of `refund`, `technical_help`, `billing_question`, `information`, `cancellation` or `other`;
+`is_urgent` and `refund_requested` as booleans; `frustration` as a score from 0 to 3; and
+`churn_risk` as a boolean for an expressed intention or conditional threat to leave. Have a
+Swedish support specialist review the target definitions, label cases independently, and
+adjudicate disagreements before evaluating; keep any cases used to revise wording out of the
+held-out evaluation set.
 The churn question is deliberately separate from category: a technical problem can
 include a cancellation threat without becoming a cancellation request.
 The urgency rubric describes concrete impact and deadline conditions at each level;

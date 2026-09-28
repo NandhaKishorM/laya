@@ -731,6 +731,20 @@ for text in ["Om ni inte kan få tillbaka de raderade filerna i dag avslutar jag
     check("latin_lang/swedish is named " + text, guess_latin_language(text), "sv")
     check("route/swedish uses multilingual " + text, _r_lat.route(text).model, "multilingual")
     check("route/swedish detection reports sv " + text, _r_lat.route(text)["detection"]["language"], "sv")
+# Short login failures often contain English technical vocabulary and can arrive without Swedish
+# diacritics. Swedish `kan` + `inte` must outweigh the incidental English token `in`.
+for text in ["Kan inte logga in", "kan inte logga in", "Jag kan inte logga in"]:
+    check("latin_lang/short swedish login is named " + text, guess_latin_language(text), "sv")
+    check("route/short swedish login uses multilingual " + text,
+          _r_lat.route(text).model, "multilingual")
+    check("route/short swedish login detection reports sv " + text,
+          _r_lat.route(text)["detection"]["language"], "sv")
+check("latin_lang/english login stays english",
+      guess_latin_language("I cannot login to my account"), "en")
+check("route/english login stays english",
+      _r_lat.route("I cannot login to my account").model, "english")
+check("latin_lang/danish login is not called swedish",
+      guess_latin_language("Jeg kan ikke logge inn"), None)
 # Two non-English-letter words is a running non-English vocabulary, not one loanword: the rescue
 # does not fire even with English function words present.
 check("latin_lang/two diacritic words are not one loanword",

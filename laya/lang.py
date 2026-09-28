@@ -122,7 +122,7 @@ _STOP = {
     # ASCII-normalising ticket pipeline without treating one stray Nordic letter as the only hint.
     "sv": {"jag", "är", "och", "inte", "att", "från", "till", "behöver", "får", "skulle", "ska",
            "vill", "måste", "också", "dessa", "detta", "säger", "upp", "utan", "mitt", "min", "om",
-           "kommer", "här", "två", "vi", "nästa", "gör", "göra"},
+           "kommer", "här", "två", "vi", "nästa", "gör", "göra", "kan"},
     # Romanian words that its Romance neighbours do not share, so adding `ro` cannot steal a
     # French/Spanish/Italian/Portuguese state: `la`, `o`, `un`, `de`, `pe`, `ca` are deliberately
     # left out for that reason, and the diacritic signal below carries the rest.
@@ -420,6 +420,10 @@ def latin_profile(text: str) -> Dict[str, object]:
     lang = None
     if best_lg and best >= max(2, en + 2):
         # a non-English language needs a clear margin over English function words
+        lang = best_lg
+    elif best_lg == "sv" and best >= 2 and best > en:
+        # Short Swedish support requests such as "kan inte logga in" can contain the English
+        # token `in`; two Swedish hits and a lead over English are enough to route multilingual.
         lang = best_lg
     elif best_lg and non_english and best >= max(2, en):
         # Needs two hits here too. One shared function word ("para" in Turkish text) named Spanish

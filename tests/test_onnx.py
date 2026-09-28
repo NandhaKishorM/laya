@@ -88,4 +88,12 @@ def test_onnx_numerical_parity():
             atol=1e-3, rtol=1e-3,
         )
         
+        # 8. Assert parity for action probability
+        for question_id in questions:
+            np.testing.assert_allclose(
+                res_pt["answers"][question_id]["action"]["act_probability"],
+                res_onnx["answers"][question_id]["action"]["act_probability"],
+                atol=1e-3,
+                rtol=1e-3,
+            )
         print("ONNX numerical parity test passed for all 3 question types!")

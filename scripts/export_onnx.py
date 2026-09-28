@@ -51,16 +51,18 @@ def export_to_onnx(model_id_or_path: str, output_path: str):
     
     print("Creating dummy input tensors...")
     # 1. Dummy tensors for tracing
-    # (batch_size=1, seq_len=16)
-    dummy_input_ids = torch.randint(0, 100, (1, 16), dtype=torch.long)
-    dummy_attention_mask = torch.ones((1, 16), dtype=torch.long)
-    
-    # (batch_size=1, num_markers=2)
-    dummy_marker_pos = torch.tensor([[1, 5]], dtype=torch.long)
-    dummy_marker_mask = torch.tensor([[True, True]], dtype=torch.bool)
-    
-    # (batch_size=1)
-    dummy_qtype = torch.tensor([0], dtype=torch.long)
+    # (batch_size=2, seq_len=16)
+    dummy_input_ids = torch.randint(0, 100, (2, 16), dtype=torch.long)
+    dummy_attention_mask = torch.ones((2, 16), dtype=torch.long)
+
+    # (batch_size=2, num_markers=2)
+    dummy_marker_pos = torch.tensor([[1, 5], [1, 5]], dtype=torch.long)
+    dummy_marker_mask = torch.tensor(
+        [[True, True], [True, True]], dtype=torch.bool
+    )
+
+    # (batch_size=2)
+    dummy_qtype = torch.tensor([0, 0], dtype=torch.long)
     
     inputs = (
         dummy_input_ids,

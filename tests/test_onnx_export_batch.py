@@ -101,6 +101,20 @@ class _TinyEncoder(nn.Module):
         return types.SimpleNamespace(last_hidden_state=hidden)
 
 
+class _Skip(Exception):
+    """Raised to skip a block this platform cannot run."""
+
+
+#: Tolerance for the TINY model in this file, not for a real checkpoint. `verify_batch_dynamic`
+#: defaults to 1e-3, which the 322M checkpoint passes at 6.14e-05 -- that default is what bounds
+#: quality and it is asserted separately. This 32-dim random model has near-tied logits, and softmax
+#: amplifies the difference between one machine's fp32 kernels and another's: measured 4.69e-04 here
+#: and 1.03e-02 on a GitHub runner, which straddles 1e-3 and made this suite fail by hardware. The
+#: signal it has to separate is enormous by comparison -- a perturbed weight moves probabilities by
+#: 6.4e-01 -- so 5e-2 sits 5x above the worst drift observed and 13x below the thing being detected.
+TINY_ATOL = 5e-2
+
+
 def _build_model():
     torch.manual_seed(0)
     # head_layers=2 is the shipped default, and the head is where the traced batch got baked in.
@@ -155,8 +169,17 @@ finally:
 # exported a real graph but never quantized it. Deleting that one line leaves both suites green and
 # makes `python scripts/export_onnx.py --quantize` crash outright with
 # `InferenceError: Inferred shape and existing shape differ in dimension 0`.
-_tmp3 = tempfile.mkdtemp()
+# Skipped on Windows: quantizing a graph this size dies there with an illegal instruction inside
+# onnxruntime (exit 132), which no `except` can catch. `tests/test_onnx_quantize.py` passes on
+# Windows because its graph is a single MatMul node. The `onnx export (quantization, weight-free)`
+# job on Linux is where this path is gated, and that is the job the documented `--quantize`
+# invocation has to keep green.
+_tmp3 = None if sys.platform.startswith("win") else tempfile.mkdtemp()
+if _tmp3 is None:
+    check_true("quantize/skipped on Windows (covered by the Linux quantization job)", True, "")
 try:
+    if _tmp3 is None:
+        raise _Skip()
     _p3 = os.path.join(_tmp3, "q.onnx")
     _m3 = _build_model()
     export_onnx.export_module(_m3, _p3)
@@ -169,8 +192,10 @@ try:
     _s3 = ort.InferenceSession(_int8, providers=["CPUExecutionProvider"])
     check("quantize/the INT8 graph keeps a symbolic batch axis",
           _s3.get_inputs()[0].shape[0], "batch_size")
+except _Skip:
+    pass
 finally:
-    shutil.rmtree(_tmp3, ignore_errors=True)
+    shutil.rmtree(_tmp3, ignore_errors=True) if _tmp3 else None
 
 # Every way of turning the new verification OFF survived: the CLI was pinned only by grepping
 # __main__ for substrings, and the stubs recorded THAT a function was called, never with what. So
@@ -178,8 +203,12 @@ finally:
 # `atol=1e9` on the INT8 check all shipped a success message while checking nothing. The real
 # __main__ now runs against a stubbed Agent and the arguments it passes are asserted.
 _seen = {}
-_tmp4 = tempfile.mkdtemp()
+_tmp4 = None if sys.platform.startswith("win") else tempfile.mkdtemp()
+if _tmp4 is None:
+    check_true("cli/skipped on Windows (it exports and quantizes; see above)", True, "")
 try:
+    if _tmp4 is None:
+        raise _Skip()
     _p4 = os.path.join(_tmp4, "cli.onnx")
 
     def _fake_verify(model, path, atol=None, batches=(1, 2, 3)):
@@ -209,8 +238,10 @@ try:
           _calls[1]["atol"] if len(_calls) > 1 else None, export_onnx.INT8_ATOL)
     check_true("cli/the INT8 graph is written beside the fp32 one, not over it",
                len(_calls) > 1 and _calls[1]["path"] != _calls[0]["path"], _calls)
+except _Skip:
+    pass
 finally:
-    shutil.rmtree(_tmp4, ignore_errors=True)
+    shutil.rmtree(_tmp4, ignore_errors=True) if _tmp4 else None
 
 shutil.rmtree(tmp, ignore_errors=True)
 os.makedirs(tmp, exist_ok=True)
@@ -305,7 +336,7 @@ check_true("parity/the comparison is real, not an all-zero graph", _biggest_outp
 
 # ---------------------------------------------------------------- verify_batch_dynamic accepts it
 try:
-    export_onnx.verify_batch_dynamic(model, onnx_path)
+    export_onnx.verify_batch_dynamic(model, onnx_path, atol=TINY_ATOL)
     PASS.append("verify/accepts a batch-dynamic export")
 except SystemExit as error:
     FAIL.append("verify/accepts a batch-dynamic export: raised %r" % (str(error),))
@@ -342,7 +373,7 @@ with torch.no_grad():
     _w = [q for q in _perturbed.parameters() if q.ndim >= 2][-1]
     _w.add_(torch.linspace(0.0, 5.0, _w.numel()).reshape(_w.shape))
 try:
-    export_onnx.verify_batch_dynamic(_perturbed, onnx_path)
+    export_onnx.verify_batch_dynamic(_perturbed, onnx_path, atol=TINY_ATOL)
     FAIL.append("verify/rejects a graph whose numbers drifted: it was accepted, so the guard is vacuous")
 except SystemExit as error:
     check_true("verify/rejects a graph whose numbers drifted",
@@ -362,7 +393,7 @@ import contextlib as _contextlib                                             # n
 
 _cap = _io.StringIO()
 with _contextlib.redirect_stdout(_cap):
-    export_onnx.verify_batch_dynamic(model, onnx_path)
+    export_onnx.verify_batch_dynamic(model, onnx_path, atol=TINY_ATOL)
 _reported = _cap.getvalue()
 for _name in export_onnx.OUTPUT_NAMES:
     check_true("verify/compares %s against PyTorch" % _name,
@@ -432,7 +463,7 @@ _hidden = {"onnxruntime": None}
 _saved = {k: sys.modules.get(k) for k in _hidden}
 sys.modules.update(_hidden)
 try:
-    export_onnx.verify_batch_dynamic(model, onnx_path)
+    export_onnx.verify_batch_dynamic(model, onnx_path, atol=TINY_ATOL)
     check_true("cli/missing onnxruntime is explained", False, "no SystemExit was raised")
 except SystemExit as error:
     msg = str(error)

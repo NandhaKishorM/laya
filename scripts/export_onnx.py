@@ -209,13 +209,17 @@ def verify_batch_dynamic(model, output_path: str, batches=(1, 2, 3), atol: float
     agree to 6.1e-05. laya-ts/scripts/export_onnx.py compares its act head the same way, for the
     same reason.
 
-    **Marker width is not dynamic, and this does not claim it is.** `DecisionModel.forward` branches
-    on `p.size(-1) >= 2` in Python, so the traced width bakes that branch into the graph: a graph
-    traced at 2 markers raises an ONNX Runtime `TopK` error at width 1, which a one-criterion `score`
-    question produces (`criteria=["only"]` is accepted and yields exactly one marker). The sweep below
-    therefore covers widths 2-4 and says so, rather than printing a success that would cover it. That
-    limitation predates this function; making the width dynamic means removing the Python branch from
-    the model, which is a separate change.
+    **Marker width is dynamic for two or more markers, and baked at exactly one.**
+    `DecisionModel.forward` branches on `p.size(-1) >= 2` in Python, so the traced width bakes THAT
+    BRANCH into the graph -- not the width itself. Measured on a graph traced at 2 markers: widths
+    2, 3, 4, 5 and 8 all run and match PyTorch; width 1 raises an ONNX Runtime `TopK` error
+    (`k argument [2] should not be greater than specified axis dim value [1]`), which a one-criterion
+    `score` question produces (`criteria=["only"]` is accepted and yields exactly one marker). An
+    earlier revision of this docstring said the width was "not dynamic", which would have told a user
+    to re-export per criteria count; that is not necessary. The limitation is narrower still, because
+    `collate_items` sizes markers to the batch maximum, so a one-criterion question only hits it when
+    every item in the collated batch has exactly one marker. Removing the Python branch from the model
+    is a separate change.
 
     Probability space has one blind spot, and it is deliberate: softmax is shift-invariant, so a
     constant added to every logit in a row is invisible here -- measured on the exported graph,
@@ -280,13 +284,23 @@ def export_to_onnx(model_id_or_path: str, output_path: str, verify: bool = True)
     if verify:
         print("Verifying the export against PyTorch at batch 1, 2 and 3...")
         verify_batch_dynamic(agent.model, output_path)
-        print("Verification passed: the graph runs at batch 1, 2 and 3 with 2-4 markers and\n              matches PyTorch. Marker width is NOT dynamic -- see verify_batch_dynamic.")
+        print("Verification passed: the graph runs at batch 1, 2 and 3 with 2-4 markers and\n"
+              "              matches PyTorch. Width 1 is baked out by a Python branch -- see\n"
+              "              verify_batch_dynamic.")
     # Handed back so the caller can verify a quantized copy against the same weights without
     # loading the checkpoint a second time.
     return agent.model
 
 
-if __name__ == "__main__":
+def main(argv=None):
+    """The CLI, as a function so the arguments it passes can be asserted.
+
+    It was previously inline under `if __name__ == "__main__":`, which meant the only way to pin it
+    was to grep this file for substrings -- and every way of turning the new verification off
+    survived that: `batches=(1,)` on either call, `--no-verify` flipped to `store_false`,
+    `verify=False`, and `atol=1e9` on the INT8 check all shipped a success message while checking
+    nothing, with both suites green.
+    """
     parser = argparse.ArgumentParser(description="Export a Laya model to ONNX format")
     parser.add_argument("--model", type=str, default="convaiinnovations/laya", help="HuggingFace Hub ID or local path")
     parser.add_argument("--output", type=str, default="laya.onnx", help="Output path for the ONNX file")
@@ -301,7 +315,7 @@ if __name__ == "__main__":
     parser.add_argument("--no-verify", action="store_true",
                         help="Skip the post-export check that runs the graph in ONNX Runtime at "
                              "batch 1, 2 and 3 and compares it with PyTorch")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     model = export_to_onnx(args.model, args.output, verify=not args.no_verify)
     if args.quantize:
@@ -316,3 +330,7 @@ if __name__ == "__main__":
             verify_batch_dynamic(model, int8_path, atol=INT8_ATOL)
             print("INT8 verification passed: it runs at batch > 1 and stays within "
                   f"{INT8_ATOL:.0e} of PyTorch in probability space.")
+
+
+if __name__ == "__main__":
+    main()

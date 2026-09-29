@@ -20,6 +20,7 @@ import inspect
 import os
 import shutil
 import subprocess
+import tempfile
 import sys
 import types
 
@@ -108,6 +109,109 @@ def _build_model():
 
 
 tmp = os.path.join(_here, "_tmp_onnx_export_batch")
+
+# --- findings from an adversarial review -----------------------------------------------------
+
+# The I/O names are a cross-file contract with laya/onnx_agent.py, which builds its feed and calls
+# session.run(["logits", "act_logits"]) from hardcoded strings. Every check here previously built
+# its feed from INPUT_NAMES too, so a permutation was self-consistent and survived: swapping the two
+# OUTPUT_NAMES exported a graph whose `logits` is the act head, and ONNXAgent then reads the act
+# head as the option scores -- silently wrong answers on every request, no error anywhere. Swapping
+# input_ids/attention_mask (same dtype, same shape, so ORT accepts it) gave a max deviation of 5.27
+# from PyTorch. Asserted against literals, and against the strings onnx_agent.py actually uses.
+check("names/inputs are the literal contract", export_onnx.INPUT_NAMES,
+      ["input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"])
+check("names/outputs are the literal contract", export_onnx.OUTPUT_NAMES,
+      ["logits", "act_logits"])
+
+_agent_src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               "laya", "onnx_agent.py")).read()
+check_true("names/onnx_agent runs the same output names in the same order",
+           'session.run(["logits", "act_logits"]' in _agent_src, "")
+for _n in export_onnx.INPUT_NAMES:
+    check_true("names/onnx_agent feeds %s" % _n, '"%s":' % _n in _agent_src, _n)
+
+# And the shapes those names carry, read BY NAME rather than by position, so a permutation is
+# visible: logits is (batch, num_markers) and act_logits is (batch, 2).
+_tmp2 = tempfile.mkdtemp()
+try:
+    _p2 = os.path.join(_tmp2, "names.onnx")
+    _m2 = _build_model()
+    export_onnx.export_module(_m2, _p2)
+    _sess2 = ort.InferenceSession(_p2, providers=["CPUExecutionProvider"])
+    _feed2 = {k: v for k, v in zip(export_onnx.INPUT_NAMES,
+                                   [x.numpy() for x in export_onnx.example_inputs(batch=3, seq_len=16,
+                                                                                  num_markers=4)])}
+    _got = dict(zip(["logits", "act_logits"], _sess2.run(["logits", "act_logits"], _feed2)))
+    check("names/logits is (batch, num_markers)", _got["logits"].shape, (3, 4))
+    check("names/act_logits is (batch, 2)", _got["act_logits"].shape, (3, 2))
+finally:
+    shutil.rmtree(_tmp2, ignore_errors=True)
+
+
+# The --quantize path is what docs/evals.md tells people to deploy, and nothing exercised it on a
+# real torch export: tests/test_onnx_quantize.py builds a one-node MatMul graph with no intermediate
+# value_info at all, so it cannot reach the `del model.graph.value_info[:]` line, and this suite
+# exported a real graph but never quantized it. Deleting that one line leaves both suites green and
+# makes `python scripts/export_onnx.py --quantize` crash outright with
+# `InferenceError: Inferred shape and existing shape differ in dimension 0`.
+_tmp3 = tempfile.mkdtemp()
+try:
+    _p3 = os.path.join(_tmp3, "q.onnx")
+    _m3 = _build_model()
+    export_onnx.export_module(_m3, _p3)
+    _int8 = export_onnx.quantize_model(_p3, export_onnx.int8_output_path(_p3))
+    check_true("quantize/a real torch export quantizes without a shape-inference error",
+               os.path.exists(_int8), _int8)
+    # and the quantized graph is still batch-dynamic and still within tolerance of PyTorch
+    export_onnx.verify_batch_dynamic(_m3, _int8, atol=export_onnx.INT8_ATOL)
+    check_true("quantize/the INT8 graph verifies at batch 1, 2 and 3", True, "")
+    _s3 = ort.InferenceSession(_int8, providers=["CPUExecutionProvider"])
+    check("quantize/the INT8 graph keeps a symbolic batch axis",
+          _s3.get_inputs()[0].shape[0], "batch_size")
+finally:
+    shutil.rmtree(_tmp3, ignore_errors=True)
+
+# Every way of turning the new verification OFF survived: the CLI was pinned only by grepping
+# __main__ for substrings, and the stubs recorded THAT a function was called, never with what. So
+# `batches=(1,)` on either call, `--no-verify` flipped to store_false, `verify=False`, and
+# `atol=1e9` on the INT8 check all shipped a success message while checking nothing. The real
+# __main__ now runs against a stubbed Agent and the arguments it passes are asserted.
+_seen = {}
+_tmp4 = tempfile.mkdtemp()
+try:
+    _p4 = os.path.join(_tmp4, "cli.onnx")
+
+    def _fake_verify(model, path, atol=None, batches=(1, 2, 3)):
+        _seen.setdefault("calls", []).append({"path": path, "atol": atol, "batches": tuple(batches)})
+
+    class _FakeAgent:
+        def __init__(self, *a, **kw):
+            self.model = _build_model()
+
+    _real_agent = export_onnx.Agent
+    _real_verify = export_onnx.verify_batch_dynamic
+    export_onnx.Agent = _FakeAgent
+    export_onnx.verify_batch_dynamic = _fake_verify
+    try:
+        export_onnx.main(["--model", "x", "--output", _p4, "--quantize"])
+    finally:
+        export_onnx.Agent = _real_agent
+        export_onnx.verify_batch_dynamic = _real_verify
+
+    _calls = _seen.get("calls", [])
+    check("cli/both the fp32 and the INT8 graph are verified", len(_calls), 2)
+    check_true("cli/the fp32 check sweeps more than batch 1",
+               _calls and set(_calls[0]["batches"]) >= {1, 2, 3}, _calls[:1])
+    check_true("cli/the INT8 check sweeps more than batch 1",
+               len(_calls) > 1 and set(_calls[1]["batches"]) >= {1, 2, 3}, _calls[1:])
+    check("cli/the INT8 check uses the quantization tolerance",
+          _calls[1]["atol"] if len(_calls) > 1 else None, export_onnx.INT8_ATOL)
+    check_true("cli/the INT8 graph is written beside the fp32 one, not over it",
+               len(_calls) > 1 and _calls[1]["path"] != _calls[0]["path"], _calls)
+finally:
+    shutil.rmtree(_tmp4, ignore_errors=True)
+
 shutil.rmtree(tmp, ignore_errors=True)
 os.makedirs(tmp, exist_ok=True)
 onnx_path = os.path.join(tmp, "tiny.onnx")
@@ -244,6 +348,29 @@ except SystemExit as error:
     check_true("verify/rejects a graph whose numbers drifted",
                "differ" in str(error) or "probabilit" in str(error), str(error)[:160])
 
+# The last 2-D parameter lives in the act head, so the check above only moves `act_logits`.
+# `logits` IS the decision, and skipping it in the comparison loop left the suite green -- a
+# regression that corrupts the option scores and leaves the act head intact would have passed both
+# verification and CI. Perturb the scorer side too, as its own case.
+# BOTH outputs must be compared, asserted on what the verifier reports rather than through a
+# perturbation. `logits` IS the decision, and dropping it from the comparison loop left the suite
+# green: every weight in this model reaches `act_logits` as well (the act head consumes the scorer's
+# output), so no perturbation isolates `logits`, and whichever output the loop still compares
+# catches the drift. What a mutation cannot fake is the verifier naming both.
+import io as _io                                                             # noqa: E402
+import contextlib as _contextlib                                             # noqa: E402
+
+_cap = _io.StringIO()
+with _contextlib.redirect_stdout(_cap):
+    export_onnx.verify_batch_dynamic(model, onnx_path)
+_reported = _cap.getvalue()
+for _name in export_onnx.OUTPUT_NAMES:
+    check_true("verify/compares %s against PyTorch" % _name,
+               _reported.count(_name) >= 3, _reported[:200])
+check("verify/compares every output at every batch it sweeps",
+      len([ln for ln in _reported.splitlines() if "max abs prob diff" in ln]),
+      3 * len(export_onnx.OUTPUT_NAMES))
+
 # ------------------------------------------------------- export_to_onnx verifies by default
 # `verify_batch_dynamic` is the safety net for the day `dynamic_axes` is removed and this export
 # goes silently static. A net that defaults to off is not a net, and flipping that default is a
@@ -325,7 +452,10 @@ finally:
 check_true("quantize/export_to_onnx hands the model back so the INT8 graph can be checked",
            "return agent.model" in inspect.getsource(export_onnx.export_to_onnx),
            inspect.getsource(export_onnx.export_to_onnx)[-120:])
-_main = inspect.getsource(export_onnx).split('if __name__ == "__main__":')[-1]
+# Read `main`'s source, not the `__main__` guard: the CLI body moved into a function so the
+# arguments it passes could be asserted for real, above. These substring checks stay as a cheap
+# belt-and-braces, but they are no longer the only thing pinning the wiring.
+_main = inspect.getsource(export_onnx.main)
 check_true("quantize/the INT8 graph is verified when --quantize is used",
            "verify_batch_dynamic(model, int8_path" in _main, _main[-300:])
 check_true("quantize/INT8 uses its own looser tolerance",

@@ -537,6 +537,68 @@ def test_state_head_retries_from_the_density_it_measured():
     assert text not in tok.texts, "no attempt should have handed over the whole state"
 
 
+def test_state_head_guard_rejects_a_short_head_when_density_rises_past_the_probe():
+    """The `len(head) >= need` guard, on the only shape that actually reaches it.
+
+    The probe makes an *under*-estimate safe, so for a document of uniform density the first
+    attempt sized from the measured density always covers the budget and the guard never has to
+    reject anything. It is reachable only when the text past the probe is denser than the text the
+    probe read -- by more than the 1.25x margin -- because then `want` is extrapolated from a
+    density that no longer holds and the prefix it selects comes up short.
+
+    This state is 512 sparse characters (4 chars/token) followed by 82 000 dense ones
+    (20.5 chars/token), so the probe measures 4 and the retry has to climb to ~17. Two attempts
+    come up short and are rejected before the third covers the budget. Without the guard the first
+    short attempt is returned: 229 ids where 512 were asked for, silently truncating the state.
+
+    `..._ids_match_a_full_tokenization` asserts the same contract over its 20 shapes, but every one
+    of them is of uniform density, so deleting the guard leaves the whole suite green -- which it
+    did, until this check existed.
+    """
+    tok = _PreTokTok()
+    text = ("x" * 7 + " ") * 64 + ("-" * 40 + " ") * 2000
+    full = tok(text)["input_ids"]
+    tok.texts.clear()
+
+    head = common.encode_state_head(tok, text, 512)
+    assert head == full[:len(head)], "the head must be a prefix of the full ids"
+    assert len(head) >= 512, \
+        "the head has %d ids, short of the 512 asked for -- a short attempt was returned" % len(head)
+    assert len(head) < len(full), "the whole state was tokenized; the retry did not recover"
+
+    # Pin that the guard was actually exercised, so this cannot quietly stop testing it. Counted
+    # over the retries only -- `tok.texts[0]` is the probe, which its own check rejects, not this
+    # guard. A range rather than an equality because raising `_STATE_HEAD_MAX_ATTEMPTS` must not
+    # turn this red: the retry succeeds on its third pass and stops there either way.
+    assert 2 <= len(tok.texts) <= 1 + common._STATE_HEAD_MAX_ATTEMPTS, \
+        "expected the probe plus at least one retry, got %d tokenization(s)" % len(tok.texts)
+    short_retries = sum(1 for t in tok.texts[1:] if len(_PreTokTok()(t)["input_ids"]) < 512)
+    assert short_retries >= 2, \
+        "expected at least two short retries for the guard to reject, got %d" % short_retries
+
+
+def test_state_head_stops_at_the_probe_when_the_probe_already_covers_the_budget():
+    """The probe short-circuit: one tokenization, not two.
+
+    A small `need` against a sparse state makes the probe itself cover the budget. Returning it
+    immediately is the whole point -- falling through to the retry loop re-tokenizes a longer prefix
+    and produces a correct but needlessly large head off a second pass. That is invisible to an
+    ids-only assertion, so it is asserted here by counting tokenizations: deleting the short-circuit
+    leaves every other check in this file green.
+    """
+    tok = _PreTokTok()
+    text = ("x" * 7 + " ") * 4000                  # uniform 4 chars/token, 32 000 chars
+    full = tok(text)["input_ids"]
+    tok.texts.clear()
+
+    head = common.encode_state_head(tok, text, 8)
+    assert head == full[:len(head)], "the head must be a prefix of the full ids"
+    assert len(head) >= 8, "the head must cover the budget"
+    assert len(tok.texts) == 1, \
+        "the probe already covered the budget, so it should be the only tokenization; got %d" \
+        % len(tok.texts)
+
+
 def test_state_head_refuses_to_cut_when_an_added_token_holds_an_internal_space():
     """A checkpoint that added a domain phrase must be tokenized in full, not cut.
 

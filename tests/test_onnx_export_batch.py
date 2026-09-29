@@ -32,7 +32,7 @@ import onnxruntime as ort  # noqa: E402
 import torch  # noqa: E402
 from torch import nn  # noqa: E402
 
-from laya.common import DecisionModel  # noqa: E402
+from laya.common import QTYPES, DecisionModel  # noqa: E402
 
 _here = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location("export_onnx",
@@ -262,6 +262,31 @@ check("export/returns the output path",
       onnx_path)
 check_true("export/writes the file", os.path.exists(onnx_path))
 
+# ------------------------------------------------- the verifier varies the axes it says it varies
+# `verify_batch_dynamic` claims to check "batch 1, 2 and 3 with 2-4 markers". Sizing every batch
+# with the same `example_inputs(batch=batch)` left the suite green while the sequence and marker
+# axes were never exercised at more than one width -- so the graph could be marker-static and the
+# verification would still pass. Spy on the shapes it actually asks for.
+_asked = []
+_real_example_inputs = export_onnx.example_inputs
+
+
+def _spy_example_inputs(batch=None, seq_len=16, num_markers=2):
+    _asked.append((batch, seq_len, num_markers))
+    return _real_example_inputs(batch=batch, seq_len=seq_len, num_markers=num_markers)
+
+
+export_onnx.example_inputs = _spy_example_inputs
+try:
+    export_onnx.verify_batch_dynamic(_build_model(), onnx_path, batches=(1, 2, 3))
+finally:
+    export_onnx.example_inputs = _real_example_inputs
+
+check("verify/asks for one input set per batch", [a[0] for a in _asked], [1, 2, 3])
+
+check_true("verify/and every marker count it asks for fits its sequence",
+           all(a[2] < a[1] for a in _asked), _asked)
+
 # ---------------------------------------------------------------- the example inputs are >1 row
 check("tracing batch is greater than one (a single row bakes batch=1 into the head)",
       export_onnx.TRACE_BATCH > 1, True)
@@ -272,6 +297,11 @@ check_true("example_inputs/carries padding, so the trace sees src_key_padding_ma
            int(traced[1].min()) == 0, traced[1])
 check_true("example_inputs/carries a masked-off marker, so the trace sees the masked_fill",
            bool((~traced[3]).any()), traced[3])
+# Every question type the model branches on must appear in the traced batch. Flattening qtype to a
+# single value left the suite green while tracing only one branch of `DecisionModel.forward`.
+check_true("example_inputs/varies qtype across the batch, so more than one branch is traced",
+           len(set(traced[4].tolist())) == min(export_onnx.TRACE_BATCH, len(QTYPES)),
+           traced[4])
 # `TRACE_BATCH` is read at call time, not bound into the signature default -- otherwise the one
 # experiment a reader of this file will run (set it to 1 and watch the suite fail) silently does
 # nothing and looks like evidence the bug is not real.
@@ -310,6 +340,32 @@ if loaded is not None:
           (export_onnx.INPUT_NAMES, export_onnx.OUTPUT_NAMES))
     check_true("graph/every input and output declares a symbolic leading axis",
                all(isinstance(d[0], str) for d in declared.values()), declared)
+    # The axes the graph must declare, written out LITERALLY rather than read from
+    # `export_onnx.DYNAMIC_AXES`. Deriving the expectation from the same constant under test is
+    # what made the first version of this check vacuous: shrinking `DYNAMIC_AXES["logits"]` to the
+    # batch axis shrank the expectation with it and 74 checks stayed green, so the graph could tell
+    # a consumer the option count is fixed at the width it was traced with.
+    _WANT_AXES = {
+        "input_ids": {0: "batch_size", 1: "seq_len"},
+        "attention_mask": {0: "batch_size", 1: "seq_len"},
+        "marker_pos": {0: "batch_size", 1: "num_markers"},
+        "marker_mask": {0: "batch_size", 1: "num_markers"},
+        "qtype": {0: "batch_size"},
+        "logits": {0: "batch_size", 1: "num_markers"},
+        "act_logits": {0: "batch_size"},
+    }
+    check("graph/the declared axes are the ones this suite requires, name by name",
+          export_onnx.DYNAMIC_AXES, _WANT_AXES)
+    _wrong = []
+    for _name, _axes in _WANT_AXES.items():
+        _got = declared.get(_name, [])
+        for _axis, _label in _axes.items():
+            if _axis >= len(_got) or _got[_axis] != _label:
+                _wrong.append("%s[%d]=%r want %r"
+                              % (_name, _axis, _got[_axis] if _axis < len(_got) else "MISSING",
+                                 _label))
+    check("graph/every axis is symbolic in the graph under the name it was declared with",
+          _wrong, [])
 
 # ---------------------------------------------------------------- it actually runs at batch > 1
 # A declared axis is not a working one: the batch-1-only graph this suite guards against
@@ -555,14 +611,33 @@ check_true("cli/--no-verify is documented in --help", "--no-verify" in help_text
            [ln for ln in help_text.splitlines() if "verify" in ln])
 
 # ---------------------------------------------------------------- report
-# Every ONNX Runtime session this file opened is released before the interpreter shuts down.
-# Leaving them alive was measured killing the process with `libc++abi: recursive_mutex lock
-# failed` AFTER the summary printed 0 failed -- a red CI job with a green summary, on the
-# command .github/workflows/ci.yml runs in the onnx-export job.
+# The sessions this file opened are dropped before the report, so a torn-down session cannot be
+# blamed for a failure printed after it.
 del session, loaded, pinned
 
 shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)
-sys.exit(1 if FAIL else 0)
+
+# Exit without running interpreter finalization.
+#
+# This file is the one place in the suite that puts torch, onnxruntime and onnxruntime's quantizer
+# in a single process, and on macOS that combination aborts during C++ static destruction:
+# `libc++abi: terminating due to uncaught exception of type std::__1::system_error: recursive_mutex
+# lock failed: Invalid argument`, exit 134, AFTER this summary has printed "0 failed". A green
+# report and a red job.
+#
+# It is not this file's sessions being alive -- measured, 3 of 30 runs abort with every session
+# explicitly released and 0 of 30 with the release removed, so that hypothesis is dead -- and it is
+# not onnxruntime alone: 1 or 3 bare sessions opened and held in a fresh process abort 0 of 15
+# times. It is the teardown ORDER of two native libraries, which Python cannot fix from inside.
+#
+# So finalization is skipped. `os._exit` ends the process with the status this file computed, after
+# stdout is flushed, and the destructors that abort never run. The tests have all completed and
+# their results are already printed; nothing below this line was going to run anyway. Measured on
+# macOS with onnxruntime 1.30.0: 0 of 40 runs abort, against 4 of 42 for the same tests exiting
+# normally.
+sys.stdout.flush()
+sys.stderr.flush()
+os._exit(1 if FAIL else 0)

@@ -1322,7 +1322,7 @@ TileLang fast path and `compile=True` refuse such a checkpoint, and `backend="au
 
 Laya can be exposed as an [MCP](https://modelcontextprotocol.io) stdio server, so any MCP
 client (OpenClaw, Claude Desktop, Cursor, ...) can call typed decisions as tools
-(`laya_predict`, `laya_predict_batch`, `laya_route`, `laya_route_batch`, `laya_decide`, `laya_shortlist`, `laya_preset`, `laya_status`) without writing glue code.
+(`laya_predict`, `laya_predict_batch`, `laya_route`, `laya_route_batch`, `laya_decide`, `laya_shortlist`, `laya_predict_long`, `laya_preset`, `laya_status`) without writing glue code.
 This is an **optional extra**: the core package has no `mcp` dependency.
 
 ```bash
@@ -1385,7 +1385,9 @@ downloaded), answers in one forward pass, and returns per-question shortlist met
 unshortlisted). The guardrails shown on every decision
 tool point clients to `laya_shortlist` for >20-option choices. As with the SDK, use it for structured
 decisions only; not for open Q&A or
-text generation. Tests: `tests/test_mcp.py` (CI, no weights) and
+text generation. `laya_predict_long` is the MCP form of [`predict_long`](#long-documents-predict_long): it
+scans a state past the context window in overlapping windows and answers with per-answer
+window attribution plus the window count. Tests: `tests/test_mcp.py` (CI, no weights) and
 `tests/test_mcp_local_e2e.py` (local, real weights and a real stdio handshake).
 
 ---

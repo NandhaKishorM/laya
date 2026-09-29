@@ -52,6 +52,7 @@ from .tools import (
     get_available_presets,
     laya_predict,
     laya_predict_batch,
+    laya_predict_long,
     laya_preset,
     laya_route,
     laya_route_batch,
@@ -504,6 +505,33 @@ def laya_decide_tool(state: dict, schema: dict, model: str = "auto",
     router = _router_or_error()
     return _wrap(laya_decide, state=state, schema=schema, model=model,
                  min_confidence=min_confidence, router=router)
+
+
+@server.tool(
+    name="laya_predict_long",
+    description=(
+        "Answer typed questions over a state longer than the context window: the state is "
+        "scanned in overlapping windows in shared forward passes and aggregated per question "
+        "(strongest window for noul, most-confident window for choice/score). Use this instead "
+        "of laya_predict whenever the state does not fit one window -- laya_predict answers "
+        "from its first window and never reads the rest. Returns the answers, each with the "
+        "deciding window's attribution, plus the window count. "
+        "window / stride: positive integers sizing the scan (a smaller window isolates a "
+        "localized span); unset means the checkpoint budget and 50% overlap. "
+        "task: name a checkpoint by what the work is -- refused on a call that also pins model. "
+        "lang: a language code -- routes non-English text and selects that checkpoint's "
+        "per-language calibration. "
+        + _GUARDRAILS
+        + _MODEL_DOC
+    ),
+)
+def laya_predict_long_tool(state: dict, questions: dict, model: str = "auto",
+                           window: int | None = None, stride: int | None = None,
+                           task: str | None = None, lang: str | None = None) -> str:
+    """Scan a long state in windows, then answer."""
+    router = _router_or_error()
+    return _wrap(laya_predict_long, state=state, questions=questions, model=model,
+                 window=window, stride=stride, task=task, lang=lang, router=router)
 
 
 def main() -> None:

@@ -746,7 +746,7 @@ class Router(HookRegistry):
         hooks, appended after any installed on the Router.
         """
         if questions is not None and not isinstance(questions, dict):
-            raise TypeError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
+            raise ValueError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
         decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         active = compose_hooks(self.hooks, hooks)
@@ -874,9 +874,9 @@ class Router(HookRegistry):
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
         if state is None:
-            raise TypeError("state must not be None; pass a string, dict, or list")
+            raise ValueError("state must not be None; pass a string, dict, or list")
         if not isinstance(questions, dict):
-            raise TypeError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
+            raise ValueError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)

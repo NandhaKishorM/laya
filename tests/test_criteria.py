@@ -339,6 +339,7 @@ for label, qdef in [
     ("instructions is whitespace", {"type": "noul", "instructions": "   "}),
     ("instructions is empty list", {"type": "noul", "instructions": []}),
     ("instructions is empty dict", {"type": "noul", "instructions": {}}),
+    ("instructions is integer", {"type": "noul", "instructions": 123}),
     ("instructions is non-container object", {"type": "noul", "instructions": set()}),
     # A criteria list is normalised to `{label: None}`, so its labels are the answer keys. Two
     # entries that land on one key scored fewer options than the caller wrote and returned fewer

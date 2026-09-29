@@ -874,7 +874,7 @@ class Agent(HookRegistry):
             raise ValueError("question %r: 'instructions' must not be empty; add the text the model should answer" % (qid,))
         if isinstance(ins, (list, dict)) and not ins:
             raise ValueError("question %r: 'instructions' must not be empty; add the text the model should answer" % (qid,))
-        if not isinstance(ins, (str, dict, list, int, float)):
+        if not isinstance(ins, (str, dict, list)):
             raise ValueError("question %r: 'instructions' must be a string, dict, or list, got %s"
                              % (qid, type(ins).__name__))
         crit = qdef.get("criteria")
@@ -1309,7 +1309,7 @@ class Agent(HookRegistry):
                         "predict_batch expects a list of states; pass a single state to predict()/system_one()."
                     )
                 if not isinstance(questions, dict):
-                    raise TypeError(
+                    raise ValueError(
                         "questions must be a dict of question id -> definition, got %s"
                         % type(questions).__name__
                     )
@@ -1534,10 +1534,10 @@ class Agent(HookRegistry):
         `usage["truncated"] > 0` here, not `is True`.
         """
         if state is None:
-            raise TypeError("state must not be None; pass a string, dict, or list")
+            raise ValueError("state must not be None; pass a string, dict, or list")
         if not isinstance(questions, dict):
-            raise TypeError("questions must be a dict of question id -> definition, got %s"
-                            % type(questions).__name__)
+            raise ValueError("questions must be a dict of question id -> definition, got %s"
+                             % type(questions).__name__)
         if aggregate != "auto":
             raise ValueError("predict_long: only aggregate='auto' is supported")
         hook_kwargs = {"hooks": hooks, "on_predict_start": on_predict_start,

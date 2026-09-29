@@ -845,7 +845,7 @@ def test_malformed_question_type_is_a_named_422(monkeypatch, bad_type):
         "question 'refund': unknown type %r; use one of ['choice', 'noul', 'score']" % (bad_type,))
 
 
-@pytest.mark.parametrize("bad_ins", [None, "", "   ", []])
+@pytest.mark.parametrize("bad_ins", [None, "", "   ", [], 123])
 def test_malformed_instructions_is_a_named_422(monkeypatch, bad_ins):
     monkeypatch.delenv("LAYA_API_KEY", raising=False)
     client = TestClient(create_app(router=ValidatingRouter()), raise_server_exceptions=False)
@@ -865,6 +865,18 @@ def test_malformed_question_id_is_a_named_422(monkeypatch, bad_qid):
     response = client.post("/v1/systemone", json=body)
     assert response.status_code == 422, response.text
     assert "question id" in response.text, response.text
+
+
+@pytest.mark.parametrize("bad_qdef", [None, "not-a-dict", 123, []])
+def test_malformed_question_dict_is_a_named_422(monkeypatch, bad_qdef):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    client = TestClient(create_app(router=ValidatingRouter()), raise_server_exceptions=False)
+    body = dict(REQ)
+    body["questions"] = {"refund": bad_qdef}
+    response = client.post("/v1/systemone", json=body)
+    assert response.status_code == 422, response.text
+    assert "definition must be a dict" in response.text, response.text
+
 
 
 def test_a_nested_choice_label_is_a_caller_error_not_a_server_fault(monkeypatch):

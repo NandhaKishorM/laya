@@ -124,16 +124,15 @@ class EmptyQuestionsTests(unittest.TestCase):
         result["usage"]["input_tokens"] = 7
         self.assertEqual(self.agent.system_one("hello", {}), self.empty)
 
-    def test_non_dict_questions_raise_a_clear_type_error(self):
+    def test_non_dict_questions_raise_a_clear_value_error(self):
         # `list(questions.keys())` used to raise `AttributeError: 'NoneType' object has no
         # attribute 'keys'` (or the list/str equivalent) from three frames down, naming neither
-        # the argument nor the fix. The core API is the one surface that did not validate this;
-        # serve.py, shortlist.py and evals.py all already do.
+        # the argument nor the fix. ValueError so serve.py maps it to HTTP 422 rather than 500.
         for name in ("predict", "system_one"):
             method = getattr(self.agent, name)
             for bad in (None, [], "not-a-dict"):
                 with self.subTest(method=name, questions=bad):
-                    with self.assertRaises(TypeError) as cm:
+                    with self.assertRaises(ValueError) as cm:
                         method("hello", bad)
                     self.assertIn("questions must be a dict", str(cm.exception))
 
@@ -186,7 +185,8 @@ class EmptyQuestionsTests(unittest.TestCase):
         }.items():
             with self.subTest(case=label):
                 (t_kind, t_msg), (o_kind, o_msg) = self._both_backends(state, questions)
-                self.assertEqual(t_kind, "TypeError", "torch regressed: %s" % t_kind)
+                expected_kind = "TypeError" if state is None else "ValueError"
+                self.assertEqual(t_kind, expected_kind, "torch regressed: %s" % t_kind)
                 self.assertEqual(o_kind, t_kind,
                                  "ONNX raised %s: %s where torch raised %s" % (o_kind, o_msg, t_kind))
                 self.assertEqual(o_msg, t_msg)

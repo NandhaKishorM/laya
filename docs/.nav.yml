@@ -16,4 +16,5 @@ nav:
   - Fine-tuning:
       - finetune.md
       - finetune_browser_agent.md
+      - finetune_multilingual_cpu.md
   - reference

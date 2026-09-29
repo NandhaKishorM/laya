@@ -270,20 +270,35 @@ _CUT_CONTEXT_CHARS = 32
 def _normalizer_keeps_cut(tok, text: str, cut: int) -> bool:
     r"""Whether the cut at `text[cut]` still separates two pieces after THIS text is normalized.
 
-    `_normalizer_permits_cut` probes three fixed strings, which is a statement about the normalizer
-    in general and misses one that is prefix-breaking only on shapes the probes do not contain.
-    Measured, on the shipped english tokenizer carrying
-    `Replace(Regex(r" (?=[A-Z])"), "")` -- a plausible de-spacing finetune -- all three gates
-    returned True and 2 of 200 capitalised-prose states came back with ids that were not a prefix:
-    the space before a capital is deleted, so the piece the cut was meant to end merges into the
-    next one and the head's last token is wrong.
+    Normalization is the third of the three properties `_state_cut` needs, and the only one that is
+    a property of the TEXT rather than of the tokenizer -- which is why it is checked here, per cut,
+    and not in the gate chain. An earlier revision did both: a `_normalizer_permits_cut` that probed
+    three fixed strings, plus this. That gate was removed, because it decided nothing this does not
+    and was wrong in both directions:
 
-    Checking the real text NARROWS that -- it does not close it, and an earlier revision of this
-    docstring claimed it did. Normalizing a window either side of the cut and requiring the boundary
+      * BLIND to the case that motivated this function. On the shipped english tokenizer carrying
+        `Replace(Regex(r" (?=[A-Z])"), "")` -- a plausible de-spacing finetune -- its probes contain
+        no capital after a space, so it returned True, and 2 of 200 capitalised-prose states came
+        back with ids that were not a prefix: the space before a capital is deleted, so the piece
+        the cut was meant to end merges into the next one and the head's last token is wrong.
+      * REFUSING cuts that are safe. Its probes are 5-8 characters, so any rule that does not happen
+        to fire inside them decides the whole checkpoint. Measured on english carrying
+        `Replace(Regex(r" (?=c)"), "")`: the gate refused every cut, and with it bypassed the same
+        corpus took 467 heads with **0** that were not a prefix -- because no cut landed before a
+        `c`. It cost the optimization outright on a checkpoint where it was sound.
+
+    Measured over 10 tokenizers (both shipped checkpoints, four deliberately cut-breaking
+    normalizers, `Strip`, `Lowercase`, `NFKC`) x 200 states x 3 budgets, with the fixed-probe gate
+    bypassed: 4 236 heads taken, **0 not a prefix**. The two normalizers that genuinely break a cut
+    (`\s+` deleted, and space rewritten to `__`) are refused by this check alone, taking 0 heads in
+    both configurations. So this subsumes it, and the removal is not a loosening.
+
+    Checking the real text NARROWS the problem -- it does not close it, and an earlier revision of
+    this docstring claimed it did. Normalizing a window either side of the cut and requiring the boundary
     character to survive in place catches every normalizer whose rewrite is decided within
     `_CUT_CONTEXT_CHARS` of the cut, which is what the motivating example and every `Replace` with a
     short lookaround is. It does NOT catch a rewrite triggered by text further away: measured, a
-    `Replace(Regex(r"Q(?=[\s\S]*Z)"), "")` on the shipped english tokenizer passes all four checks
+    `Replace(Regex(r"Q(?=[\s\S]*Z)"), "")` on the shipped english tokenizer passes every check here
     and returns ids that diverge from the full tokenization at token 0, because the `Z` that fires
     the rule sits 100 000 characters past the window.
 
@@ -316,52 +331,6 @@ def _normalizer_keeps_cut(tok, text: str, cut: int) -> bool:
         return out[at].isspace() or out[at] == "\u2581"
     except Exception:
         return False
-
-
-def _normalizer_permits_cut(tok) -> bool:
-    r"""Whether `_state_cut`'s rule survives this tokenizer's *normalization*.
-
-    The third of the three properties `_state_cut` documents, and the last one still assumed. The
-    rule cuts at a plain space, so normalization must leave that space as a single boundary
-    character the pre-tokenizer can still split on. Both shipped checkpoints do, for different
-    reasons: english normalizes NFC and leaves the space alone, multilingual rewrites it to U+2581
-    one-for-one, which is exactly what its Metaspace pre-tokenizer then splits on.
-
-    This is a behavioural probe rather than a list of allowed normalizer classes, because the class
-    does not decide it: `Replace` is the multilingual checkpoint's own normalizer and is safe, while
-    `Replace(Regex(r"\s+"), "")` -- a plausible CJK-oriented finetune -- deletes the cut entirely.
-    With the space gone the pre-tokenizer has no boundary there and a single BPE piece spans it, so
-    the head stops being a prefix while staying long enough for `len(head) >= need` to wave it
-    through. Measured on a tokenizer built that way: divergence at token 0.
-
-    A normalizer that cannot be probed, or one that does anything to the probe other than keep the
-    space as one whitespace or U+2581 character in the same position, is treated as unverifiable.
-    """
-    bt = getattr(tok, "backend_tokenizer", None)
-    if bt is None:
-        return False
-    try:
-        normalizer = bt.normalizer
-    except Exception:
-        return False
-    if normalizer is None:
-        return True                      # nothing runs, so nothing can move the cut
-    try:
-        for head, rest in (("ab", " cd"), ("x1", " y2 z3"), ("ąę", " żź")):
-            probe = head + rest
-            out = normalizer.normalize_str(probe)
-            cut_at = len(normalizer.normalize_str(head))
-            # The space has to survive, in place, as exactly one character the pre-tokenizer can
-            # split on -- and the text before it must still normalize to a prefix of the whole.
-            if not out.startswith(normalizer.normalize_str(head)):
-                return False
-            if cut_at >= len(out):
-                return False
-            if not (out[cut_at].isspace() or out[cut_at] == "▁"):
-                return False
-    except Exception:
-        return False
-    return True
 
 
 def _pre_tokenizer_permits_cut(tok) -> bool:
@@ -437,10 +406,12 @@ def encode_state_head(tok, text: str, need: int) -> List[int]:
     if len(probe) < need and want * _STATE_HEAD_MIN_RATIO >= len(text):
         return full()
 
-    # Only now, with a cut in hand and a prefix worth taking, are the three soundness gates asked.
+    # Only now, with a cut in hand and a prefix worth taking, are the soundness gates asked. Two of
+    # them are properties of the tokenizer and cannot vary per cut; the third -- normalization -- is
+    # checked against the real text at the return sites below, because a fixed-probe version of it
+    # refused cuts that were provably safe: see `_normalizer_keeps_cut`.
     if not (_added_tokens_permit_cut(tok)
-            and _pre_tokenizer_permits_cut(tok)
-            and _normalizer_permits_cut(tok)):
+            and _pre_tokenizer_permits_cut(tok)):
         return full()
     # Checked where the ids are RETURNED, not where each cut is taken. Only a cut whose head is
     # handed back has to survive normalization -- an attempt that comes up short is discarded, and

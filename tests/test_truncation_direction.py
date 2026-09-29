@@ -695,16 +695,19 @@ def test_state_head_refuses_to_cut_when_the_normalizer_drops_the_cut():
     `Regex(r"\s+") -> ""` deletes the cut, a BPE piece spans it, and the head stops being a prefix
     while staying long enough that `len(head) >= need` waves it through.
     """
-    assert common._normalizer_permits_cut(_PreTokTok()) is True           # no normalizer at all
-    assert common._normalizer_permits_cut(_MetaspaceLikeTok()) is True    # space -> U+2581
-    assert common._normalizer_permits_cut(_StripNormalizerTok()) is False
+    # The same four verdicts the removed `_normalizer_permits_cut` gate produced, now from the
+    # check that replaced it -- asked about a real cut in a real string rather than a fixed probe.
+    probe, at = "ab cd", 2
+    assert common._normalizer_keeps_cut(_PreTokTok(), probe, at) is True        # no normalizer
+    assert common._normalizer_keeps_cut(_MetaspaceLikeTok(), probe, at) is True  # space -> U+2581
+    assert common._normalizer_keeps_cut(_StripNormalizerTok(), probe, at) is False
     # A sentencepiece checkpoint spells the same boundary U+2581, so checking only U+0020 misses it.
     assert common._added_tokens_permit_cut(_MetaspacePhraseTok()) is False, \
         "an added phrase spelled with U+2581 must be refused just as a U+0020 one is"
     # Keeping the cut character is not enough on its own: what precedes it must still normalize to
     # a prefix of the whole, or slicing there does not slice the normalized form.
-    assert common._normalizer_permits_cut(_ReversingNormalizerTok()) is False
-    assert common._normalizer_permits_cut(object()) is False              # cannot be inspected
+    assert common._normalizer_keeps_cut(_ReversingNormalizerTok(), probe, at) is False
+    assert common._normalizer_keeps_cut(object(), probe, at) is False       # cannot be inspected
 
     text = "the customer wants a refund on order 41 " * 2000
     unsafe = _StripNormalizerTok()
@@ -942,7 +945,7 @@ def test_added_token_gate_refuses_when_get_added_vocab_raises():
 
 
 def test_normalizer_gate_refuses_when_the_probe_raises():
-    """Same masking in `_normalizer_permits_cut`: the existing fixture takes the `bt is None` path,
+    """A normalizer that raises must refuse: the existing fixture takes the `bt is None` path,
     so the `except Exception` around the probe was untested.
     """
     class Boom:
@@ -956,7 +959,7 @@ def test_normalizer_gate_refuses_when_the_probe_raises():
     class Tok(_PreTokTok):
         backend_tokenizer = Backend()
 
-    assert common._normalizer_permits_cut(Tok()) is False
+    assert common._normalizer_keeps_cut(Tok(), "ab cd", 2) is False
 
 
 def test_added_token_gate_sees_a_cut_char_at_index_one():
@@ -1049,9 +1052,10 @@ def test_the_normalizer_check_runs_on_the_text_being_cut():
             return _PreTokTok.__call__(self, Backend.normalizer.normalize_str(text), **kw)
 
     tok = Tok()
-    # the three fixed probes are all lowercase, so the general gate is fooled ...
-    assert common._normalizer_permits_cut(tok) is True
-    # ... and the real-text check is what refuses
+    # This is the shape the removed fixed-probe gate was blind to: its probes are all lowercase, so
+    # a rule that fires only before a capital never fired in them and it passed the tokenizer.
+    assert common._normalizer_keeps_cut(tok, "ab cd", 2) is True
+    # ... and the real text is what refuses.
     text = ("Refund Order Escalate Ticket Zebra " * 2000)
     cut = common._state_cut(text, 4096)
     assert cut and text[cut - 1] != " "
@@ -1151,10 +1155,10 @@ def test_normalizer_check_refuses_when_the_text_before_the_cut_moves():
 
 
 def test_normalizer_check_fails_closed_when_the_normalizer_raises():
-    """Its `except` must refuse, like `_normalizer_permits_cut`'s does.
+    """Its `except` must refuse.
 
-    A normalizer that raises only on the real text passes the three fixed probes and then explodes
-    inside this check. Mutating the `except` to return True left the suite green and took an
+    A normalizer that raises only on the real text cannot be caught by any fixed probe: it explodes
+    inside this check instead. Mutating the `except` to return True left the suite green and took an
     unverified cut.
     """
     class RaisesOnRealText:
@@ -1251,3 +1255,127 @@ def test_the_returned_cut_is_checked_against_the_text_being_cut(monkeypatch):
         "the checked cut is not the one whose ids were returned (%d vs %d)" % (cut, len(prefixes[-1]))
     assert text[cut] == " " and not text[cut - 1].isspace(), \
         "the checked position is not the cut that `_state_cut` chose"
+
+
+def test_a_tokenizer_that_returns_no_ids_for_a_prefix_does_not_crash():
+    """`if not probe: return full()` guards a division, and deleting it left the suite green.
+
+    `density = cut / len(probe)` is a ZeroDivisionError the moment a tokenizer answers a non-empty
+    slice with no ids. Nothing in the shipped pair does that, but the guard is either load-bearing
+    or dead code, and until this test it was impossible to tell which: the mutation that removes it
+    passed 39 checks.
+    """
+    class EmptyOnPrefix(_PreTokTok):
+        """Ids for the whole text, nothing for any prefix of it -- the shape the guard is for."""
+
+        def __init__(self, whole):
+            _PreTokTok.__init__(self)
+            self.whole = whole
+
+        def __call__(self, text, **kw):
+            if text != self.whole:
+                self.texts.append(text)
+                return {"input_ids": []}
+            return _PreTokTok.__call__(self, text, **kw)
+
+    text = ("-" * 40 + " ") * 2000
+    tok = EmptyOnPrefix(text)
+    head = common.encode_state_head(tok, text, 512)     # must not raise
+    assert head == tok(text)["input_ids"], "an unmeasurable probe must fall back to the full ids"
+    assert tok.texts, "the probe must actually have been attempted"
+
+
+def test_a_tokenizer_that_empties_only_the_retry_does_not_crash():
+    """The same guard in the retry loop: `if not head: break` protects `cut / len(head)`.
+
+    Reaching it needs a tokenizer whose PROBE measures fine and whose larger attempt comes back
+    empty, so the probe-path guard cannot stand in for this one. Deleting it also left the suite
+    green.
+    """
+    text = ("-" * 40 + " ") * 2000
+
+    class EmptyAfterProbe(_PreTokTok):
+        def __init__(self):
+            _PreTokTok.__init__(self)
+            self.n = 0
+
+        def __call__(self, t, **kw):
+            if len(t) < len(text):
+                self.n += 1
+                if self.n > 1:                  # the probe answers; every retry comes back empty
+                    self.texts.append(t)
+                    return {"input_ids": []}
+            return _PreTokTok.__call__(self, t, **kw)
+
+    tok = EmptyAfterProbe()
+    head = common.encode_state_head(tok, text, 512)     # must not raise
+    assert head == tok(text)["input_ids"], "an empty retry must fall back to the full ids"
+    assert tok.n > 1, "this fixture must reach the retry loop, or it pins nothing"
+
+
+def test_the_normalizer_check_refuses_when_the_cut_character_is_gone_entirely():
+    """`if at >= len(out): return False` -- a normalizer that eats the cut and everything after it.
+
+    The boundary character has to exist to be checked. Mutating this branch to return True left the
+    suite green, and it is the one case where `out[at]` would raise rather than answer.
+    """
+    class DropsFromTheCut:
+        def normalize_str(self, text):
+            # Keeps the head, deletes the space and everything past it: `at == len(out)` exactly.
+            return text.split(" ")[0]
+
+    class Backend(_Backend):
+        normalizer = DropsFromTheCut()
+
+    class Tok(_PreTokTok):
+        backend_tokenizer = Backend()
+
+    tok = Tok()
+    assert tok.backend_tokenizer.normalizer.normalize_str("ab cd") == "ab"
+    assert common._normalizer_keeps_cut(tok, "ab cd", 2) is False, \
+        "with no character at the cut there is nothing to verify, so refuse"
+
+
+def test_a_normalizer_whose_rule_never_fires_on_this_text_still_gets_the_optimization():
+    r"""The point of checking the real text: a rule that does not fire near any cut is not a reason
+    to refuse.
+
+    This is what the removed `_normalizer_permits_cut` got wrong. Its probes were 5-8 characters, so
+    a rewrite that happened not to fire inside them condemned the whole checkpoint. Measured on the
+    shipped english tokenizer carrying `Replace(Regex(r" (?=c)"), "")`: it refused every cut, and
+    with it bypassed the same corpus took 467 heads, none of which was anything but a prefix.
+    """
+    class FiresOnlyBeforeC:
+        def normalize_str(self, text):
+            out, i = [], 0
+            while i < len(text):
+                if text[i] == " " and i + 1 < len(text) and text[i + 1] == "c":
+                    i += 1                       # the space before a `c` is deleted
+                    continue
+                out.append(text[i])
+                i += 1
+            return "".join(out)
+
+    class Backend(_Backend):
+        normalizer = FiresOnlyBeforeC()
+
+    class Tok(_PreTokTok):
+        backend_tokenizer = Backend()
+
+        def __call__(self, text, **kw):
+            return _PreTokTok.__call__(self, Backend.normalizer.normalize_str(text), **kw)
+
+    tok = Tok()
+    # A state with no `c` anywhere: the rule exists, and touches nothing in it.
+    text = ("-" * 40 + " ") * 2000
+    assert "c" not in text
+    head = common.encode_state_head(tok, text, 512)
+    full = tok(text)["input_ids"]
+    assert len(head) < len(full), "a rule that never fires must not cost the optimization"
+    assert head == full[:len(head)], "and the head it returns must still be a prefix"
+
+    # And the same tokenizer on text where the rule DOES fire at the cut is still refused.
+    unsafe = "refundescalatehold c" * 4000
+    cut = common._state_cut(unsafe, 4096)
+    assert cut and unsafe[cut] == " " and unsafe[cut + 1] == "c"
+    assert common._normalizer_keeps_cut(tok, unsafe, cut) is False

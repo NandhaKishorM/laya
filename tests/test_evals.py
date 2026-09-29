@@ -1502,3 +1502,48 @@ def test_parse_revisions_rejects_two_different_bare_commits():
     with pytest.raises(EvalError) as exc:
         evals_cli._parse_revisions(["abc", "def"])
     assert "two commits" in str(exc.value)
+
+
+def test_chunking_ignores_criteria_dict_key_order():
+    """Two choice rows whose criteria dicts differ only in key order share a call.
+
+    A chunk is one forward pass per row, not one shared rendering, and the runner
+    still receives each example's own questions object untouched -- so the grouping
+    signature canonicalizes dict keys. A list-valued criteria is positional, so two
+    orders stay two questions, exactly as Router._question_schema treats them.
+    """
+    def order_of(states, questions):
+        return list(questions["pick"]["criteria"])
+
+    class OrderRecording(StubRunner):
+        def __init__(self, by_state):
+            super().__init__(by_state)
+            self.orders = []
+
+        def predict_batch(self, states, questions, model=None, batch_size=None):
+            self.orders.append(order_of(states, questions))
+            return [{"model": "m", "answers": self.by_state[s]} for s in states]
+
+    answers = {"s1": {"pick": choice_answer("a")}, "s2": {"pick": choice_answer("a")}}
+
+    def rows(criteria_first, criteria_second):
+        first = {"pick": {"type": "choice", "instructions": "Pick",
+                          "criteria": criteria_first}}
+        second = {"pick": {"type": "choice", "instructions": "Pick",
+                           "criteria": criteria_second}}
+        return Dataset([Example("s1", first, {"pick": "a"}),
+                        Example("s2", second, {"pick": "a"})])
+
+    runner = OrderRecording(answers)
+    report = evaluate(runner,
+                      rows({"a": "alpha", "b": "beta"}, {"b": "beta", "a": "alpha"}),
+                      evaluators=[ChoiceAccuracy()], batch_size=2)
+    assert report.overall["choice_accuracy"] == 1.0
+    assert report.config["timing"]["rows_grouped"] == 2, "one shared call, not two singles"
+    assert runner.orders == [["a", "b"]], "each row's own questions reach the runner"
+
+    listed = OrderRecording(answers)
+    listed_report = evaluate(listed, rows(["alpha", "beta"], ["beta", "alpha"]),
+                             evaluators=[ChoiceAccuracy()], batch_size=2)
+    assert listed_report.config["timing"]["rows_grouped"] == 0, \
+        "a reordered list criteria is a different question and still chunks alone"

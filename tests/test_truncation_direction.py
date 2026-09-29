@@ -1062,14 +1062,167 @@ def test_the_normalizer_check_runs_on_the_text_being_cut():
     assert head == full, "a cut this normalizer destroys must fall back to the full ids"
 
 
-def test_every_cut_is_checked_against_the_text_being_cut(monkeypatch):
-    """`_normalizer_keeps_cut` must be CONSULTED, on the real text, before any cut is tokenized.
+class _KeepsSpaceNormalizer:
+    """A normalizer that leaves a U+0020 exactly where it was -- what NFC does on english.
+
+    Every other normalizer fixture here is either absent (so `_normalizer_keeps_cut` returns True at
+    its `normalizer is None` branch) or rewrites the space to U+2581. That left the `.isspace()`
+    half of the final return untested: dropping it made `_normalizer_keeps_cut` answer False for
+    EVERY state on the shipped english tokenizer -- a 50 000-character state went from 643 ids to
+    the full 7 786, i.e. the whole optimization dead on one of the two checkpoints -- with the suite
+    green.
+    """
+
+    def normalize_str(self, text):
+        return text.replace("\u00e9", "e")     # does something, and never touches a space
+
+
+class _KeepsSpaceBackend(_Backend):
+    normalizer = _KeepsSpaceNormalizer()
+
+
+class _KeepsSpaceTok(_PreTokTok):
+    backend_tokenizer = _KeepsSpaceBackend()
+
+
+def test_normalizer_check_accepts_a_space_that_survives_normalization():
+    """The positive direction for U+0020, which nothing else covered."""
+    tok = _KeepsSpaceTok()
+    text = ("refund escalate hold " * 2000)
+    cut = common._state_cut(text, 4096)
+    assert cut and text[cut] == " "
+    assert common._normalizer_keeps_cut(tok, text, cut) is True, \
+        "a normalizer that leaves the space in place must not block the cut"
+    head = common.encode_state_head(tok, text, 512)
+    assert len(head) >= 512 and len(head) < len(tok(text)["input_ids"]), \
+        "the head path must still be taken for it"
+
+
+def test_the_probe_return_path_is_checked_too():
+    """When the probe alone covers the budget its cut is returned without any retry, so that path
+    needs the check as much as the retry does. Removing it there left the suite green, because every
+    other bad-normalizer fixture is dense enough to reach the loop.
+
+    A small `need` on sparse text makes the probe cover the budget on its first attempt.
+    """
+    class DropsBeforeCut:
+        def normalize_str(self, text):
+            return text.replace("a  b", "  b")
+
+    class Backend(_Backend):
+        normalizer = DropsBeforeCut()
+
+    class Tok(_PreTokTok):
+        backend_tokenizer = Backend()
+
+    tok = Tok()
+    # Every cut this text offers sits immediately after the `a` the normalizer deletes, and the
+    # pieces are short enough that the 64-character probe already covers a budget of 8.
+    text = "a  bcdefgh" * 4000
+    full = tok(text)["input_ids"]
+    tok.texts.clear()
+    head = common.encode_state_head(tok, text, 8)
+    assert len(tok.texts) <= 2, "this fixture must return on the probe, not after a retry: %s" \
+        % [len(t) for t in tok.texts]
+    assert head == full, "a cut this normalizer destroys must fall back to the full ids"
+
+
+def test_normalizer_check_refuses_when_the_text_before_the_cut_moves():
+    """The `startswith` guard: a rewrite that deletes a character BEFORE the cut shifts everything.
+
+    The boundary character at the computed offset can still be a space, so without this guard the
+    check returns True and the head stops being a prefix. Deleting the guard left the suite green.
+    """
+    class DropsBeforeCut:
+        def normalize_str(self, text):
+            return text.replace("a  b", "  b")       # removes the char preceding a double space
+
+    class Backend(_Backend):
+        normalizer = DropsBeforeCut()
+
+    class Tok(_PreTokTok):
+        backend_tokenizer = Backend()
+
+    tok = Tok()
+    text = "refundescalateholdticketa  b" * 4000
+    cut = common._state_cut(text, 4096)
+    assert cut
+    assert common._normalizer_keeps_cut(tok, text, cut) is False
+
+
+def test_normalizer_check_fails_closed_when_the_normalizer_raises():
+    """Its `except` must refuse, like `_normalizer_permits_cut`'s does.
+
+    A normalizer that raises only on the real text passes the three fixed probes and then explodes
+    inside this check. Mutating the `except` to return True left the suite green and took an
+    unverified cut.
+    """
+    class RaisesOnRealText:
+        def normalize_str(self, text):
+            if "ZZZ" in text:
+                raise RuntimeError("boom")
+            return text
+
+    class Backend(_Backend):
+        normalizer = RaisesOnRealText()
+
+    class Tok(_PreTokTok):
+        backend_tokenizer = Backend()
+
+    tok = Tok()
+    text = "refund ZZZ escalate " * 2000
+    cut = common._state_cut(text, 4096)
+    assert cut
+    assert common._normalizer_keeps_cut(tok, text, cut) is False
+
+
+def test_the_cut_context_window_is_wide_enough_for_a_short_lookahead():
+    """`_CUT_CONTEXT_CHARS` has a floor: the suite only required >= 2, so a normalizer needing three
+    characters of lookahead escaped at 2 with CI green. The window is what makes this check catch
+    LOCAL rewrites at all, and the docstring names three characters of lookahead as the shape it is
+    built for.
+    """
+    # Both ends. The floor is what makes the check catch a local rewrite at all; the ceiling is why
+    # it is a WINDOW rather than the whole prefix -- normalizing everything before the cut is sound
+    # but measured at 2.7x-5.5x the cost of `encode_state_head` on prose, and at 100 000 the suite
+    # stayed green while the function ran at 0.18x-0.38x.
+    assert 8 <= common._CUT_CONTEXT_CHARS <= 1024, common._CUT_CONTEXT_CHARS
+
+    class DropsSpaceBeforeThreeCaps:
+        def normalize_str(self, text):
+            out = []
+            for i, ch in enumerate(text):
+                if ch == " " and text[i + 1:i + 4].isupper():
+                    continue
+                out.append(ch)
+            return "".join(out)
+
+    class Backend(_Backend):
+        normalizer = DropsSpaceBeforeThreeCaps()
+
+    class Tok(_PreTokTok):
+        backend_tokenizer = Backend()
+
+    tok = Tok()
+    text = "refund ABCdef " * 3000
+    cut = common._state_cut(text, 4096)
+    assert cut
+    assert common._normalizer_keeps_cut(tok, text, cut) is False, \
+        "a three-character lookahead must be visible inside the window"
+
+
+def test_the_returned_cut_is_checked_against_the_text_being_cut(monkeypatch):
+    """`_normalizer_keeps_cut` must be consulted, on the real text, for the cut whose ids are handed
+    back -- and a head is never returned without it.
+
+    Only a RETURNED cut has to survive normalization: an attempt that comes up short is discarded,
+    so checking it too cost a second call on every optimized call for nothing (measured 0.953x
+    against the previous commit on multilingual prose; 0.99-1.00x once the check moved here).
 
     Pinned by observation rather than by output, deliberately. A normalizer bad enough to corrupt a
-    head usually collapses it far below `need`, so the length guard rejects it and the retry returns
-    the same full ids anyway -- deleting the call site changes no ids at all on such a fixture, which
-    is how the first version of this test passed while the call it exists to pin could be removed.
-    What is not reproducible by accident is whether the check ran.
+    head usually collapses it below `need`, so the length guard rejects it and the retry returns the
+    same full ids anyway -- deleting the call site changes no ids at all on such a fixture, which is
+    how an earlier version of this test passed while the call it exists to pin could be removed.
     """
     seen = []
     real = common._normalizer_keeps_cut
@@ -1086,16 +1239,15 @@ def test_every_cut_is_checked_against_the_text_being_cut(monkeypatch):
 
     assert len(head) >= 512, "this fixture must take the head path for the check to be reachable"
     prefixes = [t for t in tok.texts if len(t) < len(text)]
-    assert len(prefixes) > 1, "this fixture must probe and then retry, or it pins only one call site"
+    assert len(prefixes) > 1, "this fixture must probe and then retry"
 
-    # EVERY cut whose prefix gets tokenized must have been checked first -- the probe's cut at the
-    # gate, and each retry's cut in the loop. Counting them is what distinguishes the two call sites:
-    # asserting only that the check "ran" passes while either one of them is deleted.
-    assert len(seen) == len(prefixes), \
-        "%d prefixes tokenized but %d cuts checked -- a cut was taken unchecked" \
-        % (len(prefixes), len(seen))
-    for seen_len, cut in seen:
-        assert seen_len == len(text), "the check was handed something other than the state text"
-        assert 0 < cut <= len(text), cut
-        assert text[cut] == " " and not text[cut - 1].isspace(), \
-            "the checked position is not the cut that `_state_cut` chose"
+    # Exactly one check, for the cut that produced the returned head -- not one per attempt.
+    assert len(seen) == 1, \
+        "expected the returned cut to be checked once, got %d checks for %d prefixes" \
+        % (len(seen), len(prefixes))
+    seen_len, cut = seen[0]
+    assert seen_len == len(text), "the check was handed something other than the state text"
+    assert len(prefixes[-1]) == cut, \
+        "the checked cut is not the one whose ids were returned (%d vs %d)" % (cut, len(prefixes[-1]))
+    assert text[cut] == " " and not text[cut - 1].isspace(), \
+        "the checked position is not the cut that `_state_cut` chose"

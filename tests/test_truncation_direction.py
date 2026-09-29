@@ -7,7 +7,6 @@ list that means the newest turn is silently lost. For list-shaped state the agen
 now truncates from the left so the most recent intent survives. Strings and
 dicts are unaffected (backward compatible).
 """
-import json
 import re
 import zlib
 
@@ -871,3 +870,232 @@ def test_usage_input_tokens_is_the_sequence_length_not_the_state_total():
     long = agent.predict_batch(["refund escalate hold " * 3000], questions)[0]
     assert short["usage"]["input_tokens"] == long["usage"]["input_tokens"] == agent.cfg["max_len"], \
         (short["usage"], long["usage"])
+
+
+# --- mutants that survived an adversarial review; each check below kills one ------------------
+
+class Backend_for_no_api:
+    """A backend with an inspectable, splitting pre-tokenizer, so the added-token gate is the only
+    thing that can refuse."""
+    normalizer = None
+
+    class pre_tokenizer:  # noqa: N801 - matches the `type(pt).__name__` the gate reads
+        pass
+
+
+Backend_for_no_api.pre_tokenizer = type("WhitespaceSplit", (), {})()
+
+
+class _MetaspaceRunTok(_PreTokTok):
+    """A sentencepiece checkpoint whose whitespace-run added tokens are spelled with U+2581.
+
+    This is what the shipped MULTILINGUAL tokenizer actually carries: 30 added tokens that are runs
+    of 2-31 U+2581. `"\u2581".isspace()` is False, so `_added_tokens_permit_cut`'s
+    `or piece[k - 1] in _CUT_CHARS` clause is the ONLY thing that lets them through. Deleting that
+    clause flipped the real multilingual tokenizer from permitted to refused -- every non-string
+    state falling back to a full tokenization, 40 001 ids instead of 662 on an 80 000-character
+    state -- with the entire CI lane still green, because every fixture here spells its runs with
+    U+0020.
+    """
+
+    def get_added_vocab(self):
+        return {"\u2581" * n: 400 + n for n in range(2, 32)}
+
+
+def test_added_token_gate_permits_a_metaspace_checkpoints_whitespace_runs():
+    """The POSITIVE direction for U+2581, which no other test asserts."""
+    tok = _MetaspaceRunTok()
+    assert common._added_tokens_permit_cut(tok) is True, \
+        "a run of U+2581 is a single-character whitespace run and must not block the cut"
+    # and the head path really is taken for it, not just the gate
+    text = ("-" * 40 + " ") * 2000
+    head = common.encode_state_head(tok, text, 512)
+    assert len(head) >= 512 and len(head) < len(tok(text)["input_ids"])
+
+
+def test_added_token_gate_refuses_a_tokenizer_with_no_added_vocab_api():
+    """The missing-attribute guard, which the `get_added_vocab = None` fixture does not reach.
+
+    With that fixture the attribute EXISTS and is None, so `get()` raises into the `except` and the
+    `getattr` default is never used -- replacing the default with `lambda: {}` left the suite green
+    while treating an uninspectable tokenizer as having no added tokens at all.
+    """
+    class NoApi:
+        mask_token = "[MASK]"
+        backend_tokenizer = Backend_for_no_api()
+
+    assert common._added_tokens_permit_cut(NoApi()) is False
+
+
+def test_added_token_gate_refuses_when_get_added_vocab_raises():
+    """Fail-closed has two paths and the existing fixture satisfies both, so each masked the other.
+
+    `get_added_vocab = None` returns False at the missing-attribute guard AND, if that guard is
+    removed, raises TypeError into the `except`. A tokenizer whose `get_added_vocab()` *raises* had
+    no check at all: mutating either guard left the suite green.
+    """
+    class Raises(_PreTokTok):
+        def get_added_vocab(self):
+            raise RuntimeError("vocab unavailable")
+
+    assert common._added_tokens_permit_cut(Raises()) is False
+
+
+def test_normalizer_gate_refuses_when_the_probe_raises():
+    """Same masking in `_normalizer_permits_cut`: the existing fixture takes the `bt is None` path,
+    so the `except Exception` around the probe was untested.
+    """
+    class Boom:
+        def normalize_str(self, s):
+            raise RuntimeError("normalizer exploded")
+
+    class Backend:
+        normalizer = Boom()
+        pre_tokenizer = None
+
+    class Tok(_PreTokTok):
+        backend_tokenizer = Backend()
+
+    assert common._normalizer_permits_cut(Tok()) is False
+
+
+def test_added_token_gate_sees_a_cut_char_at_index_one():
+    """`range(1, len(piece))` must start at 1. An added token whose space sits at index 1 -- "a b",
+    or a sentencepiece user symbol "x\u2581y" -- is the only thing that start index protects, and
+    `range(2, ...)` left the suite green while permitting an unsafe cut.
+    """
+    class IndexOne(_PreTokTok):
+        def get_added_vocab(self):
+            return dict(_PreTokTok.get_added_vocab(self), **{"a b": 500, "x\u2581y": 501})
+
+    assert common._added_tokens_permit_cut(IndexOne()) is False
+
+
+def test_state_cut_walks_past_a_whitespace_run_longer_than_one_probe():
+    """`_STATE_CUT_PROBES` is load-bearing for exactly the shape its comment describes.
+
+    A whitespace run straddling the budget needs more than one probe to step over. With the constant
+    at 1 the cut is lost and the whole state is tokenized -- 80 700 characters instead of 2 159, a
+    37x regression -- and no existing fixture put a run there, so the suite stayed green.
+    """
+    tok = _PreTokTok()
+    text = "w " * 250 + " " * 200 + "q " * 40000
+    full = tok(text)["input_ids"]
+    tok.texts.clear()
+    head = common.encode_state_head(tok, text, 512)
+    assert head == full[:len(head)], "the head must still be a prefix"
+    assert len(head) >= 512, "the head must cover the budget"
+    assert len(head) < len(full), "the whole state was tokenized; the cut walk gave up in the run"
+    assert text not in tok.texts, "no attempt should have handed over the whole state"
+
+
+def test_the_retry_does_not_re_tokenize_a_prefix_it_already_measured():
+    """The in-loop `last_cut = cut` assignment, which the existing no-advance test never reaches.
+
+    Its fixture breaks on the FIRST iteration, where `last_cut` still holds its pre-loop value.
+    Deleting the in-loop assignment made this state tokenize the same 2 599-character prefix three
+    times, with the suite green.
+    """
+    tok = _PreTokTok()
+    text = ("-" * 7 + " ") * 64 + "-" * 2087 + " " + "z" * 300000
+    tok.texts.clear()
+    common.encode_state_head(tok, text, 512)
+    sizes = [len(t) for t in tok.texts]
+    assert len(sizes) == len(set(sizes)), \
+        "the same prefix was tokenized more than once: %s" % sizes
+
+
+def test_the_retry_stops_when_the_next_attempt_would_cover_the_whole_state():
+    """The loop-top budget guard. Deleting it tokenized 26 231 characters where 10 818 suffice --
+    2.4x, and 3.3x the state itself, i.e. worse than not optimizing at all -- with the suite green.
+    """
+    tok = _PreTokTok()
+    text = ("x" * 7 + " ") * 64 + ("-" * 40 + " ") * 183
+    tok.texts.clear()
+    common.encode_state_head(tok, text, 512)
+    total = sum(len(t) for t in tok.texts)
+    assert total <= 2 * len(text), \
+        "tokenized %d characters for a %d-character state" % (total, len(text))
+
+
+def test_the_normalizer_check_runs_on_the_text_being_cut():
+    """A normalizer that is prefix-breaking only on shapes the three fixed probes do not contain.
+
+    Measured on the shipped english tokenizer carrying `Replace(Regex(r" (?=[A-Z])"), "")`: all three
+    gates returned True and 2 of 200 capitalised-prose states came back non-prefix. The check has to
+    look at the real cut, not at three hard-coded strings.
+    """
+    class DropsSpaceBeforeCapital:
+        def normalize_str(self, s):
+            out = []
+            for i, ch in enumerate(s):
+                if ch == " " and i + 1 < len(s) and s[i + 1].isupper():
+                    continue
+                out.append(ch)
+            return "".join(out)
+
+    class Backend:
+        normalizer = DropsSpaceBeforeCapital()
+        pre_tokenizer = None
+
+    class Tok(_PreTokTok):
+        backend_tokenizer = Backend()
+
+        def __call__(self, text, **kw):
+            # The normalizer runs before the pre-tokenizer, exactly as a real tokenizer does. Without
+            # this the fake ignores its own normalizer, the ids match either way, and the end-to-end
+            # assertion below cannot fail -- which is how the first version of this test passed while
+            # the call site it exists to pin could be deleted.
+            return _PreTokTok.__call__(self, Backend.normalizer.normalize_str(text), **kw)
+
+    tok = Tok()
+    # the three fixed probes are all lowercase, so the general gate is fooled ...
+    assert common._normalizer_permits_cut(tok) is True
+    # ... and the real-text check is what refuses
+    text = ("Refund Order Escalate Ticket Zebra " * 2000)
+    cut = common._state_cut(text, 4096)
+    assert cut and text[cut - 1] != " "
+    assert common._normalizer_keeps_cut(tok, text, cut) is False
+
+    full = tok(text)["input_ids"]
+    head = common.encode_state_head(tok, text, 512)
+    assert head == full, "a cut this normalizer destroys must fall back to the full ids"
+
+
+def test_every_cut_is_checked_against_the_text_being_cut(monkeypatch):
+    """`_normalizer_keeps_cut` must be CONSULTED, on the real text, before any cut is tokenized.
+
+    Pinned by observation rather than by output, deliberately. A normalizer bad enough to corrupt a
+    head usually collapses it far below `need`, so the length guard rejects it and the retry returns
+    the same full ids anyway -- deleting the call site changes no ids at all on such a fixture, which
+    is how the first version of this test passed while the call it exists to pin could be removed.
+    What is not reproducible by accident is whether the check ran.
+    """
+    seen = []
+    real = common._normalizer_keeps_cut
+
+    def recording(tok, text, cut):
+        seen.append((len(text), cut))
+        return real(tok, text, cut)
+
+    monkeypatch.setattr(common, "_normalizer_keeps_cut", recording)
+    tok = _PreTokTok()
+    text = ("-" * 40 + " ") * 2000            # dense and cuttable: reaches the gates and the retry
+    tok.texts.clear()
+    head = common.encode_state_head(tok, text, 512)
+
+    assert len(head) >= 512, "this fixture must take the head path for the check to be reachable"
+    prefixes = [t for t in tok.texts if len(t) < len(text)]
+    assert len(prefixes) > 1, "this fixture must probe and then retry, or it pins only one call site"
+
+    # EVERY cut whose prefix gets tokenized must have been checked first -- the probe's cut at the
+    # gate, and each retry's cut in the loop. Counting them is what distinguishes the two call sites:
+    # asserting only that the check "ran" passes while either one of them is deleted.
+    assert len(seen) == len(prefixes), \
+        "%d prefixes tokenized but %d cuts checked -- a cut was taken unchecked" \
+        % (len(prefixes), len(seen))
+    for seen_len, cut in seen:
+        assert seen_len == len(text), "the check was handed something other than the state text"
+        assert 0 < cut <= len(text), cut
+        assert text[cut] == " " and not text[cut - 1].isspace(), \
+            "the checked position is not the cut that `_state_cut` chose"

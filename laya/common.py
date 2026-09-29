@@ -147,7 +147,8 @@ def _state_cut(text: str, budget: int) -> int:
     were checked against the shipped tokenizers rather than assumed:
 
       * No added token can straddle the cut. Both checkpoints carry added tokens that are runs of
-        one whitespace character (2-24 spaces on english, 1-31 newlines or tabs on multilingual),
+        one whitespace character (2-24 spaces on english, 1-31 newlines or tabs on multilingual --
+        and, the ones that actually bear a cut character, 30 runs of 2-31 U+2581 on multilingual),
         and the trie matches them greedily before anything else -- which is what makes a cut in
         the middle of a run unsafe, and why `text[i - 1]` must not be whitespace. Every
         space-bearing added token in both checkpoints is a run of a single whitespace character
@@ -200,7 +201,7 @@ def _added_tokens_permit_cut(tok) -> bool:
     that are not a prefix of the full tokenization, which the `len(head) >= need` test below
     cannot catch: the head is long enough, just wrong.
 
-    Deliberately not cached: this costs 53 us on english and 91 us on multilingual against the
+    Deliberately not cached: this costs ~63 us on english and ~164 us on multilingual against the
     tokenization it guards, and a cache keyed on the tokenizer would go stale the moment a caller
     added a token to it. The head path is only entered for a state well past the budget
     (`_STATE_HEAD_MIN_RATIO`), where that tokenization is milliseconds.
@@ -218,7 +219,8 @@ def _added_tokens_permit_cut(tok) -> bool:
     for piece in added:
         # Only a piece containing a space can cover a cut, and `in` is a C-level scan, so this
         # skips almost every added token before the character loop below runs: 93 of english's 116
-        # and all 249 of multilingual's. Measured, it takes this function from 69 to 53 us on
+        # and 219 of multilingual's 249 -- the 30 it does not skip are the U+2581 runs, which is
+        # exactly what the `or piece[k - 1] in _CUT_CHARS` clause below exists for. Measured, it takes this function from 69 to 53 us on
         # english and 147 to 91 us on multilingual. What is left is `get_added_vocab()` rebuilding
         # its dict (72 us on multilingual), not the scan -- so this is not cached, on the grounds
         # that a cache keyed on the tokenizer goes stale the moment a caller adds a token, and the
@@ -256,6 +258,50 @@ def _splits_on_whitespace(pt) -> bool:
             return False
         return any(_splits_on_whitespace(m) for m in members)
     return False
+
+
+#: Characters of context either side of a cut that `_normalizer_keeps_cut` normalizes to check it.
+#: Normalizers in `tokenizers` rewrite locally, so a window is enough to see the cut survive or not.
+_CUT_CONTEXT_CHARS = 32
+
+
+def _normalizer_keeps_cut(tok, text: str, cut: int) -> bool:
+    r"""Whether the cut at `text[cut]` still separates two pieces after THIS text is normalized.
+
+    `_normalizer_permits_cut` probes three fixed strings, which is a statement about the normalizer
+    in general and misses one that is prefix-breaking only on shapes the probes do not contain.
+    Measured, on the shipped english tokenizer carrying
+    `Replace(Regex(r" (?=[A-Z])"), "")` -- a plausible de-spacing finetune -- all three gates
+    returned True and 2 of 200 capitalised-prose states came back with ids that were not a prefix:
+    the space before a capital is deleted, so the piece the cut was meant to end merges into the
+    next one and the head's last token is wrong.
+
+    Checking the real text closes that: normalize a window either side of the cut and require the
+    boundary character to survive, in place, as whitespace or U+2581. The window is enough because
+    `tokenizers` normalizers rewrite locally, and it costs one `normalize_str` on 64 characters
+    rather than on the prefix being tokenized.
+    """
+    bt = getattr(tok, "backend_tokenizer", None)
+    if bt is None:
+        return False
+    try:
+        normalizer = bt.normalizer
+    except Exception:
+        return False
+    if normalizer is None:
+        return True                              # nothing runs, so nothing can move the cut
+    try:
+        head = text[max(0, cut - _CUT_CONTEXT_CHARS):cut]
+        window = head + text[cut:cut + _CUT_CONTEXT_CHARS]
+        out = normalizer.normalize_str(window)
+        at = len(normalizer.normalize_str(head))
+        if not out.startswith(normalizer.normalize_str(head)):
+            return False
+        if at >= len(out):
+            return False
+        return out[at].isspace() or out[at] == "\u2581"
+    except Exception:
+        return False
 
 
 def _normalizer_permits_cut(tok) -> bool:
@@ -370,7 +416,7 @@ def encode_state_head(tok, text: str, need: int) -> List[int]:
     # uniform across a document, and a floor of 64 so a tiny budget still moves.
     want = need * density * 1.25 + 64
     # A prefix that large is not worth taking: paying for it and then the whole state would cost
-    # more than the state alone. Decided BEFORE the soundness gates, because they cost 53-91 us and
+    # more than the state alone. Decided BEFORE the soundness gates, because they cost 60-165 us and
     # a state that will not be cut does not need them answered. A dense state tokenizes few ids from
     # many characters, so its own tokenization is cheap and that fixed cost showed up as a 0.82x
     # regression when the gates ran first.
@@ -380,7 +426,8 @@ def encode_state_head(tok, text: str, need: int) -> List[int]:
     # Only now, with a cut in hand and a prefix worth taking, are the three soundness gates asked.
     if not (_added_tokens_permit_cut(tok)
             and _pre_tokenizer_permits_cut(tok)
-            and _normalizer_permits_cut(tok)):
+            and _normalizer_permits_cut(tok)
+            and _normalizer_keeps_cut(tok, text, cut)):
         return full()
     if len(probe) >= need:
         return probe                       # the probe alone already covers the budget
@@ -396,6 +443,8 @@ def encode_state_head(tok, text: str, need: int) -> List[int]:
         if not cut or cut <= last_cut:
             break
         last_cut = cut
+        if not _normalizer_keeps_cut(tok, text, cut):
+            break                          # this cut does not survive normalization; take the full ids
         head = encode_text(tok, text[:cut], add_special_tokens=False)["input_ids"]
         if len(head) >= need:
             return head

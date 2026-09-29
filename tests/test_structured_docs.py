@@ -337,7 +337,7 @@ def main() -> int:
         # so the projected value is `minimum + round(score)`: index 0 -> 3, index 2 -> 5, index 4 -> 7.
         for score, want in ((0, 3), (2, 5), (4, 7)):
             got = S.answers_to_json({"field": {"type": "score", "score": score}}, schema)
-            check("projection/minimum + argmax for score %d" % score, got, {"field": want})
+            check("projection/minimum + round(score) for score %d" % score, got, {"field": want})
 
     noul = re.search(r"a boolean is `noul >= ([\d.]+)`", text)
     check_true("projection/sentence about a boolean parses", noul is not None,

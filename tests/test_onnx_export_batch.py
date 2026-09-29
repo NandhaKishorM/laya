@@ -105,9 +105,13 @@ class _Skip(Exception):
     """Raised to skip a block this platform cannot run."""
 
 
-#: Tolerance for the TINY model in this file, not for a real checkpoint. `verify_batch_dynamic`
-#: defaults to 1e-3, which the 322M checkpoint passes at 6.14e-05 -- that default is what bounds
-#: quality and it is asserted separately. This 32-dim random model has near-tied logits, and softmax
+#: Tolerance for the TINY model's PASS cases only, not for a real checkpoint. `verify_batch_dynamic`
+#: defaults to 1e-3, which the 322M checkpoint passes at 6.14e-05; that default is what bounds
+#: quality, it is asserted below (both its value and that it rejects a calibrated error), and an
+#: earlier revision of this comment claimed it was "asserted separately" when nothing asserted it.
+#: 5e-2 is deliberately loose and is NOT a quality bound: measured, it accepts a scorer weight scaled
+#: by 3.0, which the 1e-3 default catches from 1.25 upward. It exists so a cross-machine fp32
+#: difference cannot fail the suite, and nothing else. This 32-dim random model has near-tied logits, and softmax
 #: amplifies the difference between one machine's fp32 kernels and another's: measured 4.69e-04 here
 #: and 1.03e-02 on a GitHub runner, which straddles 1e-3 and made this suite fail by hardware. The
 #: signal it has to separate is enormous by comparison -- a perturbed weight moves probabilities by
@@ -159,6 +163,10 @@ try:
     _got = dict(zip(["logits", "act_logits"], _sess2.run(["logits", "act_logits"], _feed2)))
     check("names/logits is (batch, num_markers)", _got["logits"].shape, (3, 4))
     check("names/act_logits is (batch, 2)", _got["act_logits"].shape, (3, 2))
+    # Released explicitly: module-level ORT sessions that outlive the block were measured causing
+    # `libc++abi: recursive_mutex lock failed` at interpreter shutdown -- exit 134 AFTER the suite
+    # printed "0 failed", i.e. a red CI job with a green summary.
+    del _sess2, _got
 finally:
     shutil.rmtree(_tmp2, ignore_errors=True)
 
@@ -242,6 +250,7 @@ except _Skip:
     pass
 finally:
     shutil.rmtree(_tmp4, ignore_errors=True) if _tmp4 else None
+
 
 shutil.rmtree(tmp, ignore_errors=True)
 os.makedirs(tmp, exist_ok=True)
@@ -402,6 +411,40 @@ check("verify/compares every output at every batch it sweeps",
       len([ln for ln in _reported.splitlines() if "max abs prob diff" in ln]),
       3 * len(export_onnx.OUTPUT_NAMES))
 
+# The tolerance that SHIPS is the default, and it was pinned by nothing: `atol: float = 1e-3` ->
+# `1e9` left all three suites green, while `export_to_onnx` calls `verify_batch_dynamic` with no atol
+# at all. Pin the value, and prove it rejects an error TINY_ATOL is blind to -- a calibrated 1.25x
+# scaling of one scorer weight, not the linspace(0, 5) sledgehammer.
+
+check("verify/the shipping tolerance is 1e-3",
+      inspect.signature(export_onnx.verify_batch_dynamic).parameters["atol"].default, 1e-3)
+
+_calibrated = copy.deepcopy(model)
+with torch.no_grad():
+    dict(_calibrated.named_parameters())["scorer.3.weight"].mul_(1.25)
+try:
+    export_onnx.verify_batch_dynamic(_calibrated, onnx_path)          # default atol, as it ships
+    FAIL.append("verify/the shipping tolerance rejects a 1.25x weight error: it was accepted")
+except SystemExit as error:
+    check_true("verify/the shipping tolerance rejects a 1.25x weight error",
+               "differ" in str(error) or "probabilit" in str(error), str(error)[:160])
+# ... and that TINY_ATOL is not doing that work, so nobody mistakes it for a quality bound.
+try:
+    export_onnx.verify_batch_dynamic(_calibrated, onnx_path, atol=TINY_ATOL)
+    check_true("verify/TINY_ATOL is a pass-case tolerance, not a quality bound", True, "")
+except SystemExit:
+    FAIL.append("verify/TINY_ATOL is a pass-case tolerance: it caught 1.25x, so the comment is wrong")
+
+# INT8_ATOL was bounded only from below (`> 1e-3`), so 1e9 was green. Bound it from above too: the
+# quantization drift this expects is 9.95e-04 over verify's own sweep, and per-tensor quantization --
+# the variant the code comment says flips 3 of 20 real decisions -- moves it to 0.29.
+# Both sides, and tightly: 1e-3 < x < 0.1 let 1.1e-3 through, which is below the 9.95e-04 drift
+# this tolerance has to ACCEPT over verify's own sweep, so a real quantized graph would start
+# failing. The upper end has to stay well under the 0.29 that per-tensor quantization produces --
+# the variant the code comment says flips 3 of 20 real decisions.
+check_true("quantize/INT8_ATOL accepts expected drift and rejects per-tensor drift",
+           5e-3 < export_onnx.INT8_ATOL < 5e-2, export_onnx.INT8_ATOL)
+
 # ------------------------------------------------------- export_to_onnx verifies by default
 # `verify_batch_dynamic` is the safety net for the day `dynamic_axes` is removed and this export
 # goes silently static. A net that defaults to off is not a net, and flipping that default is a
@@ -512,6 +555,12 @@ check_true("cli/--no-verify is documented in --help", "--no-verify" in help_text
            [ln for ln in help_text.splitlines() if "verify" in ln])
 
 # ---------------------------------------------------------------- report
+# Every ONNX Runtime session this file opened is released before the interpreter shuts down.
+# Leaving them alive was measured killing the process with `libc++abi: recursive_mutex lock
+# failed` AFTER the summary printed 0 failed -- a red CI job with a green summary, on the
+# command .github/workflows/ci.yml runs in the onnx-export job.
+del session, loaded, pinned
+
 shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

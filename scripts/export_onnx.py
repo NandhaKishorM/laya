@@ -248,6 +248,18 @@ def verify_batch_dynamic(model, output_path: str, batches=(1, 2, 3), atol: float
         raise SystemExit(
             "verification failed: ONNX Runtime cannot load the graph just written to %s, so "
             "ONNXAgent cannot use it. ONNX Runtime said: %s" % (output_path, error))
+    try:
+        _verify_at_each_batch(model, session, batches, atol, output_path)
+    finally:
+        # Released before returning, not left to the collector. Every call opens a session, and a
+        # suite that calls this many times leaves enough of them alive that interpreter shutdown dies
+        # with `libc++abi: recursive_mutex lock failed` -- exit 134 AFTER the tests report 0 failed,
+        # i.e. a red job with a green summary. Measured at roughly 1 run in 14 before this.
+        del session
+
+
+def _verify_at_each_batch(model, session, batches, atol, output_path):
+    """The per-batch comparison, split out so `verify_batch_dynamic` can release its session."""
     for batch in batches:
         # Sequence and marker counts move with the batch so no run can pass by accidentally
         # matching the traced shape.

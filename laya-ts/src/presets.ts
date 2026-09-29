@@ -450,7 +450,7 @@ export type PresetName = keyof typeof PRESET_LABELS;
 export function presetLabels(preset: PresetName | "model_router", language = "en"): Record<string, string> {
   const lang = presetLanguage(language);
   const name = preset === "model_router" ? "router" : preset;
-  if (!(name in PRESET_LABELS)) {
+  if (!Object.hasOwn(PRESET_LABELS, name)) {
     throw new TypeError("preset must be one of email, guard, moderation, router, triage, model_router");
   }
   return { ...PRESET_LABELS[name as PresetName][lang] };

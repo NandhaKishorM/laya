@@ -88,6 +88,9 @@ class ONNXAgent(HookRegistry):
                                code, each `{"temperature": [3 floats], "temperature_by_options": {}}`.
                                Applied when a `lang=` is passed to `system_one`/`predict`, mirroring
                                the PyTorch `Agent`; a cross-backend swap otherwise loses calibration.
+            calibration: Optional path to a JSON map written by `Agent.save_calibration`
+                         (see `Agent.load_calibration`), read onto this agent after its
+                         checkpoint temperatures; exactly as the PyTorch `Agent` does.
         """
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
@@ -211,7 +214,13 @@ class ONNXAgent(HookRegistry):
             self.load_calibration(calibration)
 
     def load_calibration(self, path: str) -> None:
-        """Read a JSON map written by `save_calibration` onto this agent."""
+        """Read a JSON map written by `save_calibration` onto this agent.
+
+        A file with no `version` is treated as version 1 and still loads. A newer file
+        whose recorded checkpoint does not match this agent warns and still loads.
+        Values that are not numbers, or that sit outside `[TEMP_MIN, TEMP_MAX]`, are clamped
+        with `clamp_temperature` the same way checkpoint load is.
+        """
         from .calibrate import apply_calibration_payload
         with open(path) as f:
             payload = json.load(f)

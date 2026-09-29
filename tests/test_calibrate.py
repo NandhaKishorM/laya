@@ -16,6 +16,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from laya.agent import Agent, load  # noqa: E402
+from laya.onnx_agent import ONNXAgent  # noqa: E402
 from laya.calibrate import (  # noqa: E402
     CALIBRATION_VERSION,
     ECE_HOLDOUT_FRAC,
@@ -361,6 +362,16 @@ check_true("init/stores subfolder", "self.subfolder = subfolder" in init_src)
 load_src = inspect.getsource(load)
 check_true("load/calibration kwarg", "calibration" in load_src)
 check_true("load/forwards calibration", "calibration=calibration" in load_src)
+
+onnx_init_src = inspect.getsource(ONNXAgent.__init__)
+check_true("onnx/init documents the calibration kwarg",
+           "calibration" in onnx_init_src.split("Args:")[1] if "Args:" in onnx_init_src else False)
+check_true("onnx/init reads calibration after checkpoint temperatures",
+           "self.load_calibration(calibration)" in onnx_init_src)
+check_true("onnx/load_calibration documents version/mismatch/clamp behaviour",
+           "version 1 and still loads" in inspect.getsource(ONNXAgent.load_calibration))
+check_true("onnx/load_calibration is the shared applier",
+           "apply_calibration_payload" in inspect.getsource(ONNXAgent.load_calibration))
 
 rec_src = inspect.getsource(records_from_labeled)
 check_true("records/_encode_state", "_encode_state" in rec_src)

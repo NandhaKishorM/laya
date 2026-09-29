@@ -836,6 +836,51 @@ def test_admission_slot_is_released_after_inference(monkeypatch):
     assert client.post("/v1/systemone", json=REQ).status_code == 200
 
 
+_DEFAULT_SERVE_TIMEOUT = 10.0
+
+
+async def _wait_for_server_started(server, timeout: float = _DEFAULT_SERVE_TIMEOUT, poll_interval: float = 0.01):
+    """Wait for server.started with a timeout to prevent infinite test hangs."""
+    import asyncio
+
+    async def _poll():
+        while not getattr(server, "started", False):
+            await asyncio.sleep(poll_interval)
+
+    try:
+        await asyncio.wait_for(_poll(), timeout=timeout)
+    except asyncio.TimeoutError:
+        port_info = ""
+        if getattr(server, "servers", None) and server.servers[0].sockets:
+            port_info = f", port={server.servers[0].sockets[0].getsockname()[1]}"
+        pytest.fail(
+            f"Timed out after {timeout}s waiting for test server to report started=True "
+            f"(started={getattr(server, 'started', False)}{port_info})"
+        )
+
+
+async def _wait_for_connection(server, timeout: float = _DEFAULT_SERVE_TIMEOUT, poll_interval: float = 0.01):
+    """Wait for server.server_state.connections to become non-empty with a timeout."""
+    import asyncio
+
+    async def _poll():
+        while not (hasattr(server, "server_state") and getattr(server.server_state, "connections", None)):
+            await asyncio.sleep(poll_interval)
+
+    try:
+        await asyncio.wait_for(_poll(), timeout=timeout)
+    except asyncio.TimeoutError:
+        conn_count = (
+            len(server.server_state.connections)
+            if hasattr(server, "server_state") and getattr(server.server_state, "connections", None) is not None
+            else 0
+        )
+        pytest.fail(
+            f"Timed out after {timeout}s waiting for an accepted connection "
+            f"(started={getattr(server, 'started', False)}, connections={conn_count})"
+        )
+
+
 def test_accepted_connections_set_tcp_nodelay(monkeypatch):
     """#620: asyncio skips TCP_NODELAY when an accepted socket reports proto 0, as it
     does on macOS and Windows, so Nagle held back small responses by about 50 ms."""
@@ -856,20 +901,51 @@ def test_accepted_connections_set_tcp_nodelay(monkeypatch):
                                 http=captured["http"], log_level="warning")
         server = uvicorn.Server(config)
         serving = asyncio.ensure_future(server.serve())
-        while not server.started:
-            await asyncio.sleep(0.01)
-        port = server.servers[0].sockets[0].getsockname()[1]
-        _, writer = await asyncio.open_connection("127.0.0.1", port)
-        while not server.server_state.connections:
-            await asyncio.sleep(0.01)
-        (conn,) = server.server_state.connections
-        nodelay = conn.transport.get_extra_info("socket").getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
-        writer.close()
-        server.should_exit = True
-        await serving
-        return nodelay
+        writer = None
+        try:
+            await _wait_for_server_started(server)
+            port = server.servers[0].sockets[0].getsockname()[1]
+            _, writer = await asyncio.open_connection("127.0.0.1", port)
+            await _wait_for_connection(server)
+            (conn,) = server.server_state.connections
+            nodelay = conn.transport.get_extra_info("socket").getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+            return nodelay
+        finally:
+            if writer is not None:
+                writer.close()
+            server.should_exit = True
+            await serving
 
     assert asyncio.run(drive())
+
+
+def test_wait_for_server_started_timeout():
+    """Verify that _wait_for_server_started fails clearly when timing out."""
+    import asyncio
+    from types import SimpleNamespace
+
+    fake_server = SimpleNamespace(started=False)
+
+    async def drive():
+        await _wait_for_server_started(fake_server, timeout=0.01)
+
+    with pytest.raises(pytest.fail.Exception, match="waiting for test server to report started=True"):
+        asyncio.run(drive())
+
+
+def test_wait_for_connection_timeout():
+    """Verify that _wait_for_connection fails clearly when timing out."""
+    import asyncio
+    from types import SimpleNamespace
+
+    fake_server = SimpleNamespace(started=True, server_state=SimpleNamespace(connections=set()))
+
+    async def drive():
+        await _wait_for_connection(fake_server, timeout=0.01)
+
+    with pytest.raises(pytest.fail.Exception, match="waiting for an accepted connection"):
+        asyncio.run(drive())
+
 
 
 def test_no_budget_keeps_the_call_unchanged(monkeypatch):

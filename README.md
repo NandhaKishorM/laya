@@ -525,8 +525,9 @@ The hint only decides *English or not*: a code whose primary subtag is `en`, `en
 `laya.serve` exposes the `Router` over HTTP on the same `POST /v1/systemone`
 wire protocol as TypeSafe's hosted Jev API. Laya's answer payload is already
 schema-identical to what Jev returns (`choice`/`score`/`noul` answers and a
-`{input_tokens, output_tokens}` usage block), so an existing Jev client — e.g.
-the [`hs-jev`](https://github.com/getmissionctrl/hs-jev) Haskell client — just
+`{input_tokens, output_tokens}` usage block), so an existing client — e.g.
+the [`hs-jev`](https://github.com/getmissionctrl/hs-jev) Haskell client or
+[`laya-php`](https://github.com/marcreichel/laya-php) for PHP / Laravel — just
 needs its `baseUrl` repointed; nothing else changes.
 
 ```bash

@@ -69,12 +69,20 @@ def int8_output_path(output_path: str) -> str:
 TRACE_BATCH = 2
 
 # Tolerance for the INT8 graph, which is looser than the fp32 one on purpose: weight-only
-# quantization is *meant* to change the numbers. Measured on the tiny synthetic model in
-# tests/test_onnx_export_batch.py, the worst probability drift across the swept shapes is 9.95e-04 --
-# already at the fp32 atol of 1e-3, so reusing that would flake. What this check is really for is
-# that the quantized graph still RUNS at batch > 1: `quantize_model` deletes every `value_info` and
-# rewrites every `MatMul`, which is exactly the kind of rewrite that can re-specialize an axis.
-INT8_ATOL = 2e-2
+# quantization is *meant* to change the numbers, and how much it changes them is a property of the
+# machine, not of the graph. Measured on the tiny synthetic model in tests/test_onnx_export_batch.py,
+# the worst probability drift over verify's own sweep is 9.95e-04 on macOS/arm64 and 2.53e-02 on the
+# Linux x86 CI runner -- a 25x spread, because `quantize_dynamic` picks its scales from the weights
+# and the arithmetic underneath differs. A tolerance chosen on one of those is a CI failure on the
+# other: 2e-02 passed locally and failed the `onnx export (quantization, weight-free)` job at
+# 2.53e-02. So this is set with headroom over the widest platform seen, not fitted to the narrowest.
+#
+# What the check is really for is that the quantized graph still RUNS at batch > 1: `quantize_model`
+# deletes every `value_info` and rewrites every `MatMul`, exactly the kind of rewrite that can
+# re-specialize an axis. Numerical quality is bounded by the fp32 verification at `atol=1e-3`, which
+# is the one a bad export has to get past. It stays far below 0.5 so a graph whose probabilities have
+# genuinely collapsed still fails.
+INT8_ATOL = 1e-1
 
 INPUT_NAMES = [
     "input_ids",

@@ -515,15 +515,26 @@ try:
 except SystemExit:
     FAIL.append("verify/TINY_ATOL is a pass-case tolerance: it caught 1.25x, so the comment is wrong")
 
-# INT8_ATOL was bounded only from below (`> 1e-3`), so 1e9 was green. Bound it from above too: the
-# quantization drift this expects is 9.95e-04 over verify's own sweep, and per-tensor quantization --
-# the variant the code comment says flips 3 of 20 real decisions -- moves it to 0.29.
-# Both sides, and tightly: 1e-3 < x < 0.1 let 1.1e-3 through, which is below the 9.95e-04 drift
-# this tolerance has to ACCEPT over verify's own sweep, so a real quantized graph would start
-# failing. The upper end has to stay well under the 0.29 that per-tensor quantization produces --
-# the variant the code comment says flips 3 of 20 real decisions.
-check_true("quantize/INT8_ATOL accepts expected drift and rejects per-tensor drift",
-           5e-3 < export_onnx.INT8_ATOL < 5e-2, export_onnx.INT8_ATOL)
+# INT8_ATOL was bounded only from below (`> 1e-3`), so 1e9 was green. It needs both sides, and the
+# bounds have to come from numbers that reproduce:
+#
+#   LOWER -- it must ACCEPT the drift a real quantized graph shows, and that is platform-dependent:
+#   9.95e-04 here (macOS/arm64), 2.53e-02 on the Linux x86 CI runner. Two earlier attempts were
+#   below the drift on some machine and so would fail a good graph -- `1e-3 < x < 0.1` let 1.1e-3
+#   through, under even the local figure, and `5e-3 < x < 5e-2` admitted the 2e-02 that CI then
+#   rejected at 2.53e-02. The floor is therefore above the widest drift observed, not the narrowest.
+#
+#   UPPER -- it must still REJECT a graph whose probabilities have collapsed. These are
+#   probabilities, so the scale is absolute: on a two-class output an error of 0.5 is a coin flip.
+#   Staying under 2e-1 keeps a wide margin under that.
+#
+# An earlier revision justified the upper bound as "well under the 0.29 that per-tensor quantization
+# produces". That number is not reproducible and the claim is withdrawn: per-tensor quantization of
+# this graph does not complete at all on this onnxruntime
+# (`InferenceError: Inferred shape and existing shape differ in dimension 0: (36) vs (256)`), so
+# there is no per-tensor figure to compare against.
+check_true("quantize/INT8_ATOL accepts the widest real drift and still rejects a collapsed graph",
+           5e-2 < export_onnx.INT8_ATOL < 2e-1, export_onnx.INT8_ATOL)
 
 # ------------------------------------------------------- export_to_onnx verifies by default
 # `verify_batch_dynamic` is the safety net for the day `dynamic_axes` is removed and this export

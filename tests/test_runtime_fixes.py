@@ -307,12 +307,14 @@ class ConcurrentOOMModel(ImmovableModel):
     def __call__(self, *args):
         with self.guard:
             self.active += 1
-            concurrent_call = self.active > 1 and self.placed == "cuda"
+            entered = self.placed
         first_gpu_call = self.placed == "cuda" and not self.first_gpu_started.is_set()
         if first_gpu_call:
             self.first_gpu_started.set()
             self.release_first.wait(2)
         try:
+            if entered == "cuda" and self.placed == "cpu":
+                raise RuntimeError("Expected all tensors to be on the same device, cuda:0 and cpu")
             if self.placed == "cuda":
                 raise RuntimeError("CUDA out of memory. Tried to allocate 2.00 GiB")
             return torch.zeros((1, 2)), torch.zeros((1, 2))

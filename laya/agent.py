@@ -6,6 +6,7 @@ import threading
 import time
 import warnings
 from contextlib import nullcontext
+from contextvars import ContextVar
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -149,6 +150,7 @@ _TOKENIZERS_LOCK = threading.Lock()
 # model while other threads may be running their own forward, so the demotion and the restore are
 # serialised. A second request that hits OOM waits here and re-demotes only if it needs to.
 _OOM_FALLBACK_LOCK = threading.RLock()
+_BATCH_AUTOCAST_CACHE = ContextVar("laya_batch_autocast_cache", default=False)
 
 class _InferenceRWLock:
     """Writer-preferred lock for concurrent forwards and exclusive device fallback."""
@@ -906,6 +908,8 @@ class Agent(HookRegistry):
                             self.last_fallback_reason = str(e)
                             held_device, held_dtype, held_amp = self.device, self.dtype, self.amp_enabled
                             had_fast = self._fast is not None
+                            if self.device.type == "cuda" and _BATCH_AUTOCAST_CACHE.get():
+                                torch.clear_autocast_cache()
                             # FastLaya keeps copied CUDA weights and replaces model.forward.  Move
                             # the model first without that replacement, or the retry would still
                             # execute on the failed CUDA fast path.

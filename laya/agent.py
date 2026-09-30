@@ -150,6 +150,57 @@ _TOKENIZERS_LOCK = threading.Lock()
 # serialised. A second request that hits OOM waits here and re-demotes only if it needs to.
 _OOM_FALLBACK_LOCK = threading.RLock()
 
+class _InferenceRWLock:
+    """Writer-preferred lock for concurrent forwards and exclusive device fallback."""
+
+    def __init__(self):
+        self._condition = threading.Condition(threading.Lock())
+        self._readers = 0
+        self._writer = False
+        self._writers_waiting = 0
+
+    def acquire_read(self):
+        with self._condition:
+            while self._writer or self._writers_waiting:
+                self._condition.wait()
+            self._readers += 1
+
+    def release_read(self):
+        with self._condition:
+            self._readers -= 1
+            if not self._readers:
+                self._condition.notify_all()
+
+    def acquire_write(self):
+        with self._condition:
+            self._writers_waiting += 1
+            try:
+                while self._writer or self._readers:
+                    self._condition.wait()
+                self._writer = True
+            finally:
+                self._writers_waiting -= 1
+
+    def release_write(self):
+        with self._condition:
+            self._writer = False
+            self._condition.notify_all()
+
+    def __enter__(self):
+        self.acquire_read()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.release_read()
+
+    def upgrade_to_write(self):
+        self.release_read()
+        self.acquire_write()
+
+    def downgrade_to_read(self):
+        self.release_write()
+        self.acquire_read()
+
 
 def _load_tokenizer(tok_dir: str, cfg: Dict) -> Any:
     """Tokenizer for a checkpoint, parsed once per process.
@@ -334,7 +385,7 @@ class Agent(HookRegistry):
         self.hooks_timeout = None if hooks_timeout is None else validate_timeout(hooks_timeout)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
         self._hooks_mutex = threading.Lock()
-        self._infer_lock = threading.RLock()
+        self._infer_lock = _InferenceRWLock()
         self.model_id = model_id_or_path
 
         from safetensors.torch import load_file
@@ -829,6 +880,7 @@ class Agent(HookRegistry):
         # and fail with a device-mismatch error. The fallback lock remains separate so its
         # observability and cross-agent transition bookkeeping stay serialized as before.
         infer_lock = getattr(self, "_infer_lock", None) or _OOM_FALLBACK_LOCK
+        rw_upgrade = hasattr(infer_lock, "upgrade_to_write")
         with infer_lock:
             try:
                 return run()
@@ -843,27 +895,33 @@ class Agent(HookRegistry):
                     # the model for the life of the process, so one oversized request left every
                     # later call ~10-15x slower on CPU. Demote under the lock, answer this request
                     # on CPU, then put the runtime back the way it was.
-                    with _OOM_FALLBACK_LOCK:
-                        # Recorded on entry, under the same lock as the demotion: the count and
-                        # reason must be readable by /health without racing a concurrent fallback.
-                        self.cpu_fallback_count += 1
-                        self.last_fallback_reason = str(e)
-                        held_device, held_dtype, held_amp = self.device, self.dtype, self.amp_enabled
-                        had_fast = self._fast is not None
-                        # FastLaya keeps copied CUDA weights and replaces model.forward.  Move
-                        # the model first without that replacement, or the retry would still
-                        # execute on the failed CUDA fast path.
-                        self.deaccelerate()
-                        self.device = torch.device("cpu")
-                        self.dtype = torch.float32
-                        self.amp_enabled = False
-                        self.model.to(self.device)
-                        if torch.cuda.is_available():
-                            torch.cuda.empty_cache()
-                        try:
-                            return run()
-                        finally:
-                            self._restore_runtime(held_device, held_dtype, held_amp, had_fast)
+                    if rw_upgrade:
+                        infer_lock.upgrade_to_write()
+                    try:
+                        with _OOM_FALLBACK_LOCK:
+                            # Recorded on entry, under the same lock as the demotion: the count and
+                            # reason must be readable by /health without racing a concurrent fallback.
+                            self.cpu_fallback_count += 1
+                            self.last_fallback_reason = str(e)
+                            held_device, held_dtype, held_amp = self.device, self.dtype, self.amp_enabled
+                            had_fast = self._fast is not None
+                            # FastLaya keeps copied CUDA weights and replaces model.forward.  Move
+                            # the model first without that replacement, or the retry would still
+                            # execute on the failed CUDA fast path.
+                            self.deaccelerate()
+                            self.device = torch.device("cpu")
+                            self.dtype = torch.float32
+                            self.amp_enabled = False
+                            self.model.to(self.device)
+                            if torch.cuda.is_available():
+                                torch.cuda.empty_cache()
+                            try:
+                                return run()
+                            finally:
+                                self._restore_runtime(held_device, held_dtype, held_amp, had_fast)
+                    finally:
+                        if rw_upgrade:
+                            infer_lock.downgrade_to_read()
                 if use_amp and self.device.type in ("mps", "cpu"):
                     # Not every MPS/CPU build implements autocast for every op. Drop to full
                     # precision once rather than failing the request.

@@ -1,5 +1,8 @@
 import argparse
+import inspect
 import os
+from typing import Any, Dict, Optional
+
 import torch
 
 from laya.agent import Agent
@@ -45,6 +48,48 @@ def int8_output_path(output_path: str) -> str:
     return "%s.int8%s" % (root, ext or ".onnx")
 
 
+def _shape_kwargs(supports_dynamic_shapes: Optional[bool] = None) -> Dict[str, Any]:
+    """Shape declarations in the spelling the installed `torch.onnx.export` accepts.
+
+    Two spellings exist. The dynamo exporter (torch >= 2.6) reads `dynamic_shapes` with
+    `torch.export.Dim` symbols and supports opset 18; the TorchScript exporter that torch 2.2
+    ships reads `dynamic_axes` and stops at opset 17. This fork pins torch 2.2 on macOS/Intel
+    (LOCAL_SETUP.md), where passing `dynamic_shapes` raised `TypeError: export() got an
+    unexpected keyword argument 'dynamic_shapes'` and the exporter could not run at all. Pick by
+    the installed signature rather than `torch.__version__`, so a torch that backports either
+    spelling is handled too. The outputs follow from the inputs either way: `act_logits` is
+    (batch_size, 2) rather than the traced (2, 2).
+    """
+    if supports_dynamic_shapes is None:
+        supports_dynamic_shapes = "dynamic_shapes" in inspect.signature(torch.onnx.export).parameters
+    if not supports_dynamic_shapes:
+        return {
+            "opset_version": 17,
+            "dynamic_axes": {
+                "input_ids": {0: "batch_size", 1: "seq_len"},
+                "attention_mask": {0: "batch_size", 1: "seq_len"},
+                "marker_pos": {0: "batch_size", 1: "num_markers"},
+                "marker_mask": {0: "batch_size", 1: "num_markers"},
+                "qtype": {0: "batch_size"},
+                "logits": {0: "batch_size", 1: "num_markers"},
+                "act_logits": {0: "batch_size"},
+            },
+        }
+    batch_dim = torch.export.Dim("batch_size")
+    seq_dim = torch.export.Dim("seq_len")
+    marker_dim = torch.export.Dim("num_markers")
+    return {
+        "opset_version": 18,
+        "dynamic_shapes": (
+            {0: batch_dim, 1: seq_dim},
+            {0: batch_dim, 1: seq_dim},
+            {0: batch_dim, 1: marker_dim},
+            {0: batch_dim, 1: marker_dim},
+            {0: batch_dim},
+        ),
+    }
+
+
 def export_to_onnx(model_id_or_path: str, output_path: str):
     print(f"Loading PyTorch Agent from: {model_id_or_path}")
     agent = Agent(model_id_or_path, compile=False, device="cpu")
@@ -67,20 +112,6 @@ def export_to_onnx(model_id_or_path: str, output_path: str):
         dummy_marker_pos,
         dummy_marker_mask,
         dummy_qtype,
-    )
-
-    # 2. Dynamic dimensions, declared as torch.export Dims (what the dynamo exporter reads;
-    # `dynamic_axes` is only converted to these with a deprecation warning). The outputs follow
-    # from the inputs, so `act_logits` is (batch_size, 2) instead of a static (1, 2).
-    batch_dim = torch.export.Dim("batch_size")
-    seq_dim = torch.export.Dim("seq_len")
-    marker_dim = torch.export.Dim("num_markers")
-    dynamic_shapes = (
-        {0: batch_dim, 1: seq_dim},
-        {0: batch_dim, 1: seq_dim},
-        {0: batch_dim, 1: marker_dim},
-        {0: batch_dim, 1: marker_dim},
-        {0: batch_dim},
     )
 
     input_names = [
@@ -108,11 +139,10 @@ def export_to_onnx(model_id_or_path: str, output_path: str):
         inputs,
         output_path,
         export_params=True,
-        opset_version=18,
         do_constant_folding=True,
         input_names=input_names,
         output_names=output_names,
-        dynamic_shapes=dynamic_shapes,
+        **_shape_kwargs(),
     )
     
     print(f"Successfully exported ONNX model to: {output_path}")

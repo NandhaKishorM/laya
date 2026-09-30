@@ -875,7 +875,8 @@ class Agent(HookRegistry):
                     b["qtype"].to(self.device),
                 )
 
-        # Hold the instance lock across the first forward and any CPU retry. Otherwise another
+        # Hold a shared read lock across normal forwards. If a forward OOMs, it upgrades to an exclusive
+        # lock before moving the shared model; otherwise another
         # thread can prepare CUDA inputs, then observe this request moving the shared model to CPU
         # and fail with a device-mismatch error. The fallback lock remains separate so its
         # observability and cross-agent transition bookkeeping stay serialized as before.

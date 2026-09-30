@@ -26,7 +26,7 @@ For ARM64 hosts, DGX Spark and Apple Silicon, see
 
 Install a compatible NVIDIA driver and configure Docker with the
 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
-The GPU image uses PyTorch CUDA 12.8 wheels. Check your GPU's compute capability
+The GPU image uses PyTorch CUDA 12.6 wheels. Check your GPU's compute capability
 and driver against [PyTorch's supported builds](https://pytorch.org/get-started/locally/);
 older cards may require a different build. Allow additional disk space for CUDA
 layers. VRAM needs depend on the checkpoint, batch size and input length.
@@ -82,7 +82,7 @@ work with `docker run -e`; Compose-only settings are identified below.
 | `HF_HOME` | `/home/laya/.cache/huggingface` | Cache path; see mount requirement below |
 | `LAYA_CACHE_VOLUME` | project model cache | **Compose only:** named cache volume |
 | `LAYA_GPU_ID` | `0` | **Compose only:** NVIDIA device index or UUID |
-| `LAYA_TORCH_INDEX` | `cpu` / `cu128` / `cu130` | **Compose build:** PyTorch wheel index |
+| `LAYA_TORCH_INDEX` | `cpu` / `cu126` / `cu130` | **Compose build:** PyTorch wheel index |
 | `LAYA_TORCH_VERSION` | `2.14.0` | **Compose build:** pinned PyTorch version |
 
 Compose forwards the runtime variables except `HF_HOME`, which stays aligned
@@ -90,7 +90,7 @@ with its fixed cache mount, and except `LAYA_MPS_AMP_MIN_ROWS`, the MPS row gate
 which no image here can reach because no container here can select MPS.
 If overriding `HF_HOME` in `docker run` or your own
 Compose file, provide a matching mount writable by UID 10001. Direct Docker
-builds select PyTorch with `--build-arg TORCH_INDEX=cu128`; runtime `-e` cannot
+builds select PyTorch with `--build-arg TORCH_INDEX=cu126`; runtime `-e` cannot
 change the installed wheel.
 
 ```bash

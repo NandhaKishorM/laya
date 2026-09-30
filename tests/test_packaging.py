@@ -292,7 +292,7 @@ check_true("compose.cuda/covers laya-serve too",
            re.search(r"^\s{2}laya-serve:", cuda, re.M) is not None,
            "compose.cuda.yaml does not mention laya-serve, so GPU serving would be CPU")
 check("compose.cuda/repeats the torch index for the base service",
-      len(re.findall(r'TORCH_INDEX: "\$\{LAYA_TORCH_INDEX:-cu128\}"', cuda)), 2)
+      len(re.findall(r'TORCH_INDEX: "\$\{LAYA_TORCH_INDEX:-cu126\}"', cuda)), 2)
 check("compose.cuda/repeats the device reservation for both services",
       len(re.findall(r"driver: nvidia", cuda)), 2)
 check_true("compose.cuda/no stale reference to a missing file",

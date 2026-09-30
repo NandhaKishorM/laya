@@ -7,7 +7,7 @@ an ARM64 CPU does not imply an NVIDIA GPU.
 | --- | --- | --- |
 | Linux AMD64 CPU | `compose.yaml` | CI build and checks; CPU inference |
 | Linux ARM64 CPU | `compose.yaml`, built on the ARM64 host | CI build and checks on a native ARM64 runner; CPU inference |
-| Linux AMD64 NVIDIA | add `compose.cuda.yaml` (CUDA 12.8) | CUDA inference on an RTX 4070 Ti with the base quickstart |
+| Linux AMD64 NVIDIA | add `compose.cuda.yaml` (CUDA 12.6) | CUDA inference on an RTX 4070 Ti with the base quickstart |
 | DGX Spark | add `compose.spark.yaml` (ARM64, CUDA 13.0), with or without `compose.http.yaml` | CI builds and loads the CUDA libraries without a GPU; Spark inference not yet reported |
 | Apple Silicon | Linux ARM64 container on CPU | See [Apple Silicon](#apple-silicon) |
 

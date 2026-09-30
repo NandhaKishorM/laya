@@ -5,7 +5,7 @@ services:
   laya:
     build:
       args:
-        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu126}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
       # The runtime reads these when it picks the autocast dtype; empty keeps the checkpoint's
@@ -24,7 +24,7 @@ services:
     build:
       context: .
       args:
-        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu126}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
       # The runtime reads these when it picks the autocast dtype; empty keeps the checkpoint's

@@ -417,6 +417,52 @@ for batch, seq_len, num_markers in [(1, 16, 2), (2, 16, 2), (2, 24, 3), (3, 40, 
     _biggest_output = max(_biggest_output, max(float(np.max(np.abs(a))) for a in got))
     check_true("parity/%s matches PyTorch within 1e-4" % label, diff <= 1e-4, "max abs diff %.2e" % diff)
 
+# ------------------------------------------- the feed #717's own test uses, on a graph traced our way
+# This branch replaces the inline dummies #717 merged with `example_inputs()`, and that trade has to be
+# strictly additive. The new trace carries a padded row, a masked-off marker and a varying `qtype`,
+# which #717's `torch.ones`/`torch.zeros` dummies did not; against that it traces 2 consecutive marker
+# positions where #717 traced 3 spread ones ([1, 5, 9]) at seq_len 17 rather than 16. Marker positions
+# are input VALUES, not shapes, so `torch.export` cannot specialize on them -- but that is an argument,
+# and this file exists to not rely on arguments. So the graph is fed exactly what #717's own test in
+# tests/test_onnx.py feeds: batch 1 and 3, seq_len 53, five markers at [3, 9, 14, 20, 30], a padded row
+# and `qtype` cycling.
+#
+# What this adds, stated precisely rather than generously. The sweep above already reaches
+# (5, 64, 7), which DOMINATES (3, 53, 5) on every axis, so no mutation that breaks a shape can survive
+# to here -- both the batch-1 trace and a static marker axis abort the file before this point. The one
+# thing it covers that nothing else does is marker positions that are not consecutive: `example_inputs`
+# builds them with `arange(1, num_markers + 1)`, so every other case in this file feeds 1, 2, 3, ...,
+# while a real checkpoint's markers land wherever the rendered options put them. It is a regression pin
+# for that, and for the specific feed a reviewer of #717 would think to check -- not a shape check.
+for _b in (1, 3):
+    _rng = np.random.default_rng(_b)
+    _seq = 53
+    _feed717 = {
+        # #717's test draws ids up to 1000 from a real checkpoint's vocabulary; this graph is the
+        # hand-built model, whose vocab is VOCAB, so the range is narrowed and nothing else is.
+        "input_ids": _rng.integers(5, VOCAB, (_b, _seq)).astype(np.int64),
+        "attention_mask": np.ones((_b, _seq), dtype=np.int64),
+        "marker_pos": np.tile(np.array([[3, 9, 14, 20, 30]], dtype=np.int64), (_b, 1)),
+        "marker_mask": np.ones((_b, 5), dtype=bool),
+        "qtype": (np.arange(_b) % 3).astype(np.int64),
+    }
+    _feed717["attention_mask"][0, 40:] = 0
+    _label = "batch=%d seq_len=53 num_markers=5 (the feed #717's test uses)" % _b
+    try:
+        _got717 = session.run(export_onnx.OUTPUT_NAMES, _feed717)
+    except Exception as _err:
+        FAIL.append("run717/%s: %s: %s" % (_label, type(_err).__name__,
+                                           str(_err).replace("\n", " ")[:200]))
+        continue
+    check("run717/%s: logits shape" % _label, tuple(_got717[0].shape), (_b, 5))
+    check("run717/%s: act_logits shape" % _label, tuple(_got717[1].shape), (_b, 2))
+    with torch.no_grad():
+        _want717 = model(*[torch.from_numpy(_feed717[n]) for n in export_onnx.INPUT_NAMES])
+    _d717 = max(float(np.max(np.abs(a - w.numpy()))) for a, w in zip(_got717, _want717))
+    _biggest_output = max(_biggest_output, max(float(np.max(np.abs(a))) for a in _got717))
+    check_true("parity717/%s matches PyTorch within 1e-4" % _label, _d717 <= 1e-4,
+               "max abs diff %.2e" % _d717)
+
 # Non-vacuity belongs on the outputs, not on the disagreement: if a future ORT or opset happens to
 # reproduce this tiny fp32 graph bit-exactly, `worst == 0.0` is the best possible result, not a
 # failure. What must not be true is that the graph returns nothing.

@@ -941,3 +941,91 @@ def test_resolve_max_token_budget_fallback(monkeypatch, caplog):
     assert "invalid LAYA_MAX_TOKEN_BUDGET" in caplog.text
     assert "LAYA_MAX_TOKEN_BUDGET must be positive" in caplog.text
 
+
+# ---------------------------------------------------------------- #707: 422 vs 500 boundary
+# These tests use a ValidatingRouter that applies Agent._check_question so the
+# ValueError-to-422 boundary in serve.py is exercised with real validation errors.
+
+class ValidatingRouter(FakeRouter):
+    """Applies Agent._check_question so invalid inputs surface as 422."""
+
+    def predict(self, state, questions, model=None):
+        from laya.agent import Agent
+        for qid, qdef in (questions or {}).items():
+            Agent._check_question(qid, qdef)  # raises ValueError -> 422
+        return super().predict(state, questions, model=model)
+
+
+def _validating_client(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    return TestClient(create_app(router=ValidatingRouter()))
+
+
+@pytest.mark.parametrize(("questions", "fragment"), [
+    # unhashable type in 'type' field must be ValueError not TypeError
+    ({"q": {"type": [], "instructions": "test"}}, "unknown type"),
+    # unknown string type
+    ({"q": {"type": "invalid_qtype", "instructions": "test"}}, "unknown type"),
+    # None instructions
+    ({"q": {"type": "noul", "instructions": None}}, "instructions"),
+    # empty instructions
+    ({"q": {"type": "noul", "instructions": ""}}, "instructions"),
+    # whitespace-only instructions
+    ({"q": {"type": "noul", "instructions": "   "}}, "instructions"),
+    # empty list instructions
+    ({"q": {"type": "noul", "instructions": []}}, "instructions"),
+    # empty dict instructions
+    ({"q": {"type": "noul", "instructions": {}}}, "instructions"),
+    # unsupported instruction type (integer)
+    ({"q": {"type": "noul", "instructions": 123}}, "unsupported type"),
+    # empty question id
+    ({"": {"type": "noul", "instructions": "test"}}, "non-empty"),
+])
+def test_invalid_question_gives_422(monkeypatch, questions, fragment):
+    """Question-validation ValueError -> HTTP 422 with descriptive detail."""
+    client = _validating_client(monkeypatch)
+    r = client.post("/v1/systemone", json={"state": "hello", "questions": questions})
+    assert r.status_code == 422, r.json()
+    assert fragment in r.json()["detail"], r.json()
+
+
+def test_none_question_id_gives_422(monkeypatch):
+    """A None question id is a client error -> 422, not 500."""
+    # JSON keys are always strings, so we use the empty-string case instead (JSON null keys
+    # become the string "null" in Python's json.loads). The underlying validator is already
+    # tested directly in test_criteria.py.
+    client = _validating_client(monkeypatch)
+    r = client.post("/v1/systemone", json={"state": "hello",
+                                           "questions": {"": {"type": "noul", "instructions": "x"}}})
+    assert r.status_code == 422, r.json()
+    assert "non-empty" in r.json()["detail"] or "question id" in r.json()["detail"].lower()
+
+
+def test_internal_type_error_still_gives_500(monkeypatch):
+    """An unexpected TypeError from the model/hooks path must NOT become 422."""
+
+    class CrashRouter:
+        loaded = []
+
+        def predict(self, state, questions, model=None):
+            # Simulate an unexpected internal TypeError, not a client input error.
+            raise TypeError("internal: cannot allocate tensor")
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    client = TestClient(create_app(router=CrashRouter()), raise_server_exceptions=False)
+    r = client.post("/v1/systemone", json={"state": "hello",
+                                           "questions": {"q": {"type": "noul", "instructions": "x"}}})
+    assert r.status_code == 500, r.json()
+    assert r.json()["detail"] == "inference failed"
+
+
+def test_valid_input_with_validating_router_still_200(monkeypatch):
+    """Sanity: a well-formed request must still get 200 through the validating router."""
+    client = _validating_client(monkeypatch)
+    r = client.post("/v1/systemone", json={
+        "state": "I was charged twice",
+        "questions": {"dept": {"type": "choice", "instructions": "Which team?",
+                               "criteria": {"billing": None, "tech": None}}}
+    })
+    assert r.status_code == 200, r.json()
+

@@ -615,7 +615,7 @@ class Agent(HookRegistry):
             self.accelerate()
 
     @staticmethod
-    def _check_question(qid: str, qdef: Any) -> None:
+    def _check_question(qid: Any, qdef: Any) -> None:
         """Reject a question that cannot be answered, naming it and what to fix.
 
         `render_options` reads `criteria` in the shape the question's type expects and the decision
@@ -624,14 +624,37 @@ class Agent(HookRegistry):
         'NoneType' object has no attribute 'items'`, `KeyError: 'bool'`, or a `selected index k out
         of range` raised inside the model for a question that ended up with no options at all.
         """
+        # Validate the question id before anything else; a None, empty or non-scalar id cannot be
+        # a dict key after round-tripping through JSON and is not a valid answer key either.
+        if qid is None or (isinstance(qid, str) and not qid.strip()):
+            raise ValueError("question id must be a non-empty string, got %r" % (qid,))
+        if not isinstance(qid, (str, int, float, bool)):
+            raise ValueError("question id must be a non-empty string, got %r" % (qid,))
         if not isinstance(qdef, dict):
             raise ValueError("question %r: definition must be a dict, got %s"
                              % (qid, type(qdef).__name__))
         t = qdef.get("type")
-        if t not in QTYPES:
+        # Guard with isinstance before the `in` check: an unhashable type (list, dict) raises
+        # `TypeError: unhashable type` from the membership test, which serve.py cannot map to
+        # HTTP 422 -- it surfaces as a 500 "inference failed" instead of a client error.
+        if not isinstance(t, str) or t not in QTYPES:
             raise ValueError("question %r: unknown type %r; use one of %s" % (qid, t, sorted(QTYPES)))
         if "instructions" not in qdef:
             raise ValueError("question %r: no 'instructions'; add the text the model should answer" % (qid,))
+        ins = qdef["instructions"]
+        if ins is None:
+            raise ValueError("question %r: 'instructions' must not be None; "
+                             "add the text the model should answer" % (qid,))
+        if not isinstance(ins, (str, list, dict)):
+            raise ValueError("question %r: 'instructions' has an unsupported type %s; "
+                             "use a string, dict, or list" % (qid, type(ins).__name__))
+        if isinstance(ins, str):
+            if not ins.strip():
+                raise ValueError("question %r: 'instructions' is empty; "
+                                 "add the text the model should answer" % (qid,))
+        elif not ins:
+            raise ValueError("question %r: 'instructions' is empty; "
+                             "add the text the model should answer" % (qid,))
         crit = qdef.get("criteria")
         if t == "choice":
             if not isinstance(crit, (dict, list)):
@@ -979,20 +1002,22 @@ class Agent(HookRegistry):
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             states, questions = ctx.states, ctx.questions
             if ctx.results is None:
-                # A start hook may have normalised a bare string/dict into a list; only the value
-                # that survives the hook is validated.
                 if isinstance(states, (str, bytes, dict)):
                     raise TypeError(
                         "predict_batch expects a list of states; pass a single state to predict()/system_one()."
                     )
-                if not isinstance(questions, dict):
+                if states is None or not hasattr(states, "__iter__"):
                     raise TypeError(
+                        "predict_batch expects a list of states; pass a single state to predict()/system_one()."
+                    )
+                if not isinstance(questions, dict):
+                    raise ValueError(
                         "questions must be a dict of question id -> definition, got %s"
                         % type(questions).__name__
                     )
                 states = list(states)
                 if any(state is None for state in states):
-                    raise TypeError(
+                    raise ValueError(
                         "state must not be None; pass a string, dict, or list"
                     )
                 if len(states) == 1:
@@ -1160,6 +1185,15 @@ class Agent(HookRegistry):
         """
         if aggregate != "auto":
             raise ValueError("predict_long: only aggregate='auto' is supported")
+        if state is None:
+            raise ValueError("predict_long: state must not be None; pass a string, dict, or list")
+        if not isinstance(questions, dict):
+            raise ValueError(
+                "predict_long: questions must be a dict of question id -> definition, got %s"
+                % type(questions).__name__
+            )
+        for qid, qdef in questions.items():
+            self._check_question(qid, qdef)
         hook_kwargs = {"hooks": hooks, "on_predict_start": on_predict_start,
                        "on_predict_end": on_predict_end, "hooks_raise": hooks_raise,
                        "hooks_timeout": hooks_timeout}

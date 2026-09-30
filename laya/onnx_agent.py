@@ -327,13 +327,24 @@ class ONNXAgent(HookRegistry):
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             states, questions = ctx.states, ctx.questions
             if ctx.results is None:
-                # A start hook may have normalised a bare string/dict into a list; only the value
-                # that survives the hook is validated, as Agent.predict_batch does.
                 if isinstance(states, (str, bytes, dict)):
                     raise TypeError(
                         "predict_batch expects a list of states; pass a single state to predict()/system_one()."
                     )
+                if states is None or not hasattr(states, "__iter__"):
+                    raise TypeError(
+                        "predict_batch expects a list of states; pass a single state to predict()/system_one()."
+                    )
+                if not isinstance(questions, dict):
+                    raise ValueError(
+                        "questions must be a dict of question id -> definition, got %s"
+                        % type(questions).__name__
+                    )
                 states = list(states)
+                if any(state is None for state in states):
+                    raise ValueError(
+                        "state must not be None; pass a string, dict, or list"
+                    )
                 if not states:
                     ctx.results = []
                 else:
@@ -426,6 +437,16 @@ class ONNXAgent(HookRegistry):
                        "hooks_timeout": hooks_timeout}
         if aggregate != "auto":
             raise ValueError("predict_long: only aggregate='auto' is supported")
+        if state is None:
+            raise ValueError("predict_long: state must not be None; pass a string, dict, or list")
+        if not isinstance(questions, dict):
+            raise ValueError(
+                "predict_long: questions must be a dict of question id -> definition, got %s"
+                % type(questions).__name__
+            )
+        from .agent import Agent as _Agent
+        for qid, qdef in questions.items():
+            _Agent._check_question(qid, qdef)
         max_len = self.cfg.get("max_len", 512)
         head_max_len = self.cfg.get("head_max_len", 192)
         budget = window if (window and window > 0) else max(64, max_len - head_max_len - 8)

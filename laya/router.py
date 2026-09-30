@@ -607,6 +607,11 @@ class Router(HookRegistry):
         checkpoint) and the replacement is what gets returned and used. `hooks` are per-call
         hooks, appended after any installed on the Router.
         """
+        if questions is not None and not isinstance(questions, dict):
+            raise ValueError(
+                "questions must be a dict of question id -> definition, got %s"
+                % type(questions).__name__
+            )
         decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         active = compose_hooks(self.hooks, hooks)
@@ -733,6 +738,13 @@ class Router(HookRegistry):
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
+        if state is None:
+            raise ValueError("predict: state must not be None; pass a string, dict, or list")
+        if not isinstance(questions, dict):
+            raise ValueError(
+                "questions must be a dict of question id -> definition, got %s"
+                % type(questions).__name__
+            )
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
@@ -928,6 +940,8 @@ class Router(HookRegistry):
                 raise TypeError("request %d must be a dict, got %s" % (i, type(request).__name__))
             if "state" not in request:
                 raise ValueError("request %d is missing required key 'state'" % i)
+            if request["state"] is None:
+                raise ValueError("request %d 'state' must not be None; pass a string, dict, or list" % i)
             if "questions" not in request:
                 raise ValueError("request %d is missing required key 'questions'" % i)
 

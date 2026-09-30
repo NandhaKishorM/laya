@@ -426,6 +426,123 @@ except ValueError as e:
 except Exception as e:
     FAIL.append("rejected/second question: %s instead of ValueError: %s" % (type(e).__name__, e))
 
+
+# ---------------------------------------------------------------- #707: question ID validation
+# None qid
+try:
+    agent.system_one(STATE, {None: {"type": "noul", "instructions": "Is it urgent?"}})
+    FAIL.append("#707/qid None: no error raised")
+except ValueError as e:
+    check_true("#707/qid None: message mentions got None or non-empty",
+               "got None" in str(e) or "non-empty" in str(e), str(e))
+except Exception as e:
+    FAIL.append("#707/qid None: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# empty string qid
+try:
+    agent.system_one(STATE, {"": {"type": "noul", "instructions": "Is it urgent?"}})
+    FAIL.append("#707/qid empty: no error raised")
+except ValueError as e:
+    check_true("#707/qid empty: message says non-empty",
+               "non-empty" in str(e) or "question id" in str(e).lower(), str(e))
+except Exception as e:
+    FAIL.append("#707/qid empty: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# whitespace-only qid
+try:
+    agent.system_one(STATE, {"   ": {"type": "noul", "instructions": "Is it urgent?"}})
+    FAIL.append("#707/qid whitespace: no error raised")
+except ValueError as e:
+    check_true("#707/qid whitespace: message says non-empty",
+               "non-empty" in str(e) or "question id" in str(e).lower(), str(e))
+except Exception as e:
+    FAIL.append("#707/qid whitespace: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# list qid (non-scalar)
+try:
+    agent.system_one(STATE, {("a", "b"): {"type": "noul", "instructions": "Is it urgent?"}})
+    FAIL.append("#707/qid tuple: no error raised")
+except ValueError as e:
+    check_true("#707/qid tuple: message says non-empty or question id",
+               "question id" in str(e).lower() or "non-empty" in str(e), str(e))
+except Exception as e:
+    FAIL.append("#707/qid tuple: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# ---------------------------------------------------------------- #707: question type validation (unhashable types must not leak TypeError)
+for _bad_type, _label in [
+    ([], "list type"),
+    ({}, "dict type"),
+    (None, "None type"),
+    (123, "int type"),
+]:
+    try:
+        Agent._check_question("q", {"type": _bad_type, "instructions": "test"})
+        FAIL.append("#707/type %s: no error raised" % _label)
+    except ValueError as e:
+        check_true("#707/type %s: message says unknown type" % _label,
+                   "unknown type" in str(e), str(e))
+    except TypeError as e:
+        FAIL.append("#707/type %s: TypeError leaked (regression: unhashable type): %s" % (_label, e))
+    except Exception as e:
+        FAIL.append("#707/type %s: %s instead of ValueError: %s" % (_label, type(e).__name__, e))
+
+# ---------------------------------------------------------------- #707: instructions validation
+_valid_type = {"type": "noul"}  # base without instructions
+
+# missing instructions is already tested above; add None, empty, wrong-type here
+for _ins_val, _label in [
+    (None, "None"),
+    ("", "empty string"),
+    ("   ", "whitespace-only string"),
+    ([], "empty list"),
+    ({}, "empty dict"),
+    (42, "int"),
+    (3.14, "float"),
+]:
+    try:
+        Agent._check_question("q", {"type": "noul", "instructions": _ins_val})
+        FAIL.append("#707/instructions %s: no error raised" % _label)
+    except ValueError as e:
+        check_true("#707/instructions %s: message mentions instructions" % _label,
+                   "instructions" in str(e), str(e))
+    except Exception as e:
+        FAIL.append("#707/instructions %s: %s instead of ValueError: %s" % (_label, type(e).__name__, e))
+
+# valid instructions forms that must NOT raise (str, dict, list)
+for _ins_val, _label in [
+    ("Is it urgent?", "plain string"),
+    ({"text": "Is it urgent?"}, "dict"),
+    (["Is it", "urgent?"], "list"),
+]:
+    try:
+        Agent._check_question("q", {"type": "noul", "instructions": _ins_val})
+        PASS.append("#707/instructions valid %s" % _label)
+    except Exception as e:
+        FAIL.append("#707/instructions valid %s raised %s: %s" % (_label, type(e).__name__, e))
+
+# ---------------------------------------------------------------- #707: predict_long early validation
+_pl_agent = _tiny_agent()
+
+# state is None: must fail before tokenization
+try:
+    _pl_agent.predict_long(None, {"q": {"type": "noul", "instructions": "Is it urgent?"}})
+    FAIL.append("#707/predict_long None state: no error raised")
+except ValueError as e:
+    check_true("#707/predict_long None state: message says state",
+               "state" in str(e).lower(), str(e))
+except Exception as e:
+    FAIL.append("#707/predict_long None state: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# questions is not a dict
+try:
+    _pl_agent.predict_long("hello", "not-a-dict")
+    FAIL.append("#707/predict_long non-dict questions: no error raised")
+except ValueError as e:
+    check_true("#707/predict_long non-dict questions: message says questions",
+               "questions" in str(e).lower(), str(e))
+except Exception as e:
+    FAIL.append("#707/predict_long non-dict questions: %s instead of ValueError: %s" % (type(e).__name__, e))
+
 # ...and the shapes that are valid still answer, so this is not validation-only coverage
 GOOD = {
     "choice": {"type": "choice", "instructions": "Which team?",

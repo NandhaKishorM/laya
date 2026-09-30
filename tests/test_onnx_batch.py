@@ -169,12 +169,19 @@ check("empty/no questions -> one zero-usage result per state",
       [{"model": "laya-rl-agent-onnx", "answers": {},
         "usage": {"input_tokens": 0, "output_tokens": 0}}] * len(STATES))
 check("empty/no questions -> no session run", no_q.session.calls, [])
+# invalid states: bare string / dict / None are TypeError (not a list of states); None inside batch is ValueError
 check_raises("empty/bare string rejected", TypeError,
              lambda: _bare_onnx().predict_batch("just a string", QUESTIONS))
 check_raises("empty/bare dict rejected", TypeError,
              lambda: _bare_onnx().predict_batch({"body": "x"}, QUESTIONS))
+check_raises("empty/None states rejected", TypeError,
+             lambda: _bare_onnx().predict_batch(None, QUESTIONS))
+check_raises("empty/None in batch rejected", ValueError,
+             lambda: _bare_onnx().predict_batch([None], QUESTIONS))
+check_raises("empty/non-dict questions rejected", ValueError,
+             lambda: _bare_onnx().predict_batch(STATES, ["not", "a", "dict"]))
 check_raises("empty/invalid question rejected before any run", ValueError,
-             lambda: _bare_onnx().predict_batch(STATES, {"bad": {"type": "nope", "instructions": "?"}}))
+             lambda: _bare_onnx().predict_batch(STATES, {"bad": {"type": "nope", "instructions": "?"}}))  # type not in QTYPES
 check("budget/max_len and head_max_len forward through the batch path",
       _bare_onnx().predict_batch(STATES, QUESTIONS, max_len=32, head_max_len=16),
       [_bare_onnx().system_one(s, QUESTIONS, max_len=32, head_max_len=16) for s in STATES])
@@ -228,6 +235,99 @@ failing.session = _Boom()
 check_raises("hooks/session failure propagates", RuntimeError,
              lambda: failing.predict_batch(STATES, QUESTIONS, hooks=[_ErrorHook(errors)]))
 check("hooks/error hook receives the failure once", [str(e) for e in errors], ["session failed"])
+
+
+# ---------------------------------------------------------------- #707 session is NOT called on invalid input
+_sentinel_session = _StubSession()
+
+
+class _NeverRunSession:
+    """A session stub that fails the test if .run() is called."""
+    calls = []
+
+    def run(self, names, inputs):
+        self.calls.append("CALLED")
+        raise AssertionError("session.run should NOT be called for invalid input")
+
+
+def _bare_onnx_sentinel():
+    a = _bare_onnx()
+    a.session = _NeverRunSession()
+    return a
+
+
+# None state in predict_long: must raise before tokenization, session never runs
+try:
+    _bare_onnx_sentinel().predict_long(None, QUESTIONS)
+    FAIL.append("#707/predict_long None state: no error raised")
+except ValueError:
+    check("#707/predict_long None state raises ValueError before session",
+          _NeverRunSession.calls, [])
+except Exception as e:  # noqa: BLE001
+    FAIL.append("#707/predict_long None state: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# non-dict questions in predict_long
+try:
+    _bare_onnx_sentinel().predict_long("hello", "not-a-dict")
+    FAIL.append("#707/predict_long non-dict questions: no error raised")
+except ValueError:
+    check("#707/predict_long non-dict questions raises ValueError", _NeverRunSession.calls, [])
+except Exception as e:  # noqa: BLE001
+    FAIL.append("#707/predict_long non-dict questions: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# None qid: _check_question raises ValueError, NOT TypeError, NOT unhashable
+try:
+    a = _bare_onnx_sentinel()
+    a.predict_batch(STATES, {None: {"type": "noul", "instructions": "test"}})
+    FAIL.append("#707/None qid in predict_batch: no error raised")
+except ValueError as e:
+    check_true("#707/None qid gives descriptive ValueError", "question id" in str(e).lower() or "non-empty" in str(e), str(e))
+    check("#707/None qid: session not called", _NeverRunSession.calls, [])
+except Exception as e:  # noqa: BLE001
+    FAIL.append("#707/None qid: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# empty string qid
+try:
+    a = _bare_onnx_sentinel()
+    a.predict_batch(STATES, {"": {"type": "noul", "instructions": "test"}})
+    FAIL.append("#707/empty qid in predict_batch: no error raised")
+except ValueError as e:
+    check_true("#707/empty qid gives descriptive ValueError", "non-empty" in str(e) or "question id" in str(e).lower(), str(e))
+except Exception as e:  # noqa: BLE001
+    FAIL.append("#707/empty qid: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# unhashable type in question type: must NOT raise TypeError, must raise ValueError
+try:
+    a = _bare_onnx_sentinel()
+    a.predict_batch(STATES, {"q": {"type": [], "instructions": "test"}})
+    FAIL.append("#707/unhashable type: no error raised")
+except ValueError as e:
+    check_true("#707/unhashable type raises ValueError not TypeError", "unknown type" in str(e), str(e))
+    check("#707/unhashable type: session not called", _NeverRunSession.calls, [])
+except TypeError as e:
+    FAIL.append("#707/unhashable type: raised TypeError (regression): %s" % e)
+except Exception as e:  # noqa: BLE001
+    FAIL.append("#707/unhashable type: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# None instructions
+try:
+    a = _bare_onnx_sentinel()
+    a.predict_batch(STATES, {"q": {"type": "noul", "instructions": None}})
+    FAIL.append("#707/None instructions: no error raised")
+except ValueError as e:
+    check_true("#707/None instructions raises ValueError", "instructions" in str(e), str(e))
+except Exception as e:  # noqa: BLE001
+    FAIL.append("#707/None instructions: %s instead of ValueError: %s" % (type(e).__name__, e))
+
+# empty string instructions
+try:
+    a = _bare_onnx_sentinel()
+    a.predict_batch(STATES, {"q": {"type": "noul", "instructions": ""}})
+    FAIL.append("#707/empty instructions: no error raised")
+except ValueError as e:
+    check_true("#707/empty instructions raises ValueError", "instructions" in str(e), str(e))
+except Exception as e:  # noqa: BLE001
+    FAIL.append("#707/empty instructions: %s instead of ValueError: %s" % (type(e).__name__, e))
 
 
 # ---------------------------------------------------------------- min_confidence

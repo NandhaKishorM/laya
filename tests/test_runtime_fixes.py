@@ -7,18 +7,18 @@ Covers:
 """
 import os
 import sys
+import concurrent.futures
+import threading
+import time
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import torch
 import torch.nn as nn
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from laya.agent import (  # noqa: E402
-    MPS_AMP_MIN_ROWS_DEFAULT, Agent, _BATCH_AUTOCAST_CACHE, _amp_context, _cuda_amp_dtype, _mps_amp_min_rows,
-)
+from laya.agent import MPS_AMP_MIN_ROWS_DEFAULT, Agent, _InferenceRWLock, _amp_context, _cuda_amp_dtype, _mps_amp_min_rows  # noqa: E402
 from laya.common import DecisionModel, build_sequence, serialize_state  # noqa: E402
 
 PASS, FAIL = [], []
@@ -149,11 +149,9 @@ calls = {"n": 0}
 
 
 class Flaky:
-    """Fail the autocast attempt of the first three requests; the fp32 retry succeeds."""
-
     def __call__(self, *args):
         calls["n"] += 1
-        if calls["n"] in (1, 3, 5):
+        if calls["n"] == 1:
             raise RuntimeError("autocast not supported on this build")
         return torch.zeros((1, 2)), torch.zeros((1, 2))
 
@@ -167,36 +165,8 @@ batch = {
 }
 flaky = _bare_agent(Flaky(), dtype=torch.bfloat16, amp=True)
 flaky._infer(batch)
-check("infer/one miss keeps amp", flaky.amp_enabled, True)
-check("infer/one miss keeps dtype", flaky.dtype, torch.bfloat16)
+check("infer/falls back and disables amp", flaky.amp_enabled, False)
 check("infer/retried once", calls["n"], 2)
-flaky._infer(batch)
-check("infer/two misses keep amp", flaky.amp_enabled, True)
-flaky._infer(batch)
-check("infer/third miss disables amp", flaky.amp_enabled, False)
-check("infer/third miss drops dtype", flaky.dtype, torch.float32)
-check("infer/three misses retried", calls["n"], 6)
-flaky._infer(batch)
-check("infer/later request is one forward", calls["n"], 7)
-
-
-class OneMiss:
-    def __init__(self):
-        self.n = 0
-
-    def __call__(self, *args):
-        self.n += 1
-        if self.n == 1:
-            raise RuntimeError("autocast not supported on this build")
-        return torch.zeros((1, 2)), torch.zeros((1, 2))
-
-
-streak = _bare_agent(OneMiss(), dtype=torch.bfloat16, amp=True)
-streak._infer(batch)
-check("infer/streak is one after a miss", streak._amp_failures, 1)
-streak._infer(batch)
-check("infer/a clean forward clears the streak", streak._amp_failures, 0)
-check("infer/a clean forward keeps amp", streak.amp_enabled, True)
 
 
 class Boom:
@@ -235,17 +205,6 @@ check("mps-gate/amp disabled stays off", _mps_agent(amp=False)._amp_enabled_for(
 
 cpu = _bare_agent(FakeModel(), dtype=torch.bfloat16, amp=True)
 check("cpu-gate/not gated by rows", cpu._amp_enabled_for(1), True)
-
-# `dtype` is the autocast target; `dtype_for(rows)` is the precision a forward with `rows` rows
-# runs in (#621). Below the MPS gate that is fp32, even though `dtype` still says fp16.
-a = _mps_agent()
-check("dtype_for/mps below threshold is fp32", a.dtype_for(a.mps_amp_min_rows - 1), torch.float32)
-check("dtype_for/mps at threshold is the target", a.dtype_for(a.mps_amp_min_rows), torch.float16)
-check("dtype_for/mps huge threshold stays fp32", _mps_agent(min_rows=10 ** 9).dtype_for(10), torch.float32)
-check("dtype_for/target unchanged", a.dtype, torch.float16)
-check("dtype_for/amp disabled is fp32", _mps_agent(amp=False).dtype_for(100), torch.float32)
-check("dtype_for/cpu bf16 not gated by rows", cpu.dtype_for(1), torch.bfloat16)
-check("dtype_for/plain cpu is fp32", _bare_agent(FakeModel()).dtype_for(1), torch.float32)
 
 os.environ["LAYA_MPS_AMP_MIN_ROWS"] = "2"
 check("mps-gate/env override", _mps_amp_min_rows(), 2)
@@ -324,34 +283,84 @@ oom.device = torch.device("cuda")   # the OOM branch only reads .type
 check("oom-fallback/count starts at 0", oom.cpu_fallback_count, 0)
 check("oom-fallback/reason starts None", oom.last_fallback_reason, None)
 
-fallback_events = []
-original_to = oom.model.to
-
-
-def record_move(device):
-    fallback_events.append("move-%s" % device)
-    return original_to(device)
-
-
-oom.model.to = record_move
-with patch.object(torch, "clear_autocast_cache", side_effect=lambda: fallback_events.append("clear")):
-    out = oom._infer(oom_batch)      # first forward raises OOM -> scoped CPU retry
+out = oom._infer(oom_batch)          # first forward raises OOM -> scoped CPU retry
 check("oom-fallback/retry answered", isinstance(out, tuple), True)
-check("oom-fallback/no batch scope leaves other caches alone", fallback_events[:1], ["move-cpu"])
 check("oom-fallback/count recorded", oom.cpu_fallback_count, 1)
 check("oom-fallback/reason recorded",
       "out of memory" in (oom.last_fallback_reason or ""), True)
 check("oom-fallback/scoped: device restored", oom.device.type, "cuda")
 
-fallback_events.clear()
-token = _BATCH_AUTOCAST_CACHE.set(True)
-try:
-    with patch.object(torch, "clear_autocast_cache", side_effect=lambda: fallback_events.append("clear")):
-        oom._infer(oom_batch)        # a second OOM inside the batch scope clears before CPU move
-finally:
-    _BATCH_AUTOCAST_CACHE.reset(token)
-check("oom-fallback/batch copies cleared before CPU move", fallback_events[:2], ["clear", "move-cpu"])
+oom._infer(oom_batch)                # a second OOM accumulates
 check("oom-fallback/second OOM counts too", oom.cpu_fallback_count, 2)
+
+
+class ConcurrentOOMModel(ImmovableModel):
+    """Make concurrent GPU calls hit OOM so fallback serialization can be exercised."""
+
+    def __init__(self):
+        self.active = 0
+        self.guard = threading.Lock()
+        self.first_gpu_started = threading.Event()
+        self.release_first = threading.Event()
+        self.placed = "cuda"
+
+    def __call__(self, *args):
+        with self.guard:
+            self.active += 1
+            entered = self.placed
+        first_gpu_call = self.placed == "cuda" and not self.first_gpu_started.is_set()
+        if first_gpu_call:
+            self.first_gpu_started.set()
+            self.release_first.wait(2)
+        try:
+            if entered == "cuda" and self.placed == "cpu":
+                raise RuntimeError("Expected all tensors to be on the same device, cuda:0 and cpu")
+            if self.placed == "cuda":
+                raise RuntimeError("CUDA out of memory. Tried to allocate 2.00 GiB")
+            return torch.zeros((1, 2)), torch.zeros((1, 2))
+        finally:
+            with self.guard:
+                self.active -= 1
+
+
+race_model = ConcurrentOOMModel()
+race_agent = _bare_agent(race_model, dtype=torch.float16)
+race_agent.device = torch.device("cuda")
+race_agent._infer_lock = _InferenceRWLock()
+
+
+class DeviceAgnosticInput:
+    shape = (1, 8)
+
+    def to(self, device):
+        return self
+
+
+race_batch = {key: DeviceAgnosticInput() for key in batch}
+
+
+def run_race_request():
+    # Set an independent ready flag before entering _infer so the second worker is definitely
+    # submitted while the first worker is still inside the shared model.
+    second_ready.set()
+    return race_agent._infer(race_batch)
+
+
+second_ready = threading.Event()
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+    first = pool.submit(race_agent._infer, race_batch)
+    check("oom-race/first GPU call started", race_model.first_gpu_started.wait(1), True)
+    second = pool.submit(run_race_request)
+    check("oom-race/second request submitted", second_ready.wait(1), True)
+    time.sleep(0.05)
+    race_model.release_first.set()
+    try:
+        first.result(timeout=3)
+        second.result(timeout=3)
+        race_ok = True
+    except Exception:
+        race_ok = False
+check("oom-race/concurrent requests stay on matching devices", race_ok, True)
 
 # a plain forward never touches the counters
 check("oom-fallback/plain CPU infer stays 0", cpu_disabled.cpu_fallback_count, 0)

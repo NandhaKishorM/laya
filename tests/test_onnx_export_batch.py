@@ -283,7 +283,13 @@ finally:
     export_onnx.example_inputs = _real_example_inputs
 
 check("verify/asks for one input set per batch", [a[0] for a in _asked], [1, 2, 3])
-
+# One width per batch, not the same shapes three times: sizing every batch identically left the
+# suite green while the sequence and marker axes were never exercised at more than one width, so a
+# marker-static graph would have verified clean.
+check("verify/varies the sequence width across batches",
+      len({a[1] for a in _asked}), len(_asked))
+check("verify/varies the marker count across batches",
+      len({a[2] for a in _asked}), len(_asked))
 check_true("verify/and every marker count it asks for fits its sequence",
            all(a[2] < a[1] for a in _asked), _asked)
 
@@ -356,6 +362,24 @@ if loaded is not None:
     }
     check("graph/the declared axes are the ones this suite requires, name by name",
           export_onnx.DYNAMIC_AXES, _WANT_AXES)
+    # One `Dim` per name, SHARED across the inputs that use it. `torch.export.Dim("batch_size")`
+    # called twice returns two unequal objects, so building one per occurrence would declare five
+    # independent batch symbols -- "each input may have its own batch size" instead of "they must
+    # agree". The exported graph names them identically either way and runs either way, so no
+    # behavioural check here can tell them apart; this pins the specification directly, which is
+    # the only place the difference exists.
+    _shapes = export_onnx._dynamic_shapes()
+    check("graph/one dynamic shape entry per input", len(_shapes), len(export_onnx.INPUT_NAMES))
+    _by_label = {}
+    for _name, _entry in zip(export_onnx.INPUT_NAMES, _shapes):
+        for _axis, _dim in _entry.items():
+            _by_label.setdefault(_WANT_AXES[_name][_axis], []).append(_dim)
+    check_true("graph/inputs sharing an axis name share one Dim object",
+               all(all(d is group[0] for d in group) for group in _by_label.values()),
+               {k: len({id(d) for d in v}) for k, v in _by_label.items()})
+    check("graph/and every declared axis name is represented",
+          sorted(_by_label), sorted({lbl for n in export_onnx.INPUT_NAMES
+                                     for lbl in _WANT_AXES[n].values()}))
     _wrong = []
     for _name, _axes in _WANT_AXES.items():
         _got = declared.get(_name, [])

@@ -1,6 +1,7 @@
 // laya-ts/tests/lang.test.ts
 import { describe, expect, it } from "vitest";
 import { analyse, detectScript, guessLatinLanguage, isEnglish } from "../src/lang.js";
+import { ENGLISH_LEXICON, ENGLISH_LEXICON_TEXT } from "../src/english-lexicon.js";
 describe("lang", () => {
   it("detects devanagari as non-latin", () => {
     expect(detectScript("मुझसे दो बार शुल्क लिया गया")).toBe("devanagari");
@@ -110,6 +111,30 @@ describe("lang", () => {
       expect(a.isEnglish, text).toBe(true);
       expect(a.languageUndecided, text).toBe(false);
     }
+  });
+  it("keeps British-spelling commands on English", () => {
+    for (const text of [
+      "play my favourite playlist",
+      "play my favorite playlist",
+      "show my favourite songs",
+      "set living room colour warm",
+      "change lights colour blue",
+    ]) {
+      const a = analyse(text);
+      expect(a.isEnglish, text).toBe(true);
+      expect(a.languageUndecided, text).toBe(false);
+    }
+    expect(analyse("turn the colour of the lights to blue").language).toBe("en");
+  });
+  it("uses the generated lexicon in frequency order", () => {
+    const words = ENGLISH_LEXICON_TEXT.split(/\s+/).filter((w) => w.length > 0);
+    expect(words.slice(0, 5)).toEqual(["the", "of", "and", "to", "a"]);
+    expect(words.length).toBe(ENGLISH_LEXICON.size);
+    for (const w of ["colour", "favourite", "labour", "behaviour", "harbour", "organised",
+      "recognised", "customise", "analyses", "cox", "jo"]) {
+      expect(ENGLISH_LEXICON.has(w), w).toBe(true);
+    }
+    expect(ENGLISH_LEXICON.has("analyzes")).toBe(false);
   });
   it("keeps undecided plain-ASCII under four words on English", () => {
     for (const text of ["alpha bravo charlie", "Quero cancelar", "refund me"]) {

@@ -109,6 +109,11 @@ that baseline has no input fingerprint, so a pass there does **not** establish
 identical inputs. Review the new raw JSON before committing it under
 `research/results/` and citing its measured scope from `BENCHMARKS.md`.
 
+The [2026-10-01 English CPU run](../results/massive_en_cpu_release_20261001.json)
+is a committed example with pinned inputs and all 100 decisions. Its accuracy,
+ECE and mean confidence match the existing numeric baseline; the report records
+the exact environment and input fingerprint for future comparisons.
+
 ## Method
 
 Chosen so results are comparable with the published tables, which is the point of a
@@ -197,7 +202,7 @@ forcing 256 or 512 drops it to 0.79.
 checkpoint, no network:
 
 ```bash
-python research/eval/test_laya_eval.py     # 64 passed, 0 failed
+python research/eval/test_laya_eval.py     # 84 passed, 0 failed
 ```
 
 It pins the upstream constants (seed 13, 20 options, the exact instruction string),

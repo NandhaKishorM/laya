@@ -68,11 +68,7 @@ export function triageQuestions(language = "en"): Record<string, unknown> {
     },
     is_urgent: {
       type: "noul",
-      instructions: "Does `message` describe a near deadline or ongoing impact that requires prompt handling?",
-      criteria: {
-        true: "The message states a near deadline or ongoing impact that needs prompt handling",
-        false: "No near deadline or ongoing impact requiring prompt handling is stated in the message",
-      },
+      instructions: "Does `message` communicate time pressure or a deadline?",
     },
     frustration: {
       type: "score",

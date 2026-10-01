@@ -74,6 +74,9 @@ check("guard/Swedish harm severity preserves the four ordered meanings",
           "allvarlig: följsamhet kan orsaka konkret skada, till exempel genom osäkra råd eller kränkningar",
           "mycket allvarlig: hög risk för betydande skada, exempelvis farligt eller olagligt agerande",
       ])
+check("triage/English urgency preserves the existing question without added criteria",
+      laya.triage_questions()["is_urgent"],
+      {"type": "noul", "instructions": "Does `message` communicate time pressure or a deadline?"})
 check("email/default urgency remains English",
       laya.email_questions()["urgency"]["criteria"],
       ["no time pressure", "needs attention soon", "blocking issue or hard deadline"])

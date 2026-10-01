@@ -373,6 +373,41 @@ check_true("onnx/load_calibration documents version/mismatch/clamp behaviour",
 check_true("onnx/load_calibration is the shared applier",
            "apply_calibration_payload" in inspect.getsource(ONNXAgent.load_calibration))
 
+# The identity the mismatch check reads must actually be set here, exactly as the PyTorch `Agent`
+# sets it (`agent.py:385-386`). Without both lines every v2 payload compares against `None`, the
+# mismatch branch fires unconditionally on ONNX, and the docstring sentence above is false.
+check_true("onnx/init stores the identity the mismatch check reads",
+           "self.model_id_or_path = model_id_or_path" in onnx_init_src
+           and "self.subfolder = subfolder" in onnx_init_src)
+
+# The behavioural half of that claim, with no weights needed: a stub carrying the same identity
+# `ONNXAgent.__init__` installs. A v2 payload recorded for this very checkpoint loads in silence;
+# one recorded for a different checkpoint warns and still applies. This is the reachability the
+# docstring asserts and the check the four string matches above could not prove.
+onnx_like = type("OnnxLike", (), {})()
+onnx_like.model_id_or_path = "convaiinnovations/laya"
+onnx_like.subfolder = None
+onnx_like.cfg = {"encoder": "answerdotai/ModernBERT-large"}
+matched = calibration_payload(
+    [1.3, 1.2, 1.1], {"choice:2": 1.4},
+    model_id_or_path="convaiinnovations/laya", subfolder=None,
+    config={"encoder": "answerdotai/ModernBERT-large"})
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    apply_calibration_payload(onnx_like, matched)
+check_true("onnx/matching checkpoint loads without warning", not caught,
+           [str(w.message) for w in caught])
+check("onnx/matching load applies temperature", onnx_like.temperature, [1.3, 1.2, 1.1])
+
+crossed = dict(matched)
+crossed["model_id_or_path"] = "convaiinnovations/laya-multilingual"
+with warnings.catch_warnings(record=True) as caught2:
+    warnings.simplefilter("always")
+    apply_calibration_payload(onnx_like, crossed)
+check_true("onnx/different checkpoint warns", bool(caught2),
+           [str(w.message) for w in caught2])
+check("onnx/different checkpoint still applies", onnx_like.temperature, [1.3, 1.2, 1.1])
+
 rec_src = inspect.getsource(records_from_labeled)
 check_true("records/_encode_state", "_encode_state" in rec_src)
 check_true("records/_decode_answers path", "_decode_answers" in rec_src)

@@ -99,6 +99,13 @@ class ONNXAgent(HookRegistry):
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
         self._hooks_mutex = threading.Lock()
         self.model_id = model_id_or_path
+        # The PyTorch `Agent` carries these two names (`agent.py:385-386`) and `calibrate`'s
+        # identity check reads them off whatever object it is handed. Without them here every v2
+        # payload's recorded checkpoint compares against `None`, so the mismatch branch always
+        # fires -- even for the very checkpoint this agent loaded. Mirror `Agent` so the check can
+        # actually match and `load_calibration`'s documented mismatch warning means something.
+        self.model_id_or_path = model_id_or_path
+        self.subfolder = subfolder
 
         import onnxruntime as ort
         from transformers import AutoTokenizer

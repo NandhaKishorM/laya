@@ -590,13 +590,17 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
     # The chunk grouping hashes the questions each row carries, but a `questions` dict is
     # only equal as written: the same choice schema with two `criteria` dicts written in a
     # different key order is a different signature, so rows that would share one forward pass
-    # are scored alone. Canonicalizing here is safe because chunking is a calling convention,
-    # not a model input -- the runner still receives each example's own `questions` object
-    # untouched. Only dict keys are reordered (`sort_keys=True` reorders dict keys and leaves
-    # lists alone): a list-valued `criteria` is positional, so two orders stay two questions,
-    # exactly as `Router._question_schema` treats them.
+    # are scored alone. Canonicalizing the key order is only safe where each row reaches the
+    # runner with its own `questions` object -- the per-request `_BATCH_REQUESTS` form. The
+    # positional `_BATCH_STATES` form hands the whole chunk `chunk[0].questions`, so folding
+    # key order there would render a later row with an earlier row's positional `criteria`
+    # order and silently move the metric. Gate the fold on the call shape: `sort_keys=True`
+    # for per-request runners, `sort_keys=False` (insertion order significant) for positional
+    # ones -- exactly the rule `Router._question_schema` and `_canonical` above keep. A
+    # list-valued `criteria` is positional on both paths, and `sort_keys` leaves lists alone.
+    folded = batch_form == _BATCH_REQUESTS
     chunk_signatures = [json.dumps(dict(sorted((example.questions or {}).items())),
-                                   sort_keys=True, default=str)
+                                   sort_keys=folded, default=str)
                         for example in examples]
     # The chunk shape travels with the calls that have one: a chunk of a single example is a plain
     # `predict`, which has no batch to reorder, and an off control is not sent at all.

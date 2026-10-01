@@ -1504,46 +1504,72 @@ def test_parse_revisions_rejects_two_different_bare_commits():
     assert "two commits" in str(exc.value)
 
 
-def test_chunking_ignores_criteria_dict_key_order():
-    """Two choice rows whose criteria dicts differ only in key order share a call.
+def _criteria_rows(criteria_first, criteria_second):
+    first = {"pick": {"type": "choice", "instructions": "Pick", "criteria": criteria_first}}
+    second = {"pick": {"type": "choice", "instructions": "Pick", "criteria": criteria_second}}
+    return Dataset([Example("s1", first, {"pick": "a"}),
+                    Example("s2", second, {"pick": "a"})])
 
-    A chunk is one forward pass per row, not one shared rendering, and the runner
-    still receives each example's own questions object untouched -- so the grouping
-    signature canonicalizes dict keys. A list-valued criteria is positional, so two
-    orders stay two questions, exactly as Router._question_schema treats them.
-    """
-    def order_of(states, questions):
-        return list(questions["pick"]["criteria"])
 
+ANSWER_A = {"s1": {"pick": choice_answer("a")}, "s2": {"pick": choice_answer("a")}}
+
+
+def test_chunking_keeps_criteria_key_order_on_the_positional_form():
+    """A `predict_batch(states, questions, ...)` runner receives ONE questions dict for the
+    whole chunk. Two rows whose criteria dicts differ only in key order must NOT be grouped
+    there: grouping hands row 2 row 1's positional `criteria` order, and the harness would
+    then report a metric for a question that row never declared. The fold is gated on the
+    call shape precisely so this path keeps `sort_keys=False`."""
     class OrderRecording(StubRunner):
         def __init__(self, by_state):
             super().__init__(by_state)
             self.orders = []
 
         def predict_batch(self, states, questions, model=None, batch_size=None):
-            self.orders.append(order_of(states, questions))
+            self.orders.append(list(questions["pick"]["criteria"]))
             return [{"model": "m", "answers": self.by_state[s]} for s in states]
 
-    answers = {"s1": {"pick": choice_answer("a")}, "s2": {"pick": choice_answer("a")}}
-
-    def rows(criteria_first, criteria_second):
-        first = {"pick": {"type": "choice", "instructions": "Pick",
-                          "criteria": criteria_first}}
-        second = {"pick": {"type": "choice", "instructions": "Pick",
-                           "criteria": criteria_second}}
-        return Dataset([Example("s1", first, {"pick": "a"}),
-                        Example("s2", second, {"pick": "a"})])
-
-    runner = OrderRecording(answers)
-    report = evaluate(runner,
-                      rows({"a": "alpha", "b": "beta"}, {"b": "beta", "a": "alpha"}),
+    runner = OrderRecording(ANSWER_A)
+    report = evaluate(runner, _criteria_rows({"a": "alpha", "b": "beta"},
+                                             {"b": "beta", "a": "alpha"}),
                       evaluators=[ChoiceAccuracy()], batch_size=2)
+    # Not grouped: the two rows score through their own single predicts, so the batch call
+    # -- the one that would have imposed row 0's order on row 1 -- never runs.
+    assert runner.orders == [], "the positional form must not batch key-order-different rows"
+    assert report.config["timing"]["rows_grouped"] == 0
     assert report.overall["choice_accuracy"] == 1.0
-    assert report.config["timing"]["rows_grouped"] == 2, "one shared call, not two singles"
-    assert runner.orders == [["a", "b"]], "each row's own questions reach the runner"
 
-    listed = OrderRecording(answers)
-    listed_report = evaluate(listed, rows(["alpha", "beta"], ["beta", "alpha"]),
+    listed = OrderRecording(ANSWER_A)
+    listed_report = evaluate(listed, _criteria_rows(["alpha", "beta"], ["beta", "alpha"]),
                              evaluators=[ChoiceAccuracy()], batch_size=2)
     assert listed_report.config["timing"]["rows_grouped"] == 0, \
         "a reordered list criteria is a different question and still chunks alone"
+
+
+def test_chunking_folds_criteria_key_order_on_the_request_form():
+    """The per-request `predict_batch(requests)` shape carries each row's own `questions`, so
+    folding dict key order is safe here -- these two rows share one call and each request still
+    rides with its own criteria order. This is the only path the canonicalisation belongs on."""
+    class ReqRecording(StubRunner):
+        def __init__(self, by_state):
+            super().__init__(by_state)
+            self.orders = []
+
+        def predict_batch(self, requests, batch_size=None):
+            self.orders.append([list(r["questions"]["pick"]["criteria"]) for r in requests])
+            return [{"model": "m", "answers": self.by_state[r["state"]]} for r in requests]
+
+    runner = ReqRecording(ANSWER_A)
+    report = evaluate(runner, _criteria_rows({"a": "alpha", "b": "beta"},
+                                             {"b": "beta", "a": "alpha"}),
+                      evaluators=[ChoiceAccuracy()], batch_size=2)
+    assert report.config["timing"]["rows_grouped"] == 2, "one shared call, not two singles"
+    # Each request keeps its own criteria order -- row 0 a,b; row 1 b,a -- nothing was rewritten.
+    assert runner.orders == [[["a", "b"], ["b", "a"]]], repr(runner.orders)
+    assert report.overall["choice_accuracy"] == 1.0
+
+    listed = ReqRecording(ANSWER_A)
+    listed_report = evaluate(listed, _criteria_rows(["alpha", "beta"], ["beta", "alpha"]),
+                             evaluators=[ChoiceAccuracy()], batch_size=2)
+    assert listed_report.config["timing"]["rows_grouped"] == 0, \
+        "a reordered list criteria stays positional even for the request form"

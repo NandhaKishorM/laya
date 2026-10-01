@@ -1478,6 +1478,10 @@ from laya.hooks import validate_timeout  # noqa: E402
 
 check_raises("timeout/zero is rejected", ValueError, lambda: validate_timeout(0))
 check_raises("timeout/negative is rejected", ValueError, lambda: validate_timeout(-0.5))
+check_raises("timeout/NaN is rejected", ValueError, lambda: validate_timeout(float("nan")))
+check_raises("timeout/infinity is rejected", ValueError, lambda: validate_timeout(float("inf")))
+check_raises("timeout/NaN is rejected when a Router is built", ValueError,
+             lambda: Router(hooks_timeout=float("nan")))
 check("timeout/positive passes through", validate_timeout(1.5), 1.5)
 check("timeout/None means no limit", validate_timeout(None), None)
 

@@ -64,6 +64,7 @@ authentication and request limits. CI runs the SDK checks on Node.js 22 and 24.
 Tiny random weights verify transport and numerical parity, not pretrained
 quality or performance.
 
-See the [SDK guide](../sdk/typescript/README.md) for setup, examples, and npm
+See the [SDK guide](https://github.com/NandhaKishorM/laya/blob/main/sdk/typescript/README.md)
+for setup, examples, and npm
 publishing. The package will be published under the `laya-client` name. Python release workflows
 are unchanged.

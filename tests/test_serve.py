@@ -406,6 +406,42 @@ def test_health_reports_cpu_fallback_counters(monkeypatch):
     assert "out of memory" in fb["english"]["last_reason"], fb
 
 
+def test_health_auth_when_key_unset(monkeypatch):
+    """API key unset + no Authorization answers 200."""
+    client, _ = _client(monkeypatch, api_key=None)
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+
+
+def test_health_auth_required_when_key_set(monkeypatch):
+    """API key configured enforces bearer auth: missing -> 401, wrong -> 401, correct -> 200."""
+    client, _ = _client(monkeypatch, api_key="s3cret")
+
+    # missing Authorization header
+    assert client.get("/health").status_code == 401
+
+    # invalid bearer token
+    assert client.get("/health", headers={"Authorization": "Bearer wrong"}).status_code == 401
+
+    # valid bearer token
+    ok = client.get("/health", headers={"Authorization": "Bearer s3cret"})
+    assert ok.status_code == 200
+    assert ok.json()["status"] == "ok"
+
+
+def test_health_auth_rejects_a_non_ascii_header(monkeypatch):
+    """A hostile Authorization header on /health must answer 401, not raise."""
+    client, _ = _client(monkeypatch, api_key="s3cret")
+    for header in (
+        "Bearer s\u00e9cret".encode("latin-1"),
+        "B\u00ebarer s3cret".encode("latin-1"),
+        b"Bearer \xff\xfe",
+    ):
+        r = client.get("/health", headers={"Authorization": header})
+        assert r.status_code == 401, (header, r.status_code)
+
+
 def test_helpers():
     assert _resolve_model("multilingual") == "multilingual"
     assert _resolve_model("convaiinnovations/laya-multilingual") == "multilingual"

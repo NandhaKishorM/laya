@@ -736,7 +736,8 @@ def create_app(router: Optional[Any] = None):
             raise HTTPException(status_code=401, detail="invalid or missing bearer token")
 
     @app.get("/health")
-    def health() -> Dict[str, Any]:
+    def health(authorization: str | None = Header(default=None)) -> Dict[str, Any]:
+        _check_auth(authorization)
         # `device` is where a resident checkpoint really computes, not what was asked for:
         # `Agent.device` reflects the silent GPU -> CPU fallback, so a container that asked
         # for a GPU it did not get says so. With nothing resident it is the configured

@@ -182,15 +182,18 @@ def export_module(model, output_path: str, opset_version: int = 18) -> str:
     # The encoder is not detached here: ONNX export runs the model under `torch.no_grad`
     # semantics anyway, and `detach_encoder` only affects the hidden-state gradient, so the
     # keyword would change nothing in the exported graph.
-    # `dynamic_shapes`, not `dynamic_axes`. Both work from a two-row example, and neither fixes
-    # the bug on its own -- `TRACE_BATCH` does, because `torch.export` specializes any example
-    # dimension of extent 1 whatever the axis declaration says. What decides between them is which
-    # one keeps working: torch calls `dynamic_axes` deprecated under `dynamo=True` ("Prefer
-    # specifying ``dynamic_shapes``"), and on the release that drops the conversion an export
-    # declaring only `dynamic_axes` would go *silently* static -- a graph that serves one question,
-    # no error, exactly the failure this file exists to close. `verify_batch_dynamic` is the only
-    # thing that would catch that day, which is why it runs by default and compares numbers rather
-    # than shapes.
+    # Why the declaration is not what fixes this, either way round. Both `dynamic_axes` and
+    # `torch.export.Dim`s produce the same graph from a two-row example, and neither fixes #695 on
+    # its own: `TRACE_BATCH` does, because `torch.export` specializes any example dimension of
+    # extent 1 whatever the axis declaration says. `DYNAMIC_AXES` is the form that ships, per #726
+    # and for the torch-compatibility reason recorded there.
+    #
+    # Torch does call `dynamic_axes` deprecated under `dynamo=True` ("Prefer specifying
+    # ``dynamic_shapes``"), so on the release that drops the conversion an export declaring only
+    # `dynamic_axes` would go *silently* static -- a graph that serves one question, no error,
+    # exactly the failure this file exists to close. That is an argument for keeping
+    # `verify_batch_dynamic` on by default, not for switching the declaration ahead of the torch
+    # versions this package supports: the verification is what would catch that day.
     torch.onnx.export(
         model,
         example_inputs(),

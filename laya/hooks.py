@@ -388,10 +388,12 @@ class HookRegistry:
     def hooks_installed(self, *hooks: HookArg):
         """Install hooks for the duration of the `with` block, then remove them.
 
+        Each argument is one hook or a sequence of hooks, as `add_hook` takes.
+
             with agent.hooks_installed(tracer):
                 agent.system_one(state, questions)
         """
-        added = normalise_hooks(list(hooks))
+        added = [hook for arg in hooks for hook in normalise_hooks(arg)]
         self._extend_hooks(added)
         try:
             yield self

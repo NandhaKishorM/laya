@@ -893,10 +893,14 @@ def laya_predict_long(
                 if agent is None:
                     raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
                 # An Agent answers but does not route: run it directly and report
-                # a null model below, instead of echoing 'auto' (#444).
+                # a null model below, instead of echoing 'auto' (#444). `Agent.predict_long`
+                # has no `task` parameter -- only a Router routes between checkpoints -- so the
+                # keyword is dropped here exactly as `laya_predict` drops it (`tools.py:415`);
+                # forwarding it would surface as a raw TypeError, not an actionable refusal.
                 nonlocal auto_without_router
                 auto_without_router = True
-                return _scan(agent, state_d, questions_d, **scan)
+                return _scan(agent, state_d, questions_d,
+                             **{k: v for k, v in scan.items() if k != "task"})
             return _scan(router, state_d, questions_d, **scan)
         if agent is not None:
             return _scan(agent, state_d, questions_d, **scan)

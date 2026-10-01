@@ -1462,8 +1462,17 @@ class LongAgent:
     def __init__(self):
         self.seen = None
 
-    def predict_long(self, state, questions, **kwargs):
-        self.seen = kwargs
+    def predict_long(self, state, questions, window=None, stride=None, aggregate=None,
+                     batch_size=None, lang=None, hooks=None, on_predict_start=None,
+                     on_predict_end=None, hooks_raise=None, hooks_timeout=None):
+        # The exact real `Agent.predict_long` signature, with no `**kwargs` and no `task`:
+        # an Agent answers but never routes, so a forwarded `task` must raise rather than be
+        # silently absorbed. Recording only the non-None controls keeps the "unset stays absent"
+        # assertion while letting a wrongly-forwarded keyword reach the tool as a TypeError.
+        self.seen = {k: v for k, v in (
+            ("window", window), ("stride", stride), ("aggregate", aggregate),
+            ("batch_size", batch_size), ("lang", lang),
+        ) if v is not None}
         return {"answers": {"refund": {"noul": 0.8, "confidence": 0.7,
                                        "window": {"index": 0, "token_start": 0,
                                                   "token_end": 10, "count": 3}}},
@@ -1576,6 +1585,15 @@ def test_predict_long():
        out["routing"] == {"model": None, "repo": None, "reason": "auto routing without router"},
        repr(out["routing"]))
     ok("long/bare_agent_no_device", "device" not in out, repr(out))
+
+    # Auto + a bare agent + a task: the Agent cannot route between checkpoints, so `task` must be
+    # dropped before the scan. `Agent.predict_long` has no such parameter -- forwarding it surfaces
+    # as a raw TypeError (an opaque internal_error over the tool boundary) instead of an answer.
+    # This is the branch the pinned-model guard at the top of the tool never reaches.
+    agent = LongAgent()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, task="typed_decisions", agent=agent)
+    ok("long/bare_agent_task_dropped", "task" not in agent.seen, repr(agent.seen))
+    ok("long/bare_agent_task_answers", out["answers"]["refund"]["noul"] == 0.8, repr(out))
 
 
 # --- per-call controls: task / lang / max_len / head_max_len -------------------

@@ -1348,6 +1348,285 @@ finally:
     langchain_module._call_remote = _real_call_remote
 
 
+# ------------------------------------ 8. The two Router-only routing hints, on every entry point
+from laya.integrations import _controls as controls_module  # noqa: E402
+
+ROUTER_HINTS = tuple(controls_module.ROUTER_ONLY_CONTROLS)
+
+# The tuples name the arguments their builders accept, in both directions.
+check("routing/routing tuple names router_kwargs",
+      set(inspect.signature(controls_module.router_kwargs).parameters), set(ROUTER_HINTS))
+
+# A `Router` reads both hints and an `Agent` -- which has no routing step to read them in -- reads
+# neither, so the wrapper's rule (forward at one, refuse by name at the other) is only correct
+# while these two lines hold. Read from core, not from a comment: if `Agent.predict` ever gains
+# `task`, the refusals below stop being right, and this is what says so.
+for _c in ROUTER_HINTS:
+    check_true("routing/%s is a Router.predict parameter" % _c, _c in router_params)
+    check_true("routing/%s is not an Agent.predict parameter" % _c, _c not in agent_params)
+
+ROUTING_ANSWER = {"model": "mock", "answers": {
+    "route": {"type": "choice", "choice": "billing", "confidence": 0.9, "probabilities": {}}}}
+
+
+class RoutingRunner:
+    """A Router-shaped runner: it declares the arguments core's `Router.predict` declares.
+
+    Explicit parameters rather than `**kwargs`, because what this section checks is the *name* a
+    hint arrives under -- a `**kwargs` sink records anything, including one that arrived misspelled
+    or in the wrong slot.
+    """
+
+    def __init__(self):
+        self.seen = {}
+
+    def predict(self, state, questions, model=None, task=None, lang=None, lang_guess=None,
+                max_len=None, head_max_len=None):
+        self.seen = {k: v for k, v in locals().items()
+                     if v is not None and k not in ("self", "state", "questions")}
+        return dict(ROUTING_ANSWER)
+
+
+class NonRoutingRunner(RoutingRunner):
+    """An Agent-shaped runner: the budgets yes, either routing hint never."""
+
+    def predict(self, state, questions, max_len=None, head_max_len=None):
+        return RoutingRunner.predict(self, state, questions, max_len=max_len,
+                                     head_max_len=head_max_len)
+
+
+check_true("routing/RoutingRunner declares only accepted arguments",
+           (set(inspect.signature(RoutingRunner.predict).parameters)
+            - {"self", "state", "questions"}) <= router_params)
+check_true("routing/NonRoutingRunner declares only accepted arguments",
+           (set(inspect.signature(NonRoutingRunner.predict).parameters)
+            - {"self", "state", "questions"}) <= agent_params)
+
+# Every node in the family, built around a runner of choosing.
+def _routing_seen(build, runner_cls, **hints):
+    runner = runner_cls()
+    build(runner, **hints).invoke("some state")
+    return runner.seen
+
+
+for name, build in HOOK_NODES:
+    check("routing/%s default sends nothing" % name, _routing_seen(build, RoutingRunner), {})
+    check("routing/%s forwards both hints" % name,
+          _routing_seen(build, RoutingRunner, task="typed_decisions", lang_guess="de"),
+          {"task": "typed_decisions", "lang_guess": "de"})
+    check("routing/%s forwards one hint alone" % name,
+          _routing_seen(build, RoutingRunner, lang_guess="de"), {"lang_guess": "de"})
+    # A blank hint is core's documented "no usable hint, fall through to detection" -- a value the
+    # caller chose, so it must survive rather than drop out as if unset.
+    check("routing/%s keeps an empty lang_guess" % name,
+          _routing_seen(build, RoutingRunner, lang_guess=""), {"lang_guess": ""})
+    check("routing/%s beside model and budget" % name,
+          _routing_seen(build, RoutingRunner, model="laya-multilingual", max_len=1024,
+                        task="typed_decisions"),
+          {"model": "laya-multilingual", "max_len": 1024, "task": "typed_decisions"})
+
+    # A runner with no routing step must not be handed a routing hint. Forwarding it is a
+    # `TypeError` raised inside core, past every hook, on the way to an answer nobody asked for;
+    # dropping it is the silence this whole module exists to break.
+    for _c, _sample in zip(ROUTER_HINTS, ("typed_decisions", "de")):
+        raised, message = False, ""
+        try:
+            _routing_seen(build, NonRoutingRunner, **{_c: _sample})
+        except ValueError as e:
+            raised, message = True, str(e)
+        check_true("routing/%s refuses %s at a runner that cannot route" % (name, _c), raised)
+        check_true("routing/%s %s names itself" % (name, _c), _c in message)
+        check_true("routing/%s %s names the call that refused" % (name, _c),
+                   "NonRoutingRunner.predict" in message)
+        check_true("routing/%s %s says what to do instead" % (name, _c), "Router" in message)
+
+    # The refusal happens before the runner is called, so a hint that cannot be honoured cannot
+    # also carry a partially-applied call with it.
+    strict = NonRoutingRunner()
+    try:
+        build(strict, task="typed_decisions").invoke("some state")
+    except ValueError:
+        pass
+    check("routing/%s refusal happens before the call" % name, strict.seen, {})
+
+# Each constructor has to accept both names, or the two checks above are vacuous: `extra` is
+# "allow" on these runnables, so a parameter the class forgot is still accepted at construction,
+# still reads back as a normal attribute, and is still dropped at the call. That is the shape of
+# the bug this section closes, and why declaring the field is checked separately from storing it.
+for cls in (LayaRouter, LayaGuardrail, LayaTriage, LayaEvaluator):
+    for _c in ROUTER_HINTS:
+        check_true("routing/%s __init__ takes %s" % (cls.__name__, _c),
+                   _c in inspect.signature(cls.__init__).parameters)
+        check_true("routing/%s declares %s as a field" % (cls.__name__, _c),
+                   _c in cls.__annotations__)
+
+# The remote path: both hints are laya-serve body controls, so they ride in the JSON, and a blank
+# one stays in it. `LayaDecision` is not in this family -- it bypasses `_execute_decision` and calls
+# `laya.decide` against a schema, so it has its own forwarding to make.
+remote_routing_calls = []
+_real_remote = langchain_module._call_remote
+
+
+def routing_spy_call_remote(base_url, state, questions, api_key=None, model=None, **extras):
+    remote_routing_calls.append(extras)
+    return {"answers": {"route": {"type": "choice", "choice": "billing", "confidence": 0.9}}}
+
+
+REMOTE_NODES = (
+    ("router", lambda **kw: LayaRouter(HOOK_CRITERIA, base_url="http://laya:8000", **kw)),
+    ("guardrail", lambda **kw: LayaGuardrail(questions=HOOK_QUESTIONS,
+                                             base_url="http://laya:8000", **kw)),
+    ("triage", lambda **kw: LayaTriage(base_url="http://laya:8000", **kw)),
+    ("evaluator", lambda **kw: LayaEvaluator(
+        questions={"faithful": {"type": "noul", "instructions": "faithful?"}},
+        base_url="http://laya:8000", **kw)),
+)
+
+langchain_module._call_remote = routing_spy_call_remote
+try:
+    for name, build in REMOTE_NODES:
+        remote_routing_calls.clear()
+        build().invoke("some state")
+        check("routing/%s remote sends nothing by default" % name, remote_routing_calls[-1], {})
+
+        remote_routing_calls.clear()
+        build(task="typed_decisions", lang_guess="de").invoke("some state")
+        check("routing/%s remote body carries both hints" % name, remote_routing_calls[-1],
+              {"task": "typed_decisions", "lang_guess": "de"})
+
+        remote_routing_calls.clear()
+        build(lang_guess="").invoke("some state")
+        check("routing/%s remote body keeps an empty lang_guess" % name,
+              remote_routing_calls[-1], {"lang_guess": ""})
+
+        # A `lang_guess` may also be a callable taking the state, and only the code string has a
+        # wire form: `laya-serve` validates it as a string and answers 422 to anything else, so the
+        # callable would fail as an HTTP status after the request had already gone out.
+        raised, message = False, ""
+        try:
+            build(lang_guess=lambda state: "de").invoke("some state")
+        except ValueError as e:
+            raised, message = True, str(e)
+        check_true("routing/%s remote refuses a callable lang_guess" % name, raised)
+        check_true("routing/%s callable lang_guess names itself" % name, "lang_guess" in message)
+        check_true("routing/%s callable lang_guess names the endpoint" % name,
+                   "laya-serve" in message)
+    check("routing/remote made no call for a refused hint", len(remote_routing_calls), 1)
+finally:
+    langchain_module._call_remote = _real_remote
+
+# The real `_call_remote` has to put them in the JSON body, not merely accept the keywords.
+_routing_sent = {}
+
+
+class _RoutingFakeOpener:
+    def open(self, req, timeout=None):
+        _routing_sent["body"] = json.loads(req.data.decode("utf-8"))
+        return _FakeResponse()
+
+
+_real_opener = langchain_module.urllib.request.build_opener
+langchain_module.urllib.request.build_opener = lambda *a, **k: _RoutingFakeOpener()
+try:
+    langchain_module._call_remote("http://laya:8000", "x", {}, task="typed_decisions",
+                                  lang_guess="de")
+    check("routing/_call_remote body carries task", _routing_sent["body"].get("task"),
+          "typed_decisions")
+    check("routing/_call_remote body carries lang_guess",
+          _routing_sent["body"].get("lang_guess"), "de")
+    langchain_module._call_remote("http://laya:8000", "x", {})
+    check_true("routing/_call_remote omits unset hints",
+               "task" not in _routing_sent["body"] and "lang_guess" not in _routing_sent["body"])
+finally:
+    langchain_module.urllib.request.build_opener = _real_opener
+
+
+# The batch entry points, which reach core through a different door: a `Router` gets one request
+# dict per state and `route_batch` hands each dict's hints to `route`, while an `Agent` gets the
+# hints as call arguments it does not take. Both are checked at the signature of that door.
+class RoutingRouterLike(MockRouterLike):
+    """Router-shaped, and it declares `route` the way core does: hints in, no `**kwargs`."""
+
+    def __init__(self, response_fn):
+        super().__init__(response_fn)
+        self.routed = []
+
+    def route(self, state, questions, model=None, task=None, lang=None, lang_guess=None):
+        self.routed.append({k: v for k, v in locals().items()
+                            if v is not None and k not in ("self", "state", "questions")})
+        return {"model": "english"}
+
+
+class NonRoutingBatchAgent(MockBatchAgent):
+    """`predict_batch(states, questions, ...)` with core's Agent argument list -- no hints."""
+
+    def predict_batch(self, states, questions, batch_size=None, lang=None, max_len=None,
+                      head_max_len=None, sort_by_length=False):
+        return super().predict_batch(states, questions, batch_size=batch_size, lang=lang,
+                                     max_len=max_len, head_max_len=head_max_len,
+                                     sort_by_length=sort_by_length)
+
+
+check_true("routing/RoutingRouterLike.route declares only accepted arguments",
+           (set(inspect.signature(RoutingRouterLike.route).parameters)
+            - {"self", "state", "questions"}) <= set(inspect.signature(Router.route).parameters))
+
+_router_shape = RoutingRouterLike(mock_router_response)
+_node = LayaRouter(HOOK_CRITERIA, agent=_router_shape, task="typed_decisions", lang_guess="de")
+check("routing/batch on a Router shapes the answers", _node.batch(ROUTER_INPUTS),
+      [_node.invoke(text) for text in ROUTER_INPUTS])
+check("routing/batch Router carries both hints per request",
+      {k: v for k, v in _router_shape.batch_calls[-1]["requests"][0].items()
+       if k in ROUTER_HINTS},
+      {"task": "typed_decisions", "lang_guess": "de"})
+
+_plain_shape = RoutingRouterLike(mock_router_response)
+LayaRouter(HOOK_CRITERIA, agent=_plain_shape).batch(ROUTER_INPUTS)
+check("routing/batch Router sends nothing by default",
+      [{k: v for k, v in request.items() if k in ROUTER_HINTS}
+       for request in _plain_shape.batch_calls[-1]["requests"]],
+      [{} for _ in ROUTER_INPUTS])
+
+_agent_shape = NonRoutingBatchAgent(mock_router_response)
+try:
+    LayaRouter(HOOK_CRITERIA, agent=_agent_shape, task="typed_decisions").batch(ROUTER_INPUTS)
+    check_true("routing/batch refuses task at a runner that cannot route", False, "no error raised")
+except ValueError as e:
+    check_true("routing/batch refuses task at a runner that cannot route", True)
+    check_true("routing/batch refusal names the batch entry point",
+               "NonRoutingBatchAgent.predict_batch" in str(e), str(e))
+    check("routing/batch refusal made no call", _agent_shape.batch_calls, [])
+
+# A duck-typed batch runner that takes `**kwargs` is not refused: this module cannot tell what it
+# reads, and refusing on a guess would block a call that works.
+_kwargs_batch = MockBatchAgent(mock_router_response)
+LayaRouter(HOOK_CRITERIA, agent=_kwargs_batch, task="typed_decisions").batch(ROUTER_INPUTS)
+check("routing/batch forwards to a **kwargs runner",
+      _kwargs_batch.batch_calls[-1]["kwargs"].get("task"), "typed_decisions")
+
+
+class RouteIgnoringHintsRouter(MockRouterLike):
+    """Router-shaped, but its routing step reads neither hint.
+
+    This is the witness that the Router batch path asks about the door the hints actually go
+    through: `predict_batch(requests)` takes no routing argument at all and would accept anything,
+    so checking that signature instead of `route`'s would forward in silence.
+    """
+
+    def route(self, state, questions, model=None, lang=None):
+        return {"model": "english"}
+
+
+_hints_free_router = RouteIgnoringHintsRouter(mock_router_response)
+try:
+    LayaRouter(HOOK_CRITERIA, agent=_hints_free_router, task="typed_decisions").batch(
+        ROUTER_INPUTS)
+    check_true("routing/batch Router asks about route", False, "no error raised")
+except ValueError as exc:
+    check_true("routing/batch Router asks about route",
+               "RouteIgnoringHintsRouter.route" in str(exc), str(exc))
+
+
 # --------------------------------------------------------------- Summary
 print(f"PASS: {len(PASS)}")
 print(f"FAIL: {len(FAIL)}")

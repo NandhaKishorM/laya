@@ -344,6 +344,8 @@ from laya.router import Router
 
 CONTROLS = (tuple(_controls.PREDICT_CONTROLS) + tuple(_controls.DECISION_CONTROLS)
             + tuple(_controls.HOOK_CONTROLS))
+CONTROLS = tuple(_controls.PREDICT_CONTROLS) + tuple(_controls.HOOK_CONTROLS)
+ROUTER_HINTS = tuple(_controls.ROUTER_ONLY_CONTROLS)
 
 
 def _params(fn):
@@ -357,6 +359,8 @@ check("controls/decision tuple names decision_kwargs",
       set(_params(_controls.decision_kwargs)), set(_controls.DECISION_CONTROLS))
 check("controls/hook tuple names hook_kwargs",
       set(_params(_controls.hook_kwargs)), set(_controls.HOOK_CONTROLS))
+check("controls/routing tuple names router_kwargs",
+      set(_params(_controls.router_kwargs)), set(_controls.ROUTER_ONLY_CONTROLS))
 
 # Everything this file calls a control is an argument a real runner accepts, or a chain would fail
 # with a TypeError deep inside core instead of at the call site.
@@ -366,15 +370,23 @@ for _c in CONTROLS:
     check_true("controls/%s accepted by Agent" % _c, _c in _agent_params)
     check_true("controls/%s accepted by Router.predict" % _c, _c in _router_params)
 
+# The two routing hints are the opposite case, and the whole reason `require_router_controls`
+# exists: a `Router` reads them and an `Agent` -- which has no routing step to read them in --
+# does not. Read from core rather than asserted in a comment, because a runner that gains either
+# knob turns the refusal below from correct into a bug, and only this check would say so.
+for _c in ROUTER_HINTS:
+    check_true("routing/%s accepted by Router.predict" % _c, _c in _router_params)
+    check_true("routing/%s rejected by Agent.predict" % _c, _c not in _agent_params)
+
 # Both classes and the shared executor must accept all of them. Two classes, two call sites --
 # a third of them missing is exactly the bug this section exists to keep shut.
 for cls in (LayaCrewRouter, LayaTaskGuard):
-    for _c in CONTROLS:
+    for _c in CONTROLS + ROUTER_HINTS:
         check_true("controls/%s takes %s" % (cls.__name__, _c), _c in _params(cls.__init__))
 check("controls/_execute_decision takes every control",
       set(_params(crewai_module._execute_decision)) - {"state", "questions", "agent",
                                                        "base_url", "api_key", "model"},
-      set(CONTROLS))
+      set(CONTROLS) | set(ROUTER_HINTS))
 
 # The three wrappers end at the same runner call, so they must accept the same controls.
 for _mod in (langchain_module, llamaindex_module):
@@ -572,6 +584,133 @@ def _silent(state, questions):
 kept = LayaCrewRouter(agent=DisagreeingAgent(_silent), confidence_threshold=0.80).route(
     "anything", agents)
 check("gate/missing confidence still passes", kept.agent_index, 2)
+# ------------------------------------------------------- 5c. The two Router-only routing hints
+ROUTING_ANSWER = {
+    "answers": {
+        "delegation": {"choice": "agent_0", "confidence": 0.9, "answer_confidence": 0.9},
+        "injection_risk": {"type": "noul", "noul": 0.1, "confidence": 0.9},
+    },
+    "routing": {"model": "english", "repo": None, "reason": "explicit model"},
+}
+
+
+class RoutingRunner:
+    """A Router-shaped runner: it declares the arguments core's `Router.predict` declares.
+
+    Explicit parameters rather than `**kwargs`, because the point of the section is the *name* a
+    control arrives under -- a `**kwargs` sink records anything, including a control that arrived
+    misspelled or in the wrong slot.
+    """
+
+    def __init__(self):
+        self.seen = {}
+
+    def predict(self, state, questions, model=None, task=None, lang=None, lang_guess=None,
+                max_len=None, head_max_len=None):
+        self.seen = {k: v for k, v in locals().items()
+                     if v is not None and k not in ("self", "state", "questions")}
+        return dict(ROUTING_ANSWER)
+
+
+class NonRoutingRunner(RoutingRunner):
+    """An Agent-shaped runner: the budgets yes, either routing hint never."""
+
+    def predict(self, state, questions, max_len=None, head_max_len=None):
+        return RoutingRunner.predict(self, state, questions, max_len=max_len,
+                                    head_max_len=head_max_len)
+
+
+# A mock that silently diverges from core would make the two sections below agree with each other
+# and with nothing real. Each declared name has to be one the entry point it imitates accepts.
+check_true("routing/RoutingRunner imitates accepted arguments only",
+           (_params(RoutingRunner.predict) - {"state", "questions"}) <= _router_params,
+           repr(_params(RoutingRunner.predict)))
+check_true("routing/NonRoutingRunner imitates accepted arguments only",
+           (_params(NonRoutingRunner.predict) - {"state", "questions"}) <= _agent_params,
+           repr(_params(NonRoutingRunner.predict)))
+
+SURFACES = (
+    ("router", lambda runner, **kw: LayaCrewRouter(agent=runner, **kw).route(
+        "Analyze Q3 sales", agents)),
+    ("guard", lambda runner, **kw: LayaTaskGuard(agent=runner, **kw).screen(
+        "Summarize this report")),
+)
+
+for _label, _run in SURFACES:
+    def _seen(_run=_run, _cls=RoutingRunner, **_hints):
+        _r = _cls()
+        _run(_r, **_hints)
+        return _r.seen
+
+    check("routing/%s default sends nothing" % _label, _seen(), {})
+    check("routing/%s forwards both hints" % _label,
+          _seen(task="typed_decisions", lang_guess="de"),
+          {"task": "typed_decisions", "lang_guess": "de"})
+    check("routing/%s forwards one hint alone" % _label, _seen(lang_guess="de"),
+          {"lang_guess": "de"})
+    # A blank hint is core's documented "no usable hint, fall through to detection", so it is a
+    # value the caller chose and must survive; `task=""` is not a fall-through, it is an empty name.
+    check("routing/%s keeps an empty lang_guess" % _label, _seen(lang_guess=""),
+          {"lang_guess": ""})
+    check("routing/%s beside model and budget" % _label,
+          _seen(model="laya-multilingual", max_len=1024, task="typed_decisions"),
+          {"model": "laya-multilingual", "max_len": 1024, "task": "typed_decisions"})
+
+    # And a runner with no routing step must not be handed a routing hint: core would raise a
+    # `TypeError` from inside `predict`, past every hook, on the way to an answer nobody asked for.
+    for _c, _sample in zip(ROUTER_HINTS, ("typed_decisions", "de")):
+        try:
+            _seen(_cls=NonRoutingRunner, **{_c: _sample})
+            check_true("routing/%s refuses %s at a runner that cannot route" % (_label, _c),
+                       False, "no error raised")
+        except ValueError as exc:
+            check_true("routing/%s refuses %s at a runner that cannot route" % (_label, _c), True)
+            check_true("routing/%s %s names itself" % (_label, _c), _c in str(exc))
+            check_true("routing/%s %s names the call that refused" % (_label, _c),
+                       "NonRoutingRunner.predict" in str(exc))
+            check_true("routing/%s %s says what to do" % (_label, _c), "Router" in str(exc))
+        except Exception as exc:
+            check_true("routing/%s refuses %s at a runner that cannot route" % (_label, _c),
+                       False, type(exc).__name__)
+
+    # Nothing was forwarded, so nothing reached the runner either.
+    _strict = NonRoutingRunner()
+    try:
+        _run(_strict, task="typed_decisions")
+    except ValueError:
+        pass
+    check("routing/%s refusal happens before the call" % _label, _strict.seen, {})
+
+# Both hints ride in the laya-serve body -- they are `BODY_CONTROLS` there -- and a blank one
+# stays blank rather than dropping out of the request.
+check("routing/remote body carries both hints",
+      {k: v for k, v in remote_body({"task": "typed_decisions", "lang_guess": "de"}).items()
+       if k in ROUTER_HINTS},
+      {"task": "typed_decisions", "lang_guess": "de"})
+check("routing/remote body omits unset hints",
+      [k for k in remote_body({}) if k in ROUTER_HINTS], [])
+check("routing/remote body keeps an empty lang_guess",
+      remote_body({"lang_guess": ""}).get("lang_guess"), "")
+
+# A `lang_guess` may also be a callable taking the state, and only the code string has a wire form.
+# `laya-serve` answers 422 for the callable; naming it here says so before the request goes out.
+for _surface, _go in (("router", lambda **kw: LayaCrewRouter(base_url="http://localhost:8000",
+                                                            **kw).route("x", agents)),
+                      ("guard", lambda **kw: LayaTaskGuard(base_url="http://localhost:8000",
+                                                          **kw).screen("x"))):
+    try:
+        _go(lang_guess=lambda state: "de")
+        check_true("routing/%s remote refuses a callable lang_guess" % _surface,
+                   False, "no error raised")
+    except ValueError as exc:
+        check_true("routing/%s remote refuses a callable lang_guess" % _surface, True)
+        check_true("routing/%s remote lang_guess names itself" % _surface,
+                   "lang_guess" in str(exc))
+        check_true("routing/%s remote lang_guess names the endpoint" % _surface,
+                   "laya-serve" in str(exc))
+    except Exception as exc:
+        check_true("routing/%s remote refuses a callable lang_guess" % _surface,
+                   False, type(exc).__name__)
 
 
 # --------------------------------------------------------------- Results Summary

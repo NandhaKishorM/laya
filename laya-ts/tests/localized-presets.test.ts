@@ -37,6 +37,11 @@ describe("localized presets through the public API", () => {
       expect(() => builders[name]("de")).toThrow();
     });
   }
+  it("preserves the original English urgency question without added criteria", () => {
+    expect(triageQuestions().is_urgent).toEqual({
+      type: "noul", instructions: "Does `message` communicate time pressure or a deadline?",
+    });
+  });
   it("exports the triage convenience API and router alias", () => {
     expect(triageLabels("sv")).toEqual(presetLabels("triage", "sv"));
     expect(triageLabels("sv").refund).toBe("Återbetalning");

@@ -1,0 +1,27 @@
+{
+ "name": "municipalidad.aseo.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una municipalidad y necesita que se ocupe de su caso el área que atiende esto: «tren de aseo, basura y alumbrado público». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, necesito reportar que hay una montaña de basura acumulada hace tres días en la esquina de mi casa.",
+  "Mire, las luces del parque central están apagadas desde el lunes y me siento inseguro al pasar por ahí.",
+  "Oiga, ¿por qué el camión de recolección nunca viene los martes? Ya se nos está pudriendo la comida.",
+  "Les escribo porque el drenaje de mi calle está tapado con basura y ahora tengo charcos infectos.",
+  "Bueno, aquí otro vecino quejándose porque nadie limpia las calles después del fin de semana.",
+  "Señorita, por favor manden a alguien a sacar los escombros que dejaron frente a mi negocio.",
+  "Ay, qué alivio que llamen, justo ahora estaba viendo cómo la basura tapaba toda la entrada.",
+  "No sé qué pasa con el alumbrado público aquí en este barrio, ya vamos dos semanas sin luz.",
+  "Escúcheme bien, necesito que ubiquen una basurera cerca porque camino quince cuadras para tirar lo que tengo.",
+  "Mire, el olor de los residuos orgánicos es insoportable y están atrayendo ratas a las casas.",
+  "Oiga mijo, ¿van a poner luces en la carretera vieja? Se nos perdió un niño hace un mes.",
+  "Por favor, manden al personal de aseo a limpiar el parque infantil que está lleno de vidrio roto.",
+  "Buen día, quiero hacer constar que el camión de basura pasa pero nunca baja las bolsas del contenedor.",
+  "Les comento que los postes de luz están temblando y puede caer en cualquier momento sobre los autos.",
+  "Oiga, llevo una semana sin servicio y ya voy a tener que quemar mi basura en la calle.",
+  "Señor, necesito urgentemente que arreglen el foco que queda parpadeando porque asusta a las señoras mayores.",
+  "Aquí no recogemos desde hace cuatro días y el barrio se está convirtiendo en un basurero legal.",
+  "Mire, el agua de lluvia se mezcla con la basura y ya corre por toda mi vereda.",
+  "Buenas, solo quería preguntar si van a limpiar las canaletas antes de que empiece la temporada de lluvias.",
+  "Oiga, necesito reportar un foco fundido en la entrada del supermercado porque ya hubo tres resbalones."
+ ]
+}

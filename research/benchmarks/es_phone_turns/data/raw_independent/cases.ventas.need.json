@@ -1,0 +1,12 @@
+{
+ "name": "cases.ventas.need",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una empresa de telefonía e internet y necesita que se ocupe de su caso el área que atiende esto: «quiere comprar, contratar, mejorar su plan o pedir una cotización». En TODAS cuenta su problema usando una negación («no me funciona», «no me llegó», «no puedo», «nunca me»). No nombra el área.",
+ "phrases": [
+  "Oiga, mira que no me funciona la internet hace tres días",
+  "Holaaa, no me llegó la factura y necesito hablar con alguien",
+  "Buenas tardes, ya llevo dos semanas y no me responde el sistema",
+  "Hola, por favor me ayudan con esto porque no me puedo mover",
+  "Me interesa contratar un plan nuevo pero no me funciona nada"
+ ]
+}

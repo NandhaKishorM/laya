@@ -1,0 +1,2177 @@
+{
+ "meta": {
+  "model": "qwen2.5:7b-instruct",
+  "dataset": "cases",
+  "system_prompt": "Sos la recepcionista. UNA frase corta y hablada. Derivá al área que corresponda."
+ },
+ "summary": {
+  "n": 112,
+  "accuracy": 0.9196428571428571,
+  "macro_f1": 0.9275407086089981,
+  "ece": 0.0803571428571429,
+  "mean_confidence": 1.0,
+  "majority_baseline": 0.3125,
+  "wrong_actions": 6,
+  "by_tag": {
+   "asr": {
+    "n": 8,
+    "accuracy": 1.0
+   },
+   "direct": {
+    "n": 18,
+    "accuracy": 1.0
+   },
+   "farewell": {
+    "n": 13,
+    "accuracy": 0.9230769230769231
+   },
+   "hard": {
+    "n": 6,
+    "accuracy": 1.0
+   },
+   "hn": {
+    "n": 9,
+    "accuracy": 0.8888888888888888
+   },
+   "human": {
+    "n": 13,
+    "accuracy": 0.9230769230769231
+   },
+   "indirect": {
+    "n": 30,
+    "accuracy": 0.9333333333333333
+   },
+   "negation": {
+    "n": 15,
+    "accuracy": 0.8666666666666667
+   },
+   "negation-in-text": {
+    "n": 1,
+    "accuracy": 1.0
+   },
+   "noise": {
+    "n": 9,
+    "accuracy": 0.8888888888888888
+   },
+   "open": {
+    "n": 11,
+    "accuracy": 0.8181818181818182
+   },
+   "short": {
+    "n": 5,
+    "accuracy": 1.0
+   }
+  },
+  "confusion": {
+   "colgar->ninguno": 1,
+   "facturacion->soporte": 1,
+   "ninguno->facturacion": 2,
+   "ninguno->operadora": 2,
+   "ninguno->soporte": 1,
+   "operadora->ninguno": 1,
+   "soporte->ninguno": 1
+  },
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 79,
+    "coverage": 0.7053571428571429,
+    "action_recall": 0.948051948051948,
+    "wrong": 6,
+    "precision": 0.9240506329113924
+   },
+   {
+    "threshold": 0.6,
+    "fast": 79,
+    "coverage": 0.7053571428571429,
+    "action_recall": 0.948051948051948,
+    "wrong": 6,
+    "precision": 0.9240506329113924
+   },
+   {
+    "threshold": 0.7,
+    "fast": 79,
+    "coverage": 0.7053571428571429,
+    "action_recall": 0.948051948051948,
+    "wrong": 6,
+    "precision": 0.9240506329113924
+   },
+   {
+    "threshold": 0.8,
+    "fast": 79,
+    "coverage": 0.7053571428571429,
+    "action_recall": 0.948051948051948,
+    "wrong": 6,
+    "precision": 0.9240506329113924
+   },
+   {
+    "threshold": 0.9,
+    "fast": 79,
+    "coverage": 0.7053571428571429,
+    "action_recall": 0.948051948051948,
+    "wrong": 6,
+    "precision": 0.9240506329113924
+   },
+   {
+    "threshold": 0.95,
+    "fast": 79,
+    "coverage": 0.7053571428571429,
+    "action_recall": 0.948051948051948,
+    "wrong": 6,
+    "precision": 0.9240506329113924
+   },
+   {
+    "threshold": 0.99,
+    "fast": 79,
+    "coverage": 0.7053571428571429,
+    "action_recall": 0.948051948051948,
+    "wrong": 6,
+    "precision": 0.9240506329113924
+   }
+  ],
+  "latency_ms": {
+   "p50": 436.468583997339,
+   "p95": 5566.3734580157325,
+   "min": 315.6002500327304
+  },
+  "borderline": [
+   {
+    "id": "es-113",
+    "text": "¿Cuánto cuesta el plan de cincuenta megas?",
+    "gold": "ninguno",
+    "predicted": "ninguno",
+    "confidence": 1.0
+   },
+   {
+    "id": "es-114",
+    "text": "Quiero cancelar mi servicio.",
+    "gold": "operadora",
+    "predicted": "soporte",
+    "confidence": 1.0
+   },
+   {
+    "id": "es-115",
+    "text": "¿Qué promociones tienen este mes?",
+    "gold": "ninguno",
+    "predicted": "ninguno",
+    "confidence": 1.0
+   },
+   {
+    "id": "es-116",
+    "text": "Necesito cambiar el titular de la cuenta.",
+    "gold": "operadora",
+    "predicted": "facturacion",
+    "confidence": 1.0
+   }
+  ],
+  "first_ms": {
+   "p50": 405.8893750188872,
+   "p95": 5194.312833016738
+  },
+  "tokens": {
+   "in_mean": 380.66964285714283,
+   "out_mean": 24.5
+  },
+  "invalid_destinations": 0
+ },
+ "records": [
+  {
+   "id": "es-001",
+   "text": "Quiero hablar con ventas, por favor.",
+   "gold": "ventas",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 5194.312833016738,
+   "decided_ms": 5194.312833016738,
+   "latency_ms": 5219.37520802021,
+   "tokens_in": 377,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-002",
+   "text": "Páseme con el departamento de ventas.",
+   "gold": "ventas",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 7314.453041006345,
+   "decided_ms": 7314.453041006345,
+   "latency_ms": 7339.969708002172,
+   "tokens_in": 378,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-003",
+   "text": "¿Me comunica con un asesor de ventas?",
+   "gold": "ventas",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 5342.119500041008,
+   "decided_ms": 5342.119500041008,
+   "latency_ms": 5366.679875005502,
+   "tokens_in": 379,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-004",
+   "text": "Con ventas, por favor.",
+   "gold": "ventas",
+   "tags": [
+    "direct",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 5570.366292027757,
+   "decided_ms": 5570.366292027757,
+   "latency_ms": 5595.410167006776,
+   "tokens_in": 374,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-005",
+   "text": "Necesito que me transfieran al área comercial.",
+   "gold": "ventas",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 5813.207625003997,
+   "decided_ms": 5813.207625003997,
+   "latency_ms": 5841.537625005003,
+   "tokens_in": 380,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-006",
+   "text": "Quiero contratar el servicio de internet para mi casa.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 396.3640409638174,
+   "decided_ms": 396.3640409638174,
+   "latency_ms": 420.9954999969341,
+   "tokens_in": 380,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-007",
+   "text": "Me interesa adquirir un plan nuevo para la oficina.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 392.1991669922136,
+   "decided_ms": 392.1991669922136,
+   "latency_ms": 416.79445898626,
+   "tokens_in": 382,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-008",
+   "text": "Necesito una cotización para veinte líneas telefónicas.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 395.20029100822285,
+   "decided_ms": 395.20029100822285,
+   "latency_ms": 419.7287500137463,
+   "tokens_in": 385,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-009",
+   "text": "Fíjese que quiero cambiarme a un plan más grande, ¿con quién hablo?",
+   "gold": "ventas",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 389.6589590003714,
+   "decided_ms": 389.6589590003714,
+   "latency_ms": 414.5077089779079,
+   "tokens_in": 389,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-010",
+   "text": "Vi la promoción en Facebook y quiero comprarla.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 393.7841660226695,
+   "decided_ms": 393.7841660226695,
+   "latency_ms": 418.52170799393207,
+   "tokens_in": 380,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-011",
+   "text": "Queremos poner el servicio en una sucursal nueva que vamos a abrir.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 389.12400003755465,
+   "decided_ms": 389.12400003755465,
+   "latency_ms": 413.750208041165,
+   "tokens_in": 384,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-012",
+   "text": "Quisiera agregar otra línea a mi contrato.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 392.23699999274686,
+   "decided_ms": 392.23699999274686,
+   "latency_ms": 417.0342499855906,
+   "tokens_in": 378,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-013",
+   "text": "Ando buscando un plan empresarial, quiero que me lo vendan.",
+   "gold": "ventas",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 396.3345409720205,
+   "decided_ms": 396.3345409720205,
+   "latency_ms": 420.9165829815902,
+   "tokens_in": 384,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-014",
+   "text": "Quiero subir la velocidad de mi plan, ¿quién me lo puede vender?",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 403.427625016775,
+   "decided_ms": 403.427625016775,
+   "latency_ms": 428.65462496411055,
+   "tokens_in": 387,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-015",
+   "text": "Comuníqueme con soporte técnico.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 411.39249998377636,
+   "decided_ms": 411.39249998377636,
+   "latency_ms": 436.3697500084527,
+   "tokens_in": 378,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-016",
+   "text": "Necesito hablar con un técnico.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 417.57912503089756,
+   "decided_ms": 417.57912503089756,
+   "latency_ms": 442.75912502780557,
+   "tokens_in": 377,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-017",
+   "text": "Páseme con soporte, por favor.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 402.98895799787715,
+   "decided_ms": 402.98895799787715,
+   "latency_ms": 427.6372499880381,
+   "tokens_in": 379,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-018",
+   "text": "Con el área técnica, si me hace el favor.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 414.4334589946084,
+   "decided_ms": 414.4334589946084,
+   "latency_ms": 439.1929169651121,
+   "tokens_in": 379,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-019",
+   "text": "Quiero reportar una falla con soporte.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 405.02562501933426,
+   "decided_ms": 405.02562501933426,
+   "latency_ms": 430.1322500105016,
+   "tokens_in": 379,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-020",
+   "text": "No tengo internet desde ayer en la noche.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 405.02470900537446,
+   "decided_ms": 405.02470900537446,
+   "latency_ms": 429.76862500654534,
+   "tokens_in": 378,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-021",
+   "text": "El teléfono no da tono y no puedo hacer llamadas.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 406.86899999855086,
+   "decided_ms": 406.86899999855086,
+   "latency_ms": 431.4960829797201,
+   "tokens_in": 381,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-022",
+   "text": "Se me cayó el servicio y necesito que lo arreglen.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 406.51775000151247,
+   "decided_ms": 406.51775000151247,
+   "latency_ms": 433.8889999780804,
+   "tokens_in": 384,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-023",
+   "text": "El módem tiene una luz roja parpadeando y no navega.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 406.3942920183763,
+   "decided_ms": 406.3942920183763,
+   "latency_ms": 431.20666698087007,
+   "tokens_in": 386,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-024",
+   "text": "Fíjese que el internet está lentísimo, casi no carga nada.",
+   "gold": "soporte",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 403.4341660444625,
+   "decided_ms": 403.4341660444625,
+   "latency_ms": 428.3711250172928,
+   "tokens_in": 384,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-025",
+   "text": "Las llamadas se cortan a cada rato, así no se puede trabajar.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entiendo que está teniendo problemas con la llamada. Derivaremos su consulta al área de soporte para que le ayuden a solucionar este problema. ¿Le parece bien?",
+   "first_ms": 182.58791702101007,
+   "decided_ms": null,
+   "latency_ms": 665.9008340211585,
+   "tokens_in": 385,
+   "tokens_out": 40
+  },
+  {
+   "id": "es-026",
+   "text": "No me funciona el correo de la empresa desde la mañana.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 409.6794169745408,
+   "decided_ms": 409.6794169745408,
+   "latency_ms": 435.24833396077156,
+   "tokens_in": 380,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-027",
+   "text": "Se fue la señal en toda la oficina, necesitamos que vengan a revisar.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 439.4563329988159,
+   "decided_ms": 439.4563329988159,
+   "latency_ms": 463.93912500934675,
+   "tokens_in": 388,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-028",
+   "text": "La extensión de recepción no suena cuando le marcan.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 409.261749999132,
+   "decided_ms": 409.261749999132,
+   "latency_ms": 434.05416602035984,
+   "tokens_in": 383,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-029",
+   "text": "Páseme con facturación.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 404.0761249489151,
+   "decided_ms": 404.0761249489151,
+   "latency_ms": 428.7366669741459,
+   "tokens_in": 377,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-030",
+   "text": "Necesito hablar con el departamento de cobros.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 402.02716703061014,
+   "decided_ms": 402.02716703061014,
+   "latency_ms": 426.60225002327934,
+   "tokens_in": 380,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-031",
+   "text": "Quiero hablar con alguien de facturación, por favor.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 411.6439580102451,
+   "decided_ms": 411.6439580102451,
+   "latency_ms": 436.47587503073737,
+   "tokens_in": 381,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-032",
+   "text": "Con cuentas por cobrar, por favor.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 403.3565000281669,
+   "decided_ms": 403.3565000281669,
+   "latency_ms": 428.03962499601766,
+   "tokens_in": 378,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-033",
+   "text": "Comuníqueme con el área de pagos.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 411.7814999772236,
+   "decided_ms": 411.7814999772236,
+   "latency_ms": 436.43958296161145,
+   "tokens_in": 380,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-034",
+   "text": "Me cobraron dos veces este mes y quiero que me devuelvan el dinero.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 405.04550002515316,
+   "decided_ms": 405.04550002515316,
+   "latency_ms": 429.7362500219606,
+   "tokens_in": 386,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-035",
+   "text": "La factura me llegó con un monto que no es el que acordamos.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 410.7128340401687,
+   "decided_ms": 410.7128340401687,
+   "latency_ms": 435.25058403611183,
+   "tokens_in": 385,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-036",
+   "text": "Ya pagué y me siguen cobrando el mismo recibo.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 411.8400000152178,
+   "decided_ms": 411.8400000152178,
+   "latency_ms": 436.81758403545246,
+   "tokens_in": 383,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-037",
+   "text": "Necesito que me reenvíen la factura de agosto con el RTN de la empresa.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 405.8893750188872,
+   "decided_ms": 405.8893750188872,
+   "latency_ms": 431.83537502773106,
+   "tokens_in": 390,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-038",
+   "text": "Quiero hacer un arreglo de pago porque estoy atrasado.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 412.3714169836603,
+   "decided_ms": 412.3714169836603,
+   "latency_ms": 437.27641698205844,
+   "tokens_in": 381,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-039",
+   "text": "Me aparece un cargo que no reconozco en el estado de cuenta.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 408.01191702485085,
+   "decided_ms": 408.01191702485085,
+   "latency_ms": 432.85833299160004,
+   "tokens_in": 384,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-040",
+   "text": "Hice la transferencia hace tres días y no me han aplicado el pago.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 415.0525839650072,
+   "decided_ms": 415.0525839650072,
+   "latency_ms": 439.9006249732338,
+   "tokens_in": 385,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-041",
+   "text": "Quiero saber por qué me subieron el cobro sin avisarme, necesito que lo corrijan.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 408.2738749566488,
+   "decided_ms": 408.2738749566488,
+   "latency_ms": 433.0023750080727,
+   "tokens_in": 391,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-042",
+   "text": "Pagué de más y quiero un reembolso.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 402.97941595781595,
+   "decided_ms": 402.97941595781595,
+   "latency_ms": 427.80691594816744,
+   "tokens_in": 381,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-043",
+   "text": "Quiero hablar con una persona.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 399.72275000764057,
+   "decided_ms": 399.72275000764057,
+   "latency_ms": 424.5007499703206,
+   "tokens_in": 375,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-044",
+   "text": "Páseme con un humano, por favor.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 401.9212920102291,
+   "decided_ms": 401.9212920102291,
+   "latency_ms": 426.7702919896692,
+   "tokens_in": 379,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-045",
+   "text": "Necesito hablar con alguien de verdad, no con una máquina.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 415.2517500333488,
+   "decided_ms": 415.2517500333488,
+   "latency_ms": 439.7327090264298,
+   "tokens_in": 383,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-046",
+   "text": "¿Me puede pasar con una operadora?",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 402.78841700637713,
+   "decided_ms": 402.78841700637713,
+   "latency_ms": 427.3205000208691,
+   "tokens_in": 377,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-047",
+   "text": "Comuníqueme con recepción.",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 404.4723749975674,
+   "decided_ms": 404.4723749975674,
+   "latency_ms": 429.58279204322025,
+   "tokens_in": 377,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-048",
+   "text": "Prefiero que me atienda un agente.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 405.4152499884367,
+   "decided_ms": 405.4152499884367,
+   "latency_ms": 429.97783300234005,
+   "tokens_in": 378,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-049",
+   "text": "Quiero hablar con un representante.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 407.223290996626,
+   "decided_ms": 407.223290996626,
+   "latency_ms": 431.90100003266707,
+   "tokens_in": 376,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-050",
+   "text": "Con alguien, por favor, con quien sea.",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 418.0082499515265,
+   "decided_ms": 418.0082499515265,
+   "latency_ms": 442.85916595254093,
+   "tokens_in": 378,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-051",
+   "text": "Mire, mejor páseme con una persona que me pueda ayudar.",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 411.8304590228945,
+   "decided_ms": 411.8304590228945,
+   "latency_ms": 436.468583997339,
+   "tokens_in": 384,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-052",
+   "text": "No quiero hablar con un robot, páseme con alguien.",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "negation-in-text"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 411.7092909873463,
+   "decided_ms": 411.7092909873463,
+   "latency_ms": 436.79112498648465,
+   "tokens_in": 381,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-053",
+   "text": "¿Hay alguna persona que me pueda atender?",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Por supuesto, ¿con qué área te gustaría hablar hoy? Tenemos áreas de ventas, soporte técnico y facturación.",
+   "first_ms": 188.9516669907607,
+   "decided_ms": null,
+   "latency_ms": 536.2363749882206,
+   "tokens_in": 378,
+   "tokens_out": 29
+  },
+  {
+   "id": "es-054",
+   "text": "Déjeme hablar con la secretaria.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 408.3888329914771,
+   "decided_ms": 408.3888329914771,
+   "latency_ms": 433.2394170342013,
+   "tokens_in": 377,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-055",
+   "text": "Eso era todo, muchas gracias, hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 520.134333986789,
+   "decided_ms": 520.134333986789,
+   "latency_ms": 546.06183397118,
+   "tokens_in": 379,
+   "tokens_out": 30
+  },
+  {
+   "id": "es-056",
+   "text": "No, gracias, ya no necesito nada más. Adiós.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 445.6072920002043,
+   "decided_ms": 445.6072920002043,
+   "latency_ms": 470.4368750099093,
+   "tokens_in": 383,
+   "tokens_out": 23
+  },
+  {
+   "id": "es-057",
+   "text": "Listo, muy amable, que tenga buen día.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 445.1031250064261,
+   "decided_ms": 445.1031250064261,
+   "latency_ms": 470.00900004059076,
+   "tokens_in": 380,
+   "tokens_out": 24
+  },
+  {
+   "id": "es-058",
+   "text": "Vaya pues, gracias, hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 519.3823750014417,
+   "decided_ms": 519.3823750014417,
+   "latency_ms": 544.1722499672323,
+   "tokens_in": 377,
+   "tokens_out": 30
+  },
+  {
+   "id": "es-059",
+   "text": "Ya puede colgar, gracias.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 517.151499981992,
+   "decided_ms": 517.151499981992,
+   "latency_ms": 541.6965839685872,
+   "tokens_in": 375,
+   "tokens_out": 30
+  },
+  {
+   "id": "es-060",
+   "text": "Perfecto, era solo eso. Buenas tardes.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Gracias por contactarnos. ¡Que tengas una buena tarde!",
+   "first_ms": 183.1244999775663,
+   "decided_ms": null,
+   "latency_ms": 432.0276249782182,
+   "tokens_in": 380,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-061",
+   "text": "Bueno, le agradezco, adiós.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 538.4325420018286,
+   "decided_ms": 538.4325420018286,
+   "latency_ms": 563.357624982018,
+   "tokens_in": 382,
+   "tokens_out": 30
+  },
+  {
+   "id": "es-062",
+   "text": "Nada más, gracias. Chao.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 530.0245830439962,
+   "decided_ms": 530.0245830439962,
+   "latency_ms": 554.6730420319363,
+   "tokens_in": 377,
+   "tokens_out": 30
+  },
+  {
+   "id": "es-063",
+   "text": "Me equivoqué de número, disculpe, hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 482.8337500221096,
+   "decided_ms": 482.8337500221096,
+   "latency_ms": 507.72270903689787,
+   "tokens_in": 382,
+   "tokens_out": 27
+  },
+  {
+   "id": "es-064",
+   "text": "Ya me resolvieron, gracias, feliz tarde.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 466.3832079968415,
+   "decided_ms": 466.3832079968415,
+   "latency_ms": 491.3194580003619,
+   "tokens_in": 379,
+   "tokens_out": 25
+  },
+  {
+   "id": "es-065",
+   "text": "Está bien, después llamo. Adiós.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 495.9667919902131,
+   "decided_ms": 495.9667919902131,
+   "latency_ms": 521.4472499792464,
+   "tokens_in": 380,
+   "tokens_out": 28
+  },
+  {
+   "id": "es-066",
+   "text": "Cheque, gracias, eso sería todo.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "Gracias por contactarnos. ¿Podemos ayudarte con algo más? Si no, procederé a finalizar la llamada.",
+   "first_ms": 186.18929095100611,
+   "decided_ms": 1189.8490409948863,
+   "latency_ms": 1214.9594159564003,
+   "tokens_in": 377,
+   "tokens_out": 84
+  },
+  {
+   "id": "es-067",
+   "text": "¿A qué hora abren mañana?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Por favor, confirme la fecha para la que necesita esta información, ya que la horario puede variar dependiendo del día.",
+   "first_ms": 185.65437500365078,
+   "decided_ms": null,
+   "latency_ms": 531.740834005177,
+   "tokens_in": 376,
+   "tokens_out": 29
+  },
+  {
+   "id": "es-068",
+   "text": "¿Dónde queda la oficina principal?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lamento informarle que no tengo la dirección exacta de la oficina principal. ¿Podría verificarlo por favor? Si necesita ayuda con otra consulta, estaré encantada de asistirle.",
+   "first_ms": 178.00179100595415,
+   "decided_ms": null,
+   "latency_ms": 727.716458030045,
+   "tokens_in": 378,
+   "tokens_out": 45
+  },
+  {
+   "id": "es-069",
+   "text": "¿Hasta qué hora atienden los sábados?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "nuest\n{\"name\": \"transfer_call\", \"arguments\": {\"destination\": \"soporte\"}}\n</tool_call>",
+   "first_ms": 182.17137502506375,
+   "decided_ms": null,
+   "latency_ms": 444.2080840235576,
+   "tokens_in": 381,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-070",
+   "text": "¿Cuál es el correo para mandar documentos?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lo siento, pero no tenemos un correo específico para recibir documentos. ¿Podrías indicarme si es para envío de facturas, propuestas comerciales o otro tipo de documentos? Podría derivarte a la área de facturación o ventas según sea el caso.",
+   "first_ms": 4855.59941601241,
+   "decided_ms": null,
+   "latency_ms": 5566.3734580157325,
+   "tokens_in": 379,
+   "tokens_out": 58
+  },
+  {
+   "id": "es-071",
+   "text": "¿Ustedes tienen cobertura en San Pedro Sula?",
+   "gold": "ninguno",
+   "tags": [
+    "open",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "Pasa tu llamada al área de facturación para que puedan ayudarte con tu consulta sobre cobertura en San Pedro Sula.",
+   "first_ms": 5772.283875034191,
+   "decided_ms": 6371.667333005462,
+   "latency_ms": 6396.823042014148,
+   "tokens_in": 381,
+   "tokens_out": 51
+  },
+  {
+   "id": "es-072",
+   "text": "¿Me puede repetir la dirección, por favor?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Claro, la dirección es Av. del Libertador 1450, CABA. Si necesitas más detalles, no dudes en preguntar.",
+   "first_ms": 4739.3151670112275,
+   "decided_ms": null,
+   "latency_ms": 5149.374458997045,
+   "tokens_in": 379,
+   "tokens_out": 34
+  },
+  {
+   "id": "es-073",
+   "text": "¿Qué documentos necesito llevar?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Para poder ayudarte mejor, ¿puedes decirme con qué área necesitas estos documentos? Podría ser para una venta, soporte técnico, facturación o otra cosa.",
+   "first_ms": 4973.658874980174,
+   "decided_ms": null,
+   "latency_ms": 5448.264915961772,
+   "tokens_in": 375,
+   "tokens_out": 39
+  },
+  {
+   "id": "es-074",
+   "text": "¿Trabajan los días feriados?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "No trabajamos los días feriados, pero si es un servicio urgente, puede contactarse con nuestro servicio de soporte. ¿Puedo derivarle a ellos?",
+   "first_ms": 5992.0911669614725,
+   "decided_ms": null,
+   "latency_ms": 6451.582958979998,
+   "tokens_in": 378,
+   "tokens_out": 38
+  },
+  {
+   "id": "es-075",
+   "text": "¿Cómo se llama usted?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Me llamo Sos. ¿Cómo puedo ayudarte hoy?",
+   "first_ms": 5082.1210000431165,
+   "decided_ms": null,
+   "latency_ms": 5244.231500022579,
+   "tokens_in": 374,
+   "tokens_out": 14
+  },
+  {
+   "id": "es-076",
+   "text": "¿Tienen parqueo para clientes?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "Pasaré tu consulta al área de facturación para que puedan aclararte mejor sobre el parqueo para clientes.",
+   "first_ms": 5009.060374984983,
+   "decided_ms": 5579.114167019725,
+   "latency_ms": 5604.514083999675,
+   "tokens_in": 377,
+   "tokens_out": 49
+  },
+  {
+   "id": "es-077",
+   "text": "Aló, buenos días.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Buenos días. ¿En qué puedo ayudarle?",
+   "first_ms": 5135.378000035416,
+   "decided_ms": null,
+   "latency_ms": 5317.98641604837,
+   "tokens_in": 375,
+   "tokens_out": 14
+  },
+  {
+   "id": "es-078",
+   "text": "¿Aló? ¿Me escucha?",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Sí, me escucho perfectamente. ¿En qué puedo ayudarte?",
+   "first_ms": 189.42108401097357,
+   "decided_ms": null,
+   "latency_ms": 415.3884170227684,
+   "tokens_in": 377,
+   "tokens_out": 18
+  },
+  {
+   "id": "es-079",
+   "text": "Sí.",
+   "gold": "ninguno",
+   "tags": [
+    "noise",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Un momento, por favor. Derivando su llamada a la área de ventas.",
+   "first_ms": 212.87083299830556,
+   "decided_ms": null,
+   "latency_ms": 468.7197500024922,
+   "tokens_in": 371,
+   "tokens_out": 19
+  },
+  {
+   "id": "es-080",
+   "text": "Este... espere un momento.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Un momento por favor, le derivaré a la sección de soporte.",
+   "first_ms": 190.20249997265637,
+   "decided_ms": null,
+   "latency_ms": 403.35620898986235,
+   "tokens_in": 375,
+   "tokens_out": 18
+  },
+  {
+   "id": "es-081",
+   "text": "Buenas tardes, mire, tengo una consulta.",
+   "gold": "ninguno",
+   "tags": [
+    "noise",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Buenas tardes. ¿Podría decirme de qué se trata su consulta?",
+   "first_ms": 189.32504195254296,
+   "decided_ms": null,
+   "latency_ms": 418.45816699787974,
+   "tokens_in": 381,
+   "tokens_out": 19
+  },
+  {
+   "id": "es-082",
+   "text": "Un momentito, que estoy buscando el número de contrato.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Un momento, por favor. Estoy aquí para ayudar. ¿Podrías proporcionarme algunos detalles para encontrar tu número de contrato?",
+   "first_ms": 214.46708304574713,
+   "decided_ms": null,
+   "latency_ms": 564.5120410481468,
+   "tokens_in": 381,
+   "tokens_out": 29
+  },
+  {
+   "id": "es-083",
+   "text": "¿Cómo dijo? No le entendí.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lo siento, no me entendió bien. ¿Podría repetir, por favor?",
+   "first_ms": 199.16687498334795,
+   "decided_ms": null,
+   "latency_ms": 436.04966602288187,
+   "tokens_in": 377,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-084",
+   "text": "Ajá, sí, lo escucho.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 442.1354579972103,
+   "decided_ms": 442.1354579972103,
+   "latency_ms": 466.97129198582843,
+   "tokens_in": 378,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-085",
+   "text": "No me pase con ventas, solo quiero saber el horario.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 407.85091696307063,
+   "decided_ms": 407.85091696307063,
+   "latency_ms": 432.7733339741826,
+   "tokens_in": 382,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-086",
+   "text": "No quiero hablar con soporte, ya hablé con ellos ayer.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido, derivaré tu llamada a la área de ventas. ¿Podrías esperar un momento, por favor?",
+   "first_ms": 185.64462498761714,
+   "decided_ms": null,
+   "latency_ms": 551.8651669844985,
+   "tokens_in": 383,
+   "tokens_out": 29
+  },
+  {
+   "id": "es-087",
+   "text": "No necesito que me transfieran a facturación, solo una pregunta.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido, no hay necesidad de transferir la llamada entonces. ¿Me puede dar más detalles sobre su pregunta?",
+   "first_ms": 183.12616599723697,
+   "decided_ms": null,
+   "latency_ms": 506.0647499631159,
+   "tokens_in": 384,
+   "tokens_out": 27
+  },
+  {
+   "id": "es-088",
+   "text": "Todavía no me pase con nadie, primero explíqueme usted.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Claro, soy la recepcionista. ¿En qué puedo ayudarte hoy?",
+   "first_ms": 222.01404196675867,
+   "decided_ms": null,
+   "latency_ms": 433.50020895013586,
+   "tokens_in": 387,
+   "tokens_out": 18
+  },
+  {
+   "id": "es-089",
+   "text": "No, con la operadora no, prefiero que me lo diga usted.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 410.13862495310605,
+   "decided_ms": 410.13862495310605,
+   "latency_ms": 435.0265839602798,
+   "tokens_in": 385,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-090",
+   "text": "No es para ventas, es solo para saber dónde están ubicados.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Por supuesto, eso no requiere transferir la llamada. Los departamentos se encuentran en el piso 3 del edificio principal. El área de ventas está en el sector noreste, cerca de las ventanillas 301 y 302. ¿Necesitas más información?",
+   "first_ms": 182.62791697634384,
+   "decided_ms": null,
+   "latency_ms": 1023.3747499878518,
+   "tokens_in": 383,
+   "tokens_out": 68
+  },
+  {
+   "id": "es-091",
+   "text": "No tengo ninguna falla, el internet funciona bien, solo llamo por una duda.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "No problem at all! I'm here to help. Could you please tell me more about your query?",
+   "first_ms": 189.9280000361614,
+   "decided_ms": null,
+   "latency_ms": 475.022416037973,
+   "tokens_in": 387,
+   "tokens_out": 22
+  },
+  {
+   "id": "es-092",
+   "text": "No tengo problema con el cobro, la factura está bien, era otra cosa.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido. ¿Puedo ayudarte con algo más? Si no, podré finalizar la llamada.",
+   "first_ms": 198.90750001650304,
+   "decided_ms": null,
+   "latency_ms": 522.3555829725228,
+   "tokens_in": 385,
+   "tokens_out": 26
+  },
+  {
+   "id": "es-093",
+   "text": "No quiero comprar nada, solo estoy preguntando por el horario.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Puedo ayudarte con eso. Nuestro horario de atención es de lunes a viernes, de 8:00 a 20:00 horas. Si necesitas más información, estaré encantada de ayudarte. ¿Necesitas algo más?",
+   "first_ms": 192.7461249870248,
+   "decided_ms": null,
+   "latency_ms": 957.3644999763928,
+   "tokens_in": 383,
+   "tokens_out": 62
+  },
+  {
+   "id": "es-094",
+   "text": "No me transfiera, por favor.",
+   "gold": "ninguno",
+   "tags": [
+    "negation",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido, no lo derivaré. ¿En qué puedo ayudarte?",
+   "first_ms": 187.25533300312236,
+   "decided_ms": null,
+   "latency_ms": 403.1429170281626,
+   "tokens_in": 376,
+   "tokens_out": 18
+  },
+  {
+   "id": "es-095",
+   "text": "No cuelgue, por favor, todavía tengo otra pregunta.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Claro, ¿en qué puedo ayudarte más?",
+   "first_ms": 195.67754096351564,
+   "decided_ms": null,
+   "latency_ms": 334.03333299793303,
+   "tokens_in": 381,
+   "tokens_out": 12
+  },
+  {
+   "id": "es-096",
+   "text": "Espere, no he terminado, no me corte.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Claro, ¿cómo puedo ayudarte entonces?",
+   "first_ms": 183.1802919623442,
+   "decided_ms": null,
+   "latency_ms": 320.50674996571615,
+   "tokens_in": 381,
+   "tokens_out": 12
+  },
+  {
+   "id": "es-097",
+   "text": "No, no es todo, me falta preguntarle otra cosa.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Claro, ¿qué otra información necesitas proporcionar?",
+   "first_ms": 183.56299999868497,
+   "decided_ms": null,
+   "latency_ms": 333.1562500097789,
+   "tokens_in": 383,
+   "tokens_out": 13
+  },
+  {
+   "id": "es-098",
+   "text": "Gracias, pero todavía no me despido, tengo una duda más.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Claro, ¿en qué puedo ayudarte?",
+   "first_ms": 189.9160830071196,
+   "decided_ms": null,
+   "latency_ms": 315.6002500327304,
+   "tokens_in": 384,
+   "tokens_out": 11
+  },
+  {
+   "id": "es-099",
+   "text": "Ventas me prometió una velocidad y el internet no funciona.",
+   "gold": "soporte",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 414.60362501675263,
+   "decided_ms": 414.60362501675263,
+   "latency_ms": 439.6019160049036,
+   "tokens_in": 382,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-100",
+   "text": "Soporte ya vino, pero ahora me están cobrando la visita y no estoy de acuerdo.",
+   "gold": "facturacion",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 419.2623339476995,
+   "decided_ms": 419.2623339476995,
+   "latency_ms": 444.27641696529463,
+   "tokens_in": 389,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-101",
+   "text": "Hablé con facturación y me dijeron que para contratar otra línea hable con ustedes.",
+   "gold": "ventas",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 402.80391700798646,
+   "decided_ms": 402.80391700798646,
+   "latency_ms": 427.5523339747451,
+   "tokens_in": 392,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-102",
+   "text": "Ya hablé con ventas y con soporte y nadie me resuelve, quiero hablar con una persona.",
+   "gold": "operadora",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 404.8825000063516,
+   "decided_ms": 404.8825000063516,
+   "latency_ms": 429.5902500161901,
+   "tokens_in": 390,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-103",
+   "text": "Gracias por pasarme antes con soporte; ahora quiero pagar mi factura.",
+   "gold": "facturacion",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 404.3551250360906,
+   "decided_ms": 404.3551250360906,
+   "latency_ms": 429.69020805321634,
+   "tokens_in": 384,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-104",
+   "text": "El técnico arregló todo, solo quería agradecer. Hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 563.4546249639243,
+   "decided_ms": 563.4546249639243,
+   "latency_ms": 589.6910000010394,
+   "tokens_in": 387,
+   "tokens_out": 33
+  },
+  {
+   "id": "es-105",
+   "text": "eh si buenas mire es que no tengo internet desde la mañana",
+   "gold": "soporte",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 413.7806670041755,
+   "decided_ms": 413.7806670041755,
+   "latency_ms": 439.1243330319412,
+   "tokens_in": 382,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-106",
+   "text": "quiero este quiero contratar un plan para mi negocio",
+   "gold": "ventas",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ventas",
+   "argument": "ventas",
+   "spoken": "",
+   "first_ms": 401.0228340048343,
+   "decided_ms": 401.0228340048343,
+   "latency_ms": 426.23737500980496,
+   "tokens_in": 379,
+   "tokens_out": 20
+  },
+  {
+   "id": "es-107",
+   "text": "me me cobraron doble la factura de este mes",
+   "gold": "facturacion",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 411.4447920001112,
+   "decided_ms": 411.4447920001112,
+   "latency_ms": 436.273584025912,
+   "tokens_in": 380,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-108",
+   "text": "paseme con una persona por favor",
+   "gold": "operadora",
+   "tags": [
+    "asr",
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "operadora",
+   "argument": "operadora",
+   "spoken": "",
+   "first_ms": 404.9957499955781,
+   "decided_ms": 404.9957499955781,
+   "latency_ms": 430.01579196425155,
+   "tokens_in": 375,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-109",
+   "text": "bueno gracias eso era todo hasta luego",
+   "gold": "colgar",
+   "tags": [
+    "asr",
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 526.5222089947201,
+   "decided_ms": 526.5222089947201,
+   "latency_ms": 551.1624999926426,
+   "tokens_in": 377,
+   "tokens_out": 27
+  },
+  {
+   "id": "es-110",
+   "text": "a que hora cierran hoy",
+   "gold": "ninguno",
+   "tags": [
+    "asr",
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Para poder ayudarte con esa información, necesitaría saber a qué establecimiento te refieres. Podrías indicarme el nombre o la ubicación, por favor?",
+   "first_ms": 181.02962494594976,
+   "decided_ms": null,
+   "latency_ms": 614.6761249983683,
+   "tokens_in": 375,
+   "tokens_out": 36
+  },
+  {
+   "id": "es-111",
+   "text": "no no me pase con ventas solo una pregunta",
+   "gold": "ninguno",
+   "tags": [
+    "asr",
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido, no necesitamos pasar la llamada. ¿En qué puedo ayudarte?",
+   "first_ms": 182.60920798638836,
+   "decided_ms": null,
+   "latency_ms": 433.6472079739906,
+   "tokens_in": 378,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-112",
+   "text": "alo alo si me escucha",
+   "gold": "ninguno",
+   "tags": [
+    "asr",
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "¡Claro que sí! ¿En qué puedo ayudarte hoy?",
+   "first_ms": 183.82054200628772,
+   "decided_ms": null,
+   "latency_ms": 360.3759999969043,
+   "tokens_in": 374,
+   "tokens_out": 15
+  },
+  {
+   "id": "es-113",
+   "text": "¿Cuánto cuesta el plan de cincuenta megas?",
+   "gold": "ninguno",
+   "tags": [
+    "borderline"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Transferimos tu llamada a la sección de ventas para que puedas obtener información sobre los planes de cincuenta megas.",
+   "first_ms": 183.66745801176876,
+   "decided_ms": null,
+   "latency_ms": 525.203125027474,
+   "tokens_in": 383,
+   "tokens_out": 28
+  },
+  {
+   "id": "es-114",
+   "text": "Quiero cancelar mi servicio.",
+   "gold": "operadora",
+   "tags": [
+    "borderline"
+   ],
+   "confidence": 1.0,
+   "predicted": "soporte",
+   "argument": "soporte",
+   "spoken": "",
+   "first_ms": 416.2976660300046,
+   "decided_ms": 416.2976660300046,
+   "latency_ms": 441.5053330012597,
+   "tokens_in": 375,
+   "tokens_out": 21
+  },
+  {
+   "id": "es-115",
+   "text": "¿Qué promociones tienen este mes?",
+   "gold": "ninguno",
+   "tags": [
+    "borderline"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Pásale la llamada a la área de ventas para que pueda ayudarlo con información sobre las promociones actualmente disponibles.",
+   "first_ms": 188.89712495729327,
+   "decided_ms": null,
+   "latency_ms": 525.1552499830723,
+   "tokens_in": 377,
+   "tokens_out": 28
+  },
+  {
+   "id": "es-116",
+   "text": "Necesito cambiar el titular de la cuenta.",
+   "gold": "operadora",
+   "tags": [
+    "borderline"
+   ],
+   "confidence": 1.0,
+   "predicted": "facturacion",
+   "argument": "facturacion",
+   "spoken": "",
+   "first_ms": 403.8909999653697,
+   "decided_ms": 403.8909999653697,
+   "latency_ms": 429.09499997040257,
+   "tokens_in": 379,
+   "tokens_out": 21
+  }
+ ]
+}

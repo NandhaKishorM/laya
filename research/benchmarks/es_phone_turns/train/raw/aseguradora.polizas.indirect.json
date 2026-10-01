@@ -1,0 +1,27 @@
+{
+ "name": "aseguradora.polizas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una aseguradora y necesita que se ocupe de su caso el área que atiende esto: «contratar, renovar o modificar un seguro». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenos días, necesito renovar el seguro de mi vehículo porque ya venció la póliza.",
+  "Oiga, ¿podría ayudarme a ampliar la cobertura del seguro de hogar para incluir electrodomésticos?",
+  "Quiero contratar un seguro médico familiar para mis hijos y mi esposa, por favor.",
+  "Tengo una duda con el recibo de mi seguro automotriz y necesito que me aclaren algo urgente.",
+  "Necesito modificar el beneficiario de mi póliza de vida, ya cambió todo.",
+  "¿Me pueden ayudar a contratar un seguro para mi moto nueva?",
+  "O sea, que quiero renunciar a mi seguro actual porque me sale muy caro.",
+  "Hola, quiero saber cómo cambiar la información bancaria para el pago automático de mi seguro.",
+  "Necesito agregar una cobertura de robo total a mi póliza de auto ya existente.",
+  "Quiero contratar un seguro de viaje internacional para unas vacaciones en mayo.",
+  "Oiga don, mi seguro de edificio tiene mucho tiempo sin renovación y necesito regularizarlo hoy mismo.",
+  "¿Se puede cambiar el tipo de franquicia en mi seguro de carro?",
+  "Necesito una cotización urgente para contratar un seguro todo riesgo para mi camión de carga.",
+  "Tengo un problema con la vigencia de mi póliza y necesito que me indiquen cómo proceder.",
+  "Quiero dar de baja el seguro de desgravamen porque ya pagué la deuda del préstamo.",
+  "O sea, necesito extender la duración de mi contrato de seguro agrícola este año.",
+  "Hola, quiero contratar un seguro para mi negocio nuevo que acabo de abrir.",
+  "Necesito actualizar mis datos personales en el sistema de mi seguro de salud.",
+  "¿Me pueden cancelar mi póliza a partir del primer día del próximo mes?",
+  "Quiero modificar los datos del conductor principal en mi seguro automotriz."
+ ]
+}

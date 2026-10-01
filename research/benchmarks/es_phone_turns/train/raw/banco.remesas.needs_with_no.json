@@ -1,0 +1,15 @@
+{
+ "name": "banco.remesas.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y necesita que se ocupe de su caso el área que atiende esto: «enviar o cobrar dinero que viene del extranjero». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, que no me llega el dinero de afuera y necesito solucionar este lío urgente.",
+  "Ay por favor, nunca me han acreditado una transferencia internacional y estoy muy preocupado.",
+  "Mire, no puedo recibir remesas porque la cuenta está bloqueada, ¿quién me puede atender?",
+  "Es que no me ha llegado el pago de mi hijo allá y necesito rastrearlo ya.",
+  "Buenas tardes, oiga, no me funciona el servicio para captar fondos del exterior.",
+  "O sea, no tengo acceso a recibir ese dinero y es mi único apoyo mensual.",
+  "Chévere, ¿me puede pasar con quien maneja los temas de divisas? Es que no me llega nada.",
+  "La verdad es que no me han contestado sobre la transferencia y necesito hablar con alguien ya."
+ ]
+}

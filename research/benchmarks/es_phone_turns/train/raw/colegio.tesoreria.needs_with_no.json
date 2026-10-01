@@ -1,0 +1,15 @@
+{
+ "name": "colegio.tesoreria.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y necesita que se ocupe de su caso el área que atiende esto: «pago de mensualidades y colegiaturas». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Mira, la verdad es que no me está llegando la factura por correo y ando perdido con esto",
+  "Oiga, disculpe la molestia pero mi tarjeta no funciona para hacer el pago en línea",
+  "A ver, yo necesito ayuda urgente porque nunca me aparece el comprobante de depósito",
+  "Pues mire, el sistema me dice que no tengo acceso al portal de pagos y ya se vence la fecha",
+  "Perdone, ¿me pueden guiar? Porque intenté pagar con transferencia pero nunca se reflejó en mi cuenta",
+  "Hola, qué tal, ojalá me pueda ayudar porque no me han enviado los datos para el pago parcial",
+  "Mira compa, es que mi cédula de crédito no funciona dentro del sistema y no puedo avanzar",
+  "¡Ay Dios mío! La verdad es que no me funciona ni por app ni por web y estoy muy preocupado"
+ ]
+}

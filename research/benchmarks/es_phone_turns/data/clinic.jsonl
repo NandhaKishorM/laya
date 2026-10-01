@@ -1,0 +1,45 @@
+{"id": "cl-001", "text": "Quiero sacar una cita con el cardiólogo.", "gold": "citas", "tags": ["indirect"]}
+{"id": "cl-002", "text": "Necesito cambiar la fecha de mi consulta del jueves.", "gold": "citas", "tags": ["indirect"]}
+{"id": "cl-003", "text": "Páseme con citas, por favor.", "gold": "citas", "tags": ["direct"]}
+{"id": "cl-004", "text": "Fíjese que quiero apartar una consulta para mi mamá.", "gold": "citas", "tags": ["indirect", "hn"]}
+{"id": "cl-005", "text": "Tengo que cancelar la cita que tenía mañana con la doctora.", "gold": "citas", "tags": ["indirect"]}
+{"id": "cl-006", "text": "quiero agendar con el pediatra para la otra semana", "gold": "citas", "tags": ["asr", "indirect"]}
+{"id": "cl-007", "text": "Quiero saber si ya están listos los resultados de mis exámenes de sangre.", "gold": "laboratorio", "tags": ["indirect"]}
+{"id": "cl-008", "text": "Comuníqueme con el laboratorio.", "gold": "laboratorio", "tags": ["direct"]}
+{"id": "cl-009", "text": "Me mandaron a hacerme unos análisis y quiero saber si tengo que ir en ayunas, páseme con ellos.", "gold": "laboratorio", "tags": ["indirect"]}
+{"id": "cl-010", "text": "Necesito que me reenvíen el resultado de la prueba que me hice el lunes.", "gold": "laboratorio", "tags": ["indirect"]}
+{"id": "cl-011", "text": "me hicieron un examen de orina y no me han entregado nada", "gold": "laboratorio", "tags": ["asr", "indirect"]}
+{"id": "cl-012", "text": "Quiero saber si tienen el medicamento que me recetaron, páseme con farmacia.", "gold": "farmacia", "tags": ["direct"]}
+{"id": "cl-013", "text": "Necesito surtir una receta.", "gold": "farmacia", "tags": ["indirect"]}
+{"id": "cl-014", "text": "Con la farmacia, por favor.", "gold": "farmacia", "tags": ["direct", "short"]}
+{"id": "cl-015", "text": "Me dieron unas pastillas equivocadas y quiero cambiarlas.", "gold": "farmacia", "tags": ["indirect"]}
+{"id": "cl-016", "text": "Quiero comprar la medicina que me indicó el doctor.", "gold": "farmacia", "tags": ["indirect"]}
+{"id": "cl-017", "text": "Mi papá se desmayó y no reacciona, necesito ayuda ya.", "gold": "emergencias", "tags": ["indirect"]}
+{"id": "cl-018", "text": "Páseme con emergencias, es urgente.", "gold": "emergencias", "tags": ["direct"]}
+{"id": "cl-019", "text": "Mi hijo se cortó y está sangrando mucho.", "gold": "emergencias", "tags": ["indirect"]}
+{"id": "cl-020", "text": "Tengo un dolor muy fuerte en el pecho y me cuesta respirar.", "gold": "emergencias", "tags": ["indirect"]}
+{"id": "cl-021", "text": "necesito una ambulancia mi esposa se cayó y no se puede mover", "gold": "emergencias", "tags": ["asr", "indirect"]}
+{"id": "cl-022", "text": "Quiero hablar con una persona.", "gold": "recepcion", "tags": ["human"]}
+{"id": "cl-023", "text": "Páseme con alguien que me atienda, por favor.", "gold": "recepcion", "tags": ["human"]}
+{"id": "cl-024", "text": "No quiero hablar con una máquina, comuníqueme con una persona.", "gold": "recepcion", "tags": ["human", "negation-in-text"]}
+{"id": "cl-025", "text": "Con la recepcionista, por favor.", "gold": "recepcion", "tags": ["human", "direct"]}
+{"id": "cl-026", "text": "Muchas gracias, eso era todo. Hasta luego.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "cl-027", "text": "Vaya pues, muy amable, adiós.", "gold": "colgar", "tags": ["farewell", "hn"]}
+{"id": "cl-028", "text": "Ya no necesito nada más, gracias.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "cl-029", "text": "bueno gracias que pase buen dia", "gold": "colgar", "tags": ["asr", "farewell"]}
+{"id": "cl-030", "text": "¿A qué hora abre la clínica?", "gold": "ninguno", "tags": ["open"]}
+{"id": "cl-031", "text": "¿Dónde están ubicados?", "gold": "ninguno", "tags": ["open"]}
+{"id": "cl-032", "text": "¿Atienden los domingos?", "gold": "ninguno", "tags": ["open"]}
+{"id": "cl-033", "text": "Aló, buenas tardes.", "gold": "ninguno", "tags": ["noise"]}
+{"id": "cl-034", "text": "¿Me escucha?", "gold": "ninguno", "tags": ["noise", "short"]}
+{"id": "cl-035", "text": "Un momento, que estoy buscando mi carné.", "gold": "ninguno", "tags": ["noise"]}
+{"id": "cl-036", "text": "No quiero una cita, solo quiero saber el horario.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "cl-037", "text": "No me pase con el laboratorio, ya tengo mis resultados.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "cl-038", "text": "No es una emergencia, solo es una pregunta.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "cl-039", "text": "No necesito la farmacia, solo quería preguntar dónde quedan.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "cl-040", "text": "No cuelgue, todavía tengo otra duda.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "cl-041", "text": "No me transfiera con nadie todavía, primero dígame usted.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "cl-042", "text": "no no es urgente no me pase con emergencias", "gold": "ninguno", "tags": ["asr", "negation"]}
+{"id": "cl-043", "text": "En el laboratorio me dijeron que para el examen necesito una cita, quiero sacarla.", "gold": "citas", "tags": ["hard"]}
+{"id": "cl-044", "text": "El doctor de emergencias me dejó una receta y quiero comprarla.", "gold": "farmacia", "tags": ["hard"]}
+{"id": "cl-045", "text": "Ya saqué la cita, ahora quiero saber si están mis resultados.", "gold": "laboratorio", "tags": ["hard"]}

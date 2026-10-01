@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.taller.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y pide que la comuniquen con el área de «taller» (reparación y mantenimiento del carro). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "¿Me comunica con taller?",
+  "Buenos días, necesito hablar con el departamento de taller por favor",
+  "Oiga, ¿me pueden pasar con los de servicio técnico?",
+  "Quisiera ser dirigido al área de reparaciones",
+  "Saludos, requiero atención del equipo de mantenimiento vehicular",
+  "¿Está el encargado de taller disponible para atenderme?",
+  "Por favor, transfierame a la sección de taller mecánico",
+  "Hola, necesito conexión con quien maneja las reparaciones"
+ ]
+}

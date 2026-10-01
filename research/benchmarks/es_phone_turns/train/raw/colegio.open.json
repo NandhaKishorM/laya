@@ -1,0 +1,22 @@
+{
+ "name": "colegio.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a un colegio: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, ¿me indican la dirección exacta para llegar?",
+  "O sea, ustedes abren los días festivos o cerrados totalmente?",
+  "¿Aceptan pago en efectivo o solo tarjeta de crédito y débito?",
+  "Tengo coche y necesito saber si tienen parqueo disponible cerca.",
+  "¿Cuántas sucursales tienen abiertas en esta ciudad?",
+  "Por favor, ¿qué documentos necesitan para inscribir a mi hijo?",
+  "A ver, ¿a qué hora cierran las oficinas por hoy?",
+  "Mire, si no estoy seguro de la dirección, ¿me la puede repetir?",
+  "¿Hay algún descuento si pago toda la mensalidad por adelantado?",
+  "Disculpe, el parqueo es gratuito para los padres que vienen a recoger?",
+  "Oiga, ¿ustedes tienen sede en la otra zona del norte?",
+  "Necesito saber qué papeles son obligatorios y cuáles opcionales.",
+  "¿El horario de atención cambia en temporada de vacaciones escolares?",
+  "Le comento que vivo lejos, ¿aceptan transferencias bancarias para pagar?",
+  "Buen día, quisiera confirmar si abren los domingos por la mañana."
+ ]
+}

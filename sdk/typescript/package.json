@@ -1,0 +1,37 @@
+{
+  "name": "laya-client",
+  "version": "0.1.0",
+  "description": "Typed JavaScript client for the self-hosted Laya decision engine",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/esm/index.d.ts", "default": "./dist/esm/index.js" },
+      "require": { "types": "./dist/cjs/index.d.ts", "default": "./dist/cjs/index.js" }
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": { "node": ">=22" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NandhaKishorM/laya.git",
+    "directory": "sdk/typescript"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit -p test/tsconfig.json",
+    "test": "npm run build && npm run typecheck && node --test test/*.test.mjs",
+    "test:integration": "node --test test/integration.mjs",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm test"
+  },
+  "devDependencies": { "typescript": "5.9.3" }
+}

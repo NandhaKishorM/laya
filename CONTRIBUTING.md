@@ -32,6 +32,15 @@ pip install -e ".[mcp]"
 Optional extras are declared in `pyproject.toml`: `serve`, `fast`, `onnx`, `langchain`, `langgraph`.
 Install the ones a change needs, for example `pip install -e ".[serve]"`.
 
+If you use [uv](https://docs.astral.sh/uv/), the same setup is below. uv environments come without
+`pip`, so use `uv pip install` wherever this guide says `pip install`.
+
+```bash
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -e ".[mcp]"
+```
+
 The server and ONNX paths are exercised by `tests/test_serve.py` and `tests/test_onnx.py`, which
 skip when their extras are not installed.
 

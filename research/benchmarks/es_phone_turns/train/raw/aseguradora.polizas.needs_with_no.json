@@ -1,0 +1,15 @@
+{
+ "name": "aseguradora.polizas.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una aseguradora y necesita que se ocupe de su caso el área que atiende esto: «contratar, renovar o modificar un seguro». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, buenas tardes, es que yo necesito hacerle unos cambios a mi póliza pero no me aparece la opción en la página.",
+  "Buen día, le llamo porque el sistema me está dando error y no me deja renovar el seguro del carro.",
+  "Mira, no sé qué pasa, pero nunca me ha llegado el correo con la nueva factura para que yo pueda pagar.",
+  "¿Está atendiendo? Es que necesito agregar un conductor a mi seguro familiar y no me dejan guardar los datos.",
+  "La verdad es que ya intenté mil veces y no puedo acceder al portal para modificar mis beneficiarios.",
+  "Hola, oiga, no tengo el número de póliza a la mano y necesito saber cómo hago para contratar uno nuevo urgente.",
+  "Disculpe, ¿me puede ayudar? Es que no me ha llegado la carta de aceptación del cambio que hice ayer.",
+  "Oigan, yo ya pagué pero no me aparece como vigente el seguro en su sistema todavía."
+ ]
+}

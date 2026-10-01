@@ -1,0 +1,22 @@
+{
+ "name": "gimnasio.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a un gimnasio: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buen día, ¿a qué hora abre la puerta mañana?",
+  "Disculpe, ¿aceptan tarjeta de crédito o es solo efectivo?",
+  "Oiga, el gimnasio del centro cierra los días festivos?",
+  "¿Habrá lugar para estacionar el carro afuera mismo?",
+  "Buenas tardes, necesito saber dónde queda la otra sucursal por favor.",
+  "¿Requieren certificado médico para inscribirse hoy?",
+  "Mire, ¿tienen horarios especiales los domingos o igual que viernes?",
+  "Perdón, ¿el parqueo es gratis mientras hago ejercicio?",
+  "¿Me podría indicar el horario de la clase de spinning por favor?",
+  "Oiga pues, ¿aceptan pago mensual o solo anual?",
+  "Disculpe, ¿necesito traer documento de identidad para la inscripción?",
+  "Buen día, ¿a qué hora cierran exactamente los lunes?",
+  "¿Tienen descuentos para estudiantes o adultos mayores?",
+  "Oiga, ¿la dirección es en la calle principal o por atrás?",
+  "¿Puedo pagar con transferencia bancaria o solo en ventanilla?"
+ ]
+}

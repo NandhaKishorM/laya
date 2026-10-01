@@ -1,0 +1,270 @@
+{
+ "meta": {
+  "model": "qwen2.5:7b-instruct",
+  "dataset": "frustration",
+  "system_prompt": "Sos la recepcionista. UNA frase corta y hablada. Derivá al área que corresponda."
+ },
+ "summary": {
+  "n": 9,
+  "accuracy": 1.0,
+  "macro_f1": 1.0,
+  "ece": 0.0,
+  "mean_confidence": 1.0,
+  "majority_baseline": 1.0,
+  "wrong_actions": 0,
+  "by_tag": {
+   "frustration": {
+    "n": 9,
+    "accuracy": 1.0
+   },
+   "insult": {
+    "n": 1,
+    "accuracy": 1.0
+   },
+   "short": {
+    "n": 3,
+    "accuracy": 1.0
+   },
+   "swearing": {
+    "n": 3,
+    "accuracy": 1.0
+   }
+  },
+  "confusion": {},
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.6,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.7,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.8,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.9,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.95,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.99,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   }
+  ],
+  "latency_ms": {
+   "p50": 563.7405840097927,
+   "p95": 723.9039170090109,
+   "min": 457.36933301668614
+  },
+  "borderline": [],
+  "first_ms": {
+   "p50": 179.06320904148743,
+   "p95": 186.30558397853747
+  },
+  "tokens": {
+   "in_mean": 375.0,
+   "out_mean": 33.0
+  },
+  "invalid_destinations": 0
+ },
+ "records": [
+  {
+   "id": "fr-001",
+   "text": "te estoy pidiendo que no",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lamento la confusión. ¿Podrías aclarar tu solicitud? ¿Necesitas que la llamada se derive a un área específica o tienes otra petición?",
+   "first_ms": 133.37966700783,
+   "decided_ms": null,
+   "latency_ms": 612.717917014379,
+   "tokens_in": 375,
+   "tokens_out": 39
+  },
+  {
+   "id": "fr-002",
+   "text": "te dije que no",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido, voy a terminar la llamada entonces. Gracias por contactarnos. ¡Que tengas un buen día!",
+   "first_ms": 186.30558397853747,
+   "decided_ms": null,
+   "latency_ms": 536.60829202272,
+   "tokens_in": 373,
+   "tokens_out": 29
+  },
+  {
+   "id": "fr-003",
+   "text": "no estas entendiendo?",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lo siento, no estoy entendiendo tu solicitud. ¿Podrías dar más detalles o especificar qué necesitas? Por ejemplo, ¿estás llamando para hablar con soporte técnico o para algo diferente?",
+   "first_ms": 179.06320904148743,
+   "decided_ms": null,
+   "latency_ms": 723.9039170090109,
+   "tokens_in": 373,
+   "tokens_out": 45
+  },
+  {
+   "id": "fr-004",
+   "text": "maldita sea te dije que no!",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "swearing"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lo siento, parece que hubo un malentendido. ¿Podría explicar mejor su situación?",
+   "first_ms": 178.72945900307968,
+   "decided_ms": null,
+   "latency_ms": 463.6362500023097,
+   "tokens_in": 378,
+   "tokens_out": 24
+  },
+  {
+   "id": "fr-005",
+   "text": "carajo no entiendo porque repetis lo mismo",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "swearing"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lo siento si te estás sintiendo frustrado. ¿Podés explicarme mejor cuál es tu consulta o problema para poder ayudarte mejor?",
+   "first_ms": 179.2284170514904,
+   "decided_ms": null,
+   "latency_ms": 563.7405840097927,
+   "tokens_in": 378,
+   "tokens_out": 32
+  },
+  {
+   "id": "fr-006",
+   "text": "que tonteras decis",
+   "gold": "ninguno",
+   "tags": [
+    "frustration"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lamento si ha habido algún malentendido. ¿Podría explicar mejor su consulta, por favor? Estoy aquí para ayudarlo.",
+   "first_ms": 178.8268749951385,
+   "decided_ms": null,
+   "latency_ms": 563.4342089761049,
+   "tokens_in": 373,
+   "tokens_out": 32
+  },
+  {
+   "id": "fr-007",
+   "text": "joder esto no sirve",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "swearing"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entiendo que estás teniendo problemas. Derivaremos tu llamada al área de soporte técnico.",
+   "first_ms": 183.77712497022003,
+   "decided_ms": null,
+   "latency_ms": 457.36933301668614,
+   "tokens_in": 374,
+   "tokens_out": 23
+  },
+  {
+   "id": "fr-008",
+   "text": "no me estas respondiendo lo que te pregunte",
+   "gold": "ninguno",
+   "tags": [
+    "frustration"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lo siento, parece que hubo un malentendido. ¿Podrías repetir tu pregunta o indicarme qué necesitas? Estoy aquí para ayudarte.",
+   "first_ms": 185.58891699649394,
+   "decided_ms": null,
+   "latency_ms": 636.2982499995269,
+   "tokens_in": 378,
+   "tokens_out": 37
+  },
+  {
+   "id": "fr-009",
+   "text": "eres demasiado tonto",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "insult"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Lo siento mucho si no te he podido ayudar. ¿Podrías decirme qué necesitas y trataré de asistirte lo mejor posible?",
+   "first_ms": 178.20708401268348,
+   "decided_ms": null,
+   "latency_ms": 621.3457090198062,
+   "tokens_in": 373,
+   "tokens_out": 36
+  }
+ ]
+}

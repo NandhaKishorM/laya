@@ -168,6 +168,8 @@ export interface ProviderOptions {
   numThreads?: number;
   /** Opt-in {artifact name: SHA-256 hexdigest} check for fetched ONNX files (web). */
   expectedSha256?: Record<string, string>;
+  signal?: AbortSignal | null;
+  onProgress?: ((done: number, total: number, file: string) => void) | null;
 }
 
 function applyNumThreads(ort: any, numThreads?: number): void {
@@ -188,10 +190,43 @@ function isOomError(e: unknown): boolean {
   return m.includes("memory") || m.includes("cuda") || m.includes("out of memory") || m.includes("oom");
 }
 
+const CACHE_KEY = "laya-ts";
+const TOKENIZER_CANDIDATES = ["tokenizer.json", "tokenizer/tokenizer.json"];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** fetch with 2 retries on network errors + 429/5xx; 404s fail fast. */
+async function fetchWithRetry(url: string, init?: RequestInit, retries = 2): Promise<Response> {
+  let last: unknown = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (init?.signal?.aborted) throw new DOMException("aborted", "AbortError");
+    try {
+      const res = await fetch(url, init);
+      if (res.ok) return res;
+      if ((res.status === 429 || res.status >= 500) && attempt < retries) {
+        await sleep(100 * (attempt + 1));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      last = e;
+      if ((e as any)?.name === "AbortError") throw e;
+      if (attempt < retries) {
+        await sleep(100 * (attempt + 1));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw last instanceof Error ? last : new Error(`fetch failed for ${url}`);
+}
+
 /** Online-first fetch: try network, cache on success, fall back to CacheStorage. */
 async function fetchArrayBuffer(
   url: string,
-  onHeaders?: (response: Response) => void,
+  opts?: { signal?: AbortSignal | null; onHeaders?: (response: Response) => void },
 ): Promise<ArrayBuffer> {
   const g = globalThis as unknown as { caches?: any };
   let cache: any = null;
@@ -199,7 +234,7 @@ async function fetchArrayBuffer(
   try {
     if (g.caches && typeof g.caches.open === "function") {
       try {
-        cache = await g.caches.open("laya-ts");
+        cache = await g.caches.open(CACHE_KEY);
         try {
           hit = await cache.match(url);
         } catch {
@@ -214,8 +249,8 @@ async function fetchArrayBuffer(
   }
   if (cache) {
     try {
-      const res = await fetch(url);
-      onHeaders?.(res);
+      const res = await fetchWithRetry(url, { signal: opts?.signal ?? undefined });
+      opts?.onHeaders?.(res);
       if (res.ok) {
         try {
           await cache.put(url, res.clone());
@@ -243,8 +278,8 @@ async function fetchArrayBuffer(
     }
     throw new Error(`fetch failed for ${url}`);
   }
-  const res = await fetch(url);
-  onHeaders?.(res);
+  const res = await fetchWithRetry(url, { signal: opts?.signal ?? undefined });
+  opts?.onHeaders?.(res);
   if (!res.ok) throw new Error(`fetch failed for ${url}: ${res.status}`);
   return await res.arrayBuffer();
 }
@@ -265,6 +300,8 @@ export async function loadNodeBundle(
     token?: string | null;
     revision?: string | null;
     expectedSha256?: Record<string, string>;
+    signal?: AbortSignal | null;
+    onProgress?: ((done: number, total: number, file: string) => void) | null;
   },
 ): Promise<NodeBundle> {
   const fs: typeof import("node:fs/promises") = await import("node:fs/promises");
@@ -294,12 +331,20 @@ export async function loadNodeBundle(
     await fs.mkdir(cache, { recursive: true });
     const token =
       opts?.token ?? (typeof process !== "undefined" ? (process as any).env?.["HF_TOKEN"] : undefined);
-    for (const f of ["rl_agent_config.json", "tokenizer.json", "tokenizer/tokenizer.json", "encoder.onnx", "head.onnx"]) {
+    const files = ["rl_agent_config.json", "tokenizer.json", "tokenizer/tokenizer.json", "encoder.onnx", "head.onnx"];
+    let done = 0;
+    for (const f of files) {
       try {
         await fs.stat(path.join(cache, f));
       } catch {
         const url = `https://huggingface.co/${modelDirOrRepo}/resolve/${revision ?? "main"}/${sub ? sub + "/" : ""}${f}`;
-        const res = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+        const res = await fetchWithRetry(
+          url,
+          {
+            ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+            signal: opts?.signal ?? undefined,
+          },
+        );
         const commit = res.headers?.get?.("x-repo-commit");
         if (commit) resolvedRevision = commit;
         if (!res.ok) {
@@ -318,6 +363,8 @@ export async function loadNodeBundle(
         await fs.writeFile(tmp, new Uint8Array(await res.arrayBuffer()));
         await fs.rename(tmp, target);
       }
+      done++;
+      opts?.onProgress?.(done, files.length, f);
     }
     dir = cache;
   }
@@ -350,7 +397,7 @@ export async function loadNodeBundle(
     );
   }
   let tokenizerJson: unknown | null = null;
-  for (const candidate of ["tokenizer.json", "tokenizer/tokenizer.json"]) {
+  for (const candidate of TOKENIZER_CANDIDATES) {
     try {
       tokenizerJson = JSON.parse(await fs.readFile(path.join(dir, candidate), "utf8"));
       break;
@@ -383,15 +430,20 @@ export async function loadWebBundle(
     subfolder?: string | null;
     revision?: string | null;
     expectedSha256?: Record<string, string>;
+    signal?: AbortSignal | null;
+    onProgress?: ((done: number, total: number, file: string) => void) | null;
   },
 ): Promise<WebBundle> {
   const revision = resolveRevision(repoOrUrl, opts?.revision);
   const base = baseUrlFor(repoOrUrl, opts?.subfolder ?? null, revision);
   let reportedRevision = revision;
   const fetchVerifiedJson = async (rel: string): Promise<unknown> => {
-    const buf = await fetchArrayBuffer(`${base}/${rel}`, (response) => {
-      const commit = response.headers?.get?.("x-repo-commit");
-      if (commit) reportedRevision = commit;
+    const buf = await fetchArrayBuffer(`${base}/${rel}`, {
+      signal: opts?.signal ?? undefined,
+      onHeaders: (response) => {
+        const commit = response.headers?.get?.("x-repo-commit");
+        if (commit) reportedRevision = commit;
+      },
     });
     if (opts?.expectedSha256) await expectDigest(rel, buf, opts.expectedSha256);
     return JSON.parse(new TextDecoder().decode(buf));
@@ -401,10 +453,12 @@ export async function loadWebBundle(
     cfg = await fetchVerifiedJson("rl_agent_config.json");
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("laya-ts: SHA-256 mismatch")) throw e;
+    if ((e as Error)?.name === "AbortError") throw e;
     throw new Error(`Incompatible model: ${JSON.stringify(repoOrUrl)} does not contain 'rl_agent_config.json'.`);
   }
+  opts?.onProgress?.(1, 2, "rl_agent_config.json");
   let tokenizerJson: unknown | null = null;
-  for (const candidate of ["tokenizer.json", "tokenizer/tokenizer.json"]) {
+  for (const candidate of TOKENIZER_CANDIDATES) {
     try {
       tokenizerJson = await fetchVerifiedJson(candidate);
       break;
@@ -413,6 +467,7 @@ export async function loadWebBundle(
       // Try the next supported Hugging Face layout.
     }
   }
+  opts?.onProgress?.(2, 2, "tokenizer.json");
   return { dir: base, cfg, tokenizerJson, revision: reportedRevision };
 }
 
@@ -508,6 +563,18 @@ export async function createNodeProvider(
   };
 }
 
+/** Best-effort fetch of a `<model>.data` sidecar; null when the model is single-file. */
+async function fetchSidecar(url: string): Promise<{ path: string; data: Uint8Array } | null> {
+  const name = `${url.split("/").pop()}.data`;
+  const sidecarUrl = `${url.replace(/\/+$/, "").split("/").slice(0, -1).join("/")}/${name}`;
+  try {
+    const buf = await fetchArrayBuffer(sidecarUrl);
+    return { path: name, data: new Uint8Array(buf) };
+  } catch {
+    return null;
+  }
+}
+
 export async function createWebProvider(
   modelUrl: string,
   opts?: ProviderOptions,
@@ -518,44 +585,105 @@ export async function createWebProvider(
   const base = modelUrl.replace(/\/+$/, "");
   const encUrl = `${base}/encoder.onnx`;
   const headUrl = `${base}/head.onnx`;
+  // (Re-)read through fetchArrayBuffer so repeat reads hit CacheStorage.
+  // Nothing pin-worthy is retained: after each create, buffers are droppable.
+  const readEncoderParts = async (signal?: AbortSignal | null) => {
+    const buf = await fetchArrayBuffer(encUrl, { signal: signal ?? undefined });
+    const sidecar = await fetchSidecar(encUrl);
+    return { buf, extra: sidecar ? { externalData: [sidecar] } : {} };
+  };
   let encBuf: ArrayBuffer;
+  let encExtra: Record<string, unknown>;
   try {
-    encBuf = await fetchArrayBuffer(encUrl);
-  } catch {
+    ({ buf: encBuf, extra: encExtra } = await readEncoderParts(opts?.signal));
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw e;
     throw new Error(`Incompatible model: 'encoder.onnx' not found (expected ${encUrl}).`);
   }
+  opts?.onProgress?.(1, 2, "encoder.onnx");
   let headBuf: ArrayBuffer;
   try {
-    headBuf = await fetchArrayBuffer(headUrl);
-  } catch {
+    headBuf = await fetchArrayBuffer(headUrl, { signal: opts?.signal ?? undefined });
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw e;
     throw new Error(`Incompatible model: 'head.onnx' not found (expected ${headUrl}).`);
   }
+  opts?.onProgress?.(2, 2, "head.onnx");
   // Verify before the bytes reach the runtime: a tampered ONNX never becomes a session.
   if (opts?.expectedSha256) {
     await expectDigest("encoder.onnx", encBuf, opts.expectedSha256);
     await expectDigest("head.onnx", headBuf, opts.expectedSha256);
   }
+  // Split ONNX references its weights relatively ("encoder.onnx.data"); buffered
+  // sessions have no filesystem, so mount the sidecar via externalData.
+  const headSidecar = await fetchSidecar(headUrl);
+  const headExtra = headSidecar ? { externalData: [headSidecar] } : {};
   let enc: any;
   try {
+    // "basic" skips the Skip+LayerNorm fusion whose fused Beta shape the
+    // WebGPU kernel rejects; unfused LayerNormalization runs fine on GPU.
     enc = await ort.InferenceSession.create(new Uint8Array(encBuf), {
       executionProviders: ["webgpu", "wasm"],
+      graphOptimizationLevel: "basic",
+      ...encExtra,
     });
   } catch (e) {
     enc = await ort.InferenceSession.create(new Uint8Array(encBuf), {
       executionProviders: ["wasm"],
+      ...encExtra,
     });
   }
   const head = await ort.InferenceSession.create(new Uint8Array(headBuf), {
     executionProviders: ["wasm"],
+    ...headExtra,
   });
+  // Lazy WASM encoder: some graphs pass WebGPU session creation but hit an
+  // unsupported kernel at run time (e.g. SkipLayerNormalization shape gaps).
+  // On the first such failure we build a WASM session and stick with it.
+  let encWasm: any = null;
+  const runEncoderOn = async (session: any, b: Batch) => {
+    const out = await session.run(feed(ort, b));
+    const t = pickOutput(out, ["last_hidden_state", "lastHidden", "hidden_states"]);
+    return { lastHidden: toNested(t.data, t.dims) };
+  };
   return {
     runEncoder: async (b) => {
+      if (encWasm) {
+        try {
+          return await runEncoderOn(encWasm, b);
+        } catch (e) {
+          if (isOomError(e)) throw new Error(`${(e as Error).message} (out of memory; try fewer questions per call)`);
+          throw e;
+        }
+      }
       try {
-        const out = await enc.run(feed(ort, b));
-        const t = pickOutput(out, ["last_hidden_state", "lastHidden", "hidden_states"]);
-        return { lastHidden: toNested(t.data, t.dims) };
+        return await runEncoderOn(enc, b);
       } catch (e) {
         if (isOomError(e)) throw new Error(`${(e as Error).message} (WebGPU out of memory; WASM fallback already active)`);
+        if (/\[webgpu\]/i.test(String((e as Error)?.message ?? e))) {
+          console.warn(
+            `laya: WebGPU encoder run failed (${String((e as Error)?.message ?? e)}); falling back to WASM.`,
+          );
+          if (!encWasm) {
+            // Re-read through the cache instead of pinning 1GB+ for the agent's life.
+            let parts;
+            try {
+              parts = await readEncoderParts();
+            } catch {
+              throw e;
+            }
+            encWasm = await ort.InferenceSession.create(new Uint8Array(parts.buf), {
+              executionProviders: ["wasm"],
+              ...parts.extra,
+            });
+          }
+          try {
+            return await runEncoderOn(encWasm, b);
+          } catch (e2) {
+            if (isOomError(e2)) throw new Error(`${(e2 as Error).message} (out of memory; try fewer questions per call)`);
+            throw e2;
+          }
+        }
         throw e;
       }
     },

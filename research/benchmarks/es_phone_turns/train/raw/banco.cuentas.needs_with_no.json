@@ -1,0 +1,14 @@
+{
+ "name": "banco.cuentas.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y necesita que se ocupe de su caso el área que atiende esto: «cuentas de ahorro y de cheques: abrirlas, saldos, transferencias». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, no me deja ver el saldo de mi cuenta de cheques en la app.",
+  "Oiga, disculpen que lo moleste, pero nunca me llegó la tarjeta de débito que pedí hace dos semanas.",
+  "Qué tal, quiero consultarle porque las transferencias que hago entre cuentas a veces tardan demasiado y no sé por qué pasa eso.",
+  "Disculpe, abrí una cuenta de ahorros online pero todavía no me llega el número de cuenta para poder depositar dinero.",
+  "Oiga, le escribo porque no tengo acceso al internet banking desde hace dos días y necesito ver mis movimientos urgentemente.",
+  "Hola, buenas tardes, no han procesado la transferencia que hice ayer para pagar una factura y ya pasó el día hábil.",
+  "Perdone la molestia, pero me dijeron que tenía fondos suficientes y sin embargo el banco no autorizó el pago con mi cheque."
+ ]
+}

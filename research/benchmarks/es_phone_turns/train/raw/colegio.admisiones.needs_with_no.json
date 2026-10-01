@@ -1,0 +1,15 @@
+{
+ "name": "colegio.admisiones.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y necesita que se ocupe de su caso el área que atiende esto: «matrícula e inscripción de alumnos nuevos». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Mire, la verdad es que nunca me han dado acceso al portal para registrar a mi hijo.",
+  "¿Buenas tardes? Oiga, no he recibido ningún correo con los pasos para inscribirme.",
+  "La página web está caída y no puedo completar el formulario de matrícula.",
+  "Oiga, le comento que me han dicho que ya todo estaba listo pero nunca llegó la confirmación.",
+  "Mmm, a ver, no tengo las credenciales que me prometieron enviar hace tres días.",
+  "Señorita, oiga, es que no me funciona el enlace para subir los documentos escolares.",
+  "Disculpe, le llamo porque no he podido generar el recibo de pago para la inscripción.",
+  "Oiga, bueno, es que nadie me ha llamado para agendar la cita presencial y ya se vence la fecha."
+ ]
+}

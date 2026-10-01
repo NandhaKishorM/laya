@@ -12,11 +12,14 @@ These tests need no model weights. They cover:
 import inspect
 import os
 import sys
+from contextlib import contextmanager
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np  # noqa: E402
+import torch  # noqa: E402
 
 from laya import agent as _agent  # noqa: E402
 from laya.agent import Agent  # noqa: E402
@@ -67,6 +70,10 @@ NQ = 2
 QUESTIONS = {"a": {"type": "noul", "instructions": "?"}, "b": {"type": "noul", "instructions": "?"}}
 
 
+# `_encode_state` items carry the state truncation counts that `predict_batch` reports in `usage` (#174)
+NO_STATE_STATS = {"state_tokens": 0, "state_tokens_used": 0, "state_tokens_dropped": 0, "truncated": False}
+
+
 def make_fake():
     fake = _agent.Agent.__new__(_agent.Agent)
     fake.tok = type("Tok", (), {"pad_token_id": 0})()
@@ -75,7 +82,7 @@ def make_fake():
 
     def _encode_state(state, ids, internal):
         # one 3-token, 2-marker item per question; content is irrelevant to the mapping test
-        return [{"ids": [1, 2, 3], "markers": [0, 1], "qtype": 2} for _ in ids]
+        return [{"ids": [1, 2, 3], "markers": [0, 1], "qtype": 2, "state_stats": NO_STATE_STATS} for _ in ids]
 
     def _forward(b):
         n = b["input_ids"].shape[0]
@@ -105,7 +112,8 @@ def make_length_fake():
         fake.encoded.append(state)
         limit = overrides.get("max_len", 100)
         # Question rows have different lengths; sorting must use the longest.
-        return [{"ids": [state["id"] + 1] * min(limit, size), "markers": [0, 1], "qtype": 2}
+        return [{"ids": [state["id"] + 1] * min(limit, size), "markers": [0, 1], "qtype": 2,
+                 "state_stats": NO_STATE_STATS}
                 for size in (3, state["length"])]
 
     def forward(batch):
@@ -163,7 +171,12 @@ f = make_length_fake()
 check("length/empty inputs", f.predict_batch([], QUESTIONS, sort_by_length=True), [])
 check("length/empty questions", f.predict_batch(states[:1], {}, sort_by_length=True)[0]["answers"], {})
 check("length/empty cases do not encode", f.encoded, [])
-f.predict_batch(states, QUESTIONS, sort_by_length=True, on_predict_start=lambda ctx: ctx.skip([]))
+# The cache pattern carries one entry per state (see docs/hooks/api.md); an empty skip
+# would return zero rows for this 37-state call, which `skip()` refuses as the contract
+# violation it is. What this pins is that a skip short-circuits before sorting/encoding.
+f.predict_batch(states, QUESTIONS, sort_by_length=True,
+                on_predict_start=lambda ctx: ctx.skip(
+                    [{"model": "cached", "answers": {}, "usage": {}} for _ in ctx.states]))
 check("length/cache skip does not encode", f.encoded, [])
 
 plain, grouped = make_length_fake(), make_length_fake()
@@ -269,6 +282,127 @@ with patch.object(_agent, "confidence_from_probs", wraps=_agent.confidence_from_
             "action": {"act_probability": 0.75},
         })
     check("decode/noul-only answers skip entropy", entropy.call_count, 0)
+
+
+# --------------------------------------------------------------- min_confidence abstention (#361)
+# The flag is set before `on_predict_end` runs, so an audit hook sees exactly what the caller gets.
+def make_confidence_fake():
+    fake = make_fake()
+
+    def decode(logits, act, items, ids, internal, offset):
+        return {qid: {"type": "choice", "choice": qid,
+                      "answer_confidence": 0.90 if qid == "a" else 0.40}
+                for qid in ids}
+
+    fake._decode_answers = decode
+    return fake
+
+
+seen = []
+gated = make_confidence_fake().predict_batch(
+    ["s0", "s1"], QUESTIONS, min_confidence=0.5,
+    on_predict_end=lambda ctx: seen.append(
+        [{q: a.get("low_confidence", False) for q, a in r["answers"].items()} for r in ctx.results]))
+check("min_confidence/flags only answers below the threshold",
+      [[r["answers"][q].get("low_confidence", False) for q in ("a", "b")] for r in gated],
+      [[False, True], [False, True]])
+check("min_confidence/end hook sees the same flags", seen, [[{"a": False, "b": True}] * 2])
+check("min_confidence/raw answer and confidence intact",
+      (gated[0]["answers"]["a"]["answer_confidence"], "low_confidence" in gated[0]["answers"]["a"]),
+      (0.90, False))
+check("min_confidence/default leaves results untouched",
+      "low_confidence" in make_confidence_fake().predict_batch(["s0"], QUESTIONS)[0]["answers"]["b"], False)
+check_raises("min_confidence/out-of-range rejected", ValueError,
+             lambda: make_confidence_fake().predict_batch(["s0"], QUESTIONS, min_confidence=1.5))
+check_raises("min_confidence/bool rejected", ValueError,
+             lambda: make_confidence_fake().predict_batch(["s0"], QUESTIONS, min_confidence=True))
+# A legend maps a level index to the TEXT of that level. Its keys are already strings, and
+# `structured` stringifies every level it builds, so a numeric scale written directly used to be
+# the one path that echoed the caller's own type back: `{"0": 1, "1": 2}` instead of
+# `{"0": "1", "1": "2"}`. That made the response's JSON types depend on the input's types, so a
+# client that reads a level as a string had to handle a number as well.
+#
+# `render_criterion` is what renders the text, so a structured level comes back as the JSON the
+# model was shown rather than a Python repr, and bool/None follow JSON spelling (`true`, `null`).
+for label, crit, want in (
+    ("int levels", [1, 2, 3], {"0": "1", "1": "2", "2": "3"}),
+    ("float levels", [1.5, 2.5], {"0": "1.5", "1": "2.5"}),
+    ("bool levels", [True, False], {"0": "true", "1": "false"}),
+    ("string levels", ["low", "high"], {"0": "low", "1": "high"}),
+    ("dict level", [{"a": 1}], {"0": '{"a": 1}'}),
+    ("list level", [[1, 2]], {"0": "[1, 2]"}),
+):
+    internal = {"level": {"t": "score", "crit": crit}}
+    k = len(crit)
+    logits = np.tile(np.log([1.0 / k] * k), (k, 1))
+    act = np.array([[0.25, 0.75]] * k)
+    result = decoder._decode_answers(
+        logits, act, [{"markers": [0, 1]}] * k, ["level"] * k, internal, 0
+    )
+    check("decode/score legend values are str (%s)" % label, result["level"]["legend"], want)
+    check_true("decode/score legend values have no non-str (%s)" % label,
+               all(isinstance(v, str) for v in result["level"]["legend"].values()),
+               result["level"]["legend"])
+
+
+# --------------------------------------------------------------- CUDA batch autocast lifetime
+# Fake CUDA device and autocast so this orchestration test also runs in CPU-only CI.
+def run_amp_scope_case(batch_size=2, device="cuda", amp=True, fast=None, compiled=False, fail=False):
+    fake = make_fake()
+    fake.device = torch.device(device)
+    fake.dtype = torch.bfloat16
+    fake.amp_enabled = amp
+    fake._fast = fast
+    fake._compiled = compiled
+    events = []
+
+    @contextmanager
+    def record_autocast(**kwargs):
+        events.append(("enter", kwargs))
+        try:
+            yield
+        finally:
+            events.append(("exit", kwargs))
+
+    original_forward = fake._forward
+
+    def forward(batch):
+        events.append(("forward", _agent._BATCH_AUTOCAST_CACHE.get()))
+        if fail:
+            raise ValueError("forward failed")
+        return original_forward(batch)
+
+    fake._forward = forward
+    with patch.object(torch, "autocast", side_effect=record_autocast):
+        try:
+            fake.predict_batch(["s0", "s1", "s2"], QUESTIONS, batch_size=batch_size,
+                               on_predict_end=lambda ctx: events.append(("end", None)),
+                               hooks=SimpleNamespace(on_error=lambda ctx: events.append(("error", None))))
+        except ValueError:
+            if not fail:
+                raise
+    return events
+
+
+scoped = run_amp_scope_case()
+check("autocast/multiple forwards use one enclosing scope",
+      [name for name, _ in scoped], ["enter", "forward", "forward", "exit", "end"])
+check("autocast/outer scope disables autocast between forwards",
+      scoped[0][1], {"device_type": "cuda", "dtype": torch.bfloat16, "enabled": False})
+check("autocast/batch marker only active during forwards",
+      [value for name, value in scoped if name == "forward"], [True, True])
+check("autocast/batch marker reset before end hook", _agent._BATCH_AUTOCAST_CACHE.get(), False)
+check("autocast/single forward skips extra scope",
+      [name for name, _ in run_amp_scope_case(batch_size=None)], ["forward", "end"])
+for label, settings in (("CPU", {"device": "cpu"}), ("disabled AMP", {"amp": False}),
+                        ("fast path", {"fast": object()}), ("compiled path", {"compiled": True})):
+    check("autocast/%s skips extra scope" % label,
+          [name for name, _ in run_amp_scope_case(**settings)], ["forward", "forward", "end"])
+with patch.object(torch, "is_autocast_enabled", return_value=True):
+    check("autocast/caller-owned scope needs no extra scope",
+          [name for name, _ in run_amp_scope_case()], ["forward", "forward", "end"])
+check("autocast/error closes scope before error and end hooks",
+      [name for name, _ in run_amp_scope_case(fail=True)], ["enter", "forward", "exit", "error", "end"])
 
 
 # --------------------------------------------------------------------------- report

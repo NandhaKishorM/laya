@@ -96,6 +96,13 @@ describe("structured/projection", () => {
       { type: "object", properties: { x: { type: "integer", minimum: 0, maximum: 2 } } });
     expect(v.x).toBe(2);
   });
+  it("score without probabilities honours minimum when minimum != 0", () => {
+    const schema = { type: "object", properties: { x: { type: "integer", minimum: 3, maximum: 7 } } };
+    for (const [score, want] of [[0, 3], [2.4, 5], [4, 7]] as const) {
+      const got = answersToJson({ x: { type: "score", score } }, schema);
+      expect(got.x).toBe(want);
+    }
+  });
   it("null choice value projects back to null", () => {
     const v = answersToJson({ x: { type: "choice", choice: "null" } },
       { type: "object", properties: { x: { enum: ["a", null] } } });
@@ -154,7 +161,7 @@ describe("structured/rejections", () => {
 describe("structured/decide", () => {
   class FakeRunner {
     calls: { state: unknown; questions: unknown; opts: unknown }[] = [];
-    constructor(private answers: unknown) {}
+    constructor(private answers: any) {}
     async predict(state: unknown, questions: any, opts: any = {}) {
       this.calls.push({ state, questions, opts });
       return { answers: this.answers, usage: { input_tokens: 1, output_tokens: 0 },
@@ -233,6 +240,126 @@ describe("structured/methods", () => {
 
   it("Router exposes decide", () => {
     expect(typeof (Router.prototype as any).decide).toBe("function");
+  });
+});
+
+describe("structured/nullable-anyof", () => {
+  const NULLABLE = {
+    type: "object",
+    properties: {
+      dept: {
+        anyOf: [{ type: "string", enum: ["billing", "sales"] }, { type: "null" }],
+        description: "Which team?",
+      },
+      score: { anyOf: [{ type: "integer", minimum: 0, maximum: 2 }, { type: "null" }] },
+      flag: { anyOf: [{ type: "boolean" }, { type: "null" }] },
+    },
+  };
+
+  it("unwraps anyOf nullable enum as choice and preserves description", () => {
+    const nq = questionsFromJsonSchema(NULLABLE);
+    expect(nq.dept.type).toBe("choice");
+    expect(nq.dept.instructions).toBe("Which team?");
+    expect(Object.keys(nq.dept.criteria as object)).toEqual(["billing", "sales"]);
+  });
+
+  it("unwraps anyOf nullable bounded integer as score", () => {
+    const nq = questionsFromJsonSchema(NULLABLE);
+    expect(nq.score.type).toBe("score");
+    expect(nq.score.criteria).toEqual(["0", "1", "2"]);
+  });
+
+  it("unwraps anyOf nullable boolean as noul", () => {
+    const nq = questionsFromJsonSchema(NULLABLE);
+    expect(nq.flag.type).toBe("noul");
+  });
+
+  it("accepts oneOf nullable enum as choice", () => {
+    const q = questionsFromJsonSchema({
+      type: "object",
+      properties: { a: { oneOf: [{ enum: ["x", "y"] }, { type: "null" }] } },
+    });
+    expect(q.a.type).toBe("choice");
+    expect(Object.keys(q.a.criteria as object)).toEqual(["x", "y"]);
+  });
+
+  it("rejects unions of two real types as ambiguous", () => {
+    expect(() =>
+      questionsFromJsonSchema({
+        type: "object",
+        properties: { a: { anyOf: [{ type: "boolean" }, { type: "integer" }] } },
+      }),
+    ).toThrowError(/only 'Optional\[\.\.\.\]' unions \(one non-null branch\) are supported/);
+  });
+});
+
+describe("structured/min_confidence", () => {
+  const fakeRunner = (answers: Record<string, any>) => ({
+    calls: [] as any[],
+    async predict(state: unknown, questions: any, opts: any) {
+      this.calls.push({ state, questions, opts });
+      return { model: "fake", answers: JSON.parse(JSON.stringify(answers)) };
+    },
+  });
+
+  it("default behavior unchanged when minConfidence is omitted", async () => {
+    const runner = fakeRunner(ANSWERS);
+    const out = await decide(runner, "s", SCHEMA);
+    expect(out.department).toBe("billing");
+    expect(out.urgency).toBe(2);
+    expect(out.needs_human).toBe(true);
+    expect(out.priority).toBe(2);
+    expect(Object.values(ANSWERS).some((a: any) => a.low_confidence)).toBe(false);
+  });
+
+  it("with minConfidence=0.85, answers below threshold project as null", async () => {
+    const runner = fakeRunner(ANSWERS);
+    const out = await decide(runner, "s", SCHEMA, { minConfidence: 0.85 });
+    expect(out.department).toBe("billing"); // 0.9 >= 0.85
+    expect(out.urgency).toBeNull(); // 0.5 < 0.85
+    expect(out.needs_human).toBeNull(); // 0.8 < 0.85
+    expect(out.priority).toBeNull(); // 0.7 < 0.85
+  });
+
+  it("accepts python parity alias min_confidence", async () => {
+    const runner = fakeRunner(ANSWERS);
+    const out = await decide(runner, "s", SCHEMA, { min_confidence: 0.85 });
+    expect(out.department).toBe("billing");
+    expect(out.urgency).toBeNull();
+  });
+
+  it("with returnDetails: true, details keep raw confidence and answers dict", async () => {
+    const runner = fakeRunner(ANSWERS);
+    const det = await decide(runner, "s", SCHEMA, { minConfidence: 0.85, returnDetails: true });
+    expect(det.values.urgency).toBeNull();
+    expect(det.confidence.urgency).toBe(0.5);
+    expect((det.answers.urgency as any).low_confidence).toBe(true);
+    expect(det.values.department).toBe("billing");
+    expect((det.answers.department as any).low_confidence).toBeUndefined();
+  });
+
+  it("direct answersToJson with low_confidence: true in answer projects to null", () => {
+    const answersWithFlag = {
+      department: { type: "choice", choice: "billing", confidence: 0.4, low_confidence: true },
+      urgency: {
+        type: "score",
+        score: 2.0,
+        confidence: 0.9,
+        probabilities: { "0": 0.0, "1": 0.1, "2": 0.9 },
+        legend: {},
+      },
+    };
+    const proj = answersToJson(answersWithFlag as any, SCHEMA);
+    expect(proj.department).toBeNull();
+    expect(proj.urgency).toBe(2);
+  });
+
+  it("rejects invalid minConfidence values", async () => {
+    const runner = fakeRunner(ANSWERS);
+    await expect(decide(runner, "s", SCHEMA, { minConfidence: 1.2 })).rejects.toThrow(/min_confidence must be a float/);
+    await expect(decide(runner, "s", SCHEMA, { minConfidence: -0.1 })).rejects.toThrow(/min_confidence must be a float/);
+    await expect(decide(runner, "s", SCHEMA, { minConfidence: true as any })).rejects.toThrow(/min_confidence must be a float/);
+    await expect(decide(runner, "s", SCHEMA, { minConfidence: "0.85" as any })).rejects.toThrow(/min_confidence must be a float/);
   });
 });
 

@@ -1,0 +1,12 @@
+{
+ "name": "clinic.farmacia.need",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una clínica médica y necesita que se ocupe de su caso el área que atiende esto: «medicamentos y recetas». En TODAS cuenta su problema usando una negación («no me funciona», «no me llegó», «no puedo», «nunca me»). No nombra el área.",
+ "phrases": [
+  "Bueno, hola, qué tal, vengo urgente con una consulta, la cuestión es que estoy tomando el tratamiento que me mandaron hace días y no me funciona.",
+  "Bueno, hola, soy la señora Rodríguez, tengo una inquietud con el medicamento que me dejaron recetado, no me llegó.",
+  "Bueno, hola, necesito hablar con alguien rápido, el tema es que estoy muy nerviosa porque no puedo.",
+  "Bueno, hola, soy el señor de la mesa cuatro, me dejaron recetar unas cosas pero nunca me las dieron.",
+  "Bueno, hola, mira, tengo un problema con el tratamiento, me mandaron receta pero no me funciona."
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "name": "cases.facturacion.need",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una empresa de telefonía e internet y necesita que se ocupe de su caso el área que atiende esto: «un cobro, un pago, una factura, un saldo o un reembolso». En TODAS cuenta su problema usando una negación («no me funciona», «no me llegó», «no puedo», «nunca me»). No nombra el área.",
+ "phrases": [
+  "Oiga, estoy llamando por un asunto serio, me está cobrando una mensualidad y no me deja ver la factura ni el detalle del pago.",
+  "Hola, buenos días, tengo el saldo pendiente y no me está llegando el cobro, necesitan revisar el caso urgente.",
+  "Hola, alguien atienda por favor, el plan me funciona bien pero no puedo acceder a la sección de facturación ni al saldo.",
+  "Buenas tardes, disculpen que llame, me hicieron un cobro adicional y no me aparece la factura para validar el pago.",
+  "Saludos, llamo para reclamar el saldo que me deben y no puedo generar una orden de pago ni ver el estado del reembolso."
+ ]
+}

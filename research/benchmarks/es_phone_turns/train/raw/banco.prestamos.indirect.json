@@ -1,0 +1,27 @@
+{
+ "name": "banco.prestamos.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un banco y necesita que se ocupe de su caso el área que atiende esto: «préstamos y créditos: solicitarlos, requisitos, cuotas». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Le llamo para saber qué papeles necesito para pedir un crédito automotriz.",
+  "Buenos días, quisiera agendar una cita para firmar la escritura del préstamo hipotecario.",
+  "Oiga, tengo una duda con la fecha de mi próxima cuota, ¿me la pueden confirmar?",
+  "Necesito saber si me aprueban el crédito personal porque urgente necesito el dinero.",
+  "Le escribo porque me cobraron dos veces la cuota del mes pasado y quiero que lo corrijan ya.",
+  "Quiero solicitar la ampliación de mi línea de crédito para poder invertir en mi negocio.",
+  "O sea, ¿con el recibo de luz alcanza o necesito también el estado de cuenta?",
+  "Me gustaría saber cuánto es el total a pagar si quiero liquidar mi préstamo antes de tiempo.",
+  "Ayuda por favor, se me venció el pago y no encuentro la forma de regularizarlo en la app.",
+  "Les llamo para consultar los requisitos específicos para el crédito agrícola, soy campesino.",
+  "Quiero saber si puedo cambiar la fecha de corte para que me quede mejor con mis ingresos.",
+  "Oiga, ¿me podrían explicar por qué subió mi tasa de interés este último mes?",
+  "Necesito solicitar un crédito educativo para mis hijos y quiero saber los plazos disponibles.",
+  "Le comentaba que tengo dificultades para pagar la cuota de este mes, ¿hay alguna opción de moratoria?",
+  "Quiero retirar el dinero del préstamo aprobado pero me dicen que está retenido, ¿por qué?",
+  "Oiga, necesito una carta de no adeudo urgente para un trámite de vivienda.",
+  "Les llamo para ver si puedo refinancear mi deuda con tarjeta y quedar en un solo préstamo.",
+  "Quisiera saber el monto máximo que me pueden prestar según mi nómina actual.",
+  "O sea, ¿tengo que ir personalmente o se puede hacer todo por internet?",
+  "Necesito hablar con alguien de préstamos porque tengo un problema con la firma digital."
+ ]
+}

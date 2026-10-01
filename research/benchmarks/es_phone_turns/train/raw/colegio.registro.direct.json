@@ -1,0 +1,15 @@
+{
+ "name": "colegio.registro.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y pide que la comuniquen con el área de «registro» (constancias, certificados y notas). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor comunicarme con Registro.",
+  "Oiga, le pido que me pase con el departamento de registro.",
+  "Hola, ¿me comunica con registro?",
+  "Le hablo para solicitar constancias y necesito hablar con alguien del área de registro, por favor transfórmeme.",
+  "Buenas tardes, solicito pasar con registros.",
+  "Pura vida, oiga me podría comunicar con la oficina de registro por fa.",
+  "Hola, necesito que me ligue con el departamento de registro.",
+  "Le escribo para pedirle que me comunique inmediatamente con personal del área de registro."
+ ]
+}

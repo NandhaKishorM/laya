@@ -1,0 +1,15 @@
+{
+ "name": "agencia.visas.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una agencia de viajes y aclara que NO necesita el área de «visas» (trámite de visas y pasaportes): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No necesito visas ni nada de eso.",
+  "Oiga, no me pase al área de pasaportes.",
+  "Solo quiero hacer una pregunta rápida, no es tema de visas.",
+  "Le confirmo que no necesito ningún trámite migratorio.",
+  "Por favor, quédense con esta llamada, no busco visa.",
+  "No tiene caso pasarla ahí porque no necesito nada de eso.",
+  "Quedo tranquila porque ya sé que no requiero visa.",
+  "Atiéndame usted aquí mismo, no es trámite de pasaporte."
+ ]
+}

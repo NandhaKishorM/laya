@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.aduanas.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y necesita que se ocupe de su caso el área que atiende esto: «trámites e impuestos de paquetes que vienen del extranjero». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, le llamo porque no me han dado la factura de los impuestos del paquete que llegó ayer",
+  "A ver si me puede ayudar que no puedo descargar la guía de despacho aduanal desde su portal",
+  "Hola, buen día, o sea que no se ha actualizado el estado de mi trámite con la hacienda pública",
+  "Disculpe la molestia, es que no tengo constancia del pago de los aranceles en mi correo electrónico",
+  "Pues mire, le comento porque no me aparece el monto total a pagar cuando intento regularizar la mercancía",
+  "Oiga pues, ¿sabe si ya está listo? Porque no me han notificado la resolución de la aduana todavía",
+  "Le escribo urgente porque no puedo generar el comprobante fiscal del envío que vino de EE. UU.",
+  "Che, hola, o sea que no me llegó ningún aviso sobre los impuestos pendiente de mi paquete nacionalizado"
+ ]
+}

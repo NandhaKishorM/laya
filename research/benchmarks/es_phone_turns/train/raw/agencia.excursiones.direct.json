@@ -1,0 +1,15 @@
+{
+ "name": "agencia.excursiones.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una agencia de viajes y pide que la comuniquen con el área de «excursiones» (paquetes turísticos y tours). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Dígame, por favor, ¿me comunican con el área de excursiones?",
+  "Hola, requiero hablar con turismo, porfa",
+  "A ver, que me pasen con la sección de paquetes, por favor",
+  "Tío, si es posible, ¿con excursionismo, porfa?",
+  "Oiga, le pido un favor: transfieran a quien atiende tours",
+  "Hola, hablo para solicitar el área de viajes y excursiones",
+  "Ay, déjeme con los que manejan las salidas turísticas",
+  "Buenas, ¿con el departamento de excursiones por favor?"
+ ]
+}

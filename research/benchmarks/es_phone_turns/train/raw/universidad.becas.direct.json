@@ -1,0 +1,15 @@
+{
+ "name": "universidad.becas.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y pide que la comuniquen con el área de «becas» (solicitar o renovar una beca). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor comunicarme con la oficina de becas.",
+  "Oiga, ¿están ahí? Pónganme con becas, porfa.",
+  "Buen día, me gustaría hablar con alguien del área de becas para renovar mi solicitud, gracias.",
+  "¿Con becas?",
+  "Hola, buen día, necesito que me transfieran con el departamento de becas, por favor.",
+  "Oiga, póngame con becas, no tengo tiempo para esperar.",
+  "Buenos días, ¿podría comunicarme con la sección de becas?",
+  "Póngame con becas."
+ ]
+}

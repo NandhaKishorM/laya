@@ -7,9 +7,9 @@ on:
   schedule:
     - cron: "17 6 * * 1"     # Monday morning: catch CVEs disclosed since the last push
 
-# Cancel outdated pull request runs; let runs on main finish.
+# Cancel outdated pull request runs; on main, run per commit.
 concurrency:
-  group: security-${{ github.ref }}
+  group: security-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Read-only by default. Jobs that need more ask for it explicitly.
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0          # gitleaks needs history to scan every commit in the PR
       - name: gitleaks (diff)
@@ -51,25 +51,83 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
       - run: pip install pip-audit
-      - name: Audit declared dependencies
+      - name: Audit shipped dependencies (core + [serve], blocking)
         run: |
           # Audit what the package DECLARES, not a local install. Installing torch from the
           # PyTorch CPU index yields a local version (2.14.0+cpu) that does not exist on PyPI,
           # so pip-audit cannot resolve it and --strict fails the job on that alone.
-          python - <<'PY' > requirements-audit.txt
-          import re
-          src = open("pyproject.toml").read()
-          block = re.search(r"dependencies = \[(.*?)\]", src, re.S).group(1)
-          for dep in re.findall(r'"([^"]+)"', block):
-              print(dep)
+          #
+          # The blocking scope is what the package and the image actually ship: [project.dependencies]
+          # plus the [serve] extra -- the Dockerfile ends with `pip install ".[serve]"`, so fastapi,
+          # uvicorn and python-multipart and their transitive closure run inside the published image,
+          # and an advisory in any of them has to fail every PR. Read the tables rather than
+          # transcribing a list, so an extra added later is audited by the commit that adds it.
+          #
+          # The remaining extras (langchain, crewai, llamaindex, ...) are audited separately, see
+          # the next step: a finding there is still reported, but it does not fail unrelated PRs.
+          python - <<'PY' > requirements-audit-core.txt
+          import tomllib
+          with open("pyproject.toml", "rb") as fh:
+              project = tomllib.load(fh)["project"]
+          specs = list(project.get("dependencies", []))
+          specs.extend(project.get("optional-dependencies", {}).get("serve", []))
+          seen = set()
+          for spec in specs:
+              if spec not in seen:
+                  seen.add(spec)
+                  print(spec)
           PY
-          cat requirements-audit.txt
-          pip-audit --strict --desc -r requirements-audit.txt
+          cat requirements-audit-core.txt
+          echo "strictly auditing $(wc -l < requirements-audit-core.txt) shipped names: the core plus [serve]"
+          pip-audit --strict --desc -r requirements-audit-core.txt
+
+      - name: Audit optional-integration dependencies (findings advisory, failures blocking)
+        # The integration extras pull transitives that ship nowhere: no laya surface runs a Chroma
+        # server or calls nltk's model save/load, and crewai pins json-repair below the patched
+        # release (#645). Those advisories still deserve eyes, so they are reported here as an
+        # annotation, but they must not turn every PR red -- a gate that is always red teaches
+        # everyone to skim past it, including the day one of these packages ships a fix (#646).
+        #
+        # Only FINDINGS are advisory. pip-audit exits non-zero both for findings and for a broken
+        # audit -- a specifier it cannot resolve, a resolver or tool crash -- and its report always
+        # carries the findings count. So a failure WITH a report is advisory; a failure WITHOUT one
+        # is the audit itself breaking, and that still fails the job exactly as it did before.
+        run: |
+          python - <<'PY' > requirements-audit-extras.txt
+          import tomllib
+          with open("pyproject.toml", "rb") as fh:
+              project = tomllib.load(fh)["project"]
+          seen = set()
+          for extra, specs in project.get("optional-dependencies", {}).items():
+              if extra == "serve":
+                  continue          # already in the blocking audit above
+              for spec in specs:
+                  if spec not in seen:          # `langchain` and `langgraph` repeat two of these
+                      seen.add(spec)
+                      print(spec)
+          PY
+          cat requirements-audit-extras.txt
+          echo "advisorially auditing $(wc -l < requirements-audit-extras.txt) optional-integration names"
+          # `set -e` is on: capture the exit code without tripping it, then decide below.
+          pip-audit --strict --desc -r requirements-audit-extras.txt > pip-audit-extras.log 2>&1 && code=0 || code=$?
+          cat pip-audit-extras.log
+          if [ "$code" -ne 0 ] && ! grep -q "known vulnerabilities" pip-audit-extras.log; then
+            echo "::error::the extras audit itself failed (exit $code) -- resolver or tooling error, still blocking"
+            exit "$code"
+          fi
+          if [ "$code" -ne 0 ]; then
+            # Name the advisories in the annotation itself, so a triager sees WHAT was found
+            # without opening the log (#694 review). Only the pip-audit table IDs (GHSA/PYSEC):
+            # --desc bodies quote CVE- ids in prose, and a warning that repeats prose noise is
+            # a warning nobody reads.
+            ids=$(grep -oE "(GHSA|PYSEC)-[A-Za-z0-9-]+" pip-audit-extras.log | sort -u | tr '\n' ' ')
+            echo "::warning::advisories in optional-integration dependencies: ${ids% } -- visible here, not blocking PRs (see #645)"
+          fi
 
   codeql:
     name: CodeQL
@@ -80,19 +138,19 @@ jobs:
       actions: read
       contents: read
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: github/codeql-action/init@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
           languages: python
           queries: security-extended
-      - uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
 
   supply_chain:
     name: no unsafe deserialization
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Weights must load through safetensors, never pickle
         run: |
           # torch.load / pickle execute arbitrary code during deserialization. Laya loads

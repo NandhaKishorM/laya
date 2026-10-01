@@ -1,0 +1,27 @@
+{
+ "name": "paqueteria.rastreo.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una empresa de envíos y necesita que se ocupe de su caso el área que atiende esto: «saber dónde está un paquete». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, estoy muy preocupado porque mi paquete no se actualiza en la página desde hace tres días y necesito saber si está retenido.",
+  "Oiga, disculpe la molestia pero ya van cinco días sin noticias de mi envío número 45902, ¿me podrían verificar el estado por favor?",
+  "Mira, le llamo porque me dicen que entregaron mi paquete pero yo no he recibido nada y quiero saber exactamente a quién lo dejaron.",
+  "Pues verán, tengo un problema con mi remitente que es muy apurado y necesito rastrear la posición actual de mi mercancía urgente.",
+  "Disculpe si los molesto tanto, pero el número de guía dice entregado y sin embargo ni rastro en mi casa desde ayer por la tarde.",
+  "Le comento que llevo una semana esperando mi paquete y el sistema muestra que está en tránsito a la oficina local pero nunca llega.",
+  "Oiga don, le hablo porque me dijeron que mi envío llegaba hoy y todavía no aparece ningún repartidor en mi zona.",
+  "Necesito saber dónde quedó colgado mi paquete porque ya pasaron dos días de la fecha estimada sin actualización alguna en el rastreo.",
+  "Buenos días, estoy llamando porque mi paquete dice que está retenido en aduanas y no sé qué trámite debo hacer para liberarlo.",
+  "Mira, le cuento que cambiamos de dirección hace dos días y creo que por eso se perdió el rastro del envío, ¿hay algo que pueda hacer?",
+  "Oiga, le llamo con urgencia porque el paquete es un regalo de cumpleaños para mañana y todavía no veo movimiento alguno en el sistema.",
+  "Pues mire, me han dicho que firmé yo pero no estuve y necesito saber a qué hora lo intentaron entregar para reclamarlo en la sucursal.",
+  "Disculpe, tengo una duda con mi guía porque marca como entregado en otra ciudad y sé que nunca salió del depósito central.",
+  "Le escribo porque estoy muy preocupada por el estado de mis compras online que dicen retrasadas y no me dan razón clara del motivo.",
+  "Oiga, ¿me podrían indicar si mi paquete está disponible para recoger o si aún está en camino hacia la agencia más cercana?",
+  "Mira, le comento que el conductor se marcó como presente pero no tocó mi timbre y necesito reportar esto para que lo investiguen.",
+  "Buenas tardes, le llamo porque mi paquete tiene una dirección incorrecta en el sistema y temo que lo devuelvan al remitente sin avisarme.",
+  "Oiga, ya pagué la tarifa extra por entrega express pero sigue sin llegar y necesito saber si hay algún inconveniente logístico.",
+  "Pues verán, estoy llamando para preguntar por mi envío número 88219 que dice en tránsito internacional y no avanza hace una semana.",
+  "Disculpe la molestia, pero necesito confirmar si mi paquete está en la oficina central porque tengo que recogerlo hoy mismo antes de que cierren."
+ ]
+}

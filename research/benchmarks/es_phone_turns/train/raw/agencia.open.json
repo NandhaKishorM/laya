@@ -1,0 +1,22 @@
+{
+ "name": "agencia.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a una agencia de viajes: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenos días, quisiera saber si abren los feriados nacionales",
+  "¿Dónde queda exactamente la sucursal más cercana a mi casa?",
+  "Aceptan tarjeta de crédito o solo es efectivo y transferencia?",
+  "¿Tienen sitio para aparcar el carro ahí mismo?",
+  "Me gustaría saber qué documentos necesito presentar para el pasaje",
+  "Cuál es el horario exacto de cierre hoy por favor",
+  "¿Ustedes tienen oficina en San Pedro Sula o solo aquí en la capital?",
+  "¿El precio incluye todos los impuestos o hay recargos ocultos?",
+  "Buenas tardes, necesito confirmar la dirección numérica del local",
+  "¿Atienden por WhatsApp o hay que llamar solamente?",
+  "Qué requisitos son para pagar a plazos con tarjeta",
+  "A ver si me puede decir cuál es la primera hora de atención",
+  "¿Puedo dejar un depósito para reservar sin dar todo el dinero ahora?",
+  "Oiga, ¿qué días cierran temprano los fines de semana?",
+  "Necesito saber si dan factura fiscal por las compras"
+ ]
+}

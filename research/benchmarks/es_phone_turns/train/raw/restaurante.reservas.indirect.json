@@ -1,0 +1,27 @@
+{
+ "name": "restaurante.reservas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un restaurante y necesita que se ocupe de su caso el área que atiende esto: «apartar una mesa». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, le hablo para reservar una mesa para seis personas este sábado a las ocho de la noche.",
+  "Hola, necesito confirmar mi reservación del viernes pasado porque me quedé con la duda si estaba bien anotada.",
+  "Oiga, es que ayer pidieron cancelar mi mesa y yo no estuve de acuerdo, quiero volver a agendarla.",
+  "Buenas, le escribo para pedir una sala privada para una reunión de trabajo mañana por la tarde.",
+  "Perdone la molestia, pero quiero anular mi reservación de hoy porque surgieron unos imprevistos familiares.",
+  "Buen día, necesito cambiar la fecha de mi cita que tenía agendada para el mes que viene.",
+  "Oiga pues, le llamo para ver si me pueden dar una mesa cerca de la ventana para celebrar un cumpleaños.",
+  "Hola, tengo un problema con la tarjeta que dejé como garantía en mi última visita y necesito aclararlo.",
+  "Buenas tardes, quiero hacer una reservación para el día del niño pero con menú especial infantil.",
+  "Oiga, me da pena insistir pero necesito hablar con alguien de reservas porque no me contestan el correo.",
+  "Hola, le llamo para informar que se nos retrasaron y llegaríamos quince minutos tarde a nuestra mesa reservada.",
+  "Buenas, necesito una mesa accesible para silla de ruedas el próximo domingo al mediodía.",
+  "Oiga pues, quería ver si me pueden dejar apartar la mesa con un nombre diferente al mío.",
+  "Buen día, le escribo porque mi reservación no aparece en su sistema y tengo miedo de quedarme sin lugar.",
+  "Hola, necesito confirmar si aceptan reservaciones para grupos grandes el próximo feriado largo.",
+  "Perdone, pero necesito cancelar la reservación que hice por error con tres meses de anticipación.",
+  "Buenas tardes, le llamo para pedir una mesa en la terraza porque hace mucho buen tiempo hoy.",
+  "Oiga, me da gusto hablar con usted, quiero agendar una cena romántica para aniversario la semana próxima.",
+  "Hola, necesito saber si puedo dejar una nota especial en la reservación para que pongan un pastel sorpresa.",
+  "Buenas, le escribo para reiterar mi pedido de mesa para dos personas el día de hoy a las siete."
+ ]
+}

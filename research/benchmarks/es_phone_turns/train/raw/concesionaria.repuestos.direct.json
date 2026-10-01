@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.repuestos.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y pide que la comuniquen con el área de «repuestos» (piezas y repuestos para el carro). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor comuníquenme con repuestos",
+  "Oiga, me pasaría con el departamento de repuestos",
+  "Hola, ¿qué tal? Quisiera hablar con quien atiende las piezas del taller, gracias",
+  "Sí, buenos días. Por aquí es para lo de repuestos, por favor transfíerame",
+  "Perdone, ¿me podría pasar con el área de refacciones?",
+  "Aló, necesito urgentemente hablar con el encargado de repuestos si no es mucha molestia",
+  "Sí, con repuestos por favor",
+  "Dígame, bueno, lo que quiero es que me conecten con la sección de piezas y repuestos, gracias"
+ ]
+}

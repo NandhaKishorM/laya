@@ -1,0 +1,15 @@
+{
+ "name": "hotel.restaurante.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y necesita que se ocupe de su caso el área que atiende esto: «comida, servicio a la habitación y horarios del comedor». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, quisiera que me atendieran porque no he recibido la cena que pedí hace una hora y se está acabando la comida",
+  "No puedo comer en el restaurante porque los horarios están muy cerrados y necesito algo para cenar ya mismo",
+  "Oiga, disculpe pero no me han llevado el almuerzo a la habitación como acordamos y tengo mucha hambre",
+  "La verdad es que no funciona bien el servicio de comida en cuarto porque hace dos días no nos traen nada",
+  "No hemos podido cenar hoy porque los horarios del comedor cambian sin aviso y nos cerraron las puertas",
+  "Ayúdeme por favor porque no me llega la información sobre a qué hora abren el restaurante esta noche",
+  "Nunca me han servido la comida completa cuando pido servicio a la habitación y ahora estoy desesperado",
+  "Porfa atienda mi caso porque no tengo dónde comer en el hotel y el menú de la habitación está mal"
+ ]
+}

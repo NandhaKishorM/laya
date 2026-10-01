@@ -1,0 +1,15 @@
+{
+ "name": "aseguradora.siniestros.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una aseguradora y aclara que NO necesita el área de «siniestros» (reportar un accidente, un robo o un daño cubierto por el seguro): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, gracias por su atención, pero no requiero el área de siniestros, solo tengo una consulta general.",
+  "Hola, no le pasen con siniestros por favor, es que apenas quiero aclarar una duda sobre mi póliza.",
+  "Disculpe, no necesito reportar ningún siniestro ni accidente, lo que quería preguntar es otro tema.",
+  "Por acá estamos bien, sin siniestros de por medio, solo le escribía para confirmar un dato de la póliza.",
+  "No, no tengo siniestros que reportar hoy, le agradecería si me pudiera orientar sobre una renovación.",
+  "Hola, gracias por contestar, pero el tema no es de siniestros ni reclamos, solo era una consulta rápida.",
+  "Me puede atender usted? No necesito pasar con siniestros porque no ha pasado nada, solo pregunto.",
+  "Buenas, aquí todo tranquilo sin siniestros ni novedades, solo quería aclarar una cotización que me tienen pendiente."
+ ]
+}

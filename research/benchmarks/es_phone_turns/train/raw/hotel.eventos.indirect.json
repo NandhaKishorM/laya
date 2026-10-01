@@ -1,0 +1,27 @@
+{
+ "name": "hotel.eventos.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un hotel y necesita que se ocupe de su caso el área que atiende esto: «salones para bodas, fiestas y reuniones de empresa». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Diga, necesito confirmar si el salón principal tiene aire acondicionado porque se ha estado poniendo muy caluroso en nuestras últimas reuniones.",
+  "Buenas tardes, quisiera coordinar con el equipo de eventos una visita técnica a mi empresa para cerrar los detalles del almuerzo corporativo.",
+  "Oiga, me urge saber si pueden cambiar la configuración del salón para poner las sillas en U y no en filas.",
+  "Hola, le llamo porque hubo un malentendido con el servicio de catering y necesito hablar con alguien que tenga autoridad para resolverlo hoy mismo.",
+  "Mire, quiero reservar la fecha quince de noviembre pero me preocupa si hay algún evento rival justo al lado.",
+  "Diga, por favor, ¿pueden enviarme una cotización ajustada para un seminario de veinte personas que incluya el proyector?",
+  "Le comento que el personal del salón estuvo muy atento y cortés en la última boda, quiero felicitarlos y dejar constancia.",
+  "Pues mira, necesito cancelar mi reserva por fuerza mayor pero solo si me devuelven el anticipo completo, sino no hay trato.",
+  "Buen día, estoy organizando la cena de graduación de mi hijo y requiero un menú cerrado para ciento cincuenta comensales.",
+  "Hola, tengo una duda técnica sobre la capacidad eléctrica del salón porque vamos a montar un escenario con iluminación profesional.",
+  "Oiga, quería saber si es posible hacer un tour por las instalaciones este fin de semana antes de firmar el contrato.",
+  "Mire, el año pasado nos fallaron con el servicio de café y quiero asegurarme de que este año tengan personal extra.",
+  "Diga, necesito hablar con la gerente comercial porque tengo una propuesta especial para una alianza corporativa a largo plazo.",
+  "Hola, le llamo para reportar que las cortinas del salón no se cierran bien y eso afecta la privacidad de nuestros eventos.",
+  "Pues escuche, quiero saber si permiten llevar externalización musical o si están obligados a usar su proveedor exclusivo.",
+  "Buenas tardes, necesito ajustar la fecha de mi evento debido a un imprevisto médico pero mantener el pago ya hecho.",
+  "Diga, ¿pueden prepararme una propuesta para una fiesta de fin de año que incluya decoración temática navideña completa?",
+  "Mira, tengo un cliente VIP que requiere un salón privado con acceso independiente y no sé si cuentan con esa opción.",
+  "Hola, le comento que el sonido del escenario se cortó en el último evento y necesito una explicación formal por escrito.",
+  "Oiga, quiero cerrar el paquete de bodas pero necesito confirmar si incluyen la limpieza profunda del salón después del evento."
+ ]
+}

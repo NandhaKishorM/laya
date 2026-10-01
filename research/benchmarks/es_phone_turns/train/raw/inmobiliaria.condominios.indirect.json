@@ -1,0 +1,27 @@
+{
+ "name": "inmobiliaria.condominios.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una inmobiliaria y necesita que se ocupe de su caso el área que atiende esto: «cuotas y reparaciones de áreas comunes de un condominio». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buen día, quiero reportar una fuga grave en la tubería principal del área de lavado.",
+  "El cobro de mi cuota de mantenimiento mensual está duplicado por error sistémico.",
+  "Las luces del estacionamiento subterráneo llevan tres semanas fundidas y es inseguro.",
+  "Necesito regularizar el pago pendiente para poder solicitar la autorización de obra.",
+  "La bomba de agua suena raro y sospecho que va a fallar pronto.",
+  "He pagado en efectivo pero no me dan recibo del área común correspondiente.",
+  "Quiero saber por qué se descontaron gastos extraordinarios sin haberlo aprobado la junta.",
+  "El ascensor queda parado frecuentemente, necesito que revisen el mantenimiento urgente.",
+  "Solicito copia del acta donde aprobaron las cuotas para este trimestre actual.",
+  "Hay goteras en mi techo por filtración de la azotea, es responsabilidad de la administración.",
+  "Quiero cancelar mi deuda con el condominio para evitar intereses adicionales.",
+  "El portón eléctrico está fallando y nadie ha enviado al técnico aún.",
+  "Requiero un estado de cuenta detallado de lo adeudado por conceptos de limpieza.",
+  "Se filtró agua en la escalera del tercer piso por una cañería rota.",
+  "Necesito autorizar el retiro de mi cuota acumulada para pagar impuestos locales.",
+  "La piscina está cerrada sin previo aviso y cobraron el mantenimiento completo igual.",
+  "Quiero solicitar el reembolso de lo pagado de más en la última cuota.",
+  "El garaje tiene humedad excesiva por falla en el drenaje pluvial cercano.",
+  "Solicito atención prioritaria porque hay riesgo estructural en el muro perimetral del condominio.",
+  "No reconozco los cargos adicionales facturados por reparación de fachada en mi recibo."
+ ]
+}

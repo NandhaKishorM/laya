@@ -1,0 +1,15 @@
+{
+ "name": "banco.prestamos.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y pide que la comuniquen con el área de «prestamos» (préstamos y créditos: solicitarlos, requisitos, cuotas). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor paseme con Prestamos.",
+  "¡Oiga! Que me comuniquen con la sección de créditos ya.",
+  "Le hablo porque necesito gestionar un préstamo y requiero hablar con el área correspondiente.",
+  "Porfa traspásame con los de préstamos, gracias.",
+  "Hola, buenas tardes. Necesito información sobre cuotas y requisitos; por favor déjeme en manos del equipo de créditos.",
+  "Póngame con Prestamos.",
+  "Disculpe las molestias, pero solicito que me conecten inmediatamente con el departamento de préstamos para cerrar un trámite.",
+  "Hola, buenas. Le pido el favor de transferir mi llamada al área de créditos, por favor."
+ ]
+}

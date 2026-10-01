@@ -1,0 +1,15 @@
+{
+ "name": "hotel.eventos.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y pide que la comuniquen con el área de «eventos» (salones para bodas, fiestas y reuniones de empresa). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor pásame con eventos.",
+  "Oiga, necesito hablar con el área de eventos para una boda.",
+  "¿Qué tal? Quería comunicarme con la gente de eventos.",
+  "Le molesto un segundo, ¿me conecta a Eventos?",
+  "Saludos cordiales, por favor transfiera a su departamento de eventos corporativos.",
+  "Epa, buenas tardes, requiero atención del área de eventos.",
+  "Disculpe la interrupción, deseo hablar con el responsable de eventos.",
+  "Hola, buenos días, por favor póngame con el equipo de Eventos."
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "name": "clinic.laboratorio.refuse",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una clínica médica y deja claro que NO quiere que la pasen al área de «laboratorio» (exámenes, análisis y sus resultados). Nombra el área o lo que hace, y la rechaza. No pide ninguna otra área.",
+ "phrases": [
+  "Oiga, mira, por favor, no la pasen para ahí, a lo del laboratorio, no quiero que me hagan análisis de nada, ni nada de eso.",
+  "Soy yo, no me pasen al área de laboratorio, por favor, no quiero exámenes ni nada.",
+  "Aló, no me pongan en el laboratorio, por favor, no quiero resultados, déjenme hablarse con un doctor.",
+  "Hola, lo hablo con un médico, no me pasen al laboratorio, no quiero análisis de sangre ni nada, gracias.",
+  "Sí, hablame con alguien de medicina, pero no me pase a laboratorio, por favor, no quiero nada de eso."
+ ]
+}

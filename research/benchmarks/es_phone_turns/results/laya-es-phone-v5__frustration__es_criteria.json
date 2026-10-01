@@ -1,0 +1,292 @@
+{
+ "meta": {
+  "model": "/model",
+  "subfolder": null,
+  "rung": "es_criteria",
+  "dataset": "frustration",
+  "lang": "es",
+  "calibration": null,
+  "laya": "0.3.22",
+  "torch": "2.14.0+cpu",
+  "threads": 4,
+  "device": "cpu",
+  "machine": "aarch64",
+  "system": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+  "omp_num_threads": "4",
+  "load_ms": 4121.495169005357
+ },
+ "summary": {
+  "n": 9,
+  "accuracy": 0.8888888888888888,
+  "macro_f1": 0.47058823529411764,
+  "ece": 0.027566666666666628,
+  "mean_confidence": 0.8613222222222222,
+  "majority_baseline": 1.0,
+  "wrong_actions": 1,
+  "by_tag": {
+   "frustration": {
+    "n": 9,
+    "accuracy": 0.8888888888888888
+   },
+   "insult": {
+    "n": 1,
+    "accuracy": 1.0
+   },
+   "short": {
+    "n": 3,
+    "accuracy": 1.0
+   },
+   "swearing": {
+    "n": 3,
+    "accuracy": 0.6666666666666666
+   }
+  },
+  "confusion": {
+   "ninguno->soporte": 1
+  },
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 1,
+    "coverage": 0.1111111111111111,
+    "action_recall": null,
+    "wrong": 1,
+    "precision": 0.0
+   },
+   {
+    "threshold": 0.6,
+    "fast": 1,
+    "coverage": 0.1111111111111111,
+    "action_recall": null,
+    "wrong": 1,
+    "precision": 0.0
+   },
+   {
+    "threshold": 0.7,
+    "fast": 1,
+    "coverage": 0.1111111111111111,
+    "action_recall": null,
+    "wrong": 1,
+    "precision": 0.0
+   },
+   {
+    "threshold": 0.8,
+    "fast": 1,
+    "coverage": 0.1111111111111111,
+    "action_recall": null,
+    "wrong": 1,
+    "precision": 0.0
+   },
+   {
+    "threshold": 0.9,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.95,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.99,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": null,
+    "wrong": 0,
+    "precision": null
+   }
+  ],
+  "latency_ms": {
+   "p50": 138.54645803803578,
+   "p95": 171.06633400544524,
+   "min": 131.1139589524828
+  },
+  "borderline": []
+ },
+ "records": [
+  {
+   "id": "fr-001",
+   "text": "te estoy pidiendo que no",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "short"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8647,
+   "probabilities": {
+    "ventas": 0.0273,
+    "soporte": 0.0272,
+    "facturacion": 0.0267,
+    "operadora": 0.0274,
+    "colgar": 0.0267,
+    "ninguno": 0.8647
+   },
+   "latency_ms": 171.06633400544524
+  },
+  {
+   "id": "fr-002",
+   "text": "te dije que no",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "short"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8645,
+   "probabilities": {
+    "ventas": 0.0273,
+    "soporte": 0.0272,
+    "facturacion": 0.027,
+    "operadora": 0.0275,
+    "colgar": 0.0264,
+    "ninguno": 0.8645
+   },
+   "latency_ms": 138.21808400098234
+  },
+  {
+   "id": "fr-003",
+   "text": "no estas entendiendo?",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "short"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8656,
+   "probabilities": {
+    "ventas": 0.0269,
+    "soporte": 0.0276,
+    "facturacion": 0.0262,
+    "operadora": 0.0274,
+    "colgar": 0.0263,
+    "ninguno": 0.8656
+   },
+   "latency_ms": 138.54645803803578
+  },
+  {
+   "id": "fr-004",
+   "text": "maldita sea te dije que no!",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "swearing"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8528,
+   "probabilities": {
+    "ventas": 0.0297,
+    "soporte": 0.029,
+    "facturacion": 0.0293,
+    "operadora": 0.0302,
+    "colgar": 0.0289,
+    "ninguno": 0.8528
+   },
+   "latency_ms": 141.21262496337295
+  },
+  {
+   "id": "fr-005",
+   "text": "carajo no entiendo porque repetis lo mismo",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "swearing"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8735,
+   "probabilities": {
+    "ventas": 0.026,
+    "soporte": 0.0245,
+    "facturacion": 0.0253,
+    "operadora": 0.0254,
+    "colgar": 0.0254,
+    "ninguno": 0.8735
+   },
+   "latency_ms": 143.3936250396073
+  },
+  {
+   "id": "fr-006",
+   "text": "que tonteras decis",
+   "gold": "ninguno",
+   "tags": [
+    "frustration"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8633,
+   "probabilities": {
+    "ventas": 0.0277,
+    "soporte": 0.027,
+    "facturacion": 0.0272,
+    "operadora": 0.0274,
+    "colgar": 0.0274,
+    "ninguno": 0.8633
+   },
+   "latency_ms": 136.98129198746756
+  },
+  {
+   "id": "fr-007",
+   "text": "joder esto no sirve",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "swearing"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8305,
+   "probabilities": {
+    "ventas": 0.0291,
+    "soporte": 0.8305,
+    "facturacion": 0.0284,
+    "operadora": 0.0328,
+    "colgar": 0.0307,
+    "ninguno": 0.0485
+   },
+   "latency_ms": 131.1139589524828
+  },
+  {
+   "id": "fr-008",
+   "text": "no me estas respondiendo lo que te pregunte",
+   "gold": "ninguno",
+   "tags": [
+    "frustration"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8732,
+   "probabilities": {
+    "ventas": 0.0253,
+    "soporte": 0.0262,
+    "facturacion": 0.0247,
+    "operadora": 0.0255,
+    "colgar": 0.0252,
+    "ninguno": 0.8732
+   },
+   "latency_ms": 156.33191697997972
+  },
+  {
+   "id": "fr-009",
+   "text": "eres demasiado tonto",
+   "gold": "ninguno",
+   "tags": [
+    "frustration",
+    "insult"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8638,
+   "probabilities": {
+    "ventas": 0.0279,
+    "soporte": 0.0258,
+    "facturacion": 0.0275,
+    "operadora": 0.0274,
+    "colgar": 0.0277,
+    "ninguno": 0.8638
+   },
+   "latency_ms": 134.39575000666082
+  }
+ ]
+}

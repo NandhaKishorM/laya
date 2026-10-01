@@ -1,0 +1,28 @@
+{
+ "name": "paqueteria.aduanas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una empresa de envíos y necesita que se ocupe de su caso el área que atiende esto: «trámites e impuestos de paquetes que vienen del extranjero». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, tengo una caja que llegó a aduanas hace dos semanas y me están pidiendo una factura que yo no tengo.",
+  "Hola, ¿me pueden ayudar con el pago de los impuestos de mi paquete? El sistema dice que está retenido pero yo ya pagué en línea.",
+  "Oiga, pues mira, llegué hoy a retirar un envío y me dicen que debo un saldo por concepto de aranceles que no entiendo bien.",
+  "Disculpe, tengo un paquete retenido en aduanas desde el lunes y necesito saber qué documento falta para liberarlo cuanto antes.",
+  "Buen día, vengo por lo de la declaración de impuestos de unas mercancías que me llegaron ayer y me pidieron ampliar la información.",
+  "¡Ay dios mío! Me llegó un paquete con los impuestos duplicados y quiero pedir el reembolso o que me aclaren el cobro.",
+  "Hola, necesito gestionar el pago de los derechos de importación para una caja que llega mañana porque tengo prisa.",
+  "Pues sí, o sea, mi paquete no suelta trámites por unos impuestos que se quedan en pendientes y ya pagué.",
+  "Buenas, tengo un problema con la facturación electrónica de mi envío internacional y aduanas no me deja avanzar.",
+  "Oiga, disculpe la molestia, pero mi paquete está retenido por una tasa no aplicada correctamente y necesito resolverlo urgente.",
+  "Hola, vengo a dejar los datos fiscales para que puedan procesar el pago de impuestos de un envío pendiente.",
+  "Mira, o sea, llegó un paquete grande y me piden desglose de impuestos que no vienen en la factura original.",
+  "Buenas tardes, tengo una retención fiscal en mi paquete de repuestos y necesito saber cómo proceder para liberarlo.",
+  "¡Hola! ¿Me pueden revisar por qué mi pago de impuestos no se refleja todavía y el paquete sigue retenido?",
+  "Pues sí, necesito tramitar la exoneración de impuestos de un donativo que me llegó y me falta un documento.",
+  "Oiga, hola, tengo un paquete de productos electrónicos retenido por una valoración aduanera que creo es errónea.",
+  "Buen día, vengo a pagar los impuestos restantes de mi paquete que llegó con un saldo pendiente en la oficina.",
+  "Hola, me apareció una tasa adicional en mi paquete que no estaba en el cálculo inicial y quiero cuestionarla.",
+  "Pues mira, oiga, mi caja está parada por falta de pago de un arancel que desconocía y necesito pagar ya.",
+  "Buenas, tengo un trámite de impuestos bloqueado por datos erróneos en mi declaración jurada del envío extranjero.",
+  "¡Hola! Oiga, disculpe, pero me llegó una multa injusta por impuestos atrasados en un paquete que entregué a tiempo."
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "name": "colegio.direccion.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un colegio y necesita que se ocupe de su caso el área que atiende esto: «asuntos de disciplina y hablar con la directora». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, es que mi hijo no paró de molestar en clase y me piden que hable con la directora ya mismo.",
+  "Oiga, necesito agendar una cita urgente porque tengo una reunión pendiente con la señora directora sobre un incidente.",
+  "Le hablo para coordinar esa charla con la directora que quedó aplazada, ¿cuándo puedo acercarme?",
+  "Es que mi hija tuvo un desacuerdo fuerte y ya me citaron a ver a la directora mañana a las siete.",
+  "Disculpe, yo vine ayer y me dijeron que tenía que hablar personalmente con la directora sobre una sanción.",
+  "Quiero saber qué pasos sigo para atender el caso de mi nieto con la directora porque estoy preocupado.",
+  "Buenas, le confirmo que mañana pasaré por el colegio a conversar con la directora sobre lo de la semana pasada.",
+  "Oiga, me han citado de oficio para hablar con la directora y no sé si debo llevar pruebas.",
+  "Es urgente, mi hijo fue expulsado temporalmente y necesito que la directora me reciba hoy mismo para aclarar.",
+  "Buenas tardes, le llamo porque quiero arreglar las cosas con la directora antes de que cierre el mes escolar.",
+  "Le habla la mamá del chico de tercero; me pidieron contactar a la directora por lo de la pelea.",
+  "Oiga, ¿la directora está para atender un reclamo sobre cómo manejaron el caso disciplinario de mi hija?",
+  "Necesito hablar con la directora porque siento que le hicieron mucho daño a mi hijo y quiero explicarle.",
+  "Buenas, le llamo para confirmar la hora de la reunión con la directora que me asignaron por teléfono ayer.",
+  "Es que no me han dado ninguna solución y necesito ver cara a cara a la directora ya.",
+  "Le hablo porque mi hijo tiene problemas graves con la disciplina y quiero una audiencia directa con la directora.",
+  "Oiga, le confirmo mi asistencia para la entrevista disciplinaria con la directora el jueves próximo a las tres.",
+  "Buenas tardes, necesito que la directora me dé su opinión sobre cómo mejorar la actitud de mi hijo.",
+  "Le llamo porque llegué al colegio y no había nadie, pero es vital hablar con la directora por lo de la multa.",
+  "Oiga, quiero presentar mis descargos ante la directora antes de que tomen la decisión final sobre mi niño."
+ ]
+}

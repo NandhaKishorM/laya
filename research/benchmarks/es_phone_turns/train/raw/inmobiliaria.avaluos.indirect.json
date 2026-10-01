@@ -1,0 +1,27 @@
+{
+ "name": "inmobiliaria.avaluos.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una inmobiliaria y necesita que se ocupe de su caso el área que atiende esto: «saber cuánto vale una propiedad». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, necesito saber cuánto vale mi casa en la Colonia Palmira para sacarla a la venta.",
+  "Sr., le llamo porque quiero tasar mi apartamento en el centro, ¿me puede ayudar con eso?",
+  "Mire, tengo una finca en Lempira y necesito un avalúo para dividirla entre mis hijos.",
+  "Oiga, ¿cómo hago para que me digan cuánto vale el terreno donde vivía mi tío?",
+  "Buen día, quiero saber el precio de mercado de mi local comercial en el Boulevard San Martín.",
+  "Perdón la molestia, pero necesito tasar mi casa para pedir un crédito hipotecario urgente.",
+  "Hola, le escribo porque me dijeron que usted hace avalúos de propiedades rurales.",
+  "Tengo que vender mi terreno rápido y no sé a cuánto ponerlo, ¿me asesora?",
+  "Oiga, necesito el valor de mi edificio de departamentos para repartir las ganancias entre socios.",
+  "Buenas, quiero saber cuánto vale la casa hereda de mis padres en Comayagüela.",
+  "Mire, le llamo porque tengo una duda grande sobre el precio de mi propiedad en Choloma.",
+  "¿Me puede decir cómo tasamos una casa para impuestos? Es urgente.",
+  "Hola, necesito averiguar cuánto vale mi lote en la colonia Nueva Esperanza.",
+  "Sr., quiero saber el valor de mi negocio con vivienda adjunta en Tegucigalpa.",
+  "Buen día, le solicito que me digan cuánto vale mi finca para venderla hoy mismo.",
+  "Mire, tengo una propiedad en Danlí y necesito saber su precio real de venta.",
+  "Oiga, ¿cómo hago para tasar un edificio viejo? Quiero demolerlo pero necesito el valor.",
+  "Hola, le llamo porque quiero saber cuánto vale mi casa para asegurarla contra incendios.",
+  "Buenas tardes, necesito averiguar el precio de mercado de un terreno baldío que compré.",
+  "Sr., quiero tasar mi propiedad rural para donarla a una fundación, ¿me ayuda?"
+ ]
+}

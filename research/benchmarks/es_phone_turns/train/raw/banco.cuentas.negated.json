@@ -1,0 +1,15 @@
+{
+ "name": "banco.cuentas.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y aclara que NO necesita el área de «cuentas» (cuentas de ahorro y de cheques: abrirlas, saldos, transferencias): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, por favor no me conecten con cuentas, solo tengo una duda sobre mi tarjeta.",
+  "Oiga, no necesito abrir ninguna cuenta ni ver saldos, hablemos directamente con quien atendió.",
+  "No, gracias, el tema de cheques y ahorros ya lo resolví, necesito hablar con usted.",
+  "Disculpe, pero no me pase al departamento de cuentas porque no quiero abrir nada nuevo.",
+  "Ya le digo que no tengo problemas con saldos ni transferencias, déjeme hacer mi pregunta.",
+  "No requiero servicios de cuenta corriente, por favor mantenga la línea con quien contestó.",
+  "Usted fue quien me contestó, así que mejor hablemos usted y yo sin pasar a cuentas.",
+  "Oye, no me lleves al área de apertura de cuentas que ahí no necesito nada."
+ ]
+}

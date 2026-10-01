@@ -34,9 +34,9 @@ const HEADER_NEXT = /^\s*(Enviad[oa]( em| el)?:\s|Sent:\s|(Data|Fecha|Date):\s.*
 // case-insensitively here and the name is checked case-sensitively by SIGNOFF_TAIL.
 const SIGNOFF_HEAD =
   /^\s*(?:best|kind|warmest|warm|many thanks|thanks|thank you|regards|cheers|sincerely)(?:\s+(?:and|&)\s+regards|\s+(?:regards|wishes|again|in advance|a lot|so much|very much))?/i;
-// Python's name class [^\W\d_a-zß-öø-ÿ] is "a word char that is not a digit, underscore or
-// lowercase letter"; \p{Lu}/\p{Lt}/\p{Lo} is the same intent: a name is capitalised in any
-// script (Regards, Łukasz) or written in a script without case (山田).
+// The name's first letter must not be lowercase, so the check is per character, not per script:
+// \p{Lu}/\p{Lt}/\p{Lo} accepts a name capitalised in any script (Regards, Łukasz) or written in
+// a script without case (山田). Python asks the same question per token (`_is_english_signoff`).
 const SIGNOFF_TAIL = /^[\s,;:!.]*(?:[\p{Lu}\p{Lt}\p{Lo}][\p{L}\p{M}\p{N}_'-]*[\s,.]*){0,3}$/u;
 function isEnglishSignoff(line: string): boolean {
   const m = SIGNOFF_HEAD.exec(line);
@@ -45,18 +45,18 @@ function isEnglishSignoff(line: string): boolean {
 const SIGNATURE_MARKERS: Array<(line: string) => boolean> = [
   (l) => /^\s*--\s*$/.test(l),
   isEnglishSignoff,
-  (l) => /^\s*sent from my (iphone|android|mobile|ipad)/i.test(l),
   (l) =>
     /^\s*(atenciosamente|att|abraços?|abs|um abraço|cordialmente|grat[oa]|(muito )?obrigad[oa]s?( desde já| pela atenção)?|(com os melhores )?cumprimentos|saudações|(un )?saludos?( cordiales)?|atentamente|(muchas )?gracias( de antemano)?)[\s,!.]*$/i.test(
       l,
     ),
 ];
 const DEVICE =
-  "iphone|ipad|android|ios|celular|telemóvel|móvil|galaxy|smartphone|samsung|tablet|" +
+  "iphone|ipad|android|ios|mobile|celular|telemóvel|móvil|galaxy|smartphone|samsung|tablet|" +
   "outlook|yahoo|mail|e-?mail|gmail|windows";
 const DEVICE_FOOTER = new RegExp(
   "^\\s*((enviad[oa] (do|pelo|pela|via|desde|a partir do)( meu| minha| mi)?|sent from( my)?)" +
-    ` (${DEVICE})( (${DEVICE}|para|for|no|na|\\d+))*|(obter o|get) outlook (para|for) (ios|android))[\\s.!]*$`,
+    ` (${DEVICE})( (${DEVICE}|para|for|no|na|\\d+|phone|device|pro|max|mini|plus|using [a-z][\\w.+-]*))*` +
+    "|(obter o|get) outlook (para|for) (ios|android))[\\s.!]*$",
   "i",
 );
 const DISCLAIMER = new RegExp(
@@ -165,10 +165,13 @@ export function emailState(
   sender?: string | null,
   clean = true,
   extra: Record<string, unknown> = {},
+  // The budget cleanEmailBody cuts the body to, as Python's email_state(max_chars=) (#589).
+  // Last, so existing positional calls keep their meaning. Ignored when clean is false.
+  maxChars = 3000,
 ): Record<string, unknown> {
   const state: Record<string, unknown> = {
     subject: (subject ?? "").trim(),
-    body: clean ? cleanEmailBody(body ?? "") : (body ?? ""),
+    body: clean ? cleanEmailBody(body ?? "", maxChars) : (body ?? ""),
   };
   if (sender) state["from"] = sender;
   for (const [k, v] of Object.entries(extra ?? {})) {

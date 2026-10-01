@@ -7,7 +7,12 @@
 let
   laya = python3Packages.buildPythonPackage {
     pname = "laya";
-    version = "0.3.4";
+    # pyproject.toml is the source of truth for this string. Reading it here would
+    # need an eval-time TOML import; instead the equality is enforced from the Python
+    # side, where tests/test_packaging.py compares all three declarations (this one,
+    # pyproject.toml and laya.__version__) and fails CI when they diverge. Nothing
+    # did, which is how this sat at 0.3.4 while the package reached 0.3.20.
+    version = "0.3.22";
     src = ../.;
     format = "setuptools";
     propagatedBuildInputs = with python3Packages; [

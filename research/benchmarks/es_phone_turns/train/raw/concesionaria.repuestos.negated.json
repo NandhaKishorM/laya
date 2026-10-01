@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.repuestos.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y aclara que NO necesita el área de «repuestos» (piezas y repuestos para el carro): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me transfiera a repuestos, por favor, busco otra cosa.",
+  "Oye, no necesito piezas para el carro, solo una consulta rápida.",
+  "Porfa no me desvíes al departamento de repuestos, aquí está bien la atención.",
+  "No quiero hablar con los de repuestos ni nada parecido, gracias.",
+  "Aclaro que no necesito refacciones, así que no me cambies de línea.",
+  "Escúcheme bien: no busco repuestos para mi vehículo, aténdame usted por favor.",
+  "No me conecte a ventas de accesorios o repuestos, solo tengo una duda simple.",
+  "Oiga, no es necesario ir al área de repuestos, con esta llamada está completo."
+ ]
+}

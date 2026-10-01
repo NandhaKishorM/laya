@@ -1,0 +1,15 @@
+{
+ "name": "colegio.tesoreria.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y aclara que NO necesita el área de «tesoreria» (pago de mensualidades y colegiaturas): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, por favor no me conecten con tesorería, solo necesito hablar con recepción.",
+  "Hola, le aclaro que ya pagué mi cuota así que ni me pase ahí, tengo otra consulta.",
+  "Mire, yo no vengo por el pago de la mensualidad, déjeme platicar con quien atendió.",
+  "Buen día, evítame pasar a tesorería porque ese tema ya lo resolvimos, solo una pregunta.",
+  "Perdón, no interesa lo de las colegiaturas, por favor hable conmigo directamente aquí.",
+  "Le digo de una vez que no necesito ir con cobros, quiero aclarar un asunto académico.",
+  "Oiga, no me transfiera a la oficina de pagos porque ese no es mi caso ahora.",
+  "Buenas, le pido por favor que no me ubiquen en tesorería pues ya liquidé todo."
+ ]
+}

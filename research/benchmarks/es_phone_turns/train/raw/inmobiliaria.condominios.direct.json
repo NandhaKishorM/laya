@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.condominios.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y pide que la comuniquen con el área de «condominios» (cuotas y reparaciones de áreas comunes de un condominio). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor pasar con el área de condominios.",
+  "Qué tal, necesito hablar urgente con la gente de condominios, ¿me comunican?",
+  "Pasen a condominios.",
+  "Oiga, solicito transferencia al departamento de condominios para consultar sobre las cuotas.",
+  "¿Me pasan con el área de condominios?",
+  "Buen día, quisiera que me trasladen al equipo de condominios por favor.",
+  "Comuniquen con condominios.",
+  "Hola, necesito hablar con el área de condominios, ¿quién es la persona encargada?"
+ ]
+}

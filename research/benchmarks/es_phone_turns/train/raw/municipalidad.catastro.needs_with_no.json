@@ -1,0 +1,15 @@
+{
+ "name": "municipalidad.catastro.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una municipalidad y necesita que se ocupe de su caso el área que atiende esto: «medidas, escrituras y registro de terrenos». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, oiga, el caso es que no me llega la constancia de que ya pagué los derechos por el lote.",
+  "Hola, le escribo porque nunca me han dado copia del registro en Catastro y necesito el papel urgente.",
+  "Oiga, disculpe la molestia, pero no puedo acceder al sistema para descargar mi documento de propiedad.",
+  "A ver si me pueden ayudar, es que no me aparece la finca en la consulta pública del municipio.",
+  "Hola señor, le llamo porque no me han contestado el oficio que envié hace quince días sobre mi solar.",
+  "Mira, la situación es que no me entregaron las medidas físicas del terreno como prometieron ayer por teléfono.",
+  "Qué tal, le contacto porque no me figura en el padrón de contribuyentes y eso me está jodiendo con los impuestos.",
+  "Ayuda por favor, oiga, no tengo ni copia digital ni física de la escritura que firmamos hace dos meses."
+ ]
+}

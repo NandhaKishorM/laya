@@ -1,0 +1,15 @@
+{
+ "name": "universidad.becas.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y necesita que se ocupe de su caso el área que atiende esto: «solicitar o renovar una beca». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenos días, oiga, que le comento porque hace dos semanas no me aparece la opción para renovar mi beca en el sistema y necesito que me digan qué hago.",
+  "Es que nunca me ha llegado la notificación por correo sobre el estado de mi solicitud anterior y ya venció el plazo, ¿me puede orientar?",
+  "O sea, llevo varios intentos y no me deja subir los documentos requeridos para renovar, sale un error raro siempre.",
+  "Ayuda, por favor, porque no he recibido respuesta a mi correo del mes pasado sobre la renovación de la beca y estoy muy preocupado con las fechas.",
+  "La verdad es que no puedo acceder al formulario de renovación porque mi usuario se bloqueó y necesito ayuda urgente para no perder el año.",
+  "Mire, por favor, no me han actualizado el estatus en el portal a pesar de haber entregado todo lo solicitado hace un mes.",
+  "Hola, oiga, es que nunca me aparece habilitada la sección de becas después de pagar la matrícula y necesito que verifiquen mi cuenta.",
+  "No sé qué pasa pero no me llegan los correos del departamento de ayuda financiera respecto a la renovación y tengo miedo de perder el cupo."
+ ]
+}

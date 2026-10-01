@@ -1,0 +1,2413 @@
+{
+ "meta": {
+  "model": "/model",
+  "subfolder": null,
+  "rung": "es_criteria",
+  "dataset": "cases",
+  "lang": "es",
+  "calibration": null,
+  "laya": "0.3.22",
+  "torch": "2.14.0+cpu",
+  "threads": 4,
+  "device": "cpu",
+  "machine": "aarch64",
+  "system": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+  "omp_num_threads": "4",
+  "load_ms": 4090.723334986251
+ },
+ "summary": {
+  "n": 112,
+  "accuracy": 0.8928571428571429,
+  "macro_f1": 0.8856215997768508,
+  "ece": 0.03810624999999992,
+  "mean_confidence": 0.8683687499999999,
+  "majority_baseline": 0.3125,
+  "wrong_actions": 7,
+  "by_tag": {
+   "asr": {
+    "n": 8,
+    "accuracy": 1.0
+   },
+   "direct": {
+    "n": 18,
+    "accuracy": 0.8333333333333334
+   },
+   "farewell": {
+    "n": 13,
+    "accuracy": 0.7692307692307693
+   },
+   "hard": {
+    "n": 6,
+    "accuracy": 0.8333333333333334
+   },
+   "hn": {
+    "n": 9,
+    "accuracy": 1.0
+   },
+   "human": {
+    "n": 13,
+    "accuracy": 0.9230769230769231
+   },
+   "indirect": {
+    "n": 30,
+    "accuracy": 0.9
+   },
+   "negation": {
+    "n": 15,
+    "accuracy": 1.0
+   },
+   "negation-in-text": {
+    "n": 1,
+    "accuracy": 1.0
+   },
+   "noise": {
+    "n": 9,
+    "accuracy": 0.7777777777777778
+   },
+   "open": {
+    "n": 11,
+    "accuracy": 1.0
+   },
+   "short": {
+    "n": 5,
+    "accuracy": 1.0
+   }
+  },
+  "confusion": {
+   "colgar->ninguno": 3,
+   "ninguno->colgar": 1,
+   "ninguno->ventas": 1,
+   "operadora->colgar": 1,
+   "soporte->colgar": 1,
+   "soporte->ninguno": 2,
+   "soporte->operadora": 1,
+   "soporte->ventas": 1,
+   "ventas->facturacion": 1
+  },
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 73,
+    "coverage": 0.6517857142857143,
+    "action_recall": 0.8701298701298701,
+    "wrong": 6,
+    "precision": 0.9178082191780822
+   },
+   {
+    "threshold": 0.6,
+    "fast": 73,
+    "coverage": 0.6517857142857143,
+    "action_recall": 0.8701298701298701,
+    "wrong": 6,
+    "precision": 0.9178082191780822
+   },
+   {
+    "threshold": 0.7,
+    "fast": 73,
+    "coverage": 0.6517857142857143,
+    "action_recall": 0.8701298701298701,
+    "wrong": 6,
+    "precision": 0.9178082191780822
+   },
+   {
+    "threshold": 0.8,
+    "fast": 72,
+    "coverage": 0.6428571428571429,
+    "action_recall": 0.8571428571428571,
+    "wrong": 6,
+    "precision": 0.9166666666666666
+   },
+   {
+    "threshold": 0.9,
+    "fast": 13,
+    "coverage": 0.11607142857142858,
+    "action_recall": 0.16883116883116883,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.95,
+    "fast": 7,
+    "coverage": 0.0625,
+    "action_recall": 0.09090909090909091,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.99,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": 0.0,
+    "wrong": 0,
+    "precision": null
+   }
+  ],
+  "latency_ms": {
+   "p50": 130.56695903651416,
+   "p95": 149.75391700863838,
+   "min": 120.908250042703
+  },
+  "borderline": [
+   {
+    "id": "es-113",
+    "text": "¿Cuánto cuesta el plan de cincuenta megas?",
+    "gold": "ninguno",
+    "predicted": "facturacion",
+    "confidence": 0.883
+   },
+   {
+    "id": "es-114",
+    "text": "Quiero cancelar mi servicio.",
+    "gold": "operadora",
+    "predicted": "colgar",
+    "confidence": 0.6255
+   },
+   {
+    "id": "es-115",
+    "text": "¿Qué promociones tienen este mes?",
+    "gold": "ninguno",
+    "predicted": "ninguno",
+    "confidence": 0.5027
+   },
+   {
+    "id": "es-116",
+    "text": "Necesito cambiar el titular de la cuenta.",
+    "gold": "operadora",
+    "predicted": "facturacion",
+    "confidence": 0.8866
+   }
+  ]
+ },
+ "records": [
+  {
+   "id": "es-001",
+   "text": "Quiero hablar con ventas, por favor.",
+   "gold": "ventas",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.9615,
+   "probabilities": {
+    "ventas": 0.9615,
+    "soporte": 0.0079,
+    "facturacion": 0.0073,
+    "operadora": 0.0076,
+    "colgar": 0.0076,
+    "ninguno": 0.0083
+   },
+   "latency_ms": 127.43512500310317
+  },
+  {
+   "id": "es-002",
+   "text": "Páseme con el departamento de ventas.",
+   "gold": "ventas",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.9578,
+   "probabilities": {
+    "ventas": 0.9578,
+    "soporte": 0.0087,
+    "facturacion": 0.0082,
+    "operadora": 0.0081,
+    "colgar": 0.0084,
+    "ninguno": 0.0087
+   },
+   "latency_ms": 133.47658299608156
+  },
+  {
+   "id": "es-003",
+   "text": "¿Me comunica con un asesor de ventas?",
+   "gold": "ventas",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.9585,
+   "probabilities": {
+    "ventas": 0.9585,
+    "soporte": 0.0081,
+    "facturacion": 0.0082,
+    "operadora": 0.0089,
+    "colgar": 0.0083,
+    "ninguno": 0.0081
+   },
+   "latency_ms": 134.34733299072832
+  },
+  {
+   "id": "es-004",
+   "text": "Con ventas, por favor.",
+   "gold": "ventas",
+   "tags": [
+    "direct",
+    "short"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.9534,
+   "probabilities": {
+    "ventas": 0.9534,
+    "soporte": 0.0083,
+    "facturacion": 0.0079,
+    "operadora": 0.0081,
+    "colgar": 0.008,
+    "ninguno": 0.0143
+   },
+   "latency_ms": 133.36087495554239
+  },
+  {
+   "id": "es-005",
+   "text": "Necesito que me transfieran al área comercial.",
+   "gold": "ventas",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.855,
+   "probabilities": {
+    "ventas": 0.855,
+    "soporte": 0.0275,
+    "facturacion": 0.028,
+    "operadora": 0.0306,
+    "colgar": 0.0281,
+    "ninguno": 0.0308
+   },
+   "latency_ms": 200.39887499297038
+  },
+  {
+   "id": "es-006",
+   "text": "Quiero contratar el servicio de internet para mi casa.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8742,
+   "probabilities": {
+    "ventas": 0.8742,
+    "soporte": 0.0254,
+    "facturacion": 0.0254,
+    "operadora": 0.024,
+    "colgar": 0.0252,
+    "ninguno": 0.0258
+   },
+   "latency_ms": 125.28633401961997
+  },
+  {
+   "id": "es-007",
+   "text": "Me interesa adquirir un plan nuevo para la oficina.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8696,
+   "probabilities": {
+    "ventas": 0.8696,
+    "soporte": 0.0265,
+    "facturacion": 0.0257,
+    "operadora": 0.0256,
+    "colgar": 0.026,
+    "ninguno": 0.0266
+   },
+   "latency_ms": 127.2621660027653
+  },
+  {
+   "id": "es-008",
+   "text": "Necesito una cotización para veinte líneas telefónicas.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8333,
+   "probabilities": {
+    "ventas": 0.0378,
+    "soporte": 0.0323,
+    "facturacion": 0.8333,
+    "operadora": 0.0303,
+    "colgar": 0.0338,
+    "ninguno": 0.0325
+   },
+   "latency_ms": 138.54133401764557
+  },
+  {
+   "id": "es-009",
+   "text": "Fíjese que quiero cambiarme a un plan más grande, ¿con quién hablo?",
+   "gold": "ventas",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8839,
+   "probabilities": {
+    "ventas": 0.8839,
+    "soporte": 0.0225,
+    "facturacion": 0.0233,
+    "operadora": 0.023,
+    "colgar": 0.0235,
+    "ninguno": 0.0238
+   },
+   "latency_ms": 148.95050000632182
+  },
+  {
+   "id": "es-010",
+   "text": "Vi la promoción en Facebook y quiero comprarla.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8715,
+   "probabilities": {
+    "ventas": 0.8715,
+    "soporte": 0.0263,
+    "facturacion": 0.0259,
+    "operadora": 0.0248,
+    "colgar": 0.0257,
+    "ninguno": 0.0257
+   },
+   "latency_ms": 149.75391700863838
+  },
+  {
+   "id": "es-011",
+   "text": "Queremos poner el servicio en una sucursal nueva que vamos a abrir.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8128,
+   "probabilities": {
+    "ventas": 0.8128,
+    "soporte": 0.0384,
+    "facturacion": 0.0358,
+    "operadora": 0.0356,
+    "colgar": 0.034,
+    "ninguno": 0.0436
+   },
+   "latency_ms": 138.2725000148639
+  },
+  {
+   "id": "es-012",
+   "text": "Quisiera agregar otra línea a mi contrato.",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8671,
+   "probabilities": {
+    "ventas": 0.8671,
+    "soporte": 0.0247,
+    "facturacion": 0.0234,
+    "operadora": 0.0231,
+    "colgar": 0.0254,
+    "ninguno": 0.0364
+   },
+   "latency_ms": 127.81929201446474
+  },
+  {
+   "id": "es-013",
+   "text": "Ando buscando un plan empresarial, quiero que me lo vendan.",
+   "gold": "ventas",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8818,
+   "probabilities": {
+    "ventas": 0.8818,
+    "soporte": 0.0239,
+    "facturacion": 0.0223,
+    "operadora": 0.0228,
+    "colgar": 0.0236,
+    "ninguno": 0.0256
+   },
+   "latency_ms": 142.50837499275804
+  },
+  {
+   "id": "es-014",
+   "text": "Quiero subir la velocidad de mi plan, ¿quién me lo puede vender?",
+   "gold": "ventas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8909,
+   "probabilities": {
+    "ventas": 0.8909,
+    "soporte": 0.0224,
+    "facturacion": 0.0212,
+    "operadora": 0.0214,
+    "colgar": 0.0219,
+    "ninguno": 0.0222
+   },
+   "latency_ms": 133.12941597541794
+  },
+  {
+   "id": "es-015",
+   "text": "Comuníqueme con soporte técnico.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8862,
+   "probabilities": {
+    "ventas": 0.0224,
+    "soporte": 0.8862,
+    "facturacion": 0.0222,
+    "operadora": 0.0251,
+    "colgar": 0.0224,
+    "ninguno": 0.0217
+   },
+   "latency_ms": 130.98508398979902
+  },
+  {
+   "id": "es-016",
+   "text": "Necesito hablar con un técnico.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8844,
+   "probabilities": {
+    "ventas": 0.0224,
+    "soporte": 0.0227,
+    "facturacion": 0.0228,
+    "operadora": 0.8844,
+    "colgar": 0.023,
+    "ninguno": 0.0248
+   },
+   "latency_ms": 127.51129199750721
+  },
+  {
+   "id": "es-017",
+   "text": "Páseme con soporte, por favor.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.9265,
+   "probabilities": {
+    "ventas": 0.0147,
+    "soporte": 0.9265,
+    "facturacion": 0.0144,
+    "operadora": 0.015,
+    "colgar": 0.0143,
+    "ninguno": 0.015
+   },
+   "latency_ms": 129.95704199420288
+  },
+  {
+   "id": "es-018",
+   "text": "Con el área técnica, si me hace el favor.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8761,
+   "probabilities": {
+    "ventas": 0.0263,
+    "soporte": 0.0257,
+    "facturacion": 0.0232,
+    "operadora": 0.0248,
+    "colgar": 0.0239,
+    "ninguno": 0.8761
+   },
+   "latency_ms": 139.10758402198553
+  },
+  {
+   "id": "es-019",
+   "text": "Quiero reportar una falla con soporte.",
+   "gold": "soporte",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8963,
+   "probabilities": {
+    "ventas": 0.0208,
+    "soporte": 0.8963,
+    "facturacion": 0.0205,
+    "operadora": 0.0205,
+    "colgar": 0.0207,
+    "ninguno": 0.0212
+   },
+   "latency_ms": 125.588416995015
+  },
+  {
+   "id": "es-020",
+   "text": "No tengo internet desde ayer en la noche.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8076,
+   "probabilities": {
+    "ventas": 0.039,
+    "soporte": 0.8076,
+    "facturacion": 0.0356,
+    "operadora": 0.0352,
+    "colgar": 0.0367,
+    "ninguno": 0.0459
+   },
+   "latency_ms": 134.0541670215316
+  },
+  {
+   "id": "es-021",
+   "text": "El teléfono no da tono y no puedo hacer llamadas.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8714,
+   "probabilities": {
+    "ventas": 0.0257,
+    "soporte": 0.8714,
+    "facturacion": 0.0243,
+    "operadora": 0.0267,
+    "colgar": 0.0244,
+    "ninguno": 0.0276
+   },
+   "latency_ms": 122.762041981332
+  },
+  {
+   "id": "es-022",
+   "text": "Se me cayó el servicio y necesito que lo arreglen.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.878,
+   "probabilities": {
+    "ventas": 0.0244,
+    "soporte": 0.878,
+    "facturacion": 0.0253,
+    "operadora": 0.0229,
+    "colgar": 0.0241,
+    "ninguno": 0.0253
+   },
+   "latency_ms": 127.11649999255314
+  },
+  {
+   "id": "es-023",
+   "text": "El módem tiene una luz roja parpadeando y no navega.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8813,
+   "probabilities": {
+    "ventas": 0.0236,
+    "soporte": 0.8813,
+    "facturacion": 0.0227,
+    "operadora": 0.0235,
+    "colgar": 0.0239,
+    "ninguno": 0.025
+   },
+   "latency_ms": 139.4691250170581
+  },
+  {
+   "id": "es-024",
+   "text": "Fíjese que el internet está lentísimo, casi no carga nada.",
+   "gold": "soporte",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8442,
+   "probabilities": {
+    "ventas": 0.0313,
+    "soporte": 0.8442,
+    "facturacion": 0.0288,
+    "operadora": 0.0293,
+    "colgar": 0.0289,
+    "ninguno": 0.0375
+   },
+   "latency_ms": 142.37691700691357
+  },
+  {
+   "id": "es-025",
+   "text": "Las llamadas se cortan a cada rato, así no se puede trabajar.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.2382,
+   "probabilities": {
+    "ventas": 0.1053,
+    "soporte": 0.2075,
+    "facturacion": 0.1112,
+    "operadora": 0.1362,
+    "colgar": 0.2382,
+    "ninguno": 0.2016
+   },
+   "latency_ms": 153.834291966632
+  },
+  {
+   "id": "es-026",
+   "text": "No me funciona el correo de la empresa desde la mañana.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8784,
+   "probabilities": {
+    "ventas": 0.0244,
+    "soporte": 0.8784,
+    "facturacion": 0.0246,
+    "operadora": 0.0226,
+    "colgar": 0.0237,
+    "ninguno": 0.0263
+   },
+   "latency_ms": 137.5724999816157
+  },
+  {
+   "id": "es-027",
+   "text": "Se fue la señal en toda la oficina, necesitamos que vengan a revisar.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.7712,
+   "probabilities": {
+    "ventas": 0.0422,
+    "soporte": 0.7712,
+    "facturacion": 0.0416,
+    "operadora": 0.0451,
+    "colgar": 0.0422,
+    "ninguno": 0.0577
+   },
+   "latency_ms": 133.23595898691565
+  },
+  {
+   "id": "es-028",
+   "text": "La extensión de recepción no suena cuando le marcan.",
+   "gold": "soporte",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8392,
+   "probabilities": {
+    "ventas": 0.031,
+    "soporte": 0.0378,
+    "facturacion": 0.0332,
+    "operadora": 0.0285,
+    "colgar": 0.0302,
+    "ninguno": 0.8392
+   },
+   "latency_ms": 127.24708399036899
+  },
+  {
+   "id": "es-029",
+   "text": "Páseme con facturación.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9528,
+   "probabilities": {
+    "ventas": 0.0095,
+    "soporte": 0.0096,
+    "facturacion": 0.9528,
+    "operadora": 0.0095,
+    "colgar": 0.0097,
+    "ninguno": 0.0089
+   },
+   "latency_ms": 121.93537497660145
+  },
+  {
+   "id": "es-030",
+   "text": "Necesito hablar con el departamento de cobros.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9523,
+   "probabilities": {
+    "ventas": 0.0096,
+    "soporte": 0.0096,
+    "facturacion": 0.9523,
+    "operadora": 0.0094,
+    "colgar": 0.0097,
+    "ninguno": 0.0095
+   },
+   "latency_ms": 131.6693329717964
+  },
+  {
+   "id": "es-031",
+   "text": "Quiero hablar con alguien de facturación, por favor.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9523,
+   "probabilities": {
+    "ventas": 0.0095,
+    "soporte": 0.0095,
+    "facturacion": 0.9523,
+    "operadora": 0.0095,
+    "colgar": 0.0099,
+    "ninguno": 0.0093
+   },
+   "latency_ms": 128.4137920010835
+  },
+  {
+   "id": "es-032",
+   "text": "Con cuentas por cobrar, por favor.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9432,
+   "probabilities": {
+    "ventas": 0.0113,
+    "soporte": 0.0114,
+    "facturacion": 0.9432,
+    "operadora": 0.0111,
+    "colgar": 0.0118,
+    "ninguno": 0.0113
+   },
+   "latency_ms": 124.20849996851757
+  },
+  {
+   "id": "es-033",
+   "text": "Comuníqueme con el área de pagos.",
+   "gold": "facturacion",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9459,
+   "probabilities": {
+    "ventas": 0.0109,
+    "soporte": 0.011,
+    "facturacion": 0.9459,
+    "operadora": 0.0106,
+    "colgar": 0.0111,
+    "ninguno": 0.0105
+   },
+   "latency_ms": 128.11679200967774
+  },
+  {
+   "id": "es-034",
+   "text": "Me cobraron dos veces este mes y quiero que me devuelvan el dinero.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8702,
+   "probabilities": {
+    "ventas": 0.0265,
+    "soporte": 0.0258,
+    "facturacion": 0.8702,
+    "operadora": 0.0248,
+    "colgar": 0.0265,
+    "ninguno": 0.0263
+   },
+   "latency_ms": 136.3372909836471
+  },
+  {
+   "id": "es-035",
+   "text": "La factura me llegó con un monto que no es el que acordamos.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8697,
+   "probabilities": {
+    "ventas": 0.0258,
+    "soporte": 0.0255,
+    "facturacion": 0.8697,
+    "operadora": 0.0254,
+    "colgar": 0.0274,
+    "ninguno": 0.0263
+   },
+   "latency_ms": 149.03845801018178
+  },
+  {
+   "id": "es-036",
+   "text": "Ya pagué y me siguen cobrando el mismo recibo.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8735,
+   "probabilities": {
+    "ventas": 0.0255,
+    "soporte": 0.025,
+    "facturacion": 0.8735,
+    "operadora": 0.0242,
+    "colgar": 0.0261,
+    "ninguno": 0.0256
+   },
+   "latency_ms": 133.89916700543836
+  },
+  {
+   "id": "es-037",
+   "text": "Necesito que me reenvíen la factura de agosto con el RTN de la empresa.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8743,
+   "probabilities": {
+    "ventas": 0.0248,
+    "soporte": 0.0253,
+    "facturacion": 0.8743,
+    "operadora": 0.0239,
+    "colgar": 0.0261,
+    "ninguno": 0.0256
+   },
+   "latency_ms": 138.10058298986405
+  },
+  {
+   "id": "es-038",
+   "text": "Quiero hacer un arreglo de pago porque estoy atrasado.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8844,
+   "probabilities": {
+    "ventas": 0.023,
+    "soporte": 0.0239,
+    "facturacion": 0.8844,
+    "operadora": 0.0224,
+    "colgar": 0.0232,
+    "ninguno": 0.0231
+   },
+   "latency_ms": 126.38441700255498
+  },
+  {
+   "id": "es-039",
+   "text": "Me aparece un cargo que no reconozco en el estado de cuenta.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8718,
+   "probabilities": {
+    "ventas": 0.0259,
+    "soporte": 0.0248,
+    "facturacion": 0.8718,
+    "operadora": 0.0245,
+    "colgar": 0.0267,
+    "ninguno": 0.0262
+   },
+   "latency_ms": 131.69687503250316
+  },
+  {
+   "id": "es-040",
+   "text": "Hice la transferencia hace tres días y no me han aplicado el pago.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8797,
+   "probabilities": {
+    "ventas": 0.024,
+    "soporte": 0.0246,
+    "facturacion": 0.8797,
+    "operadora": 0.0229,
+    "colgar": 0.0243,
+    "ninguno": 0.0245
+   },
+   "latency_ms": 131.8984999670647
+  },
+  {
+   "id": "es-041",
+   "text": "Quiero saber por qué me subieron el cobro sin avisarme, necesito que lo corrijan.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8866,
+   "probabilities": {
+    "ventas": 0.0229,
+    "soporte": 0.0227,
+    "facturacion": 0.8866,
+    "operadora": 0.0219,
+    "colgar": 0.0229,
+    "ninguno": 0.023
+   },
+   "latency_ms": 137.14720803545788
+  },
+  {
+   "id": "es-042",
+   "text": "Pagué de más y quiero un reembolso.",
+   "gold": "facturacion",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8776,
+   "probabilities": {
+    "ventas": 0.0247,
+    "soporte": 0.0245,
+    "facturacion": 0.8776,
+    "operadora": 0.0239,
+    "colgar": 0.0246,
+    "ninguno": 0.0247
+   },
+   "latency_ms": 125.4467919934541
+  },
+  {
+   "id": "es-043",
+   "text": "Quiero hablar con una persona.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8925,
+   "probabilities": {
+    "ventas": 0.021,
+    "soporte": 0.0216,
+    "facturacion": 0.0213,
+    "operadora": 0.8925,
+    "colgar": 0.0217,
+    "ninguno": 0.0219
+   },
+   "latency_ms": 120.908250042703
+  },
+  {
+   "id": "es-044",
+   "text": "Páseme con un humano, por favor.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8729,
+   "probabilities": {
+    "ventas": 0.0243,
+    "soporte": 0.0253,
+    "facturacion": 0.025,
+    "operadora": 0.8729,
+    "colgar": 0.0261,
+    "ninguno": 0.0265
+   },
+   "latency_ms": 138.32279096823186
+  },
+  {
+   "id": "es-045",
+   "text": "Necesito hablar con alguien de verdad, no con una máquina.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8719,
+   "probabilities": {
+    "ventas": 0.0247,
+    "soporte": 0.0248,
+    "facturacion": 0.0253,
+    "operadora": 0.8719,
+    "colgar": 0.0256,
+    "ninguno": 0.0276
+   },
+   "latency_ms": 129.1345419595018
+  },
+  {
+   "id": "es-046",
+   "text": "¿Me puede pasar con una operadora?",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "direct"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.9344,
+   "probabilities": {
+    "ventas": 0.0128,
+    "soporte": 0.0129,
+    "facturacion": 0.0131,
+    "operadora": 0.9344,
+    "colgar": 0.0135,
+    "ninguno": 0.0132
+   },
+   "latency_ms": 128.58533300459385
+  },
+  {
+   "id": "es-047",
+   "text": "Comuníqueme con recepción.",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "direct"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8438,
+   "probabilities": {
+    "ventas": 0.0285,
+    "soporte": 0.0318,
+    "facturacion": 0.0295,
+    "operadora": 0.0294,
+    "colgar": 0.8438,
+    "ninguno": 0.0369
+   },
+   "latency_ms": 122.83929198747501
+  },
+  {
+   "id": "es-048",
+   "text": "Prefiero que me atienda un agente.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8601,
+   "probabilities": {
+    "ventas": 0.0269,
+    "soporte": 0.0283,
+    "facturacion": 0.0287,
+    "operadora": 0.8601,
+    "colgar": 0.0273,
+    "ninguno": 0.0286
+   },
+   "latency_ms": 125.81625004531816
+  },
+  {
+   "id": "es-049",
+   "text": "Quiero hablar con un representante.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8737,
+   "probabilities": {
+    "ventas": 0.0245,
+    "soporte": 0.0254,
+    "facturacion": 0.0251,
+    "operadora": 0.8737,
+    "colgar": 0.0251,
+    "ninguno": 0.0262
+   },
+   "latency_ms": 123.14883404178545
+  },
+  {
+   "id": "es-050",
+   "text": "Con alguien, por favor, con quien sea.",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "short"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8849,
+   "probabilities": {
+    "ventas": 0.0228,
+    "soporte": 0.0221,
+    "facturacion": 0.0226,
+    "operadora": 0.8849,
+    "colgar": 0.023,
+    "ninguno": 0.0246
+   },
+   "latency_ms": 126.38079200405627
+  },
+  {
+   "id": "es-051",
+   "text": "Mire, mejor páseme con una persona que me pueda ayudar.",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "hn"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8689,
+   "probabilities": {
+    "ventas": 0.0255,
+    "soporte": 0.0251,
+    "facturacion": 0.0265,
+    "operadora": 0.8689,
+    "colgar": 0.0267,
+    "ninguno": 0.0273
+   },
+   "latency_ms": 166.53708298690617
+  },
+  {
+   "id": "es-052",
+   "text": "No quiero hablar con un robot, páseme con alguien.",
+   "gold": "operadora",
+   "tags": [
+    "human",
+    "negation-in-text"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8691,
+   "probabilities": {
+    "ventas": 0.0253,
+    "soporte": 0.0263,
+    "facturacion": 0.0256,
+    "operadora": 0.8691,
+    "colgar": 0.0261,
+    "ninguno": 0.0276
+   },
+   "latency_ms": 132.50566698843613
+  },
+  {
+   "id": "es-053",
+   "text": "¿Hay alguna persona que me pueda atender?",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8508,
+   "probabilities": {
+    "ventas": 0.0287,
+    "soporte": 0.03,
+    "facturacion": 0.0273,
+    "operadora": 0.8508,
+    "colgar": 0.0282,
+    "ninguno": 0.035
+   },
+   "latency_ms": 128.8525829440914
+  },
+  {
+   "id": "es-054",
+   "text": "Déjeme hablar con la secretaria.",
+   "gold": "operadora",
+   "tags": [
+    "human"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8742,
+   "probabilities": {
+    "ventas": 0.0252,
+    "soporte": 0.0253,
+    "facturacion": 0.0245,
+    "operadora": 0.8742,
+    "colgar": 0.0253,
+    "ninguno": 0.0256
+   },
+   "latency_ms": 124.94237499777228
+  },
+  {
+   "id": "es-055",
+   "text": "Eso era todo, muchas gracias, hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8888,
+   "probabilities": {
+    "ventas": 0.0215,
+    "soporte": 0.0225,
+    "facturacion": 0.0224,
+    "operadora": 0.0221,
+    "colgar": 0.8888,
+    "ninguno": 0.0227
+   },
+   "latency_ms": 128.80199996288866
+  },
+  {
+   "id": "es-056",
+   "text": "No, gracias, ya no necesito nada más. Adiós.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8846,
+   "probabilities": {
+    "ventas": 0.022,
+    "soporte": 0.0227,
+    "facturacion": 0.0225,
+    "operadora": 0.0225,
+    "colgar": 0.8846,
+    "ninguno": 0.0257
+   },
+   "latency_ms": 131.00049999775365
+  },
+  {
+   "id": "es-057",
+   "text": "Listo, muy amable, que tenga buen día.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8825,
+   "probabilities": {
+    "ventas": 0.0223,
+    "soporte": 0.0235,
+    "facturacion": 0.0228,
+    "operadora": 0.0233,
+    "colgar": 0.8825,
+    "ninguno": 0.0255
+   },
+   "latency_ms": 135.27720898855478
+  },
+  {
+   "id": "es-058",
+   "text": "Vaya pues, gracias, hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "hn"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8918,
+   "probabilities": {
+    "ventas": 0.0206,
+    "soporte": 0.0215,
+    "facturacion": 0.0214,
+    "operadora": 0.0211,
+    "colgar": 0.8918,
+    "ninguno": 0.0235
+   },
+   "latency_ms": 128.0505420290865
+  },
+  {
+   "id": "es-059",
+   "text": "Ya puede colgar, gracias.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "direct"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.9038,
+   "probabilities": {
+    "ventas": 0.0182,
+    "soporte": 0.0189,
+    "facturacion": 0.0192,
+    "operadora": 0.0191,
+    "colgar": 0.9038,
+    "ninguno": 0.0208
+   },
+   "latency_ms": 121.96333397878334
+  },
+  {
+   "id": "es-060",
+   "text": "Perfecto, era solo eso. Buenas tardes.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8496,
+   "probabilities": {
+    "ventas": 0.0269,
+    "soporte": 0.0255,
+    "facturacion": 0.0277,
+    "operadora": 0.0271,
+    "colgar": 0.0432,
+    "ninguno": 0.8496
+   },
+   "latency_ms": 128.79620800958946
+  },
+  {
+   "id": "es-061",
+   "text": "Bueno, le agradezco, adiós.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8843,
+   "probabilities": {
+    "ventas": 0.0223,
+    "soporte": 0.0235,
+    "facturacion": 0.0234,
+    "operadora": 0.0229,
+    "colgar": 0.8843,
+    "ninguno": 0.0237
+   },
+   "latency_ms": 126.97283300803974
+  },
+  {
+   "id": "es-062",
+   "text": "Nada más, gracias. Chao.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "short"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8899,
+   "probabilities": {
+    "ventas": 0.021,
+    "soporte": 0.0219,
+    "facturacion": 0.0216,
+    "operadora": 0.0217,
+    "colgar": 0.8899,
+    "ninguno": 0.0238
+   },
+   "latency_ms": 127.57141701877117
+  },
+  {
+   "id": "es-063",
+   "text": "Me equivoqué de número, disculpe, hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.2573,
+   "probabilities": {
+    "ventas": 0.1237,
+    "soporte": 0.1751,
+    "facturacion": 0.1363,
+    "operadora": 0.1664,
+    "colgar": 0.1413,
+    "ninguno": 0.2573
+   },
+   "latency_ms": 130.56695903651416
+  },
+  {
+   "id": "es-064",
+   "text": "Ya me resolvieron, gracias, feliz tarde.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8816,
+   "probabilities": {
+    "ventas": 0.0229,
+    "soporte": 0.0234,
+    "facturacion": 0.0239,
+    "operadora": 0.0226,
+    "colgar": 0.8816,
+    "ninguno": 0.0255
+   },
+   "latency_ms": 149.76191602181643
+  },
+  {
+   "id": "es-065",
+   "text": "Está bien, después llamo. Adiós.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.6607,
+   "probabilities": {
+    "ventas": 0.0247,
+    "soporte": 0.0241,
+    "facturacion": 0.0257,
+    "operadora": 0.0237,
+    "colgar": 0.2412,
+    "ninguno": 0.6607
+   },
+   "latency_ms": 147.3129169899039
+  },
+  {
+   "id": "es-066",
+   "text": "Cheque, gracias, eso sería todo.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "hn"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8851,
+   "probabilities": {
+    "ventas": 0.0218,
+    "soporte": 0.0231,
+    "facturacion": 0.0236,
+    "operadora": 0.0226,
+    "colgar": 0.8851,
+    "ninguno": 0.0238
+   },
+   "latency_ms": 157.27762499591336
+  },
+  {
+   "id": "es-067",
+   "text": "¿A qué hora abren mañana?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8855,
+   "probabilities": {
+    "ventas": 0.0233,
+    "soporte": 0.0218,
+    "facturacion": 0.0237,
+    "operadora": 0.022,
+    "colgar": 0.0238,
+    "ninguno": 0.8855
+   },
+   "latency_ms": 131.81799999438226
+  },
+  {
+   "id": "es-068",
+   "text": "¿Dónde queda la oficina principal?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8927,
+   "probabilities": {
+    "ventas": 0.0206,
+    "soporte": 0.0218,
+    "facturacion": 0.0218,
+    "operadora": 0.0215,
+    "colgar": 0.0215,
+    "ninguno": 0.8927
+   },
+   "latency_ms": 130.59324998175725
+  },
+  {
+   "id": "es-069",
+   "text": "¿Hasta qué hora atienden los sábados?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8859,
+   "probabilities": {
+    "ventas": 0.0236,
+    "soporte": 0.0221,
+    "facturacion": 0.0234,
+    "operadora": 0.0216,
+    "colgar": 0.0234,
+    "ninguno": 0.8859
+   },
+   "latency_ms": 155.06779198767617
+  },
+  {
+   "id": "es-070",
+   "text": "¿Cuál es el correo para mandar documentos?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8604,
+   "probabilities": {
+    "ventas": 0.0303,
+    "soporte": 0.0257,
+    "facturacion": 0.0299,
+    "operadora": 0.0252,
+    "colgar": 0.0284,
+    "ninguno": 0.8604
+   },
+   "latency_ms": 125.93220901908353
+  },
+  {
+   "id": "es-071",
+   "text": "¿Ustedes tienen cobertura en San Pedro Sula?",
+   "gold": "ninguno",
+   "tags": [
+    "open",
+    "hn"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.6064,
+   "probabilities": {
+    "ventas": 0.3143,
+    "soporte": 0.0187,
+    "facturacion": 0.0209,
+    "operadora": 0.0186,
+    "colgar": 0.021,
+    "ninguno": 0.6064
+   },
+   "latency_ms": 140.13091597007588
+  },
+  {
+   "id": "es-072",
+   "text": "¿Me puede repetir la dirección, por favor?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8815,
+   "probabilities": {
+    "ventas": 0.0263,
+    "soporte": 0.0221,
+    "facturacion": 0.0233,
+    "operadora": 0.0214,
+    "colgar": 0.0253,
+    "ninguno": 0.8815
+   },
+   "latency_ms": 129.10054199164733
+  },
+  {
+   "id": "es-073",
+   "text": "¿Qué documentos necesito llevar?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8905,
+   "probabilities": {
+    "ventas": 0.0226,
+    "soporte": 0.022,
+    "facturacion": 0.0214,
+    "operadora": 0.021,
+    "colgar": 0.0224,
+    "ninguno": 0.8905
+   },
+   "latency_ms": 127.25295795826241
+  },
+  {
+   "id": "es-074",
+   "text": "¿Trabajan los días feriados?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8841,
+   "probabilities": {
+    "ventas": 0.0229,
+    "soporte": 0.022,
+    "facturacion": 0.024,
+    "operadora": 0.0221,
+    "colgar": 0.025,
+    "ninguno": 0.8841
+   },
+   "latency_ms": 127.21533299190924
+  },
+  {
+   "id": "es-075",
+   "text": "¿Cómo se llama usted?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8913,
+   "probabilities": {
+    "ventas": 0.0238,
+    "soporte": 0.0201,
+    "facturacion": 0.0217,
+    "operadora": 0.0205,
+    "colgar": 0.0226,
+    "ninguno": 0.8913
+   },
+   "latency_ms": 121.68170796940103
+  },
+  {
+   "id": "es-076",
+   "text": "¿Tienen parqueo para clientes?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8835,
+   "probabilities": {
+    "ventas": 0.027,
+    "soporte": 0.0221,
+    "facturacion": 0.0222,
+    "operadora": 0.0217,
+    "colgar": 0.0236,
+    "ninguno": 0.8835
+   },
+   "latency_ms": 122.97170900274068
+  },
+  {
+   "id": "es-077",
+   "text": "Aló, buenos días.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8714,
+   "probabilities": {
+    "ventas": 0.0224,
+    "soporte": 0.0215,
+    "facturacion": 0.0232,
+    "operadora": 0.0217,
+    "colgar": 0.8714,
+    "ninguno": 0.0397
+   },
+   "latency_ms": 124.49645798187703
+  },
+  {
+   "id": "es-078",
+   "text": "¿Aló? ¿Me escucha?",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8938,
+   "probabilities": {
+    "ventas": 0.022,
+    "soporte": 0.0211,
+    "facturacion": 0.0215,
+    "operadora": 0.0208,
+    "colgar": 0.0209,
+    "ninguno": 0.8938
+   },
+   "latency_ms": 125.10895798914135
+  },
+  {
+   "id": "es-079",
+   "text": "Sí.",
+   "gold": "ninguno",
+   "tags": [
+    "noise",
+    "short"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8943,
+   "probabilities": {
+    "ventas": 0.0215,
+    "soporte": 0.0211,
+    "facturacion": 0.0217,
+    "operadora": 0.0208,
+    "colgar": 0.0206,
+    "ninguno": 0.8943
+   },
+   "latency_ms": 125.57616701815277
+  },
+  {
+   "id": "es-080",
+   "text": "Este... espere un momento.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8917,
+   "probabilities": {
+    "ventas": 0.0216,
+    "soporte": 0.0207,
+    "facturacion": 0.0222,
+    "operadora": 0.021,
+    "colgar": 0.0228,
+    "ninguno": 0.8917
+   },
+   "latency_ms": 125.98937499569729
+  },
+  {
+   "id": "es-081",
+   "text": "Buenas tardes, mire, tengo una consulta.",
+   "gold": "ninguno",
+   "tags": [
+    "noise",
+    "hn"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8942,
+   "probabilities": {
+    "ventas": 0.0211,
+    "soporte": 0.0214,
+    "facturacion": 0.0218,
+    "operadora": 0.0208,
+    "colgar": 0.0207,
+    "ninguno": 0.8942
+   },
+   "latency_ms": 138.42845801264048
+  },
+  {
+   "id": "es-082",
+   "text": "Un momentito, que estoy buscando el número de contrato.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8437,
+   "probabilities": {
+    "ventas": 0.8437,
+    "soporte": 0.0231,
+    "facturacion": 0.0223,
+    "operadora": 0.0227,
+    "colgar": 0.0233,
+    "ninguno": 0.0649
+   },
+   "latency_ms": 130.64325001323596
+  },
+  {
+   "id": "es-083",
+   "text": "¿Cómo dijo? No le entendí.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8816,
+   "probabilities": {
+    "ventas": 0.0232,
+    "soporte": 0.0246,
+    "facturacion": 0.0234,
+    "operadora": 0.0248,
+    "colgar": 0.0224,
+    "ninguno": 0.8816
+   },
+   "latency_ms": 130.96879102522507
+  },
+  {
+   "id": "es-084",
+   "text": "Ajá, sí, lo escucho.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8874,
+   "probabilities": {
+    "ventas": 0.0242,
+    "soporte": 0.0222,
+    "facturacion": 0.0228,
+    "operadora": 0.0218,
+    "colgar": 0.0217,
+    "ninguno": 0.8874
+   },
+   "latency_ms": 124.16274996940047
+  },
+  {
+   "id": "es-085",
+   "text": "No me pase con ventas, solo quiero saber el horario.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8873,
+   "probabilities": {
+    "ventas": 0.0228,
+    "soporte": 0.022,
+    "facturacion": 0.0218,
+    "operadora": 0.0228,
+    "colgar": 0.0232,
+    "ninguno": 0.8873
+   },
+   "latency_ms": 129.87262499518692
+  },
+  {
+   "id": "es-086",
+   "text": "No quiero hablar con soporte, ya hablé con ellos ayer.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8871,
+   "probabilities": {
+    "ventas": 0.0228,
+    "soporte": 0.0213,
+    "facturacion": 0.0224,
+    "operadora": 0.0233,
+    "colgar": 0.023,
+    "ninguno": 0.8871
+   },
+   "latency_ms": 134.4345830148086
+  },
+  {
+   "id": "es-087",
+   "text": "No necesito que me transfieran a facturación, solo una pregunta.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.9296,
+   "probabilities": {
+    "ventas": 0.014,
+    "soporte": 0.014,
+    "facturacion": 0.0139,
+    "operadora": 0.014,
+    "colgar": 0.0145,
+    "ninguno": 0.9296
+   },
+   "latency_ms": 132.63233297038823
+  },
+  {
+   "id": "es-088",
+   "text": "Todavía no me pase con nadie, primero explíqueme usted.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8872,
+   "probabilities": {
+    "ventas": 0.0241,
+    "soporte": 0.022,
+    "facturacion": 0.022,
+    "operadora": 0.022,
+    "colgar": 0.0226,
+    "ninguno": 0.8872
+   },
+   "latency_ms": 125.91124995378777
+  },
+  {
+   "id": "es-089",
+   "text": "No, con la operadora no, prefiero que me lo diga usted.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.912,
+   "probabilities": {
+    "ventas": 0.0185,
+    "soporte": 0.0173,
+    "facturacion": 0.0171,
+    "operadora": 0.0177,
+    "colgar": 0.0174,
+    "ninguno": 0.912
+   },
+   "latency_ms": 130.28774998383597
+  },
+  {
+   "id": "es-090",
+   "text": "No es para ventas, es solo para saber dónde están ubicados.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8875,
+   "probabilities": {
+    "ventas": 0.0228,
+    "soporte": 0.0222,
+    "facturacion": 0.0223,
+    "operadora": 0.0218,
+    "colgar": 0.0234,
+    "ninguno": 0.8875
+   },
+   "latency_ms": 136.9817919912748
+  },
+  {
+   "id": "es-091",
+   "text": "No tengo ninguna falla, el internet funciona bien, solo llamo por una duda.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8811,
+   "probabilities": {
+    "ventas": 0.0231,
+    "soporte": 0.0238,
+    "facturacion": 0.0245,
+    "operadora": 0.0229,
+    "colgar": 0.0245,
+    "ninguno": 0.8811
+   },
+   "latency_ms": 134.26625001011416
+  },
+  {
+   "id": "es-092",
+   "text": "No tengo problema con el cobro, la factura está bien, era otra cosa.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8934,
+   "probabilities": {
+    "ventas": 0.0211,
+    "soporte": 0.021,
+    "facturacion": 0.0212,
+    "operadora": 0.0213,
+    "colgar": 0.0219,
+    "ninguno": 0.8934
+   },
+   "latency_ms": 136.56358298612759
+  },
+  {
+   "id": "es-093",
+   "text": "No quiero comprar nada, solo estoy preguntando por el horario.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8744,
+   "probabilities": {
+    "ventas": 0.0277,
+    "soporte": 0.0236,
+    "facturacion": 0.0256,
+    "operadora": 0.0241,
+    "colgar": 0.0245,
+    "ninguno": 0.8744
+   },
+   "latency_ms": 129.81504201889038
+  },
+  {
+   "id": "es-094",
+   "text": "No me transfiera, por favor.",
+   "gold": "ninguno",
+   "tags": [
+    "negation",
+    "short"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8734,
+   "probabilities": {
+    "ventas": 0.0246,
+    "soporte": 0.0256,
+    "facturacion": 0.0255,
+    "operadora": 0.0247,
+    "colgar": 0.0261,
+    "ninguno": 0.8734
+   },
+   "latency_ms": 130.22279203869402
+  },
+  {
+   "id": "es-095",
+   "text": "No cuelgue, por favor, todavía tengo otra pregunta.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.89,
+   "probabilities": {
+    "ventas": 0.0226,
+    "soporte": 0.0211,
+    "facturacion": 0.0221,
+    "operadora": 0.0215,
+    "colgar": 0.0227,
+    "ninguno": 0.89
+   },
+   "latency_ms": 134.47516702581197
+  },
+  {
+   "id": "es-096",
+   "text": "Espere, no he terminado, no me corte.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8758,
+   "probabilities": {
+    "ventas": 0.0251,
+    "soporte": 0.0234,
+    "facturacion": 0.0249,
+    "operadora": 0.0249,
+    "colgar": 0.0259,
+    "ninguno": 0.8758
+   },
+   "latency_ms": 128.03841603454202
+  },
+  {
+   "id": "es-097",
+   "text": "No, no es todo, me falta preguntarle otra cosa.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.89,
+   "probabilities": {
+    "ventas": 0.0216,
+    "soporte": 0.022,
+    "facturacion": 0.0219,
+    "operadora": 0.0223,
+    "colgar": 0.0223,
+    "ninguno": 0.89
+   },
+   "latency_ms": 147.6007080054842
+  },
+  {
+   "id": "es-098",
+   "text": "Gracias, pero todavía no me despido, tengo una duda más.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8895,
+   "probabilities": {
+    "ventas": 0.0222,
+    "soporte": 0.0214,
+    "facturacion": 0.0217,
+    "operadora": 0.0225,
+    "colgar": 0.0227,
+    "ninguno": 0.8895
+   },
+   "latency_ms": 132.00020795920864
+  },
+  {
+   "id": "es-099",
+   "text": "Ventas me prometió una velocidad y el internet no funciona.",
+   "gold": "soporte",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8825,
+   "probabilities": {
+    "ventas": 0.8825,
+    "soporte": 0.0318,
+    "facturacion": 0.0201,
+    "operadora": 0.0203,
+    "colgar": 0.0212,
+    "ninguno": 0.0242
+   },
+   "latency_ms": 136.19729201309383
+  },
+  {
+   "id": "es-100",
+   "text": "Soporte ya vino, pero ahora me están cobrando la visita y no estoy de acuerdo.",
+   "gold": "facturacion",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8834,
+   "probabilities": {
+    "ventas": 0.0241,
+    "soporte": 0.0235,
+    "facturacion": 0.8834,
+    "operadora": 0.0225,
+    "colgar": 0.0227,
+    "ninguno": 0.0238
+   },
+   "latency_ms": 135.88116702158004
+  },
+  {
+   "id": "es-101",
+   "text": "Hablé con facturación y me dijeron que para contratar otra línea hable con ustedes.",
+   "gold": "ventas",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8728,
+   "probabilities": {
+    "ventas": 0.8728,
+    "soporte": 0.0258,
+    "facturacion": 0.0242,
+    "operadora": 0.0252,
+    "colgar": 0.0258,
+    "ninguno": 0.0262
+   },
+   "latency_ms": 132.85187497967854
+  },
+  {
+   "id": "es-102",
+   "text": "Ya hablé con ventas y con soporte y nadie me resuelve, quiero hablar con una persona.",
+   "gold": "operadora",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8742,
+   "probabilities": {
+    "ventas": 0.0243,
+    "soporte": 0.0252,
+    "facturacion": 0.0249,
+    "operadora": 0.8742,
+    "colgar": 0.0255,
+    "ninguno": 0.026
+   },
+   "latency_ms": 137.6317500253208
+  },
+  {
+   "id": "es-103",
+   "text": "Gracias por pasarme antes con soporte; ahora quiero pagar mi factura.",
+   "gold": "facturacion",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9168,
+   "probabilities": {
+    "ventas": 0.0167,
+    "soporte": 0.0163,
+    "facturacion": 0.9168,
+    "operadora": 0.0165,
+    "colgar": 0.0174,
+    "ninguno": 0.0163
+   },
+   "latency_ms": 128.1457080040127
+  },
+  {
+   "id": "es-104",
+   "text": "El técnico arregló todo, solo quería agradecer. Hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8805,
+   "probabilities": {
+    "ventas": 0.0233,
+    "soporte": 0.0239,
+    "facturacion": 0.0239,
+    "operadora": 0.0235,
+    "colgar": 0.8805,
+    "ninguno": 0.025
+   },
+   "latency_ms": 123.2784169842489
+  },
+  {
+   "id": "es-105",
+   "text": "eh si buenas mire es que no tengo internet desde la mañana",
+   "gold": "soporte",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8368,
+   "probabilities": {
+    "ventas": 0.032,
+    "soporte": 0.8368,
+    "facturacion": 0.0317,
+    "operadora": 0.0302,
+    "colgar": 0.0313,
+    "ninguno": 0.0381
+   },
+   "latency_ms": 123.52962500881404
+  },
+  {
+   "id": "es-106",
+   "text": "quiero este quiero contratar un plan para mi negocio",
+   "gold": "ventas",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.8797,
+   "probabilities": {
+    "ventas": 0.8797,
+    "soporte": 0.0243,
+    "facturacion": 0.0234,
+    "operadora": 0.0238,
+    "colgar": 0.0241,
+    "ninguno": 0.0247
+   },
+   "latency_ms": 127.1550829987973
+  },
+  {
+   "id": "es-107",
+   "text": "me me cobraron doble la factura de este mes",
+   "gold": "facturacion",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8632,
+   "probabilities": {
+    "ventas": 0.0275,
+    "soporte": 0.0271,
+    "facturacion": 0.8632,
+    "operadora": 0.0262,
+    "colgar": 0.0281,
+    "ninguno": 0.0279
+   },
+   "latency_ms": 128.87362501351163
+  },
+  {
+   "id": "es-108",
+   "text": "paseme con una persona por favor",
+   "gold": "operadora",
+   "tags": [
+    "asr",
+    "human"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.8837,
+   "probabilities": {
+    "ventas": 0.0222,
+    "soporte": 0.0236,
+    "facturacion": 0.0232,
+    "operadora": 0.8837,
+    "colgar": 0.0233,
+    "ninguno": 0.024
+   },
+   "latency_ms": 126.37108302442357
+  },
+  {
+   "id": "es-109",
+   "text": "bueno gracias eso era todo hasta luego",
+   "gold": "colgar",
+   "tags": [
+    "asr",
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8911,
+   "probabilities": {
+    "ventas": 0.0209,
+    "soporte": 0.0219,
+    "facturacion": 0.0221,
+    "operadora": 0.0217,
+    "colgar": 0.8911,
+    "ninguno": 0.0223
+   },
+   "latency_ms": 128.83337499806657
+  },
+  {
+   "id": "es-110",
+   "text": "a que hora cierran hoy",
+   "gold": "ninguno",
+   "tags": [
+    "asr",
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8918,
+   "probabilities": {
+    "ventas": 0.0218,
+    "soporte": 0.0208,
+    "facturacion": 0.0223,
+    "operadora": 0.0208,
+    "colgar": 0.0226,
+    "ninguno": 0.8918
+   },
+   "latency_ms": 129.44504205370322
+  },
+  {
+   "id": "es-111",
+   "text": "no no me pase con ventas solo una pregunta",
+   "gold": "ninguno",
+   "tags": [
+    "asr",
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8976,
+   "probabilities": {
+    "ventas": 0.0209,
+    "soporte": 0.02,
+    "facturacion": 0.0199,
+    "operadora": 0.0208,
+    "colgar": 0.0208,
+    "ninguno": 0.8976
+   },
+   "latency_ms": 136.52125000953674
+  },
+  {
+   "id": "es-112",
+   "text": "alo alo si me escucha",
+   "gold": "ninguno",
+   "tags": [
+    "asr",
+    "noise"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8832,
+   "probabilities": {
+    "ventas": 0.0232,
+    "soporte": 0.0231,
+    "facturacion": 0.0239,
+    "operadora": 0.0234,
+    "colgar": 0.0232,
+    "ninguno": 0.8832
+   },
+   "latency_ms": 140.33208403270692
+  },
+  {
+   "id": "es-113",
+   "text": "¿Cuánto cuesta el plan de cincuenta megas?",
+   "gold": "ninguno",
+   "tags": [
+    "borderline"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.883,
+   "probabilities": {
+    "ventas": 0.0245,
+    "soporte": 0.0225,
+    "facturacion": 0.883,
+    "operadora": 0.0219,
+    "colgar": 0.0246,
+    "ninguno": 0.0235
+   },
+   "latency_ms": 134.56720899557695
+  },
+  {
+   "id": "es-114",
+   "text": "Quiero cancelar mi servicio.",
+   "gold": "operadora",
+   "tags": [
+    "borderline"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.6255,
+   "probabilities": {
+    "ventas": 0.0576,
+    "soporte": 0.0691,
+    "facturacion": 0.112,
+    "operadora": 0.0659,
+    "colgar": 0.6255,
+    "ninguno": 0.0699
+   },
+   "latency_ms": 121.98100000387058
+  },
+  {
+   "id": "es-115",
+   "text": "¿Qué promociones tienen este mes?",
+   "gold": "ninguno",
+   "tags": [
+    "borderline"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.5027,
+   "probabilities": {
+    "ventas": 0.4296,
+    "soporte": 0.017,
+    "facturacion": 0.0168,
+    "operadora": 0.0167,
+    "colgar": 0.0172,
+    "ninguno": 0.5027
+   },
+   "latency_ms": 137.0325839961879
+  },
+  {
+   "id": "es-116",
+   "text": "Necesito cambiar el titular de la cuenta.",
+   "gold": "operadora",
+   "tags": [
+    "borderline"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8866,
+   "probabilities": {
+    "ventas": 0.0225,
+    "soporte": 0.0218,
+    "facturacion": 0.8866,
+    "operadora": 0.0219,
+    "colgar": 0.0228,
+    "ninguno": 0.0243
+   },
+   "latency_ms": 129.58354101283476
+  }
+ ]
+}

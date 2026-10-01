@@ -223,6 +223,28 @@ check("pass/k == n returns every label in order", shortlist_choice("pay me", CRI
 check("pass/k > n returns every label in order", shortlist_choice("pay me", CRITERIA, boom, k=20), list(CRITERIA))
 
 
+# ---------------------------------------------------------------- return_scores
+score_embed = _embed_for("pay me", OPTION_TEXTS)
+pair = shortlist_choice("pay me", CRITERIA, score_embed, k=2, return_scores=True)
+check("scores/labels match the bare call", pair[0], ["alpha", "delta"])
+check("scores/cosines are in rank order", pair[1], [1.0, 1.0])
+trio = shortlist_choice("pay me", CRITERIA, _embed_for("pay me", OPTION_TEXTS), k=3, return_scores=True)
+check("scores/third label is gamma", trio[0], ["alpha", "delta", "gamma"])
+check("scores/third cosine rounds to gamma", [round(s, 9) for s in trio[1]], [1.0, 1.0, 0.6])
+bare = shortlist_choice("pay me", CRITERIA, _embed_for("pay me", OPTION_TEXTS), k=2)
+check("scores/default still returns bare labels", bare, ["alpha", "delta"])
+pass_pair = shortlist_choice("pay me", CRITERIA, BoomEmbed(), k=20, return_scores=True)
+check("scores/passthrough keeps every label", pass_pair[0], list(CRITERIA))
+check("scores/passthrough reports no scores", pass_pair[1], None)
+meta_agent = Recorder()
+meta_out = predict_shortlist(
+    meta_agent, "pay me", {"intent": {"type": "choice", "criteria": CRITERIA}},
+    _embed_for("pay me", OPTION_TEXTS), k=2,
+)
+check("scores/agree with predict_shortlist metadata",
+      pair[1], meta_out["shortlist"]["intent"]["scores"])
+
+
 # ---------------------------------------------------------------- mock predict sees only k criteria
 sentinel = {"desc": "payments"}
 full = {"billing": sentinel, "tech": "bugs", "sales": None, "other": "misc"}
@@ -720,6 +742,39 @@ check_true(
     "cache/concurrent counters consistent",
     mt_cached.cache_info()["hits"] + mt_cached.cache_info()["misses"] == 32,
 )
+
+# --------------------------------------------------------------- cache dimensionality
+# A row stored under one dimensionality cannot stack against a row of another: the
+# docstring asks the caller to clear the cache when the model changes, and the cache
+# refuses the call instead of returning a matrix that silently mixes both.
+
+
+class SwapEmbed:
+    """One callable whose width changes between calls, like a swapped model."""
+
+    def __init__(self):
+        self.dim = 2
+        self.calls = []
+
+    def __call__(self, texts):
+        self.calls.append(list(texts))
+        return [[1.0] * self.dim for _text in texts]
+
+
+swap_fn = SwapEmbed()
+swap_cached = cached_embed_fn(swap_fn)
+swap_cached(["alpha"])
+check("cache/dim first width cached", swap_cached.cache_info()["size"], 1)
+swap_fn.dim = 3
+try:
+    swap_cached(["beta"])
+    check_true("cache/dim drift refused", False, "no error raised")
+except ValueError as exc:
+    check_true("cache/dim drift refused", "cache_clear()" in str(exc), str(exc))
+check("cache/dim drift caches nothing new", swap_cached.cache_info()["size"], 1)
+swap_cached.cache_clear()
+swap_cached(["beta"])
+check("cache/dim clear then re-embed works", swap_cached.cache_info()["size"], 1)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

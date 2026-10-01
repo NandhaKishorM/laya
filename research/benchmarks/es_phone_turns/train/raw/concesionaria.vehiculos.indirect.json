@@ -1,0 +1,27 @@
+{
+ "name": "concesionaria.vehiculos.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una concesionaria de carros y necesita que se ocupe de su caso el área que atiende esto: «comprar un carro nuevo o usado». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, soy don Roberto y necesito coordinar una visita para revisar un Sempronio usado que vi en su catálogo.",
+  "Hola, le escribo porque quiero concretar la compra de ese Toyota Corolla nuevo, ¿me indica el proceso para apartarlo?",
+  "Es que tengo un problema con la entrega del vehículo comprado hace dos semanas, todavía no me han dado las llaves.",
+  "Oiga, por favor, necesito hablar con alguien para formalizar la transacción del camioneta Ford Ranger que revisé el martes.",
+  "Tengo entendido que hacen créditos propios y me gustaría cotizar la cuota mensual para ese Mazda CX-5 usado.",
+  "Le llamo porque quiero devolver el carro que compré hace un mes, tiene una falla en el aire acondicionado.",
+  "Buenos días, necesito agendar una cita para firmar los documentos de compra del Chevrolet Sail nuevo.",
+  "Es que no me ha llegado la factura de pago por el semáforo que me debían poner al carro usado.",
+  "Quiero comprar el Honda Civic usado, ¿me pueden decir si está libre para entregarme hoy mismo?",
+  "Oiga, tengo un problema grave con el financiamiento, me cobraron una comisión que no habíamos acordado previamente.",
+  "Por favor, necesito hablar con el gerente de ventas para negociar el precio final del Mazda 3 nuevo.",
+  "Le escribo para confirmar si el carro usado que compré incluye garantía o si la tengo que contratar aparte.",
+  "Hola, quiero apartar ese Nissan Sentra nuevo con el enganche que me ofrecieron por teléfono la semana pasada.",
+  "Es que el mecánico dice que el carro usado tiene un choque fuerte y yo no estaba enterado de eso.",
+  "Necesito coordinar la entrega del Toyota Hilux nuevo para el viernes, ¿a qué hora puedo pasar a recogerlo?",
+  "Oiga, me gustaría saber los requisitos exactos para comprar el Jeep Compass nuevo siendo persona natural.",
+  "Tengo un problema con las placas, no me han enviado el documento de propiedad desde que pagué el carro usado.",
+  "Quiero formalizar la compra del Chevrolet Spark nuevo y necesito que me preparen la orden de compra ya.",
+  "Le llamo porque quiero cancelar mi pedido del Mazda CX-30 nuevo, cambié de opinión y no lo voy a necesitar.",
+  "Es que necesito una carta de no adeudo del seguro vehicular para poder trasladar el carro usado que compré."
+ ]
+}

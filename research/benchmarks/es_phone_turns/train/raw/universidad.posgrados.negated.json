@@ -1,0 +1,15 @@
+{
+ "name": "universidad.posgrados.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y aclara que NO necesita el área de «posgrados» (maestrías y doctorados): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No es para posgrados.",
+  "Buenas tardes, no busco maestrías.",
+  "Oiga, por favor no me pase ahí, solo tengo una duda rápida sobre pregrado.",
+  "Mire, yo sí quiero estudiar pero no soy para doctorado ni nada parecido.",
+  "Disculpe la molestia pero le aclaro que no es el departamento de posgrados lo que necesito.",
+  "No, por favor, déjenme con quien contestó, eso era solo una pregunta simple.",
+  "Le digo claramente que no estoy interesado en programas de grado avanzado.",
+  "Quedo a la espera de su atención, sin derivarme a otras áreas."
+ ]
+}

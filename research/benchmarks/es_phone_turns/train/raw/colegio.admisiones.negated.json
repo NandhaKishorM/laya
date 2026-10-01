@@ -1,0 +1,15 @@
+{
+ "name": "colegio.admisiones.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y aclara que NO necesita el área de «admisiones» (matrícula e inscripción de alumnos nuevos): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No soy para matrícula, hable con quien contestó.",
+  "Por favor, no me trasladen a admisiones, solo una duda.",
+  "No necesito inscribir a nadie, atienda la llamada por favor.",
+  "Quedo con usted, nada que ver con admisiones.",
+  "Oiga, no vaya a admisiones, es otra cosa.",
+  "No confundan el número, no voy a matricular.",
+  "Solo pregunto, no me pongan en admisiones por favor.",
+  "Le repito, no tengo que inscribir hijos, hable conmigo."
+ ]
+}

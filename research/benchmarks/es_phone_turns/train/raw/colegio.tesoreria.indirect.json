@@ -1,0 +1,27 @@
+{
+ "name": "colegio.tesoreria.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un colegio y necesita que se ocupe de su caso el área que atiende esto: «pago de mensualidades y colegiaturas». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buen día, necesito regularizar mi deuda con la mensualidad de marzo porque se me pasó.",
+  "Hola, le hablo para ver si me pueden dar una segunda oportunidad con el pago de la colegiatura atrasada.",
+  "Oiga donita, tengo un problema con la tarjeta que intenté usar ayer para pagar y necesito solución urgente.",
+  "Quisiera solicitar el desbloqueo del sistema porque no me deja hacer el pago por internet.",
+  "Mi hijo ya pagó pero dice que no le aparece en el portal y quiero verificar eso.",
+  "Necesito saber si puedo fraccionar el resto de la anualidad, tengo dificultades económicas este mes.",
+  "Hola, vengo a pagar hoy mismo pero me dijeron que mi caso está retenido por falta de documentos.",
+  "Le escribo para pedir una prórroga de cuarenta y ocho horas para completar el pago pendiente.",
+  "Oiga, ¿será posible que me expliquen por qué me cobran un recargo que no esperaba?",
+  "Buenas tardes, mi esposa ya realizó la transferencia pero aún no aparece acreditada en su cuenta.",
+  "Necesito cancelar una mensualidad pagada dos veces porque hubo error bancario y me urge el reembolso.",
+  "Hola, le consulto si aceptan pago parcial para dejar activo el registro mientras completo el saldo.",
+  "Tengo una beca aprobada pero no entiendo por qué sigue apareciéndome adeudo en la plataforma.",
+  "Oiga vecino, quiero pagar con cheque pero necesito que me confirmen a nombre de quién lo giro.",
+  "Le hablo porque mi hijo se fue del colegio y debo aclarar si queda deuda pendiente o no.",
+  "Necesito urgence un comprobante de pago válido para presentar ante el banco por un reclamo.",
+  "Hola, ¿me pueden cambiar la fecha límite de pago porque tuve una emergencia familiar inesperada?",
+  "Oiga, me gustaría saber si puedo pagar en efectivo directamente en caja o solo es online.",
+  "Le consulto sobre la multa que me aplicaron por tardanza en el pago del año pasado.",
+  "Necesito hablar con alguien autorizado para arreglar un conflicto de cobro duplicado en mi estado de cuenta."
+ ]
+}

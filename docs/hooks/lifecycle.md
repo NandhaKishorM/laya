@@ -124,14 +124,17 @@ Router.predict_batch(requests, batch_size=...)
        │
        ├─ load(checkpoint) ──► on_load / on_evict
        ├─ for each request of this checkpoint, in input order:
-       │      ctx = PredictContext(states=[state], questions, decision, model, agent, router)
+       │      ctx = PredictContext(states=[state], questions, decision, model, agent, router,
+       │                           max_len=request.get("max_len"),
+       │                           head_max_len=request.get("head_max_len"))
        │      on_predict_start       a hook may redact, rewrite, set a token budget or skip
        ├─ group the requests left to infer by (questions, ctx.max_len, ctx.head_max_len)
        │      agent.predict_batch(states, questions, ...)  ──► one shared forward pass per group
        │      result["routing"] = decision;  ctx.results = [result]
-       ├─ (any failure) ──► on_error for every started request without a result,
-       │                    on_predict_end for every started request, re-raise
-       └─ on_predict_end, once per request of this checkpoint, in input order
+       ├─ ctx.usage, once per request
+       ├─ (any failure) ──► for every started request, in reverse input order:
+       │                    ctx.error = exc, on_error, on_predict_end;  then re-raise
+       └─ on_predict_end, once per request of this checkpoint, in reverse input order
 ```
 
 Key points:
@@ -139,16 +142,30 @@ Key points:
 - Every start hook of a checkpoint's requests runs before any of their end hooks, because they
   share forward passes. A cache that fills in `on_predict_end` therefore cannot serve a duplicate
   state within the same checkpoint group; it can across calls.
+- For the same reason the requests end in reverse of the order they started, so a hook that sets
+  something in start and resets it in end (a `contextvars` value, an OpenTelemetry
+  `context.attach` / `detach`) unwinds to the value it found.
 - A start hook that replaces `ctx.states`, `ctx.questions` or the token budget changes its own
   request only: requests are grouped for the forward pass after their start hooks have run.
-  Mutating a questions dict in place changes it for every request that shares that dict, and for
-  the caller, as it would with `predict`.
-- Every started request gets exactly one `on_predict_end`, even when an earlier request's end hook
+  Mutating a shared questions dict in place is different, and not what `predict` does: nothing of
+  the group is inferred until all of its start hooks have run, so the change reaches every request
+  that shares the dict, including those whose start hooks ran earlier, and the caller too. Assign
+  a new dict to `ctx.questions` instead.
+- The checkpoint name is resolved before grouping, so an `on_route` hook that pins a request by
+  an alias (`"ml"`) shares that checkpoint's forward pass, and `ctx.model` is the resolved name.
+- A request may carry its own `max_len` / `head_max_len`, the per-request form of the token budget
+  `predict` takes as call arguments. A start hook that sets `ctx.max_len` overrides it, because the
+  hook runs after the context is built. Requests that ask for different budgets cannot share a
+  forward pass, so a batch that mixes budgets makes one `agent.predict_batch` call per budget.
+- Every started request gets exactly one `on_predict_end`, even when another request's end hook
   raises; the first such error is raised after all of them have run.
-- If the batch fails, a request that did not get a result is reported as failed (`on_error`, with
-  `ctx.error` set to the exception that failed the batch), because the caller gets no result for
-  it. Requests of checkpoint groups that already finished have ended with their results, as the
-  earlier calls of `[router.predict(...) for ...]` would have.
+- If a checkpoint group fails, every one of its started requests fails with the exception: each
+  gets `on_error` with `ctx.error` set to it, then `on_predict_end`. That includes a cache hit and
+  a request whose question group had already run, because the caller gets the exception and no
+  result for any of them, and it means `ctx.error` may be another request's failure (a start hook
+  that raises for one request fails its group). Requests of checkpoint groups that already
+  finished have ended with their results, as the earlier calls of `[router.predict(...) for ...]`
+  would have.
 
 ## Model lifecycle
 

@@ -1,0 +1,15 @@
+{
+ "name": "hotel.restaurante.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y pide que la comuniquen con el área de «restaurante» (comida, servicio a la habitación y horarios del comedor). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenas tardes, por favor comuníqueme con restaurante.",
+  "¡Hola! ¿Me pasan con el servicio a la habitación?",
+  "Le consultaba si abren ya el comedor.",
+  "¿Está disponible el área de restaurante para hablar?",
+  "Oiga, necesito que me conecte con meseros por favor.",
+  "Quisiera preguntar sobre los horarios de desayuno.",
+  "Amigo, pásame con la gente del restaurante, porfa.",
+  "¿Podría derivarme a quienes atienden en el restaurant?"
+ ]
+}

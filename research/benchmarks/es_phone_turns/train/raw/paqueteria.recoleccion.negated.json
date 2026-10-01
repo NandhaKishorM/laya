@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.recoleccion.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y aclara que NO necesita el área de «recoleccion» (programar que pasen a recoger un envío): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No deseo recolección.",
+  "Otra vez me llama para lo mismo? No necesito que pasen a recoger nada, le pregunto otra cosa.",
+  "Haga el favor de no mencionarme la recolección porque ese servicio no es lo que busco hoy.",
+  "Perdón pero me confundí de departamento porque yo no quiero programar ninguna recogida.",
+  "No es para eso que llamo así que por favor no me hable del servicio de recolección.",
+  "Disculpe la molestia pero le aclaro que este pedido no requiere que vayan a buscar la mercancía.",
+  "Por aquí nadie necesita servicio de recolección así que con lo que ya platicamos está bien.",
+  "Quedo atenta a su respuesta porque definitivamente eso de las recogidas no me interesa."
+ ]
+}

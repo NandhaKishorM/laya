@@ -1,0 +1,28 @@
+{
+ "name": "colegio.admisiones.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un colegio y necesita que se ocupe de su caso el área que atiende esto: «matrícula e inscripción de alumnos nuevos». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, soy María López y vengo porque mi hijo no figura en el sistema para inscribirlo este semestre.",
+  "Mire, yo tengo los papeles de mi niña listos pero cuando fui ayer me dijeron que faltaba un requisito que nadie me explicó.",
+  "Disculpe la molestia, necesito saber qué hago con la carta de buena conducta porque se me venció y no quiero perder la vacante.",
+  "Oiga, le llamo porque el sistema me sale en error cuando intento registrar a mis dos gemelos para preescolar.",
+  "Buenas noches, quisiera confirmar si ya recibíron las credenciales que envié por correo para la inscripción de mi hijo al octavo grado.",
+  "A ver, yo tengo un problema porque el colegio anterior no me pasó la carta de buena conducta a tiempo y ahora no puedo inscribirlo.",
+  "Hola, le comento que mi hija ya completó los datos en la página web pero todavía no recibe el número de folio para pagar.",
+  "Perdone, vengo porque necesito saber si puedo hacer la matrícula con un certificado médico provisional mientras espero el examen completo.",
+  "Mira, yo tengo una cita mañana a las nueve pero me surgió algo urgente y quería avisar por si hay alguien que pueda atenderme antes.",
+  "Buenas tardes, le llamo porque mi hijo cambió de ciudad recientemente y necesitamos ajustar su horario para la inscripción en secundaria.",
+  "Oiga, le comento que el pago que hice online no aparece reflejado en la cuenta del colegio y temo perder mi lugar.",
+  "Hola, necesito ayuda porque no entiendo qué documentos debo presentar si soy tutor legal pero no tengo la custodia exclusiva.",
+  "Mire, yo ya entregué los papeles pero me dicen que falta la constancia de no adeudo del año anterior y no sé dónde sacarla.",
+  "Disculpe, quisiera saber si puedo postergar la entrega de la foto tamaño carnet hasta el día de la inscripción sin perder mi cupo.",
+  "Buenas noches, le llamo porque mi hijo tiene una condición especial y necesito saber qué trámites adicionales se requieren para su matrícula.",
+  "A ver, yo tengo un problema con la fecha de nacimiento que puso mi hijo en la solicitud porque no coincide con el acta.",
+  "Hola, le comento que ya pagué pero me dieron un recibo incorrecto y necesito corregirlo antes de finalizar la inscripción.",
+  "Oiga, le pido por favor que verifiquen si mi hija está registrada correctamente porque la escuela anterior dice que dio de baja sin autorización.",
+  "Buenas tardes, quisita saber si puedo presentar los documentos en físico mañana temprano o si tengo que hacerlo exclusivamente por internet.",
+  "Mira, yo tengo una duda grande porque mi hijo viene del extranjero y no sé si su bachillerato se reconoce para ingresar al décimo grado.",
+  "Perdone, le llamo porque me cancelaron la cita de inscripción sin previo aviso y necesito reagendar lo más pronto posible."
+ ]
+}

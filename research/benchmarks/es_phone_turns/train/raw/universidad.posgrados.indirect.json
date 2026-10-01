@@ -1,0 +1,27 @@
+{
+ "name": "universidad.posgrados.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una universidad y necesita que se ocupe de su caso el área que atiende esto: «maestrías y doctorados». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buen día, le escribo porque necesito agendar una cita urgente con el área de posgrado.",
+  "¿Podrían indicarme si para el doctorado en Psicología se requiere carta de recomendación del director anterior?",
+  "Me gustaría saber cómo proceder para validar mi título universitario aquí sin tener que cursarlo de nuevo.",
+  "Tengo un problema con la inscripción online al programa de maestría, no me deja subir el expediente.",
+  "¿Es posible postergar la entrega de documentos hasta la próxima semana por motivos de fuerza mayor?",
+  "Necesito confirmar si mi título de maestro es válido para ingresar directamente al segundo año del doctorado.",
+  "Llevo varios días intentando contactarlos y quiero asegurarme de que llegó mi solicitud de admisión.",
+  "¿Qué hago si el sistema me marca error al intentar registrar la matrícula virtual?",
+  "Quisiera saber si aceptan equivalencias de cursos tomados en una universidad del exterior para el plan de estudios.",
+  "Tengo una duda sobre los requisitos de idioma para el ingreso a la maestría en Educación.",
+  "¿Pueden ayudarme a cambiar mi modalidad de estudio de presencial a semipresencial por cambio de residencia?",
+  "Necesito que me envíen el cronograma oficial de las fechas límite para inscribirme al próximo cuatrimestre.",
+  "Mi trámite de reconocimiento de estudios está detenido y necesito saber cuál es la razón del retraso.",
+  "¿Cómo se hace para solicitar una beca parcial para el programa de doctorado que acabo de ingresar?",
+  "Quiero cancelar mi inscripción porque encontré una opción más cerca de mi hogar, ¿hay penalización?",
+  "¿Me pueden confirmar si ya revisaron la documentación que les envié por correo el martes pasado?",
+  "Necesito contactar al tutor académico para coordinar la fecha de inicio de mi tesis doctoral.",
+  "Tengo problemas con la plataforma virtual y no puedo acceder a las clases grabadas de la maestría.",
+  "¿Se puede pagar la matrícula en cuotas o es pago único al momento de inscribirme?",
+  "Quiero solicitar una carta de constancia de estudio para presentarla en mi lugar de trabajo."
+ ]
+}

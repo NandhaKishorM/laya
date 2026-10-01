@@ -1,0 +1,15 @@
+{
+ "name": "aseguradora.siniestros.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una aseguradora y necesita que se ocupe de su caso el área que atiende esto: «reportar un accidente, un robo o un daño cubierto por el seguro». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas, verás, mi carro tuvo un choque ayer y no he podido iniciar la denuncia en línea todavía.",
+  "Dígame si me pueden dar una mano urgente porque no llegó el correo con los pasos a seguir para el robo de mi bici.",
+  "Hola, disculpe la molestia, pero no tengo acceso a la app para subir las fotos del rayón que le hicieron a la puerta.",
+  "Que tal, oiga, necesito reportar un accidente pequeño pero no me han contestado el mensaje de ayer en la app.",
+  "Mire, la verdad es que no me funciona el código que me dieron para agendar la cita con el perito esta tarde.",
+  "A ver si me orienta porque no puedo acceder a mis datos personales en la plataforma y tengo que sacar una constancia hoy.",
+  "Hola, disculpe, no llegó ninguna notificación al teléfono sobre la actualización del caso de mi seguro de hogar que reporté hace dos días.",
+  "Oiga, le comento que no me han dado respuesta desde el lunes sobre la reclamación de los vidrios rotos y estoy preocupado."
+ ]
+}

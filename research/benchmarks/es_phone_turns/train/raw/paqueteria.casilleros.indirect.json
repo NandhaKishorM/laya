@@ -1,0 +1,27 @@
+{
+ "name": "paqueteria.casilleros.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una empresa de envíos y necesita que se ocupe de su caso el área que atiende esto: «abrir un casillero para recibir compras hechas por internet». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Oiga, yo ya pagué en mi página de Amazon pero aquí me dicen que no tengo casillero activo y necesito eso urgente porque se vence el envío.",
+  "Buenas tardes, quiero abrirme una cuenta nueva para poder recibir mis compras del exterior, ¿qué documentos me necesitan enviar por correo?",
+  "Le cuento, ayer intenté registrarme en la app pero el sistema no me deja avanzar con mi cédula y ya llevo tres horas bloqueado.",
+  "Oiga pues, yo necesito que me abran un casillero inmediato porque tengo dos paquetes que llegan mañana y si no los recibo se devuelven a origen.",
+  "Hola, ¿me pueden ayudar? Quiero empezar a usar sus servicios para mis compras online pero no sé cómo activar mi dirección de entrega.",
+  "Mira, yo ya tengo usuario en su sistema pero nunca terminé el proceso de apertura de casillero y necesito que me guíen o lo hagan por mí.",
+  "Oiga, le molesto porque quiero hacer el trámite de abrirme un casillero para recibir mis compras del extranjero y no entiendo la parte de la verificación de identidad.",
+  "Buenas, tengo una urgencia, necesito que me active un casillero hoy mismo para poder comprar unas medicinas que solo están disponibles en esa tienda online.",
+  "Le comento, yo soy cliente nuevo y quiero abrirme un espacio para recibir mis pedidos de internet, ¿me indica qué pasos sigo ahora?",
+  "Oiga pues, el sistema me da error cuando intento solicitar la apertura del casillero y ya contacté al banco pero dicen que no es problema de ellos.",
+  "Hola, yo necesito formalizar mi registro para tener un casillero asignado porque quiero empezar a hacer pedidos frecuentes y necesito seguridad en la recepción.",
+  "Le escribo porque estoy trabado en el paso final para abrir mi casillero digital y necesito apoyo técnico urgente para no perder la oferta de envío gratis.",
+  "Oiga, quiero abrirme un casillero para recibir compras de ropa y accesorios, ¿puedo hacer esto desde aquí o necesito ir presencialmente con mis papeles?",
+  "Buenas tardes, tengo un problema con mi solicitud pendiente de apertura de casillero, me dicen que está 'en revisión' hace una semana y ya me urge.",
+  "Le cuento amigo, yo nunca he recibido paquetes por aquí y quiero abrirme un casillero para empezar a comprar en eBay, ¿cómo se haría?",
+  "Oiga, el formulario para abrir casillero no me deja guardar mis datos personales y necesito que alguien del área técnica lo revise ya.",
+  "Hola, necesito activar mi casillero virtual porque ya pagué la primera cuota pero aún no veo mi dirección de entrega asignada en la plataforma.",
+  "Le molesto para pedirle ayuda con la apertura de mi casillero, el sitio web me sale en inglés y no logro completar los datos en español.",
+  "Oiga pues, yo quiero abrir un casillero corporativo para mi empresa porque compramos insumos online, ¿ese también lo gestionan por teléfono o es otro proceso?",
+  "Buenas, tengo prisa y necesito que me habiliten el casillero ya mismo porque mis hijos tienen regalos que llegan hoy y no quiero que se queden en aduana."
+ ]
+}

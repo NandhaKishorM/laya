@@ -195,6 +195,60 @@ def main() -> int:
           rounded(max(v["d_fast_stock"] for v in fp16_rows)), "0.009")
     check("fp16 prose/README's 'within 0.009 of fp32'",
           rounded(max(v["d_fast_fp32"] for v in fp16_rows)), "0.009")
+    # ------------------------------------- the 51-language table (#208)
+    # The multilingual half of the committed sweep does not reproduce on current code, so the
+    # table prints the refreshed re-run instead. That makes `cpu_51_language_sweep_refreshed.json`
+    # the artifact behind every cell, and it is checkable here: the `laya` column must still
+    # equal the committed file (it reproduces exactly, which is what makes the multilingual
+    # divergence interesting rather than a harness change), and the `laya-multilingual` column
+    # must equal the refresh.
+    REFRESH = os.path.join("research", "results", "cpu_51_language_sweep_refreshed.json")
+    if os.path.exists(REFRESH):
+        with open(REFRESH, encoding="utf-8") as fh:
+            refreshed = json.load(fh)
+        committed_sweep = json.loads(read(os.path.join("research", "results",
+                                                       "cpu_51_language_sweep.json")))
+        en = refreshed["by_model"]["english"]
+        ml = refreshed["by_model"]["multilingual"]
+
+        # the refreshed `laya` column is the committed one, per language
+        same = [lg for lg in en["per_language"]
+                if abs(en["per_language"][lg]["refreshed_clamped"]["accuracy"]
+                       - committed_sweep["part_a"]["by_model"]["english"]["per_language"][lg]["accuracy"]) > 5e-5]
+        check("51-language/laya reproduces the committed file exactly", same, [])
+
+        # ...and the multilingual one does not, which is why the refresh exists
+        differ = [lg for lg in ml["per_language"]
+                  if abs(ml["per_language"][lg]["refreshed_clamped"]["accuracy"]
+                         - ml["per_language"][lg]["committed"]["accuracy"]) > 5e-5]
+        check_true("51-language/multilingual differs from committed in most languages",
+                   len(differ) > 40, "%d of 51 differ" % len(differ))
+
+        bench = read(BENCHMARKS)
+        header = "| lang | laya | laya-multilingual | \u0394 | laya ECE | multilingual ECE |"
+        start = bench.find(header)
+        check_true("51-language/table found in BENCHMARKS.md", start != -1, "header not found")
+        if start != -1:
+            body = bench[start:bench.find("</details>", start)]
+            rows = [l for l in body.splitlines() if l.startswith("| `")]
+            check("51-language/table has one row per language", len(rows), 51)
+            mismatched = []
+            for row in rows:
+                cells = [c.strip() for c in row.strip("|").split("|")]
+                lg = cells[0].strip("`")
+                e = en["per_language"].get(lg, {}).get("refreshed_clamped")
+                m = ml["per_language"].get(lg, {}).get("refreshed_clamped")
+                if e is None or m is None:
+                    mismatched.append("%s: not in the artifact" % lg)
+                    continue
+                want = ["%.3f" % e["accuracy"], "%.3f" % m["accuracy"],
+                        "%+.3f" % (m["accuracy"] - e["accuracy"]),
+                        "%.3f" % e["ece"], "%.3f" % m["ece"]]
+                if cells[1:] != want:
+                    mismatched.append("%s: %s != %s" % (lg, cells[1:], want))
+            check("51-language/every cell matches the refreshed artifact", mismatched, [])
+    else:
+        FAIL.append("51-language/%s is missing, so the table is unbacked" % REFRESH)
 
     # ------------------------------------------------- what this cannot check
     unbacked = [

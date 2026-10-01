@@ -1,0 +1,50 @@
+# Bake the checkpoint from ModelScope (https://modelscope.cn) into the image, so neither the build
+# nor the running container has to reach huggingface.co:
+#
+#   docker compose -f compose.yaml -f compose.http.yaml -f compose.modelscope.yaml up --build laya-serve
+#   curl -s localhost:8000/health
+#   curl -s localhost:8000/v1/systemone -H 'content-type: application/json' \
+#     --data @examples/docker/request.json
+#
+# The weights land in the hub cache the image already mounts as the model-cache volume, laid out the
+# way `snapshot_download` reads them offline, so the quickstart, the HTTP server's Router and the CLI
+# keep their repo ids and resolve them to the baked snapshot: docker/prefetch_modelscope.py does it
+# during the build and stops it on any size or digest mismatch.
+#
+# Docker seeds a named volume from the image only while that volume is empty, so a host that has run
+# the quickstart before already has a model-cache volume from the Hub downloads, and the baked
+# weights are invisible behind it: the loader resolves refs/main to the old Hub commit and serves the
+# old weights with nothing to show for the rebuild. Start from an empty volume -- `docker compose
+# down --volumes` with the same Compose files and LAYA_CACHE_VOLUME setting, or point
+# LAYA_CACHE_VOLUME at a fresh one.
+#
+# For NVIDIA, append -f compose.cuda.yaml; it repeats the build args and the device reservation for
+# both services, because an override for `laya` never reaches `laya-serve`.
+#
+# MODELSCOPE_MODEL takes a checkpoint type -- multilingual (the default), english, typed-decisions,
+# all -- or comma- or space-separated `repo[:subfolder]` specs for a standalone repository or a
+# fine-tuned checkpoint. A type maps to that checkpoint's path in the bundled repository, which is
+# what the Router and the quickstart load by default, so a single-argument build serves it with no
+# further change. The default bakes only the multilingual checkpoint (~650 MB); see docs/docker.md
+# for the other two and for what a baked-only image can still load.
+services:
+  laya:
+    build:
+      args:
+        MODELSCOPE_MODEL: "${MODELSCOPE_MODEL:-multilingual}"
+        MODELSCOPE_REVISION: "${MODELSCOPE_REVISION:-master}"
+    environment:
+      # The baked snapshot is keyed by a ModelScope commit, which the Hub cannot confirm; going
+      # online would download the same weights again instead of using the baked copy.
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-1}"
+  laya-serve:
+    build:
+      args:
+        MODELSCOPE_MODEL: "${MODELSCOPE_MODEL:-multilingual}"
+        MODELSCOPE_REVISION: "${MODELSCOPE_REVISION:-master}"
+    environment:
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-1}"
+      # Restrains preload to the checkpoint that was baked. Routing itself still selects the
+      # checkpoint that fits the text, so an English-serving deployment bakes that one too and
+      # names it here: `LAYA_PRELOAD=1` with a list an image cannot serve fails on the first one.
+      LAYA_MODELS: "${LAYA_MODELS:-multilingual}"

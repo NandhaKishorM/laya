@@ -1,0 +1,15 @@
+{
+ "name": "universidad.posgrados.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y pide que la comuniquen con el área de «posgrados» (maestrías y doctorados). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenas tardes, por favor comunicarme con posgrados.",
+  "Le consulto para que me pasen con el departamento de maestrías y doctorados.",
+  "Oiga, ojalá me puedan atender con el área de posgrados.",
+  "Pasen a posgrados, por favor.",
+  "Quisiera que me conectara directamente con la oficina de estudios de posgrado.",
+  "Me urge hablar con alguien de doctorado, ¿me puede pasar?",
+  "Hola, le pido el favor de transferirme al sector de maestrías.",
+  "Oiga, ¿cómo está? Porfa, comuníquenme con posgrados."
+ ]
+}

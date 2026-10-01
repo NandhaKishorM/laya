@@ -74,11 +74,22 @@ check_true("decide/accepts **predict_kwargs",
            any(p.kind == inspect.Parameter.VAR_KEYWORD for p in inspect.signature(structured.decide).parameters.values()))
 
 # --------------------------------------------------------------- DecisionResult
-FIELDS = ["values", "confidence", "probabilities", "answers", "usage", "routing"]
+FIELDS = ["values", "confidence", "probabilities", "answers", "usage", "routing", "answer_confidence"]
 check("DecisionResult fields", [f.name for f in dataclasses.fields(structured.DecisionResult)], FIELDS)
 for optional in ("usage", "routing"):
     check("DecisionResult/%s default None" % optional,
           structured.DecisionResult.__dataclass_fields__[optional].default, None)
+# `answer_confidence` is appended with a default, so any existing construction of this dataclass
+# still works: the first six fields keep their positions and every caller may omit it.
+check_true("DecisionResult/answer_confidence is optional",
+           structured.DecisionResult.__dataclass_fields__["answer_confidence"].default_factory
+           is not dataclasses.MISSING)
+check("DecisionResult/existing construction still works",
+      [f.name for f in dataclasses.fields(structured.DecisionResult(
+          {"v": 1}, {"c": 1}, {"p": {}}, {"a": {}}))][:4],
+      ["values", "confidence", "probabilities", "answers"])
+check("DecisionResult/…and defaults answer_confidence", structured.DecisionResult(
+    {"v": 1}, {"c": 1}, {"p": {}}, {"a": {}}).answer_confidence, {})
 
 # --------------------------------------------------------------- methods
 for label, cls in (("Agent", laya.Agent), ("Router", laya.Router)):

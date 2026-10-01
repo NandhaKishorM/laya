@@ -41,18 +41,25 @@ model, the routing decision, usage and latency.
 import json
 
 def audit(ctx):
-    json.dump({
-        "run_id": ctx.run_id,
-        "model": ctx.model,
-        "routing": ctx.results[0].get("routing") if ctx.results else None,
-        "answers": ctx.results[0]["answers"] if ctx.results else None,
-        "usage": ctx.usage,
-        "elapsed_ms": round(ctx.elapsed_ms or 0.0, 3),
-    }, sys.stdout)
-    sys.stdout.write("\n")
+    for state, result in zip(ctx.states, ctx.results or []):
+        json.dump({
+            "run_id": ctx.run_id,
+            "model": ctx.model,
+            "state": state,
+            "routing": result.get("routing"),
+            "answers": result["answers"],
+            "usage": result.get("usage"),
+            "call_usage": ctx.usage,
+            "call_elapsed_ms": round(ctx.elapsed_ms or 0.0, 3),
+        }, sys.stdout)
+        sys.stdout.write("\n")
 
 laya.load("convaiinnovations/laya", on_predict_end=audit)
 ```
+
+A hook fires once per call, and a `predict_batch` call carries every state in it, so the record is
+written per decision: `ctx.states` and `ctx.results` are aligned by index. `ctx.usage` and
+`ctx.elapsed_ms` are totals for the whole call; each result carries its own `usage`.
 
 Make it lenient if losing a log line must not fail a request: `hooks_raise=False`. Make it
 strict if the audit trail is a compliance requirement.
@@ -88,23 +95,33 @@ import hashlib, json
 
 CACHE = {}
 
-def key(state, questions):
-    return hashlib.sha256(json.dumps([state, questions], sort_keys=True, default=str).encode()).hexdigest()
+def key(ctx, index):
+    # Not sort_keys=True: criteria order is positional, so two orders are two questions,
+    # and the checkpoint and token budget change the answer too.
+    payload = json.dumps([ctx.states[index], ctx.questions, ctx.model,
+                          ctx.max_len, ctx.head_max_len], default=str)
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 def read(ctx):
-    hit = CACHE.get(key(ctx.states[0], ctx.questions))
-    if hit is not None:
-        ctx.skip([hit])
+    hits = [CACHE.get(key(ctx, i)) for i in range(len(ctx.states))]
+    if all(hit is not None for hit in hits):
+        ctx.skip(hits)   # one per state: skip replaces the whole call
 
 def write(ctx):
-    if ctx.results:
-        CACHE[key(ctx.states[0], ctx.questions)] = ctx.results[0]
+    for i, result in enumerate(ctx.results or []):
+        CACHE[key(ctx, i)] = result
 
 laya.load("convaiinnovations/laya", on_predict_start=read, on_predict_end=write)
 ```
 
-Guard the cache with a lock when serving concurrently. On the Router the cached payload still
-gets a `routing` key, so the return shape is unchanged.
+Hooks fire once per call, so keying on one state is not enough on `predict_batch`: `ctx.skip()`
+replaces every result the call would have returned. Guard the cache with a lock when serving
+concurrently. On the Router the cached payload still gets a `routing` key, so the return shape is
+unchanged.
+
+The same pair works on a single [LangChain](../langchain.md) node via its `hooks=` argument, which
+is the way to cache one hot step in a graph without changing what every other caller of that agent
+sees.
 
 ### Metrics
 
@@ -131,11 +148,14 @@ class Blocked(Exception):
     pass
 
 def guard(ctx):
-    if "ssn" in str(ctx.states[0]).lower():
+    if any("ssn" in str(state).lower() for state in ctx.states):
         raise Blocked("possible PII in state")
 
 laya.load("convaiinnovations/laya", on_predict_start=guard)
 ```
+
+Test it against the state shape. A guard that only reads `ctx.states[0]` blocks a single call and
+lets a `predict_batch` call put every remaining state through the forward pass.
 
 ### Confidence gating
 
@@ -144,13 +164,17 @@ logic. This is a result mutation, not a rejection.
 
 ```python
 def gate(ctx):
-    answer = ctx.results[0]["answers"].get("dept")
-    if answer and answer["confidence"] < 0.6:
-        answer["choice"] = "human-review"
-        answer["gated"] = True
+    for result in ctx.results or []:
+        answer = result["answers"].get("dept")
+        if answer and answer["confidence"] < 0.6:
+            answer["choice"] = "human-review"
+            answer["gated"] = True
 
 laya.load("convaiinnovations/laya", on_predict_end=gate)
 ```
+
+Mutate through `ctx.results`, which holds one dict per state of the call: gating only the first
+one ships every other low-confidence answer unannotated.
 
 ### Routing override
 
@@ -251,20 +275,44 @@ in tests so one test cannot leak a hook into the next.
 
 ### Token-budget shaping
 
-A start hook can raise the token budget for one call, for example when a question has many
-options and the default head budget would collapse the labels. This does not touch the shared
-agent config, so concurrent calls are unaffected.
+A start hook can raise the token budget for one call, for example when a question has many options
+and the default head budget would collapse the labels. Four details decide whether the hook helps
+or quietly makes the call worse:
+
+* A start hook's `ctx.head_max_len` *replaces* the budget for the call. What is in force before it
+  is the caller's own per-call value, or the checkpoint default in `ctx.agent.cfg` -- so compare
+  against that, and writing a plain number can lower the budget a caller already set.
+* One call answers every question it carries, so size on the widest of them rather than on
+  whichever happens to come first.
+* Once the options no longer fit the head, `laya/common.py` gives each of them
+  `max(4, (head_max_len - 16) // k)` tokens. `16 + 4 * k` therefore lands exactly on that floor:
+  every label is still cut down to the tokens it shares with the others, which is the collapse the
+  hook was written to avoid. `16 + 8 * k` leaves them distinguishable.
+* The state gets `max_len - head_max_len - 8` tokens, so a widened head has to widen `max_len`
+  with it or the state loses its window.
 
 ```python
 def widen_for_high_cardinality(ctx):
-    k = len(next(iter(ctx.questions.values())).get("criteria", {}) or {})
-    if k >= 50:
-        ctx.head_max_len = max(ctx.head_max_len or 192, 16 + 4 * k)
+    k = max((len(q.get("criteria", {}) or {}) for q in ctx.questions.values()), default=0)
+    if k < 50:
+        return
+    cfg = getattr(ctx.agent, "cfg", None) or {}
+    head = ctx.head_max_len if ctx.head_max_len is not None else cfg.get("head_max_len", 192)
+    window = ctx.max_len if ctx.max_len is not None else cfg.get("max_len", 512)
+    need = 16 + 8 * k                          # 8 tokens per label, not the core's floor of 4
+    if need > head:                            # only ever widen, never lower
+        ctx.head_max_len = need
+        ctx.max_len = max(window, need + 8 + 64)   # 8 reserved, then room for the state
 
 agent = laya.load("convaiinnovations/laya", on_predict_start=widen_for_high_cardinality)
 ```
 
-The same knobs are available per call: `agent.system_one(state, questions, head_max_len=324)`.
+This does not touch the shared agent config, so concurrent calls are unaffected. The same knobs are
+available per call: `agent.system_one(state, questions, head_max_len=512, max_len=1024)`.
+
+Widening is not free: a longer window means a larger tensor, and the checkpoints were trained at
+512 (`laya`) and 1,024 tokens. Past that, narrowing the candidates with
+[`predict_shortlist`](../reference/helpers.md) beats stretching the budget.
 
 ## Anti-patterns
 
@@ -353,13 +401,15 @@ By `on_predict_end` the model has already tokenized the state. Redact in `on_pre
 ### Per-question logic in a per-call hook
 
 There is one `PredictContext` per call, and one forward pass answers every question. There are no
-per-question events. Iterate the answers inside `on_predict_end`.
+per-question events. Iterate the answers inside `on_predict_end`, and iterate the states too: on a
+batch, one context carries every state of the call.
 
 ```python
 def flag(ctx):
-    for qid, answer in ctx.results[0]["answers"].items():
-        if answer.get("confidence", 1.0) < 0.5:
-            alert(qid, ctx.run_id)
+    for result in ctx.results or []:
+        for qid, answer in result["answers"].items():
+            if answer.get("confidence", 1.0) < 0.5:
+                alert(qid, ctx.run_id)
 ```
 
 ### Recursive predict
@@ -377,7 +427,7 @@ def enrich(ctx):
     if getattr(ctx, "_enriched", False):
         return
     ctx._enriched = True
-    ctx.results = [enricher.predict(ctx.states[0], EXTRA_QUESTIONS)]
+    ctx.results = [enricher.predict(state, EXTRA_QUESTIONS) for state in ctx.states]
 ```
 
 ### Plain callables in `hooks=`

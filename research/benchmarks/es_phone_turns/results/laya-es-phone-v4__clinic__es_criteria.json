@@ -1,0 +1,1059 @@
+{
+ "meta": {
+  "model": "/model",
+  "subfolder": null,
+  "rung": "es_criteria",
+  "dataset": "clinic",
+  "lang": "es",
+  "calibration": null,
+  "laya": "0.3.22",
+  "torch": "2.14.0+cpu",
+  "threads": 4,
+  "device": "cpu",
+  "machine": "aarch64",
+  "system": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+  "omp_num_threads": "4",
+  "load_ms": 3400.3444599802606
+ },
+ "summary": {
+  "n": 45,
+  "accuracy": 0.9333333333333333,
+  "macro_f1": 0.9320305091733665,
+  "ece": 0.15706222222222216,
+  "mean_confidence": 0.8057244444444447,
+  "majority_baseline": 0.28888888888888886,
+  "wrong_actions": 3,
+  "by_tag": {
+   "asr": {
+    "n": 5,
+    "accuracy": 0.8
+   },
+   "direct": {
+    "n": 6,
+    "accuracy": 1.0
+   },
+   "farewell": {
+    "n": 4,
+    "accuracy": 1.0
+   },
+   "hard": {
+    "n": 3,
+    "accuracy": 1.0
+   },
+   "hn": {
+    "n": 2,
+    "accuracy": 1.0
+   },
+   "human": {
+    "n": 4,
+    "accuracy": 1.0
+   },
+   "indirect": {
+    "n": 16,
+    "accuracy": 0.875
+   },
+   "negation": {
+    "n": 7,
+    "accuracy": 1.0
+   },
+   "negation-in-text": {
+    "n": 1,
+    "accuracy": 1.0
+   },
+   "noise": {
+    "n": 3,
+    "accuracy": 0.6666666666666666
+   },
+   "open": {
+    "n": 3,
+    "accuracy": 1.0
+   },
+   "short": {
+    "n": 2,
+    "accuracy": 1.0
+   }
+  },
+  "confusion": {
+   "citas->emergencias": 1,
+   "farmacia->citas": 1,
+   "ninguno->colgar": 1
+  },
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 32,
+    "coverage": 0.7111111111111111,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.9375
+   },
+   {
+    "threshold": 0.6,
+    "fast": 32,
+    "coverage": 0.7111111111111111,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.9375
+   },
+   {
+    "threshold": 0.7,
+    "fast": 31,
+    "coverage": 0.6888888888888889,
+    "action_recall": 0.9375,
+    "wrong": 1,
+    "precision": 0.967741935483871
+   },
+   {
+    "threshold": 0.8,
+    "fast": 24,
+    "coverage": 0.5333333333333333,
+    "action_recall": 0.75,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.9,
+    "fast": 4,
+    "coverage": 0.08888888888888889,
+    "action_recall": 0.125,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.95,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": 0.0,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.99,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": 0.0,
+    "wrong": 0,
+    "precision": null
+   }
+  ],
+  "latency_ms": {
+   "p50": 119.5667500142008,
+   "p95": 137.93862500460818,
+   "min": 109.59791700588539
+  },
+  "borderline": []
+ },
+ "records": [
+  {
+   "id": "cl-001",
+   "text": "Quiero sacar una cita con el cardiólogo.",
+   "gold": "citas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "citas",
+   "confidence": 0.8201,
+   "probabilities": {
+    "citas": 0.8201,
+    "laboratorio": 0.033,
+    "farmacia": 0.0299,
+    "emergencias": 0.0289,
+    "recepcion": 0.0293,
+    "colgar": 0.0302,
+    "ninguno": 0.0287
+   },
+   "latency_ms": 117.66229197382927
+  },
+  {
+   "id": "cl-002",
+   "text": "Necesito cambiar la fecha de mi consulta del jueves.",
+   "gold": "citas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "citas",
+   "confidence": 0.7948,
+   "probabilities": {
+    "citas": 0.7948,
+    "laboratorio": 0.0343,
+    "farmacia": 0.0367,
+    "emergencias": 0.0337,
+    "recepcion": 0.0327,
+    "colgar": 0.0341,
+    "ninguno": 0.0336
+   },
+   "latency_ms": 119.5667500142008
+  },
+  {
+   "id": "cl-003",
+   "text": "Páseme con citas, por favor.",
+   "gold": "citas",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "citas",
+   "confidence": 0.9119,
+   "probabilities": {
+    "citas": 0.9119,
+    "laboratorio": 0.0145,
+    "farmacia": 0.0149,
+    "emergencias": 0.0151,
+    "recepcion": 0.0152,
+    "colgar": 0.0145,
+    "ninguno": 0.014
+   },
+   "latency_ms": 120.30650000087917
+  },
+  {
+   "id": "cl-004",
+   "text": "Fíjese que quiero apartar una consulta para mi mamá.",
+   "gold": "citas",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "predicted": "citas",
+   "confidence": 0.7987,
+   "probabilities": {
+    "citas": 0.7987,
+    "laboratorio": 0.0315,
+    "farmacia": 0.0351,
+    "emergencias": 0.0334,
+    "recepcion": 0.033,
+    "colgar": 0.0347,
+    "ninguno": 0.0336
+   },
+   "latency_ms": 127.45958298910409
+  },
+  {
+   "id": "cl-005",
+   "text": "Tengo que cancelar la cita que tenía mañana con la doctora.",
+   "gold": "citas",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "citas",
+   "confidence": 0.8182,
+   "probabilities": {
+    "citas": 0.8182,
+    "laboratorio": 0.0318,
+    "farmacia": 0.0297,
+    "emergencias": 0.0297,
+    "recepcion": 0.0306,
+    "colgar": 0.031,
+    "ninguno": 0.0291
+   },
+   "latency_ms": 129.6942500048317
+  },
+  {
+   "id": "cl-006",
+   "text": "quiero agendar con el pediatra para la otra semana",
+   "gold": "citas",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "predicted": "emergencias",
+   "confidence": 0.4321,
+   "probabilities": {
+    "citas": 0.0972,
+    "laboratorio": 0.1394,
+    "farmacia": 0.0705,
+    "emergencias": 0.4321,
+    "recepcion": 0.0951,
+    "colgar": 0.0754,
+    "ninguno": 0.0903
+   },
+   "latency_ms": 121.12124997656792
+  },
+  {
+   "id": "cl-007",
+   "text": "Quiero saber si ya están listos los resultados de mis exámenes de sangre.",
+   "gold": "laboratorio",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8288,
+   "probabilities": {
+    "citas": 0.0288,
+    "laboratorio": 0.8288,
+    "farmacia": 0.0278,
+    "emergencias": 0.0287,
+    "recepcion": 0.0281,
+    "colgar": 0.0293,
+    "ninguno": 0.0285
+   },
+   "latency_ms": 125.61887496849522
+  },
+  {
+   "id": "cl-008",
+   "text": "Comuníqueme con el laboratorio.",
+   "gold": "laboratorio",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.9097,
+   "probabilities": {
+    "citas": 0.0152,
+    "laboratorio": 0.9097,
+    "farmacia": 0.0155,
+    "emergencias": 0.0153,
+    "recepcion": 0.0148,
+    "colgar": 0.0149,
+    "ninguno": 0.0146
+   },
+   "latency_ms": 123.19562496850267
+  },
+  {
+   "id": "cl-009",
+   "text": "Me mandaron a hacerme unos análisis y quiero saber si tengo que ir en ayunas, páseme con ellos.",
+   "gold": "laboratorio",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8175,
+   "probabilities": {
+    "citas": 0.0283,
+    "laboratorio": 0.8175,
+    "farmacia": 0.0299,
+    "emergencias": 0.0287,
+    "recepcion": 0.0288,
+    "colgar": 0.0297,
+    "ninguno": 0.0371
+   },
+   "latency_ms": 137.93862500460818
+  },
+  {
+   "id": "cl-010",
+   "text": "Necesito que me reenvíen el resultado de la prueba que me hice el lunes.",
+   "gold": "laboratorio",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8097,
+   "probabilities": {
+    "citas": 0.0322,
+    "laboratorio": 0.8097,
+    "farmacia": 0.0313,
+    "emergencias": 0.0322,
+    "recepcion": 0.0323,
+    "colgar": 0.0326,
+    "ninguno": 0.0297
+   },
+   "latency_ms": 148.27812503790483
+  },
+  {
+   "id": "cl-011",
+   "text": "me hicieron un examen de orina y no me han entregado nada",
+   "gold": "laboratorio",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8226,
+   "probabilities": {
+    "citas": 0.0292,
+    "laboratorio": 0.8226,
+    "farmacia": 0.0292,
+    "emergencias": 0.0297,
+    "recepcion": 0.0296,
+    "colgar": 0.0308,
+    "ninguno": 0.0289
+   },
+   "latency_ms": 124.19316702289507
+  },
+  {
+   "id": "cl-012",
+   "text": "Quiero saber si tienen el medicamento que me recetaron, páseme con farmacia.",
+   "gold": "farmacia",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "farmacia",
+   "confidence": 0.9065,
+   "probabilities": {
+    "citas": 0.0153,
+    "laboratorio": 0.0156,
+    "farmacia": 0.9065,
+    "emergencias": 0.0159,
+    "recepcion": 0.0162,
+    "colgar": 0.0158,
+    "ninguno": 0.0147
+   },
+   "latency_ms": 138.88724998105317
+  },
+  {
+   "id": "cl-013",
+   "text": "Necesito surtir una receta.",
+   "gold": "farmacia",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "farmacia",
+   "confidence": 0.8167,
+   "probabilities": {
+    "citas": 0.031,
+    "laboratorio": 0.0299,
+    "farmacia": 0.8167,
+    "emergencias": 0.0304,
+    "recepcion": 0.0303,
+    "colgar": 0.0316,
+    "ninguno": 0.0301
+   },
+   "latency_ms": 114.08354196464643
+  },
+  {
+   "id": "cl-014",
+   "text": "Con la farmacia, por favor.",
+   "gold": "farmacia",
+   "tags": [
+    "direct",
+    "short"
+   ],
+   "predicted": "farmacia",
+   "confidence": 0.8849,
+   "probabilities": {
+    "citas": 0.019,
+    "laboratorio": 0.0184,
+    "farmacia": 0.8849,
+    "emergencias": 0.0191,
+    "recepcion": 0.0183,
+    "colgar": 0.02,
+    "ninguno": 0.0203
+   },
+   "latency_ms": 112.79616598039865
+  },
+  {
+   "id": "cl-015",
+   "text": "Me dieron unas pastillas equivocadas y quiero cambiarlas.",
+   "gold": "farmacia",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "citas",
+   "confidence": 0.6627,
+   "probabilities": {
+    "citas": 0.6627,
+    "laboratorio": 0.0352,
+    "farmacia": 0.1635,
+    "emergencias": 0.0332,
+    "recepcion": 0.0342,
+    "colgar": 0.0366,
+    "ninguno": 0.0347
+   },
+   "latency_ms": 116.84237502049655
+  },
+  {
+   "id": "cl-016",
+   "text": "Quiero comprar la medicina que me indicó el doctor.",
+   "gold": "farmacia",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "farmacia",
+   "confidence": 0.8044,
+   "probabilities": {
+    "citas": 0.0321,
+    "laboratorio": 0.0343,
+    "farmacia": 0.8044,
+    "emergencias": 0.0323,
+    "recepcion": 0.032,
+    "colgar": 0.0337,
+    "ninguno": 0.0312
+   },
+   "latency_ms": 121.77329102996737
+  },
+  {
+   "id": "cl-017",
+   "text": "Mi papá se desmayó y no reacciona, necesito ayuda ya.",
+   "gold": "emergencias",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "emergencias",
+   "confidence": 0.8156,
+   "probabilities": {
+    "citas": 0.0302,
+    "laboratorio": 0.0294,
+    "farmacia": 0.0287,
+    "emergencias": 0.8156,
+    "recepcion": 0.03,
+    "colgar": 0.0332,
+    "ninguno": 0.0329
+   },
+   "latency_ms": 124.19137504184619
+  },
+  {
+   "id": "cl-018",
+   "text": "Páseme con emergencias, es urgente.",
+   "gold": "emergencias",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "emergencias",
+   "confidence": 0.9113,
+   "probabilities": {
+    "citas": 0.0147,
+    "laboratorio": 0.0144,
+    "farmacia": 0.0143,
+    "emergencias": 0.9113,
+    "recepcion": 0.0152,
+    "colgar": 0.0159,
+    "ninguno": 0.0143
+   },
+   "latency_ms": 124.75695798639208
+  },
+  {
+   "id": "cl-019",
+   "text": "Mi hijo se cortó y está sangrando mucho.",
+   "gold": "emergencias",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "emergencias",
+   "confidence": 0.8,
+   "probabilities": {
+    "citas": 0.0326,
+    "laboratorio": 0.0312,
+    "farmacia": 0.0316,
+    "emergencias": 0.8,
+    "recepcion": 0.0338,
+    "colgar": 0.0361,
+    "ninguno": 0.0345
+   },
+   "latency_ms": 123.3260830049403
+  },
+  {
+   "id": "cl-020",
+   "text": "Tengo un dolor muy fuerte en el pecho y me cuesta respirar.",
+   "gold": "emergencias",
+   "tags": [
+    "indirect"
+   ],
+   "predicted": "emergencias",
+   "confidence": 0.81,
+   "probabilities": {
+    "citas": 0.031,
+    "laboratorio": 0.0306,
+    "farmacia": 0.0304,
+    "emergencias": 0.81,
+    "recepcion": 0.0325,
+    "colgar": 0.0338,
+    "ninguno": 0.0317
+   },
+   "latency_ms": 120.40654197335243
+  },
+  {
+   "id": "cl-021",
+   "text": "necesito una ambulancia mi esposa se cayó y no se puede mover",
+   "gold": "emergencias",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "predicted": "emergencias",
+   "confidence": 0.8151,
+   "probabilities": {
+    "citas": 0.0305,
+    "laboratorio": 0.0293,
+    "farmacia": 0.0297,
+    "emergencias": 0.8151,
+    "recepcion": 0.0314,
+    "colgar": 0.0329,
+    "ninguno": 0.0311
+   },
+   "latency_ms": 124.23991598188877
+  },
+  {
+   "id": "cl-022",
+   "text": "Quiero hablar con una persona.",
+   "gold": "recepcion",
+   "tags": [
+    "human"
+   ],
+   "predicted": "recepcion",
+   "confidence": 0.8184,
+   "probabilities": {
+    "citas": 0.0305,
+    "laboratorio": 0.0294,
+    "farmacia": 0.029,
+    "emergencias": 0.0314,
+    "recepcion": 0.8184,
+    "colgar": 0.0314,
+    "ninguno": 0.0299
+   },
+   "latency_ms": 111.77037499146536
+  },
+  {
+   "id": "cl-023",
+   "text": "Páseme con alguien que me atienda, por favor.",
+   "gold": "recepcion",
+   "tags": [
+    "human"
+   ],
+   "predicted": "recepcion",
+   "confidence": 0.8105,
+   "probabilities": {
+    "citas": 0.0325,
+    "laboratorio": 0.0303,
+    "farmacia": 0.03,
+    "emergencias": 0.032,
+    "recepcion": 0.8105,
+    "colgar": 0.0328,
+    "ninguno": 0.0319
+   },
+   "latency_ms": 114.47750002844259
+  },
+  {
+   "id": "cl-024",
+   "text": "No quiero hablar con una máquina, comuníqueme con una persona.",
+   "gold": "recepcion",
+   "tags": [
+    "human",
+    "negation-in-text"
+   ],
+   "predicted": "recepcion",
+   "confidence": 0.8332,
+   "probabilities": {
+    "citas": 0.0275,
+    "laboratorio": 0.0276,
+    "farmacia": 0.0275,
+    "emergencias": 0.0284,
+    "recepcion": 0.8332,
+    "colgar": 0.0291,
+    "ninguno": 0.0268
+   },
+   "latency_ms": 121.18241598363966
+  },
+  {
+   "id": "cl-025",
+   "text": "Con la recepcionista, por favor.",
+   "gold": "recepcion",
+   "tags": [
+    "human",
+    "direct"
+   ],
+   "predicted": "recepcion",
+   "confidence": 0.8786,
+   "probabilities": {
+    "citas": 0.0202,
+    "laboratorio": 0.0196,
+    "farmacia": 0.0196,
+    "emergencias": 0.0203,
+    "recepcion": 0.8786,
+    "colgar": 0.0211,
+    "ninguno": 0.0206
+   },
+   "latency_ms": 113.73558297054842
+  },
+  {
+   "id": "cl-026",
+   "text": "Muchas gracias, eso era todo. Hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.7863,
+   "probabilities": {
+    "citas": 0.0343,
+    "laboratorio": 0.0336,
+    "farmacia": 0.0338,
+    "emergencias": 0.0375,
+    "recepcion": 0.0374,
+    "colgar": 0.7863,
+    "ninguno": 0.0372
+   },
+   "latency_ms": 119.67629101127386
+  },
+  {
+   "id": "cl-027",
+   "text": "Vaya pues, muy amable, adiós.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "hn"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.7987,
+   "probabilities": {
+    "citas": 0.0326,
+    "laboratorio": 0.0311,
+    "farmacia": 0.0318,
+    "emergencias": 0.0343,
+    "recepcion": 0.0347,
+    "colgar": 0.7987,
+    "ninguno": 0.0367
+   },
+   "latency_ms": 114.77612500311807
+  },
+  {
+   "id": "cl-028",
+   "text": "Ya no necesito nada más, gracias.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.8056,
+   "probabilities": {
+    "citas": 0.0306,
+    "laboratorio": 0.0304,
+    "farmacia": 0.031,
+    "emergencias": 0.0325,
+    "recepcion": 0.033,
+    "colgar": 0.8056,
+    "ninguno": 0.0369
+   },
+   "latency_ms": 114.32400002377108
+  },
+  {
+   "id": "cl-029",
+   "text": "bueno gracias que pase buen dia",
+   "gold": "colgar",
+   "tags": [
+    "asr",
+    "farewell"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.7782,
+   "probabilities": {
+    "citas": 0.0354,
+    "laboratorio": 0.0351,
+    "farmacia": 0.0357,
+    "emergencias": 0.0382,
+    "recepcion": 0.0386,
+    "colgar": 0.7782,
+    "ninguno": 0.0388
+   },
+   "latency_ms": 113.86391700943932
+  },
+  {
+   "id": "cl-030",
+   "text": "¿A qué hora abre la clínica?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8327,
+   "probabilities": {
+    "citas": 0.028,
+    "laboratorio": 0.026,
+    "farmacia": 0.0267,
+    "emergencias": 0.0281,
+    "recepcion": 0.0284,
+    "colgar": 0.0301,
+    "ninguno": 0.8327
+   },
+   "latency_ms": 117.96820804011077
+  },
+  {
+   "id": "cl-031",
+   "text": "¿Dónde están ubicados?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8286,
+   "probabilities": {
+    "citas": 0.0281,
+    "laboratorio": 0.0268,
+    "farmacia": 0.0277,
+    "emergencias": 0.0288,
+    "recepcion": 0.0295,
+    "colgar": 0.0304,
+    "ninguno": 0.8286
+   },
+   "latency_ms": 113.60341601539403
+  },
+  {
+   "id": "cl-032",
+   "text": "¿Atienden los domingos?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8177,
+   "probabilities": {
+    "citas": 0.0303,
+    "laboratorio": 0.0285,
+    "farmacia": 0.0292,
+    "emergencias": 0.031,
+    "recepcion": 0.0304,
+    "colgar": 0.0329,
+    "ninguno": 0.8177
+   },
+   "latency_ms": 113.67920803604648
+  },
+  {
+   "id": "cl-033",
+   "text": "Aló, buenas tardes.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "colgar",
+   "confidence": 0.7718,
+   "probabilities": {
+    "citas": 0.033,
+    "laboratorio": 0.0329,
+    "farmacia": 0.0339,
+    "emergencias": 0.035,
+    "recepcion": 0.0342,
+    "colgar": 0.7718,
+    "ninguno": 0.0592
+   },
+   "latency_ms": 111.012916022446
+  },
+  {
+   "id": "cl-034",
+   "text": "¿Me escucha?",
+   "gold": "ninguno",
+   "tags": [
+    "noise",
+    "short"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8228,
+   "probabilities": {
+    "citas": 0.029,
+    "laboratorio": 0.0277,
+    "farmacia": 0.0284,
+    "emergencias": 0.0297,
+    "recepcion": 0.0307,
+    "colgar": 0.0318,
+    "ninguno": 0.8228
+   },
+   "latency_ms": 109.59791700588539
+  },
+  {
+   "id": "cl-035",
+   "text": "Un momento, que estoy buscando mi carné.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.7925,
+   "probabilities": {
+    "citas": 0.035,
+    "laboratorio": 0.0329,
+    "farmacia": 0.0367,
+    "emergencias": 0.0342,
+    "recepcion": 0.0336,
+    "colgar": 0.0351,
+    "ninguno": 0.7925
+   },
+   "latency_ms": 113.96712594432756
+  },
+  {
+   "id": "cl-036",
+   "text": "No quiero una cita, solo quiero saber el horario.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8399,
+   "probabilities": {
+    "citas": 0.0258,
+    "laboratorio": 0.0256,
+    "farmacia": 0.0264,
+    "emergencias": 0.0271,
+    "recepcion": 0.0271,
+    "colgar": 0.0282,
+    "ninguno": 0.8399
+   },
+   "latency_ms": 115.01012498047203
+  },
+  {
+   "id": "cl-037",
+   "text": "No me pase con el laboratorio, ya tengo mis resultados.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.4479,
+   "probabilities": {
+    "citas": 0.0223,
+    "laboratorio": 0.434,
+    "farmacia": 0.0259,
+    "emergencias": 0.023,
+    "recepcion": 0.0238,
+    "colgar": 0.0231,
+    "ninguno": 0.4479
+   },
+   "latency_ms": 114.06720901140943
+  },
+  {
+   "id": "cl-038",
+   "text": "No es una emergencia, solo es una pregunta.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8625,
+   "probabilities": {
+    "citas": 0.0224,
+    "laboratorio": 0.0217,
+    "farmacia": 0.0219,
+    "emergencias": 0.0233,
+    "recepcion": 0.0239,
+    "colgar": 0.0243,
+    "ninguno": 0.8625
+   },
+   "latency_ms": 120.70704100187868
+  },
+  {
+   "id": "cl-039",
+   "text": "No necesito la farmacia, solo quería preguntar dónde quedan.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8533,
+   "probabilities": {
+    "citas": 0.0236,
+    "laboratorio": 0.0228,
+    "farmacia": 0.0239,
+    "emergencias": 0.0245,
+    "recepcion": 0.0254,
+    "colgar": 0.0265,
+    "ninguno": 0.8533
+   },
+   "latency_ms": 116.85758305247873
+  },
+  {
+   "id": "cl-040",
+   "text": "No cuelgue, todavía tengo otra duda.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8355,
+   "probabilities": {
+    "citas": 0.0265,
+    "laboratorio": 0.0258,
+    "farmacia": 0.0268,
+    "emergencias": 0.0274,
+    "recepcion": 0.029,
+    "colgar": 0.029,
+    "ninguno": 0.8355
+   },
+   "latency_ms": 118.72166697867215
+  },
+  {
+   "id": "cl-041",
+   "text": "No me transfiera con nadie todavía, primero dígame usted.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8205,
+   "probabilities": {
+    "citas": 0.0293,
+    "laboratorio": 0.0275,
+    "farmacia": 0.0284,
+    "emergencias": 0.0302,
+    "recepcion": 0.0317,
+    "colgar": 0.0324,
+    "ninguno": 0.8205
+   },
+   "latency_ms": 119.66441699769348
+  },
+  {
+   "id": "cl-042",
+   "text": "no no es urgente no me pase con emergencias",
+   "gold": "ninguno",
+   "tags": [
+    "asr",
+    "negation"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8251,
+   "probabilities": {
+    "citas": 0.0305,
+    "laboratorio": 0.0273,
+    "farmacia": 0.0276,
+    "emergencias": 0.0295,
+    "recepcion": 0.0296,
+    "colgar": 0.0304,
+    "ninguno": 0.8251
+   },
+   "latency_ms": 118.5357499634847
+  },
+  {
+   "id": "cl-043",
+   "text": "En el laboratorio me dijeron que para el examen necesito una cita, quiero sacarla.",
+   "gold": "citas",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "citas",
+   "confidence": 0.8188,
+   "probabilities": {
+    "citas": 0.8188,
+    "laboratorio": 0.0393,
+    "farmacia": 0.0288,
+    "emergencias": 0.0287,
+    "recepcion": 0.029,
+    "colgar": 0.0291,
+    "ninguno": 0.0263
+   },
+   "latency_ms": 119.37941604992375
+  },
+  {
+   "id": "cl-044",
+   "text": "El doctor de emergencias me dejó una receta y quiero comprarla.",
+   "gold": "farmacia",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "farmacia",
+   "confidence": 0.8002,
+   "probabilities": {
+    "citas": 0.0324,
+    "laboratorio": 0.0322,
+    "farmacia": 0.8002,
+    "emergencias": 0.0364,
+    "recepcion": 0.0331,
+    "colgar": 0.0332,
+    "ninguno": 0.0325
+   },
+   "latency_ms": 120.68625004030764
+  },
+  {
+   "id": "cl-045",
+   "text": "Ya saqué la cita, ahora quiero saber si están mis resultados.",
+   "gold": "laboratorio",
+   "tags": [
+    "hard"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.787,
+   "probabilities": {
+    "citas": 0.031,
+    "laboratorio": 0.787,
+    "farmacia": 0.0319,
+    "emergencias": 0.0305,
+    "recepcion": 0.0297,
+    "colgar": 0.0322,
+    "ninguno": 0.0577
+   },
+   "latency_ms": 125.11362496297807
+  }
+ ]
+}

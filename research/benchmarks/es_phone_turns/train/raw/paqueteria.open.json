@@ -1,0 +1,22 @@
+{
+ "name": "paqueteria.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a una empresa de envíos: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, ¿a qué hora cierran hoy por favor?",
+  "Disculpe, ¿tienen sucursal en la colonia Los Laureles?",
+  "¿Aceptan pago con tarjeta de crédito o es solo efectivo?",
+  "Me gustaría saber si abren normalmente el día de mañana que es feriado.",
+  "¿Hay estacionamiento disponible para clientes en esa dirección?",
+  "Para enviar paquetes al exterior, ¿qué documentos necesito llevar obligatoriamente?",
+  "Oiga, ¿me podría indicar la dirección exacta del punto de recogida más cercano?",
+  "¿Cuánto me cobran aproximadamente por un paquete pequeño hacia San Pedro Sula?",
+  "Buen día, pregunto porque no estoy seguro si abren los domingos a esta hora.",
+  "¿Necesito que el contenido esté asegurado o eso es opcional?",
+  "Escuche, ¿puedo pagar con transferencia bancaria en efectivo cuando recoja?",
+  "¿Qué tipo de identificación le piden para registrar un envío nacional?",
+  "Oiga pues, ¿sabe si hay descuento para empresas con envío recurrente?",
+  "Disculpe la molestia, ¿a partir de qué peso se considera encomienda grande?",
+  "Buenas tardes, quiero saber si entregan los sábados o solo entre semana"
+ ]
+}

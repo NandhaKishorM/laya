@@ -1,0 +1,15 @@
+{
+ "name": "hotel.restaurante.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y aclara que NO necesita el área de «restaurante» (comida, servicio a la habitación y horarios del comedor): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, por favor no me transﬁeran a restaurante, tengo otra consulta.",
+  "Hola, gracias pero yo no necesito el menú ni la hora de cena, solo quería preguntar el horario del check-out.",
+  "Disculpen, no hablo con meseros ni personal de comida, ¿me atiende quien contestó?",
+  "No es para restaurante, por favor déjeme hablar con ustedes directamente sobre mi reserva.",
+  "Oiga, yo no busco servicio a la habitación ni comedor, solo aclarar un detalle urgente.",
+  "Buen día, gracias por atender, pero no requiero información de platos o bebidas, ¿es posible seguir?",
+  "No me pase al área de comida, por favor, tengo una duda con la reserva que requiere su ayuda.",
+  "Saludos, yo no necesito el restaurant, solo quería confirmar si hay estacionamiento, gracias."
+ ]
+}

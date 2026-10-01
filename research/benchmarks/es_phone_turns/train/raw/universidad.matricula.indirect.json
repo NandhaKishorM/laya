@@ -1,0 +1,27 @@
+{
+ "name": "universidad.matricula.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una universidad y necesita que se ocupe de su caso el área que atiende esto: «inscribir clases y pagar el período». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, le llamo porque ya pagué mi matrícula en línea pero el sistema no me deja ver las materias disponibles para inscribirme.",
+  "Oiga, buen día, necesito que me aclaren un cobro extraño en mi estado de cuenta que dice 'reintegro pendiente' y no sé qué significa.",
+  "Hola, disculpen la molestia, pero ayer intenté pagar el período aquí en caja y me retuvieron los datos sin procesar el pago.",
+  "Le contacto porque necesito anular mi inscripción al periodo actual debido a una emergencia familiar urgente.",
+  "Buenas tardes, tengo un problema con el número de tarjeta que usé para la mensualidad, aparece como rechazado cuando sí hubo cargo.",
+  "Disculpe, ya envié los documentos médicos para la beca pero hasta ahora no veo reflejado ningún descuento en mi factura.",
+  "Hola, le escribo porque quiero cambiar de horario a la clase de matemáticas pero el sistema me dice que está lleno.",
+  "Oiga, buen día, necesito saber si puedo pagar en dos parcialidades porque este mes ando corto de dinero.",
+  "Le llamo porque mi cuenta aún sigue bloqueada después de haber completado todo el proceso de pago ayer por la tarde.",
+  "Buenas tardes, quisiera solicitar una factura fiscal por el pago que realicé con tarjeta de crédito hace tres días.",
+  "Hola, tengo un inconveniente, pagué pero no me aparece el recibo en mi portal estudiantil.",
+  "Le contacto para pedirle que me desbloquee la cuenta académica, necesito inscribir materias antes del viernes y me sale como moroso.",
+  "Disculpen, quiero saber si puedo hacer uso del plan de pagos a tres meses porque se venció mi plazo inicial.",
+  "Buen día, le llamo porque hay un duplicado en mi cargo por inscripción doble que no hice yo.",
+  "Hola, necesito que me envíen por correo el comprobante de pago para poder tramitarlo en mi trabajo.",
+  "Le escribo porque quiero cancelar mi inscripción del segundo periodo y recuperar lo pagado en concepto de anticipo.",
+  "Oiga, buen día, ¿me podrían verificar si llegó la transferencia bancaria que hice desde otro país?",
+  "Buenas tardes, tengo un error en el monto a pagar, me está saliendo más caro sin motivo aparente.",
+  "Hola, le llamo para solicitar una carta de no adeudo porque ya terminé todos los pagos del año.",
+  "Disculpe, quiero inscribir materias pero me sale un aviso de que tengo un pendiente de biblioteca y eso no es cierto."
+ ]
+}

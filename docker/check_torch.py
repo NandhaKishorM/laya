@@ -49,6 +49,15 @@ def repair_cusparselt(dist):
 
 
 def main():
+    # The build always passes the wheel tag it installed (Dockerfile:19 ->
+    # `python /opt/check_torch.py "${TORCH_INDEX}"`). Run without it, the line that
+    # reads `sys.argv[1]` below used to raise `IndexError: list index out of range`,
+    # which names neither this script's argument nor what it accepts.
+    if len(sys.argv) != 2:
+        sys.stderr.write(
+            "usage: check_torch.py <cpu|cu###>  -- the TORCH_INDEX the image was built with\n"
+            "       (the Dockerfile passes cpu, cu128 or cu130; see its TORCH_INDEX ARG)\n")
+        sys.exit(2)
     if platform.system() == "Linux" and platform.machine() in ("aarch64", "arm64"):
         try:
             dist = distribution("nvidia-cusparselt-cu13")
@@ -56,7 +65,14 @@ def main():
             pass
         else:
             repair_cusparselt(dist)
-    import torch
+    try:
+        import torch
+    except ImportError as exc:
+        # The wheel this check exists to verify is the thing that is missing; the
+        # import machinery's own traceback names the module, not the situation.
+        raise RuntimeError(
+            "PyTorch is not installed, so there is nothing to verify; install the wheel "
+            "this image expects first") from exc
 
     expected = sys.argv[1]
     actual = "cpu" if torch.version.cuda is None else "cu" + torch.version.cuda.replace(".", "")

@@ -1,0 +1,15 @@
+{
+ "name": "colegio.registro.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y aclara que NO necesita el área de «registro» (constancias, certificados y notas): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No deseo hablar con registro por favor.",
+  "Solo tengo una duda rápida, no es certificado.",
+  "Evítenme la transferencia al área de constancias.",
+  "No necesito notas ni actas de ningún tipo.",
+  "¿Me atiende usted? Solo pregunto algo simple.",
+  "De nada sirve pasarme a registro ahí.",
+  "Solo una consulta, no solicito documentación escolar.",
+  "Por favor, no me conecte con el área de registros."
+ ]
+}

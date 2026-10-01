@@ -1,0 +1,27 @@
+{
+ "name": "restaurante.domicilio.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un restaurante y necesita que se ocupe de su caso el área que atiende esto: «pedir comida para llevar o a domicilio». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, quiero pedir dos menús del día para llevar.",
+  "Me da pena molestarse pero se me olvidó sacar mi pedido de la mañana.",
+  "Oiga por favor, ¿me pueden dejar una pizza mediana en la puerta? Es urgente.",
+  "Quisiera hacer un pedido para recoger hoy mismo, soy cliente frecuente.",
+  "Hola, necesito que me lleven tres empanadas y un refresco al trabajo.",
+  "Perdone, ¿podrían preparar mi orden de hamburguesa con todo lo que pedí?",
+  "Le llamo para solicitar el servicio a domicilio, vivo cerca del parque.",
+  "Buenas, ojalá tengan espacio porque quiero ordenar una cena completa para llevar.",
+  "Ayúdenme por favor, necesito mandar a buscar mi pedido ahora mismo.",
+  "Quiero dejar hecho mi pedido de fin de semana, son varios platos.",
+  "Oiga, me gustaría que me lleven el combo familiar a la casa.",
+  "Disculpen la insistencia pero quiero confirmar mi orden para recoger en una hora.",
+  "Hola, ¿me pueden preparar un sándwich especial y llevarlo a mi oficina?",
+  "Necesito hacer un pedido grande para un evento, que lo lleven mañana.",
+  "Buenas tardes, vengo por su servicio de comida rápida para llevar.",
+  "Por favor, ojalá me tomen nota del pedido que quiero mandar llamar.",
+  "Quisiera ordenar una pizza familiar y que me la lleven a mi domicilio.",
+  "Oiga, necesito que me preparen tres combos de pollo para recoger ya.",
+  "Hola, ¿me pueden dejar el pedido en la entrada de mi casa? Gracias.",
+  "Le llamo para solicitar un pedido especial, es para una celebración pequeña."
+ ]
+}

@@ -10,6 +10,14 @@ Datasets, baselines and thresholds for the `laya-evals` harness and its CI gate.
   baselines in `research/results/`.
 - `check_regression.py`: adapts a `research/eval/laya_eval.py` report into
   `laya.evals.EvalReport` and compares it to a committed baseline.
+- `act_head_eval.py`: scores `answer.action.act_probability` against labelled
+  decisions in a report, as the bar a future act-head retraining has to beat.
+  Pure arithmetic over a report `laya-evals run --json` already wrote: no second
+  model load, and no change to model, routing or `laya.evals` code. The current
+  checkpoints never learned a useful act head, so this measures, it does not
+  fix, and a number here is not a claim the signal is informative today.
+- `test_act_head_eval.py`: weight-free tests for the above. Like the
+  `research/eval/test_*.py` suites, run it directly; CI does not collect it.
 
 ## Format
 
@@ -38,6 +46,29 @@ unchanged. `laya eval ...` is the same thing through the main CLI.
 Adding a dataset: point `--baseline` at a report you have reviewed, keep the tolerances in
 `thresholds.json`, and commit both beside the dataset, so a quality change is a reviewable
 diff.
+
+## Act-head diagnostic
+
+```bash
+laya-evals run data.jsonl --model english --json report.json
+python research/evals/act_head_eval.py report.json --markdown act.md
+```
+
+Answers one question: does `act_probability` rank correct decisions above incorrect ones?
+It reports the scorable count, the correct/incorrect split, the tie-correct ROC-AUC of
+`act_probability`, the same AUC for the calibrated `confidence` on **exactly** the same
+decisions as a control, and the observed min/max/unique of `act_probability` so a signal
+pinned at one value is visible rather than averaged away.
+
+Cases are bucketed explicitly and nothing is folded into a denominator: a `score` answer has
+no binary `correct` and is skipped with a count, a missing or non-numeric
+`act_probability` is reported as missing rather than read as `0.0`, and an AUC is `null`
+with a reason when either class is absent, since ROC-AUC is undefined there.
+
+The AUC is the Mann-Whitney U form with mid-ranks for ties, which agrees with
+`sklearn.metrics.roc_auc_score` and needs only numpy. Ties are not a rounding detail here:
+the current signal is constant, so a tie-correct implementation is the difference between
+reporting a failure and reporting 0.5 as if it were a measurement.
 
 ## The real labelled set
 

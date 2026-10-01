@@ -1,0 +1,27 @@
+{
+ "name": "gimnasio.entrenadores.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un gimnasio y necesita que se ocupe de su caso el área que atiende esto: «contratar un entrenador personal». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, quería agendar una sesión con el coach para empezar mi rutina desde cero.",
+  "Oiga, necesito que me conecten con quien lleva los planes de entrenamiento personalizado.",
+  "Es que estoy muy perdido y busco a alguien que me guíe paso a paso.",
+  "Hola, tengo disponibilidad esta semana para hablar con un profesional sobre mi objetivo fitness.",
+  "Mire, quiero contratar un servicio de coaching personal pero no sé cómo proceder.",
+  "Buenas, le llamo porque requiero asesoría individualizada y necesito coordinar horarios cuanto antes.",
+  "O sea, ¿hay alguien disponible para empezar a trabajar conmigo bajo supervisión experta?",
+  "Necesito urgente un plan de ejercicios adaptado a mi condición física actual.",
+  "Quiere decir que quiero contratar la experiencia completa con entrenador personal asignado.",
+  "Hola, disculpe las molestias, pero busco exclusivamente atención personalizada y no clases grupales.",
+  "Es para coordinar una cita con el especialista en entrenamiento de fuerza por favor.",
+  "Buen día, vengo a gestionar la contratación del servicio de mentoría deportiva privada.",
+  "Oiga, tengo dudas técnicas y solo las resuelve un entrenador certificado con mi perfil.",
+  "Quisiera que me indiquen quién es el mejor coach para iniciación al gimnasio.",
+  "Buenas tardes, deseo formalizar el contrato de entrenamiento personal inmediato si hay cupo.",
+  "Es importante que sea alguien con experiencia en pérdida de peso y no solo cardio.",
+  "Hola, necesito agendar la primera evaluación con el profesional antes de cualquier actividad física.",
+  "Mire, quiero asegurarme de tener un responsable directo de mis progresos semanales.",
+  "Buenas, le escribo porque me interesa mucho el programa de coaching one-on-one.",
+  "Oiga, ¿podría transferirme o indicarme dónde solicitan a alguien para diseñar mi rutina?"
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "name": "tienda.entregas.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una tienda de electrodomésticos y aclara que NO necesita el área de «entregas» (cuándo llega a la casa lo que se compró): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me conecten con entregas, porfa.",
+  "Oiga, yo no tengo problema con la entrega, solo una duda.",
+  "¡Qué va, no necesito eso! Atiéndame usted.",
+  "Disculpe, pero aquí no pregunto por horarios de reparto."
+ ]
+}

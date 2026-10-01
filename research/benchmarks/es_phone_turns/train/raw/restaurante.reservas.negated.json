@@ -1,0 +1,15 @@
+{
+ "name": "restaurante.reservas.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un restaurante y aclara que NO necesita el área de «reservas» (apartar una mesa): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me pase con reservas por favor.",
+  "Ni de broma con eso, es una consulta.",
+  "Ya le digo que no necesito mesa.",
+  "Solo quiero preguntar el horario del día.",
+  "Por favooor, nada de citas ni reservaciones.",
+  "Atiéndame usted o al gerente, pero no a reservas.",
+  "Le juro que no estoy pidiendo una mesa.",
+  "Qué va, con las reservaciones ya me enteré."
+ ]
+}

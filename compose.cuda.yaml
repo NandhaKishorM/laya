@@ -8,6 +8,10 @@ services:
         TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
+      # The runtime reads these when it picks the autocast dtype; empty keeps the checkpoint's
+      # own `amp_dtype`. README's threshold section measures what fp16 vs bf16 decides differently.
+      LAYA_CUDA_AMP: "${LAYA_CUDA_AMP:-}"
+      LAYA_CPU_AMP: "${LAYA_CPU_AMP:-}"
     deploy:
       resources:
         reservations:
@@ -23,6 +27,10 @@ services:
         TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
+      # The runtime reads these when it picks the autocast dtype; empty keeps the checkpoint's
+      # own `amp_dtype`. README's threshold section measures what fp16 vs bf16 decides differently.
+      LAYA_CUDA_AMP: "${LAYA_CUDA_AMP:-}"
+      LAYA_CPU_AMP: "${LAYA_CPU_AMP:-}"
     deploy:
       resources:
         reservations:

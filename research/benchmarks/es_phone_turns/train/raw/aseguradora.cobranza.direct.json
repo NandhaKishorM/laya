@@ -1,0 +1,14 @@
+{
+ "name": "aseguradora.cobranza.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una aseguradora y pide que la comuniquen con el área de «cobranza» (pago de primas y cuotas atrasadas del seguro). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor pasar al área de cobranza.",
+  "Hola, le pido amablemente que me conecte con el departamento de pagos.",
+  "Pues sí, necesito hablar con cobranza ya mismo.",
+  "Que me pasen con quien atiende las primas atrasadas.",
+  "Oiga, ¿me pueden transferir a la oficina de cobros?",
+  "Cobranza, por favor.",
+  "Bueno, buenas tardes. Solicito la extensión para el área de gestión de pagos."
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.vehiculos.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y pide que la comuniquen con el área de «vehiculos» (comprar un carro nuevo o usado). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenas tardes, favor de pasar con vehículos.",
+  "Disculpe, ¿me comunican con la sección de autos?",
+  "Oiga, buenos días, necesito hablar con el área de vehículos, porfa.",
+  "Por aquí, que me pasen con ventas o vehículos.",
+  "Hola, buenas tardes. Necesito que me transfiera al departamento de vehículos, por favor.",
+  "Con vehículos, por favor.",
+  "Buen día, ¿por ahí el área de vehículos? Gracias.",
+  "Disculpen la molestia, pero necesito hablar con alguien del lado de vehículos."
+ ]
+}

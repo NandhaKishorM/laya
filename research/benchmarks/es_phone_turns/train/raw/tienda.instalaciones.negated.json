@@ -1,0 +1,15 @@
+{
+ "name": "tienda.instalaciones.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una tienda de electrodomésticos y aclara que NO necesita el área de «instalaciones» (que lleguen a instalar lo comprado: aire acondicionado, lavadora): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, por favor, al área de instalaciones no me lleven porque ya tengo todo instalado y solo consulto algo.",
+  "Disculpe, no necesito que me pasen con el técnico, lo que compré ya está puesto, gracias.",
+  "Oiga, qué le voy a decir, no me cambie de línea para instalación porque eso ya quedó solucionado, ¿me entiende?",
+  "Hola, no quiero hablar con el departamento de instalaciones, solo tengo una duda sobre la factura, por favor atienda usted.",
+  "Bueno, mire, no necesito servicio técnico ni instalación, todo está bien, solo quería preguntar por la garantía.",
+  "Perdón, no me pongan en espera para que me pasen con el de instalaciones, porque eso no es lo que requiero.",
+  "Ay, qué le hago, no me transfiera al área de instalación, ya instalé yo mismo, gracias por su tiempo.",
+  "No, no necesito ayuda con la instalación, solo quiero aclarar un dato rápido, que se quede usted en la línea."
+ ]
+}

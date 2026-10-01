@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.alquiler.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y aclara que NO necesita el área de «alquiler» (alquilar un carro por días o semanas): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenos días, por favor no me pasen a la sección de alquiler.",
+  "No necesito rentar carro, solo quiero preguntar una cosa.",
+  "Oiga, no busco arrendamiento, hablemos directamente con usted.",
+  "Le aclaro que no soy cliente de alquileres vehiculares.",
+  "Por favor, evítenme la transferencia al departamento de renta.",
+  "No me interesa el servicio de alquiler de autos.",
+  "Quedo con usted, nada que ver con la sección de arriendo.",
+  "Oiga, sin rodeos, no necesito alquilar un vehículo."
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "name": "restaurante.banquetes.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un restaurante y necesita que se ocupe de su caso el área que atiende esto: «comida para eventos y fiestas». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, no me han respondido mis correos sobre la comida del cumpleaños.",
+  "Oiga, ¿que no tengo confirmación de nada y ya es mañana?",
+  "Pues mire, no puedo coordinar el menú porque nadie me llama.",
+  "Es que no me han enviado la cotización aún y estoy preocupado.",
+  "No sé con quién hablar porque no me atienden en recepción.",
+  "Vaya che, no llega ningún ejecutivo para cerrar el pedido urgente.",
+  "No he recibido llamada de confirmación y se está haciendo tarde.",
+  "Pues o sea que no me han dicho nada del catering y necesito saber ya."
+ ]
+}

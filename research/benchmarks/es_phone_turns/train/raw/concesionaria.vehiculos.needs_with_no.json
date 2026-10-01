@@ -1,0 +1,11 @@
+{
+ "name": "concesionaria.vehiculos.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y necesita que se ocupe de su caso el área que atiende esto: «comprar un carro nuevo o usado». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "La verdad es que no he conseguido financiamiento para el carro, ¿podrían ayudarme?",
+  "Oiga, mi crédito quedó rechazado y por eso no me aprueban la compra.",
+  "Es que todavía no me entregaron la oferta de los usados que pidí el lunes.",
+  "No puedo concretar nada porque necesito saber si aceptan mi trabajo como estable."
+ ]
+}

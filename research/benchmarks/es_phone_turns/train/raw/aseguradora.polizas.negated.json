@@ -1,0 +1,15 @@
+{
+ "name": "aseguradora.polizas.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una aseguradora y aclara que NO necesita el área de «polizas» (contratar, renovar o modificar un seguro): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, por favor no me trasladen a pólizas porque ya tengo todo cubierto y solo pregunto por un trámite.",
+  "No me atienda ahí que no necesito renovar ni contratar nada, solo quiero una duda con usted.",
+  "Le pido que por favor no me pasen a seguros, no tengo ninguna póliza que modificar y deseo seguir aquí.",
+  "Disculpe pero no quiero hablar con el departamento de pólizas, solo requiero orientación rápida sin cambios.",
+  "Oiga, por nada me traslade a ventas porque no busco comprar un seguro, solo aclarar una duda técnica.",
+  "Gracias por atenderme, pero le ruego que no me envíen al área de pólizas pues no tengo ese tema pendiente.",
+  "No es para contratar ni renovar ninguna póliza, así que por favor manténgame en esta línea para su ayuda.",
+  "Permiso, yo vengo solo a preguntar algo específico y le aseguro que no necesito servicios de pólizas."
+ ]
+}

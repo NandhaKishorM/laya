@@ -1,7 +1,13 @@
 """Checkpoint download regression tests; tiny local weights, no network required.
 
+Also pins the `LAYA_REVISION` lever of `laya/revisions.py`: which revision reaches `snapshot_download`,
+what the Agent and the Router report back, and the two loads that must not see it (a local
+directory, and `common.build_model`'s training-time base encoder).
+
 Run: python tests/test_download.py
 """
+import inspect
+import inspect
 import json
 import os
 from pathlib import Path
@@ -20,10 +26,19 @@ from huggingface_hub.utils import filter_repo_objects  # noqa: E402
 from safetensors.torch import load_file, save_file  # noqa: E402
 from tokenizers import Tokenizer  # noqa: E402
 from tokenizers.models import WordLevel  # noqa: E402
+from torch._dynamo.eval_frame import OptimizedModule  # noqa: E402
 from transformers import BertConfig, BertModel, PreTrainedTokenizerFast  # noqa: E402
 
-from laya import load  # noqa: E402
+from laya import Agent, load  # noqa: E402
 from laya.common import DecisionModel  # noqa: E402
+from laya.revisions import PINNED_REVISIONS  # noqa: E402
+from laya.onnx_agent import ONNXAgent  # noqa: E402
+
+
+class _NoRuntime:
+    """Stand-in for the onnxruntime module. `ONNXAgent.__init__` binds the name before it
+    touches the Hub, and the download asserted on below happens well before a session is
+    built, so nothing here is ever called."""
 
 
 class DownloadTests(unittest.TestCase):
@@ -137,6 +152,207 @@ class DownloadTests(unittest.TestCase):
                 for name, value in agent.model.state_dict().items():
                     torch.testing.assert_close(value, weights[name], rtol=0, atol=0)
                 self.assertEqual(agent.predict("hello", self.questions), self.expected)
+
+    # ------------------------------------------------------------------ LAYA_REVISION
+    #
+    # `PINNED_REVISIONS` published the reviewed commit of each published checkpoint and nothing in
+    # `laya/` read it, while `LAYA_SHA256_DIGESTS` -- the other half of the same opt-in pair, in
+    # the same module -- was already reachable from the environment. These replace only the Hub
+    # transport, so the revision that reaches `snapshot_download`, the one the Agent reports back,
+    # and the one a Router publishes in `loaded_revisions` (what `/health` serves) are all the real
+    # thing. They live here rather than in `tests/test_revision_pinning.py` because this file's
+    # subject is already "what the download call was given", and because this suite runs in CI
+    # (`ci.yml:107`, `release.yml:47`) while that one is in no workflow.
+
+    def hub_load(self, repo, env=None, **load_kwargs):
+        """`load(repo)` with the Hub transport replaced. Returns (kwargs sent, agent, error)."""
+        with patch.dict(os.environ), patch("huggingface_hub.snapshot_download",
+                                           return_value=str(self.repo)) as download:
+            if env is None:
+                os.environ.pop("LAYA_REVISION", None)
+            else:
+                os.environ["LAYA_REVISION"] = env
+            try:
+                agent = load(repo, device="cpu", **load_kwargs)
+            except Exception as error:                # the cases below assert on it
+                return download, None, error
+            return download, agent, None
+
+    def sent_revision(self, download):
+        return (download.call_args.kwargs if download.call_args else {}).get("revision")
+
+    def test_no_pin_asked_for_keeps_the_hub_default(self):
+        download, agent, error = self.hub_load("convaiinnovations/laya")
+        self.assertIsNone(error)
+        self.assertNotIn("revision", download.call_args.kwargs)
+        self.assertIsNone(agent.revision)
+        self.assertEqual(agent.predict("hello", self.questions), self.expected)
+
+    def test_environment_revision_reaches_the_download(self):
+        download, agent, error = self.hub_load("convaiinnovations/laya", env="ab" * 20)
+        self.assertIsNone(error)
+        self.assertEqual(self.sent_revision(download), "ab" * 20)
+        self.assertEqual(agent.revision, "ab" * 20)
+
+    def test_reviewed_resolves_each_repositorys_own_pin(self):
+        self.assertGreater(len(set(PINNED_REVISIONS.values())), 1,
+                           "the table has one pin per repository, so this sweep is meaningful")
+        for repo, sha in PINNED_REVISIONS.items():
+            with self.subTest(repo=repo):
+                download, agent, error = self.hub_load(repo, env="reviewed")
+                self.assertIsNone(error)
+                self.assertEqual(self.sent_revision(download), sha)
+                self.assertEqual(agent.revision, sha)
+
+    def test_reviewed_refuses_a_repository_with_no_pin(self):
+        download, agent, error = self.hub_load("acme/custom-checkpoint", env="reviewed")
+        self.assertIsInstance(error, ValueError)
+        self.assertIn("acme/custom-checkpoint", str(error))
+        self.assertIn("LAYA_REVISION", str(error))
+        self.assertIsNone(agent)
+        download.assert_not_called()
+
+    def test_an_explicit_revision_outranks_the_environment(self):
+        download, agent, error = self.hub_load("convaiinnovations/laya", env="reviewed",
+                                               revision="cd" * 20)
+        self.assertIsNone(error)
+        self.assertEqual(self.sent_revision(download), "cd" * 20)
+        self.assertNotEqual(agent.revision, PINNED_REVISIONS["convaiinnovations/laya"])
+
+    def test_an_empty_or_blank_environment_value_is_not_a_pin(self):
+        for env in ("", "   ", "\t"):
+            with self.subTest(repr=repr(env)):
+                download, agent, error = self.hub_load("convaiinnovations/laya", env=env)
+                self.assertIsNone(error)
+                self.assertNotIn("revision", download.call_args.kwargs)
+                self.assertIsNone(agent.revision)
+
+    def test_a_local_directory_never_consults_the_environment(self):
+        download, agent, error = self.hub_load(str(self.repo), env="reviewed")
+        self.assertIsNone(error)
+        download.assert_not_called()
+        self.assertIsNone(agent.revision)
+        self.assertEqual(agent.predict("hello", self.questions), self.expected)
+
+    def test_router_publishes_the_pinned_commit(self):
+        """`/health`'s `revisions` block is `Router.loaded_revisions`, so the pin shows up there."""
+        from laya import Router
+
+        bundle = "convaiinnovations/laya"
+        with patch.dict(os.environ), patch("huggingface_hub.snapshot_download",
+                                           return_value=str(self.repo)):
+            os.environ.pop("LAYA_REVISION", None)
+            unpinned = Router()
+            unpinned.load("english")
+            self.assertEqual(unpinned.loaded_revisions, {"english": None})
+
+            os.environ["LAYA_REVISION"] = "reviewed"
+            pinned = Router()
+            pinned.load("english")
+            self.assertEqual(pinned.loaded_revisions, {"english": PINNED_REVISIONS[bundle]})
+
+    def test_the_onnx_loader_resolves_through_the_same_function(self):
+        """`ONNXAgent` must not grow its own copy of the rule, or the env pin covers one loader."""
+        from laya import onnx_agent, revisions
+
+        self.assertIs(onnx_agent.resolve_revision, revisions.resolve_revision)
+
+    def test_the_base_encoder_load_ignores_the_environment(self):
+        """`common.build_model`'s training-time load is a different repository, with no reviewed
+        SHA to resolve to, so `LAYA_REVISION` deliberately does not reach it."""
+        import laya.common as common
+
+        seen = {}
+
+        def from_pretrained(name, **kwargs):
+            seen.update(kwargs)
+            seen["name"] = name
+            raise RuntimeError("stop after the call")
+
+        cfg = {"encoder": "unused/base-encoder", "head_layers": 1, "act_costs": {"a": 0}}
+        with patch.dict(os.environ, {"LAYA_REVISION": "reviewed"}), \
+                patch("transformers.AutoModel.from_pretrained", side_effect=from_pretrained):
+            with self.assertRaises(RuntimeError):
+                common.build_model(cfg, pretrained=True)
+        self.assertEqual(seen["name"], "unused/base-encoder")
+        self.assertNotIn("revision", seen)
+
+    def test_load_signature_names_every_agent_option(self):
+        # `load` is a pass-through, so an `Agent` option it does not name is unreachable
+        # from the entry point the guides recommend. Read off the signatures rather than
+        # written down, so the next option added to Agent has to be forwarded here too.
+        unreachable = (set(inspect.signature(Agent.__init__).parameters) - {"self"}
+                       - set(inspect.signature(load).parameters))
+        self.assertEqual(unreachable, set(),
+                         "laya.load cannot set: %s" % ", ".join(sorted(unreachable)))
+
+    def test_compile_true_wraps_the_model_loaded_by_load(self):
+        # The observable `Agent.__init__` produces for compile=True, reached through load().
+        # Nothing is actually compiled here: torch.compile wraps eagerly and specializes on
+        # the first forward, so this stays a weight-free-of-cost check.
+        eager = load(str(self.repo), device="cpu")
+        self.assertFalse(eager.model.encoder.config.reference_compile)
+        self.assertNotIsInstance(eager.model, OptimizedModule)
+
+        compiled = load(str(self.repo), device="cpu", compile=True)
+        self.assertTrue(compiled.model.encoder.config.reference_compile)
+        self.assertIsInstance(compiled.model, OptimizedModule)
+        self.assertIsInstance(compiled.model._orig_mod, DecisionModel)
+
+    def test_onnx_agent_accepts_every_hub_option_the_agent_does(self):
+        # Both runtimes download the same checkpoint from the same place, so an option that
+        # selects *which* checkpoint, or *how* to authenticate for it, has to exist on both.
+        # Read off the signatures so the next Hub-side option added to Agent has to be
+        # copied across rather than silently diverging again.
+        #   fast/compile -- the TileLang path and torch.compile, neither of which exists
+        #                    inside onnxruntime.
+        #   device       -- ONNXAgent picks an execution provider from what onnxruntime
+        #                    reports and takes no override; a different asymmetry, with its
+        #                    own fix.
+        not_for_onnxruntime = {"fast", "compile", "device"}
+        agent_side = (set(inspect.signature(Agent.__init__).parameters)
+                      - {"self", "model_id_or_path"} - not_for_onnxruntime)
+        onnx_side = set(inspect.signature(ONNXAgent.__init__).parameters) - {"self"}
+        missing = agent_side - onnx_side
+        self.assertEqual(missing, set(),
+                         "ONNXAgent cannot set: %s" % ", ".join(sorted(missing)))
+
+    def test_onnx_agent_forwards_the_token_to_the_download(self):
+        # `token` is only useful if it reaches snapshot_download. Drive the real constructor
+        # with the transport replaced and read the call it makes: the graph file is absent
+        # on purpose, so the load stops right after the download it is meant to authenticate.
+        # onnxruntime is imported at the top of __init__ and never used before that stop, so
+        # an empty stand-in keeps this a no-extra-required check.
+        with tempfile.TemporaryDirectory() as snapshot:
+            (Path(snapshot) / "rl_agent_config.json").write_text(json.dumps({
+                "encoder": "unused/offline", "head_layers": 0, "act_costs": {"act": 0},
+                "max_len": 64, "head_max_len": 32,
+            }))
+            with patch.dict(sys.modules, {"onnxruntime": _NoRuntime}), \
+                    patch("huggingface_hub.snapshot_download", return_value=snapshot) as download:
+                with self.assertRaises(FileNotFoundError):
+                    ONNXAgent("test/private-model", token="test-token",
+                              onnx_path=str(self.repo / "absent.onnx"))
+                self.assertEqual(download.call_args.kwargs["token"], "test-token")
+                # the allow-list is unchanged: a token must not widen what gets fetched
+                self.assertNotIn("model.safetensors", download.call_args.kwargs["allow_patterns"])
+
+    def test_onnx_agent_token_defaults_and_reads_the_environment(self):
+        with tempfile.TemporaryDirectory() as snapshot:
+            (Path(snapshot) / "rl_agent_config.json").write_text(json.dumps({
+                "encoder": "unused/offline", "head_layers": 0, "act_costs": {"act": 0},
+                "max_len": 64, "head_max_len": 32,
+            }))
+            with patch.dict(sys.modules, {"onnxruntime": _NoRuntime}), \
+                    patch("huggingface_hub.snapshot_download", return_value=snapshot) as download:
+                with self.assertRaises(FileNotFoundError):
+                    ONNXAgent("test/private-model", onnx_path=str(self.repo / "absent.onnx"))
+                self.assertIsNone(download.call_args.kwargs["token"])
+
+                with patch.dict(os.environ, {"HF_TOKEN": "env-token"}):
+                    with self.assertRaises(FileNotFoundError):
+                        ONNXAgent("test/private-model", onnx_path=str(self.repo / "absent.onnx"))
+                    self.assertEqual(download.call_args.kwargs["token"], "env-token")
 
 
 if __name__ == "__main__":

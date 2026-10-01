@@ -1,0 +1,15 @@
+{
+ "name": "hotel.reservaciones.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y aclara que NO necesita el área de «reservaciones» (reservar, cambiar o cancelar una habitación): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me manden a reservaciones, por favor, solo quería preguntar si tienen piscina abierta.",
+  "No es para reservar nada, le pregunto rápido si sirven desayuno en la habitación.",
+  "Disculpe, no necesito cancelar ni hacer reserva alguna, solo busco información del hotel.",
+  "No hay problema de cambio de fecha, escuche, ¿tienen estacionamiento gratuito?",
+  "No me transfiera a ese departamento, tengo una duda sobre la hora del check-out.",
+  "Nada que ver con reservas, le pregunto si aceptan tarjetas de crédito en el restaurante.",
+  "No requiero asistencia para cancelar mi reserva, solo quería saber si hay servicio a la habitación.",
+  "Evítenme pasar por reservaciones, por favor, es una pregunta simple sobre el WiFi."
+ ]
+}

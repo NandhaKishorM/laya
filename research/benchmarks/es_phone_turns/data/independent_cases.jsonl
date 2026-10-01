@@ -1,0 +1,31 @@
+{"id": "ic-001", "text": "No, ni me meta al área de ventas que yo estoy llamando por una factura.", "gold": "facturacion", "tags": ["redirected"]}
+{"id": "ic-002", "text": "Soy cliente, no me conecte con los de contratos, necesito hablar con el soporte técnico.", "gold": "soporte", "tags": ["redirected"]}
+{"id": "ic-003", "text": "Quiero hablar con alguien del área de cobros, no me saque al departamento comercial.", "gold": "facturacion", "tags": ["redirected"]}
+{"id": "ic-004", "text": "Escúchame bien, no me mande con los de ventas, estoy llamando sobre mi saldo.", "gold": "facturacion", "tags": ["redirected"]}
+{"id": "ic-005", "text": "Oiga, mira que no me funciona la internet hace tres días", "gold": "soporte", "tags": ["need-with-no"]}
+{"id": "ic-006", "text": "Holaaa, no me llegó la factura y necesito hablar con alguien", "gold": "facturacion", "tags": ["need-with-no"]}
+{"id": "ic-007", "text": "Oiga, yo no quiero hablar con nadie, no me pasen al departamento de soporte técnico, llámame directamente.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-008", "text": "No me pongan con soporte, ya sé lo que hace, ¿podés darme mi número?", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-009", "text": "No me manden al área de soporte, quiero que me respondan acá, al cliente.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-010", "text": "Mire, no me pongan con el soporte, eso ya lo saben, yo les hablo a ustedes.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-011", "text": "No me pasen con soporte técnico, llámeme directo al celular, no quiero hablar con nadie más.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-012", "text": "Oye, ¿saben por qué nunca me funciona el internet?", "gold": "soporte", "tags": ["need-with-no"]}
+{"id": "ic-013", "text": "Bueno, tengo un problema que no me deja usar la conexión.", "gold": "soporte", "tags": ["need-with-no"]}
+{"id": "ic-014", "text": "¿Alguien me ayuda con el servicio porque no funciona?", "gold": "soporte", "tags": ["need-with-no"]}
+{"id": "ic-015", "text": "No me funcionó el equipo que me enviaron, por favor arreglenlo.", "gold": "soporte", "tags": ["need-with-no"]}
+{"id": "ic-016", "text": "No quiero pasar al de facturación, haganme la atención aquí.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-017", "text": "Cuidado, no me pasen a facturación, es muy largo.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-018", "text": "No me manden a facturación, por favor.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-019", "text": "Ni se les ocurra pasarme a facturación, no estoy interesada.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-020", "text": "Oiga, estoy llamando por un asunto serio, me está cobrando una mensualidad y no me deja ver la factura ni el detalle del pago.", "gold": "facturacion", "tags": ["need-with-no"]}
+{"id": "ic-021", "text": "Hola, buenos días, tengo el saldo pendiente y no me está llegando el cobro, necesitan revisar el caso urgente.", "gold": "facturacion", "tags": ["need-with-no"]}
+{"id": "ic-022", "text": "Buenas tardes, disculpen que llame, me hicieron un cobro adicional y no me aparece la factura para validar el pago.", "gold": "facturacion", "tags": ["need-with-no"]}
+{"id": "ic-023", "text": "Saludos, llamo para reclamar el saldo que me deben y no puedo generar una orden de pago ni ver el estado del reembolso.", "gold": "facturacion", "tags": ["need-with-no"]}
+{"id": "ic-024", "text": "¿Sigo en línea?", "gold": "ninguno", "tags": ["noise"]}
+{"id": "ic-025", "text": "No, espera, no me cuelgues, me falta algo.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-026", "text": "No me corten la línea, no se vayan.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-027", "text": "Ya, no me cuelgues, sigo aquí esperando.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-028", "text": "Me quedé en pausa, no me vayan a cortar.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "ic-029", "text": "Quiero hablar con el humano, por favor, no quiero hablar con la grabación.", "gold": "operadora", "tags": ["need-with-no"]}
+{"id": "ic-030", "text": "¿No hay nadie ahí? No quiero hablar con la grabación.", "gold": "operadora", "tags": ["need-with-no"]}
+{"id": "ic-031", "text": "Oiga, quiero hablar con alguien en vivo, no quiero hablar con la grabación.", "gold": "operadora", "tags": ["need-with-no"]}

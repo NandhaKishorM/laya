@@ -1,0 +1,13 @@
+{
+ "name": "paqueteria.recoleccion.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y pide que la comuniquen con el área de «recoleccion» (programar que pasen a recoger un envío). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor ¿me podrían pasar con la gente de recolección?",
+  "Oiga, ¿recolección? Sí, por ahí me comuniquen.",
+  "Mijo, si no es mucho pedir, que me conecten con el área de recoleccion, porfa.",
+  "Recoleccion.",
+  "Buenas tardes, tengo un paquete y necesito agendar la recogida, ¿me puede hacer el favor de transferirme?",
+  "¿Recolección?"
+ ]
+}

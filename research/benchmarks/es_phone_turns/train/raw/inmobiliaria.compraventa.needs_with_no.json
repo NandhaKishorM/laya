@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.compraventa.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y necesita que se ocupe de su caso el área que atiende esto: «comprar o vender una propiedad». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Hola, buenas tardes, necesito que me ayuden porque no puedo encontrar un terreno para comprar en zona rural.",
+  "Qué más pues, oiga, yo ya intenté vender mi casa pero no me responden las llamadas desde hace semanas.",
+  "Bueno, resulta que no tengo el documento de la propiedad original y por eso no logro cerrar la venta con el comprador.",
+  "Disculpe, ¿me podrían orientar porque no sé qué impuestos debo pagar si decido comprar un departamento en Tegucigalpa.",
+  "Oiga, buen día, le llamo porque no me han entregado las llaves de la casa que acabo de comprar y estoy preocupado.",
+  "Hola, necesito ayuda urgente con el contrato porque no entiendo esta cláusula que limita la venta a terceros.",
+  "Qué tal, pues mire, yo quiero vender mi finca pero no encuentro comprador que tenga el dinero completo así que necesito asesoría.",
+  "Buenas, oiga, le escribo porque no me apareció la inscripción de la propiedad en el registro y por eso no puedo legalizar la venta."
+ ]
+}

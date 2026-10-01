@@ -1,0 +1,14 @@
+{
+ "name": "restaurante.banquetes.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un restaurante y pide que la comuniquen con el área de «banquetes» (comida para eventos y fiestas). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "¿Me pasan con Banquetes?",
+  "Sí, porfa, ¿podría comunicarme con el departamento de Banquetes?",
+  "Mira pues, necesito hablar con alguien de Banquetes, ¿me atiendes?",
+  "Hola, buenas tardes. Oye, si no es mucha molestia, ¿me haces el favor de pasar conmigo a la gente de Banquetes?",
+  "¡Ándale, sígame! Ponme con Banquetes ya, porfa.",
+  "Disculpe, requiero que me conecten con el área de Banquetes.",
+  "Tío, ¿podría ver si hay alguien disponible en Banquetes? Por aquí ando apurado."
+ ]
+}

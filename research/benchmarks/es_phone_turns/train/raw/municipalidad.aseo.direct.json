@@ -1,0 +1,15 @@
+{
+ "name": "municipalidad.aseo.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una municipalidad y pide que la comuniquen con el área de «aseo» (tren de aseo, basura y alumbrado público). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Por favor, pásame con aseo.",
+  "Mandeme al departamento de limpieza urbana, gracias.",
+  "Che bae, ¿me pueden conectar con la gente del aseo?",
+  "Quisiera hablar con el área de basuras y alumbrado.",
+  "Pasen porfa con aseo municipal.",
+  "Buenos días, necesito comunicarme con el equipo de recolección de basura e iluminación pública, por favor.",
+  "Óigame, traslámelo a limpieza pública, es urgente.",
+  "Diga, ¿me pasan con la brigada de aseo, por favor?"
+ ]
+}

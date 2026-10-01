@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.rastreo.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y aclara que NO necesita el área de «rastreo» (saber dónde está un paquete): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Por favor, no me transfiera a rastreo, solo tengo una duda urgente.",
+  "No necesito el área de seguimiento del paquete, atienda por favor mi pregunta.",
+  "Oiga, eviténme pasar por rastreo que eso no es lo que busco hoy.",
+  "Le digo claro: no quiero hablar con seguimiento, solo quería preguntar esto.",
+  "Por aquí mismo me atienden mejor, no requiero el servicio de rastreo.",
+  "No me pasen a rastreo ni se molesten, tengo otro asunto entre manos.",
+  "Quedo en que no necesito localizar un envío, porfa atienda mi consulta.",
+  "Evite transferirme a seguimiento, por favor, solo es una pregunta rápida para usted."
+ ]
+}

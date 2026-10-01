@@ -1,0 +1,14 @@
+{
+ "name": "inmobiliaria.alquileres.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y pide que la comuniquen con el área de «alquileres» (alquilar una casa, un apartamento o un local). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor, ¿me podrían pasar con la persona de alquileres?",
+  "Hola, buenos días, necesito información sobre un departamento en renta, ¿me conecta con el departamento de alquileres, por favor?",
+  "Alquileres, porfa.",
+  "¿Me hablan con quien se encargue de los alquileres? Gracias.",
+  "Pase a la sección de alquileres.",
+  "Buen día, le llamo porque quiero rentar un local y me gustaría hablar con su equipo de alquileres.",
+  "Alquileres, por aquí."
+ ]
+}

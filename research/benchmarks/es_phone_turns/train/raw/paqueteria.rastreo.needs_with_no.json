@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.rastreo.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y necesita que se ocupe de su caso el área que atiende esto: «saber dónde está un paquete». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "¿Hola, buen día? Oiga, yo llamo porque no me aparece la guía en la página y necesito saber dónde está mi paquete urgente.",
+  "Perdone la molestia, pero es que no he recibido ningún correo con el rastreo y ya pasó la fecha estimada de entrega.",
+  "A ver, yo pregunto porque no puedo hacer clic en el enlace que me enviaron ayer y ando bastante preocupado por mi mercancía.",
+  "¡Qué tal! La verdad es que no sé qué pasó pero mi número de seguimiento no arroja resultados en el sistema.",
+  "Oiga caballero, a veces me da pena molestar pero no tengo acceso al correo donde iba el link para rastrearlo.",
+  "Buenas tardes, disculpe si pregunto por aquí, pero es que nunca me llega la actualización del estatus y necesito tranquilizar a mi cliente.",
+  "¿Me podría apoyar? El caso es que no me funciona la app en mi celular y estoy lejos de casa para pedir ayuda a alguien más.",
+  "Hola, buenas, oiga una cosa: no me han contestado los mensajes anteriores y por eso les llamo directamente para averiguar dónde está mi envío."
+ ]
+}

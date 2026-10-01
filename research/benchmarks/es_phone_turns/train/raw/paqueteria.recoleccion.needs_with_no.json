@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.recoleccion.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y necesita que se ocupe de su caso el área que atiende esto: «programar que pasen a recoger un envío». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "¿Aló? Mire, por favor necesito que me envíen a buscar un paquete pero no me llega la notificación del código de rastreo.",
+  "Qué tal, disculpen la molestia, el caso es que quiero agendar una recogida en mi casa y no me aparece la opción en la app.",
+  "Oiga, hola, necesito ayuda urgente porque no he podido programar la visita del mensajero para hoy y ya se me acaba el tiempo.",
+  "Buenas tardes, ¿me puede orientar? No me ha llegado ningún correo confirmando la cita que intenté solicitar en línea hace una hora.",
+  "¿Sí, hola? Mire, tengo una encomienda grande pero no me dejan agendar el horario de retiro porque el sistema me sale caído.",
+  "Ayuda por favor, no puedo acceder a mi cuenta para pedir que vengan a buscar el paquete y necesito hacerlo ya mismo.",
+  "Disculpe, estoy llamando porque nunca me han permitido solicitar la recogida a domicilio con esta tarifa y quiero saber si hay una solución.",
+  "Qué tal, oiga, el asunto es que no tengo referencia del pedido anterior para poder pedir la recolección y necesito que ustedes me ayuden a solucionarlo."
+ ]
+}

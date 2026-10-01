@@ -1,0 +1,27 @@
+{
+ "name": "concesionaria.alquiler.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una concesionaria de carros y necesita que se ocupe de su caso el área que atiende esto: «alquilar un carro por días o semanas». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, quisiera agendar una unidad para fines de semana venideros.",
+  "Es que me urge un auto con automático por tres días, ya revisé lo de largo plazo y no cuadra.",
+  "Por aquí el tipo de la otra vez me dijo que podía reservar online pero no me llegó nada.",
+  "Pues mire, necesito uno grande porque somos cinco familiares y tenemos mucha maleta.",
+  "Hola, quería confirmar si tienen disponibilidad para jueves y viernes por la noche.",
+  "Verá, el contrato anterior se me complicó y necesito extenderlo solo dos días más sin multa.",
+  "Oiga, no sé cómo pero me cobraron doble vez y quiero que lo arreglen ya mismo.",
+  "Necesito un carro tipo SUV con seguro completo, que sea el modelo nuevo por favor.",
+  "Mira, tengo una cita en el aeropuerto a las seis de la mañana y necesito recogerlo ahí.",
+  "El conductor adicional es mi esposa, ¿se puede poner ese dato ahora o hay que ir presencial?",
+  "Pues escuche, me dañaron un espejo en otro lado pero quería saber si su seguro lo cubre.",
+  "Quisiera hacer el alquiler desde hoy hasta el lunes por la tarde, ¿cuántos días quedan exactamente?",
+  "Hola, es que me cancelaron mi reserva anterior sin previo aviso y necesito una unidad urgente.",
+  "Pues sí, quiero pagar con tarjeta de crédito pero que me den factura inmediata para la empresa.",
+  "Oiga, ¿me podría dejar el auto en la otra sucursal al devolverlo o solo aquí?",
+  "Mire, tengo licencia internacional y no sé si eso da problemas para tomar la unidad hoy.",
+  "Necesito un carro económico porque es solo para ir y venir del trabajo por una semana.",
+  "Por acá el sistema me dio error al pagar y no me aparece confirmación en el correo.",
+  "Hola, quería saber si puedo devolver el auto fuera de horario sin que sea penalización.",
+  "Es que necesito uno con sillita para niño incluido, eso es requisito indispensable para mí."
+ ]
+}

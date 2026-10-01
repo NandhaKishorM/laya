@@ -48,7 +48,17 @@ try:
     sh = "resolved-without-torch"
 except ImportError:
     sh = "blocked"
-print(script, agent, sh)
+# The reviewed pins must be reachable with torch unavailable: the checkpoint-integrity guide
+# tells operators to pass one, and pinning matters most in the offline and on-device
+# deployments that may not have torch imported at all.
+try:
+    pins = "ok" if laya.PINNED_REVISIONS and all(
+        isinstance(v, str) for v in laya.PINNED_REVISIONS.values()) else "broken"
+except Exception:
+    # Guarded like the probes above: an unguarded raise here kills the subprocess before the
+    # print, so every check in this file reports None and the failure looks unrelated.
+    pins = "missing"
+print(script, agent, sh, pins)
 ''' % ROOT
 
 proc = subprocess.run([sys.executable, "-c", PROBE], capture_output=True, text=True)
@@ -57,6 +67,7 @@ out = proc.stdout.strip().split()
 check("no-torch/detect_script works", out[0] if out else None, "latin")
 check("no-torch/Agent stays lazy", out[1] if len(out) > 1 else None, "blocked")
 check("no-torch/shortlist stays lazy", out[2] if len(out) > 2 else None, "blocked")
+check("no-torch/PINNED_REVISIONS resolves", out[3] if len(out) > 3 else None, "ok")
 
 
 # ------------------------------------------------------------------ torch available

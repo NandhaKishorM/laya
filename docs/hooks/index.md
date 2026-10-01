@@ -7,6 +7,10 @@ redaction before inference, caching, metrics, confidence gating, routing overrid
 forwarding a decision to an external service. They are **opt-in**: with no hooks configured the
 behaviour of `Agent`, `Router` and `ONNXAgent` is unchanged.
 
+They are not only for direct calls. Each [LangChain and LangGraph](../langchain.md) runnable takes
+the same five per-call arguments, so a hook can be attached to one node in a graph rather than to
+the whole agent.
+
 This folder is the full reference. Start here, then dive into the page you need:
 
 | page | what is in it |
@@ -73,9 +77,11 @@ There are three ideas.
    `on_predict_end=`.
 
 2. **Every hook of one call shares one mutable `PredictContext`.** It carries the states,
-   questions, results, routing decision, model name, usage, timing and any error. Because it is
-   mutable, a hook can *shape* the call, not only watch it: redact the state, rewrite the
-   questions, replace the result, or skip inference with a cached answer.
+   questions, results, routing decision, model name, usage, timing and any error. A call can carry
+   many states at once (`predict_batch`), so a hook that means to cover *every* decision has to
+   iterate `ctx.states` and `ctx.results`; `ctx.usage` and `ctx.elapsed_ms` are totals for the
+   call. Because the context is mutable, a hook can *shape* the call, not only watch it: redact the
+   state, rewrite the questions, replace the result, or skip inference with a cached answer.
 
 3. **There are two scopes.** `Agent` hooks wrap a forward pass; `Router` hooks wrap routing plus
    inference and can also see model lifecycle (`on_route`, `on_load`, `on_evict`). This mirrors

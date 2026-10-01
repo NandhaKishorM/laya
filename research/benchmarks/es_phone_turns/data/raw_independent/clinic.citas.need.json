@@ -1,0 +1,12 @@
+{
+ "name": "clinic.citas.need",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una clínica médica y necesita que se ocupe de su caso el área que atiende esto: «quiere sacar, cambiar o cancelar una consulta médica». En TODAS cuenta su problema usando una negación («no me funciona», «no me llegó», «no puedo», «nunca me»). No nombra el área.",
+ "phrases": [
+  "Sabe si se puede cambiar la hora o cancelar la consulta que tenía para hoy que **no me funciona**",
+  "Oiga, me avisaron que me tenía que atender el área de consultas pero me **no me llegó**",
+  "Hola, quería ver si se puede arreglar mi cita porque **no puedo** ir a la clínica",
+  "Buenas tardes, necesito saber si hago trámite para cambiar o anular la cita ya que **nunca me** llegó la confirmación",
+  "Quisiera pedir ayuda porque **no puedo** ir a mi consulta médica y quiero cancelarla o cambiarla"
+ ]
+}

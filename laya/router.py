@@ -28,6 +28,7 @@ primary routing signal.
 synthetic workflows and should not be a silent default.
 """
 import gc
+import inspect
 import json
 import os
 import threading
@@ -35,6 +36,7 @@ import time
 from collections.abc import Sequence as SequenceABC
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+from .confidence import apply_confidence_gate, check_min_confidence
 from .hooks import (
     HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks,
     validate_timeout,
@@ -174,6 +176,188 @@ def _english_from_code(value: Any) -> Optional[bool]:
     return primary in _ENGLISH_SUBTAGS
 
 
+class _ScanLong:
+    """Last start hook of `Router.predict_long`: score the routed state with the agent's
+    `predict_long` rather than leave `predict` to call `system_one` on one window of it.
+
+    It is appended after every other start hook, so a caller's hook has already had its say: one
+    that answered (`ctx.skip(...)`) or rewrote the state/questions wins, and only what is left is
+    scanned. The `lang` rule is `predict`'s -- an explicit `lang=`, else the language routing
+    detected -- repeated here because `predict` computes it locally for its own call.
+    """
+
+    def __init__(self, window, stride, aggregate, batch_size, lang):
+        self.window = window
+        self.stride = stride
+        self.aggregate = aggregate
+        self.batch_size = batch_size
+        self.lang = lang
+
+    def on_predict_start(self, ctx):
+        if ctx.results is not None:
+            return
+        if not hasattr(ctx.agent, "predict_long"):
+            raise TypeError(
+                "%s has no predict_long, so a state longer than its window cannot be scanned; "
+                "the PyTorch Agent implements it, and an ONNX or hand-attached agent needs it too"
+                % type(ctx.agent).__name__
+            )
+        lang = self.lang
+        if lang is None:
+            lang = (ctx.decision.get("detection") or {}).get("language")
+        ctx.results = [ctx.agent.predict_long(
+            ctx.states[0], ctx.questions, window=self.window, stride=self.stride,
+            aggregate=self.aggregate, batch_size=self.batch_size, lang=lang)]
+
+
+# Checkpoint options a Router will not accept through `agent_kwargs`: the ones it sets for itself
+# on every `Agent(...)` it builds, plus the hook family, which has its own home in `Router(hooks=)`
+# and would otherwise fire from two registries at once.
+_ROUTER_OWNED_AGENT_ARGS = frozenset({
+    "model_id_or_path", "device", "token", "subfolder", "revision",
+    "hooks", "on_predict_start", "on_predict_end", "hooks_raise", "hooks_concurrent",
+    "hooks_timeout",
+})
+
+
+def check_agent_kwargs(agent_kwargs: Dict[str, Any]) -> None:
+    """Reject `agent_kwargs` names a Router cannot honour, before any checkpoint is loaded.
+
+    The accepted names are read out of `Agent.__init__`'s signature rather than written down here:
+    the whole point of `agent_kwargs` is that this file stops keeping its own list of checkpoint
+    options, so a hard-coded copy of them would go stale in exactly the way this argument removes.
+    The import is only reached when a caller passes the argument, which is also the moment torch is
+    about to be loaded anyway.
+    """
+    from .agent import Agent
+
+    accepted = set(inspect.signature(Agent.__init__).parameters) - {"self"}
+    reserved = sorted(set(agent_kwargs) & _ROUTER_OWNED_AGENT_ARGS)
+    if reserved:
+        raise ValueError(
+            "Router sets %s itself; pass them to Router(...) instead of in agent_kwargs"
+            % (", ".join(repr(n) for n in reserved),))
+    unknown = sorted(set(agent_kwargs) - accepted)
+    if unknown:
+        raise ValueError(
+            "Agent accepts none of %s; it accepts %s"
+            % (", ".join(repr(n) for n in unknown), sorted(accepted - _ROUTER_OWNED_AGENT_ARGS)))
+
+
+def _digests_from_env(models: Dict[str, Any]) -> Dict[str, Optional[Dict[str, str]]]:
+    """Turn `LAYA_SHA256_DIGESTS` into per-checkpoint digest maps when it names models.
+
+    The variable has two shapes, and the value types say which. A flat
+    `{artifact: digest}` map is `laya.revisions.verify_digests`'s own reading -- the same
+    files checked on every checkpoint the process loads -- and is returned as `{}` here so
+    that path stays untouched. A nested `{model: {artifact: digest}}` map pins each
+    checkpoint with its own files, which is what a server holding several resident needs:
+    the bundled repository ships a separate `model.safetensors` per checkpoint, so one flat
+    map can only ever match one of them and refuses the rest at startup.
+
+    A checkpoint the nested map does not name is returned as `{}`, meaning "not covered by this
+    variable, and do not let `verify_digests` read this nested map as an artifact map either" -- it
+    would fail with `cannot verify 'english': no such file` on a checkpoint the variable never
+    named. It needs no distinguishing from a `{}` somebody wrote: both name no files, and
+    `_merge_expected_digests` merges them identically.
+    Keys are normalised exactly as `Router(sha256_digests=...)` normalises them, so `en`
+    names `english` and a name core does not know raises here rather than quietly leaving
+    that checkpoint unverified. Unset, empty or unparseable input names nothing:
+    `laya.revisions` reports a malformed value in its own words.
+    """
+    raw = os.environ.get("LAYA_SHA256_DIGESTS", "").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return {}
+    if not isinstance(data, dict) or not data:
+        return {}
+    values = list(data.values())
+    if all(isinstance(v, str) for v in values):
+        return {}                                     # flat: laya.revisions already applies it
+    if not all(isinstance(v, dict) for v in values):
+        raise ValueError("LAYA_SHA256_DIGESTS must be either {artifact: digest} for every "
+                         "checkpoint or {model: {artifact: digest}} per checkpoint; %s mixes "
+                         "the two or holds a value that is neither" % sorted(data))
+    per_model = {normalise_name(k): dict(v) for k, v in data.items()}
+    for name in models:
+        per_model.setdefault(normalise_name(name), {})
+    return per_model
+
+
+def _revision_pin(value: Optional[str]) -> Optional[str]:
+    """The revision `value` asks for, or None when it asks for nothing.
+
+    Unset and blank are the same answer, because both are what a configuration line that did not
+    get filled in leaves behind, and neither is a commit anything can be pinned to.
+    """
+    return value if value is not None and str(value).strip() else None
+
+
+def _digest_entry(
+    digests: Dict[str, Optional[Dict[str, str]]],
+    key: str,
+) -> Optional[Dict[str, str]]:
+    """One checkpoint's own digest entry, as `Router.sha256_digests` holds it right now.
+
+    None when the checkpoint has no entry at all, which is what leaves `verify_digests` its own
+    environment fallback; `{}` for an entry that names no files, whether that is the placeholder a
+    nested `LAYA_SHA256_DIGESTS` left or a `None` a caller wrote.
+
+    Read here rather than decided once at construction, because `sha256_digests` is a public mutable
+    attribute: a per-checkpoint pin assigned to it -- or added to an existing entry in place -- after
+    `Router(...)` has to count, and deciding from a key set frozen at construction dropped exactly
+    that.
+    """
+    if key not in digests:
+        return None
+    entry = digests[key]
+    return {} if entry is None else entry
+
+
+def _merge_expected_digests(
+    shared: Optional[Dict[str, str]],
+    per_model: Optional[Dict[str, str]],
+) -> Optional[Dict[str, str]]:
+    """The `expected_sha256` one checkpoint is built with, out of the two channels that pin it.
+
+    `shared` is `agent_kwargs["expected_sha256"]`, which the class docstring advertises and which
+    reaches every checkpoint the Router builds. `per_model` is this checkpoint's own entry: None when
+    it has none at all, and `{}` for the placeholder a nested `LAYA_SHA256_DIGESTS` leaves for a
+    checkpoint it does not name.
+
+    None -- both channels silent -- means "pass no `expected_sha256`", which leaves `verify_digests`
+    its own `LAYA_SHA256_DIGESTS` fallback and keeps an unconfigured load byte for byte what it was.
+    An empty `{}` is **not** the same thing and must still reach `Agent`: it masks that fallback,
+    which for a *nested* variable would otherwise be read as an artifact map and raise
+    `cannot verify 'english': no such file` on a checkpoint the variable never named.
+
+    A value that is not a mapping is handed on untouched, so `verify_digests` keeps ownership of the
+    "expected_sha256 must be a mapping" message rather than this layer growing a second copy.
+
+    The two channels are merged file by file, because each names files and a digest is a claim about
+    one file -- dropping either half would verify less than the caller asked for. **For a file both
+    name, the per-checkpoint entry wins.** They are not equally specific: `shared` reaches every
+    checkpoint, and `model.safetensors` is the one name every checkpoint uses for a *different* file,
+    so a shared entry for it cannot be a correct claim about all of them at once. Refusing that
+    overlap as a contradiction broke the ordinary shape it appears in -- a shared pin plus a
+    per-checkpoint override, which loaded correctly before this function existed.
+
+    An empty placeholder therefore needs no special case: merging it changes nothing.
+    """
+    if per_model is not None and not isinstance(per_model, dict):
+        return per_model
+    if shared is not None and not isinstance(shared, dict):
+        return shared
+    if shared is None and per_model is None:
+        return None
+    merged = dict(shared or {})
+    merged.update(per_model or {})
+    return merged
+
+
 class Router(HookRegistry):
     """Lazily loads Laya checkpoints and sends each request to the right one.
 
@@ -207,6 +391,94 @@ class Router(HookRegistry):
     which is useful when standalone repositories were reviewed at different commits.
     Without either, huggingface_hub's normal default and existing offline cache are used.
 
+    A `revisions` entry that is `None` or blank is "no override for this model", so the model
+    inherits `revision` -- the shape `{"english": os.environ.get("EN_SHA")}` writes when the
+    variable is unset, which must not cost the caller the pin it did ask for. Nothing in
+    `revisions` can unpin one model while `revision` pins the rest; leave `revision` unset and
+    name the models you want pinned instead.
+
+    A blank `revision` is read the same way, which is a deliberate change in what the Router
+    passes on: `Router(revision="   ")` used to reach `resolve_revision`, where a truthy but blank
+    string suppressed the `LAYA_REVISION` fallback and left huggingface_hub's default, and is now
+    dropped before it gets there, so a Router configured with whitespace behaves like one
+    configured with nothing and `$LAYA_REVISION` applies. That is what "this configuration line was
+    never filled in" has to mean if `revision` and a `revisions` entry are to be read the same way.
+
+    It is one of two places a weaker source ends up ahead of an explicit argument. The other is a
+    per-checkpoint digest entry from `LAYA_SHA256_DIGESTS`, which wins over an `expected_sha256`
+    passed through `agent_kwargs`; see the class docstring.
+
+    Anything else `laya.Agent` accepts is reachable through `agent_kwargs`, which is merged into
+    every checkpoint the Router builds:
+
+        Router(agent_kwargs={"lang_temperatures": {"de": {"temperature": [1.0, 1.4, 2.0]}}})
+        Router(agent_kwargs={"expected_sha256": {"model.safetensors": "a3f1..."}})
+        Router(agent_kwargs={"fast": True})
+
+    `expected_sha256` there pins the same files on every checkpoint, which is what a single
+    resident checkpoint or a shared `tokenizer.json` wants. It is never discarded wholesale by a
+    checkpoint's own digests: where one also has an entry, from `sha256_digests` or from a
+    **per-checkpoint** `LAYA_SHA256_DIGESTS`, the two maps are merged **file by file**, so a file
+    only one of them names is still verified.
+
+    Two exceptions, both deliberate and both tested, because "merged file by file" is not the whole
+    story and the difference is a supply-chain control:
+
+    * A **flat** `LAYA_SHA256_DIGESTS` -- `{artifact: digest}` rather than `{model: {...}}` -- is
+      not a layer here at all. `verify_digests` applies it itself, but only when nothing else pins
+      (`if expected is None`), so ANY `expected_sha256` reaching `Agent`, from here or from a
+      checkpoint entry, means the flat variable is not consulted for that load. Verified on real
+      files: a flat variable pinning `model.safetensors` plus an `agent_kwargs` map pinning
+      `tokenizer.json` loads a tampered `model.safetensors`. Use the per-checkpoint shape, or name
+      every file you care about in one map, if you need both. This is unchanged from `main`.
+    * An explicit `{}` or `None` entry MASKS what would otherwise apply -- that is what "load this
+      one unverified" has to mean, and `test_an_explicit_none_entry_masks_a_flat_environment_map`
+      pins it.
+
+    And the precedence is per-checkpoint over shared regardless of where each came from, so a
+    per-checkpoint entry synthesised from `LAYA_SHA256_DIGESTS` wins over an `expected_sha256`
+    passed here in code. An environment variable beating an explicit argument is worth stating
+    plainly on a control like this; `test_an_environment_pin_overrides_the_shared_one_per_checkpoint`
+    is where that is pinned.
+
+    For a file both name, the per-checkpoint entry wins. The two are not equally specific: the
+    `agent_kwargs` map reaches every checkpoint the Router builds, and `model.safetensors` is the one
+    name every checkpoint uses for a *different* file, so a shared entry for it cannot be a correct
+    claim about all of them at once. **Nothing raises over that overlap** -- refusing it would reject
+    a shared pin plus a per-checkpoint override, which is the ordinary shape and which loaded
+    correctly before any of this existed. If you need to know which digest a checkpoint was verified
+    against, read it back: the map handed to each `Agent` is the merge described above.
+
+    Both `agent_kwargs` and `sha256_digests` are public and mutable, and a checkpoint's entry is read
+    on the load rather than at construction, so a pin assigned in afterwards -- or added to an
+    existing entry in place -- counts.
+
+    The names the Router sets for itself -- `model_id_or_path`, `device`, `token`, `subfolder`,
+    `revision` and the hook arguments -- are refused here rather than silently shadowed, and the
+    remaining names are checked against `Agent.__init__` at construction, so a misspelled option
+    fails on the `Router(...)` line instead of on the first request.
+
+    Artifact digests are opt-in and always per model: `sha256_digests={"english": {...}}`
+    passes that `{path relative to the checkpoint dir: hexdigest}` map to the `Agent` that
+    loads it, so a tampered or substituted weight file is refused before it is parsed. There
+    is no Router-wide equivalent of `revision` because digests, unlike a commit SHA, are not
+    shareable: the bundled repository ships a separate `model.safetensors` for each of
+    `english`, `multilingual` and `typed-decisions`, so one flat map can only ever match one
+    of them. A model listed with `None` or `{}` adds no files of its own, which loads it
+    unverified unless `agent_kwargs["expected_sha256"]` pins it; it still masks a flat
+    `LAYA_SHA256_DIGESTS`, which is what listing it that way is for.
+
+    The same split is available to a process configured only by environment: when
+    `LAYA_SHA256_DIGESTS` holds a model-keyed map (`{"english": {...}, "multilingual": {...}}`)
+    this seeds it per checkpoint, so a server that keeps several resident can pin each with its
+    own digests instead of refusing to start on the second one. A flat `LAYA_SHA256_DIGESTS`
+    keeps its existing meaning, applied by `laya.revisions` to every checkpoint the process
+    loads, which is right for a single-checkpoint one. An argument entry wins over the
+    environment for the model it names. A nested variable that names some checkpoints and not
+    others says nothing about the others: they keep whatever `agent_kwargs["expected_sha256"]`
+    pins them with, because pinning one checkpoint from the environment is not a request to stop
+    verifying the rest.
+
     Hooks are opt-in and run at the Router level: `on_route` sees the routing decision,
     `on_load` / `on_evict` see model lifecycle, and `on_predict_start` / `on_predict_end`
     wrap the whole route+infer call. See `laya.hooks`.
@@ -218,6 +490,7 @@ class Router(HookRegistry):
     hooks_concurrent = True
     hooks_timeout = None
     _hooks_lock = None
+    agent_kwargs: Dict[str, Any] = {}
 
     def __init__(
         self,
@@ -238,6 +511,8 @@ class Router(HookRegistry):
         hooks_raise: bool = True,
         hooks_concurrent: bool = True,
         hooks_timeout: Optional[float] = None,
+        agent_kwargs: Optional[Dict[str, Any]] = None,
+        sha256_digests: Optional[Dict[str, Optional[Dict[str, str]]]] = None,
     ):
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
@@ -257,6 +532,18 @@ class Router(HookRegistry):
         self.revisions: Dict[str, Optional[str]] = {
             normalise_name(k): v for k, v in (revisions or {}).items()
         }
+        # Options forwarded to every `Agent` this Router builds, checked now so a bad name fails on
+        # this line rather than the first request that happens to load a checkpoint.
+        self.agent_kwargs: Dict[str, Any] = dict(agent_kwargs or {})
+        if self.agent_kwargs:
+            check_agent_kwargs(self.agent_kwargs)
+        # Per checkpoint SHA-256 map: seeded from a model-named `LAYA_SHA256_DIGESTS`, then
+        # overridden checkpoint by checkpoint by the argument. Keyed and normalised exactly like
+        # `revisions`, so a misspelled model name fails here rather than leaving that checkpoint
+        # unverified.
+        self.sha256_digests: Dict[str, Optional[Dict[str, str]]] = _digests_from_env(self.models)
+        argument = {normalise_name(k): v for k, v in (sha256_digests or {}).items()}
+        self.sha256_digests.update(argument)
         self.max_loaded = max(1, int(max_loaded))
         self.default = normalise_name(default)
         self.auto_task_detection = bool(auto_task_detection)
@@ -289,9 +576,21 @@ class Router(HookRegistry):
             from .agent import Agent
             repo, sub = _split(self.models[key])
             kwargs = {"device": self.device, "token": self.token, "subfolder": sub}
-            model_revision = self.revisions.get(key, self.revision)
+            # A None or blank entry in `revisions` is "no pin of its own", so the checkpoint
+            # inherits `revision`. Reading it as a pin of nothing dropped the caller's `revision`
+            # and handed that one checkpoint to `$LAYA_REVISION` instead, which is the opposite of
+            # what asking for a pin means.
+            model_revision = _revision_pin(self.revisions.get(key)) or _revision_pin(self.revision)
             if model_revision is not None:
                 kwargs["revision"] = model_revision
+            # Safe to merge last for the names above, which `agent_kwargs` refuses -- but not for
+            # `expected_sha256`, which is deliberately reachable through `agent_kwargs` and is
+            # therefore merged with this checkpoint's entry rather than replaced by it.
+            kwargs.update(self.agent_kwargs)
+            expected = _merge_expected_digests(kwargs.pop("expected_sha256", None),
+                                               _digest_entry(self.sha256_digests, key))
+            if expected is not None:
+                kwargs["expected_sha256"] = expected
             agent = Agent(repo, **kwargs)
             self._agents[key] = agent
             self._order.append(key)
@@ -446,6 +745,8 @@ class Router(HookRegistry):
         checkpoint) and the replacement is what gets returned and used. `hooks` are per-call
         hooks, appended after any installed on the Router.
         """
+        if questions is not None and not isinstance(questions, dict):
+            raise TypeError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
         decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         active = compose_hooks(self.hooks, hooks)
@@ -573,6 +874,7 @@ class Router(HookRegistry):
         hooks_timeout: Optional[float] = None,
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
+        min_confidence: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
 
@@ -581,23 +883,41 @@ class Router(HookRegistry):
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
+        if state is None:
+            raise TypeError("state must not be None; pass a string, dict, or list")
+        if not isinstance(questions, dict):
+            raise TypeError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
+        mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
 
-        # Per-call hooks apply to the whole call, including on_route inside route().
-        decision = self.route(state, questions, model=model, task=task, lang=lang,
-                              lang_guess=lang_guess, hooks=hooks, hooks_raise=hooks_raise,
-                              hooks_timeout=hooks_timeout)
-        agent = self.load(decision["model"])
-        effective_lang = lang
-        if effective_lang is None and decision.get("detection") and decision["detection"].get("language"):
-            effective_lang = decision["detection"]["language"]
-
-        ctx = PredictContext(states=[state], questions=questions, decision=dict(decision),
-                             model=decision["model"], agent=agent, router=self,
-                             max_len=max_len, head_max_len=head_max_len)
+        ctx = PredictContext(
+            states=[state],
+            questions=questions,
+            decision=None,
+            model=None,
+            agent=None,
+            router=self,
+            max_len=max_len,
+            head_max_len=head_max_len,
+        )
         try:
+            # Per-call hooks apply to the whole call, including on_route inside route().
+            decision = self.route(state, questions, model=model, task=task, lang=lang,
+                                  lang_guess=lang_guess, hooks=hooks, hooks_raise=hooks_raise,
+                                  hooks_timeout=hooks_timeout)
+            ctx.decision = dict(decision)
+            ctx.model = decision["model"]
+            agent = self.load(decision["model"])
+            ctx.agent = agent
+            effective_lang = lang
+            if effective_lang is None and decision.get("detection") and decision["detection"].get("language"):
+                effective_lang = decision["detection"]["language"]
+
+            # Keep the existing success-path timing contract: elapsed_ms starts here, after
+            # route/load and immediately before the prediction start hook.
+            ctx.started_at = time.perf_counter()
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             if ctx.results is None:
                 # Pass token-budget overrides only when set, so any Agent-like object that does
@@ -607,7 +927,7 @@ class Router(HookRegistry):
                     overrides["max_len"] = ctx.max_len
                 if ctx.head_max_len is not None:
                     overrides["head_max_len"] = ctx.head_max_len
-                
+
                 skip = _SKIP_DEFAULTS.set(True)
                 try:
                     result = agent.system_one(ctx.states[0], ctx.questions, lang=effective_lang, **overrides)
@@ -637,6 +957,7 @@ class Router(HookRegistry):
             ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
             if ctx.results is not None:
                 ctx.usage = aggregate_usage(ctx.results)
+                apply_confidence_gate(ctx.results, mc)
             try:
                 dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             except BaseException as hook_exc:
@@ -646,8 +967,59 @@ class Router(HookRegistry):
                     raise
         return ctx.results[0]
 
+    def predict_long(self, state: Union[str, dict, list], questions: Dict[str, Any],
+                     model: Optional[str] = None, task: Optional[str] = None,
+                     lang: Optional[str] = None, lang_guess: Optional[Any] = None,
+                     window: Optional[int] = None, stride: Optional[int] = None,
+                     aggregate: str = "auto", batch_size: Optional[int] = None,
+                     hooks=None, on_predict_start=None, on_predict_end=None,
+                     hooks_raise: Optional[bool] = None, hooks_timeout: Optional[float] = None,
+                     ) -> Dict[str, Any]:
+        """Route, then scan every window of the state instead of only its first one.
+
+        `predict` scores a state from a single window: anything past `max_len` is cut off (the
+        first window, or for a conversation list the last) and never reaches the model. This
+        routes exactly as `predict` does -- the same `model`/`task`/`lang` hints, the same
+        router-level hooks, the same `routing` key and `usage` -- and scores the routed state with
+        that agent's `predict_long`, which splits it into overlapping windows and aggregates per
+        question. The aggregation rules are `laya.agent.Agent.predict_long`'s: `noul` takes the
+        strongest window, `choice`/`score` the most confident one.
+
+        Per-call hooks (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`,
+        `hooks_timeout`) wrap the whole route+scan exactly as they wrap `predict`: the scan runs
+        last, so a start hook that answers (`ctx.skip(...)`) or rewrites the state wins.
+        `max_len` / `head_max_len` are not accepted here -- a window is sized by `window` or the
+        checkpoint budget, and overriding the single-window truncation is what `predict_long` is for.
+
+        Args:
+            window: state tokens per window. Defaults to the routed checkpoint's budget
+                    (`max_len - head_max_len - 8`), capped at the room the questions leave for the
+                    state so no window is truncated again on the way in; a smaller window isolates
+                    a localized span.
+            stride: token step between windows; defaults to half the effective window (50%
+                    overlap). A stride past that window is a `ValueError`, since the tokens between
+                    windows would reach no model.
+            aggregate: "auto" (the per-type rules above) is the only mode.
+            batch_size: cap on windows per forward pass, to bound memory on very long states.
+
+        Returns:
+            The usual `predict` payload, with `usage["windows"]` counting the windows scored.
+
+        Raises:
+            TypeError: the routed agent has no `predict_long` (an ONNX agent, or one attached by
+                    hand), so there is nothing to scan with. Raised under the router's
+                    `hooks_raise` policy, which defaults to raising.
+        """
+        per_call = normalise_hooks(hooks, on_predict_start, on_predict_end)
+        per_call.append(_ScanLong(window=window, stride=stride, aggregate=aggregate,
+                                  batch_size=batch_size, lang=lang))
+        return self.predict(state, questions, model=model, task=task, lang=lang,
+                            lang_guess=lang_guess, hooks=per_call,
+                            hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
+
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
                questions: Optional[Dict[str, Any]] = None, return_details: bool = False,
+               min_confidence: Optional[float] = None,
                **predict_kwargs) -> Any:
         """Answer `state` against a schema (JSON schema or pydantic model) and return typed values.
 
@@ -656,7 +1028,24 @@ class Router(HookRegistry):
         """
         from .structured import decide as _decide
         return _decide(self, state, schema, questions=questions,
-                       return_details=return_details, **predict_kwargs)
+                       return_details=return_details, min_confidence=min_confidence, **predict_kwargs)
+
+    def decide_batch(self, states: Sequence[Any], schema: Any = None, *,
+                     questions: Optional[Dict[str, Any]] = None,
+                     return_details: bool = False, min_confidence: Optional[float] = None,
+                     **predict_kwargs) -> List[Any]:
+        """Answer many states against one schema (JSON schema or pydantic model) in one batched call.
+
+        The throughput form of :meth:`decide`: the schema is planned once and its questions
+        run over every state through :meth:`predict_batch` (grouped forward passes, results in
+        input order), then each state's answers are projected as ``decide`` does. Extra keyword
+        arguments (``batch_size=``, ``model=``, ``hooks=``, ...) are forwarded to
+        ``predict_batch``. See `laya.structured`.
+        """
+        from .structured import decide_batch as _decide_batch
+        return _decide_batch(self, states, schema, questions=questions,
+                             return_details=return_details, min_confidence=min_confidence,
+                             **predict_kwargs)
 
     def __enter__(self):
         return self
@@ -667,7 +1056,11 @@ class Router(HookRegistry):
 
     system_one = predict
 
-    def route_batch(self, requests: Sequence[Dict[str, Any]]) -> List[RouteDecision]:
+    def route_batch(
+        self,
+        requests: Sequence[Dict[str, Any]],
+        hooks_timeout: Optional[float] = None,
+    ) -> List[RouteDecision]:
         """Route a heterogeneous request batch without loading any checkpoints.
 
         Each request is a mapping with ``state`` and ``questions`` plus the same optional
@@ -676,6 +1069,12 @@ class Router(HookRegistry):
 
         This is intentionally separate from inference so callers can inspect or aggregate
         routing decisions before paying model-load cost.
+
+        Args:
+            requests: Sequence of request dictionaries, each requiring ``state`` and
+                ``questions``.
+            hooks_timeout: Override the Router's ``hooks_timeout`` for this call, applied to
+                every request's ``on_route`` dispatch, as on :meth:`route`.
         """
         if not isinstance(requests, SequenceABC) or isinstance(requests, (str, bytes)):
             raise TypeError("requests must be a sequence of request dictionaries")
@@ -704,6 +1103,7 @@ class Router(HookRegistry):
                     task=request.get("task"),
                     lang=request.get("lang"),
                     lang_guess=request.get("lang_guess"),
+                    hooks_timeout=hooks_timeout,
                 )
             )
 
@@ -714,6 +1114,8 @@ class Router(HookRegistry):
         requests: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
         hooks_timeout: Optional[float] = None,
+        min_confidence: Optional[float] = None,
+        sort_by_length: bool = False,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -722,28 +1124,41 @@ class Router(HookRegistry):
         ``Agent.predict_batch`` so their states can share forward passes. Results are
         then restored to the original request order.
 
-        Requests may independently specify ``model``, ``task``, ``lang`` or
-        ``lang_guess`` and may use different question schemas.
+        Requests may independently specify ``model``, ``task``, ``lang``,
+        ``lang_guess``, ``max_len`` or ``head_max_len`` and may use different question schemas.
+        ``max_len`` / ``head_max_len`` are the per-request form of the token-budget override
+        ``predict`` takes as call arguments: they set the checkpoint's state and question-head
+        budgets for that one request, so a wide question can be asked without shrinking the
+        batch's other requests to the same window. Requests that ask for different budgets are
+        split into separate forward passes, since one ``Agent.predict_batch`` call carries one
+        budget for all its states. A start hook may still replace either value on ``ctx``.
 
         Router-level predict hooks run per request, as ``predict`` runs them: each request
         gets its own ``PredictContext``, so ``on_predict_start`` can replace that request's
         state, questions or token budget, or ``ctx.skip(...)`` it, and ``on_predict_end``
         sees and may replace its result. Requests are grouped for the forward pass after
-        their start hooks have run. If the batch fails, every request whose start hook ran
-        and that has no result gets ``on_error``, then every started request gets
-        ``on_predict_end``, before the exception propagates.
+        their start hooks have run, and a checkpoint group's requests end in reverse of the
+        order they started. If a checkpoint group fails, every request of it whose start hook
+        ran fails with the exception, a cache hit included: each gets ``on_error`` and then
+        ``on_predict_end`` before the exception propagates.
 
         Args:
             requests: Sequence of request dictionaries. Every item requires ``state`` and
                 ``questions`` and may include ``model``, ``task``, ``lang`` or
-                ``lang_guess`` overrides.
+                ``lang_guess`` routing overrides and ``max_len`` / ``head_max_len`` token-budget
+                overrides.
             batch_size: Optional maximum number of states per Agent forward-pass batch.
             hooks_timeout: Override the Router's ``hooks_timeout`` for this call.
+            sort_by_length: Forwarded to every ``Agent.predict_batch`` call, so each question
+                group pads to a shorter maximum; see ``Agent.predict_batch``. Results retain the
+                input order either way. Silently dropped for an attached agent whose
+                ``predict_batch`` predates the knob (#294).
 
         Returns:
             One normal Router prediction result per request, in the same order as the input.
         """
-        decisions = self.route_batch(requests)
+        mc = check_min_confidence(min_confidence) if min_confidence is not None else None
+        decisions = self.route_batch(requests, hooks_timeout=hooks_timeout)
         if not decisions:
             return []
 
@@ -753,10 +1168,14 @@ class Router(HookRegistry):
         groups: Dict[str, List[int]] = {}
         for i, decision in enumerate(decisions):
             # Indexed, not `.model`: an on_route hook may replace the decision with a plain dict,
-            # which `predict` accepts too.
-            groups.setdefault(decision["model"], []).append(i)
+            # which `predict` accepts too. Normalised, because such a hook may name the checkpoint
+            # by an alias ("ml"), and that request must share its checkpoint's forward pass.
+            groups.setdefault(normalise_name(decision["model"]), []).append(i)
 
-        results: List[Optional[Dict[str, Any]]] = [None] * len(requests)
+        # Counted rather than marked with None: an end hook may leave a None result, which
+        # `predict` returns as it is.
+        results: List[Any] = [None] * len(requests)
+        answered = 0
         # `compose_hooks`, not `list(self.hooks)`: this is the composition `predict` uses at its
         # own dispatch site, and it is what merges in `set_default_hooks`. Reading the instance
         # list alone silently dropped every process-wide default from the batched path while
@@ -772,11 +1191,15 @@ class Router(HookRegistry):
             try:
                 # One context per request, built and started the way `predict` does it, so a
                 # start hook sees -- and can redact, rewrite or skip -- each request before it
-                # joins a shared forward pass.
+                # joins a shared forward pass. A request's own `max_len` / `head_max_len` seed the
+                # context here; the grouping below already splits on those fields, so this is the
+                # only place the per-request budget can enter.
                 for i in indices:
                     ctx = PredictContext(states=[requests[i]["state"]], questions=requests[i]["questions"],
                                          decision=dict(decisions[i]), model=model_name, agent=agent,
-                                         router=self)
+                                         router=self,
+                                         max_len=requests[i].get("max_len"),
+                                         head_max_len=requests[i].get("head_max_len"))
                     started.append(ctx)
                     dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors,
                              lock=self._hooks_lock, timeout=timeout)
@@ -832,6 +1255,10 @@ class Router(HookRegistry):
                     batch_kwargs = dict(group["overrides"])
                     if group["lang"] is not None:
                         batch_kwargs["lang"] = group["lang"]
+                    if sort_by_length:
+                        # Passed only when on, as the token-budget overrides are: agents attached
+                        # via `attach()` may predate the knob (#294).
+                        batch_kwargs["sort_by_length"] = True
                     skip = _SKIP_DEFAULTS.set(True)
                     try:
                         batch_results = agent.predict_batch(
@@ -842,9 +1269,14 @@ class Router(HookRegistry):
                         )
                     except TypeError as e:
                         # Same tolerance `predict` has for an Agent-like object whose
-                        # `predict_batch` predates the `lang` argument.
-                        if batch_kwargs.get("lang") is not None and "unexpected keyword argument 'lang'" in str(e):
-                            batch_kwargs.pop("lang")
+                        # `predict_batch` predates the `lang` (or `sort_by_length`) argument.
+                        retried = False
+                        for kwarg in ("lang", "sort_by_length"):
+                            if batch_kwargs.get(kwarg) is not None and \
+                                    "unexpected keyword argument '%s'" % kwarg in str(e):
+                                batch_kwargs.pop(kwarg)
+                                retried = True
+                        if retried:
                             batch_results = agent.predict_batch(
                                 [ctx.states[0] for _, ctx in items],
                                 group["questions"],
@@ -865,61 +1297,75 @@ class Router(HookRegistry):
                     for (i, ctx), result in zip(items, batch_results):
                         result["routing"] = dict(decisions[i])
                         ctx.results = [result]
+
+                # Usage is summed here, not while ending, so a malformed usage block (a cached
+                # payload's, say) fails the group like any other error instead of escaping from
+                # the end loop before a single end hook has run.
+                usages = [aggregate_usage(ctx.results) for ctx in started]
+                for ctx, usage in zip(started, usages):
+                    ctx.usage = usage
             except BaseException as exc:
-                # Every started request is ended, so a hook that opens something in start (a
-                # span, an in-flight count) always sees the matching end. A request that already
-                # has its result keeps it; the rest failed with the batch.
+                # The caller gets this exception and no result, so every started request of the
+                # group failed with it, including a cache hit or a request whose question group
+                # had already run. Each is still ended, so a hook that opens something in start
+                # (a span, an in-flight count) always sees the matching end.
                 for ctx in started:
-                    if ctx.results is None:
-                        ctx.error = exc
-                        try:
-                            dispatch(active, "on_error", ctx, raise_errors=raise_errors,
-                                     lock=self._hooks_lock, timeout=timeout)
-                        except BaseException as hook_exc:
-                            exc.__context__ = hook_exc
-                try:
-                    self._end_contexts(active, started, raise_errors, timeout)
-                except BaseException as hook_exc:
-                    exc.__context__ = hook_exc
+                    if ctx.results:
+                        apply_confidence_gate(ctx.results, mc)
+                self._end_contexts(active, started, raise_errors, timeout, error=exc)
                 raise
 
+            for ctx in started:
+                if ctx.results:
+                    apply_confidence_gate(ctx.results, mc)
             self._end_contexts(active, started, raise_errors, timeout)
             for i, ctx in zip(indices, started):
                 results[i] = ctx.results[0]
+            answered += len(indices)
+            # Drop this group's references before the next load() can evict its checkpoint:
+            # eviction's gc.collect() and empty_cache() only free an Agent nothing still holds,
+            # and every context of the group holds it as `ctx.agent`.
+            agent = ctx = started = question_groups = group = items = None
 
         # Every input index is assigned exactly once by construction. Keep this assertion local
         # so a future refactor cannot silently return a partially-filled batch.
-        if any(result is None for result in results):
+        if answered != len(requests):
             raise RuntimeError("internal error: batch execution did not produce every result")
 
-        return [result for result in results if result is not None]
+        return results
 
     predict_many = predict_batch
 
     def _end_contexts(self, active: List[Any], contexts: List[PredictContext], raise_errors: bool,
-                      timeout: Optional[float] = None) -> None:
-        """Finish each request of a batch the way `predict`'s `finally` finishes one.
+                      timeout: Optional[float] = None, error: Optional[BaseException] = None) -> None:
+        """Finish each request of a batch the way `predict` finishes one.
 
-        Every context gets its `on_predict_end` even if an earlier one's end hook raises; the
-        first such failure is raised afterwards. On a context that already failed, a raising
-        end hook is chained onto its error instead, as in `predict`. Timing and usage are set on
-        all of them first, so one request's `elapsed_ms` never includes another's end hooks.
+        `error` is the exception that failed the batch, if one did: every context then fails
+        with it and gets `on_error` before its `on_predict_end`, as in `predict`. Contexts end
+        in reverse of the order they started, because all of them started before any ends: a
+        hook that sets something in start and resets it in end (a contextvar, a tracing
+        context) must unwind the last one first. Every context gets its `on_predict_end` even if
+        another's hooks raise; the first such failure is raised afterwards. On a failed context,
+        a raising hook is chained onto its error instead, as in `predict`. `elapsed_ms` is set
+        on all of them first, so one request's never includes another's error or end hooks.
         """
         now = time.perf_counter()
         for ctx in contexts:
             ctx.elapsed_ms = (now - ctx.started_at) * 1000.0
-            if ctx.results is not None:
-                ctx.usage = aggregate_usage(ctx.results)
+            if error is not None:
+                ctx.error = error
         first_error: Optional[BaseException] = None
-        for ctx in contexts:
-            try:
-                dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors,
-                         lock=self._hooks_lock, timeout=timeout)
-            except BaseException as hook_exc:
-                if ctx.error is not None:
-                    ctx.error.__context__ = hook_exc
-                elif first_error is None:
-                    first_error = hook_exc
+        for ctx in reversed(contexts):
+            events = ("on_error", "on_predict_end") if ctx.error is not None else ("on_predict_end",)
+            for event in events:
+                try:
+                    dispatch(active, event, ctx, raise_errors=raise_errors,
+                             lock=self._hooks_lock, timeout=timeout)
+                except BaseException as hook_exc:
+                    if ctx.error is not None:
+                        ctx.error.__context__ = hook_exc
+                    elif first_error is None:
+                        first_error = hook_exc
         if first_error is not None:
             raise first_error
 

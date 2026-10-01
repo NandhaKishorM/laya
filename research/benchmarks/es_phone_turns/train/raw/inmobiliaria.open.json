@@ -1,0 +1,22 @@
+{
+ "name": "inmobiliaria.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a una inmobiliaria: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "A ver, ¿ustedes atienden los sábados por la mañana?",
+  "Disculpe, pero exacto ¿dónde queda la oficina principal?",
+  "¿Y para pagar el alquiler aceptan transferencia bancaria o es solo efectivo?",
+  "Oiga, tengo auto, ¿hay parqueo disponible para los clientes ahí mismo?",
+  "¿Tienen alguna otra sucursal más cerca del centro?",
+  "Buenas tardes, quiero saber qué documentos piden justo para empezar el trámite de renta.",
+  "¿Abren normalmente en días festivos o están cerrados?",
+  "O sea, ¿puedo ir a ver las casas cualquier día sin cita previa?",
+  "Le pregunto porque voy de visita y no sé si todavía tienen horario vespertino activo.",
+  "¿El depósito es el mismo valor que la primera mensualidad?",
+  "Perdone, pero ¿aceptan cheques certificados o solo son transferencias directas al banco?",
+  "Dígame por favor, ¿qué tan lejos queda de la plaza central exactamente?",
+  "Oiga, una pregunta rápida: ¿necesito comprobante de ingresos fijos para arrendar?",
+  "¿Ustedes manejan alguna promoción especial para jóvenes profesionales recién titulados?",
+  "Buenas, solo pregunto si el mantenimiento mensual está incluido en el precio que me dieron por teléfono."
+ ]
+}

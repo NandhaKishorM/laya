@@ -7,6 +7,7 @@ Every checkpoint answered **byte-identical questions** in each run (fixed seed).
 | T4 Colab | typed-decisions, MASSIVE (14 langs), XNLI (15 langs), English suites, latency, option-order robustness, calibration repair | `research/results/t4_colab_benchmark.json` |
 | CPU sweep | MASSIVE intent across **all 51 languages**; its typed-decisions part (`part_b`) covers the English checkpoint only | `research/results/cpu_51_language_sweep.json` |
 | Applications | the seven workflow themes + the datasets where Jev numbers exist, all three checkpoints (laya 0.2.1, CPU, 400 cases per task, seed 13, 2026-09-19) | `research/results/app_benchmark_results.json` |
+| NVIDIA capacity | `laya` served with dynamic batching under p99 SLOs on RTX PRO 5000, RTX PRO 6000 and H100 NVL (eager FP16, TensorRT FP16 via ONNX Runtime), backend parity, 24-hour replay | `research/results/nvidia_capacity_20260925.json` |
 
 
 **Calibration columns in the CPU sweep predate the temperature clamp.** The 51-language ECE and mean-confidence figures were produced before #42 clamped temperatures to `[0.5, 5]`, so today's package reports different confidence for the affected buckets. Accuracy columns are unaffected, because a temperature-scaled softmax has the same argmax at every positive temperature.
@@ -23,6 +24,16 @@ The same 51 languages and 5,100 cases have now been re-run after the temperature
 
 The raw-temperature column reproduces the committed file, so the only variable left is the clamp. `choice:11+` is the sole bucket it moves, and every case in this sweep is a 20-option question, so the clamp applies to all 5,100 — and lowers ECE in all 51 languages. `acc_at_50_coverage` is the one rank-quality column that uses the confidence values: macro 0.3004 → 0.3020, and `en` 0.94 → 0.98, so the flatter distribution selects a slightly better half rather than a worse one.
 
+**The multilingual columns below are the re-run, not the committed file.** The committed `cpu_51_language_sweep.json` was measured at laya 0.2.0, and its `laya-multilingual` half does not reproduce on current code — 51 languages and 5,100 cases re-run under laya 0.2.0, 0.3.7 and 0.3.20, on x86 CPU and on an Apple M5 under both CPU and MPS, all give **0.4008** macro accuracy and match the committed file on only **6 of 51** languages, while the `laya` half reproduces exactly on all of them. Three machines agreeing settled it ([#208](https://github.com/NandhaKishorM/laya/issues/208)). The table therefore prints the refreshed numbers for both checkpoints, from `research/results/cpu_51_language_sweep_refreshed.json`, which records the environment and keeps the superseded committed columns beside the new ones:
+
+| | committed (`laya-multilingual`) | refreshed |
+|---|---|---|
+| macro accuracy | 0.3661 | **0.4008** |
+| macro ECE | 0.3869 | **0.3911** |
+| languages clearing 3× random | 45 / 51 | **48 / 51** |
+
+The direction is consistent rather than noise: of the 16 languages that move by 0.05 or more, **every one moves up** (`bn` 0.29 → 0.45, `kn` 0.15 → 0.30, `hy` 0.15 → 0.25), and none move down by that much. `laya`'s columns are unchanged by the refresh — they reproduce the committed file to the last stored digit — so the accuracy spread between the two checkpoints is wider than the committed table suggested, and `en` remains the one language where `laya` wins (0.820 against 0.710).
+
 ---
 
 ## Headline
@@ -35,6 +46,8 @@ The raw-temperature column reproduces the committed file, so the only variable l
 | ECE after temperature fitting | **0.081** | 0.246 |
 | p50 latency, 1 question (T4) | **32.8 ms** | 236-276 ms |
 
+Headline Laya cells for AG News and DAIR Emotion are the Applications-run numbers (`research/results/app_benchmark_results.json`); typed-decisions 0.766 is the fine-tuned checkpoint (no committed result file behind it yet). The committed T4 English suites give 0.947 (AG News) and 0.573 (DAIR Emotion) for `laya`.
+
 ---
 
 ## Languages
@@ -43,65 +56,65 @@ The raw-temperature column reproduces the committed file, so the only variable l
 
 | | laya | laya-multilingual |
 |---|---|---|
-| macro accuracy | 0.2269 | **0.3661** |
-| macro ECE *(lower better)* | 0.7331 | **0.3869** |
-| languages clearing 3× random | 23 / 51 | **45 / 51** |
+| macro accuracy | 0.2269 | **0.4008** |
+| macro ECE *(lower better)* | 0.5709 | **0.3911** |
+| languages clearing 3x random | 23 / 51 | **48 / 51** |
 
 <details><summary><b>Per language (51)</b> — sorted by how much routing gains</summary>
 
 | lang | laya | laya-multilingual | Δ | laya ECE | multilingual ECE |
 |---|---|---|---|---|---|
-| `th` | 0.080 | 0.480 | +0.400 | 0.881 | 0.336 |
-| `ko` | 0.110 | 0.450 | +0.340 | 0.850 | 0.329 |
-| `he` | 0.060 | 0.400 | +0.340 | 0.911 | 0.350 |
-| `ur` | 0.070 | 0.400 | +0.330 | 0.883 | 0.311 |
-| `hi` | 0.100 | 0.430 | +0.330 | 0.850 | 0.321 |
-| `ar` | 0.110 | 0.400 | +0.290 | 0.800 | 0.341 |
-| `pl` | 0.240 | 0.510 | +0.270 | 0.713 | 0.350 |
-| `el` | 0.130 | 0.380 | +0.250 | 0.839 | 0.383 |
-| `fa` | 0.140 | 0.390 | +0.250 | 0.820 | 0.399 |
-| `ru` | 0.310 | 0.540 | +0.230 | 0.668 | 0.316 |
-| `tr` | 0.140 | 0.370 | +0.230 | 0.788 | 0.417 |
-| `lv` | 0.100 | 0.320 | +0.220 | 0.847 | 0.480 |
-| `bn` | 0.080 | 0.290 | +0.210 | 0.865 | 0.408 |
-| `nb` | 0.330 | 0.530 | +0.200 | 0.648 | 0.327 |
-| `vi` | 0.060 | 0.260 | +0.200 | 0.891 | 0.521 |
-| `az` | 0.100 | 0.300 | +0.200 | 0.825 | 0.368 |
-| `hu` | 0.090 | 0.290 | +0.200 | 0.857 | 0.422 |
-| `is` | 0.110 | 0.300 | +0.190 | 0.835 | 0.469 |
-| `sv` | 0.380 | 0.570 | +0.190 | 0.596 | 0.276 |
-| `km` | 0.000 | 0.180 | +0.180 | 0.952 | 0.412 |
-| `ml` | 0.070 | 0.240 | +0.170 | 0.857 | 0.414 |
-| `it` | 0.340 | 0.500 | +0.160 | 0.647 | 0.302 |
-| `fi` | 0.130 | 0.290 | +0.160 | 0.849 | 0.436 |
-| `ms` | 0.270 | 0.430 | +0.160 | 0.688 | 0.392 |
-| `da` | 0.350 | 0.500 | +0.150 | 0.626 | 0.263 |
-| `id` | 0.360 | 0.510 | +0.150 | 0.613 | 0.305 |
-| `te` | 0.090 | 0.220 | +0.130 | 0.858 | 0.370 |
-| `sl` | 0.200 | 0.330 | +0.130 | 0.756 | 0.433 |
-| `jv` | 0.160 | 0.270 | +0.110 | 0.803 | 0.506 |
-| `ta` | 0.120 | 0.230 | +0.110 | 0.822 | 0.397 |
-| `ja` | 0.530 | 0.640 | +0.110 | 0.460 | 0.228 |
-| `hy` | 0.050 | 0.150 | +0.100 | 0.835 | 0.506 |
-| `zh-TW` | 0.460 | 0.540 | +0.080 | 0.520 | 0.327 |
-| `de` | 0.420 | 0.500 | +0.080 | 0.558 | 0.301 |
-| `tl` | 0.290 | 0.360 | +0.070 | 0.676 | 0.374 |
-| `nl` | 0.390 | 0.450 | +0.060 | 0.591 | 0.378 |
-| `af` | 0.290 | 0.350 | +0.060 | 0.687 | 0.484 |
-| `my` | 0.060 | 0.120 | +0.060 | 0.861 | 0.455 |
-| `sq` | 0.210 | 0.260 | +0.050 | 0.755 | 0.476 |
-| `sw` | 0.130 | 0.180 | +0.050 | 0.828 | 0.549 |
-| `cy` | 0.120 | 0.160 | +0.040 | 0.841 | 0.591 |
-| `kn` | 0.110 | 0.150 | +0.040 | 0.842 | 0.437 |
-| `es` | 0.510 | 0.530 | +0.020 | 0.480 | 0.275 |
-| `ka` | 0.090 | 0.110 | +0.020 | 0.845 | 0.528 |
-| `ro` | 0.330 | 0.350 | +0.020 | 0.658 | 0.404 |
-| `zh-CN` | 0.620 | 0.630 | +0.010 | 0.376 | 0.212 |
-| `am` | 0.120 | 0.110 | -0.010 | 0.825 | 0.463 |
-| `pt` | 0.470 | 0.450 | -0.020 | 0.512 | 0.342 |
-| `mn` | 0.130 | 0.100 | -0.030 | 0.837 | 0.558 |
-| `fr` | 0.590 | 0.540 | -0.050 | 0.388 | 0.277 |
-| `en` | 0.820 | 0.680 | -0.140 | 0.179 | 0.209 |
+| `th` | 0.080 | 0.480 | +0.400 | 0.718 | 0.356 |
+| `bn` | 0.080 | 0.450 | +0.370 | 0.627 | 0.354 |
+| `fa` | 0.140 | 0.510 | +0.370 | 0.633 | 0.298 |
+| `hi` | 0.100 | 0.460 | +0.360 | 0.642 | 0.368 |
+| `ko` | 0.110 | 0.470 | +0.360 | 0.680 | 0.311 |
+| `ar` | 0.110 | 0.460 | +0.350 | 0.580 | 0.315 |
+| `ur` | 0.070 | 0.420 | +0.350 | 0.643 | 0.336 |
+| `el` | 0.130 | 0.440 | +0.310 | 0.679 | 0.430 |
+| `he` | 0.060 | 0.370 | +0.310 | 0.738 | 0.419 |
+| `vi` | 0.060 | 0.340 | +0.280 | 0.690 | 0.464 |
+| `hu` | 0.090 | 0.360 | +0.270 | 0.678 | 0.401 |
+| `az` | 0.100 | 0.360 | +0.260 | 0.598 | 0.381 |
+| `pl` | 0.240 | 0.500 | +0.260 | 0.570 | 0.353 |
+| `tr` | 0.140 | 0.400 | +0.260 | 0.587 | 0.400 |
+| `ru` | 0.310 | 0.570 | +0.260 | 0.595 | 0.296 |
+| `is` | 0.110 | 0.350 | +0.240 | 0.664 | 0.452 |
+| `nb` | 0.330 | 0.560 | +0.230 | 0.518 | 0.294 |
+| `fi` | 0.130 | 0.340 | +0.210 | 0.719 | 0.392 |
+| `ml` | 0.070 | 0.280 | +0.210 | 0.601 | 0.443 |
+| `lv` | 0.100 | 0.310 | +0.210 | 0.666 | 0.472 |
+| `hy` | 0.050 | 0.250 | +0.200 | 0.571 | 0.513 |
+| `km` | 0.000 | 0.200 | +0.200 | 0.705 | 0.445 |
+| `kn` | 0.110 | 0.300 | +0.190 | 0.590 | 0.388 |
+| `ta` | 0.120 | 0.310 | +0.190 | 0.554 | 0.448 |
+| `it` | 0.340 | 0.520 | +0.180 | 0.516 | 0.343 |
+| `da` | 0.350 | 0.520 | +0.170 | 0.526 | 0.315 |
+| `sl` | 0.200 | 0.370 | +0.170 | 0.599 | 0.434 |
+| `id` | 0.360 | 0.510 | +0.150 | 0.487 | 0.323 |
+| `zh-TW` | 0.460 | 0.610 | +0.150 | 0.434 | 0.266 |
+| `jv` | 0.160 | 0.300 | +0.140 | 0.670 | 0.484 |
+| `ms` | 0.270 | 0.410 | +0.140 | 0.506 | 0.436 |
+| `te` | 0.090 | 0.220 | +0.130 | 0.669 | 0.497 |
+| `ja` | 0.530 | 0.640 | +0.110 | 0.366 | 0.234 |
+| `sv` | 0.380 | 0.490 | +0.110 | 0.487 | 0.341 |
+| `my` | 0.060 | 0.160 | +0.100 | 0.580 | 0.477 |
+| `sw` | 0.130 | 0.230 | +0.100 | 0.632 | 0.492 |
+| `sq` | 0.210 | 0.300 | +0.090 | 0.603 | 0.487 |
+| `de` | 0.420 | 0.500 | +0.080 | 0.452 | 0.336 |
+| `nl` | 0.390 | 0.470 | +0.080 | 0.502 | 0.397 |
+| `es` | 0.510 | 0.580 | +0.070 | 0.422 | 0.258 |
+| `af` | 0.290 | 0.350 | +0.060 | 0.559 | 0.439 |
+| `ka` | 0.090 | 0.150 | +0.060 | 0.610 | 0.542 |
+| `tl` | 0.290 | 0.350 | +0.060 | 0.512 | 0.430 |
+| `ro` | 0.330 | 0.370 | +0.040 | 0.550 | 0.397 |
+| `pt` | 0.470 | 0.500 | +0.030 | 0.432 | 0.341 |
+| `zh-CN` | 0.620 | 0.650 | +0.030 | 0.320 | 0.219 |
+| `am` | 0.120 | 0.150 | +0.030 | 0.680 | 0.484 |
+| `mn` | 0.130 | 0.160 | +0.030 | 0.670 | 0.577 |
+| `cy` | 0.120 | 0.130 | +0.010 | 0.645 | 0.587 |
+| `fr` | 0.590 | 0.600 | +0.010 | 0.299 | 0.248 |
+| `en` | 0.820 | 0.710 | -0.110 | 0.138 | 0.233 |
 
 </details>
 
@@ -116,13 +129,13 @@ The raw-temperature column reproduces the committed file, so the only variable l
 | XNLI — English | **0.860** | 0.843 |
 | XNLI — other languages | 0.521 | **0.731** |
 
-The English checkpoint does not degrade gracefully outside English — it collapses, and stays confident doing so. Khmer: **0.000 accuracy at 0.952 confidence**. Its mean confidence never drops below 0.885 at any accuracy level, so confidence gating cannot catch it — which is why routing happens *before* the forward pass.
+The English checkpoint does not degrade gracefully outside English — it collapses, and stays confident doing so. Khmer: **0.000 accuracy at 0.952 confidence** raw, **0.705** as served after the clamp. Its mean confidence never drops below 0.885 (raw; 0.621 as served) at any accuracy level, so confidence gating cannot catch it — which is why routing happens *before* the forward pass.
 
 ---
 
 ## Themes — the application workflows
 
-Each is real labelled data, 400 cases, all three checkpoints. *held out* means the source was **not** in Laya's training mix.
+Each is real labelled data, 400 cases, all three checkpoints. *held out* means the source was **not** in Laya's training mix. Source: the Applications run (`research/scripts/bench_apps.py`, N=400 per task) — `research/results/app_benchmark_results.json`.
 
 | theme | laya | laya-multilingual | laya-typed-decisions | data |
 |---|---|---|---|---|
@@ -140,6 +153,8 @@ Each is real labelled data, 400 cases, all three checkpoints. *held out* means t
 
 ### On the public datasets where Jev numbers exist
 
+Laya columns are from the same Applications run (`research/results/app_benchmark_results.json`, N=400 per task), so AG News / DAIR Emotion differ slightly from the committed T4 English suites below (N=600: 0.947 / 0.573 for `laya`).
+
 | dataset | laya | laya-multilingual | laya-typed-decisions | Jev (published) |
 |---|---|---|---|---|
 | AG News (4 labels) | 0.950 | 0.930 | **0.953** | 0.910 |
@@ -155,7 +170,7 @@ banking77 is the one clear loss, and it is architectural: a choice question's op
 | model | accuracy | soft acc | Brier | ECE | score MAE |
 |---|---|---|---|---|---|
 | `laya-typed-decisions` | **0.766** | 0.471 | 0.061 | 0.213 | 0.242 |
-| `laya` | 0.361 | 0.332 | 0.316 | 0.175 | 0.694 |
+| `laya` | 0.362 | 0.332 | 0.316 | 0.175 | 0.694 |
 | `laya-multilingual` | 0.352 | 0.328 | 0.463 | 0.314 | 0.760 |
 | *Jev 1.13.0 (published)* | *0.727* | *0.580* | *0.148* | *0.144* | *0.391* |
 | *teacher ceiling* | *0.735* | *—* | *—* | *—* | *—* |
@@ -169,7 +184,7 @@ banking77 is the one clear loss, and it is architectural: a choice question's op
 | invoice processing | 0.804 |
 | security incidents | 0.766 |
 
-**The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461). All of the capability on this benchmark comes from fine-tuning.
+**The base checkpoints sit below the majority-class baseline** (0.362 and 0.352 against 0.461). All of the capability on this benchmark comes from fine-tuning. Base rows: `suites.typed_decisions` in `research/results/t4_colab_benchmark.json` (0.3620 / 0.3515; CPU sweep `part_b` gives 0.3615 for English). The `laya-typed-decisions` row and the four per-workflow scores are from the fine-tuning run and have no committed result file behind them yet.
 
 ---
 
@@ -270,6 +285,46 @@ On laya_router's 180 requests (zero-shot, one 3-tier `choice`), nearly every con
 
 Values are p50. p95 is within 2% of p50 on every row. Up to 10 questions, each question costs about 600 ms on `english` and `typed-decisions` and about 185 ms on `multilingual`. At 50 questions, the cost per question rises by 15–20% on all three. Batching questions saves little on CPU, unlike the GB10 above. Cold load depends on the OS file cache, so treat that column as approximate. Peak memory for the whole script, with up to five checkpoints loaded at once, was 9.3 GiB (maximum RSS).
 
+## Independent NVIDIA CUDA capacity study
+
+An independent study measured `laya` as a dynamically batched service on a frozen mix of 1,000 public
+SAM.gov notices. Each request asked the same three typed questions, so the table reports decisions per second
+(three decisions per request) at the highest tested load that met both the latency SLO and the achieved-rate gate.
+The study pinned Laya to
+[`6a58191`](https://github.com/NandhaKishorM/laya/commit/6a5819129eb220570792e417e49723d697efd76f)
+and recorded the checkpoint hashes, software versions and GPU environments. Sweep rows, parity counts, the replay
+summary and the environments: `research/results/nvidia_capacity_20260925.json`. Sweep and replay script:
+`research/scripts/bench_nvidia_capacity.py`.
+
+| GPU and serving backend | p99 ≤ 50 ms | p99 ≤ 130 ms |
+|---|---:|---:|
+| RTX PRO 5000 Blackwell, TensorRT FP16 | 15 decisions/s | 42 decisions/s |
+| RTX PRO 6000 Blackwell, TensorRT FP16 | not measured | 146 decisions/s |
+| H100 NVL, TensorRT FP16 | 105 decisions/s | 175 decisions/s |
+| H100 NVL, 7 × MIG 1g.12gb, eager FP16 | not met | not met reliably[^mig-rate] |
+
+TensorRT is not a laya backend. It is an external runtime: these rows ran ONNX Runtime's TensorRT execution
+provider (FP16, LayerNorm kept in FP32) over an ONNX export of the checkpoint. The eager rows are laya's own
+PyTorch model under FP16 autocast.
+
+Every tested backend and precision reproduced the upstream FP32 answers on all 63 parity questions: 74 of 74
+backend-and-device rows passed across four GPUs. Dynamic serving depended on the architecture: TensorRT raised
+the H100's 130 ms capacity from 93 to 175 decisions/s, while eager FP16 and TensorRT both reached 146 decisions/s
+on the RTX PRO 6000.
+
+A compressed replay of a 24-hour, 10-million-decision curve on one RTX PRO 6000 (eager FP16) completed 138,863
+requests with zero errors and 111 ms overall p99. Two peak-hour segments reached 132 and 144 ms, so deployments
+that must hold 130 ms continuously need about 25% headroom at that volume.
+
+These are capacity results for one English federal-procurement workload, not general latency guarantees. Server
+sweeps and replays used one run per configuration; the RTX PRO 6000 sweep did not search below 50 requests/s;
+and `torch.compile` was not tested as a serving backend. Raw per-request laya results: sweeps for the
+[RTX PRO 5000](https://github.com/bhushankinge/laya-cuda-bench/tree/6cf4148ef4d148273eae83604815fb63ca2254de/results/zbook-rtxpro5000/server), [RTX PRO 6000](https://github.com/bhushankinge/laya-cuda-bench/tree/6cf4148ef4d148273eae83604815fb63ca2254de/results/rtxpro6000-ws/server) and
+[H100 NVL](https://github.com/bhushankinge/laya-cuda-bench/tree/6cf4148ef4d148273eae83604815fb63ca2254de/results/h100nvl/server), and the [day replay](https://github.com/bhushankinge/laya-cuda-bench/tree/6cf4148ef4d148273eae83604815fb63ca2254de/results/rtxpro6000-ws/replay).
+
+[^mig-rate]: Seven concurrent slices reached about 49 decisions/s at p99 127 ms at the lowest load, but the
+    achieved request rate fell below the study's 90% gate. Higher loads missed the 130 ms SLO.
+
 ---
 
 ## Limits, stated plainly
@@ -363,3 +418,46 @@ graph removes that. Large batches are GEMM bound; the fused kernels sit at ~80 T
 cuBLAS, so the gain comes from the fused epilogues and the sliding-window attention (16× faster than SDPA
 with a dense mask at L=1024). First use of a new length bucket compiles kernels (a few seconds, cached on
 disk); inputs ≤256 tokens share one dynamic-shape kernel and never recompile.
+
+## Community evaluation: zh-CN / zh-TW (external, 2026-09-25)
+
+From [@CodyQin](https://github.com/CodyQin)'s [zh-decision-bench](https://github.com/CodyQin/zh-decision-bench) (dataset CC BY 4.0, raw predictions published). Three parts:
+
+### 1. Same-methodology rerun of Part A (zh only, current package)
+
+`bench_local.py` Part A rerun on laya **0.3.20** (CUDA), public checkpoints, `--per-lang 100`, seed 13 — result file: `research/results/zh_rerun_part_a.json`. The english checkpoint's accuracies replicate the sweep above **exactly**; multilingual zh-TW improves under 0.3.20 + the temperature clamp.
+
+| checkpoint | zh-CN acc / ECE | zh-TW acc / ECE | vs sweep above (0.2.0, pre-clamp) |
+|---|---|---|---|
+| english | 0.620 / 0.320 | 0.460 / 0.434 | accuracy identical (0.62 / 0.46); ECE lower post-clamp |
+| multilingual | 0.650 / 0.219 | 0.610 / 0.266 | zh-CN within noise; zh-TW 0.54 -> 0.61 |
+
+### 2. zh-decision-bench: business-scenario eval set (laya-evals format)
+
+219 items / 284 questions: MASSIVE zh-CN dev (quality-filtered, 6-domain routing) plus human-adjudicated synthetic e-commerce CS and content-moderation items. Ships in this harness's format as `research/evals/zh_decision_bench.jsonl`:
+
+```bash
+laya-evals run research/evals/zh_decision_bench.jsonl --model multilingual --slice tag
+```
+
+Results (laya 0.3.20, CUDA; bootstrap CIs and raw predictions in the source repo):
+
+| checkpoint | voice routing (n=179) | CS routing (n=25) | urgency (n=25) | scam/promo (n=15) | escalate (n=40) |
+|---|---|---|---|---|---|
+| multilingual | 0.883 / 0.061 | 0.640 / 0.293 | 0.560 / 0.091 | 0.667 / 0.311 | 0.550 / 0.230 |
+| english | 0.754 / 0.281 | 0.520 / 0.184 | 0.520 / 0.207 | 0.667 / 0.321 | 0.575 / 0.269 |
+
+Also measured: option-order flip rate 28% (CS) / 10.6% (voice); zh-CN to native zh-TW parallel-utterance flip rate 12.8%. Task framing differs from the sweep above (6-domain routing vs 20-way intent), so these complement rather than compare.
+
+### 3. Temperature refit for zh (official `temp_bucket` convention)
+
+Refit on zh-decision-bench (multilingual checkpoint; 50/50 fit/test split by item hash), clamped to `[0.5, 5]`:
+
+| bucket | T raw | T clamped | test ECE before -> after |
+|---|---|---|---|
+| choice:6-10 | 1.52 | 1.52 | 0.062 -> 0.093 |
+| choice:3-5 | 2.61 | 2.61 | 0.329 -> 0.352 |
+| score:3-5 | 1.33 | 1.33 | 0.118 -> 0.126 |
+| noul:2 | 10.23 | 5.00 | 0.180 -> 0.098 |
+
+The `noul:2` raw fit (10.2) exceeds `TEMP_MAX`: Chinese binary-judgment over-confidence outruns the shipped clamp's correction range (NLL still improves, 0.79 -> 0.55).

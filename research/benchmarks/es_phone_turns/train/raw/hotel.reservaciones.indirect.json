@@ -1,0 +1,27 @@
+{
+ "name": "hotel.reservaciones.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un hotel y necesita que se ocupe de su caso el área que atiende esto: «reservar, cambiar o cancelar una habitación». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, quisiera confirmar si mi reserva número 4521 sigue vigente para el próximo mes.",
+  "Me surge un inconveniente con la fecha de ingreso y necesito moverla una semana más tarde.",
+  "Lamento mucho las molestias, pero por motivos laborales ya no podré viajar, ¿cómo procedo con la cancelación?",
+  "Oiga, que me dieron una habitación doble y aquí en el cuarto solo hay una cama matrimonial grande.",
+  "Quería saber si puedo agregarle otra persona a mi reserva actual sin tener que rehacer todo.",
+  "Por favor, necesito que me anulen el cobro de la tarjeta porque ya no voy a estar allí.",
+  "Hola, estaba revisando mis detalles y veo que me asignaron piso bajo pero yo pedí alto.",
+  "Se me olvidó poner mi vuelo retrasado, ¿pueden avisarle al recepcionista para que espere mi llegada?",
+  "Quisiera cambiar el tipo de habitación porque estoy viajando con niños y necesito dos camas aparte.",
+  "Me acababan de confirmar la reserva y ahora me dicen que está llena, eso no puede ser verdad.",
+  "Necesito prorrogar mi estadía un día más si hay disponibilidad por favor.",
+  "Oiga pues, que llegué hasta aquí y me dijeron que tenía que pagar todo al momento sin crédito reservado.",
+  "Quiero solicitar que no limpien la habitación los días que esté ausente para mayor privacidad.",
+  "Tengo una reserva a nombre de mi hijo pero fui yo quien hizo el pedido, ¿hay problema?",
+  "Por favor, necesito una cama extra urgente porque vino un amigo imprevisto y nos quedamos cortos.",
+  "Estoy llamando porque me cancelaron la reserva sin previo aviso cuando tenía comprobante de pago.",
+  "Quisiera aprovechar para dejar nota sobre mi alergia a las plumas ya que vengo con traje de novia.",
+  "Oiga, que el sistema no me deja hacer el check-in online y necesito ayuda inmediata.",
+  "Necesito confirmar si el desayuno está incluido en la tarifa que pagué o debo abonar aparte cada día.",
+  "Por favor, ¿pueden guardarme las maletas unos días después de salir ya que mi vuelo es a medianoche?"
+ ]
+}

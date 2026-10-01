@@ -1,0 +1,27 @@
+{
+ "name": "municipalidad.permisos.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una municipalidad y necesita que se ocupe de su caso el área que atiende esto: «permisos de construcción y de operación». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, le llamo para solicitar el permiso de construcción para una ampliación en mi casa.",
+  "Hola, tengo un problema con mi permiso de operación porque me lo suspendieron sin previo aviso.",
+  "¡Qué tal! Necesito saber cómo proceder para renovar el permiso de funcionamiento de mi negocio.",
+  "Le escribo porque necesito agilizar la revisión del plano para mi construcción, va muy lento.",
+  "Oiga, bueno, estoy esperando que me den el visto bueno para operar legalmente y ya pasaron los meses.",
+  "Hola doctora, le cuento que me negaron el permiso de obra y quiero saber por qué.",
+  "Buenas, necesito presentar la documentación para el permiso de uso de suelo de mi local comercial.",
+  "Le molesto un momento, tengo una duda sobre las normas de seguridad para obtener el permiso de operación.",
+  "Oye compadre, ya completé los pagos pero no me entregan el permiso de construcción que corresponde.",
+  "Buenos días, quisiera tramitar la licencia de operación para mi restaurante que está en zona mixta.",
+  "Hola, necesito urgente el certificado de habilitación de obra para poder iniciar la construcción aprobada.",
+  "Le comento que estoy a la espera de la inspección técnica para liberar mi permiso de operación.",
+  "Qué bueno que atendió, le llamo para consultar los requisitos adicionales para ampliación de nave industrial.",
+  "Oiga, me urge saber si falta algún papel para aprobar el plano estructural de mi casa.",
+  "Buenas tardes, tengo un conflicto con la clasificación del terreno y necesito orientación para el permiso.",
+  "Hola, le llamo porque me pidieron actualizar los planos presentados hace seis meses para el permiso de obra.",
+  "Le informo que ya está lista la documentación completa para solicitar la renovación del permiso sanitario y operativo.",
+  "Oye, necesito agendar una cita para entregar los formularios del trámite de habilitación comercial.",
+  "Buenas, le cuento que me llegó un requerimiento sobre irregularidades en mi construcción sin licencia previa.",
+  "Hola, quisiera verificar el estado actual de mi solicitud de permiso de operación para farmacia."
+ ]
+}

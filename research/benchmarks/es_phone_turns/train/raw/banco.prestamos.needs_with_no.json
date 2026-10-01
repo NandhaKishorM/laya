@@ -1,0 +1,15 @@
+{
+ "name": "banco.prestamos.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y necesita que se ocupe de su caso el área que atiende esto: «préstamos y créditos: solicitarlos, requisitos, cuotas». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, no me aparece la opción para solicitar el crédito en la app y necesito urgente resolverlo",
+  "Oiga, pues yo no he recibido los requisitos que prometieron ayer por correo y estoy atrasado con esto",
+  "Mira, no me aprueban la cuota del préstamo a pesar de tener todo al día y eso me tiene preocupado",
+  "Disculpe, nunca me han enviado el estado de cuenta actualizado para poder verificar si pago bien mis mensualidades",
+  "Pues yo no tengo acceso a la información de mi tasa de interés y necesito que alguien me aclare",
+  "Oigan, no se está descontando automáticamente la cuota como acordamos y temo que afecte mi historial crediticio",
+  "Verá, no me explicaron bien los requisitos para refinanciar y ahora estoy confundido con las obligaciones",
+  "Hablo porque no puedo acceder al monto solicitado del crédito personal y necesito orientación inmediata"
+ ]
+}

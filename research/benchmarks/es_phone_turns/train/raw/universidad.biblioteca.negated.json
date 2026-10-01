@@ -1,0 +1,15 @@
+{
+ "name": "universidad.biblioteca.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y aclara que NO necesita el área de «biblioteca» (préstamo de libros y multas de la biblioteca): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Por favor, no me transfieran a biblioteca.",
+  "No necesito el área de préstamo de libros.",
+  "Oiga, evíteme pasar por bibliotecas, gracias.",
+  "No es multa, no estoy ahí por eso.",
+  "Solo una consulta, nada que ver con la biblio.",
+  "Por favor, a quien me contestó.",
+  "Necesito ayuda técnica, no servicios de biblioteca.",
+  "No tengo ningún inconveniente con el préstamo de libros."
+ ]
+}

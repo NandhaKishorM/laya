@@ -26,6 +26,9 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+node_modules/
+*.tgz
+.pytest_cache/
 .DS_Store
 .env
 .pypirc
@@ -73,3 +76,10 @@ site/
 # ruff's cache, and the JSON the research harnesses write on every run
 .ruff_cache/
 research/*_benchmark_results.json
+
+# local checkpoint weights, kept out of the tree
+# (fetch them with: python verify/checkpoints.py --fetch)
+models/
+
+# Local Chinese reliability runs (model copies, data, diagnostics)
+/runs/

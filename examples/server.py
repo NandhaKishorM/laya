@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import logging
 import os
 import re
 import time
@@ -56,9 +57,67 @@ from laya import Router
 # predating them the demo falls back to the 0.3.10 numbers rather than refusing to start,
 # and the fallback is dead code on every release since.
 import laya.serve as _laya_serve
+# `laya/__init__.py` already imports this module for `Router`, so naming it here costs nothing;
+# it is the source of the model registry the check below reads.
+import laya.router as _laya_router
 
 MAX_QUESTIONS = getattr(_laya_serve, "MAX_QUESTIONS", 64)
 MAX_STATE_CHARS = getattr(_laya_serve, "MAX_STATE_CHARS", 50_000)
+# The option budgets are bounds for the same reason the two above are: a choice or score
+# question encodes one sequence per option, and they share the head budget. Read with the
+# same getattr so this demo cannot drift from the server it demonstrates.
+MAX_CHOICE_OPTIONS = getattr(_laya_serve, "MAX_CHOICE_OPTIONS", 100)
+MAX_SCORE_LEVELS = getattr(_laya_serve, "MAX_SCORE_LEVELS", 32)
+MAX_TOTAL_OPTIONS = getattr(_laya_serve, "MAX_TOTAL_OPTIONS", 512)
+DEFAULT_MAX_TOKEN_BUDGET = getattr(_laya_serve, "DEFAULT_MAX_TOKEN_BUDGET", 8192)
+
+# The set of controls a client may put on the body, and the set that must be refused rather than
+# silently dropped -- both read from `laya.serve` so the demo cannot drift from the server it
+# demonstrates. `BODY_CONTROLS` is what the shipped `/v1/systemone` forwards; `BODY_REFUSALS` is
+# the hook surface (`hooks`, `hooks_raise`, `hooks_timeout`, `on_predict_start`, `on_predict_end`)
+# that a `ServerApp` cannot receive over HTTP but the Router does take as call arguments -- the
+# demo has no hook receiver, so those are refused the same way.
+BODY_CONTROLS = tuple(getattr(_laya_serve, "BODY_CONTROLS",
+                              ("model", "max_len", "head_max_len", "task", "lang",
+                               "lang_guess", "min_confidence")))
+BODY_REFUSALS = tuple(getattr(_laya_serve, "BODY_REFUSALS",
+                              ("hooks", "on_predict_start", "on_predict_end",
+                               "hooks_raise", "hooks_timeout")))
+
+
+# The sentence `laya.serve._state_length` answers a state it cannot measure with. Named because
+# `_limit_violation` hands this answer back as data for `/gui` rather than reading it off the
+# exception (`py/stack-trace-exposure`): one literal, two readers.
+_STATE_NOT_SERIALIZABLE = "'state' must be JSON-serializable"
+
+
+def _fallback_state_length(state: Any) -> int:
+    """`laya.serve._state_length` for a laya that predates it, 400 included.
+
+    The 400 is part of what it does: without it an unserializable state raises a bare `TypeError`
+    out of `_check_request_limits`, which `/predict` calls outside its own `try`, so a caller error
+    would arrive as a 500 where it used to be answered.
+    """
+    if isinstance(state, str):
+        return len(state)
+    try:
+        return len(json.dumps(state, ensure_ascii=False))
+    except (TypeError, ValueError, RecursionError):
+        raise HTTPException(status_code=400, detail=_STATE_NOT_SERIALIZABLE)
+
+
+# Borrowed, not restated: the state length has to be measured on the text the tokenizer sees,
+# which is `serialize_state(state)` and not `str(state)`. On states a client can send the two
+# differ by up to 2x upward (a `"` costs one character in `repr` and two in JSON) and 10x downward
+# (`repr` escapes a zero-width space to six characters and a non-BMP format character to ten, where
+# `ensure_ascii=False` writes the one character it is). See `laya.serve._state_length`. Same
+# `getattr` shape as the bounds above.
+_state_length = getattr(_laya_serve, "_state_length", _fallback_state_length)
+
+# The demo answers failures the way laya.serve does: a fixed message to the caller, the
+# traceback to this logger. Without it a 500 arrived as a bare status line in the server
+# output and the cause had to be reproduced in-process to be found at all.
+_log = logging.getLogger("laya.example-server")
 
 # --------------------------------------------------------------------------- #
 # Request / response models
@@ -67,17 +126,128 @@ MAX_STATE_CHARS = getattr(_laya_serve, "MAX_STATE_CHARS", 50_000)
 
 MODELS = tuple(getattr(laya, "DEFAULT_MODELS", {}) or ("english", "multilingual", "typed-decisions"))
 
+# `laya.router.normalise_name` is core's one model resolver: it trims, lower-cases, maps
+# `_ALIASES`, and then checks `DEFAULT_MODELS`. Every other surface hands a caller's model string
+# to it -- `laya/serve.py::_resolve_model`, `laya/cli.py::model_name`, `laya/mcp/tools.py` -- and
+# this demo was the exception: it compared the string against `MODELS` exactly, so `laya --model
+# laya` pinned the English checkpoint while the same value POSTed here answered 422.
+normalise_name = _laya_router.normalise_name
+
+# The other spellings a caller may use for a checkpoint, inverted from the router's own table and
+# filtered to aliases that still name one of the checkpoints above, so an alias cannot outlive its
+# target and a checkpoint added to core is pinnable by alias with no edit to this file. Read with
+# the same `getattr` as the bounds: if that table ever moves, `/models` reports no aliases and
+# validation still goes through the public resolver.
+MODEL_ALIASES = {
+    alias: target
+    for alias, target in (getattr(_laya_router, "_ALIASES", {}) or {}).items()
+    if target in MODELS
+}
+
+
+def _model_names() -> str:
+    """The accepted spellings, rendered from the two lists above rather than typed out."""
+    return "one of %s, or an alias core resolves (%s), in any casing; omit to auto-route." % (
+        " | ".join(sorted(MODELS)), ", ".join(sorted(MODEL_ALIASES)))
+
 
 def _check_model(v: Optional[str]) -> Optional[str]:
-    """`model` is optional; when given it must name a known checkpoint."""
+    """`model` is optional; when given it must name a checkpoint the way core names one.
+
+    Returns the canonical checkpoint name, so what reaches the Router and what the response
+    reports is the checkpoint rather than the spelling that named it. A blank string stays
+    "do not pin": the playground posts an empty field, and core's resolver raises on one.
+    """
     if v is None:
         return None
     v = v.strip()
     if not v:
         return None
-    if v not in MODELS:
-        raise ValueError(f"unknown model {v!r}; expected one of {sorted(MODELS)} (or omit it)")
-    return v
+    try:
+        return normalise_name(v)
+    except ValueError as error:
+        raise ValueError("%s (or omit it)" % error) from None
+
+
+# The four per-call controls the shipped `/v1/systemone` validates and forwards. Each of the
+# validators below reads the corresponding one out of `laya.serve` by `getattr`, falling back to
+# a body-compatible local so this demo still refuses a bad control on a laya that predates the
+# shared helpers. The fallbacks mirror `laya.serve` exactly, so the accepted range and the 422
+# detail a caller sees on `main` are the same as the shipped server's.
+_resolve_max_token_budget = getattr(_laya_serve, "_resolve_max_token_budget",
+                                    lambda: DEFAULT_MAX_TOKEN_BUDGET)
+
+
+def _fallback_refuse_body_refusals(body: Dict[str, Any]) -> None:
+    given = sorted(key for key in BODY_REFUSALS if key in body and body[key] is not None)
+    if given:
+        raise HTTPException(
+            status_code=422,
+            detail="%s run inside the server process and cannot be sent to this endpoint; "
+                   "install them where laya-serve runs, or drop them" % ", ".join(given))
+
+
+def _fallback_validate_budget_param(body: Dict[str, Any], key: str, max_cap: int):
+    if key not in body:
+        return None
+    val = body[key]
+    if val is None:
+        return None
+    if not isinstance(val, int) or isinstance(val, bool):
+        raise HTTPException(status_code=422, detail="%s must be an integer" % key)
+    if val <= 0:
+        raise HTTPException(status_code=422, detail="%s must be a positive integer" % key)
+    if val > max_cap:
+        raise HTTPException(status_code=422,
+                            detail="%s exceeds server limit (%d > %d)" % (key, val, max_cap))
+    return val
+
+
+def _fallback_validate_language_param(body: Dict[str, Any], key: str):
+    val = body.get(key)
+    if val is None:
+        return None
+    if not isinstance(val, str):
+        raise HTTPException(status_code=422,
+                            detail='%s must be a language code string such as "de", or null' % key)
+    return val
+
+
+def _fallback_validate_min_confidence(body: Dict[str, Any]):
+    if body.get("min_confidence") is None:
+        return None
+    from laya.confidence import check_min_confidence
+    try:
+        return check_min_confidence(body["min_confidence"])
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+
+
+_refuse_body_refusals = getattr(_laya_serve, "_refuse_body_refusals",
+                                _fallback_refuse_body_refusals)
+_validate_budget_param = getattr(_laya_serve, "_validate_budget_param",
+                                 _fallback_validate_budget_param)
+_validate_language_param = getattr(_laya_serve, "_validate_language_param",
+                                   _fallback_validate_language_param)
+_validate_min_confidence = getattr(_laya_serve, "_validate_min_confidence",
+                                   _fallback_validate_min_confidence)
+
+
+def _per_call_controls(req: Union["PredictRequest", "BatchRequest"]) -> Dict[str, Any]:
+    """The set-control dict to spread into a request -- absent controls stay absent.
+
+    `Router.predict` and `route_batch` read an absent argument as "inherit what the Router was
+    built with", so sending `None` here would override a deployment's `Router(lang_guess=...)`
+    or `Router(min_confidence=...)` with the demo's default. Only controls the client actually
+    sent -- including `min_confidence=0.0`, which is falsy but a real ask -- travel on.
+    """
+    out: Dict[str, Any] = {}
+    for key in ("model", "task", "lang", "lang_guess", "max_len", "head_max_len",
+                "min_confidence"):
+        value = getattr(req, key, None)
+        if value is not None:
+            out[key] = value
+    return out
 
 
 class Question(BaseModel):
@@ -119,14 +289,49 @@ class PredictRequest(BaseModel):
     questions: Dict[str, Question] = Field(..., min_length=1)
     model: Optional[str] = Field(
         default=None,
-        description="Optional checkpoint override: english | multilingual | typed-decisions. "
-                    "Omit to auto-route by language.",
+        description="Checkpoint override: " + _model_names(),
         examples=["multilingual"],
     )
     task: Optional[str] = None
     lang: Optional[str] = Field(default=None, description="ISO code hint; skips detection")
+    # The four controls laya.serve's `/v1/systemone` forwards on the same body and this demo did
+    # not accept. `max_len` / `head_max_len` override the token budget for one call;
+    # `lang_guess` is the soft hint that routes when `lang` is absent; `min_confidence` gates
+    # the answer to an abstention at core's threshold. All four are conditional at the call site:
+    # an absent key means "inherit what the Router was built with", which sending null would
+    # override with the server's default.
+    lang_guess: Optional[str] = Field(
+        default=None,
+        description="Soft ISO language hint that participates in routing; `lang` skips detection")
+    max_len: Optional[int] = Field(
+        default=None,
+        description="Per-call state token budget; capped by LAYA_MAX_TOKEN_BUDGET (%d by default)"
+                    % DEFAULT_MAX_TOKEN_BUDGET)
+    head_max_len: Optional[int] = Field(
+        default=None,
+        description="Per-call question-head token budget; capped by LAYA_MAX_TOKEN_BUDGET (%d "
+                    "by default)" % DEFAULT_MAX_TOKEN_BUDGET)
+    min_confidence: Optional[float] = Field(
+        default=None,
+        description="Abstain when answer_confidence is below this threshold (0.0-1.0)")
 
     _v_model = field_validator("model")(classmethod(lambda cls, v: _check_model(v)))
+
+    @model_validator(mode="before")
+    @classmethod
+    def _check_controls(cls, data: Any) -> Any:
+        # The hook surface, the budget caps, the language-code shape and the abstention range
+        # are checked by `laya.serve`'s own validators, called here on the raw body, so this
+        # demo refuses the same bodies with the same 422 detail as the server it demonstrates.
+        if isinstance(data, dict):
+            _refuse_body_refusals(data)
+            cap = _resolve_max_token_budget()
+            _validate_budget_param(data, "max_len", cap)
+            _validate_budget_param(data, "head_max_len", cap)
+            _validate_language_param(data, "lang")
+            _validate_language_param(data, "lang_guess")
+            _validate_min_confidence(data)
+        return data
 
     @field_validator("state")
     @classmethod
@@ -139,11 +344,43 @@ class PredictRequest(BaseModel):
 class BatchRequest(BaseModel):
     states: List[Union[str, Dict[str, Any], List[Any]]] = Field(..., min_length=1, max_length=64)
     questions: Dict[str, Question] = Field(..., min_length=1)
-    model: Optional[str] = None
+    model: Optional[str] = Field(default=None, description="Checkpoint override: "
+                                                           + _model_names())
     task: Optional[str] = None
     lang: Optional[str] = None
+    lang_guess: Optional[str] = Field(default=None, description="See PredictRequest.lang_guess")
+    max_len: Optional[int] = Field(default=None, description="See PredictRequest.max_len")
+    head_max_len: Optional[int] = Field(default=None, description="See PredictRequest.head_max_len")
+    min_confidence: Optional[float] = Field(default=None,
+                                            description="See PredictRequest.min_confidence")
+    # The batch shape, not a per-state control: these size and group the forward passes rather
+    # than saying what a state means. `sort_by_length` only reorders a batch that is split into
+    # more than one pass, so it needs a `batch_size` strictly between 1 and the state count.
+    batch_size: Optional[int] = Field(
+        default=None, ge=1,
+        description="states per forward pass; the default sends the whole batch in one pass")
+    sort_by_length: bool = Field(
+        default=False,
+        description="group similarly sized states in the same pass so each pads to a shorter "
+                    "maximum; needs a batch_size below the state count, never changes an answer")
 
     _v_model = field_validator("model")(classmethod(lambda cls, v: _check_model(v)))
+
+    @model_validator(mode="before")
+    @classmethod
+    def _check_controls(cls, data: Any) -> Any:
+        # Same four refusals and same four controls as PredictRequest -- a body that names
+        # `hooks` on a batch or a `max_len` past the cap is refused here the way the shipped
+        # server refuses it, not silently dropped on the way into the per-request dict.
+        if isinstance(data, dict):
+            _refuse_body_refusals(data)
+            cap = _resolve_max_token_budget()
+            _validate_budget_param(data, "max_len", cap)
+            _validate_budget_param(data, "head_max_len", cap)
+            _validate_language_param(data, "lang")
+            _validate_language_param(data, "lang_guess")
+            _validate_min_confidence(data)
+        return data
 
 
 # --------------------------------------------------------------------------- #
@@ -155,19 +392,27 @@ _CFG: Dict[str, Any] = {
     "preload": os.getenv("LAYA_PRELOAD", "1") not in ("0", "false", "False"),
     "device": os.getenv("LAYA_DEVICE") or None,
     "default": os.getenv("LAYA_DEFAULT_MODEL", "english"),
-    "max_loaded": int(os.getenv("LAYA_MAX_LOADED", "1")),
+    # None means "not asked for", so Router keeps its own default instead of this file
+    # carrying a copy of it. The copy here said 1, the number #172 measured at one
+    # checkpoint rebuild per alternating-language request, and #180 retired it in the
+    # library without this line following.
+    "max_loaded": (int(os.environ["LAYA_MAX_LOADED"])
+                   if os.getenv("LAYA_MAX_LOADED", "").strip() else None),
 }
+
+
+def _router_kwargs(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Constructor arguments for the app's Router, with the resident cap only when asked for."""
+    kwargs = {"preload": cfg["preload"], "device": cfg["device"], "default": cfg["default"]}
+    if cfg["max_loaded"] is not None:
+        kwargs["max_loaded"] = cfg["max_loaded"]
+    return kwargs
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global ROUTER
-    ROUTER = Router(
-        preload=_CFG["preload"],
-        device=_CFG["device"],
-        default=_CFG["default"],
-        max_loaded=_CFG["max_loaded"],
-    )
+    ROUTER = Router(**_router_kwargs(_CFG))
     yield
     ROUTER = None
 
@@ -193,7 +438,10 @@ def _router() -> Router:
 
 
 def _predict(state: Any, questions: Dict[str, Any], **kw: Any) -> Dict[str, Any]:
-    """The one place that calls Router.predict.
+    """The one place that calls Router.predict for a single state.
+
+    `/predict/batch` goes straight to `Router.predict_batch` instead, so a batch shares forward
+    passes; it reaches `_predict` only as the per-state fallback when the batch call fails.
 
     No lock needed here: Router's own model lifecycle (load/evict/LRU) is thread-safe as of
     laya 0.3.5 (fixes #95), and inference is deliberately left outside Router's internal lock
@@ -209,7 +457,13 @@ def _questions(model_map: Dict[str, Question]) -> Dict[str, Any]:
 
 @app.get("/health")
 def health(request: Request):
-    payload = {"status": "ok" if ROUTER is not None else "loading", "config": _CFG}
+    cfg = dict(_CFG)
+    if ROUTER is not None:
+        # The cap the running Router really holds, not the requested one: an unset
+        # LAYA_MAX_LOADED means "whatever the library defaults to", and this page has to
+        # say which of the two the process is living with.
+        cfg["max_loaded"] = ROUTER.max_loaded
+    payload = {"status": "ok" if ROUTER is not None else "loading", "config": cfg}
     return _health_page(payload) if _wants_html(request) else payload
 
 
@@ -218,6 +472,9 @@ def models(request: Request):
     payload = {
         "default": _CFG["default"],
         "allowed": sorted(MODELS),
+        # `allowed` alone would under-report the endpoint: a checkpoint may also be named by any
+        # alias core resolves, in any casing. Both lists come from laya.router, not from this file.
+        "aliases": dict(sorted(MODEL_ALIASES.items())),
         "models": {k: list(v) for k, v in (getattr(laya, "DEFAULT_MODELS", {}) or {}).items()},
     }
     return _models_page(payload) if _wants_html(request) else payload
@@ -234,30 +491,83 @@ def presets() -> Dict[str, Any]:
     return PRESETS
 
 
-def _check_request_limits(state: Any, questions: Dict[str, Any]) -> None:
-    """Refuse an oversized request, as `laya.serve._check_request_limits` does.
+def _limit_violation(state: Any, questions: Dict[str, Any]) -> Optional[tuple]:
+    """The first limit this request breaks, as `(status, message)`, or None when it fits.
+
+    Refuses an oversized request, as `laya.serve._check_request_limits` does.
 
     Laya encodes the state once per question, so cost is questions x state size,
-    collated into one tensor. The state length is measured exactly as laya.serve
-    measures it -- `len(v)` for a string, `len(str(v))` for a dict or list.
+    collated into one tensor, and a choice or score question adds one sequence per
+    option against a shared head budget. The state length comes from laya.serve's own
+    `_state_length` by `getattr`, so the two surfaces cannot disagree about what a state
+    *measures*, and the option counts exactly as it counts them, over `choice` and
+    `score` criteria only. They can still differ in which limit they report first: this
+    handler checks state size before the option budgets and `laya.serve` checks it after,
+    so a request violating both gets a different `detail` from each. That ordering is
+    unchanged here.
 
     Checked here rather than declared as pydantic constraints on the request models,
     for two reasons: a `Field(max_length=...)` violation is reported as 422 where
     laya.serve answers 413, and FastAPI's validation-error response includes the
     offending `input`, so rejecting a 5 MB state would echo all 5 MB back to the
     caller -- turning a size limit into an amplifier.
+
+    Returned rather than raised, and the message built here from the request and the constants:
+    `/gui` puts this line on a page, and taking it back off the exception is what code scanning
+    flags as stack-trace exposure (`py/stack-trace-exposure`). One place builds the words, so the
+    API and the page cannot disagree about them -- `_check_request_limits` raises the same pair
+    for the callers that answer in JSON.
     """
     if len(questions) > MAX_QUESTIONS:
-        raise HTTPException(
-            status_code=413,
-            detail="too many questions (%d > %d)" % (len(questions), MAX_QUESTIONS),
-        )
-    size = len(state) if isinstance(state, str) else len(str(state))
+        return 413, "too many questions (%d > %d)" % (len(questions), MAX_QUESTIONS)
+    try:
+        size = _state_length(state)
+    except HTTPException:
+        # `_state_length` answers a state it cannot measure with the fixed 400 named above. As
+        # data, for the same reason: the page shows this sentence, it does not read it.
+        return 400, _STATE_NOT_SERIALIZABLE
     if size > MAX_STATE_CHARS:
-        raise HTTPException(
-            status_code=413,
-            detail="state too large (%d > %d chars)" % (size, MAX_STATE_CHARS),
-        )
+        return 413, "state too large (%d > %d chars)" % (size, MAX_STATE_CHARS)
+    # Counted exactly as laya.serve counts them, and refused for the same reason. The
+    # increment belongs inside the two branches, as it does there: a `noul` question carries
+    # false/true criteria, which are option *texts* rather than answer options, so a total
+    # that added them would refuse a request laya.serve accepts. The state above is still
+    # encoded once per question, which is what the question-count bound is for.
+    total_options = 0
+    for qid, qdef in questions.items():
+        # This demo's request model hands these over as `Question` instances where
+        # `laya.serve` sees plain dicts, so read either shape. Mirroring serve's
+        # `if not isinstance(question, dict): continue` verbatim would skip every question
+        # here and leave the check dead.
+        if isinstance(qdef, dict):
+            qtype, crit = qdef.get("type"), qdef.get("criteria")
+        else:
+            qtype, crit = getattr(qdef, "type", None), getattr(qdef, "criteria", None)
+        if qtype == "choice" and isinstance(crit, (dict, list)):
+            count = len(crit)
+            total_options += count
+            if count > MAX_CHOICE_OPTIONS:
+                return 413, "too many choice options for %r (%d > %d)" % (qid, count, MAX_CHOICE_OPTIONS)
+        elif qtype == "score" and isinstance(crit, list):
+            count = len(crit)
+            total_options += count
+            if count > MAX_SCORE_LEVELS:
+                return 413, "too many score levels for %r (%d > %d)" % (qid, count, MAX_SCORE_LEVELS)
+    if total_options > MAX_TOTAL_OPTIONS:
+        return 413, ("too many answer options across questions (%d > %d)"
+                     % (total_options, MAX_TOTAL_OPTIONS))
+    return None
+
+
+def _check_request_limits(state: Any, questions: Dict[str, Any]) -> None:
+    """Refuse an oversized request: the 413 (or 400) `laya.serve` answers with.
+
+    The JSON surfaces raise and let FastAPI write the response; the sentence is the one
+    `_limit_violation` built, so `/predict` and the `/gui` page answer with the same words.
+    """
+    violation = _limit_violation(state, questions)
+    if violation:
+        raise HTTPException(status_code=violation[0], detail=violation[1])
 
 
 @app.post("/predict")
@@ -267,16 +577,17 @@ def predict(req: PredictRequest) -> Dict[str, Any]:
         return _predict(
             req.state,
             _questions(req.questions),
-            model=req.model,
-            task=req.task,
-            lang=req.lang,
+            **_per_call_controls(req),
         )
     except HTTPException:
         raise
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:  # inference failure
-        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}") from exc
+    except Exception:  # inference failure -- the policy laya.serve follows: the caller
+        # gets a fixed message, never the exception text, which describes the deployment
+        # (paths, libraries, memory) rather than the request.
+        _log.exception("prediction failed")
+        raise HTTPException(status_code=500, detail="prediction failed")
 
 
 @app.post("/predict/batch")
@@ -284,14 +595,48 @@ def predict_batch(req: BatchRequest) -> Dict[str, Any]:
     for state in req.states:
         _check_request_limits(state, req.questions)
     questions = _questions(req.questions)
-    results: List[Dict[str, Any]] = []
-    for i, state in enumerate(req.states):
-        try:
-            results.append(
-                _predict(state, questions, model=req.model, task=req.task, lang=req.lang)
-            )
-        except Exception as exc:
-            results.append({"index": i, "error": f"{type(exc).__name__}: {exc}"})
+    # Only the controls that were actually set: `route_batch` reads them with `.get`, so an
+    # omitted key and an explicit null mean the same thing, and the request dicts stay minimal.
+    # `min_confidence` is the exception: `Router.predict_batch` takes it as a call argument, not
+    # a per-request key, so `route_batch` would drop it from the request dict. On the batch path
+    # it moves below into `shape`; on the per-state fallback below it rejoins the controls, since
+    # `Router.predict` does read it as a call argument.
+    controls = {k: v for k, v in _per_call_controls(req).items() if k != "min_confidence"}
+    requests = [{"state": state, "questions": questions, **controls} for state in req.states]
+    # The batch shape is an argument of the batch call, not a control that travels per request: the
+    # fallback below answers one state at a time, where there is no group to size or reorder. Sent
+    # only when set, so a request that asks for neither keeps making the call it always made.
+    shape = {}
+    if req.batch_size is not None:
+        shape["batch_size"] = req.batch_size
+    if req.sort_by_length:
+        shape["sort_by_length"] = True
+    if req.min_confidence is not None:
+        shape["min_confidence"] = req.min_confidence
+    try:
+        # One call, not one per state: `Router.predict_batch` routes the whole batch, groups it by
+        # checkpoint and shares a forward pass across states that carry the same question schema --
+        # which is exactly this endpoint, since `BatchRequest` holds one `questions` map.
+        results: List[Dict[str, Any]] = list(_router().predict_batch(requests, **shape))
+    except Exception:
+        # The batch fails as a unit, so a single bad state would otherwise cost every other state
+        # its answer. Fall back to the per-state path to keep the documented envelope: N results,
+        # with `{"index": i, "error": ...}` only where a state genuinely failed.
+        results = []
+        # On the fallback `Router.predict` takes min_confidence as a call argument, so it rejoins
+        # the controls the batch path pulled out above.
+        per_state = dict(controls)
+        if req.min_confidence is not None:
+            per_state["min_confidence"] = req.min_confidence
+        for i, state in enumerate(req.states):
+            try:
+                results.append(_predict(state, questions, **per_state))
+            except HTTPException as item_exc:  # a caller-facing status (413, 422, 503) is safe
+                results.append({"index": i, "error": "HTTPException: %d: %s"
+                                % (item_exc.status_code, item_exc.detail)})
+            except Exception:  # the index names the item; the cause stays in the log
+                _log.exception("prediction failed for batch item %d", i)
+                results.append({"index": i, "error": "prediction failed"})
     return {"count": len(results), "results": results}
 
 
@@ -3207,9 +3552,12 @@ def _models_page(payload: Dict[str, Any]) -> HTMLResponse:
     return _page(
         "Laya models",
         "Models",
-        "<div class='doc-head'><h1>Models</h1><span class='doc-sub'>Three checkpoints, one router</span></div>"
-        "<p class='lead'>Leave <code>model</code> out and the router picks a checkpoint by language. "
-        "Send it to pin one; any other value is rejected with a 422.</p>"
+        "<div class='doc-head'><h1>Models</h1><span class='doc-sub'>%d checkpoints, one router"
+        "</span></div>" % len(payload["allowed"])
+        + "<p class='lead'>Leave <code>model</code> out and the router picks a checkpoint by language. "
+        "Send it to pin one: a checkpoint name, or any alias core resolves -- "
+        + ", ".join("<code>%s</code>" % escape(alias) for alias in payload["aliases"])
+        + " -- in any casing. Any other value is rejected with a 422.</p>"
         + cards
         + "<div class='foot'><a class='btn line' href='/'>Open the playground</a>"
         "<a class='btn' href='/docs'>API docs</a></div>",
@@ -3233,6 +3581,10 @@ _ENDPOINTS = (
 def _health_page(payload: Dict[str, Any]) -> HTMLResponse:
     cfg = payload.get("config", {})
     ok = payload.get("status") == "ok"
+    # Until the lifespan has built a Router there is no resident count to state, and
+    # guessing one here is how a default this file no longer owns ends up printed as fact.
+    resident = ("" if not cfg.get("max_loaded")
+                else "; up to %s kept in memory" % escape(str(cfg["max_loaded"])))
     rows = "".join(
         f"<dt>{escape(k)}</dt><dd>{escape(str(v if v is not None else 'auto'))}</dd>"
         for k, v in cfg.items()
@@ -3251,8 +3603,7 @@ def _health_page(payload: Dict[str, Any]) -> HTMLResponse:
         f"<section class='panel'><div class='pb'><div class='status{'' if ok else ' wait'}'>"
         f"{'Ready' if ok else 'Loading'}</div>"
         f"<p class='muted' style='margin:4px 0 0'>Checkpoints are "
-        f"{'preloaded' if cfg.get('preload') else 'loaded on demand'}; up to "
-        f"{escape(str(cfg.get('max_loaded', 1)))} kept in memory.</p></div></section>"
+        f"{'preloaded' if cfg.get('preload') else 'loaded on demand'}{resident}.</p></div></section>"
         f"<section class='panel'><div class='ph'><h2 class='t'>Configuration</h2></div><dl class='kvt'>{rows}</dl>"
         "<div class='pb muted' style='border-top:1px solid var(--line)'>Override with flags "
         "(<code>--device</code>, <code>--no-preload</code>, <code>--max-loaded</code>) or env vars "
@@ -3312,7 +3663,12 @@ def _error_lines(exc: Exception) -> List[str]:
         return lines
     if isinstance(exc, json.JSONDecodeError):
         return [f"Invalid JSON: {exc.msg} at line {exc.lineno}, column {exc.colno}"]
-    return [str(exc)]
+    # An unclassified failure: the caller gets a fixed line, the cause goes to the log. Its text
+    # names paths and libraries -- it describes the deployment, not the request -- and reading it
+    # back out is what code scanning flags (py/stack-trace-exposure). The branches above carry the
+    # caller's own field names and a JSON position, addressed to whoever fixes the request.
+    _log.warning("unreadable request", exc_info=exc)
+    return ["The request could not be read."]
 
 
 def _gui_error(title: str, lines: List[str], hint: str) -> HTMLResponse:
@@ -3344,12 +3700,18 @@ async def gui_predict(request: Request) -> HTMLResponse:
     except (json.JSONDecodeError, PydanticValidationError, ValueError) as exc:
         return _gui_error("Bad request", _error_lines(exc), "Fix the request and send it again.")
 
-    try:
-        _check_request_limits(req.state, req.questions)
-    except HTTPException as exc:
-        return _gui_error("Request too large", [str(exc.detail)],
-                          f"The server takes up to {MAX_QUESTIONS} questions and a state of up to "
-                          f"{MAX_STATE_CHARS:,} characters. Split the request or shorten the state.")
+    violation = _limit_violation(req.state, req.questions)
+    if violation:
+        # Branch on the status: this check answers 400 as well as 413, and a size hint under the
+        # heading "Request too large" would describe the wrong problem. The line is the one the
+        # check built from the request -- not text read back off the exception it would have
+        # raised, which is what code scanning flags (py/stack-trace-exposure).
+        status, message = violation
+        if status == 413:
+            return _gui_error("Request too large", [message],
+                              f"The server takes up to {MAX_QUESTIONS} questions and a state of up to "
+                              f"{MAX_STATE_CHARS:,} characters. Split the request or shorten the state.")
+        return _gui_error("Bad request", [message], "Fix the request and send it again.")
     questions = _questions(req.questions)
     try:
         started = time.perf_counter()
@@ -3358,8 +3720,9 @@ async def gui_predict(request: Request) -> HTMLResponse:
             model=req.model, task=req.task, lang=req.lang,
         )
         res["_elapsed"] = time.perf_counter() - started
-    except Exception as exc:
-        return _gui_error("Prediction failed", [f"{type(exc).__name__}: {exc}"],
+    except Exception:
+        _log.exception("prediction failed (gui)")
+        return _gui_error("Prediction failed", ["The server could not complete this prediction."],
                           "Nothing was answered. The server log has the full trace.")
 
     answers = res.get("answers") or {}
@@ -3404,7 +3767,8 @@ def main() -> None:
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--device", default=_CFG["device"], help="cuda, cpu, mps ...")
     p.add_argument("--default-model", default=_CFG["default"])
-    p.add_argument("--max-loaded", type=int, default=_CFG["max_loaded"])
+    p.add_argument("--max-loaded", type=int, default=_CFG["max_loaded"],
+                   help="checkpoints kept resident (default: LAYA_MAX_LOADED, else laya's own)")
     p.add_argument("--no-preload", action="store_true", help="load checkpoints lazily")
     p.add_argument("--reload", action="store_true")
     args = p.parse_args()
@@ -3423,7 +3787,12 @@ def main() -> None:
         # reimport picks up what was actually asked for on the command line.
         os.environ["LAYA_PRELOAD"] = "1" if _CFG["preload"] else "0"
         os.environ["LAYA_DEFAULT_MODEL"] = _CFG["default"]
-        os.environ["LAYA_MAX_LOADED"] = str(_CFG["max_loaded"])
+        if _CFG["max_loaded"] is None:
+            # "not asked for" has to stay unpushed: writing str(None) here would land on the
+            # int() above in the reimported process and stop the server at import.
+            os.environ.pop("LAYA_MAX_LOADED", None)
+        else:
+            os.environ["LAYA_MAX_LOADED"] = str(_CFG["max_loaded"])
         if _CFG["device"]:
             os.environ["LAYA_DEVICE"] = _CFG["device"]
 

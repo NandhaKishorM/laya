@@ -1,0 +1,22 @@
+{
+ "name": "restaurante.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a un restaurante: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, ¿a qué hora cierran hoy?",
+  "Hola, ¿aceptan tarjeta de crédito o es solo efectivo?",
+  "Me gustaría saber si tienen mesa para cinco personas.",
+  "Disculpe, ¿en la calle 5 están abiertos ahora mismo?",
+  "¿Hacen reservaciones por aquí o tengo que llamar a otra línea?",
+  "Buenas, ¿el lugar tiene parqueo seguro o lo dejan en la calle?",
+  "Oiga, ¿qué día cierran para el feriado de Semana Santa?",
+  "Hola, ¿necesito llevar identificación para entrar al local?",
+  "Perdone, ¿están abriendo la sucursal de San Pedro Sula ya?",
+  "¿El menú tiene opciones vegetarianas o son todos a base de carne?",
+  "Buenos días, ¿cobran propina automática por grupo grande?",
+  "Hola, ¿pueden hacer delivery a mi casa o es solo recogida?",
+  "Disculpe, ¿aceptan pago con billeteras digitales como Nequi?",
+  "Mira, ¿qué tan seguido cambian el menú del día?",
+  "Hola, ¿hay capacidad ahora mismo o hay que esperar mucho rato?"
+ ]
+}

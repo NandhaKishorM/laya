@@ -1,0 +1,27 @@
+{
+ "name": "inmobiliaria.compraventa.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una inmobiliaria y necesita que se ocupe de su caso el área que atiende esto: «comprar o vender una propiedad». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, necesito vender mi casa en El Paraíso pero el comprador se echó pa atrás y ya pagué la arras.",
+  "Oiga, soy de Santa Ana, tengo una parcela que quiero meterle a la venta urgentemente, ¿me guían?",
+  "Mire, estoy queriendo comprar un apartamento en el centro pero el dueño no me da las llaves ni me devuelve el depósito.",
+  "Qué tal, disculpen la molestia, necesito cancelar unos impuestos prediales pendientes para poder tramitar la venta de mi terreno.",
+  "Pues vea, me dicen que hay un problema con los títulos de herencia en una propiedad que estoy por comprar y no sé qué hacer.",
+  "Hola, buenas tardes, quiero retirar la publicación de mi casa porque ya vendí por cuenta propia ayer mismo.",
+  "Oiga, ¿podrían ayudarme? Compré una casa hace un año y resultó que estaba hipotecada desde antes con otro banco.",
+  "Buenas, vengo por lo del contrato de compraventa que firmamos la semana pasada, quiero corregirle una dirección mal puesta.",
+  "Mira, necesito urgente un avalúo comercial para poder refinanciar la propiedad que tengo en Tegucigalpa.",
+  "Disculpe, estoy vendiendo mi local comercial pero el notario me dice que falta autorizar la junta directiva de la sociedad dueña.",
+  "Oiga, pues resulta que al firmar la escritura apareció un embargo que no conocíamos y nos dejó helados los compradores.",
+  "Buenas tardes, quiero contratar sus servicios para buscar un terreno industrial grande en la zona norte, nada más eso.",
+  "Mire, vendí mi finca hace tres meses pero aún no me ha llegado el dinero del comprador y ya pasaron las fechas pactadas.",
+  "Qué le cuento, necesito sacar la escritura definitiva de una casa que compramos en efectivo hace quince años sin papeles.",
+  "Hola, oiga, tengo un problema con los vecinos que están ocupando un pasillo de uso común en el edificio donde vivo.",
+  "Pues vea, quiero comprar esa propiedad que tienen en venta pero me gustaría saber si se pueden pagar a plazos directamente con ustedes.",
+  "Buenas, disculpen, necesito una carta de no adeudo para poder entregarla al banco que me va a dar el crédito hipotecario.",
+  "Oiga, le comento que la empresa donde trabajaba me vendió una casa y ahora dicen que el contrato es nulo porque no estaba autorizado.",
+  "Mira, estoy queriendo hacer una partición de bienes con mis hermanos para vender cada quien su parte del terreno familiar.",
+  "Qué tal, necesito agendar una cita lo más pronto posible para revisar la documentación completa de un lote que encontré en internet."
+ ]
+}

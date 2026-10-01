@@ -1,0 +1,15 @@
+{
+ "name": "agencia.cambios.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una agencia de viajes y aclara que NO necesita el área de «cambios» (cambiar o cancelar un viaje ya comprado): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No, gracias, no necesito cambiar nada, solo quiero preguntar por los precios.",
+  "Aquí no estoy buscando cancelar mi viaje, por favor hablemos de otra cosa.",
+  "No me interesa el área de cambios, tengo mi reserva lista y solo una duda.",
+  "No llamo para modificar mi boleto, deseo atención general únicamente.",
+  "No es problema de cambio ni cancelación, quiero hacer una consulta simple.",
+  "Aquí no requiero servicios de modificación, por favor atienda mi pregunta actual.",
+  "No busco alterar mi viaje, solo necesito información sobre el destino.",
+  "No necesito pasar por el departamento de cambios, hablemos directamente."
+ ]
+}

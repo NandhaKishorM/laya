@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.casilleros.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y pide que la comuniquen con el área de «casilleros» (abrir un casillero para recibir compras hechas por internet). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Por favor, ¿me podrían pasar con casilleros?",
+  "Oiga, buenas tardes, requiero hablar con el área de casilleros para abrir uno.",
+  "¿Casilleros? Sí, eso es lo que busco, gracias.",
+  "Que me conecten con Casilleros por favor, necesito urgencia.",
+  "Mire, le comento que quiero contratar un casillero, ¿me ubica?",
+  "Sí, sígame, sírvame con el área de Casilleros.",
+  "Bueno, bueno, ya entiendo, pero lo que necesito es hablar con casilleros.",
+  "O sea, por favor comuníqueme con Casilleros."
+ ]
+}

@@ -1,0 +1,515 @@
+{
+ "meta": {
+  "model": "/model",
+  "subfolder": null,
+  "rung": "es_criteria",
+  "dataset": "independent_clinic",
+  "lang": "es",
+  "calibration": null,
+  "laya": "0.3.22",
+  "torch": "2.14.0+cpu",
+  "threads": 4,
+  "device": "cpu",
+  "machine": "aarch64",
+  "system": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+  "omp_num_threads": "4",
+  "load_ms": 3605.9275009902194
+ },
+ "summary": {
+  "n": 20,
+  "accuracy": 0.9,
+  "macro_f1": 0.8873015873015873,
+  "ece": 0.091645,
+  "mean_confidence": 0.856755,
+  "majority_baseline": 0.25,
+  "wrong_actions": 0,
+  "by_tag": {
+   "direct": {
+    "n": 1,
+    "accuracy": 1.0
+   },
+   "need-with-no": {
+    "n": 13,
+    "accuracy": 0.9230769230769231
+   },
+   "redirected": {
+    "n": 2,
+    "accuracy": 0.5
+   },
+   "refused": {
+    "n": 4,
+    "accuracy": 1.0
+   }
+  },
+  "confusion": {
+   "citas->ninguno": 1,
+   "emergencias->ninguno": 1
+  },
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 14,
+    "coverage": 0.7,
+    "action_recall": 0.875,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.6,
+    "fast": 14,
+    "coverage": 0.7,
+    "action_recall": 0.875,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.7,
+    "fast": 14,
+    "coverage": 0.7,
+    "action_recall": 0.875,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.8,
+    "fast": 13,
+    "coverage": 0.65,
+    "action_recall": 0.8125,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.9,
+    "fast": 1,
+    "coverage": 0.05,
+    "action_recall": 0.0625,
+    "wrong": 0,
+    "precision": 1.0
+   },
+   {
+    "threshold": 0.95,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": 0.0,
+    "wrong": 0,
+    "precision": null
+   },
+   {
+    "threshold": 0.99,
+    "fast": 0,
+    "coverage": 0.0,
+    "action_recall": 0.0,
+    "wrong": 0,
+    "precision": null
+   }
+  ],
+  "latency_ms": {
+   "p50": 123.85529099265113,
+   "p95": 135.6124589801766,
+   "min": 114.64124999474734
+  },
+  "borderline": []
+ },
+ "records": [
+  {
+   "id": "il-001",
+   "text": "No, no, no me pasen a esa caja ni al departamento de turnos.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8846,
+   "probabilities": {
+    "citas": 0.019,
+    "laboratorio": 0.0188,
+    "farmacia": 0.0183,
+    "emergencias": 0.0195,
+    "recepcion": 0.0195,
+    "colgar": 0.0202,
+    "ninguno": 0.8846
+   },
+   "latency_ms": 130.4769170237705
+  },
+  {
+   "id": "il-002",
+   "text": "Hola, quería ver si se puede arreglar mi cita porque no puedo ir a la clínica",
+   "gold": "citas",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "citas",
+   "confidence": 0.8691,
+   "probabilities": {
+    "citas": 0.8691,
+    "laboratorio": 0.0207,
+    "farmacia": 0.0223,
+    "emergencias": 0.022,
+    "recepcion": 0.021,
+    "colgar": 0.0229,
+    "ninguno": 0.0221
+   },
+   "latency_ms": 125.31016598222777
+  },
+  {
+   "id": "il-003",
+   "text": "Buenas tardes, necesito saber si hago trámite para cambiar o anular la cita ya que nunca me llegó la confirmación",
+   "gold": "citas",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "citas",
+   "confidence": 0.8724,
+   "probabilities": {
+    "citas": 0.8724,
+    "laboratorio": 0.0212,
+    "farmacia": 0.0209,
+    "emergencias": 0.0216,
+    "recepcion": 0.0206,
+    "colgar": 0.0216,
+    "ninguno": 0.0217
+   },
+   "latency_ms": 135.48095797887072
+  },
+  {
+   "id": "il-004",
+   "text": "Quisiera pedir ayuda porque no puedo ir a mi consulta médica y quiero cancelarla o cambiarla",
+   "gold": "citas",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "citas",
+   "confidence": 0.8684,
+   "probabilities": {
+    "citas": 0.8684,
+    "laboratorio": 0.0222,
+    "farmacia": 0.0243,
+    "emergencias": 0.0217,
+    "recepcion": 0.0206,
+    "colgar": 0.0217,
+    "ninguno": 0.021
+   },
+   "latency_ms": 123.42854199232534
+  },
+  {
+   "id": "il-005",
+   "text": "Oiga, mira, por favor, no la pasen para ahí, a lo del laboratorio, no quiero que me hagan análisis de nada, ni nada de eso.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8746,
+   "probabilities": {
+    "citas": 0.0204,
+    "laboratorio": 0.0204,
+    "farmacia": 0.02,
+    "emergencias": 0.0212,
+    "recepcion": 0.0211,
+    "colgar": 0.0222,
+    "ninguno": 0.8746
+   },
+   "latency_ms": 156.1631669756025
+  },
+  {
+   "id": "il-006",
+   "text": "Soy yo, no me pasen al área de laboratorio, por favor, no quiero exámenes ni nada.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8638,
+   "probabilities": {
+    "citas": 0.0255,
+    "laboratorio": 0.0216,
+    "farmacia": 0.0225,
+    "emergencias": 0.0222,
+    "recepcion": 0.0223,
+    "colgar": 0.0221,
+    "ninguno": 0.8638
+   },
+   "latency_ms": 126.08129100408405
+  },
+  {
+   "id": "il-007",
+   "text": "Necesito que revisen los resultados, por favor, ya no me llegó la información que me mandaron.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8654,
+   "probabilities": {
+    "citas": 0.0225,
+    "laboratorio": 0.8654,
+    "farmacia": 0.0223,
+    "emergencias": 0.0232,
+    "recepcion": 0.0216,
+    "colgar": 0.0223,
+    "ninguno": 0.0227
+   },
+   "latency_ms": 123.85529099265113
+  },
+  {
+   "id": "il-008",
+   "text": "Oigan, urgente: me dijeron que me envíen los exámenes pero no me funciona el sistema.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8866,
+   "probabilities": {
+    "citas": 0.0189,
+    "laboratorio": 0.8866,
+    "farmacia": 0.0186,
+    "emergencias": 0.0197,
+    "recepcion": 0.0183,
+    "colgar": 0.0186,
+    "ninguno": 0.0193
+   },
+   "latency_ms": 121.85229099122807
+  },
+  {
+   "id": "il-009",
+   "text": "¿Alguien ahí me puede llamar para explicarme los resultados? No me puedo mover para ir.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8671,
+   "probabilities": {
+    "citas": 0.0226,
+    "laboratorio": 0.8671,
+    "farmacia": 0.0219,
+    "emergencias": 0.0219,
+    "recepcion": 0.0223,
+    "colgar": 0.022,
+    "ninguno": 0.0221
+   },
+   "latency_ms": 129.38958400627598
+  },
+  {
+   "id": "il-010",
+   "text": "Quiero que me atiendan con mis exámenes, no me funciona lo que me enviaron ayer.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8914,
+   "probabilities": {
+    "citas": 0.0188,
+    "laboratorio": 0.8914,
+    "farmacia": 0.0178,
+    "emergencias": 0.0178,
+    "recepcion": 0.0177,
+    "colgar": 0.0178,
+    "ninguno": 0.0187
+   },
+   "latency_ms": 120.00179197639227
+  },
+  {
+   "id": "il-011",
+   "text": "Por favor, necesitan revisar mis análisis, nunca me han dado el resultado que me corresponde.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "laboratorio",
+   "confidence": 0.8621,
+   "probabilities": {
+    "citas": 0.0231,
+    "laboratorio": 0.8621,
+    "farmacia": 0.0231,
+    "emergencias": 0.0243,
+    "recepcion": 0.0222,
+    "colgar": 0.0223,
+    "ninguno": 0.0228
+   },
+   "latency_ms": 122.53145803697407
+  },
+  {
+   "id": "il-012",
+   "text": "Quiero hablar con atención humana, no con la farmacia, por favor.",
+   "gold": "recepcion",
+   "tags": [
+    "redirected"
+   ],
+   "predicted": "recepcion",
+   "confidence": 0.8548,
+   "probabilities": {
+    "citas": 0.0234,
+    "laboratorio": 0.0232,
+    "farmacia": 0.0241,
+    "emergencias": 0.0242,
+    "recepcion": 0.8548,
+    "colgar": 0.0254,
+    "ninguno": 0.025
+   },
+   "latency_ms": 118.76320804003626
+  },
+  {
+   "id": "il-013",
+   "text": "Bueno, hola, soy la señora Rodríguez, tengo una inquietud con el medicamento que me dejaron recetado, no me llegó.",
+   "gold": "farmacia",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "farmacia",
+   "confidence": 0.8551,
+   "probabilities": {
+    "citas": 0.024,
+    "laboratorio": 0.0252,
+    "farmacia": 0.8551,
+    "emergencias": 0.0253,
+    "recepcion": 0.0232,
+    "colgar": 0.0234,
+    "ninguno": 0.0238
+   },
+   "latency_ms": 135.6124589801766
+  },
+  {
+   "id": "il-014",
+   "text": "Bueno, hola, soy el señor de la mesa cuatro, me dejaron recetar unas cosas pero nunca me las dieron.",
+   "gold": "farmacia",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "farmacia",
+   "confidence": 0.8596,
+   "probabilities": {
+    "citas": 0.0222,
+    "laboratorio": 0.0247,
+    "farmacia": 0.8596,
+    "emergencias": 0.0234,
+    "recepcion": 0.0226,
+    "colgar": 0.0236,
+    "ninguno": 0.0238
+   },
+   "latency_ms": 129.8653760459274
+  },
+  {
+   "id": "il-015",
+   "text": "Oiga, ¿me pueden pasar con el médico de urgencias?",
+   "gold": "emergencias",
+   "tags": [
+    "direct"
+   ],
+   "predicted": "emergencias",
+   "confidence": 0.9185,
+   "probabilities": {
+    "citas": 0.0134,
+    "laboratorio": 0.0124,
+    "farmacia": 0.0137,
+    "emergencias": 0.9185,
+    "recepcion": 0.0137,
+    "colgar": 0.0141,
+    "ninguno": 0.0142
+   },
+   "latency_ms": 120.82262500189245
+  },
+  {
+   "id": "il-016",
+   "text": "Escúcheme, yo no quiero ser atendido en la emergencia.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8599,
+   "probabilities": {
+    "citas": 0.0262,
+    "laboratorio": 0.022,
+    "farmacia": 0.0221,
+    "emergencias": 0.0246,
+    "recepcion": 0.0225,
+    "colgar": 0.0228,
+    "ninguno": 0.8599
+   },
+   "latency_ms": 116.57833401113749
+  },
+  {
+   "id": "il-017",
+   "text": "Quiero consulta pero no quiero que me pongan en la sala de emergencias.",
+   "gold": "citas",
+   "tags": [
+    "redirected"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.8338,
+   "probabilities": {
+    "citas": 0.031,
+    "laboratorio": 0.0265,
+    "farmacia": 0.0271,
+    "emergencias": 0.0278,
+    "recepcion": 0.0264,
+    "colgar": 0.0274,
+    "ninguno": 0.8338
+   },
+   "latency_ms": 121.47358298534527
+  },
+  {
+   "id": "il-018",
+   "text": "Ayúdeme rápido, por favor, no puedo moverme de la cama",
+   "gold": "emergencias",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "ninguno",
+   "confidence": 0.7038,
+   "probabilities": {
+    "citas": 0.0391,
+    "laboratorio": 0.0376,
+    "farmacia": 0.0415,
+    "emergencias": 0.09,
+    "recepcion": 0.0454,
+    "colgar": 0.0427,
+    "ninguno": 0.7038
+   },
+   "latency_ms": 120.54220895515755
+  },
+  {
+   "id": "il-019",
+   "text": "Hable conmigo, no quiero hablar con la grabación.",
+   "gold": "recepcion",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "recepcion",
+   "confidence": 0.7802,
+   "probabilities": {
+    "citas": 0.0318,
+    "laboratorio": 0.0358,
+    "farmacia": 0.033,
+    "emergencias": 0.0366,
+    "recepcion": 0.7802,
+    "colgar": 0.0326,
+    "ninguno": 0.05
+   },
+   "latency_ms": 114.64124999474734
+  },
+  {
+   "id": "il-020",
+   "text": "No quiero hablar con el sistema, quiero hablar con el humano.",
+   "gold": "recepcion",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "recepcion",
+   "confidence": 0.8639,
+   "probabilities": {
+    "citas": 0.0222,
+    "laboratorio": 0.0232,
+    "farmacia": 0.0223,
+    "emergencias": 0.0225,
+    "recepcion": 0.8639,
+    "colgar": 0.0228,
+    "ninguno": 0.0231
+   },
+   "latency_ms": 125.74287399183959
+  }
+ ]
+}

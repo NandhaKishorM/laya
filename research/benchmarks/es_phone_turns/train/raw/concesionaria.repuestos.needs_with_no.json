@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.repuestos.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y necesita que se ocupe de su caso el área que atiende esto: «piezas y repuestos para el carro». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buen día, oiga, necesito saber si tienen un alternador para un Toyota Corolla 2015 porque no me enciende el motor.",
+  "Le llamo es que no me llegaron los frenos que pedí la semana pasada y ya tengo la carrocería desarmada.",
+  "Hola, ¿me pueden ayudar con una bomba de agua? No me calienta el auto y temo que se dañe todo.",
+  "Oiga pues, no tengo el manual del dueño para armar mi propia pieza y necesito saber dónde conseguirla urgente.",
+  "Le consultaba si venden suelto un juego de correas porque no me vienen con las otras partes en la caja.",
+  "Mira, no me han contestado el correo que mandé sobre la garantía del filtro y quiero resolverlo por teléfono.",
+  "Disculpa, nunca me explicaron cómo se pone esta válvula EGR y necesito guía antes de comprarla para mi camioneta.",
+  "Oye hermano, no puedo conseguir un sensor de oxígeno genérico que le quede a mi Honda Civic y pregunto si ustedes tienen el original."
+ ]
+}

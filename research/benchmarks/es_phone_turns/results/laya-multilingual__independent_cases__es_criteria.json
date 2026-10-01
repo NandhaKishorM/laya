@@ -1,0 +1,709 @@
+{
+ "meta": {
+  "model": "convaiinnovations/laya-multilingual",
+  "subfolder": null,
+  "rung": "es_criteria",
+  "dataset": "independent_cases",
+  "lang": "es",
+  "calibration": null,
+  "laya": "0.3.22",
+  "torch": "2.14.0+cpu",
+  "threads": 4,
+  "device": "cpu",
+  "machine": "aarch64",
+  "system": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+  "omp_num_threads": "4",
+  "load_ms": 3800.0286259921268
+ },
+ "summary": {
+  "n": 31,
+  "accuracy": 0.41935483870967744,
+  "macro_f1": 0.3185964912280702,
+  "ece": 0.41071612903225807,
+  "mean_confidence": 0.7900774193548384,
+  "majority_baseline": 0.45161290322580644,
+  "wrong_actions": 18,
+  "by_tag": {
+   "need-with-no": {
+    "n": 13,
+    "accuracy": 0.7692307692307693
+   },
+   "noise": {
+    "n": 1,
+    "accuracy": 0.0
+   },
+   "redirected": {
+    "n": 4,
+    "accuracy": 0.75
+   },
+   "refused": {
+    "n": 13,
+    "accuracy": 0.0
+   }
+  },
+  "confusion": {
+   "facturacion->soporte": 1,
+   "facturacion->ventas": 1,
+   "ninguno->facturacion": 4,
+   "ninguno->operadora": 4,
+   "ninguno->soporte": 6,
+   "operadora->soporte": 1,
+   "soporte->operadora": 1
+  },
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 27,
+    "coverage": 0.8709677419354839,
+    "action_recall": 0.6470588235294118,
+    "wrong": 16,
+    "precision": 0.4074074074074074
+   },
+   {
+    "threshold": 0.6,
+    "fast": 24,
+    "coverage": 0.7741935483870968,
+    "action_recall": 0.6470588235294118,
+    "wrong": 13,
+    "precision": 0.4583333333333333
+   },
+   {
+    "threshold": 0.7,
+    "fast": 22,
+    "coverage": 0.7096774193548387,
+    "action_recall": 0.6470588235294118,
+    "wrong": 11,
+    "precision": 0.5
+   },
+   {
+    "threshold": 0.8,
+    "fast": 17,
+    "coverage": 0.5483870967741935,
+    "action_recall": 0.47058823529411764,
+    "wrong": 9,
+    "precision": 0.47058823529411764
+   },
+   {
+    "threshold": 0.9,
+    "fast": 13,
+    "coverage": 0.41935483870967744,
+    "action_recall": 0.29411764705882354,
+    "wrong": 8,
+    "precision": 0.38461538461538464
+   },
+   {
+    "threshold": 0.95,
+    "fast": 11,
+    "coverage": 0.3548387096774194,
+    "action_recall": 0.23529411764705882,
+    "wrong": 7,
+    "precision": 0.36363636363636365
+   },
+   {
+    "threshold": 0.99,
+    "fast": 6,
+    "coverage": 0.1935483870967742,
+    "action_recall": 0.11764705882352941,
+    "wrong": 4,
+    "precision": 0.3333333333333333
+   }
+  ],
+  "latency_ms": {
+   "p50": 139.24062601290643,
+   "p95": 165.44933296972886,
+   "min": 127.17870803317055
+  },
+  "borderline": []
+ },
+ "records": [
+  {
+   "id": "ic-001",
+   "text": "No, ni me meta al área de ventas que yo estoy llamando por una factura.",
+   "gold": "facturacion",
+   "tags": [
+    "redirected"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9961,
+   "probabilities": {
+    "ventas": 0.0018,
+    "soporte": 0.0005,
+    "facturacion": 0.9961,
+    "operadora": 0.0007,
+    "colgar": 0.0002,
+    "ninguno": 0.0006
+   },
+   "latency_ms": 156.19354200316593
+  },
+  {
+   "id": "ic-002",
+   "text": "Soy cliente, no me conecte con los de contratos, necesito hablar con el soporte técnico.",
+   "gold": "soporte",
+   "tags": [
+    "redirected"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.7709,
+   "probabilities": {
+    "ventas": 0.0616,
+    "soporte": 0.7709,
+    "facturacion": 0.0549,
+    "operadora": 0.0408,
+    "colgar": 0.0135,
+    "ninguno": 0.0584
+   },
+   "latency_ms": 147.8786250227131
+  },
+  {
+   "id": "ic-003",
+   "text": "Quiero hablar con alguien del área de cobros, no me saque al departamento comercial.",
+   "gold": "facturacion",
+   "tags": [
+    "redirected"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9223,
+   "probabilities": {
+    "ventas": 0.0088,
+    "soporte": 0.0093,
+    "facturacion": 0.9223,
+    "operadora": 0.0437,
+    "colgar": 0.0015,
+    "ninguno": 0.0145
+   },
+   "latency_ms": 146.97570796124637
+  },
+  {
+   "id": "ic-004",
+   "text": "Escúchame bien, no me mande con los de ventas, estoy llamando sobre mi saldo.",
+   "gold": "facturacion",
+   "tags": [
+    "redirected"
+   ],
+   "predicted": "ventas",
+   "confidence": 0.9257,
+   "probabilities": {
+    "ventas": 0.9257,
+    "soporte": 0.0306,
+    "facturacion": 0.0018,
+    "operadora": 0.0078,
+    "colgar": 0.0034,
+    "ninguno": 0.0307
+   },
+   "latency_ms": 156.2982089817524
+  },
+  {
+   "id": "ic-005",
+   "text": "Oiga, mira que no me funciona la internet hace tres días",
+   "gold": "soporte",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.7766,
+   "probabilities": {
+    "ventas": 0.0006,
+    "soporte": 0.7766,
+    "facturacion": 0.0006,
+    "operadora": 0.2006,
+    "colgar": 0.0092,
+    "ninguno": 0.0124
+   },
+   "latency_ms": 141.35066600283608
+  },
+  {
+   "id": "ic-006",
+   "text": "Holaaa, no me llegó la factura y necesito hablar con alguien",
+   "gold": "facturacion",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9608,
+   "probabilities": {
+    "ventas": 0.0005,
+    "soporte": 0.0213,
+    "facturacion": 0.9608,
+    "operadora": 0.0052,
+    "colgar": 0.0008,
+    "ninguno": 0.0113
+   },
+   "latency_ms": 145.6115419859998
+  },
+  {
+   "id": "ic-007",
+   "text": "Oiga, yo no quiero hablar con nadie, no me pasen al departamento de soporte técnico, llámame directamente.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.8786,
+   "probabilities": {
+    "ventas": 0.0016,
+    "soporte": 0.8786,
+    "facturacion": 0.0009,
+    "operadora": 0.0376,
+    "colgar": 0.0124,
+    "ninguno": 0.0689
+   },
+   "latency_ms": 165.44933296972886
+  },
+  {
+   "id": "ic-008",
+   "text": "No me pongan con soporte, ya sé lo que hace, ¿podés darme mi número?",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.9777,
+   "probabilities": {
+    "ventas": 0.0002,
+    "soporte": 0.0178,
+    "facturacion": 0.0002,
+    "operadora": 0.9777,
+    "colgar": 0.0003,
+    "ninguno": 0.0037
+   },
+   "latency_ms": 156.2280420330353
+  },
+  {
+   "id": "ic-009",
+   "text": "No me manden al área de soporte, quiero que me respondan acá, al cliente.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.9729,
+   "probabilities": {
+    "ventas": 0.0015,
+    "soporte": 0.9729,
+    "facturacion": 0.0012,
+    "operadora": 0.0064,
+    "colgar": 0.0039,
+    "ninguno": 0.0142
+   },
+   "latency_ms": 133.32149997586384
+  },
+  {
+   "id": "ic-010",
+   "text": "Mire, no me pongan con el soporte, eso ya lo saben, yo les hablo a ustedes.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.9808,
+   "probabilities": {
+    "ventas": 0.0013,
+    "soporte": 0.9808,
+    "facturacion": 0.0003,
+    "operadora": 0.0065,
+    "colgar": 0.0025,
+    "ninguno": 0.0087
+   },
+   "latency_ms": 139.24062601290643
+  },
+  {
+   "id": "ic-011",
+   "text": "No me pasen con soporte técnico, llámeme directo al celular, no quiero hablar con nadie más.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.7716,
+   "probabilities": {
+    "ventas": 0.0015,
+    "soporte": 0.1849,
+    "facturacion": 0.0006,
+    "operadora": 0.7716,
+    "colgar": 0.0029,
+    "ninguno": 0.0384
+   },
+   "latency_ms": 138.08762497501448
+  },
+  {
+   "id": "ic-012",
+   "text": "Oye, ¿saben por qué nunca me funciona el internet?",
+   "gold": "soporte",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.835,
+   "probabilities": {
+    "ventas": 0.0005,
+    "soporte": 0.835,
+    "facturacion": 0.0005,
+    "operadora": 0.1156,
+    "colgar": 0.0391,
+    "ninguno": 0.0093
+   },
+   "latency_ms": 128.94279201282188
+  },
+  {
+   "id": "ic-013",
+   "text": "Bueno, tengo un problema que no me deja usar la conexión.",
+   "gold": "soporte",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.728,
+   "probabilities": {
+    "ventas": 0.0007,
+    "soporte": 0.728,
+    "facturacion": 0.0003,
+    "operadora": 0.1013,
+    "colgar": 0.1521,
+    "ninguno": 0.0176
+   },
+   "latency_ms": 131.82979199336842
+  },
+  {
+   "id": "ic-014",
+   "text": "¿Alguien me ayuda con el servicio porque no funciona?",
+   "gold": "soporte",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.826,
+   "probabilities": {
+    "ventas": 0.0077,
+    "soporte": 0.826,
+    "facturacion": 0.0109,
+    "operadora": 0.0836,
+    "colgar": 0.0119,
+    "ninguno": 0.0599
+   },
+   "latency_ms": 187.73325002985075
+  },
+  {
+   "id": "ic-015",
+   "text": "No me funcionó el equipo que me enviaron, por favor arreglenlo.",
+   "gold": "soporte",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.5953,
+   "probabilities": {
+    "ventas": 0.0037,
+    "soporte": 0.3279,
+    "facturacion": 0.0012,
+    "operadora": 0.5953,
+    "colgar": 0.0145,
+    "ninguno": 0.0575
+   },
+   "latency_ms": 137.12570897769183
+  },
+  {
+   "id": "ic-016",
+   "text": "No quiero pasar al de facturación, haganme la atención aquí.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9903,
+   "probabilities": {
+    "ventas": 0.0,
+    "soporte": 0.007,
+    "facturacion": 0.9903,
+    "operadora": 0.0018,
+    "colgar": 0.0003,
+    "ninguno": 0.0006
+   },
+   "latency_ms": 131.05370802804828
+  },
+  {
+   "id": "ic-017",
+   "text": "Cuidado, no me pasen a facturación, es muy largo.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9993,
+   "probabilities": {
+    "ventas": 0.0,
+    "soporte": 0.0003,
+    "facturacion": 0.9993,
+    "operadora": 0.0001,
+    "colgar": 0.0,
+    "ninguno": 0.0003
+   },
+   "latency_ms": 130.1546249887906
+  },
+  {
+   "id": "ic-018",
+   "text": "No me manden a facturación, por favor.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9985,
+   "probabilities": {
+    "ventas": 0.0002,
+    "soporte": 0.0004,
+    "facturacion": 0.9985,
+    "operadora": 0.0003,
+    "colgar": 0.0001,
+    "ninguno": 0.0005
+   },
+   "latency_ms": 131.01837498834357
+  },
+  {
+   "id": "ic-019",
+   "text": "Ni se les ocurra pasarme a facturación, no estoy interesada.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9979,
+   "probabilities": {
+    "ventas": 0.0,
+    "soporte": 0.0007,
+    "facturacion": 0.9979,
+    "operadora": 0.0004,
+    "colgar": 0.0001,
+    "ninguno": 0.0009
+   },
+   "latency_ms": 146.02987503167242
+  },
+  {
+   "id": "ic-020",
+   "text": "Oiga, estoy llamando por un asunto serio, me está cobrando una mensualidad y no me deja ver la factura ni el detalle del pago.",
+   "gold": "facturacion",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.8115,
+   "probabilities": {
+    "ventas": 0.0018,
+    "soporte": 0.1581,
+    "facturacion": 0.8115,
+    "operadora": 0.0035,
+    "colgar": 0.0037,
+    "ninguno": 0.0215
+   },
+   "latency_ms": 147.06358301918954
+  },
+  {
+   "id": "ic-021",
+   "text": "Hola, buenos días, tengo el saldo pendiente y no me está llegando el cobro, necesitan revisar el caso urgente.",
+   "gold": "facturacion",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9828,
+   "probabilities": {
+    "ventas": 0.0001,
+    "soporte": 0.0146,
+    "facturacion": 0.9828,
+    "operadora": 0.0003,
+    "colgar": 0.0002,
+    "ninguno": 0.0021
+   },
+   "latency_ms": 155.78550001373515
+  },
+  {
+   "id": "ic-022",
+   "text": "Buenas tardes, disculpen que llame, me hicieron un cobro adicional y no me aparece la factura para validar el pago.",
+   "gold": "facturacion",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "facturacion",
+   "confidence": 0.9914,
+   "probabilities": {
+    "ventas": 0.0003,
+    "soporte": 0.0063,
+    "facturacion": 0.9914,
+    "operadora": 0.0003,
+    "colgar": 0.0003,
+    "ninguno": 0.0013
+   },
+   "latency_ms": 143.20970798144117
+  },
+  {
+   "id": "ic-023",
+   "text": "Saludos, llamo para reclamar el saldo que me deben y no puedo generar una orden de pago ni ver el estado del reembolso.",
+   "gold": "facturacion",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.6432,
+   "probabilities": {
+    "ventas": 0.023,
+    "soporte": 0.6432,
+    "facturacion": 0.0248,
+    "operadora": 0.0602,
+    "colgar": 0.0212,
+    "ninguno": 0.2276
+   },
+   "latency_ms": 141.62533299531788
+  },
+  {
+   "id": "ic-024",
+   "text": "¿Sigo en línea?",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.5879,
+   "probabilities": {
+    "ventas": 0.0135,
+    "soporte": 0.5879,
+    "facturacion": 0.0182,
+    "operadora": 0.2478,
+    "colgar": 0.031,
+    "ninguno": 0.1016
+   },
+   "latency_ms": 127.17870803317055
+  },
+  {
+   "id": "ic-025",
+   "text": "No, espera, no me cuelgues, me falta algo.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.401,
+   "probabilities": {
+    "ventas": 0.0271,
+    "soporte": 0.3608,
+    "facturacion": 0.0256,
+    "operadora": 0.401,
+    "colgar": 0.098,
+    "ninguno": 0.0877
+   },
+   "latency_ms": 134.0318339644
+  },
+  {
+   "id": "ic-026",
+   "text": "No me corten la línea, no se vayan.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.7705,
+   "probabilities": {
+    "ventas": 0.0046,
+    "soporte": 0.7705,
+    "facturacion": 0.0022,
+    "operadora": 0.1079,
+    "colgar": 0.0598,
+    "ninguno": 0.0551
+   },
+   "latency_ms": 127.54679197678342
+  },
+  {
+   "id": "ic-027",
+   "text": "Ya, no me cuelgues, sigo aquí esperando.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.6013,
+   "probabilities": {
+    "ventas": 0.016,
+    "soporte": 0.6013,
+    "facturacion": 0.0068,
+    "operadora": 0.2039,
+    "colgar": 0.0926,
+    "ninguno": 0.0794
+   },
+   "latency_ms": 127.41008400917053
+  },
+  {
+   "id": "ic-028",
+   "text": "Me quedé en pausa, no me vayan a cortar.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.4223,
+   "probabilities": {
+    "ventas": 0.0187,
+    "soporte": 0.12,
+    "facturacion": 0.0039,
+    "operadora": 0.4223,
+    "colgar": 0.2966,
+    "ninguno": 0.1385
+   },
+   "latency_ms": 135.32291701994836
+  },
+  {
+   "id": "ic-029",
+   "text": "Quiero hablar con el humano, por favor, no quiero hablar con la grabación.",
+   "gold": "operadora",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.4636,
+   "probabilities": {
+    "ventas": 0.0292,
+    "soporte": 0.3296,
+    "facturacion": 0.0111,
+    "operadora": 0.4636,
+    "colgar": 0.0822,
+    "ninguno": 0.0843
+   },
+   "latency_ms": 202.38545798929408
+  },
+  {
+   "id": "ic-030",
+   "text": "¿No hay nadie ahí? No quiero hablar con la grabación.",
+   "gold": "operadora",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "soporte",
+   "confidence": 0.5325,
+   "probabilities": {
+    "ventas": 0.0089,
+    "soporte": 0.5325,
+    "facturacion": 0.0048,
+    "operadora": 0.1193,
+    "colgar": 0.1948,
+    "ninguno": 0.1397
+   },
+   "latency_ms": 134.57712600938976
+  },
+  {
+   "id": "ic-031",
+   "text": "Oiga, quiero hablar con alguien en vivo, no quiero hablar con la grabación.",
+   "gold": "operadora",
+   "tags": [
+    "need-with-no"
+   ],
+   "predicted": "operadora",
+   "confidence": 0.3801,
+   "probabilities": {
+    "ventas": 0.0261,
+    "soporte": 0.171,
+    "facturacion": 0.0146,
+    "operadora": 0.3801,
+    "colgar": 0.3213,
+    "ninguno": 0.0869
+   },
+   "latency_ms": 131.98950001969934
+  }
+ ]
+}

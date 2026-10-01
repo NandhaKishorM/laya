@@ -117,6 +117,15 @@ def available_languages() -> List[str]:
 
 
 # ---------------------------------------------------------------------- scoring
+def internal_question(qdef: Dict[str, Any]) -> Dict[str, Any]:
+    """The `build_sequence` question dict for one harness question definition.
+
+    Shared with the metamorphic budget probe so a diagnostic measures exactly the
+    question that gets scored.
+    """
+    return {"t": qdef["type"], "ins": qdef["instructions"], "crit": qdef.get("criteria")}
+
+
 def score_cases(agent, cases) -> List[Any]:
     """Raw marker logits per case, from one collated forward pass.
 
@@ -132,9 +141,7 @@ def score_cases(agent, cases) -> List[Any]:
     items = []
     for state, questions in cases:
         for _qid, qdef in questions.items():
-            q = {"t": qdef["type"],
-                 "ins": qdef["instructions"],
-                 "crit": qdef.get("criteria")}
+            q = internal_question(qdef)
             ids, markers = build_sequence(agent.tok, state, q, max_len, head_max_len)
             if len(markers) != len(render_options(q)):
                 raise ValueError("marker/option count mismatch; question exceeds head_max_len")

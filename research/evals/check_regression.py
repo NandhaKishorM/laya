@@ -56,6 +56,10 @@ def main(argv: List[str] | None = None) -> int:
         base = {"overall": _overall(baseline, language, args.baseline)}
         passed, deltas = report.compare(base, tolerances)
         for metric, delta in sorted(deltas.items()):
+            if delta.get("missing"):
+                print("%-6s %-16s baseline=%.4f missing from the report"
+                      % (language, metric, delta["baseline"]))
+                continue
             print("%-6s %-16s baseline=%.4f value=%.4f diff=%+.4f (tol %.4f)"
                   % (language, metric, delta["baseline"], delta["value"], delta["diff"], delta["tolerance"]))
         if not passed:

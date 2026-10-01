@@ -1,0 +1,12 @@
+{
+ "name": "cases.facturacion.refuse",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una empresa de telefonía e internet y deja claro que NO quiere que la pasen al área de «facturacion» (un cobro, un pago, una factura, un saldo o un reembolso). Nombra el área o lo que hace, y la rechaza. No pide ninguna otra área.",
+ "phrases": [
+  "Oiga, háganme favor de no pasar nada a facturación, por favor.",
+  "No quiero pasar al de facturación, haganme la atención aquí.",
+  "Cuidado, no me pasen a facturación, es muy largo.",
+  "No me manden a facturación, por favor.",
+  "Ni se les ocurra pasarme a facturación, no estoy interesada."
+ ]
+}

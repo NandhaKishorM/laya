@@ -37,11 +37,38 @@ services:
       LAYA_HOST: "${LAYA_HOST:-0.0.0.0}"
       LAYA_PORT: "${LAYA_PORT:-8000}"
       LAYA_DEVICE: "${LAYA_DEVICE:-cpu}"
+      # FastAPI's external URL prefix behind a reverse proxy; forward stripped paths.
+      LAYA_ROOT_PATH: "${LAYA_ROOT_PATH:-}"
+      # Autocast dtype the runtime reads when building the model; empty keeps the checkpoint's own
+      # `amp_dtype`. Set LAYA_CUDA_AMP=fp16 to serve fp16 on a GPU host.
+      LAYA_CUDA_AMP: "${LAYA_CUDA_AMP:-}"
+      LAYA_CPU_AMP: "${LAYA_CPU_AMP:-}"
       LAYA_PRELOAD: "${LAYA_PRELOAD:-0}"
       LAYA_MODELS: "${LAYA_MODELS:-}"
       LAYA_THREADS: "${LAYA_THREADS:-${OMP_NUM_THREADS:-4}}"
       LAYA_AUTO_TASK: "${LAYA_AUTO_TASK:-0}"
+      # The checkpoint a state with no language evidence falls back to. Empty keeps Router's own
+      # default (english); set `multilingual` for mostly-non-English traffic. An unresolvable
+      # name stops the container at startup rather than serving a configuration nobody asked for.
+      LAYA_DEFAULT_MODEL: "${LAYA_DEFAULT_MODEL:-}"
+      # Empty keeps Router's own default (2). Set 3 when LAYA_AUTO_TASK is on: that adds a
+      # third checkpoint routing can choose on demand, and a cap below it reloads one per switch.
+      LAYA_MAX_LOADED: "${LAYA_MAX_LOADED:-}"
+      # Requests admitted at once; one that arrives with every slot taken is refused with 503
+      # instead of queued, which is what bounds the bodies a burst holds in memory. Empty keeps
+      # the server's own default (16), so this line changes nothing until it is set.
+      LAYA_MAX_CONCURRENT: "${LAYA_MAX_CONCURRENT:-}"
+      # Ceiling on the `max_len` / `head_max_len` a request may ask for; a larger value comes back
+      # as 422. The SDK integrations quote 8192 because that is this service's default, so the
+      # default here stays empty: an operator who sets nothing gets the number the docs print.
+      LAYA_MAX_TOKEN_BUDGET: "${LAYA_MAX_TOKEN_BUDGET:-}"
       LAYA_LOG_LEVEL: "${LAYA_LOG_LEVEL:-info}"
+      # The supply-chain pair: LAYA_REVISION says which Hub commit a checkpoint may load from (a
+      # commit, branch, tag, or `reviewed` for the SHAs in laya/revisions.py) and
+      # LAYA_SHA256_DIGESTS verifies the artifact that arrives. An empty revision is "not asked
+      # for", so unlike a name the server resolves, nothing is validated at startup here.
+      LAYA_REVISION: "${LAYA_REVISION:-}"
+      LAYA_SHA256_DIGESTS: "${LAYA_SHA256_DIGESTS:-}"
       LAYA_API_KEY: "${LAYA_API_KEY:-}"
       LAYA_API_KEY_FILE: "${LAYA_API_KEY_FILE:-}"
       HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"

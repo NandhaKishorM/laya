@@ -25,7 +25,7 @@ from tokenizers.models import WordLevel  # noqa: E402
 from transformers import BertConfig, BertModel, PreTrainedTokenizerFast  # noqa: E402
 
 from laya import load  # noqa: E402
-from laya.common import DecisionModel, QTYPES  # noqa: E402
+from laya.common import DecisionModel, QTYPES, TEMP_MIN, TEMP_MAX  # noqa: E402
 
 
 def export_notebook_config(cfg, fitted_temps, output_dir):
@@ -163,6 +163,25 @@ class CalibrationPersistenceTests(unittest.TestCase):
         self.cfg.pop("temperature")
         self.write_config()
         self.assert_inference_temperatures({(t, 2): 1.0 for t in QTYPES})
+
+    def test_notebook_fit_one_temp_clamps_to_common_bounds(self):
+        notebook = Path(__file__).resolve().parents[1] / "notebooks" / (
+            "laya_finetune_typed_decisions_2xT4_kaggle.ipynb"
+        )
+        cells = json.loads(notebook.read_text(encoding="utf-8"))["cells"]
+        script, = ["".join(c["source"]) for c in cells
+                   if "".join(c["source"]).startswith("%%writefile ")]
+        start = script.index("def fit_one_temp(sel):")
+        end = script.index("\ndef main():", start)
+        fn_code = ast.parse(textwrap.dedent(script[start:end]))
+        scope = {"torch": torch, "TEMP_MIN": TEMP_MIN, "TEMP_MAX": TEMP_MAX}
+        exec(compile(fn_code, str(notebook), "exec"), scope)
+        fit_one_temp = scope["fit_one_temp"]
+
+        high_sel = [([10.0, 0.0], [0.5, 0.5]) for _ in range(20)]
+        t_high = fit_one_temp(high_sel)
+        self.assertLessEqual(t_high, TEMP_MAX)
+        self.assertGreaterEqual(t_high, TEMP_MIN)
 
 
 if __name__ == "__main__":

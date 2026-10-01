@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>laya-ts browser demo (WebGPU → WASM)</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --ink: #1c2333; --muted: #68738a;
+    --accent: #2563eb; --accent-ink: #fff; --ok: #15803d; --err: #b91c1c;
+    --line: #e4e8ef; --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--ink); margin: 0; padding: 2rem 1rem 4rem; }
+  main { max-width: 700px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  .sub { color: var(--muted); margin: 0 0 1.5rem; }
+  .sub code, .card code { font-size: .85em; background: #eef1f6; padding: .1em .35em; border-radius: 6px; }
+  .card { background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 1.1rem 1.25rem; margin-bottom: 1rem;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .05); }
+  .card h2 { font-size: 1rem; margin: 0 0 .75rem; display: flex; align-items: center; gap: .5rem; }
+  .step { width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--line);
+    color: var(--muted); font-size: .8rem; display: inline-flex; align-items: center;
+    justify-content: center; font-weight: 700; flex: none; }
+  .card.active .step { background: var(--accent); color: var(--accent-ink); }
+  .card.done .step { background: var(--ok); color: #fff; }
+  .card.locked { opacity: .55; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .35rem; }
+  input, textarea { width: 100%; font: inherit; color: var(--ink); padding: .55rem .65rem;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+  textarea { height: 4.5rem; resize: vertical; }
+  button { font: inherit; font-weight: 600; padding: .55rem 1.1rem; border: 0; border-radius: 8px;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer; margin-top: .7rem; }
+  button:disabled { background: #b9c4d6; cursor: not-allowed; }
+  button:not(:disabled):hover { filter: brightness(1.08); }
+  .pill { display: inline-block; font-size: .8rem; font-weight: 700; padding: .15rem .6rem;
+    border-radius: 999px; background: var(--line); color: var(--muted); margin-left: auto; }
+  .pill.loading { background: #fef3c7; color: #92400e; }
+  .pill.ready { background: #dcfce7; color: var(--ok); }
+  .pill.error { background: #fee2e2; color: var(--err); }
+  .progress { height: .55rem; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: .8rem; }
+  .progress > div { height: 100%; width: 30%; background: var(--accent); border-radius: 999px;
+    animation: slide 1.1s ease-in-out infinite; }
+  @keyframes slide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+  .meta { font-size: .85rem; color: var(--muted); margin-top: .5rem; }
+  .answer { border-top: 1px solid var(--line); padding: .6rem 0; }
+  .answer:first-child { border-top: 0; }
+  .conf { height: .55rem; background: var(--line); border-radius: 999px; margin: .25rem 0 .35rem; }
+  .conf > div { height: 100%; background: var(--accent); border-radius: 999px; }
+  .probs { font-size: .85rem; color: var(--muted); }
+  .hint { font-size: .85rem; color: var(--muted); }
+  .qitem { display: flex; align-items: center; gap: .5rem; border: 1px solid var(--line);
+    border-radius: 8px; padding: .4rem .6rem; margin-bottom: .4rem; font-size: .9rem; }
+  .qitem code { font-size: .8em; background: #eef1f6; padding: .1em .35em; border-radius: 6px; }
+  .qitem button { margin: 0 0 0 auto; padding: .2rem .6rem; background: #fee2e2; color: var(--err); }
+  kbd { background: #eef1f6; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 6px; padding: 0 .35em; font-size: .85em; }
+</style>
+<h1>laya-ts in the browser</h1>
+<p class="sub">Multilingual checkpoint, fully client-side via
+<code>onnxruntime-web</code> (WebGPU, WASM fallback). No server inference.</p>
+<main>
+  <section class="card active" id="card-load">
+    <h2><span class="step">1</span> Load model <span class="pill" id="pill">idle</span></h2>
+    <label for="model">Model URL — serves <code>encoder.onnx</code>,
+      <code>head.onnx</code>, <code>tokenizer.json</code>, <code>rl_agent_config.json</code></label>
+    <input id="model" value="../../../model-ml">
+    <button id="load">Load model</button>
+    <div class="progress" id="bar" hidden><div></div></div>
+    <div class="meta" id="loadmsg">First load fetches ~1.3GB, then CacheStorage serves it.</div>
+  </section>
+
+  <section class="card locked" id="card-q">
+    <h2><span class="step">2</span> Questions</h2>
+    <div id="qlist"><p class="hint">Triage preset loaded. Add your own or remove these.</p></div>
+    <label for="qtype">Type</label>
+    <select id="qtype" style="font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:8px;width:100%">
+      <option value="choice">choice — pick one label</option>
+      <option value="score">score — rate 0..n</option>
+      <option value="noul">noul — probability the statement holds</option>
+    </select>
+    <p></p>
+    <label for="qins">Instructions (what should the model answer?)</label>
+    <input id="qins" value="Which team should handle this request?">
+    <label for="qcrit" id="qcritlabel">Criteria — one per line, <code>label: description</code></label>
+    <textarea id="qcrit">billing: invoices, payments, refunds
+other:</textarea>
+    <button id="qadd">Add question</button>
+    <button id="qpreset" style="background:#eef1f6;color:var(--ink)">Reload triage preset</button>
+    <div class="meta" id="qerr"></div>
+  </section>
+
+  <section class="card locked" id="card-run">
+    <h2><span class="step">3</span> Triage a message</h2>
+    <label for="text">Customer message</label>
+    <textarea id="text">charged twice on my card, please refund the duplicate payment</textarea>
+    <button id="run" disabled>Triage</button>
+    <span class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run</span>
+    <div id="out"><p class="hint">Load the model to unlock.</p></div>
+    <div class="meta" id="runmeta"></div>
+  </section>
+</main>
+<script type="importmap">
+{ "imports": {
+  "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.bundle.min.mjs"
+} }
+</script>
+<script type="module" src="./app.js"></script>
+</html>

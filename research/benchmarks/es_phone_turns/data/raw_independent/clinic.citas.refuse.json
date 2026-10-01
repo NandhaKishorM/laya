@@ -1,0 +1,12 @@
+{
+ "name": "clinic.citas.refuse",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una clínica médica y deja claro que NO quiere que la pasen al área de «citas» (quiere sacar, cambiar o cancelar una consulta médica). Nombra el área o lo que hace, y la rechaza. No pide ninguna otra área.",
+ "phrases": [
+  "Oye, ¿aunque ya haya un turno no puedo hacer una baja?",
+  "Hola, no me pongan ahí que quiero cambiar mi doctor.",
+  "Mandalo al área de administración, no al de citas.",
+  "Fijate que no quiero agendar nada, necesito una modificación.",
+  "No, no, no me pasen a esa caja ni al departamento de turnos."
+ ]
+}

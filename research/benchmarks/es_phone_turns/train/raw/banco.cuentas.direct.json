@@ -1,0 +1,15 @@
+{
+ "name": "banco.cuentas.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y pide que la comuniquen con el área de «cuentas» (cuentas de ahorro y de cheques: abrirlas, saldos, transferencias). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Hola, buenas tardes, por favor pásenme con cuentas de ahorro.",
+  "Oiga, buenos días, ¿me podría comunicar con el área de cuentas?",
+  "Porfa, requiero hablar con alguien de cuentas de cheques.",
+  "Buenas, hable con cuentas por favor.",
+  "Mire, me urge contactar al departamento de cuentas para una transferencia.",
+  "¿Sí? Necesito pasar con cuentas de ahorro y cheque.",
+  "Pues sí, bueno, pásenme con cuentas, gracias.",
+  "Hola, buenas tardes, ¿tienen a alguien en cuentas que pueda ayudarme?"
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "name": "tienda.instalaciones.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una tienda de electrodomésticos y necesita que se ocupe de su caso el área que atiende esto: «que lleguen a instalar lo comprado: aire acondicionado, lavadora». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Ya me llegaron los electrodomésticos pero no han pasado a instalarme el aire acondicionado, necesito agendar eso con urgencia.",
+  "La lavadora que compré está en mi casa pero el técnico no ha venido, ¿cuándo pueden enviarme alguien para instalarla?",
+  "Quisiera saber cuándo me instalan el equipo de aire acondicionado que adquirí la semana pasada porque ya se viene el calor.",
+  "Llevo dos semanas esperando que me instalen la lavadora y nadie ha llamado, quiero resolver esto hoy mismo por favor.",
+  "El aire acondicionado llegó pero falta el servicio de instalación y necesito programarlo para antes del fin de semana.",
+  "Tengo un problema con la instalación pendiente de mi lavadora, ya pagué pero no han enviado al técnico aún.",
+  "Por favor necesito que me ubiquen con alguien para coordinar la instalación de mi nuevo aire acondicionado cuanto antes.",
+  "La lavadora está en mi hogar esperando instalación y me preocupa que se dañe si no la montan pronto.",
+  "Quiero agendar la fecha exacta para que vengan a instalar el aire acondicionado porque ya lo tengo en casa.",
+  "No han cumplido con la instalación de la lavadora que compré, necesito que actúen sobre este caso inmediatamente.",
+  "Llamando para coordinar la instalación del equipo de aire acondicionado, llevo esperando la llamada del servicio técnico varios días.",
+  "La lavadora llegó hace tiempo pero sin instalar, necesito urgente que me asignen un horario para el montaje.",
+  "Necesito programar la instalación de mi aire acondicionado porque ya lo compré y está guardado en mi patio.",
+  "Tengo pendiente la instalación de la lavadora y quiero saber si pueden venir mañana o a más tardar el viernes.",
+  "El servicio de instalación para mi aire acondicionado no se ha concretado y necesito resolverlo ya que tengo fiebre.",
+  "Quisiera reclamar porque aún no me instalan la lavadora, es inaceptable tener los aparatos y no poder usarlos.",
+  "Por favor ayúdeme a fijar cita para instalar el aire acondicionado, llevo semanas en espera sin respuesta concreta.",
+  "La instalación de mi lavadora está detenida necesito que contacten al proveedor técnico lo más pronto posible por favor.",
+  "Vengo a coordinar la instalación del aire acondicionado ya que el equipo llegó incompleto en cuanto al servicio técnico.",
+  "Necesito saber quién se encarga de mi caso para instalar la lavadora porque han pasado muchos días sin solución."
+ ]
+}

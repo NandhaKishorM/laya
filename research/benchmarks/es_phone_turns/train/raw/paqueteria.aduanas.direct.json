@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.aduanas.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y pide que la comuniquen con el área de «aduanas» (trámites e impuestos de paquetes que vienen del extranjero). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor transfórmeme con aduanas.",
+  "A ver, necesito hablar con el departamento de aduanas.",
+  "Le llamo para consultar unos impuestos de un paquete internacional, ¿me puede comunicar con la sección de aduanas?",
+  "Sí, eso mismo, pero ahora necesito derivarme al área de aduanas por favor.",
+  "Oiga, buen día, ¿podría pasarme con alguien de aduanas?",
+  "Estoy intentando aclarar un tema de derechos arancelarios y me urge hablar con el personal de aduanas, gracias.",
+  "Pásame con la oficina de aduanas, por favor.",
+  "Mira, necesito atención especializada, comuníceme inmediatamente con el equipo de aduanas."
+ ]
+}

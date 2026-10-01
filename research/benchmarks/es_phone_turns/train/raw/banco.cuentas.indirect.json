@@ -1,0 +1,27 @@
+{
+ "name": "banco.cuentas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un banco y necesita que se ocupe de su caso el área que atiende esto: «cuentas de ahorro y de cheques: abrirlas, saldos, transferencias». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Oiga, por favor necesito activar mi tarjeta de débito porque no me deja retirar en el cajero.",
+  "Buenas tardes, quería consultar si ya cayó la transferencia que hice ayer a las seis de la tarde.",
+  "Mira, el sistema me marca error cuando intento mover dinero de mi chequera a la cuenta de ahorros.",
+  "Necesito ordenar que se cancele un cheque que firmé pero no utilicé porque cambié de planes.",
+  "Disculpe, tengo una duda con el saldo disponible versus el saldo real, ¿me pueden explicar qué pasa?",
+  "A ver, quiero ponerle más dinero a mi cuenta de ahorros desde la app y me da fallo.",
+  "Pura vida, o sea, que si yo deposité un cheque hoy no lo veo hasta mañana, ¿no es así?",
+  "Miren, necesito que me cambien el número de teléfono registrado para poder recibir los códigos de seguridad.",
+  "No entiendo por qué me cobraron una comisión por mantener la cuenta sin movimientos este mes.",
+  "Oiga amigo, ¿podrían decirme cuál es el monto mínimo que tengo que dejar en la chequera?",
+  "Pues sí, quiero sacar unos quinientos dólares en efectivo y no sé si estoy cubierto con mi saldo actual.",
+  "Mira, abrí una cuenta de ahorros nueva pero no me llega el correo con los datos de acceso.",
+  "¿Me podrían decir cuándo se liquida esa transferencia internacional que mandé hace tres días?",
+  "Oye, necesito pedir un estado de cuenta detallado del último trimestre para unos trámites personales.",
+  "A ver si me aclaran esto: ¿por qué aparece una transacción pendiente si ya gasté el dinero en el súper?",
+  "Necesito registrar mi cédula en el sistema porque al principio solo puse el pasaporte y ahora me falla todo.",
+  "Mira, quería saber si puedo abrir una segunda cuenta de ahorros para separar mis gastos fijos.",
+  "Pues sí, oiga, que se me perdieron las claves del internet banking y necesito recuperarlas urgente.",
+  "No veo reflejado el depósito que hizo mi empresa ayer, ¿puede revisar si llegó al banco correctito?",
+  "Miren, por favor, quiero bajar la tarifa de mantenimiento porque voy a dejar de usar la cuenta de cheques."
+ ]
+}

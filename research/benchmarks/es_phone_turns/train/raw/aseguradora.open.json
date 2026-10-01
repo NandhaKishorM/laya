@@ -1,0 +1,22 @@
+{
+ "name": "aseguradora.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a una aseguradora: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, les consulto cuál es la dirección exacta de la sede principal para poder llegar.",
+  "¿Manejan parqueo privado en las instalaciones para los clientes?",
+  "Me gustaría saber si abren normalmente el próximo feriado nacional o si queda cerrada la sucursal.",
+  "¿Aceptan pagos por transferencia bancaria o es estrictamente efectivo y tarjeta de crédito?",
+  "Quisiera confirmar si tienen alguna sucursal en el norte del país cerca de San Pedro Sula.",
+  "¿Cuáles son los requisitos exactos para abrir una póliza de vehículo nuevo?",
+  "Me gustaría saber hasta qué hora atienden por favor.",
+  "¿Cuántas agencias tienen abiertas a nivel nacional actualmente?",
+  "¿Ofrecen facilidades de pago o planes mensuales para la prima anual?",
+  "¿La sucursal del centro cuenta con rampa de acceso para personas con movilidad reducida?",
+  "Necesito saber si puedo renovar mi póliza directamente por teléfono sin ir a la oficina.",
+  "¿Aceptan pagos en dólares americanos además del lempira?",
+  "¿Tienen horario extendido los viernes por la tarde para gente que trabaja?",
+  "¿Cuál es el documento de identidad vigente que debo presentar como requisito básico?",
+  "Me preocupa llegar muy tarde, ¿cierran puntual a las cinco o hay turno de tarde?"
+ ]
+}

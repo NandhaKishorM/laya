@@ -1,0 +1,27 @@
+{
+ "name": "restaurante.banquetes.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un restaurante y necesita que se ocupe de su caso el área que atiende esto: «comida para eventos y fiestas». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, necesito coordinar la entrega del catering para mi boda del próximo sábado y me preocupa que lleguen a tiempo.",
+  "¿Podrían ayudarme con el pedido de tamales para el bautizo de mi sobrino? Son treinta unidades y las quiero listas al medio día.",
+  "Oiga, tengo un conflicto con una fiesta pasada donde faltaron bebidas; necesito hablar con alguien que gestione mi reclamo urgente.",
+  "Hola, quisiera agendar una reunión para definir el menú completo del quinceañero de mi hija, tenemos varios detalles pendientes por resolver.",
+  "A ver si me puede echar una mano, quiero hacer un pedido especial de postres para una reunión familiar este fin de semana pero no sé cómo proceder formalmente.",
+  "Buen día, necesito cancelar mi reserva para una cena corporativa porque se nos cambió la fecha del evento y hay que revisar las condiciones.",
+  "Mire, tengo un problema con el pago pendiente del buffet infantil; necesito que me expliquen el estado de mi cuenta antes de la próxima cita.",
+  "Por favor, quiero tramitar la orden para el banquete de aniversario de mis padres, necesitamos confirmar los platos vegetarianos esta semana.",
+  "Escúcheme, necesito hablar con el encargado de eventos para ajustar el número de asistentes en mi pedido actual porque aumentaron los invitados de última hora.",
+  "Hola, requiero asesoría para planear la comida del cumpleaños sorpresa de mi hermano mayor, quiero saber qué opciones tienen para grupos grandes.",
+  "Oiga, hubo un error en mi último pedido de snacks para la oficina y necesito que lo arreglen antes de que termine el mes.",
+  "Buenas, me gustaría formalizar el contrato para la comida del evento benéfico municipal; tengo los documentos listos pero necesito la firma autorizada.",
+  "A ver si pueden facilitarme información sobre cómo se realiza el pedido anticipado para fiestas patronales, porque quiero evitar contratiempos el día de la celebración.",
+  "Tengo una queja seria respecto a la calidad del servicio en mi celebración pasada y deseo abrir un expediente para que lo revisen adecuadamente.",
+  "Necesito gestionar la entrega de las tortas personalizadas para los cumpleaños de mis hijos; ¿me indica dónde puedo dejar los pagos?",
+  "Hola, quiero revisar los detalles del menú degustación que pedimos hace dos semanas porque hay ingredientes que ya no queremos incluir.",
+  "Mire, tengo una situación complicada con un proveedor externo y necesito que ustedes gestionen la logística de comida para mi evento sin contratiempos.",
+  "Buenas tardes, requiero agendar una visita al local para probar muestras del nuevo menú que tienen para bodas; por favor dígame si hay cupo disponible.",
+  "Oiga, quiero hablar con el área administrativa sobre la factura de mi último evento porque los cargos no coinciden con lo acordado inicialmente.",
+  "Necesito tramitar la solicitud de servicio de catering para la graduación de mi sobrino; ¿qué requisitos necesitan que envíe por escrito?"
+ ]
+}

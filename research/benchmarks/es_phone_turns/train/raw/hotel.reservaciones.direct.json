@@ -1,0 +1,15 @@
+{
+ "name": "hotel.reservaciones.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y pide que la comuniquen con el área de «reservaciones» (reservar, cambiar o cancelar una habitación). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenas tardes, por favor, pásame con reservaciones.",
+  "¿Me comunican con la gente de reservas?",
+  "Oiga, buenas noches, necesito hablar con el área de reservaciones.",
+  "¡Eh! Pónganme con reservaciones, por fa.",
+  "Le llamo para cambiar mi reserva y necesito que me conecten con el departamento correspondiente.",
+  "¿Tengo a reservaciones?",
+  "Hola, buenos días, ¿podría transferirme con el equipo de reservas por favor?",
+  "Ayuda, quiero cancelar mi habitación y que me pasen con la sección de reservaciones."
+ ]
+}

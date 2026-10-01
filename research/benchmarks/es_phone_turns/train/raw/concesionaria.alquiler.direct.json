@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.alquiler.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y pide que la comuniquen con el área de «alquiler» (alquilar un carro por días o semanas). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenas tardes, ¿me podría conectar con la sección de alquiler, por favor?",
+  "Hola, buenos días. Necesito hablar con quien maneja los carros en renta.",
+  "Porfa, pásame con el departamento de arrendamiento.",
+  "Le comento que estoy interesado en rentar un vehículo, así que le pido amablemente me traspasen a esa área.",
+  "Alquiler, por favor.",
+  "Oiga, ¿hay alguien atendiendo lo del alquiler? Me podrían comunicar ahí?",
+  "Con el encargado de renta, porfa.",
+  "Disculpe la molestia, pero requiero hablar inmediatamente con el personal del área de alquiler."
+ ]
+}

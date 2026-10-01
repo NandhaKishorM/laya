@@ -1,0 +1,15 @@
+{
+ "name": "agencia.excursiones.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una agencia de viajes y aclara que NO necesita el área de «excursiones» (paquetes turísticos y tours): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me trasladen a excursiones, por favor.",
+  "Le aclaro que no necesito tours, gracias.",
+  "Eviten pasarme al área de paquetes turísticos.",
+  "No tengo interés en viajes organizados, se lo digo para que lo anote.",
+  "Porfa, no me conecten con el departamento de excursiones.",
+  "Solo quiero hacer una consulta rápida, nada de tours.",
+  "Quedo tranquilo con usted, no requiero servicios de viaje grupal.",
+  "Evíteme la transferencia a excursiones, solo busco info puntual."
+ ]
+}

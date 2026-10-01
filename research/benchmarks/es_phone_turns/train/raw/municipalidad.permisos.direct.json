@@ -1,0 +1,15 @@
+{
+ "name": "municipalidad.permisos.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una municipalidad y pide que la comuniquen con el área de «permisos» (permisos de construcción y de operación). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor, ¿me podría pasar con la mesa de permisos?",
+  "Le molesto una sola cosita: necesito hablar urgente con el departamento de permisos de construcción.",
+  "Oiga, buenas tardes. ¿Me comunican con la oficina de permisos de operación, porfa?",
+  "Señor, buenos días. Necesito que me transfiera con personal de permisos, por favor.",
+  "Hola, gracias por contestar. ¿Podría pasarme con el área de permisos municipales?",
+  "Buenas tardes, le pido la gentileza de conectarme con la sección de permisos y licencias.",
+  "Disculpe la molestia, ¿me habla con quien atienda los permisos de funcionamiento?",
+  "¡Óigame! Necesito hablar con la mesa de entrada de permisos ya mismo."
+ ]
+}

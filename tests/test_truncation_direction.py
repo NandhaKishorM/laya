@@ -59,13 +59,13 @@ def test_agent_list_vs_string_truncation_direction():
     list_capture = {}
     string_capture = {}
 
-    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, state_ids=None):
+    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, **kwargs):
         if isinstance(state, list):
             list_capture["truncate_left"] = truncate_left
         else:
             string_capture["truncate_left"] = truncate_left
         return build_sequence(tok, state, q, max_len, head_max_len,
-                              truncate_left=truncate_left, state_ids=state_ids)
+                              truncate_left=truncate_left, **kwargs)
 
     with patch("laya.agent.build_sequence", side_effect=fake_build):
         agent.system_one([{"role": "user", "content": "hi"}, {"role": "user", "content": "newest"}], questions)
@@ -85,11 +85,11 @@ def test_agent_system_one_passes_truncate_left_for_list():
 
     captured = {}
 
-    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, state_ids=None):
+    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, **kwargs):
         captured["truncate_left"] = truncate_left
         captured["state"] = state
         return build_sequence(tok, state, q, max_len, head_max_len,
-                              truncate_left=truncate_left, state_ids=state_ids)
+                              truncate_left=truncate_left, **kwargs)
 
     with patch("laya.agent.build_sequence", side_effect=fake_build):
         agent.system_one(conversation, questions)
@@ -107,10 +107,10 @@ def test_agent_system_one_string_state_default_truncation():
 
     captured = {}
 
-    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, state_ids=None):
+    def fake_build(tok, state, q, max_len, head_max_len, truncate_left=False, **kwargs):
         captured["truncate_left"] = truncate_left
         return build_sequence(tok, state, q, max_len, head_max_len,
-                              truncate_left=truncate_left, state_ids=state_ids)
+                              truncate_left=truncate_left, **kwargs)
 
     with patch("laya.agent.build_sequence", side_effect=fake_build):
         agent.system_one("just a string state", questions)
@@ -142,3 +142,39 @@ def test_build_sequence_default_unchanged():
     seq_default, _ = build_sequence(tok, state, Q, 30, 12)
     seq_explicit, _ = build_sequence(tok, state, Q, 30, 12, truncate_left=False)
     assert seq_default == seq_explicit, "default must remain truncate_left=False"
+
+
+def test_predict_batch_usage_reports_truncation():
+    """Agent.predict_batch reports each state's truncation from the budget build_sequence applied (#174).
+
+    Two heads of different length over one budget: a 25-word state is cut only for the longer
+    head, a 30-word state for both but by different amounts, so the per-question accounting and
+    the max across questions are both visible.
+    """
+    agent = _tiny_agent()
+    questions = {
+        "refund": {"type": "noul", "instructions": "Refund?"},
+        "route": {"type": "choice", "instructions": "Which team should own this request given the contract?",
+                  "criteria": {"billing": "invoices and refunds", "tech": "bugs and outages"}},
+    }
+    states = [" ".join("w%d" % i for i in range(n)) for n in (10, 25, 30)]
+    results = agent.predict_batch(states, questions, max_len=48, head_max_len=32)
+
+    for state, result in zip(states, results):
+        stats = {qid: build_sequence(agent.tok, state, Agent._to_internal(q), 48, 32,
+                                     return_truncation_stats=True)[2]
+                 for qid, q in questions.items()}
+        usage = result["usage"]
+        assert usage["state_tokens"] == len(state.split())
+        assert usage["state_tokens_dropped"] == max(s["state_tokens_dropped"] for s in stats.values())
+        assert usage["truncated"] is (usage["state_tokens_dropped"] > 0)
+        assert usage["truncated_questions"] == [qid for qid in questions if stats[qid]["truncated"]]
+
+    fits, one, both = (r["usage"] for r in results)
+    assert fits["truncated"] is False and fits["truncated_questions"] == []
+    assert one["truncated"] is True and one["truncated_questions"] == ["route"]
+    assert both["truncated_questions"] == ["refund", "route"]
+    dropped = [build_sequence(agent.tok, states[2], Agent._to_internal(q), 48, 32,
+                              return_truncation_stats=True)[2]["state_tokens_dropped"]
+               for q in questions.values()]
+    assert dropped[0] < dropped[1] == both["state_tokens_dropped"], dropped

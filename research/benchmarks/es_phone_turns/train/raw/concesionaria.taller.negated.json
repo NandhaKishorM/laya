@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.taller.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y aclara que NO necesita el área de «taller» (reparación y mantenimiento del carro): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me pase al taller, porfa.",
+  "Solo tengo una consulta, no voy a taller.",
+  "No necesito servicio técnico, gracias.",
+  "Oiga, nada de taller, soy cliente nuevo.",
+  "Por el contrario, no requiero reparación.",
+  "Le repito: solo quiero hacer una pregunta.",
+  "No me transfiera al departamento de mantenimiento.",
+  "Ningún problema mecánico tengo, gracias."
+ ]
+}

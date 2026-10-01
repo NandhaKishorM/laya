@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.alquiler.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y necesita que se ocupe de su caso el área que atiende esto: «alquilar un carro por días o semanas». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, el sitio web no deja finalizar la reserva.",
+  "¿Me podrían pasar con quien maneja los alquileres? Es que no puedo acceder al formulario de contratos.",
+  "Mire, no me aparece disponible el vehículo para esta semana y necesito confirmar hoy mismo.",
+  "Pues nada, no me llegan los correos con las condiciones del contrato.",
+  "Oiga, ¿hay alguien especializado en alquileres por días? Es que no tengo claro cómo cerrar el trato.",
+  "Señora, disculpe la molestia pero no puedo seleccionar la fecha de entrega en su sistema.",
+  "¡Qué bueno que contestan! No me ha dado tiempo de buscar otra opción y necesito urgente un carro.",
+  "¿Por ahí anda alguien que entienda eso del alquiler semanal? Es que no sé por dónde empezar."
+ ]
+}

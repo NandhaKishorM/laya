@@ -1,0 +1,15 @@
+{
+ "name": "banco.prestamos.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y aclara que NO necesita el área de «prestamos» (préstamos y créditos: solicitarlos, requisitos, cuotas): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me transfiera a créditos, por favor, tengo otro asunto.",
+  "Le aseguro que no necesito préstamos ni nada parecido.",
+  "Oiga, yo no estoy buscando financiamiento en este momento.",
+  "Porfa no me coticen nada, solo quiero una consulta rápida.",
+  "Le repito que no requiero créditos, gracias por su ayuda.",
+  "No me desvíe, porque definitivamente no busco dinero prestado.",
+  "Solo pregunto esto, no tenga en cuenta la parte de préstamos.",
+  "Ya le dije que no soy cliente de la línea de crédito."
+ ]
+}

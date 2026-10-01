@@ -1,0 +1,15 @@
+{
+ "name": "hotel.reservaciones.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y necesita que se ocupe de su caso el área que atiende esto: «reservar, cambiar o cancelar una habitación». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, no logro hacer la reserva por la página y necesito que me ayuden a concretarla.",
+  "¿Me pueden decir por qué no me aparece la opción para cambiar mi fecha de salida?",
+  "Vengo llamando hace rato porque no he recibido el correo con la confirmación de mi estancia.",
+  "Pues mire, no me han permitido cancelar sin penalidad y quiero que revisen mi caso urgentemente.",
+  "Oiga, no puedo acceder al sistema para modificar los huéspedes de la reserva y ya me urge.",
+  "No tengo acceso a mi cuenta desde hace dos días y necesito cambiar el lugar de llegada.",
+  "Es que no me funciona el enlace de pago y quiero asegurar la habitación hoy mismo.",
+  "Mire, nunca me llegó la respuesta sobre mi solicitud de cancelación y necesito resolverlo ya."
+ ]
+}

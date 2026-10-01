@@ -1,0 +1,27 @@
+{
+ "name": "paqueteria.recoleccion.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una empresa de envíos y necesita que se ocupe de su caso el área que atiende esto: «programar que pasen a recoger un envío». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buen día, necesito agendar una recolección para mañana a primera hora.",
+  "¡Qué pena la molestia! ¿Me podrían programar el retiro del paquete hoy mismo?",
+  "Oiga, vengo con un problema porque nadie vino ayer y tengo que enviar esto urgente.",
+  "Por favor, necesito coordinar la visita de su chofer para las tres de la tarde.",
+  "¿Será posible que pasen a buscar el envío mañana en la mañana? Es importante.",
+  "Buenas tardes, quiero solicitar que vengan a recoger una caja grande desde mi domicilio.",
+  "Hola, disculpen la insistencia pero necesito confirmar cuándo vendrán por mi encomienda.",
+  "A ver amigo, tengo que despachar esto hoy y no sé cómo programar el viaje.",
+  "Le comento que necesito servicio de recolección para este viernes a las once.",
+  "Osea, ¿me ayudan con lo de pasar a buscar mi paquete urgente? Gracias.",
+  "Buenas, quería pedirles que agenden una visita para recoger unos documentos mañana a las ocho.",
+  "¡Hola! Necesito que alguien venga por un bulto desde ahora mismo si es posible.",
+  "Perdón el disgusto, pero necesito reprogramar la recolección porque ayer no estuve en casa.",
+  "Buen día, solicito su apoyo para coordinar el retiro de mercancía para este afternoon.",
+  "Hola, ¿me pueden dejar programado que vengan a buscar el envío mañana temprano?",
+  "Oiga, tengo una situación con mi pedido y necesito que pasen a recogerlo ya.",
+  "Buenas tardes, quiero gestionar el servicio de pick-up para mañana por la tarde.",
+  "¿Podrían enviarme a alguien a recoger mi paquete? Lo necesito despachado hoy mismo.",
+  "Hola, buenas, necesito programar la recolección de un envío con peso especial para mañana.",
+  "Amigo, le pido el favor de coordinar que vengan a buscar el bulto esta tarde."
+ ]
+}

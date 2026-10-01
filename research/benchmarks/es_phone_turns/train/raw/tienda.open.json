@@ -1,0 +1,22 @@
+{
+ "name": "tienda.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a una tienda de electrodomésticos: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, ¿me dicen por favor la dirección de su local principal?",
+  "A ver, ¿ustedes están abiertos este domingo o cerramos?",
+  "Le comento que necesito saber qué días y horas tienen de garantía los refrigeradores.",
+  "Hola, disculpe la molestia, pero quería consultarle si aceptan pago en efectivo o solo tarjeta.",
+  "¿Tienen parqueo gratuito para los clientes o nos cobran el tiempo?",
+  "Disculpe, ¿en qué zona exacta queda esa sucursal que vi en el mapa?",
+  "Oiga, una preguntita: ¿qué documentos necesito llevar para comprar a crédito?",
+  "Pura vida, pues quería saber si tienen entrega gratis a la primera infancia.",
+  "Buenas, ¿me confirma si abren mañana feriado de Semana Santa o no?",
+  "Oye, pues dime si aceptan transferencia del BAC o solo efectivo.",
+  "Perdona que te moleste, pero ¿a qué hora exacto cierran hoy por favor?",
+  "Hola amigo, ¿hay sucursales en el oriente o solo están en San José centro?",
+  "A ver mi amor, ¿el plan de pagos es a 12 meses sin intereses sí o no?",
+  "Oigan muchachos, ¿me pueden decir si tienen reposición del modelo que busco hoy mismo?",
+  "Buen día señorita, ¿ustedes hacen instalación incluida con la compra del aire acondicionado?"
+ ]
+}

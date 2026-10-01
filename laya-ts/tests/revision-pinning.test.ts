@@ -8,7 +8,7 @@ import { Router } from "../src/router.js";
 import { PINNED_REVISIONS, createNodeProvider, loadNodeBundle, loadWebBundle, resolveRevision } from "../src/providers.js";
 
 const fakeProvider = () => ({
-  async runEncoder(_b: any) { return { lastHidden: [[1, 0], [0, 1]] }; },
+  async runEncoder(_b: any) { return { lastHidden: [[[1, 0], [0, 1]]] }; },
   async runHead(_h: any) { return { logits: [[2, 0]], act: [[3, 0]] }; },
 });
 
@@ -183,5 +183,157 @@ describe("revision plumbing", () => {
     expect(router.revisions["typed-decisions"]).toBe("typed-sha");
     expect(new Router().revision).toBeNull();
     expect(new Router().revisions).toEqual({});
+  });
+});
+
+describe("Router digest tests", () => {
+  it("Router normalises digest keys like revision keys", () => {
+    const router = new Router({
+      sha256Digests: { ml: { "w.bin": "a".repeat(64) }, typed: null },
+    });
+    expect(Object.keys(router.sha256Digests).sort()).toEqual(["multilingual", "typed-decisions"]);
+    expect(router.sha256_digests).toBe(router.sha256Digests);
+    expect(new Router().sha256Digests).toEqual({});
+  });
+
+  it("snake_case sha256_digests alias is accepted", () => {
+    const router = new Router({
+      sha256_digests: { en: { "w.bin": "a".repeat(64) } },
+    });
+    expect(router.sha256Digests.english).toEqual({ "w.bin": "a".repeat(64) });
+  });
+
+  it("misspelled model fails at construction", () => {
+    expect(() => new Router({ sha256Digests: { engligh: { "w.bin": "a".repeat(64) } } }))
+      .toThrow(/unknown model "engligh"/);
+  });
+
+  it("each checkpoint gets its own expectedSha256 map upon load", async () => {
+    const captured: Array<{ repo: string; opts: Record<string, unknown> | undefined }> = [];
+    const spy = vi.spyOn(Agent, "load").mockImplementation(async (repo, opts) => {
+      captured.push({ repo, opts });
+      return new Agent({ provider: fakeProvider(), cfg: {} });
+    });
+    try {
+      const router = new Router({
+        sha256Digests: {
+          english: { "model.safetensors": "a".repeat(64) },
+          multilingual: { "model.safetensors": "b".repeat(64) },
+        },
+      });
+      await router.load("english");
+      await router.load("multilingual");
+      expect(captured[0].opts?.expectedSha256).toEqual({ "model.safetensors": "a".repeat(64) });
+      expect(captured[1].opts?.expectedSha256).toEqual({ "model.safetensors": "b".repeat(64) });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("unlisted checkpoint is left without expectedSha256", async () => {
+    const captured: Array<{ repo: string; opts: Record<string, unknown> | undefined }> = [];
+    const spy = vi.spyOn(Agent, "load").mockImplementation(async (repo, opts) => {
+      captured.push({ repo, opts });
+      return new Agent({ provider: fakeProvider(), cfg: {} });
+    });
+    try {
+      const router = new Router({
+        sha256Digests: { multilingual: { "model.safetensors": "b".repeat(64) } },
+      });
+      await router.load("english");
+      expect(captured[0].opts?.expectedSha256).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("none/null entry passes an empty map to mask environment defaults", async () => {
+    const captured: Array<{ repo: string; opts: Record<string, unknown> | undefined }> = [];
+    const spy = vi.spyOn(Agent, "load").mockImplementation(async (repo, opts) => {
+      captured.push({ repo, opts });
+      return new Agent({ provider: fakeProvider(), cfg: {} });
+    });
+    try {
+      const router = new Router({
+        sha256Digests: { english: null },
+      });
+      await router.load("english");
+      expect(captured[0].opts?.expectedSha256).toEqual({});
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("Router env digest tests", () => {
+  const origEnv = process.env["LAYA_SHA256_DIGESTS"];
+
+  afterEach(() => {
+    if (origEnv === undefined) {
+      delete process.env["LAYA_SHA256_DIGESTS"];
+    } else {
+      process.env["LAYA_SHA256_DIGESTS"] = origEnv;
+    }
+  });
+
+  it("flat map is left to underlying provider", () => {
+    process.env["LAYA_SHA256_DIGESTS"] = JSON.stringify({ "model.safetensors": "a".repeat(64) });
+    const router = new Router();
+    expect(router.sha256Digests).toEqual({});
+  });
+
+  it("nested map is split per checkpoint and unlisted models default to {}", () => {
+    const engDigests = { "model.safetensors": "a".repeat(64) };
+    const multiDigests = { "model.safetensors": "b".repeat(64) };
+    process.env["LAYA_SHA256_DIGESTS"] = JSON.stringify({
+      english: engDigests,
+      multilingual: multiDigests,
+    });
+    const router = new Router();
+    expect(Object.keys(router.sha256Digests).sort()).toEqual(["english", "multilingual", "typed-decisions"]);
+    expect(router.sha256Digests.english).toEqual(engDigests);
+    expect(router.sha256Digests.multilingual).toEqual(multiDigests);
+    expect(router.sha256Digests["typed-decisions"]).toEqual({});
+  });
+
+  it("nested map keys are normalised", () => {
+    const engDigests = { "model.safetensors": "a".repeat(64) };
+    process.env["LAYA_SHA256_DIGESTS"] = JSON.stringify({ en: engDigests });
+    const router = new Router();
+    expect(router.sha256Digests.english).toEqual(engDigests);
+  });
+
+  it("constructor argument wins for the checkpoint it names", () => {
+    const engDigests = { "model.safetensors": "a".repeat(64) };
+    const multiDigests = { "model.safetensors": "b".repeat(64) };
+    process.env["LAYA_SHA256_DIGESTS"] = JSON.stringify({
+      english: engDigests,
+      multilingual: multiDigests,
+    });
+    const router = new Router({
+      sha256Digests: { english: { "model.safetensors": "c".repeat(64) } },
+    });
+    expect(router.sha256Digests.english).toEqual({ "model.safetensors": "c".repeat(64) });
+    expect(router.sha256Digests.multilingual).toEqual(multiDigests);
+  });
+
+  it("misspelled key in environment fails at construction", () => {
+    process.env["LAYA_SHA256_DIGESTS"] = JSON.stringify({ engligh: { "w.bin": "a".repeat(64) } });
+    expect(() => new Router()).toThrow(/unknown model "engligh"/);
+  });
+
+  it("mixed artifact and model keys fail rather than guess", () => {
+    process.env["LAYA_SHA256_DIGESTS"] = JSON.stringify({
+      "model.safetensors": "a".repeat(64),
+      english: { "model.safetensors": "a".repeat(64) },
+    });
+    expect(() => new Router()).toThrow(/LAYA_SHA256_DIGESTS/);
+  });
+
+  it("unparseable environment returns empty without throwing", () => {
+    for (const val of ["", "   ", "{not json", "[]", '"digests"', "{}"]) {
+      process.env["LAYA_SHA256_DIGESTS"] = val;
+      expect(new Router().sha256Digests).toEqual({});
+    }
   });
 });

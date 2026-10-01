@@ -1,0 +1,15 @@
+{
+ "name": "aseguradora.siniestros.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una aseguradora y pide que la comuniquen con el área de «siniestros» (reportar un accidente, un robo o un daño cubierto por el seguro). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenas tardes, me comunican con siniestros por favor.",
+  "Oiga, ¿me puede pasar con el departamento de siniestros?",
+  "Hola, solicito atención en el área de siniestros.",
+  "Porfa, transferirme a siniestros rápido que es urgencia.",
+  "Le llamo para reportar un accidente, hablen con el sector siniestros.",
+  "¿Hay alguien en siniestros? Necesito hablar con esa mesa.",
+  "Oiga, permítame conectar con la brigada de siniestros por favor.",
+  "Necesito declarar un robo, hablemos con los chicos de siniestros."
+ ]
+}

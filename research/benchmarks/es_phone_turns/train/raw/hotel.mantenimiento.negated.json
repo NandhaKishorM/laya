@@ -1,0 +1,15 @@
+{
+ "name": "hotel.mantenimiento.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y aclara que NO necesita el área de «mantenimiento» (algo dañado en la habitación: aire, ducha, televisor): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Disculpe, pero aquí todo funciona perfecto, no necesito arreglo alguno.",
+  "No es necesario enviar técnicos, solo quería confirmar la hora de salida.",
+  "Para nada me preocupa el aire acondicionado, tengo una consulta sobre el desayuno.",
+  "Oiga, tranquilos, la televisión está bien; mi duda es del estacionamiento.",
+  "Gracias por su interés, pero no hay falla técnica alguna en la pieza.",
+  "No me atiendan con mantenimiento, por favor hablen conmigo directamente de este tema.",
+  "Todo marche bien, no necesito reparación, solo una aclaración rápida sobre las toallas.",
+  "Ni lo pensé, el baño está impecable; quería preguntar sobre la factura."
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "name": "tienda.garantias.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una tienda de electrodomésticos y necesita que se ocupe de su caso el área que atiende esto: «un producto comprado que salió dañado y está en garantía». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, compré un refrigerador hace tres días y al llegar estaba golpeado el costado.",
+  "Mire, tengo una licuadora que no enciende ya, es bajo garantía y necesito cambiarla por favor.",
+  "¡Chale! El televisor vino con una línea verde en la pantalla desde que lo abrí.",
+  "Verá, el microondas hace un ruido terrible y huele a quemado, así que no puedo usarlo.",
+  "Es que compré esto aquí mismo y resulta que la nevera gotea por dentro.",
+  "Hola, necesito ver qué se puede hacer con una lavadora que se salió del balance en el centrifugado.",
+  "Pues oiga, me entregaron el horno pero le falta una de las rejillas interiores.",
+  "La verdad es que aspiramos y no aspira nada, parece que no tiene motor.",
+  "¿Sabe?, compré un aire acondicionado y está haciendo ruido como una moto vieja.",
+  "Oiga pues, tengo problemas con la cafetera, se me sale café por todos lados.",
+  "Es que el plato del horno se me rompió justo al sacarlo caliente, ¿qué hago?",
+  "Verdaderamente no está funcionando el secador de ropa, solo gira pero no calienta.",
+  "Hola, le comento que la tostadora dejó de funcionar a la segunda vez que la usé.",
+  "Pues oiga don, necesito revisión urgente porque la licuadora hace chispas cuando prendo.",
+  "Mire, el horno microondas no calienta los alimentos en absoluto, está fallando.",
+  "Es una lástima porque compré caro este equipo y ya viene mal hecho de fábrica.",
+  "Oiga, la cafetera automática deja de funcionar después de dos tazas, es insoportable.",
+  "Verá, el lavaplatos no limpia bien y se queda agua sucia al final del ciclo.",
+  "Hola, necesito atender lo de la refrigeradora que no enfría nada desde ayer.",
+  "Pues oiga, me dieron una plancha que tiene la suela rayada y quemada al entregármela."
+ ]
+}

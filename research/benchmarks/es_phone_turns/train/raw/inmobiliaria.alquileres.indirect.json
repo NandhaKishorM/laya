@@ -1,0 +1,27 @@
+{
+ "name": "inmobiliaria.alquileres.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una inmobiliaria y necesita que se ocupe de su caso el área que atiende esto: «alquilar una casa, un apartamento o un local». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, quiero dejar constancia de que el inquilino del apartamento en Colinas de San Lorenzo no paga la renta desde hace dos meses y necesito iniciar el proceso de desalojo inmediatamente.",
+  "Oiga, le llamo porque me urge alquilar un local comercial cerca del mercado central para una ferretería, tengo los recursos ya.",
+  "Disculpe, necesito revisar el contrato de mi casa en La Limón porque el dueño quiere subir el alquiler unilateralmente y eso no está bien, quiero asesoría urgente.",
+  "Hola, soy un particular y busco arrendar un apartamento amueblado por tres meses para estar en Tegucigalpa trabajando, ¿tiene algo así disponible ya?",
+  "Mira, hay una filtración grave en el techo del local que rento en el centro y el propietario no responde, necesito reportarlo por escrito hoy mismo.",
+  "Quisiera inscribir un nuevo contrato de arrendamiento para un condominio en Santa Ana donde nos mudamos la semana pasada, ¿qué papeles me hacen falta?",
+  "Oiga, le comento que el vecino del departamento de arriba está haciendo obras sin permiso y esto afecta mi estructura, necesito que intervengan como mediadores.",
+  "Buen día, estoy vendiendo mi terreno pero también quiero dejarlo en arrendamiento temporal si no se vende rápido, ¿manejamos esa solicitud juntos?",
+  "Ayuda por favor, me desalojaron injustamente de mi casa porque el dueño vendió la propiedad y yo tenía contrato vigente por un año.",
+  "Necesito ampliar la superficie rentada del local que tengo en Plaza Granadera, el negocio creció y necesito firmar un adendo al contrato actual.",
+  "Tengo un familiar que quiere alquilar una casa en La Ceiba pero no habla bien español, ¿pueden actuar como traductores o intermediarios en la negociación?",
+  "El agua se fue cortada en el edificio donde vivo hace dos días y la administración de renta no hace nada, exijo respuesta inmediata por escrito.",
+  "Quiero devolver las llaves del apartamento porque tengo que salir del país urgentemente, pero me están reteniendo el depósito ilegalmente desde hace un mes.",
+  "Busco un almacén grande en la zona industrial para guardar mercancía importada, con seguridad 24 horas y acceso para camiones grandes.",
+  "Oiga, firmé un contrato verbal hace seis meses para una habitación y ahora me cobran más de lo acordado, necesito regularizar esa situación legalmente.",
+  "Me gustaría que revisen la cláusula de penalización en mi contrato de local comercial antes de que llegue la fecha de vencimiento el próximo mes.",
+  "Tengo un conflicto con el administrador del edificio sobre el pago de gastos comunes y no puedo renovar mi contrato de arrendamiento, necesito mediación urgente.",
+  "Hola, busco alquilar una casa campestre en Comayagüela para fin de semana pero que sea a largo plazo porque me mudaré allá, ¿tiene opciones?",
+  "El inquilino se negó a pagar el recibo de servicios básicos según lo pactado y ya pasaron quince días del vencimiento, ¿cómo procedemos con el cobro coercitivo?",
+  "Necesito cancelar mi contrato de arrendamiento anticipadamente porque encontré trabajo en otra ciudad, quiero saber si me quitarán parte del depósito como dice la ley."
+ ]
+}

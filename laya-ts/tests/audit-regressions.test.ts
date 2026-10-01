@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Agent, checkQuestion, toInternal } from "../src/agent.js";
-import { buildSequence } from "../src/common.js";
+import { buildSequence, renderOptions } from "../src/common.js";
 import { loadNodeBundle } from "../src/providers.js";
 
 const tokenizer = () => ({
@@ -38,6 +38,53 @@ describe("audit regressions", () => {
     expect(rendered).toContain("refund request");
   });
 
+  it("preserves the newest conversation turn in systemOne and predictBatch", async () => {
+    const encoderBatches: any[] = [];
+    const testProvider = {
+      async runEncoder(batch: any) {
+        encoderBatches.push(batch);
+        return { lastHidden: Array(batch.inputIds.length).fill([[0, 0]]) };
+      },
+      async runHead(_hidden: any, batch: any) {
+        return {
+          logits: Array(batch.inputIds.length).fill([1, 0]),
+          act: Array(batch.inputIds.length).fill([1, 0]),
+        };
+      },
+    };
+    const agent = new Agent({
+      provider: testProvider,
+      tok: tokenizer(),
+      max_len: 64,
+      head_max_len: 32,
+    } as any);
+
+    const conv = [
+      { text: "old context that must be truncated" },
+      { text: "newest refund request" },
+    ];
+    const questions = { q: { type: "noul", instructions: "?" } };
+
+    // 1. systemOne
+    await agent.systemOne(conv, questions);
+    expect(encoderBatches.length).toBe(1);
+    const systemOneRendered = encoderBatches[0].inputIds[0]
+      .map((id: number) => String.fromCodePoint(id))
+      .join("");
+    expect(systemOneRendered).toContain("refund request");
+    expect(systemOneRendered).not.toContain("old context");
+
+    // 2. predictBatch
+    encoderBatches.length = 0;
+    await agent.predictBatch([conv], questions);
+    expect(encoderBatches.length).toBe(1);
+    const batchRendered = encoderBatches[0].inputIds[0]
+      .map((id: number) => String.fromCodePoint(id))
+      .join("");
+    expect(batchRendered).toContain("refund request");
+    expect(batchRendered).not.toContain("old context");
+  });
+
   it("renders custom noul labels and validates unsupported labels", () => {
     const q = toInternal({
       type: "noul",
@@ -53,9 +100,57 @@ describe("audit regressions", () => {
     expect(() => checkQuestion("q", { type: "choice", instructions: "?", criteria: ["yes"], labels: { false: "No", true: "Yes" } })).toThrow("labels");
   });
 
+  it("treats a null or undefined noul `labels` as the defaults, as Python does", () => {
+    const defaults = renderOptions(toInternal({ type: "noul", instructions: "?" }));
+    for (const labels of [null, undefined]) {
+      const q = { type: "noul", instructions: "?", labels };
+      expect(() => checkQuestion("q", q)).not.toThrow();
+      expect(renderOptions(toInternal(q))).toEqual(defaults);
+    }
+    for (const labels of ["x", [], {}, 5, { false: "No" }]) {
+      expect(() => checkQuestion("q", { type: "noul", instructions: "?", labels })).toThrow("labels");
+    }
+    expect(() => checkQuestion("q", { type: "choice", instructions: "?", criteria: ["a"], labels: null })).toThrow("labels");
+  });
+
+  it("reads noul criteria keys case-insensitively, as Python does", () => {
+    const upper = { type: "noul", instructions: "?", criteria: { True: "it holds", FALSE: "it does not" } };
+    const lower = { type: "noul", instructions: "?", criteria: { true: "it holds", false: "it does not" } };
+    expect(() => checkQuestion("q", upper)).not.toThrow();
+    expect(toInternal(upper).crit).toEqual({ true: "it holds", false: "it does not" });
+    expect(renderOptions(toInternal(upper))).toEqual(renderOptions(toInternal(lower)));
+    expect(() => checkQuestion("q", { type: "noul", instructions: "?", criteria: { True: "x", maybe: "y" } })).toThrow("maybe");
+    expect(() => checkQuestion("q", { type: "noul", instructions: "?", criteria: { yes: "x" } })).toThrow("yes");
+  });
+
   it("rejects a null score level, as Python does (#302)", () => {
     expect(() => checkQuestion("q", { type: "score", instructions: "?", criteria: ["low", null, "high"] })).toThrow("level 1");
     expect(() => checkQuestion("q", { type: "score", instructions: "?", criteria: ["low", "mid", undefined] })).toThrow("level 2");
+  });
+
+  it("rejects a nested choice label, as Python does (#425)", () => {
+    const check = (criteria: unknown[]) => () => checkQuestion("q", { type: "choice", instructions: "?", criteria });
+    expect(check(["yes", { k: 1 }])).toThrow("choice label 1 is a dict");
+    expect(check([["y", ["z"]], "no"])).toThrow("choice label 0 is a list");
+    expect(check(["a", "b", [1]])).toThrow('question "q": choice label 2 is a list');
+    expect(check(["a", 1, true, "", 2.5])).not.toThrow();
+    expect(() => checkQuestion("q", { type: "choice", instructions: "?", criteria: { a: "x", b: { d: 1 } } })).not.toThrow();
+  });
+
+  it("rejects a null choice label, as Python does (#508)", () => {
+    const check = (criteria: unknown[]) => () => checkQuestion("q", { type: "choice", instructions: "?", criteria });
+    expect(check(["billing", null])).toThrow('question "q": choice label 1 is null');
+    expect(check([undefined, "a"])).toThrow("choice label 0 is null");
+    expect(check(["a", , "b"])).toThrow("choice label 1 is null");
+    expect(() => checkQuestion("q", { type: "choice", instructions: "?", criteria: { a: null, b: null } })).not.toThrow();
+  });
+
+  it("rejects choice labels that share an answer key, as Python does (#496)", () => {
+    const check = (criteria: unknown[]) => () => checkQuestion("q", { type: "choice", instructions: "?", criteria });
+    expect(check(["a", "b", "a"])).toThrow('question "q": choice label 2 ("a") repeats label 0');
+    expect(check([1, "1"])).toThrow("choice label 1 (\"1\") repeats label 0");
+    expect(check([true, "true"])).toThrow("repeats label 0");
+    expect(check(["a", "A", 1, 2, true, false])).not.toThrow();
   });
 
   it("rejects malformed provider output", async () => {

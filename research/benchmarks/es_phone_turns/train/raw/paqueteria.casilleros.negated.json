@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.casilleros.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y aclara que NO necesita el área de «casilleros» (abrir un casillero para recibir compras hechas por internet): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Por favor, no me transfieran al área de casilleros, tengo otra duda.",
+  "Oiga, yo no necesito abrir un casillero, solo quería preguntarle algo rápido.",
+  "No me mande para allí, que yo no estoy interesado en ese servicio, gracias.",
+  "Perdone, pero yo no requiero la sección de paquetes internacionales, ¿quién puede ayudarme?",
+  "Escuche, no es necesario que me atiendan en casilleros, solo una consulta menor.",
+  "No, al contrario, yo no tengo ese problema con los envíos, solo pregunto.",
+  "Disculpe la molestia, pero no busco abrir cuenta de casillero, gracias igual.",
+  "Que no me pasen para el departamento de entregas, que ya estoy bien atendido."
+ ]
+}

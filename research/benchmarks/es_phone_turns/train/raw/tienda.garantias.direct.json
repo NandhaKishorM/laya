@@ -1,0 +1,15 @@
+{
+ "name": "tienda.garantias.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una tienda de electrodomésticos y pide que la comuniquen con el área de «garantias» (un producto comprado que salió dañado y está en garantía). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Hola, buenos días. ¿Me puede dar con el departamento de garantías por favor?",
+  "Bueno, pues le comento que compré una licuadora y vino dañada, necesito hablar con garantías.",
+  "Sí, hable con garantía.",
+  "Disculpe la molestia, pero me urge reportar un defecto en mi refrigerador, ¿me pueden pasar con el área de garantías?",
+  "Pues sí, necesito atención de garantías.",
+  "Que tal, tengo una duda sobre la cobertura de mi lavadora y quisiera hablar con alguien del equipo de garantías.",
+  "Buenas tardes, ¿podría conectarme con garantía, por favor?",
+  "Verá, la tele no enciende todavía bajo garantía, necesito que me atiendan en ese departamento."
+ ]
+}

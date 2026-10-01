@@ -1,0 +1,15 @@
+{
+ "name": "colegio.direccion.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y necesita que se ocupe de su caso el área que atiende esto: «asuntos de disciplina y hablar con la directora». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, buenas tardes, no me aceptan la observación que puse en línea y necesito hablar urgentemente con la directora",
+  "Perdón la molestia, mi hijo no ha podido cumplir con el acuerdo disciplinario firmado y quisiera agendar una cita para explicarle la situación familiar",
+  "Buen día, oiga, yo no tengo acceso al sistema de avisos y me dicen que debo conversar directamente con la jefa del plantel sobre un incidente menor",
+  "Mira, le comento rápido, no nos han respondido el correo anterior y es urgente que hablemos con quien maneja los casos conductuales aquí en la escuela",
+  "Oiga doctora, no puedo entrar al sistema para ver las faltas de mi hija y me urge hablar con la directora para entender qué pasó la semana pasada",
+  "Buenas tardes, oiga, el muchacho no ha entregado el compromiso escrito y necesito saber quién es la autoridad competente para regularizar esto cuanto antes",
+  "Disculpe, yo no he recibido notificación oficial de la reunión disciplinaria y solicito por favor hablar con la directora para aclarar malentendidos familiares",
+  "Mira, oiga, no me permiten agendar cita online y es vital que hable con la persona encargada de la conducta estudiantil para solucionar un problema grave"
+ ]
+}

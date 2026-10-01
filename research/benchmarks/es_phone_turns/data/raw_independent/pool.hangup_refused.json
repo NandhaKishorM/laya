@@ -1,0 +1,15 @@
+{
+ "name": "pool.hangup_refused",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que está en una llamada con una empresa y pide que NO le cuelguen, o aclara que todavía no terminó.",
+ "phrases": [
+  "¿Sigo en línea?",
+  "Aún no me pude ir, escuchame por favor.",
+  "No, espera, no me cuelgues, me falta algo.",
+  "Quédense ahí conmigo un segundo más.",
+  "No me corten la línea, no se vayan.",
+  "Ya, no me cuelgues, sigo aquí esperando.",
+  "¿Me siguen escuchando? Ya voy llegando.",
+  "Me quedé en pausa, no me vayan a cortar."
+ ]
+}

@@ -7,6 +7,9 @@ Routing changes the latency picture in two ways:
 So there are two regimes -- hot (right model already loaded) and cold (swap) -- and the realistic
 number for a mixed-language workload sits between them, determined by `max_loaded`.
 
+Writes research/latency_benchmark_results.json (fresh run, gitignored;
+the name tests/test_doc_tables.py expects).
+
   USE_TF=0 python3 research/scripts/bench_latency.py
 """
 import gc
@@ -23,18 +26,18 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(REPO))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, REPO)   # `import laya` works without an installed package
 
 import laya  # noqa: E402
 from laya.lang import analyse  # noqa: E402
 from laya.router import Router  # noqa: E402
 
-ROOT = os.path.expanduser("~/laya_models")
+ROOT = os.environ.get("LAYA_MODELS", os.path.expanduser("~/laya_models"))
 MODELS = {"english": os.path.join(ROOT, "laya"),
           "multilingual": os.path.join(ROOT, "laya-multilingual"),
           "typed-decisions": os.path.join(ROOT, "laya-typed-decisions")}
-OUT = os.path.join(REPO, "latency_benchmark_results.json")
+OUT = os.path.join(REPO, "research", "latency_benchmark_results.json")
 
 STATE_EN = {"ticket": {"subject": "Payout failing", "messages": [{"from": "customer",
             "text": "Hi, my Stripe payouts have failed for 3 days and I am losing sales. Please help ASAP. " * 6}]}}
@@ -68,7 +71,7 @@ def main():
                     "torch": torch.__version__, "threads": torch.get_num_threads(),
                     "laya": laya.__version__,
                     "note": "CPU numbers. GPU (T4) reference from the Colab run is in "
-                            "laya_benchmark_results.json -> latency."}}
+                            "research/results/t4_colab_benchmark.json -> latency."}}
 
     # ---------------------------------------------------------------- 1. detection overhead
     print("=== 1. language detection overhead (no model) ===", flush=True)

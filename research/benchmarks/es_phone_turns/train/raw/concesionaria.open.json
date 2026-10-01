@@ -1,0 +1,22 @@
+{
+ "name": "concesionaria.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a una concesionaria de carros: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, ¿a qué hora cierran hoy?",
+  "Disculpen, ¿tienen sucursales en otras ciudades?",
+  "¿Aceptan transferencia bancaria además de efectivo?",
+  "O sea, ¿el parqueo es gratuito para clientes?",
+  "¿Qué documentos hacen falta para el crédito?",
+  "Me urgía saber si abren este feriado nacional.",
+  "¿Cuál es la dirección exacta del mostrador principal?",
+  "Mijo, ¿van a tener descuentos por pronto pago?",
+  "O sea que no aceptan tarjetas de débito, ¿verdad?",
+  "¿Tienen taller mecánico en la misma unidad?",
+  "Chévere, gracias, ya anoté el horario de atención.",
+  "¿El estacionamiento es vigilado las 24 horas?",
+  "Disculpen la molestia, ¿cuánto cuesta el seguro incluido?",
+  "¿Aceptan pago en cuotas sin intereses con alguna banca?",
+  "O sea que para feriados abren como los domingos?"
+ ]
+}

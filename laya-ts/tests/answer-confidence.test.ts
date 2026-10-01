@@ -52,5 +52,10 @@ describe("answerConfidence", () => {
     const noul: any = await mk(2).systemOne("s", { n: { type: "noul", instructions: "q?" } });
     // over two options max(p) equals the existing noul confidence
     expect(noul.answers.n.answer_confidence).toBeCloseTo(noul.answers.n.confidence, 4);
+
+    const batchRes: any = await mk(3).predictBatch(["s"], {
+      c: { type: "choice", instructions: "q?", criteria: { a: "x", b: "y", c: "z" } },
+    });
+    expect(batchRes[0].answers.c.answer_confidence).toBeCloseTo(top, 4);
   });
 });

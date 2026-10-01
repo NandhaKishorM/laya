@@ -1,0 +1,27 @@
+{
+ "name": "agencia.boletos.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una agencia de viajes y necesita que se ocupe de su caso el área que atiende esto: «comprar boletos de avión». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, tengo una reservación pero al llegar al aeropuerto me dijeron que mi nombre estaba mal escrito y necesito corregirlo antes del cierre de puertas.",
+  "Oiga, por favor, ¿me puede revisar el estado de mi compra? Le pago hace tres días y aún no recibo el comprobante en mi correo.",
+  "Mira, cambié de fecha para mis boletos pero el sistema me cobra una penalidad muy alta que no está en las reglas del billete.",
+  "Necesito urgentemente cambiar el pasaje porque se me cayó el vuelo y tengo que llegar mañana sí o sí a Miami.",
+  "Hola, quiero cancelar mi viaje por motivos médicos pero la aerolínea dice que no cubre seguro y necesito ayuda para reclamar ese reembolso.",
+  "Oye, te comento que compré dos boletos juntos y al llegar el sistema me separó en filas distintas del avión.",
+  "¿Podría revisar por qué mi boleto electrónico sigue apareciendo como pendiente si ya descargué el PDF hace una hora?",
+  "Mira, tengo un problema con las maletas porque en la agencia me dijeron que iban incluidas y ahora me están cobrando exceso de equipaje.",
+  "Buen día, necesito agregar a mi hijo menor de edad a mi reserva pero la página web se está trabando todo el tiempo.",
+  "Oiga, cambié mis datos personales por error al hacer la compra y no puedo acceder a la app para rectificarlos.",
+  "Escuche, me vendieron un boleto round trip y resulta que solo me sirve la ida porque mi retorno cambió de planes.",
+  "Hola, quiero saber si puedo cambiar el nombre del pasajero porque compré por equivocación con los datos de mi primo.",
+  "Mira, llegué tarde al aeropuerto por un retraso del transporte y perdí mi conexión, ¿qué puedo hacer para recuperar el billete?",
+  "Oye, te digo que la tarifa que me prometieron por teléfono no es la misma que aparece en la factura final.",
+  "Necesito facturar estos boletos para una empresa pero los datos fiscales están mal y no dejan emitir la nota de crédito.",
+  "¿Me puedes ayudar? El sistema borró mi selección de asientos cuando intenté actualizar mi itinerario por internet.",
+  "Oiga, tengo un vuelo de conexión en otro país y necesito que me confirmen si debo hacer transbordo de equipaje o no.",
+  "Mira, quiero devolver los boletos porque se cancelaron las fechas del viaje de negocios pero la aerolínea tarda demasiado en responder.",
+  "Hola, ¿pueden verificar si mi ticket es transferible? Me lo regalaron y necesito saber si puedo cambiarlo a mi nombre.",
+  "Oye, tengo un problema grave porque el vuelo se canceló ayer y nadie de la agencia me ha dado soluciones concretas hasta ahora."
+ ]
+}

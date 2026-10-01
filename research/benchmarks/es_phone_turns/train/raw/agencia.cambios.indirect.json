@@ -1,0 +1,27 @@
+{
+ "name": "agencia.cambios.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una agencia de viajes y necesita que se ocupe de su caso el área que atiende esto: «cambiar o cancelar un viaje ya comprado». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, necesito anular mi reserva por motivo de salud.",
+  "¿Me podrían cambiar las fechas del vuelo sin costo?",
+  "Oiga, tengo un conflicto con la fecha de regreso y quiero ajustarla.",
+  "Que tal, quiero cancelar el paquete turístico porque se me complica.",
+  "Necesito reprogramar mi viaje para el mes próximo por favor.",
+  "Disculpe, necesito hacer un cambio en los boletos comprados.",
+  "Mire, tengo que suspender el viaje y pido la cancelación.",
+  "¿Es posible modificar la salida del vuelo internacional?",
+  "Quiero solicitar el reembolso por haber cancelado con antelación.",
+  "Oiga, necesito cambiar el nombre en la reserva urgente.",
+  "Tengo un problema con el itinerario y quiero reestructurarlo.",
+  "Por favor, anulen mi viaje de negocios por imposibilidad.",
+  "Necesito prorrogar la fecha de llegada a Cancún.",
+  "Oiga, quiero cancelar la parte aérea del paquete todo incluido.",
+  "¿Pueden cambiarme el hotel por uno de mejor categoría?",
+  "Tengo que suspender el viaje familiar y pido auxilio.",
+  "Necesito ajustar las horas de salida por emergencia.",
+  "Oiga, solicito la modificación total de mi reserva actual.",
+  "Quiero anular el tour guiado contratado en mi boleto.",
+  "¿Me pueden cambiar los días del vuelo sin penalización?"
+ ]
+}

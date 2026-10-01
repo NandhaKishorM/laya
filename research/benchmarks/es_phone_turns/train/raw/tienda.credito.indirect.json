@@ -1,0 +1,28 @@
+{
+ "name": "tienda.credito.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una tienda de electrodomésticos y necesita que se ocupe de su caso el área que atiende esto: «el crédito de la tienda: solicitarlo, cuotas, saldo». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Oiga, necesito saber cómo es para hacerme el crédito aquí hoy mismo.",
+  "Buenas tardes, me gustaría cancelar una cuota pendiente antes de fin de mes.",
+  "Hola, ¿me pueden decir cuánto debo exactamente en la tarjeta de la tienda?",
+  "Mire, tengo un problema con mi cuenta, creen que pagué pero no aparece.",
+  "¿Cuál es el mínimo para hacer el pago de esta semana?",
+  "Quiero solicitar un préstamo adicional para unos muebles, ¿qué necesito?",
+  "Oiga, se me pasó la fecha de pago, ¿me lo pueden mover al próximo mes?",
+  "Buen día, vengo a formalizar mi crédito porque compré una nevera ayer.",
+  "Necesito el estado de cuenta completo para ver cómo organizo mis pagos.",
+  "Hola, quiero saber si me aprueban la cuota extra que pedí antes.",
+  "Mire, tengo un error en mi saldo, dicen que debo más de lo que es.",
+  "¿Puedo hacer el primer pago hoy y dejar el resto para el lunes?",
+  "Oiga, necesito cambiar la fecha de corte porque se me ajusta mejor el sueldo.",
+  "Buenas, vengo a preguntar por la aprobación de mi línea de crédito nueva.",
+  "Tengo una factura impaga y no sé cómo regularizarla sin que afecte mi score.",
+  "Hola, ¿me pueden decir hasta qué fecha puedo pagar sin intereses?",
+  "Mire, quiero saber si es posible refinanciar lo que me falta por pagar.",
+  "Necesito anular un pago doble que hicieron en mi cuenta por error.",
+  "Oiga, ¿qué requisitos hacen falta para subir el límite de mi crédito actual?",
+  "Buen día, solo quiero confirmar que supe hacer bien la transferencia de hoy.",
+  "Quiero saber cómo es el proceso para cerrar mi cuenta si ya pagué todo."
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "name": "universidad.posgrados.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y necesita que se ocupe de su caso el área que atiende esto: «maestrías y doctorados». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buen día, no me ha llegado la información sobre los requisitos para inscribirme en la maestría.",
+  "¿Está ahí el encargado? Es que no puedo acceder al sistema de posgrados desde ayer.",
+  "Oiga, pues le comento que no me han confirmado mi matrícula en el doctorado y ando preocupado.",
+  "Disculpe, no me funciona la contraseña para ver los cursos avanzados de la maestría online.",
+  "Buenas tardes, necesito saber si alguien puede revisarlo porque no tengo acceso a los materiales.",
+  "¿Me podría orientar? Es que no me han respondido al correo sobre la beca del doctorado.",
+  "O sea, la verdad es que no puedo terminar el formulario de inscripción por un error en la página.",
+  "Hola, le llamo porque no me ha llegado la carta de aceptación a la maestría presencial."
+ ]
+}

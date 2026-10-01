@@ -1,0 +1,15 @@
+{
+ "name": "tienda.credito.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una tienda de electrodomésticos y pide que la comuniquen con el área de «credito» (el crédito de la tienda: solicitarlo, cuotas, saldo). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor comuníquenme con crédito.",
+  "¡Epa! Pásenme a la sección de crédito, porfa.",
+  "Dígame, necesito hablar con el área de crédito para ver mis cuotas.",
+  "Oiga, ¿me pueden pasar al departamento de crédito?",
+  "Quiero solicitar un crédito nuevo, favor de transferirme.",
+  "Hola, requiero atención inmediata en la mesa de crédito.",
+  "Por aquí hablando de la tienda, necesito ser derivado a créditos.",
+  "¿Me hace el favor de ver con quién hablo? Necesito el área de crédito."
+ ]
+}

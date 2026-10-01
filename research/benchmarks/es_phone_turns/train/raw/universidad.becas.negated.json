@@ -1,0 +1,15 @@
+{
+ "name": "universidad.becas.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y aclara que NO necesita el área de «becas» (solicitar o renovar una beca): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, por favor no me derive a becas porque no me interesa ese trámite.",
+  "Hola, le aclaro que no estoy buscando ninguna ayuda económica, solo consulto sobre clases.",
+  "Oiga, yo no soy de la sección de subsidios, evítenme pasar ahí.",
+  "Disculpe, pero no tengo intención de solicitar ni renovar becas, ¿me atiende alguien más?",
+  "No, no necesito hablar con el área de financiamiento, gracias por la orientación.",
+  "Quiero dejar claro que no aplico para ninguna ayuda, solo una duda académica.",
+  "Por favor, no me trasladen a becarios porque ese tema no me corresponde.",
+  "Le confirmo que no busco apoyo económico, quiero hablar con el escritorio de admisiones."
+ ]
+}

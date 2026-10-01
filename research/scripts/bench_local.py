@@ -5,7 +5,11 @@ Part B  typed-decisions (400 cases / 2,000 decisions) on all three checkpoints, 
         fine-tuned laya-typed-decisions can be compared with Jev's published 0.727 on the
         same benchmark.
 
-Writes local_benchmark_results.json.
+Writes research/local_benchmark_results.json (fresh run, gitignored).
+
+The committed CPU sweep behind the BENCHMARKS tables is
+research/results/cpu_51_language_sweep.json — this script must not
+overwrite it, so the default output stays on the gitignored name.
 
   USE_TF=0 python3 research/scripts/bench_local.py [--langs N] [--per-lang N] [--skip-a] [--skip-b]
 """
@@ -26,17 +30,17 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(REPO))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, REPO)   # `import laya` works without an installed package
 
 import laya  # noqa: E402
 from laya.common import QTYPES, build_sequence, collate_items, render_options, temp_bucket  # noqa: E402
 
-ROOT = os.path.expanduser("~/laya_models")
+ROOT = os.environ.get("LAYA_MODELS", os.path.expanduser("~/laya_models"))
 MODELS = {"english": os.path.join(ROOT, "laya"),
           "multilingual": os.path.join(ROOT, "laya-multilingual"),
           "typed-decisions": os.path.join(ROOT, "laya-typed-decisions")}
-OUT = os.path.join(REPO, "local_benchmark_results.json")
+OUT = os.path.join(REPO, "research", "local_benchmark_results.json")
 SEED, N_OPTS = 13, 20
 
 

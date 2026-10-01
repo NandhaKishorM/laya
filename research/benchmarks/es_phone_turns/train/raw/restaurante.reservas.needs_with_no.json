@@ -1,0 +1,15 @@
+{
+ "name": "restaurante.reservas.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un restaurante y necesita que se ocupe de su caso el área que atiende esto: «apartar una mesa». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, le llamo porque no me queda claro cómo se hace para reservar aquí.",
+  "Oiga, ojalá me pueda ayudar, que no me sale el botón en la página para pedir mesa.",
+  "Perdón la molestia, pero mi mamá no puede usar la aplicación y necesita que le anoten una reservación por favor.",
+  "Sí, hola, ¿me da el favor? Que no llego a tiempo para caminar hasta el local y prefiero apartar desde ya.",
+  "Qué tal, verán que no logro encontrar la opción de fechas libres en su sitio web y me urge sentarnos hoy.",
+  "Disculpe, mi esposo no maneja bien la tecnología y necesitamos asegurar una mesa sin tener que ir allá primero.",
+  "Hablo porque no he recibido confirmación de mi intento anterior y quiero asegurarme de tener lugar para cenar mañana.",
+  "Oiga pues, que no me aparece el calendario en la web y quisiera saber si aún hay espacio para esta noche."
+ ]
+}

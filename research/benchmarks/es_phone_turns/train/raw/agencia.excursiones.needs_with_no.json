@@ -1,0 +1,15 @@
+{
+ "name": "agencia.excursiones.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una agencia de viajes y necesita que se ocupe de su caso el área que atiende esto: «paquetes turísticos y tours». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, estoy llamando porque no me ha salido nada el paquete turístico que reservé hace dos semanas.",
+  "Oiga, ¿podrían ayudarme? Es que no tengo acceso al voucher del tour de snorkel y ya estoy en el aeropuerto.",
+  "La verdad es que no me está funcionando el código de descuento para la promoción de cruceros, ¿sabe?",
+  "Disculpe, necesito apoyo urgente porque no me llegó la confirmación por correo electrónico del viaje a Copán.",
+  "Mire, no puedo completar el pago en línea de mi paquete familiar y los mensajes dicen que está caído.",
+  "Es que no han procesado bien mi solicitud para cambiar las fechas del tour guiado, me urge hacerlo hoy.",
+  "No me aparece disponible la habitación en el hotel incluido dentro del paquete turístico que compré ayer.",
+  "Ayuda por favor, no estoy recibiendo los SMS con las instrucciones de encuentro para la excursión del día mañana."
+ ]
+}

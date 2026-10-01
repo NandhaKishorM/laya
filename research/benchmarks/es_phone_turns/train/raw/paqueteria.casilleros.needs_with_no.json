@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.casilleros.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y necesita que se ocupe de su caso el área que atiende esto: «abrir un casillero para recibir compras hechas por internet». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "La verdad es que nunca he podido abrir esa cuenta para recibir mis compras por internet.",
+  "Mira, ya intenté mil veces y no me han dejado crear el casillero todavía.",
+  "No tengo acceso al sistema para activar mi dirección de envío, ¿me pueden guiar?",
+  "Oiga, ojalá pudieran ayudarme porque no se activa el perfil para mis compras online.",
+  "Creo que hay un error porque no me deja registrar la cuenta desde hace días.",
+  "Buenas tardes, el caso es que nunca logré habilitar mi casillero virtual.",
+  "No puedo completar el registro para recibir lo que pido por la red, ¿qué hago?",
+  "Escuche, necesito eso urgente porque no me funciona el botón de abrir casillero."
+ ]
+}

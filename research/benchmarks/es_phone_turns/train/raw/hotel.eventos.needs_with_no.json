@@ -1,0 +1,15 @@
+{
+ "name": "hotel.eventos.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y necesita que se ocupe de su caso el área que atiende esto: «salones para bodas, fiestas y reuniones de empresa». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, le hablo porque no me cierran los precios del salón para la boda y necesito que me lo ajusten ya.",
+  "Qué tal, es que no hay disponibilidad en las fechas que yo busco para la fiesta de cumpleaños y estoy muy preocupado.",
+  "Mira, pues no me confirman el catering del evento corporativo y tengo miedo de que se nos caiga todo.",
+  "Buenas tardes, disculpe pero no me envían la cotización del salón para las bodas y necesito comparar rápido.",
+  "Hola, le comento porque no me arriendan el espacio para la reunión de empresa cuando yo lo pido.",
+  "Oiga, es que no me preparan bien los salones para las fiestas y siempre hay detalles que fallan.",
+  "Qué pena molestar, pero no me reservan la fecha para la boda aunque yo haya pagado la seña.",
+  "Buen día, le escribo porque no me atienden las dudas sobre los salones para eventos empresariales y urgencia tengo."
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "name": "aseguradora.cobranza.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una aseguradora y necesita que se ocupe de su caso el área que atiende esto: «pago de primas y cuotas atrasadas del seguro». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, le escribo porque hace dos meses que no pago la prima y me preocupa que se corte la cobertura.",
+  "Oiga, necesito regularizar mi situación con las cuotas vencidas del año pasado lo antes posible.",
+  "Le comento que tengo un bloqueo en el sistema para pagar mis atrasos y no sé qué hacer.",
+  "Quisiera saber si puedo hacer un convenio para pagar las dos primas que me deben.",
+  "Hola, estoy intentando liquidar mi deuda de seguro pero el monto que me aparece está incorrecto.",
+  "Me urge poner al día mi póliza porque tengo un siniestro y no sé si estoy cubierto.",
+  "Le cuento que por error administrativo me quedaron dos meses sin pagar y necesito subsanarlo ya.",
+  "¿Podrían indicarme los pasos para cancelar las cuotas atrasadas de mi seguro vehicular?",
+  "Tengo una notificación de cobro judicial por no haber pagado la última anualidad.",
+  "Le escribo para solicitar el recálculo de intereses moratorios sobre mis pagos pendientes.",
+  "Necesito urgente el comprobante de que liquidé los atrasos para presentarlos en mi trabajo.",
+  "Me cancelaron la póliza por falta de pago y quiero saber cómo reactivarla pagando lo debido.",
+  "Quisiera hacer una transferencia bancaria pero me rechazan los pagos de cuotas vencidas.",
+  "Le comento que tengo un problema con el número de cuenta asociado para mis pagos mensuales.",
+  "¿Será posible pagar las primas atrasadas en una sola exhibición o solo aceptan parcelación?",
+  "Estoy tratando de regularizar mi situación pero el sistema me dice que debo llamar a caja.",
+  "Le solicito amablemente que me envíen el estado de cuenta detallado con todos los cargos pendientes.",
+  "Tengo una duda sobre si los pagos realizados al último vencimiento cubren también la multa.",
+  "Quiero proceder con el pago de los atrasos pero necesito autorización previa del área financiera.",
+  "Le comento que ya realicé el depósito pero aún no veo reflejado en mi saldo deudor."
+ ]
+}

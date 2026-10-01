@@ -1,0 +1,15 @@
+{
+ "name": "municipalidad.aseo.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una municipalidad y necesita que se ocupe de su caso el área que atiende esto: «tren de aseo, basura y alumbrado público». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "La iluminación del parque central no está encendida desde hace una semana.",
+  "No me han pasado a retirar la basura acumulada en mi esquina.",
+  "Por favor, la vereda no está limpia después de la lluvia.",
+  "Necesito que alguien revise esto porque las luces de la calle no prenden.",
+  "No puedo hacer nada con el desorden de chatarra que hay frente a mi casa.",
+  "Oiga, el recolector nunca llega por nuestro barrio según el horario.",
+  "Es urgente que limpien los desagües porque no escurre el agua y se inunda.",
+  "La luminaria en la esquina de la escuela no funciona y es peligroso."
+ ]
+}

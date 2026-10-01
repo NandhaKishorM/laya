@@ -1,0 +1,349 @@
+{
+  "base": "4066d5d5fbf08b66c6757ddeedbd797bd7655bc0",
+  "model": "../models/laya",
+  "model_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+  "torch": "2.7.1+cu128",
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "threads": 4,
+  "repeats": 16,
+  "workloads": [
+    {
+      "name": "long_20_options_default",
+      "windows": 30,
+      "before_p50_ms": 770.7229144999985,
+      "after_p50_ms": 741.8036320000141,
+      "saving_percent": 3.752228194583475,
+      "paired_saving_p50_ms": 25.38752499998509,
+      "after_faster_pairs": 16,
+      "question_encode_calls": {
+        "before": 630,
+        "after": 21
+      },
+      "pairs_ms": [
+        {
+          "before": 755.3662249999888,
+          "after": 731.0198440000022
+        },
+        {
+          "after": 734.5862699999941,
+          "before": 756.0385290000227
+        },
+        {
+          "before": 763.4225589999915,
+          "after": 743.674795000004
+        },
+        {
+          "after": 749.1004630000191,
+          "before": 781.9324560000211
+        },
+        {
+          "before": 771.513586999987,
+          "after": 745.0849180000034
+        },
+        {
+          "after": 739.2042749999916,
+          "before": 775.3677320000065
+        },
+        {
+          "before": 775.0609379999958,
+          "after": 733.2346009999924
+        },
+        {
+          "after": 742.5324480000199,
+          "before": 773.6810950000006
+        },
+        {
+          "before": 741.9111699999803,
+          "after": 739.8703190000049
+        },
+        {
+          "after": 741.0748160000082,
+          "before": 769.993301999989
+        },
+        {
+          "before": 766.7506409999874,
+          "after": 766.6943709999998
+        },
+        {
+          "after": 739.4848539999828,
+          "before": 769.5560379999904
+        },
+        {
+          "before": 779.1554670000096,
+          "after": 750.8460010000135
+        },
+        {
+          "after": 766.0764169999936,
+          "before": 771.4525270000081
+        },
+        {
+          "before": 775.2085010000087,
+          "after": 755.3889690000233
+        },
+        {
+          "after": 711.069574000021,
+          "before": 725.6501040000103
+        }
+      ],
+      "all_input_tensors_equal": true,
+      "outputs_equal": true,
+      "decision_logits_and_action_probabilities_equal": true
+    },
+    {
+      "name": "long_20_options_batch8",
+      "windows": 30,
+      "before_p50_ms": 772.4074305000102,
+      "after_p50_ms": 742.8103704999955,
+      "saving_percent": 3.831793795776311,
+      "paired_saving_p50_ms": 25.337741500010225,
+      "after_faster_pairs": 16,
+      "question_encode_calls": {
+        "before": 630,
+        "after": 21
+      },
+      "pairs_ms": [
+        {
+          "before": 747.2378940000226,
+          "after": 722.010795000017
+        },
+        {
+          "after": 724.8769889999949,
+          "before": 749.1776330000448
+        },
+        {
+          "before": 763.6030759999812,
+          "after": 747.3942290000082
+        },
+        {
+          "after": 737.9716530000451,
+          "before": 762.8258909999772
+        },
+        {
+          "before": 773.0705460000422,
+          "after": 758.7429350000434
+        },
+        {
+          "after": 741.4936989999887,
+          "before": 774.9147319999565
+        },
+        {
+          "before": 763.6511570000266,
+          "after": 740.7228280000027
+        },
+        {
+          "after": 743.3846420000236,
+          "before": 772.8549529999782
+        },
+        {
+          "before": 767.094568999994,
+          "after": 743.7462590000337
+        },
+        {
+          "after": 745.6122489999757,
+          "before": 771.9599080000421
+        },
+        {
+          "before": 774.0217000000484,
+          "after": 742.2360989999675
+        },
+        {
+          "after": 750.0837059999981,
+          "before": 775.5320900000129
+        },
+        {
+          "before": 776.6750619999812,
+          "after": 741.2745449999534
+        },
+        {
+          "after": 742.0869170000515,
+          "before": 756.5714419999949
+        },
+        {
+          "before": 784.0836970000282,
+          "after": 758.568293000053
+        },
+        {
+          "after": 778.9746190000528,
+          "before": 816.0115910000059
+        }
+      ],
+      "all_input_tensors_equal": true,
+      "outputs_equal": true,
+      "decision_logits_and_action_probabilities_equal": true
+    },
+    {
+      "name": "long_4_options_default",
+      "windows": 30,
+      "before_p50_ms": 543.4064060000026,
+      "after_p50_ms": 539.2311045000042,
+      "saving_percent": 0.7683570627612957,
+      "paired_saving_p50_ms": 12.141736000018,
+      "after_faster_pairs": 13,
+      "question_encode_calls": {
+        "before": 150,
+        "after": 5
+      },
+      "pairs_ms": [
+        {
+          "before": 597.1686920000252,
+          "after": 570.3511920000324
+        },
+        {
+          "after": 548.8087200000109,
+          "before": 548.5951840000212
+        },
+        {
+          "before": 563.6884250000094,
+          "after": 541.0735230000228
+        },
+        {
+          "after": 545.9787620000043,
+          "before": 543.492614999991
+        },
+        {
+          "before": 555.453449999959,
+          "after": 549.3829319999577
+        },
+        {
+          "after": 567.2547649999728,
+          "before": 585.6271679999736
+        },
+        {
+          "before": 585.101796999993,
+          "after": 564.3718290000379
+        },
+        {
+          "after": 577.6956290000044,
+          "before": 599.3873820000317
+        },
+        {
+          "before": 540.1400929999909,
+          "after": 523.965282000006
+        },
+        {
+          "after": 525.9081159999823,
+          "before": 543.3201970000141
+        },
+        {
+          "before": 525.2991820000261,
+          "after": 524.15587400003
+        },
+        {
+          "after": 528.3915110000521,
+          "before": 533.8170489999925
+        },
+        {
+          "before": 534.4393409999952,
+          "after": 537.3886859999857
+        },
+        {
+          "after": 526.5865289999851,
+          "before": 541.0266940000383
+        },
+        {
+          "before": 538.9093260000095,
+          "after": 529.0660190000267
+        },
+        {
+          "after": 531.238535,
+          "before": 531.8594930000131
+        }
+      ],
+      "all_input_tensors_equal": true,
+      "outputs_equal": true,
+      "decision_logits_and_action_probabilities_equal": true
+    },
+    {
+      "name": "single_short_20_options",
+      "windows": 1,
+      "before_p50_ms": 27.625586999988627,
+      "after_p50_ms": 27.79482599999028,
+      "saving_percent": -0.6126168468446398,
+      "paired_saving_p50_ms": -0.2940649999914058,
+      "after_faster_pairs": 6,
+      "question_encode_calls": {
+        "before": 21,
+        "after": 21
+      },
+      "pairs_ms": [
+        {
+          "before": 24.87685800002737,
+          "after": 25.161067999988518
+        },
+        {
+          "after": 25.549729000033494,
+          "before": 32.6728030000254
+        },
+        {
+          "before": 24.855655999999726,
+          "after": 27.84138399999847
+        },
+        {
+          "after": 33.07467999997016,
+          "before": 24.60957400001007
+        },
+        {
+          "before": 26.697087000002284,
+          "after": 26.525146000039967
+        },
+        {
+          "after": 28.13503100003345,
+          "before": 33.05376600002319
+        },
+        {
+          "before": 28.00941899999998,
+          "after": 27.74826799998209
+        },
+        {
+          "after": 31.101750999994238,
+          "before": 27.477479999959087
+        },
+        {
+          "before": 28.22349100000565,
+          "after": 31.531492999988586
+        },
+        {
+          "after": 27.645273000018733,
+          "before": 25.38376799998332
+        },
+        {
+          "before": 27.79949600000009,
+          "after": 27.734253000005538
+        },
+        {
+          "after": 28.282738000029894,
+          "before": 27.978818000008232
+        },
+        {
+          "before": 29.842222000013408,
+          "after": 30.09515899998405
+        },
+        {
+          "after": 26.838087000044197,
+          "before": 26.429774000007455
+        },
+        {
+          "before": 27.773694000018168,
+          "after": 27.15556599997626
+        },
+        {
+          "after": 30.651570999964406,
+          "before": 25.120577999985017
+        }
+      ],
+      "all_input_tensors_equal": true,
+      "outputs_equal": true,
+      "decision_logits_and_action_probabilities_equal": true
+    }
+  ],
+  "python": "3.10.12",
+  "transformers": "4.51.3",
+  "os": "WSL2 Ubuntu-22.04",
+  "gpu_memory_gib": 8,
+  "amp": "bf16",
+  "weights": "fp32",
+  "warmup_per_mode": 3,
+  "approximate_filler_tokens": 4800,
+  "workload_note": "MASSIVE seed-13 English first case + bench_long_context filler is a latency workload, not an accuracy benchmark."
+}

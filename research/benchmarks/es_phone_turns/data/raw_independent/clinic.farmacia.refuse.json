@@ -1,0 +1,12 @@
+{
+ "name": "clinic.farmacia.refuse",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una clínica médica y deja claro que NO quiere que la pasen al área de «farmacia» (medicamentos y recetas). Nombra el área o lo que hace, y la rechaza. No pide ninguna otra área.",
+ "phrases": [
+  "Hola, quiero hablar con el médico o la enfermera, no la farmacia.",
+  "No, no, no me manden con la farmacia, quiero atención médica.",
+  "Me pasan al consultorio o con el doctor, no con la farmacia.",
+  "Quiero hablar con atención humana, no con la farmacia, por favor.",
+  "Oigan, no me pasen al área de farmacia, solo quiero ver al médico."
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "name": "tienda.credito.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una tienda de electrodomésticos y necesita que se ocupe de su caso el área que atiende esto: «el crédito de la tienda: solicitarlo, cuotas, saldo». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, buenas tardes, le llamo porque nunca me aprobaron el crédito aquí y necesito saber qué está pasando.",
+  "Buenas, disculpe la molestia, pero no he recibido la confirmación de mi cuota del mes pasado todavía.",
+  "Hola, ¿me pueden ayudar? No me aparece el saldo actualizado en su portal web desde hace días.",
+  "Le escribo porque ya pagué la última cuota y no me han cancelado la deuda aún.",
+  "Buen día, oiga, no me funciona el enlace para pagar en línea y necesito hacerlo hoy mismo.",
+  "Disculpe, le llamo porque no puedo descargar mi estado de cuenta por favor.",
+  "Oiga mija, buenas tardes, no me llegó el correo con la propuesta de refinanciamiento que me prometieron.",
+  "Hola, ¿hay alguien de créditos? No tengo acceso a mi perfil y necesito ver mis cuotas."
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "name": "banco.remesas.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y aclara que NO necesita el área de «remesas» (enviar o cobrar dinero que viene del extranjero): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, le confirmo que no requiero servicio de remesas.",
+  "No me transfiera, por favor, no necesito eso hoy.",
+  "Disculpe, pero yo no manejo dinero del exterior.",
+  "Por aquí mismo quedo, sin derivaciones a remesas.",
+  "Gracias, pero no es mi caso lo de abroad.",
+  "Solo tengo una duda operativa, nada con el exterior.",
+  "Le aclaro que no tengo cuentas en dólares tampoco.",
+  "No, no necesito que me pasen al departamento de envíos."
+ ]
+}

@@ -18,8 +18,10 @@ from laya.hooks import HOOK_EVENTS, normalise_hooks, dispatch, aggregate_usage
 
 ## PredictContext
 
-A `PredictContext` is created once per public call and passed to every hook of that call. It is
-**mutable**: hooks may rewrite `states`, `questions` and `results`, and `on_route` may rewrite
+A `PredictContext` is created once per public call and passed to every hook of that call.
+`Router.predict_batch` is the one exception: it creates one per request, as a `Router.predict`
+call for that request would, so its Router-level hooks fire once per request with one state
+each. It is **mutable**: hooks may rewrite `states`, `questions` and `results`, and `on_route` may rewrite
 `decision`. It uses identity equality (`eq=False`), so a context is hashable and two contexts are
 never equal.
 
@@ -44,7 +46,7 @@ class PredictContext:
 
 | field | type | set when | mutable | meaning |
 |---|---|---|---|---|
-| `states` | `list` | always | yes (start) | the states for this call. `system_one`/`Router.predict` pass one; `predict_batch` passes many. A start hook may replace the list. |
+| `states` | `list` | always | yes (start) | the states for this call. `system_one`/`Router.predict` pass one; `Agent.predict_batch` passes many; `Router.predict_batch` passes one per request. A start hook may replace the list. |
 | `questions` | `dict` | always | yes (start) | the questions. A start hook may replace the dict. |
 | `run_id` | `str` | always | no | a unique id shared by every hook of this call. Use it to correlate events and spans. |
 | `results` | `list \| None` | end (and on a skip) | yes (end) | per-state result dicts, each shaped like `system_one`'s return. `None` until inference finishes. |
@@ -64,12 +66,34 @@ class PredictContext:
 Short-circuits inference. Called from `on_predict_start`, it sets `ctx.results` so the forward
 pass is skipped; `on_predict_end` still runs and the supplied results are returned.
 
+The key has to cover everything the answer depends on, and the hook has to cover everything the
+call carries: hooks fire once per call, and `predict_batch` calls them with every state at once.
+
 ```python
+CACHE = {}
+
+def key(ctx, index):
+    # Not sort_keys=True: criteria order is positional, so two orders are two questions,
+    # and the checkpoint and token budget change the answer too.
+    payload = json.dumps([ctx.states[index], ctx.questions, ctx.model,
+                          ctx.max_len, ctx.head_max_len], default=str)
+    return hashlib.sha256(payload.encode()).hexdigest()
+
 def cache_read(ctx):
-    hit = CACHE.get(key(ctx.states[0], ctx.questions))
-    if hit is not None:
-        ctx.skip([hit])   # list of per-state results, same shape as predict_batch's return
+    hits = [CACHE.get(key(ctx, i)) for i in range(len(ctx.states))]
+    if all(hit is not None for hit in hits):
+        ctx.skip(hits)   # one entry per state, same shape as predict_batch's return
+
+def cache_write(ctx):
+    for i, result in enumerate(ctx.results or []):
+        CACHE[key(ctx, i)] = result
+
+laya.load("convaiinnovations/laya", on_predict_start=cache_read, on_predict_end=cache_write)
 ```
+
+`tests/test_hooks_api.py` execs this block, `examples/hooks/cache.py`, and the caching blocks of
+`docs/hooks/patterns.md` and `docs/hooks/examples.md`, and asserts all four keys the same way, so a
+page cannot teach a key the example has moved on from.
 
 On the `Router`, a skipped payload gets a `routing` key added (without overwriting one it
 already has), so `Router.predict` keeps its documented return shape.
@@ -229,11 +253,31 @@ agent.system_one(state, questions,
                  hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
                  hooks_timeout=None, max_len=None, head_max_len=None)
 
+agent.predict_long(state, questions, window=None, stride=None, aggregate="auto",
+                   batch_size=None, lang=None,
+                   hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
+                   hooks_timeout=None)
+
 agent.predict(...)          # alias of system_one
 ```
 
 - `hooks_raise` and `hooks_timeout` on a per-call method default to `None`, meaning "use the instance value".
 - `hooks_concurrent` is instance-level only.
+- On `predict_long` the hooks wrap the inference that answers the state, which for a document
+  needing several windows is the single shared `predict_batch` over them: `on_predict_start` fires
+  once, and `ctx.states` holds the decoded window texts in scan order rather than the caller's
+  state, which was tokenized to produce them. `states` is mutable from a start hook, so the scan
+  that reaches inference need not be the split `predict_long` computed. What changes is what the
+  answer can claim:
+
+  | what the start hook did | `usage["windows"]` | `answer["window"]` |
+  |---|---|---|
+  | answered with `ctx.skip([result])` | `0` | absent -- no window scored it |
+  | left the scan as it was built | `N` | present -- `index`, `token_start`/`token_end` name the deciding span |
+  | replaced the scan, in any way | the states that were scored | absent -- the offsets describe `predict_long`'s windows, not the text that was scored |
+
+  `usage["windows"]` is total over every path, including the one where a state already fit a single
+  window, so a cached answer never reads as a window the model read.
 
 ### Router
 

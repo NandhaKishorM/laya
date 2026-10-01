@@ -1,0 +1,15 @@
+{
+ "name": "universidad.matricula.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y necesita que se ocupe de su caso el área que atiende esto: «inscribir clases y pagar el período». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, no me aparece la opción para inscribir las clases.",
+  "Necesito ayuda urgente porque no puedo realizar el pago del período.",
+  "Mira compadre, nunca me llegó la confirmación de inscripción por correo.",
+  "No tengo acceso al sistema para completar mi matrícula y el dinero ya está.",
+  "Oiga, disculpe que moleste pero no me funcionan los datos en la ventana de pagos.",
+  "Pues fíjese que no me han autorizado el periodo a pesar de haber enviado todo.",
+  "Por favor necesito que le metan mano, no se guarda mi registro de clases.",
+  "Ayudo porfa, no me genera la factura del pago semestral y ya venció."
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.avaluos.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y pide que la comuniquen con el área de «avaluos» (saber cuánto vale una propiedad). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, buenos días, por favor necesito que me pasen con avaluos.",
+  "Oiga, ¿me puede conectar al departamento de avaluos?",
+  "Así mismo, buen día, le comento que requiero servicio de avaluos, gracias.",
+  "¿Avaluos? Sí, ahí mismo está el botón, por favor paseme con avaluos.",
+  "Le molesto un instante para solicitar comunicación con el área de avaluos, por favor.",
+  "Oiga, oiga, necesito que me comuniquen inmediatamente con la gente de avaluos.",
+  "Buenas tardes, ¿tienen disponible el departamento de avaluos ahora mismo?",
+  "Hola, hola, solo quiero hablar con quien esté en avaluos."
+ ]
+}

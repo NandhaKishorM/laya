@@ -1,0 +1,15 @@
+{
+ "name": "banco.tarjetas.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y pide que la comuniquen con el área de «tarjetas» (tarjetas de crédito y débito: bloqueos, robos, límites, reposiciones). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buen día, por favor póngame con tarjetas.",
+  "¿Me puede pasar al sector de tarjetas?",
+  "Sí, hola, necesito hablar con el área de tarjetas, gracias.",
+  "Que me conecten con tarjetas, porfa.",
+  "Buenos días, ¿podrían transferirme a la sección de tarjetas?",
+  "Oiga, buenas tardes, le comento que requiero atención del área de tarjetas.",
+  "¿Con tarjetas? Sí, eso mismo, comuníquenme con ellos.",
+  "Disculpe la molestia, necesito hablar urgentemente con el departamento de tarjetas."
+ ]
+}

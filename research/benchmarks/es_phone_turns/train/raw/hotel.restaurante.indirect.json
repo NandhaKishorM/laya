@@ -1,0 +1,27 @@
+{
+ "name": "hotel.restaurante.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un hotel y necesita que se ocupe de su caso el área que atiende esto: «comida, servicio a la habitación y horarios del comedor». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Hola, buen día, tengo un inconveniente con la cena del último martes.",
+  "Mira, necesito pedir algo urgente para la habitación tres cero cinco.",
+  "Buenas noches, el servicio de la mañana no llegó a pesar del pedido.",
+  "Oiga, me hicieron un cargo por una comida que yo no consumí.",
+  "Qué tal, quisiera reportar que faltaron cubiertos en mi almuerzo de hoy.",
+  "Disculpen, necesito gestionar una entrega extra para las ocho de la noche.",
+  "Hola, el mozo se llevó mi plato y dejó el otro sin avisar.",
+  "Buen día, quiero anular el pedido de bebidas que hice por teléfono.",
+  "Perdón, me trajeron comida para otra habitación en lugar de la mía.",
+  "Oiga, necesito coordinar que me lleven desayunos a las seis de mañana.",
+  "Qué bueno, tengo un reclamo sobre la temperatura de la sopa servida.",
+  "Buenas tardes, por favor ocupense de que me devuelvan el importe del postre.",
+  "Hola, necesito pedir que traigan café sin azúcar en intervalos regulares.",
+  "Mira, el servicio nocturno dejó ruido después de las dos AM.",
+  "Disculpen, quiero solicitar una comida especial por alergia que no respetaron.",
+  "Oiga, me cobraron doble por la cena del domingo pasado.",
+  "Buen día, necesito que envíen sábanas adicionales con el servicio a las diez.",
+  "Qué tal, tengo un problema con la calidad de la ensalada de hoy.",
+  "Hola, por favor gestionen que me cancelen el minibar del último mes.",
+  "Buenas noches, necesito coordinar una entrega médica relacionada con dieta estricta."
+ ]
+}

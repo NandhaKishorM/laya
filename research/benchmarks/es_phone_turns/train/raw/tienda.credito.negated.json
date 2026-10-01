@@ -1,0 +1,15 @@
+{
+ "name": "tienda.credito.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una tienda de electrodomésticos y aclara que NO necesita el área de «credito» (el crédito de la tienda: solicitarlo, cuotas, saldo): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Hola, por favor no me conecten con ventas de crédito porque no me interesa.",
+  "Buen día, solo hago una consulta técnica, nada que ver con planes de financiación.",
+  "Oiga, yo vengo a preguntar por la disponibilidad del producto, no necesito créditos.",
+  "Disculpe, pero evíteme el área financiera que ya tengo todo resuelto con mi banco.",
+  "Quiero hablar con quien atendió en otro asunto, nada de préstamos ni cuotas.",
+  "No me transfiera a la sección de financiamiento porfa, solo tengo una duda rápida.",
+  "Oiga amiguito, olvide el crédito que no lo quiero, solo busco info del modelo.",
+  "Por favor hablemos directo con ventas generales, nada de créditos a nombre de tienda."
+ ]
+}

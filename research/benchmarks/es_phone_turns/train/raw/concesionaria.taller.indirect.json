@@ -1,0 +1,27 @@
+{
+ "name": "concesionaria.taller.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una concesionaria de carros y necesita que se ocupe de su caso el área que atiende esto: «reparación y mantenimiento del carro». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Le consulto por una cotización para cambiar aceite y filtros de mi Toyota Corolla 2018.",
+  "Hola buen día, necesito agendar una cita urgente porque el motor hace un ruido extraño.",
+  "¿Me pueden atender ya que tengo una fuga de líquido en la parte trasera derecha?",
+  "Quisiera saber si hacen revisión general para carro viejo, específicamente frenos y suspensión.",
+  "Buenas tardes, mi auto no enciende desde ayer y creo que es la batería o el alternador.",
+  "Necesito presupuesto para arreglar la pantalla táctil de mi Nissan Sentra, se quedó en negro.",
+  "Le escribo porque necesito pasar revisión técnica y me faltan ajustes en alumbrado y gases.",
+  "¿Tienen disponibilidad para este viernes por la mañana para un cambio de aceite sintético?",
+  "Mi carro vibra mucho cuando freno a más de 60 km/h, creo que son los discos.",
+  "Buen día, necesito reparar el aire acondicionado porque ya no enfría nada desde hace dos días.",
+  "¿Me cotizan la mano de obra para cambiar la correa de distribución en un Honda Civic?",
+  "Le comento que tengo una luz encendida en el tablero relacionada con el sistema eléctrico.",
+  "Necesito que me revisen las suspensiones delanteras porque se siente todo flojo en baches.",
+  "Hola, quiero programar un mantenimiento completo de 10 mil kilómetros para mi Chevrolet Spark.",
+  "Tengo un problema con la caja automática que patina al cambiar de marcha.",
+  "¿Pueden ayudarme con el diagnóstico del motor, hace humo azul al acelerar fuerte?",
+  "Le solicito una cita para cambio de llantas y alineación porque me toma el volante.",
+  "Necesito urgente arreglo de la ventanilla eléctrica del conductor que se trabó abajo.",
+  "Buenas noches, mi auto hizo un golpe seco y ahora no da punta a ningún lado.",
+  "Quisiera saber si tienen servicio de grúa incluido para traer el carro por fallas eléctricas."
+ ]
+}

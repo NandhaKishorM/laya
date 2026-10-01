@@ -1,0 +1,11 @@
+{
+ "name": "gimnasio.clases.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un gimnasio y pide que la comuniquen con el área de «clases» (inscribirse a clases de grupo: zumba, yoga, spinning). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, buenas tardes, por favor ¿me conecta con el área de clases?",
+  "Oiga, pásenme a zumba o yoga",
+  "Buen día, quería información de las clases grupales, ¿podría comunicarme con quien me atienda ahí, por favor?",
+  "Hola, le hablo para inscribirme en spinning, ¿quién es el encargado del área de clases?"
+ ]
+}

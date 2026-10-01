@@ -1,0 +1,453 @@
+{
+ "meta": {
+  "model": "qwen2.5:7b-instruct",
+  "dataset": "independent_clinic",
+  "system_prompt": "Sos la recepcionista. UNA frase corta y hablada. Derivá al área que corresponda."
+ },
+ "summary": {
+  "n": 20,
+  "accuracy": 0.85,
+  "macro_f1": 0.8571428571428571,
+  "ece": 0.15000000000000002,
+  "mean_confidence": 1.0,
+  "majority_baseline": 0.25,
+  "wrong_actions": 2,
+  "by_tag": {
+   "direct": {
+    "n": 1,
+    "accuracy": 1.0
+   },
+   "need-with-no": {
+    "n": 13,
+    "accuracy": 0.9230769230769231
+   },
+   "redirected": {
+    "n": 2,
+    "accuracy": 1.0
+   },
+   "refused": {
+    "n": 4,
+    "accuracy": 0.5
+   }
+  },
+  "confusion": {
+   "ninguno->recepcion": 2,
+   "recepcion->ninguno": 1
+  },
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 17,
+    "coverage": 0.85,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.8823529411764706
+   },
+   {
+    "threshold": 0.6,
+    "fast": 17,
+    "coverage": 0.85,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.8823529411764706
+   },
+   {
+    "threshold": 0.7,
+    "fast": 17,
+    "coverage": 0.85,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.8823529411764706
+   },
+   {
+    "threshold": 0.8,
+    "fast": 17,
+    "coverage": 0.85,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.8823529411764706
+   },
+   {
+    "threshold": 0.9,
+    "fast": 17,
+    "coverage": 0.85,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.8823529411764706
+   },
+   {
+    "threshold": 0.95,
+    "fast": 17,
+    "coverage": 0.85,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.8823529411764706
+   },
+   {
+    "threshold": 0.99,
+    "fast": 17,
+    "coverage": 0.85,
+    "action_recall": 0.9375,
+    "wrong": 2,
+    "precision": 0.8823529411764706
+   }
+  ],
+  "latency_ms": {
+   "p50": 447.53345800563693,
+   "p95": 5007.777834020089,
+   "min": 412.9351250012405
+  },
+  "borderline": [],
+  "first_ms": {
+   "p50": 419.03950000414625,
+   "p95": 4982.773834024556
+  },
+  "tokens": {
+   "in_mean": 393.6,
+   "out_mean": 23.85
+  },
+  "invalid_destinations": 0
+ },
+ "records": [
+  {
+   "id": "il-001",
+   "text": "No, no, no me pasen a esa caja ni al departamento de turnos.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido, no hay necesidad de derivar su llamada. ¿En qué puedo ayudarlo hoy?",
+   "first_ms": 129.96908300556242,
+   "decided_ms": null,
+   "latency_ms": 412.9351250012405,
+   "tokens_in": 390,
+   "tokens_out": 24
+  },
+  {
+   "id": "il-002",
+   "text": "Hola, quería ver si se puede arreglar mi cita porque no puedo ir a la clínica",
+   "gold": "citas",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 405.46075004385784,
+   "decided_ms": 405.46075004385784,
+   "latency_ms": 430.43341604061425,
+   "tokens_in": 393,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-003",
+   "text": "Buenas tardes, necesito saber si hago trámite para cambiar o anular la cita ya que nunca me llegó la confirmación",
+   "gold": "citas",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 426.9387079984881,
+   "decided_ms": 426.9387079984881,
+   "latency_ms": 451.6000000294298,
+   "tokens_in": 401,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-004",
+   "text": "Quisiera pedir ayuda porque no puedo ir a mi consulta médica y quiero cancelarla o cambiarla",
+   "gold": "citas",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 415.2023330098018,
+   "decided_ms": 415.2023330098018,
+   "latency_ms": 439.6929999929853,
+   "tokens_in": 393,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-005",
+   "text": "Oiga, mira, por favor, no la pasen para ahí, a lo del laboratorio, no quiero que me hagan análisis de nada, ni nada de eso.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 424.07462501432747,
+   "decided_ms": 424.07462501432747,
+   "latency_ms": 448.6382920295,
+   "tokens_in": 409,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-006",
+   "text": "Soy yo, no me pasen al área de laboratorio, por favor, no quiero exámenes ni nada.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 400.23808303521946,
+   "decided_ms": 400.23808303521946,
+   "latency_ms": 424.9477499979548,
+   "tokens_in": 397,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-007",
+   "text": "Necesito que revisen los resultados, por favor, ya no me llegó la información que me mandaron.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 419.03950000414625,
+   "decided_ms": 419.03950000414625,
+   "latency_ms": 444.1070839529857,
+   "tokens_in": 395,
+   "tokens_out": 22
+  },
+  {
+   "id": "il-008",
+   "text": "Oigan, urgente: me dijeron que me envíen los exámenes pero no me funciona el sistema.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 420.89275002945215,
+   "decided_ms": 420.89275002945215,
+   "latency_ms": 446.66741602122784,
+   "tokens_in": 398,
+   "tokens_out": 22
+  },
+  {
+   "id": "il-009",
+   "text": "¿Alguien ahí me puede llamar para explicarme los resultados? No me puedo mover para ir.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 417.9015419795178,
+   "decided_ms": 417.9015419795178,
+   "latency_ms": 442.6921249832958,
+   "tokens_in": 394,
+   "tokens_out": 22
+  },
+  {
+   "id": "il-010",
+   "text": "Quiero que me atiendan con mis exámenes, no me funciona lo que me enviaron ayer.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 423.9636250422336,
+   "decided_ms": 423.9636250422336,
+   "latency_ms": 448.7092500203289,
+   "tokens_in": 397,
+   "tokens_out": 22
+  },
+  {
+   "id": "il-011",
+   "text": "Por favor, necesitan revisar mis análisis, nunca me han dado el resultado que me corresponde.",
+   "gold": "laboratorio",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 422.8069999953732,
+   "decided_ms": 422.8069999953732,
+   "latency_ms": 447.53345800563693,
+   "tokens_in": 392,
+   "tokens_out": 22
+  },
+  {
+   "id": "il-012",
+   "text": "Quiero hablar con atención humana, no con la farmacia, por favor.",
+   "gold": "recepcion",
+   "tags": [
+    "redirected"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 411.4669589907862,
+   "decided_ms": 411.4669589907862,
+   "latency_ms": 436.4264999749139,
+   "tokens_in": 388,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-013",
+   "text": "Bueno, hola, soy la señora Rodríguez, tengo una inquietud con el medicamento que me dejaron recetado, no me llegó.",
+   "gold": "farmacia",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "farmacia",
+   "argument": "farmacia",
+   "spoken": "",
+   "first_ms": 463.9106660033576,
+   "decided_ms": 463.9106660033576,
+   "latency_ms": 489.32516598142684,
+   "tokens_in": 407,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-014",
+   "text": "Bueno, hola, soy el señor de la mesa cuatro, me dejaron recetar unas cosas pero nunca me las dieron.",
+   "gold": "farmacia",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "farmacia",
+   "argument": "farmacia",
+   "spoken": "",
+   "first_ms": 405.7455830043182,
+   "decided_ms": 405.7455830043182,
+   "latency_ms": 430.6065000128001,
+   "tokens_in": 401,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-015",
+   "text": "Oiga, ¿me pueden pasar con el médico de urgencias?",
+   "gold": "emergencias",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "emergencias",
+   "argument": "emergencias",
+   "spoken": "",
+   "first_ms": 450.82495798124,
+   "decided_ms": 450.82495798124,
+   "latency_ms": 475.5592919536866,
+   "tokens_in": 385,
+   "tokens_out": 22
+  },
+  {
+   "id": "il-016",
+   "text": "Escúcheme, yo no quiero ser atendido en la emergencia.",
+   "gold": "ninguno",
+   "tags": [
+    "refused"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido, derivo su llamada a la recepción. Por favor, espere un momento mientras transfiero su llamada.",
+   "first_ms": 183.9264589943923,
+   "decided_ms": null,
+   "latency_ms": 530.5437500355765,
+   "tokens_in": 387,
+   "tokens_out": 29
+  },
+  {
+   "id": "il-017",
+   "text": "Quiero consulta pero no quiero que me pongan en la sala de emergencias.",
+   "gold": "citas",
+   "tags": [
+    "redirected"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 402.5351669988595,
+   "decided_ms": 402.5351669988595,
+   "latency_ms": 427.62854194734246,
+   "tokens_in": 388,
+   "tokens_out": 21
+  },
+  {
+   "id": "il-018",
+   "text": "Ayúdeme rápido, por favor, no puedo moverme de la cama",
+   "gold": "emergencias",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "emergencias",
+   "argument": "emergencias",
+   "spoken": "Entiendo que está teniendo dificultades para moverse. Derivando su llamada a la área de emergencias. Por favor, manténgase calmado y siga las instrucciones del operador.",
+   "first_ms": 199.9480000231415,
+   "decided_ms": 1018.8410420087166,
+   "latency_ms": 1043.7829170259647,
+   "tokens_in": 388,
+   "tokens_out": 69
+  },
+  {
+   "id": "il-019",
+   "text": "Hable conmigo, no quiero hablar con la grabación.",
+   "gold": "recepcion",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Por supuesto, ¿cómo puedo ayudarte hoy?",
+   "first_ms": 5391.693291021511,
+   "decided_ms": null,
+   "latency_ms": 5541.918665985577,
+   "tokens_in": 385,
+   "tokens_out": 13
+  },
+  {
+   "id": "il-020",
+   "text": "No quiero hablar con el sistema, quiero hablar con el humano.",
+   "gold": "recepcion",
+   "tags": [
+    "need-with-no"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 4982.773834024556,
+   "decided_ms": 4982.773834024556,
+   "latency_ms": 5007.777834020089,
+   "tokens_in": 384,
+   "tokens_out": 21
+  }
+ ]
+}

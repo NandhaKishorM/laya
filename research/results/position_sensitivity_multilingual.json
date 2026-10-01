@@ -1,0 +1,1782 @@
+{
+ "checkpoint": "/home/parshu/projects/contri/laya-lab/models/multilingual/multilingual",
+ "device": "cuda",
+ "platform": "Linux-7.0.0-34-generic-x86_64-with-glibc2.39",
+ "torch": "2.9.1+cu128",
+ "transformers": "4.57.6",
+ "laya": "0.3.21",
+ "limit": 8192,
+ "filler_tokens_per_rep": 43,
+ "questions": {
+  "department": {
+   "type": "choice",
+   "instructions": "Which department should handle this request?",
+   "criteria": {
+    "billing": "invoices, payments, refunds",
+    "technical": "bugs, outages, system errors",
+    "sales": "pricing, new contracts, plan upgrades",
+    "other": "everything else"
+   }
+  }
+ },
+ "filler": "Thanks for the update on the quarterly planning meeting. We reviewed the roadmap slides, discussed hiring for the design team, agreed on the offsite venue, and noted that the parking garage will be closed next week. ",
+ "label_counts": {
+  "billing": 9,
+  "sales": 4,
+  "technical": 7
+ },
+ "majority_class": 0.45,
+ "note": "Position is the fraction of the filler the request is inserted at, so 1.0 is the case bench_long_context.py measures and 0.0 places the request immediately after the option markers. Length is held fixed within a `pad_tokens` group, so the position effect is separable from the length effect.",
+ "rows": [
+  {
+   "pad_tokens": 4000,
+   "reps": 93,
+   "needle_position": 0.0,
+   "limit": 8192,
+   "n": 20,
+   "correct": 17,
+   "accuracy": 0.85,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.6,
+   "median_latency_s": 0.1409,
+   "median_input_tokens": 3973,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "input_tokens": 3976
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.9766,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.2126,
+     "correct": false,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7105,
+     "correct": true,
+     "input_tokens": 3975
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.6232,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "input_tokens": 3978
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8676,
+     "correct": true,
+     "input_tokens": 3970
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.1476,
+     "correct": false,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9997,
+     "correct": true,
+     "input_tokens": 3980
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8461,
+     "correct": true,
+     "input_tokens": 3971
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9851,
+     "correct": true,
+     "input_tokens": 3979
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6901,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.995,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6788,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.0172,
+     "correct": false,
+     "input_tokens": 3970
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9784,
+     "correct": true,
+     "input_tokens": 3983
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8653,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9673,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.8734,
+     "correct": true,
+     "input_tokens": 3982
+    }
+   ]
+  },
+  {
+   "pad_tokens": 4000,
+   "reps": 93,
+   "needle_position": 0.25,
+   "limit": 8192,
+   "n": 20,
+   "correct": 11,
+   "accuracy": 0.55,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.65,
+   "median_latency_s": 0.1434,
+   "median_input_tokens": 3974,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.3004,
+     "correct": false,
+     "input_tokens": 3977
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8456,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2453,
+     "correct": false,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2762,
+     "correct": false,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7813,
+     "correct": true,
+     "input_tokens": 3976
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2671,
+     "correct": false,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.8103,
+     "correct": true,
+     "input_tokens": 3979
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8681,
+     "correct": true,
+     "input_tokens": 3971
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.7416,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.5598,
+     "correct": true,
+     "input_tokens": 3981
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8444,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2741,
+     "correct": false,
+     "input_tokens": 3980
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6843,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.4783,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7886,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.419,
+     "correct": false,
+     "input_tokens": 3971
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2098,
+     "correct": false,
+     "input_tokens": 3984
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8301,
+     "correct": true,
+     "input_tokens": 3975
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.2276,
+     "correct": false,
+     "input_tokens": 3975
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.0487,
+     "correct": false,
+     "input_tokens": 3983
+    }
+   ]
+  },
+  {
+   "pad_tokens": 4000,
+   "reps": 93,
+   "needle_position": 0.5,
+   "limit": 8192,
+   "n": 20,
+   "correct": 13,
+   "accuracy": 0.65,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.55,
+   "median_latency_s": 0.1419,
+   "median_input_tokens": 3974,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.4436,
+     "correct": true,
+     "input_tokens": 3977
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7934,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2261,
+     "correct": false,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.295,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7355,
+     "correct": true,
+     "input_tokens": 3976
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.274,
+     "correct": false,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.5952,
+     "correct": true,
+     "input_tokens": 3979
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7571,
+     "correct": true,
+     "input_tokens": 3971
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.4753,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.7191,
+     "correct": true,
+     "input_tokens": 3981
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.5452,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.3203,
+     "correct": false,
+     "input_tokens": 3980
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6112,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.6901,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.4729,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.2545,
+     "correct": false,
+     "input_tokens": 3971
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.1098,
+     "correct": false,
+     "input_tokens": 3984
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7569,
+     "correct": true,
+     "input_tokens": 3975
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.3366,
+     "correct": false,
+     "input_tokens": 3975
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.149,
+     "correct": false,
+     "input_tokens": 3983
+    }
+   ]
+  },
+  {
+   "pad_tokens": 4000,
+   "reps": 93,
+   "needle_position": 0.75,
+   "limit": 8192,
+   "n": 20,
+   "correct": 12,
+   "accuracy": 0.6,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.6,
+   "median_latency_s": 0.1423,
+   "median_input_tokens": 3974,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.3015,
+     "correct": false,
+     "input_tokens": 3977
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8236,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.1284,
+     "correct": false,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.4314,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7317,
+     "correct": true,
+     "input_tokens": 3976
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2284,
+     "correct": false,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.7557,
+     "correct": true,
+     "input_tokens": 3979
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6335,
+     "correct": true,
+     "input_tokens": 3971
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.424,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2542,
+     "correct": false,
+     "input_tokens": 3981
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6252,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.3505,
+     "correct": false,
+     "input_tokens": 3980
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6441,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.4382,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7073,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.24,
+     "correct": false,
+     "input_tokens": 3971
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.7076,
+     "correct": true,
+     "input_tokens": 3984
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7257,
+     "correct": true,
+     "input_tokens": 3975
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.2053,
+     "correct": false,
+     "input_tokens": 3975
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.1961,
+     "correct": false,
+     "input_tokens": 3983
+    }
+   ]
+  },
+  {
+   "pad_tokens": 4000,
+   "reps": 93,
+   "needle_position": 1.0,
+   "limit": 8192,
+   "n": 20,
+   "correct": 19,
+   "accuracy": 0.95,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.5,
+   "median_latency_s": 0.1423,
+   "median_input_tokens": 3972,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9337,
+     "correct": true,
+     "input_tokens": 3975
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.9431,
+     "correct": true,
+     "input_tokens": 3971
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.514,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9173,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6861,
+     "correct": true,
+     "input_tokens": 3974
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.532,
+     "correct": true,
+     "input_tokens": 3971
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.8327,
+     "correct": true,
+     "input_tokens": 3977
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.5808,
+     "correct": true,
+     "input_tokens": 3969
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.353,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.5463,
+     "correct": true,
+     "input_tokens": 3979
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.5626,
+     "correct": true,
+     "input_tokens": 3970
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.8165,
+     "correct": true,
+     "input_tokens": 3978
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.5881,
+     "correct": true,
+     "input_tokens": 3971
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.6815,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.5834,
+     "correct": true,
+     "input_tokens": 3972
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.0388,
+     "correct": false,
+     "input_tokens": 3969
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9043,
+     "correct": true,
+     "input_tokens": 3982
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7214,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.6826,
+     "correct": true,
+     "input_tokens": 3973
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.4681,
+     "correct": true,
+     "input_tokens": 3981
+    }
+   ]
+  },
+  {
+   "pad_tokens": 7000,
+   "reps": 163,
+   "needle_position": 0.0,
+   "limit": 8192,
+   "n": 20,
+   "correct": 17,
+   "accuracy": 0.85,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.6,
+   "median_latency_s": 0.3862,
+   "median_input_tokens": 6913,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "input_tokens": 6916
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.9735,
+     "correct": true,
+     "input_tokens": 6912
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.2251,
+     "correct": false,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7144,
+     "correct": true,
+     "input_tokens": 6915
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.6544,
+     "correct": true,
+     "input_tokens": 6912
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "input_tokens": 6918
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7253,
+     "correct": true,
+     "input_tokens": 6910
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.0645,
+     "correct": false,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9982,
+     "correct": true,
+     "input_tokens": 6920
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7863,
+     "correct": true,
+     "input_tokens": 6911
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9913,
+     "correct": true,
+     "input_tokens": 6919
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6452,
+     "correct": true,
+     "input_tokens": 6912
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9964,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6577,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.0269,
+     "correct": false,
+     "input_tokens": 6910
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9757,
+     "correct": true,
+     "input_tokens": 6923
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7989,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.9793,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.96,
+     "correct": true,
+     "input_tokens": 6922
+    }
+   ]
+  },
+  {
+   "pad_tokens": 7000,
+   "reps": 163,
+   "needle_position": 0.25,
+   "limit": 8192,
+   "n": 20,
+   "correct": 11,
+   "accuracy": 0.55,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.6,
+   "median_latency_s": 0.3959,
+   "median_input_tokens": 6914,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.5196,
+     "correct": true,
+     "input_tokens": 6917
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7681,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.3049,
+     "correct": false,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.487,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7043,
+     "correct": true,
+     "input_tokens": 6916
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.3086,
+     "correct": false,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.8144,
+     "correct": true,
+     "input_tokens": 6919
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7624,
+     "correct": true,
+     "input_tokens": 6911
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.198,
+     "correct": false,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.6077,
+     "correct": true,
+     "input_tokens": 6921
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7409,
+     "correct": true,
+     "input_tokens": 6912
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.1439,
+     "correct": false,
+     "input_tokens": 6920
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.57,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2847,
+     "correct": false,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6127,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.2391,
+     "correct": false,
+     "input_tokens": 6911
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.1133,
+     "correct": false,
+     "input_tokens": 6924
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7951,
+     "correct": true,
+     "input_tokens": 6915
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.3476,
+     "correct": false,
+     "input_tokens": 6915
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.1478,
+     "correct": false,
+     "input_tokens": 6923
+    }
+   ]
+  },
+  {
+   "pad_tokens": 7000,
+   "reps": 163,
+   "needle_position": 0.5,
+   "limit": 8192,
+   "n": 20,
+   "correct": 10,
+   "accuracy": 0.5,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.75,
+   "median_latency_s": 0.3971,
+   "median_input_tokens": 6914,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2523,
+     "correct": false,
+     "input_tokens": 6917
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6396,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2044,
+     "correct": false,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.3073,
+     "correct": false,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6414,
+     "correct": true,
+     "input_tokens": 6916
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2034,
+     "correct": false,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.3815,
+     "correct": true,
+     "input_tokens": 6919
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6368,
+     "correct": true,
+     "input_tokens": 6911
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.2891,
+     "correct": false,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.7778,
+     "correct": true,
+     "input_tokens": 6921
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6671,
+     "correct": true,
+     "input_tokens": 6912
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.226,
+     "correct": false,
+     "input_tokens": 6920
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6429,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.5582,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6194,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2397,
+     "correct": false,
+     "input_tokens": 6911
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.3538,
+     "correct": false,
+     "input_tokens": 6924
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.743,
+     "correct": true,
+     "input_tokens": 6915
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.3603,
+     "correct": false,
+     "input_tokens": 6915
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.1519,
+     "correct": false,
+     "input_tokens": 6923
+    }
+   ]
+  },
+  {
+   "pad_tokens": 7000,
+   "reps": 163,
+   "needle_position": 0.75,
+   "limit": 8192,
+   "n": 20,
+   "correct": 13,
+   "accuracy": 0.65,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.55,
+   "median_latency_s": 0.403,
+   "median_input_tokens": 6914,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.5494,
+     "correct": true,
+     "input_tokens": 6917
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.711,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.1818,
+     "correct": false,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.4783,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.619,
+     "correct": true,
+     "input_tokens": 6916
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2059,
+     "correct": false,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.7986,
+     "correct": true,
+     "input_tokens": 6919
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6556,
+     "correct": true,
+     "input_tokens": 6911
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.0599,
+     "correct": false,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.7441,
+     "correct": true,
+     "input_tokens": 6921
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.7797,
+     "correct": true,
+     "input_tokens": 6912
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2627,
+     "correct": false,
+     "input_tokens": 6920
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6263,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.3926,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6332,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "billing",
+     "p_gold": 0.1961,
+     "correct": false,
+     "input_tokens": 6911
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "billing",
+     "p_gold": 0.4537,
+     "correct": true,
+     "input_tokens": 6924
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.839,
+     "correct": true,
+     "input_tokens": 6915
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.3824,
+     "correct": false,
+     "input_tokens": 6915
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.0706,
+     "correct": false,
+     "input_tokens": 6923
+    }
+   ]
+  },
+  {
+   "pad_tokens": 7000,
+   "reps": 163,
+   "needle_position": 1.0,
+   "limit": 8192,
+   "n": 20,
+   "correct": 8,
+   "accuracy": 0.4,
+   "majority_class": 0.45,
+   "modal_prediction_share": 0.8,
+   "median_latency_s": 0.3951,
+   "median_input_tokens": 6912,
+   "predictions": [
+    {
+     "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2557,
+     "correct": false,
+     "input_tokens": 6915
+    },
+    {
+     "request": "The dashboard crashes with an error every time I open the reports page.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.8104,
+     "correct": true,
+     "input_tokens": 6911
+    },
+    {
+     "request": "What would an enterprise contract for 200 seats cost per year?",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.2257,
+     "correct": false,
+     "input_tokens": 6912
+    },
+    {
+     "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.2498,
+     "correct": false,
+     "input_tokens": 6912
+    },
+    {
+     "request": "Our API returns 500 errors since this morning and the service is down.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.554,
+     "correct": true,
+     "input_tokens": 6914
+    },
+    {
+     "request": "Can you send me pricing for upgrading our plan to the business tier?",
+     "gold": "sales",
+     "prediction": "sales",
+     "p_gold": 0.4997,
+     "correct": true,
+     "input_tokens": 6911
+    },
+    {
+     "request": "Me cobraron dos veces la factura de marzo, devu\u00e9lvanme el cargo duplicado.",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.1256,
+     "correct": false,
+     "input_tokens": 6917
+    },
+    {
+     "request": "La aplicaci\u00f3n se cierra cada vez que abro la configuraci\u00f3n.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.5092,
+     "correct": true,
+     "input_tokens": 6909
+    },
+    {
+     "request": "Quisiera una cotizaci\u00f3n para un contrato anual de 50 licencias.",
+     "gold": "sales",
+     "prediction": "technical",
+     "p_gold": 0.3489,
+     "correct": false,
+     "input_tokens": 6912
+    },
+    {
+     "request": "Fui cobrado duas vezes na fatura de mar\u00e7o, quero o reembolso da cobran\u00e7a duplicada.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.1675,
+     "correct": false,
+     "input_tokens": 6919
+    },
+    {
+     "request": "O sistema cai toda vez que tento gerar o relat\u00f3rio mensal.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.5757,
+     "correct": true,
+     "input_tokens": 6910
+    },
+    {
+     "request": "J'ai \u00e9t\u00e9 factur\u00e9 deux fois ce mois-ci, merci de rembourser le doublon.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.1136,
+     "correct": false,
+     "input_tokens": 6918
+    },
+    {
+     "request": "L'application plante d\u00e8s que j'ouvre la page des param\u00e8tres.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.522,
+     "correct": true,
+     "input_tokens": 6911
+    },
+    {
+     "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.1701,
+     "correct": false,
+     "input_tokens": 6912
+    },
+    {
+     "request": "Die Anwendung st\u00fcrzt jedes Mal ab, wenn ich die Einstellungen \u00f6ffne.",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.6279,
+     "correct": true,
+     "input_tokens": 6912
+    },
+    {
+     "request": "Was kostet ein Jahresvertrag f\u00fcr 100 Nutzer?",
+     "gold": "sales",
+     "prediction": "other",
+     "p_gold": 0.1868,
+     "correct": false,
+     "input_tokens": 6909
+    },
+    {
+     "request": "\u092e\u0941\u091d\u0938\u0947 \u092e\u093e\u0930\u094d\u091a \u092e\u0947\u0902 \u0926\u094b \u092c\u093e\u0930 \u0936\u0941\u0932\u094d\u0915 \u0932\u093f\u092f\u093e \u0917\u092f\u093e, \u0915\u0943\u092a\u092f\u093e \u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f \u0930\u093e\u0936\u093f \u0935\u093e\u092a\u0938 \u0915\u0930\u0947\u0902\u0964",
+     "gold": "billing",
+     "prediction": "sales",
+     "p_gold": 0.296,
+     "correct": false,
+     "input_tokens": 6922
+    },
+    {
+     "request": "\u0910\u092a \u0939\u0930 \u092c\u093e\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0916\u094b\u0932\u0924\u0947 \u0939\u0940 \u092c\u0902\u0926 \u0939\u094b \u091c\u093e\u0924\u093e \u0939\u0948\u0964",
+     "gold": "technical",
+     "prediction": "technical",
+     "p_gold": 0.465,
+     "correct": true,
+     "input_tokens": 6913
+    },
+    {
+     "request": "\u8acb\u6c42\u66f8\u304c\u4e8c\u91cd\u306b\u8acb\u6c42\u3055\u308c\u307e\u3057\u305f\u3002\u91cd\u8907\u5206\u3092\u8fd4\u91d1\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.0988,
+     "correct": false,
+     "input_tokens": 6913
+    },
+    {
+     "request": "\u062a\u0645 \u062e\u0635\u0645 \u0627\u0644\u0645\u0628\u0644\u063a \u0645\u0631\u062a\u064a\u0646 \u0645\u0646 \u0628\u0637\u0627\u0642\u062a\u064a\u060c \u0623\u0631\u062c\u0648 \u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0643\u0631\u0631.",
+     "gold": "billing",
+     "prediction": "technical",
+     "p_gold": 0.1121,
+     "correct": false,
+     "input_tokens": 6921
+    }
+   ]
+  }
+ ]
+}

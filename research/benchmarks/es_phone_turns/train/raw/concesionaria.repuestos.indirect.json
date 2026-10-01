@@ -1,0 +1,27 @@
+{
+ "name": "concesionaria.repuestos.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una concesionaria de carros y necesita que se ocupe de su caso el área que atiende esto: «piezas y repuestos para el carro». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, le hablo porque me faltan las pastillas del freno delantero para mi Hillo y necesito saber si tienen stock disponible.",
+  "Hola, pues verán, se me rompió el espejo retrovisor lado pasajero de mi Pick-Up y quería preguntar si venden el cristal suelto.",
+  "Disculpe, yo tengo un problema con la bomba de agua del carro que compré hace poco y necesito averiguar si tienen la pieza original para ese modelo específico.",
+  "Le llamo porque me avisaron que ya llegaron las bujías que pedí el otro día y quiero confirmar si puedo pasar a recogerlas hoy mismo sin cita previa.",
+  "Mire, necesito urgently un juego de correas para mi vehículo utilitario y no sé cuál es el número de parte exacto, ¿me pueden orientar con eso?",
+  "Buen día, resulta que se me gastó la junta del radiador y ando buscando esa refacción urgente porque ya se está bajando el líquido refrigerante.",
+  "Pues hola, quería preguntar si ustedes manejan el cambio de aceite y filtro como servicio o solo venden los materiales para hacerlo yo mismo.",
+  "Oiga, le comento que me llegó defectuoso el alternador que compré la semana pasada y necesito saber el trámite para devolverlo y que me den otro en buenas condiciones.",
+  "Hola, ¿me podrían decir si tienen disponible la correa de distribución para un Toyota Hilux 2018? Es súper importante porque se me va a romper pronto.",
+  "Buenas, le llamo para confirmar si el seguro cubre la reparación del compresor del aire acondicionado o si tengo que cubrir solo los refacciones aquí en la tienda.",
+  "Otro día, pues verán, necesito cotizar un par de amortiguadores traseros porque ando bastante mal con las vibraciones en la carretera.",
+  "Hola, quiero saber si tienen garantía de fábrica en los faros delanteros que venden o es solo una garantía comercial aquí mismo.",
+  "Disculpe la molestia, pero necesito un sensor de oxígeno para mi carro compacto y no encuentro el código correcto en internet, ¿me ayudan con ese dato?",
+  "Buenas tardes, le comento que ya tengo todas las piezas menos la banda de los accesorios y quiero confirmar si la tienen en stock o debo esperar pedido.",
+  "Mire, me urge saber si pueden entregarme un tanque de gasolina usado reacondicionado porque el mío tiene una fuga grave y no puedo manejar así.",
+  "Hola, quería preguntar si el mecánico que atiende hoy está disponible para instalar las pastillas de freno que ya compré aquí mismo.",
+  "Oiga, le escribo (hablo) porque necesito un juego de limpiaparabrisas específico para la camioneta grande y no quiere dejar rayones en el vidrio si pongo los genéricos.",
+  "Buen día, ¿me confirman si el descuento por pago de contado aplica también en repuestos mayores como embragues o solo en accesorios menores?",
+  "Pues hola, le llamo porque necesito una tarjeta de identificación del sistema eléctrico para diagnosticar un fallo misterioso que tiene la carrocería.",
+  "Disculpe, me gustaría saber si tienen disponibilidad inmediata para entregar un carburador completo para un motor viejo porque ya no encuentro ninguna tienda en toda la ciudad."
+ ]
+}

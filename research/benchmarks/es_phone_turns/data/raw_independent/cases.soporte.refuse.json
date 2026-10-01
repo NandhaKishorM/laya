@@ -1,0 +1,12 @@
+{
+ "name": "cases.soporte.refuse",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una empresa de telefonía e internet y deja claro que NO quiere que la pasen al área de «soporte» (algo no funciona o está fallando y hay que arreglarlo). Nombra el área o lo que hace, y la rechaza. No pide ninguna otra área.",
+ "phrases": [
+  "Oiga, yo no quiero hablar con nadie, no me pasen al departamento de soporte técnico, llámame directamente.",
+  "No me pongan con soporte, ya sé lo que hace, ¿podés darme mi número?",
+  "No me manden al área de soporte, quiero que me respondan acá, al cliente.",
+  "Mire, no me pongan con el soporte, eso ya lo saben, yo les hablo a ustedes.",
+  "No me pasen con soporte técnico, llámeme directo al celular, no quiero hablar con nadie más."
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "name": "gimnasio.membresias.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un gimnasio y necesita que se ocupe de su caso el área que atiende esto: «inscribirse, renovar o congelar la membresía». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, necesito anular mi cuota del mes porque me cambié de residencia hace dos semanas.",
+  "Oiga, ¿me podrían decir cómo hago para poner en pausa mi membresía unos días?",
+  "Quiero sacar la tarjeta nueva para mi hijo que ya cumplió dieciocho años y necesita su propio acceso.",
+  "Me cobraron dos veces este mes por favor verifiquen y devuélvanme el exceso.",
+  "Tengo una cita para mañana con el nutriólogo pero necesito confirmar que mi membresía está activa primero.",
+  "Hace tres días que no puedo usar la aplicación móvil para entrar al gimnasio, me da error.",
+  "Necesito cancelar mi suscripción porque me mudo a la capital y ya no podré asistir.",
+  "Por favor, actualicen mis datos de contacto en el sistema porque cambié de número de celular.",
+  "Quisiera saber si puedo cambiar la frecuencia de mi plan anual al mensual sin perder el descuento.",
+  "El llavero electrónico se me dañó ayer y necesito uno nuevo urgente para poder entrar.",
+  "Me gustaría inscribirme en el grupo de yoga pero no sé si está incluido en mi tarifa actual.",
+  "Estoy tratando de renovar online pero la página me queda trabada, ¿hay otra forma de hacerlo?",
+  "Necesito un certificado de mi asistencia mensual para presentar en mi trabajo, ¿cómo lo solicito?",
+  "Quiero que me activen el acceso a las clases grupales porque ayer me dijeron que estaba bloqueado.",
+  "Hice el pago en línea pero aún no aparece reflejado en mi cuenta, ¿pueden verificarlo por favor?",
+  "Mi membresía caducó hace una semana, ¿aún puedo renovar con la tarifa del año pasado?",
+  "Necesito congelar la cuota por un mes porque estoy de viaje por trabajo el próximo mes.",
+  "Tengo un problema para agendar la pista de tenis desde la app, me sale como indisponible siempre.",
+  "Quiero añadir una segunda tarjeta a mi cuenta familiar para que pueda usarla mi esposa también.",
+  "Me gustaría dejar de pagar los servicios extra del vestuario porque ya no los utilizo."
+ ]
+}

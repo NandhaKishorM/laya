@@ -1,0 +1,15 @@
+{
+ "name": "municipalidad.permisos.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una municipalidad y necesita que se ocupe de su caso el área que atiende esto: «permisos de construcción y de operación». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, buen día, o sea que yo presenté toda la papelería hace un mes pero hasta hoy no me llegó ningún papelito de confirmación.",
+  "Qué tal, le escribo porque el permiso para construirle la caseta al perro no se ha procesado y ya tengo a los albañiles parados ahí esperando.",
+  "Mire, disculpe la molestia, pero nunca me han explicado por qué tardan tanto en sacar la licencia de operación cuando todo está bien pagado.",
+  "Hola, verán que la última vez que llamé me dijeron que estaba vigente y ahora resulta que no tengo permiso para abrir el negocio otra vez.",
+  "Buenos días, a ver si me pueden tirar una mano porque el sistema online no me funciona para subir los planos de la remodelación.",
+  "Oiga pues, yo ya hice el pago en ventanilla pero hasta la fecha no han dado respuesta ni me dieron ningún acuse de recibo correcto.",
+  "Qué le hago, señorita, es que la autoridad sanitaria no me firmó el permiso de operación y sin eso no puedo seguir vendiendo nada.",
+  "Disculpe que lo llame a esta hora, pero por favor mire mi expediente porque llevo tres semanas esperando y nunca me han dicho qué falta."
+ ]
+}

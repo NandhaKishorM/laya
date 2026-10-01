@@ -1,0 +1,15 @@
+{
+ "name": "aseguradora.cobranza.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una aseguradora y necesita que se ocupe de su caso el área que atiende esto: «pago de primas y cuotas atrasadas del seguro». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buen día, necesito regularizar mi póliza porque no he podido realizar los pagos de las cuotas atrasadas.",
+  "Oiga, disculpe la molestia, pero no me está apareciendo la opción en el portal para liquidar mis adeudos.",
+  "Qué tal, le llamo porque nunca he recibido la guía de depósito para cancelar lo que debo del seguro.",
+  "Mire, mi tarjeta no funciona para cobrar las primas pendientes y necesito otra forma de pago ya mismo.",
+  "Buenas tardes, no me han aplicado el descuento en mi cuenta a pesar de haber pagado, ¿me puede revisar?",
+  "¿Qué tal? Necesito urgentemente que me expliquen cómo regularizar mi situación porque no tengo acceso a la plataforma.",
+  "Escúcheme, no logro completar el trámite por teléfono para pagar lo atrasado y me urge solucionar esto hoy.",
+  "Hola, le contactó porque no se ha acreditado mi pago de ayer y temo que me anulen la cobertura."
+ ]
+}

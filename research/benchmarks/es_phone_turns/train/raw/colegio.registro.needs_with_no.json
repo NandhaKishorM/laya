@@ -1,0 +1,15 @@
+{
+ "name": "colegio.registro.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y necesita que se ocupe de su caso el área que atiende esto: «constancias, certificados y notas». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, necesito constancias porque no las tengo y es urgente.",
+  "Oiga, buenas, ¿me podría apoyar? Me urge el certificado y no me aparece en el sistema.",
+  "Pues vea, necesito tramitar unas notas pero no sé cómo hacerlo online.",
+  "Hola, buenas tardes, disculpe que los moleste, es que no me han entregado mi documento.",
+  "Buenos días, oiga, le comento que nunca me llegó mi constancia de estudios y necesito una nueva.",
+  "Oye, hola, pues resulta que no puedo descargar mis calificaciones y requiero ayuda con eso.",
+  "Buenas tardes, disculpe, ¿me pueden orientar? Es que no me funciona el enlace para las notas.",
+  "Hola, buenas, oiga, es que necesito un certificado y no tengo acceso al portal para pedirlo."
+ ]
+}

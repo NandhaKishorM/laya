@@ -1,0 +1,11 @@
+{
+ "name": "tienda.garantias.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una tienda de electrodomésticos y aclara que NO necesita el área de «garantias» (un producto comprado que salió dañado y está en garantía): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me trasladen a garantías, por favor",
+  "Oiga, con el área de garantía no necesito hablar hoy",
+  "Ni lo piense, yo no estoy ahí por un producto dañado",
+  "Buen día, solo quería preguntar algo rápido, nada que ver con garantías"
+ ]
+}

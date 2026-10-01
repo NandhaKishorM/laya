@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.vehiculos.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y aclara que NO necesita el área de «vehiculos» (comprar un carro nuevo o usado): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenos días, por favor no me transfieran a ventas de vehículos, solo tengo una duda administrativa.",
+  "Oiga, yo no estoy buscando comprar ningún auto ni usado ni nuevo, que hablen con el área correcta.",
+  "No es para eso que llamo, déjeme hablar directamente con quien contestó porque solo quiero preguntar una cosa.",
+  "Perdone, pero yo no necesito el departamento de vehículos, por favor aguarde un momento.",
+  "No me pase al de autos por favor, aquí no vengo a comprar, solo aclarar un detalle rápido.",
+  "Oiga, con todo respeto, yo no estoy interesado en vehiculos así que no me transfiera ahí.",
+  "Solo quería hacer una pregunta sencilla, no me lleven a la sección de ventas de carros por favor.",
+  "Disculpe, no busco vehículo ninguno, le pido que me atienda usted porque es algo urgente."
+ ]
+}

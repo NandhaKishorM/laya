@@ -1,0 +1,22 @@
+{
+ "name": "hotel.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a un hotel: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, ¿a qué hora cierran hoy?",
+  "Por favor, me podían indicar la dirección exacta por favor.",
+  "Disculpen, el día de mañana tienen habilitación?",
+  "¿Aceptan pago con tarjeta de débito o crédito?",
+  "Tienen estacionamiento disponible para los huéspedes?",
+  "Si no estoy en San Pedro Sula, ¿tienen sucursal en Tegucigalpa?",
+  "Para registrar la reserva, ¿qué documentos necesitan?",
+  "Oiga, ¿el check-out es a las dos de la tarde?",
+  "Perdone, ¿me pueden dar el número del WhatsApp para consultas?",
+  "¿El precio incluye impuestos o hay cargo adicional?",
+  "Estoy preguntando si abren en días festivos nacionales.",
+  "¿Tienen servicio de lavandería dentro del hotel?",
+  "Buenas, ¿aceptan efectivo en dólares también?",
+  "¿El parqueo es gratuito para los que se quedan a dormir?",
+  "Me urgió saber si aceptan reservas por esta vía ahora mismo."
+ ]
+}

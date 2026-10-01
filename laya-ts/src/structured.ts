@@ -19,6 +19,7 @@
  * with a `toJSONSchema()` method is accepted.
  */
 import type { QuestionDef } from "./agent.js";
+import { checkMinConfidence, flagLowConfidence } from "./common.js";
 
 export const MAX_PROPERTIES = 32;
 export const MAX_OPTIONS = 32;
@@ -71,6 +72,10 @@ export interface DecideOptions {
   questions?: Record<string, QuestionDef>;
   /** Return a DecisionResult with confidence, probabilities and raw answers. */
   returnDetails?: boolean;
+  /** Minimum confidence threshold in [0.0, 1.0]. Low confidence answers project to null. */
+  minConfidence?: number | null;
+  /** Python parity alias for minConfidence. */
+  min_confidence?: number | null;
   /** Anything else is forwarded to runner.predict (hooks, model, ...). */
   [k: string]: unknown;
 }
@@ -163,6 +168,24 @@ function fieldFor(path: string, name: string, prop: unknown): PlannedField {
   }
   const p = prop as Record<string, unknown>;
   const description = p.description;
+  if (!("const" in p || "enum" in p || "type" in p)) {
+    const union = (p.anyOf ?? p.oneOf) as unknown[] | undefined;
+    if (union !== undefined && Array.isArray(union)) {
+      const branches = union.filter(
+        (b) => b !== null && typeof b === "object" && !Array.isArray(b) && (b as Record<string, unknown>).type !== "null",
+      ) as Record<string, unknown>[];
+      if (branches.length !== 1) {
+        throw new SchemaError(
+          `${path}: only 'Optional[...]' unions (one non-null branch) are supported, got ${branches.length}`,
+        );
+      }
+      const branch: Record<string, unknown> = { ...branches[0] };
+      if (branch.description === undefined && description !== undefined) {
+        branch.description = description;
+      }
+      return fieldFor(path, name, branch);
+    }
+  }
   if ("const" in p) return enumField(path, name, [p.const], description);
   if ("enum" in p) {
     if (!Array.isArray(p.enum)) throw new SchemaError(`${path}: 'enum' must be a list, got ${pyType(p.enum)}`);
@@ -218,6 +241,10 @@ function project(answers: Record<string, Record<string, any> | undefined>, field
   for (const f of fields) {
     const answer = answers[f.name];
     if (answer == null) continue;
+    if (answer.low_confidence) {
+      values[f.name] = null;
+      continue;
+    }
     if (f.kind === "noul") {
       values[f.name] = Number(answer.noul ?? 0.0) >= 0.5;
     } else if (f.kind === "score") {
@@ -232,7 +259,10 @@ function project(answers: Record<string, Record<string, any> | undefined>, field
           if (v > best) { best = v; idx = i; }
         }
       } else {
-        idx = Math.round(Number(answer.score ?? 0.0)) - (f.minimum ?? 0);
+        // `score` is always the probability-weighted 0-based level index,
+        // the same space `idx` is in above -- not an absolute field value --
+        // so it is rounded on its own, with no `minimum` subtracted first.
+        idx = Math.round(Number(answer.score ?? 0.0));
       }
       values[f.name] = (f.minimum ?? 0) + idx;
     } else {
@@ -298,9 +328,14 @@ export async function decide(
   schema?: unknown,
   opts: DecideOptions = {},
 ): Promise<Record<string, unknown> | DecisionResult> {
-  const { questions, returnDetails = false, ...predictOpts } = opts;
+  const { questions, returnDetails = false, minConfidence, min_confidence, ...predictOpts } = opts;
   if ((schema == null) === (questions == null)) {
     throw new Error("pass exactly one of schema= or questions=");
+  }
+  const mcOpt = minConfidence ?? min_confidence;
+  const mc = mcOpt !== undefined && mcOpt !== null ? checkMinConfidence(mcOpt) : null;
+  if (mc !== null) {
+    predictOpts.minConfidence = mc;
   }
   let fields: PlannedField[] | null = null;
   let qs = questions;
@@ -309,6 +344,9 @@ export async function decide(
     qs = Object.fromEntries(fields.map((f) => [f.name, f.question]));
   }
   const result = await runner.predict(state, qs as Record<string, QuestionDef>, predictOpts);
+  if (mc !== null && result && typeof result === "object") {
+    flagLowConfidence(result as Record<string, unknown>, mc);
+  }
   const answers = result.answers ?? {};
   const values = fields ? project(answers, fields) : { ...answers };
   if (returnDetails) return detailsOf(values, answers, result);

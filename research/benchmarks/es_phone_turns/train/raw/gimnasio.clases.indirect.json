@@ -1,0 +1,27 @@
+{
+ "name": "gimnasio.clases.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un gimnasio y necesita que se ocupe de su caso el área que atiende esto: «inscribirse a clases de grupo: zumba, yoga, spinning». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Quiero inscribirme al grupo de yoga para empezar mañana mismo.",
+  "Me interesa mucho el spinning y quisiera reservar mi lugar.",
+  "Oiga, necesito apuntarme a las clases de Zumba lo antes posible.",
+  "Buenas tardes, vengo porque quiero unirme a la comunidad de yoga.",
+  "Hola, ¿pueden ayudarme con la inscripción al spinning esta semana?",
+  "Estoy buscando cambiar mi rutina por las clases de grupo de Zumba.",
+  "Oiga pues, tengo interés en el taller de yoga matutino.",
+  "Quiero formalizar mi membresía para acceder a las sesiones de spinning.",
+  "Me gustaría inscribirme al ciclo de Zumba que comienza el lunes.",
+  "Necesito apoyo para registrarme en la clase de yoga de la noche.",
+  "Oiga, me interesa mucho hacer spinning y no sé cómo hacerlo.",
+  "Voy a quedarme con el plan que incluye todas las clases de Zumba.",
+  "Hola, necesito inscribirme urgentemente al grupo de yoga del viernes.",
+  "Quiero apuntarme al spinning para mejorar mi resistencia física pronto.",
+  "Oiga pues, ¿me pueden ayudar con la inscripción a Zumba?",
+  "Estoy listo para unirme a las clases diarias de yoga.",
+  "Necesito inscribirme a spinning porque ya tengo experiencia previa.",
+  "Hola, quiero hacer el trámite para entrar al grupo de Zumba.",
+  "Me interesa mucho el yoga y necesito mi registro hecho hoy.",
+  "Oiga, vengo para anotar mis datos en la lista del spinning."
+ ]
+}

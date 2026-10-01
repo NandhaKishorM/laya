@@ -78,6 +78,13 @@ owner with the policy. Re-evaluate it when those inputs change. Confidence order
 not establish that a decision is correct, and high confidence is never execution permission by
 itself.
 
+Four of those six come from the evaluation harness: a `laya-evals run --json` report records the
+checkpoint commit that answered (`config.revisions`), the dataset's bytes and question schema
+(`config.dataset_sha256`, `config.questions_sha256`) and the gate it was scored under
+(`config.thresholds`). Calibration method and owner are the application's to record. See
+[Evaluation harness](evals.md) for the run identity and the comparability check between a baseline
+and a candidate.
+
 The README's [Automated Confidence Gating](https://github.com/NandhaKishorM/laya#automated-confidence-gating),
 [Calibration](https://github.com/NandhaKishorM/laya#calibration), and [Honest limits](https://github.com/NandhaKishorM/laya#honest-limits) sections
 give the existing calibration and confidence context. Keep irreversible or high-cost actions behind
@@ -128,6 +135,8 @@ real request
 ## See also
 
 - [Prediction hooks](hooks/index.md) — the extension seam for audit, metrics and gating.
+- [Evaluation harness](evals.md) — the run identity a baseline carries and the comparability check
+  between a baseline and a candidate.
 - [Hook API reference](hooks/api.md) — `PredictContext` fields and lifecycle events.
 - [Tracing](hooks/tracing.md) — `run_id` and span correlation.
 - [README: Automated Confidence Gating](https://github.com/NandhaKishorM/laya#automated-confidence-gating) — confidence is a

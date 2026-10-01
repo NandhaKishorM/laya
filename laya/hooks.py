@@ -46,7 +46,26 @@ class PredictContext:
     error: Optional[BaseException] = None
 
     def skip(self, results: List[Dict[str, Any]]) -> None:
-        """Set cached results from a start hook; inference is skipped, end hooks still run."""
+        """Set cached results from a start hook; inference is skipped, end hooks still run.
+
+        `results` replaces the whole call, so it carries one entry per state in `ctx.states` --
+        the shape `predict_batch` returns -- in that order. A hook fires once per call, and a
+        call can carry many states. The one other accepted shape is a single entry for the
+        whole call, which is what `predict_long` takes as the document's answer (its scan
+        hands the hook every window as a state, and refuses anything but one result).
+
+        The count is checked here, against this contract, so a wrong one fails inside the
+        hook under the caller's `hooks_raise` policy instead of downstream: `Router.predict`
+        indexed `results[0]` of an empty list (an `IndexError`, which serve maps to 500),
+        and `predict_batch` returned a shorter list than it was given states, quietly
+        dropping rows the caller was about to zip against.
+        """
+        states = self.states
+        if (isinstance(states, (list, tuple)) and isinstance(results, (list, tuple))
+                and len(results) not in (1, len(states))):
+            raise ValueError(
+                "ctx.skip() takes one result for the whole call or one per state in "
+                "ctx.states (%d); got %d" % (len(states), len(results)))
         self.results = results
 
 
@@ -377,7 +396,36 @@ class HookRegistry:
         try:
             yield self
         finally:
-            self._remove_hooks(lambda installed: any(installed is one for one in added))
+            self._remove_instances(added)
+
+    def _remove_instances(self, hooks: Sequence[Any]) -> int:
+        """Remove one occurrence of each of `hooks`, the most recent match by identity.
+
+        Removing by identity alone took every copy, so a hook the application had already
+        installed was removed along with the block's own and stayed gone -- `docs/hooks/api.md`
+        promises the block "restores the previous list on exit". Restoring a snapshot instead is
+        wrong in two other ways: with two overlapping blocks the first exit reinstates its
+        snapshot and so removes the second block's hook, and a hook added with `add_hook` inside
+        the block is discarded because it is not in the snapshot either. Taking one occurrence
+        per hook the block added leaves everything else -- including anything added inside the
+        block -- in place.
+
+        The most recent match is the one to drop: `_extend_hooks` appends, so a hook that was
+        already installed sits earlier in the list than the block's copy.
+        """
+        if not hooks:
+            return 0
+        removed = 0
+        with self._hooks_mutex_for_registry():
+            current = list(self.hooks)
+            for hook in hooks:
+                for i in range(len(current) - 1, -1, -1):
+                    if current[i] is hook:
+                        del current[i]
+                        removed += 1
+                        break
+            self.hooks = current
+        return removed
 
     def _extend_hooks(self, hooks: Sequence[Any]) -> None:
         if not hooks:

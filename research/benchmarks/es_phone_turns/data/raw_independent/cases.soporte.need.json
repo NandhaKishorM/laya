@@ -1,0 +1,12 @@
+{
+ "name": "cases.soporte.need",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una empresa de telefonía e internet y necesita que se ocupe de su caso el área que atiende esto: «algo no funciona o está fallando y hay que arreglarlo». En TODAS cuenta su problema usando una negación («no me funciona», «no me llegó», «no puedo», «nunca me»). No nombra el área.",
+ "phrases": [
+  "Oye, ¿saben por qué nunca me funciona el internet?",
+  "Pónganle atención a mi caso, porque no me está llegando nada.",
+  "Bueno, tengo un problema que no me deja usar la conexión.",
+  "¿Alguien me ayuda con el servicio porque no funciona?",
+  "No me funcionó el equipo que me enviaron, por favor arreglenlo."
+ ]
+}

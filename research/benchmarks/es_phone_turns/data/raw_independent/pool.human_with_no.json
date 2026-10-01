@@ -1,0 +1,15 @@
+{
+ "name": "pool.human_with_no",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa, la atiende una máquina y pide hablar con una persona usando una negación («no quiero hablar con una grabación»). No nombra ningún departamento.",
+ "phrases": [
+  "Quiero hablar con el humano, por favor, no quiero hablar con la grabación.",
+  "Hola, soy cliente, atienden gente o grabación, quiero hablar con el humano.",
+  "¿No hay nadie ahí? No quiero hablar con la grabación.",
+  "No estoy hablando con nadie, esto es una grabación, quiero hablar con el humano.",
+  "Oiga, quiero hablar con alguien en vivo, no quiero hablar con la grabación.",
+  "Hola, soy de Ventas, atienden personas o grabación, pido hablar con el humano.",
+  "Hable conmigo, no quiero hablar con la grabación.",
+  "No quiero hablar con el sistema, quiero hablar con el humano."
+ ]
+}

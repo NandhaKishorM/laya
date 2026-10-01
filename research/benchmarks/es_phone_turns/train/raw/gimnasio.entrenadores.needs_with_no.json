@@ -1,0 +1,15 @@
+{
+ "name": "gimnasio.entrenadores.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un gimnasio y necesita que se ocupe de su caso el área que atiende esto: «contratar un entrenador personal». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "No logro adelgazar solo, ¿me recomiendan alguien?",
+  "Oiga, no sé qué régimen seguir para subir masa muscular.",
+  "Che, nunca he entrenado bien y necesito guía profesional.",
+  "No entiendo las máquinas y me da pena preguntar.",
+  "Buen día, mi físico no está mejorando con mis rutinas.",
+  "Pues, no consigo motivarme sin que alguien me vigile.",
+  "Oye, no tengo idea de cómo planificar mi dieta y entrenamiento.",
+  "A ver, no avanzo nada en la fuerza y quiero cambiar eso."
+ ]
+}

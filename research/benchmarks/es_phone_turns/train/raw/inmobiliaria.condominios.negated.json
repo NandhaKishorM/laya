@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.condominios.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y aclara que NO necesita el área de «condominios» (cuotas y reparaciones de áreas comunes de un condominio): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, por favor no me transfiera a condominios que esa parte no me interesa.",
+  "Disculpe la molestia pero yo no tengo problemas de cuotas ni áreas comunes, gracias.",
+  "Le hablo solo para preguntar algo rápido, porfa no me pase al departamento de condos.",
+  "Que no me atienda el área de condominios porque eso no es lo que busco.",
+  "Oiga, yo no necesito servicio de condominios así que no me transfiera ahí por favor.",
+  "No soy cliente de condominios, solo quería aclarar una duda con usted directamente.",
+  "Por favor ignore la transferencia a condominios porque eso no me compete en lo absoluto.",
+  "Solo quiero hacerle una pregunta al señor que contesta, nada que ver con condominios."
+ ]
+}

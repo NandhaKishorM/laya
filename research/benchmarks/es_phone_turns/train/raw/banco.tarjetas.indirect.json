@@ -1,0 +1,27 @@
+{
+ "name": "banco.tarjetas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un banco y necesita que se ocupe de su caso el área que atiende esto: «tarjetas de crédito y débito: bloqueos, robos, límites, reposiciones». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Me robaron la tarjeta ayer en la tienda, ¿se puede anular ya mismo?",
+  "Tengo un límite de cien mil y necesito subirlo para una compra grande esta semana",
+  "La app no me deja ver mi saldo actual, da error todo el tiempo",
+  "Necesito que me envíen la nueva tarjeta porque se me dañó el chip",
+  "Un cobro doble apareció en mi estado de cuenta de hace dos días",
+  "Por favor, necesito bloquear la tarjeta por si acaso mientras viajo a la costa",
+  "La reposición tarda demasiado y ya tengo una compra urgente pendiente para mañana",
+  "No reconozco un cargo de cincuenta dólares que me hicieron en línea ayer",
+  "Tengo que cambiar los datos de facturación porque me mudé el mes pasado",
+  "El límite no se actualiza aunque ya pagué la cuota completa de ayer",
+  "Me llegó una tarjeta nueva pero no sé cómo activarla por internet",
+  "Hay un cobro pendiente que yo ya cancelé hace tres semanas, ¿cómo lo regularizamos?",
+  "Necesito solicitar un aumento temporal de crédito para cubrir gastos médicos del hospital",
+  "La tarjeta débito no funciona en ningún cajero automático de la zona norte",
+  "Oiga, por favor, necesito saber por qué me negaron el pago en el supermercado hoy",
+  "Tengo que ponerle un tope diario más bajo por seguridad mientras uso el celular público",
+  "La app del banco sigue pidiéndome contraseña vieja y la cambié hace dos días",
+  "Me robaron el celular y la tarjeta está vinculada, ¿qué hago para protegerme?",
+  "Necesito que me expliquen los intereses de la cuota fija que estoy pagando ahora",
+  "Oiga pues, que la tarjeta no me la aceptan en ninguna tienda desde ayer"
+ ]
+}

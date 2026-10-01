@@ -1,0 +1,15 @@
+{
+ "name": "restaurante.domicilio.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un restaurante y necesita que se ocupe de su caso el área que atiende esto: «pedir comida para llevar o a domicilio». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "¿Buenas tardes? Quisiera hacer un pedido para llevar, pero no me deja completar la orden por la aplicación, ¿podrían ayudarme a tomarlo aquí?",
+  "Hola, oye disculpa que moleste, es que nunca me han llegado mis pedidos en este horario y tengo mucha hambre ya.",
+  "Mira, yo quería pedir lo de siempre para casa pero no tengo internet ahora mismo y necesito comer enseguida, ¿me puede anotar algo?",
+  "¿Sí? Oiga, verán que hoy no pude recoger mi pedido a tiempo y se me enfrió todo, ¿hay alguna solución o lo pago igual?",
+  "Buenas, no me aparece el cupón de descuento que prometieron en redes al momento de pagar online, ¿podrían revisar eso por mí?",
+  "Es que yo nunca entiendo cómo funciona su sistema para domicilios y se me hace tarde, ¿me puede recomendar algo rápido para llevar?",
+  "Oigan, el repartidor no contestó mi teléfono cuando estaba cerca y me dejó la comida en otro lado, ¿qué hago en este caso?",
+  "Hola, pues resulta que hoy no me llegó la propina que le dejé al chico de la moto hace dos días y quisiera saber dónde está."
+ ]
+}

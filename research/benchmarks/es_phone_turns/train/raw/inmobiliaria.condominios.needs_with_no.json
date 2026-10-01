@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.condominios.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y necesita que se ocupe de su caso el área que atiende esto: «cuotas y reparaciones de áreas comunes de un condominio». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Hola, buenos días, no me llega el recibo de la cuota por correo y necesito saber cómo proceder.",
+  "La cosa es que la escalera del piso tres nunca está limpia y ya nadie hace caso.",
+  "Oiga, disculpe las molestias, pero no puedo pagar mi parte de las reparaciones porque no me han enviado el estado de cuenta actualizado todavía.",
+  "Mire, la bomba de agua no funciona desde hace tres días y esto es urgente, ¿quién atiende eso?",
+  "Señor, buenas tardes, yo le llamo porque no tengo acceso al sistema de portones eléctricos y me estoy quedando fuera.",
+  "Bueno, el caso es que las luces del estacionamiento subterráneo no prenden nunca y es un peligro.",
+  "Disculpe, ¿me puede ayudar? No me han respondido los correos sobre la fuga en la tubería principal del área común.",
+  "Hola, oiga, la cuota de mantenimiento mensual no se ha descontado de mi cuenta automáticamente como acordamos."
+ ]
+}

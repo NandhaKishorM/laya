@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.rastreo.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y pide que la comuniquen con el área de «rastreo» (saber dónde está un paquete). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor pasar a rastreo.",
+  "Hola, ¿me comunican con el área de rastreo?",
+  "Oiga, le solicito la transferencia hacia rastreo.",
+  "Necesito hablar con alguien de rastreo, porfa.",
+  "Atención, requiero que me pasen a rastreo.",
+  "Buen día, necesito el contacto directo con rastreo.",
+  "Por favor, déjenme en comunicación con rastreo.",
+  "Hola, ¿podrían derivarme al departamento de rastreo?"
+ ]
+}

@@ -59,7 +59,8 @@ def main():
 
         r = client.get("/models")
         ok("GET /models -> 200", r.status_code == 200, str(r.status_code))
-        ok("GET /models stays JSON for API clients", set(r.json()) == {"default", "allowed", "models"}, r.text[:200])
+        ok("GET /models stays JSON for API clients",
+           set(r.json()) == {"default", "allowed", "aliases", "models"}, r.text[:200])
 
         r = client.get("/presets")
         ok("GET /presets -> 200", r.status_code == 200, str(r.status_code))

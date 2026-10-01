@@ -1,0 +1,22 @@
+{
+ "name": "banco.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a un banco: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, les quería preguntar cuál es el horario de atención al público para hoy.",
+  "¿Ustedes saben si la sucursal del centro abre mañana feriado?",
+  "Disculpe, por favor, me podrían decir dónde queda exactamente la oficina más cercana a mi casa.",
+  "Hola, ¿aceptan pago de servicios con tarjeta de débito o es exclusivamente en efectivo?",
+  "Oye, amigo, ¿tienen estacionamiento libre para los clientes que vienen a hacer trámites?",
+  "Perdone, ¿qué documentos necesito presentar si soy extranjero para abrir una cuenta básica?",
+  "¿A qué hora cierran ya la ventanilla hoy porque se me va haciendo tarde?",
+  "Buen día, quería saber si hacen transferencias internacionales desde esta misma oficina.",
+  "Mira, por favor, ¿me pueden confirmar si hay fila larga en este momento?",
+  "¿El cajero automático está funcionando bien o andan con mantenimiento hoy?",
+  "Oiga, ¿cuál es la dirección exacta de la sucursal de Tegucigalpa que queda cerca del parque?",
+  "¿Se puede cancelar un cheque emitido por teléfono o tengo que ir personalmente al mostrador?",
+  "Hola, ¿tienen horario extendido los viernes porque a mí solo me sirve después de las tres?",
+  "¿Qué tasa de interés manejan actualmente para la cuenta de ahorro de uso diario?",
+  "Le agradezco si me dice dónde puedo estacionar el carro sin que me pongan una multa."
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "name": "banco.remesas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un banco y necesita que se ocupe de su caso el área que atiende esto: «enviar o cobrar dinero que viene del extranjero». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Oiga, buenas tardes, yo tengo una transferencia que debería haber llegado ya y hasta ahorita no aparece en mi estado de cuenta, ¿me puede revisar?",
+  "Bueno, le llamo porque me llegó un aviso del exterior pero el dinero nunca se acreditó en la cuenta.",
+  "Es que vengo haciendo este trámite desde hace tres días y sigo sin ver los fondos, es urgente.",
+  "Hola, necesito saber por qué mi remesa quedó detenida cuando el remitente ya dijo que la envió.",
+  "¿Me podría ayudar con un depósito internacional? Es que no sé bien cómo llenar el formulario para que llegue a tiempo.",
+  "Oiga pues, le comento que me cobraron dos veces una comisión por una transferencia entrante y quiero que me devuelvan eso.",
+  "Hola, es que mi papá me mandó dinero desde Estados Unidos pero dice que la transacción falló y yo no tengo nada.",
+  "Bueno, necesito autorizar una recepción de fondos del extranjero porque me piden un código de seguridad que no entiendo.",
+  "Le llamo porque hay un error en los datos del beneficiario de mi transferencia saliente al exterior y quiero corregirlo antes de que se vaya.",
+  "Hola, ¿podrían revisar si llegó el dinero que envío mi hermano desde España? Ya pasaron dos días laborables.",
+  "Oiga, necesito reportar que no recibí la remesa aunque el banco del otro lado me da por seguro que ya salió.",
+  "Bueno, le escribo (hablo) porque la tasa de cambio que me aplicaron en la conversión de divisas no fue la correcta.",
+  "Hola, es que quiero enviar una cantidad grande al exterior y me pidieron información adicional que no sé cómo entregar por teléfono.",
+  "Oiga pues, tengo un problema con mi cuenta porque se congeló tras recibir una transferencia internacional sospechosa para el sistema.",
+  "Bueno, le digo que ya pagué la comisión pero aún así no puedo retirar los fondos del exterior que me llegaron ayer.",
+  "Hola, necesito confirmar que el origen de los fondos de esta remesa cumple con las normas anti-lavado para que pueda usar el dinero.",
+  "Oiga, es que el banco en México me dice que aquí en Honduras no autorizan la entrada y yo solo quiero recibir mi sueldo.",
+  "Bueno, le llamo porque la fecha límite para cobrar este cheque internacional ya pasó y no sé si todavía puedo hacerlo.",
+  "Hola, ¿me pueden verificar el estatus de una transferencia entrante? El número de referencia es uno que me mandaron por WhatsApp.",
+  "Oiga pues, necesito que me activen la función de recibir pagos internacionales en mi app porque estaba desactivada por seguridad."
+ ]
+}

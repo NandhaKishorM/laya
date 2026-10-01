@@ -1,0 +1,20 @@
+{"id": "il-001", "text": "No, no, no me pasen a esa caja ni al departamento de turnos.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "il-002", "text": "Hola, quería ver si se puede arreglar mi cita porque no puedo ir a la clínica", "gold": "citas", "tags": ["need-with-no"]}
+{"id": "il-003", "text": "Buenas tardes, necesito saber si hago trámite para cambiar o anular la cita ya que nunca me llegó la confirmación", "gold": "citas", "tags": ["need-with-no"]}
+{"id": "il-004", "text": "Quisiera pedir ayuda porque no puedo ir a mi consulta médica y quiero cancelarla o cambiarla", "gold": "citas", "tags": ["need-with-no"]}
+{"id": "il-005", "text": "Oiga, mira, por favor, no la pasen para ahí, a lo del laboratorio, no quiero que me hagan análisis de nada, ni nada de eso.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "il-006", "text": "Soy yo, no me pasen al área de laboratorio, por favor, no quiero exámenes ni nada.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "il-007", "text": "Necesito que revisen los resultados, por favor, ya no me llegó la información que me mandaron.", "gold": "laboratorio", "tags": ["need-with-no"]}
+{"id": "il-008", "text": "Oigan, urgente: me dijeron que me envíen los exámenes pero no me funciona el sistema.", "gold": "laboratorio", "tags": ["need-with-no"]}
+{"id": "il-009", "text": "¿Alguien ahí me puede llamar para explicarme los resultados? No me puedo mover para ir.", "gold": "laboratorio", "tags": ["need-with-no"]}
+{"id": "il-010", "text": "Quiero que me atiendan con mis exámenes, no me funciona lo que me enviaron ayer.", "gold": "laboratorio", "tags": ["need-with-no"]}
+{"id": "il-011", "text": "Por favor, necesitan revisar mis análisis, nunca me han dado el resultado que me corresponde.", "gold": "laboratorio", "tags": ["need-with-no"]}
+{"id": "il-012", "text": "Quiero hablar con atención humana, no con la farmacia, por favor.", "gold": "recepcion", "tags": ["redirected"]}
+{"id": "il-013", "text": "Bueno, hola, soy la señora Rodríguez, tengo una inquietud con el medicamento que me dejaron recetado, no me llegó.", "gold": "farmacia", "tags": ["need-with-no"]}
+{"id": "il-014", "text": "Bueno, hola, soy el señor de la mesa cuatro, me dejaron recetar unas cosas pero nunca me las dieron.", "gold": "farmacia", "tags": ["need-with-no"]}
+{"id": "il-015", "text": "Oiga, ¿me pueden pasar con el médico de urgencias?", "gold": "emergencias", "tags": ["direct"]}
+{"id": "il-016", "text": "Escúcheme, yo no quiero ser atendido en la emergencia.", "gold": "ninguno", "tags": ["refused"]}
+{"id": "il-017", "text": "Quiero consulta pero no quiero que me pongan en la sala de emergencias.", "gold": "citas", "tags": ["redirected"]}
+{"id": "il-018", "text": "Ayúdeme rápido, por favor, no puedo moverme de la cama", "gold": "emergencias", "tags": ["need-with-no"]}
+{"id": "il-019", "text": "Hable conmigo, no quiero hablar con la grabación.", "gold": "recepcion", "tags": ["need-with-no"]}
+{"id": "il-020", "text": "No quiero hablar con el sistema, quiero hablar con el humano.", "gold": "recepcion", "tags": ["need-with-no"]}

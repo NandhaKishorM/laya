@@ -13,6 +13,10 @@ services:
         TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu130}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
+      # Autocast dtype the runtime reads; empty keeps the checkpoint's own `amp_dtype`. Both
+      # services need it, because an override on `laya` never reaches `laya-serve`.
+      LAYA_CUDA_AMP: "${LAYA_CUDA_AMP:-}"
+      LAYA_CPU_AMP: "${LAYA_CPU_AMP:-}"
     deploy:
       resources:
         reservations:
@@ -29,6 +33,10 @@ services:
         TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu130}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
+      # Autocast dtype the runtime reads; empty keeps the checkpoint's own `amp_dtype`. Both
+      # services need it, because an override on `laya` never reaches `laya-serve`.
+      LAYA_CUDA_AMP: "${LAYA_CUDA_AMP:-}"
+      LAYA_CPU_AMP: "${LAYA_CPU_AMP:-}"
     deploy:
       resources:
         reservations:

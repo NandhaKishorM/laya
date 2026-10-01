@@ -1,0 +1,27 @@
+{
+ "name": "hotel.mantenimiento.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un hotel y necesita que se ocupe de su caso el área que atiende esto: «algo dañado en la habitación: aire, ducha, televisor». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, le escribo porque la llave no cierra bien la puerta y me preocupa.",
+  "Oiga, ¿me puede enviar a alguien? El aire acondicionado hace un ruido tremendo.",
+  "Por aquí andamos con el agua de la ducha completamente fría desde hace dos horas.",
+  "Mire, la tele no prende y necesitamos ver algo para entretenernos esta noche.",
+  "Es que el baño tiene una fuga debajo del lavabo y ya se humedeció todo.",
+  "Hermano, por favor manden a técnico rápido, el aire no enfría nada, está caluroso.",
+  "Buenas noches, tengo un problema con la cerradura electrónica, no abre ni cierra bien.",
+  "Oye, necesito que revisen la ducha porque sale agua sucia y colorada, no puedo bañarme.",
+  "Pues mira, el control remoto de la tele no sirve para nada, está dañado.",
+  "Disculpe, pero hay una gotera en el techo del baño que está haciendo ruido constante.",
+  "Hola, ¿me pueden cambiar el aire? Hace un olor a moho muy fuerte.",
+  "Mire, la puerta del closet se trancó y no puedo abrirla para sacar mis cosas.",
+  "Oiga, necesito ayuda urgente con el agua caliente, no sale ni una gota tibia.",
+  "Buenas, le comento que el aire acondicionado gotea encima de la cama, nos está mojando.",
+  "Hermano, por favor, revisen la tele porque la pantalla se puso negra y no tiene imagen.",
+  "Pues verán, la ducha tiene poca presión, casi no sale agua para lavarse.",
+  "Hola, necesito que alguien venga a arreglar el aire, se apagó de repente y no prende.",
+  "Oye, hay un problema con el agua del baño, se desborda cuando uso el lavabo.",
+  "Mire, el control de la tele funciona pero la señal está cortada constantemente.",
+  "Buenas tardes, por favor manden a mantenimiento porque el aire hace un chillido muy molesto."
+ ]
+}

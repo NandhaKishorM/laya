@@ -1,0 +1,923 @@
+{
+ "meta": {
+  "model": "qwen2.5:7b-instruct",
+  "dataset": "clinic",
+  "system_prompt": "Sos la recepcionista. UNA frase corta y hablada. Derivá al área que corresponda."
+ },
+ "summary": {
+  "n": 45,
+  "accuracy": 0.9111111111111111,
+  "macro_f1": 0.9055844155844156,
+  "ece": 0.0888888888888889,
+  "mean_confidence": 1.0,
+  "majority_baseline": 0.28888888888888886,
+  "wrong_actions": 3,
+  "by_tag": {
+   "asr": {
+    "n": 5,
+    "accuracy": 0.8
+   },
+   "direct": {
+    "n": 6,
+    "accuracy": 1.0
+   },
+   "farewell": {
+    "n": 4,
+    "accuracy": 0.75
+   },
+   "hard": {
+    "n": 3,
+    "accuracy": 1.0
+   },
+   "hn": {
+    "n": 2,
+    "accuracy": 1.0
+   },
+   "human": {
+    "n": 4,
+    "accuracy": 1.0
+   },
+   "indirect": {
+    "n": 16,
+    "accuracy": 0.9375
+   },
+   "negation": {
+    "n": 7,
+    "accuracy": 0.7142857142857143
+   },
+   "negation-in-text": {
+    "n": 1,
+    "accuracy": 1.0
+   },
+   "noise": {
+    "n": 3,
+    "accuracy": 1.0
+   },
+   "open": {
+    "n": 3,
+    "accuracy": 1.0
+   },
+   "short": {
+    "n": 2,
+    "accuracy": 1.0
+   }
+  },
+  "confusion": {
+   "colgar->recepcion": 1,
+   "farmacia->ninguno": 1,
+   "ninguno->colgar": 1,
+   "ninguno->recepcion": 1
+  },
+  "fast_path": [
+   {
+    "threshold": 0.5,
+    "fast": 33,
+    "coverage": 0.7333333333333333,
+    "action_recall": 0.9375,
+    "wrong": 3,
+    "precision": 0.9090909090909091
+   },
+   {
+    "threshold": 0.6,
+    "fast": 33,
+    "coverage": 0.7333333333333333,
+    "action_recall": 0.9375,
+    "wrong": 3,
+    "precision": 0.9090909090909091
+   },
+   {
+    "threshold": 0.7,
+    "fast": 33,
+    "coverage": 0.7333333333333333,
+    "action_recall": 0.9375,
+    "wrong": 3,
+    "precision": 0.9090909090909091
+   },
+   {
+    "threshold": 0.8,
+    "fast": 33,
+    "coverage": 0.7333333333333333,
+    "action_recall": 0.9375,
+    "wrong": 3,
+    "precision": 0.9090909090909091
+   },
+   {
+    "threshold": 0.9,
+    "fast": 33,
+    "coverage": 0.7333333333333333,
+    "action_recall": 0.9375,
+    "wrong": 3,
+    "precision": 0.9090909090909091
+   },
+   {
+    "threshold": 0.95,
+    "fast": 33,
+    "coverage": 0.7333333333333333,
+    "action_recall": 0.9375,
+    "wrong": 3,
+    "precision": 0.9090909090909091
+   },
+   {
+    "threshold": 0.99,
+    "fast": 33,
+    "coverage": 0.7333333333333333,
+    "action_recall": 0.9375,
+    "wrong": 3,
+    "precision": 0.9090909090909091
+   }
+  ],
+  "latency_ms": {
+   "p50": 448.0642920243554,
+   "p95": 6041.248874971643,
+   "min": 325.5994580104016
+  },
+  "borderline": [],
+  "first_ms": {
+   "p50": 418.77541702706367,
+   "p95": 5706.497666018549
+  },
+  "tokens": {
+   "in_mean": 384.4,
+   "out_mean": 22.733333333333334
+  },
+  "invalid_destinations": 0
+ },
+ "records": [
+  {
+   "id": "cl-001",
+   "text": "Quiero sacar una cita con el cardiólogo.",
+   "gold": "citas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 351.916000014171,
+   "decided_ms": 351.916000014171,
+   "latency_ms": 376.79233303060755,
+   "tokens_in": 383,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-002",
+   "text": "Necesito cambiar la fecha de mi consulta del jueves.",
+   "gold": "citas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 409.4137090141885,
+   "decided_ms": 409.4137090141885,
+   "latency_ms": 434.28112502442673,
+   "tokens_in": 385,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-003",
+   "text": "Páseme con citas, por favor.",
+   "gold": "citas",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 418.60904201166704,
+   "decided_ms": 418.60904201166704,
+   "latency_ms": 443.65345902042463,
+   "tokens_in": 381,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-004",
+   "text": "Fíjese que quiero apartar una consulta para mi mamá.",
+   "gold": "citas",
+   "tags": [
+    "indirect",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 404.1166660026647,
+   "decided_ms": 404.1166660026647,
+   "latency_ms": 429.1231660172343,
+   "tokens_in": 386,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-005",
+   "text": "Tengo que cancelar la cita que tenía mañana con la doctora.",
+   "gold": "citas",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 414.731708006002,
+   "decided_ms": 414.731708006002,
+   "latency_ms": 439.4030830007978,
+   "tokens_in": 386,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-006",
+   "text": "quiero agendar con el pediatra para la otra semana",
+   "gold": "citas",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 410.2075000409968,
+   "decided_ms": 410.2075000409968,
+   "latency_ms": 435.1722089922987,
+   "tokens_in": 384,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-007",
+   "text": "Quiero saber si ya están listos los resultados de mis exámenes de sangre.",
+   "gold": "laboratorio",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 416.7658329824917,
+   "decided_ms": 416.7658329824917,
+   "latency_ms": 441.77562498953193,
+   "tokens_in": 391,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-008",
+   "text": "Comuníqueme con el laboratorio.",
+   "gold": "laboratorio",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 418.95983403082937,
+   "decided_ms": 418.95983403082937,
+   "latency_ms": 443.91508400440216,
+   "tokens_in": 381,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-009",
+   "text": "Me mandaron a hacerme unos análisis y quiero saber si tengo que ir en ayunas, páseme con ellos.",
+   "gold": "laboratorio",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 425.24566600332037,
+   "decided_ms": 425.24566600332037,
+   "latency_ms": 450.37400000728667,
+   "tokens_in": 396,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-010",
+   "text": "Necesito que me reenvíen el resultado de la prueba que me hice el lunes.",
+   "gold": "laboratorio",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 422.28054197039455,
+   "decided_ms": 422.28054197039455,
+   "latency_ms": 447.06216698978096,
+   "tokens_in": 394,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-011",
+   "text": "me hicieron un examen de orina y no me han entregado nada",
+   "gold": "laboratorio",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 414.954875013791,
+   "decided_ms": 414.954875013791,
+   "latency_ms": 439.4713750225492,
+   "tokens_in": 387,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-012",
+   "text": "Quiero saber si tienen el medicamento que me recetaron, páseme con farmacia.",
+   "gold": "farmacia",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "farmacia",
+   "argument": "farmacia",
+   "spoken": "",
+   "first_ms": 405.8413340244442,
+   "decided_ms": 405.8413340244442,
+   "latency_ms": 431.1792090302333,
+   "tokens_in": 392,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-013",
+   "text": "Necesito surtir una receta.",
+   "gold": "farmacia",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "farmacia",
+   "argument": "farmacia",
+   "spoken": "",
+   "first_ms": 423.2414159923792,
+   "decided_ms": 423.2414159923792,
+   "latency_ms": 457.35187496757135,
+   "tokens_in": 382,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-014",
+   "text": "Con la farmacia, por favor.",
+   "gold": "farmacia",
+   "tags": [
+    "direct",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "farmacia",
+   "argument": "farmacia",
+   "spoken": "",
+   "first_ms": 411.78833303274587,
+   "decided_ms": 411.78833303274587,
+   "latency_ms": 436.50770804379135,
+   "tokens_in": 379,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-015",
+   "text": "Me dieron unas pastillas equivocadas y quiero cambiarlas.",
+   "gold": "farmacia",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "farmacia",
+   "argument": "farmacia",
+   "spoken": "",
+   "first_ms": 410.02900002058595,
+   "decided_ms": 410.02900002058595,
+   "latency_ms": 434.8854999989271,
+   "tokens_in": 385,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-016",
+   "text": "Quiero comprar la medicina que me indicó el doctor.",
+   "gold": "farmacia",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Transferimos su llamada a la sección de farmacia para que le ayuden con la compra de su medicamento.",
+   "first_ms": 182.61341704055667,
+   "decided_ms": null,
+   "latency_ms": 491.24245799612254,
+   "tokens_in": 384,
+   "tokens_out": 26
+  },
+  {
+   "id": "cl-017",
+   "text": "Mi papá se desmayó y no reacciona, necesito ayuda ya.",
+   "gold": "emergencias",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "emergencias",
+   "argument": "emergencias",
+   "spoken": "",
+   "first_ms": 416.01616598200053,
+   "decided_ms": 416.01616598200053,
+   "latency_ms": 440.57474995497614,
+   "tokens_in": 389,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-018",
+   "text": "Páseme con emergencias, es urgente.",
+   "gold": "emergencias",
+   "tags": [
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "emergencias",
+   "argument": "emergencias",
+   "spoken": "",
+   "first_ms": 423.50329202599823,
+   "decided_ms": 423.50329202599823,
+   "latency_ms": 448.0642920243554,
+   "tokens_in": 383,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-019",
+   "text": "Mi hijo se cortó y está sangrando mucho.",
+   "gold": "emergencias",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "emergencias",
+   "argument": "emergencias",
+   "spoken": "",
+   "first_ms": 432.0326250162907,
+   "decided_ms": 432.0326250162907,
+   "latency_ms": 457.7065000194125,
+   "tokens_in": 383,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-020",
+   "text": "Tengo un dolor muy fuerte en el pecho y me cuesta respirar.",
+   "gold": "emergencias",
+   "tags": [
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "emergencias",
+   "argument": "emergencias",
+   "spoken": "",
+   "first_ms": 429.6479999902658,
+   "decided_ms": 429.6479999902658,
+   "latency_ms": 454.51549999415874,
+   "tokens_in": 389,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-021",
+   "text": "necesito una ambulancia mi esposa se cayó y no se puede mover",
+   "gold": "emergencias",
+   "tags": [
+    "asr",
+    "indirect"
+   ],
+   "confidence": 1.0,
+   "predicted": "emergencias",
+   "argument": "emergencias",
+   "spoken": "",
+   "first_ms": 418.77541702706367,
+   "decided_ms": 418.77541702706367,
+   "latency_ms": 443.3346249861643,
+   "tokens_in": 390,
+   "tokens_out": 22
+  },
+  {
+   "id": "cl-022",
+   "text": "Quiero hablar con una persona.",
+   "gold": "recepcion",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 402.83304097829387,
+   "decided_ms": 402.83304097829387,
+   "latency_ms": 427.5135829811916,
+   "tokens_in": 378,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-023",
+   "text": "Páseme con alguien que me atienda, por favor.",
+   "gold": "recepcion",
+   "tags": [
+    "human"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 420.3485830221325,
+   "decided_ms": 420.3485830221325,
+   "latency_ms": 444.98366699554026,
+   "tokens_in": 385,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-024",
+   "text": "No quiero hablar con una máquina, comuníqueme con una persona.",
+   "gold": "recepcion",
+   "tags": [
+    "human",
+    "negation-in-text"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 408.6807499988936,
+   "decided_ms": 408.6807499988936,
+   "latency_ms": 433.7837089551613,
+   "tokens_in": 386,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-025",
+   "text": "Con la recepcionista, por favor.",
+   "gold": "recepcion",
+   "tags": [
+    "human",
+    "direct"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 431.159291008953,
+   "decided_ms": 431.159291008953,
+   "latency_ms": 457.48870802344754,
+   "tokens_in": 380,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-026",
+   "text": "Muchas gracias, eso era todo. Hasta luego.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 5287.402624962851,
+   "decided_ms": 5287.402624962851,
+   "latency_ms": 5312.7894579665735,
+   "tokens_in": 383,
+   "tokens_out": 27
+  },
+  {
+   "id": "cl-027",
+   "text": "Vaya pues, muy amable, adiós.",
+   "gold": "colgar",
+   "tags": [
+    "farewell",
+    "hn"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 6091.070208989549,
+   "decided_ms": 6091.070208989549,
+   "latency_ms": 6116.30791699281,
+   "tokens_in": 383,
+   "tokens_out": 30
+  },
+  {
+   "id": "cl-028",
+   "text": "Ya no necesito nada más, gracias.",
+   "gold": "colgar",
+   "tags": [
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 7300.437750003766,
+   "decided_ms": 7300.437750003766,
+   "latency_ms": 7328.297250031028,
+   "tokens_in": 380,
+   "tokens_out": 27
+  },
+  {
+   "id": "cl-029",
+   "text": "bueno gracias que pase buen dia",
+   "gold": "colgar",
+   "tags": [
+    "asr",
+    "farewell"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 5706.497666018549,
+   "decided_ms": 5706.497666018549,
+   "latency_ms": 5731.712541019078,
+   "tokens_in": 380,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-030",
+   "text": "¿A qué hora abre la clínica?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "La clínica abre a las 8:00 AM. ¿Necesitas que te reserve una cita para ese horario?",
+   "first_ms": 4941.711083985865,
+   "decided_ms": null,
+   "latency_ms": 5300.797833944671,
+   "tokens_in": 381,
+   "tokens_out": 30
+  },
+  {
+   "id": "cl-031",
+   "text": "¿Dónde están ubicados?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Somos una empresa centralizada, pero nuestros servicios pueden atender llamadas desde cualquier lugar. Si necesitas más detalles sobre nuestras instalaciones, puedo proporcionarte la dirección. ¿Te interesa eso?",
+   "first_ms": 5522.606957994867,
+   "decided_ms": null,
+   "latency_ms": 6041.248874971643,
+   "tokens_in": 379,
+   "tokens_out": 42
+  },
+  {
+   "id": "cl-032",
+   "text": "¿Atienden los domingos?",
+   "gold": "ninguno",
+   "tags": [
+    "open"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Sí, atendemos los domingos. ¿En qué puedo ayudarte hoy?",
+   "first_ms": 4825.824750005268,
+   "decided_ms": null,
+   "latency_ms": 5062.300292018335,
+   "tokens_in": 380,
+   "tokens_out": 20
+  },
+  {
+   "id": "cl-033",
+   "text": "Aló, buenas tardes.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Buenas tardes, ¿en qué puedo ayudarle?",
+   "first_ms": 5286.901291983668,
+   "decided_ms": null,
+   "latency_ms": 5463.6877089506015,
+   "tokens_in": 379,
+   "tokens_out": 15
+  },
+  {
+   "id": "cl-034",
+   "text": "¿Me escucha?",
+   "gold": "ninguno",
+   "tags": [
+    "noise",
+    "short"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Sí, me escucho perfectamente. ¿En qué puedo ayudarte?",
+   "first_ms": 180.80766696948558,
+   "decided_ms": null,
+   "latency_ms": 396.7547499923967,
+   "tokens_in": 376,
+   "tokens_out": 18
+  },
+  {
+   "id": "cl-035",
+   "text": "Un momento, que estoy buscando mi carné.",
+   "gold": "ninguno",
+   "tags": [
+    "noise"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Un momento, le ayudaré con eso. ¿Podría proporcionarme su nombre y número de identificación para verificar su información?",
+   "first_ms": 183.44254198018461,
+   "decided_ms": null,
+   "latency_ms": 525.4366250010207,
+   "tokens_in": 382,
+   "tokens_out": 28
+  },
+  {
+   "id": "cl-036",
+   "text": "No quiero una cita, solo quiero saber el horario.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Puedo ayudarte con eso. ¿Podrías indicarme qué tipo de cita necesitas saber el horario?",
+   "first_ms": 208.29295797739178,
+   "decided_ms": null,
+   "latency_ms": 586.3177080173045,
+   "tokens_in": 383,
+   "tokens_out": 26
+  },
+  {
+   "id": "cl-037",
+   "text": "No me pase con el laboratorio, ya tengo mis resultados.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "recepcion",
+   "argument": "recepcion",
+   "spoken": "",
+   "first_ms": 448.9543749950826,
+   "decided_ms": 448.9543749950826,
+   "latency_ms": 474.4670829968527,
+   "tokens_in": 385,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-038",
+   "text": "No es una emergencia, solo es una pregunta.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "colgar",
+   "argument": null,
+   "spoken": "",
+   "first_ms": 532.1250830311328,
+   "decided_ms": 532.1250830311328,
+   "latency_ms": 557.2283330257051,
+   "tokens_in": 382,
+   "tokens_out": 29
+  },
+  {
+   "id": "cl-039",
+   "text": "No necesito la farmacia, solo quería preguntar dónde quedan.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Gracias por tu consulta. Estamos ubicados en la calle 15 de Marzo, 723, Buenos Aires. ¿Necesitas más información?",
+   "first_ms": 188.8004159554839,
+   "decided_ms": null,
+   "latency_ms": 636.5150409983471,
+   "tokens_in": 389,
+   "tokens_out": 37
+  },
+  {
+   "id": "cl-040",
+   "text": "No cuelgue, todavía tengo otra duda.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Claro, ¿en qué puedo ayudarte más?",
+   "first_ms": 204.60041699698195,
+   "decided_ms": null,
+   "latency_ms": 342.6519579952583,
+   "tokens_in": 382,
+   "tokens_out": 12
+  },
+  {
+   "id": "cl-041",
+   "text": "No me transfiera con nadie todavía, primero dígame usted.",
+   "gold": "ninguno",
+   "tags": [
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Claro, ¿en qué puedo ayudarte hoy?",
+   "first_ms": 185.72245800169185,
+   "decided_ms": null,
+   "latency_ms": 325.5994580104016,
+   "tokens_in": 386,
+   "tokens_out": 12
+  },
+  {
+   "id": "cl-042",
+   "text": "no no es urgente no me pase con emergencias",
+   "gold": "ninguno",
+   "tags": [
+    "asr",
+    "negation"
+   ],
+   "confidence": 1.0,
+   "predicted": "ninguno",
+   "argument": null,
+   "spoken": "Entendido, no hay necesidad de derivar a emergencias. ¿En qué puedo ayudarte hoy?",
+   "first_ms": 182.4943749816157,
+   "decided_ms": null,
+   "latency_ms": 471.450624987483,
+   "tokens_in": 383,
+   "tokens_out": 24
+  },
+  {
+   "id": "cl-043",
+   "text": "En el laboratorio me dijeron que para el examen necesito una cita, quiero sacarla.",
+   "gold": "citas",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "citas",
+   "argument": "citas",
+   "spoken": "",
+   "first_ms": 420.34212505677715,
+   "decided_ms": 420.34212505677715,
+   "latency_ms": 445.93108305707574,
+   "tokens_in": 394,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-044",
+   "text": "El doctor de emergencias me dejó una receta y quiero comprarla.",
+   "gold": "farmacia",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "farmacia",
+   "argument": "farmacia",
+   "spoken": "",
+   "first_ms": 460.85970796411857,
+   "decided_ms": 460.85970796411857,
+   "latency_ms": 485.8611659728922,
+   "tokens_in": 387,
+   "tokens_out": 21
+  },
+  {
+   "id": "cl-045",
+   "text": "Ya saqué la cita, ahora quiero saber si están mis resultados.",
+   "gold": "laboratorio",
+   "tags": [
+    "hard"
+   ],
+   "confidence": 1.0,
+   "predicted": "laboratorio",
+   "argument": "laboratorio",
+   "spoken": "",
+   "first_ms": 435.21312496159226,
+   "decided_ms": 435.21312496159226,
+   "latency_ms": 459.6655829809606,
+   "tokens_in": 385,
+   "tokens_out": 22
+  }
+ ]
+}

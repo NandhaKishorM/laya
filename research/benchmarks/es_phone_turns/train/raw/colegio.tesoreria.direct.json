@@ -1,0 +1,15 @@
+{
+ "name": "colegio.tesoreria.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y pide que la comuniquen con el área de «tesoreria» (pago de mensualidades y colegiaturas). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor pasar con Tesorería.",
+  "Oiga, le hablo para que me comuniquen con el departamento de tesorería por un tema de pago.",
+  "Sí, hola. ¿Podrían pasarme con la gente de tesorería, por favor?",
+  "A ver si me atiende alguien de Tesorería ya mismo.",
+  "Buenos días, buenas tardes o buenas noches según el caso, pero quiero hablar con Tesorería para lo de la mensualidad.",
+  "Pásame con tesorería, porfa.",
+  "Hola, ¿hay alguien disponible en tesorería que me pueda atender esta llamada?",
+  "Por aquí estoy llamando específicamente para que me transfieran al área de tesorería porque tengo una duda con el saldo."
+ ]
+}

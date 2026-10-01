@@ -1,0 +1,15 @@
+{
+ "name": "paqueteria.aduanas.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una empresa de envíos y aclara que NO necesita el área de «aduanas» (trámites e impuestos de paquetes que vienen del extranjero): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Por favor, no me transfiera a aduanas, yo solo tengo una consulta.",
+  "Ni se le ocurra pasarme con el área de impuestos, gracias.",
+  "Aquí no necesito trámites internacionales, hablemos directo con usted.",
+  "No soy cliente de aduanas, por favor atienda mi pregunta ya.",
+  "Oiga, no me ligue con la oficina de importaciones, es un error.",
+  "Le repito que no requiero servicios de aduana, ¿me escucha?",
+  "Que no me pongan en espera para trámites legales, solo informo.",
+  "No busque a nadie más, yo no tengo paquete del extranjero."
+ ]
+}

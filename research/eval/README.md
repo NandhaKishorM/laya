@@ -285,20 +285,87 @@ conditions were fixed before the 10-state run:
 The tightest margin is the english first-slot rate, at 0.054 against the 0.05 rule.
 An order-invariant checkpoint sits at exactly 0.333 on that check.
 
+### Other languages
+
+`--lang` runs both checks on fixed states in Japanese, Korean, Hindi or Turkish (#602).
+Each set translates the ten English states one for one, with the level texts in the
+same language. Every state routes to `multilingual` under `Router`: Japanese, Korean
+and Hindi by script, Turkish by its non-English letters. The run prints the checkpoint
+`Router` picks for each language. Korean, Hindi and Turkish are among the languages
+whose per-language MASSIVE gains the multilingual model card lists, and they cover
+three routing paths (Hangul, Devanagari, Latin with diacritics). Japanese is where
+#131 was found. The gates are the English ones. Without `--lang` the run and its report are
+unchanged.
+
+```bash
+python research/eval/presentation_checks.py --model convaiinnovations/laya \
+    --subfolder multilingual --lang ja,ko,hi,tr --out langs.json
+```
+
+CPU, fp32, `convaiinnovations/laya@55cf4c4` (subfolder `multilingual`), laya 0.3.21.
+Full output: `research/results/presentation_checks_langs.json`. The same run without
+`--lang` reproduces the English row above exactly.
+
+| language | `score_slot0_identical` (leave-one-out) | `score_first_slot_permuted` (leave-one-out) | parity max \|Δp\| |
+|---|---|---|---|
+| `ja` | −0.018 (−0.120 .. +0.031) PASS | **0.000** (0.000 .. 0.000) FAIL | 4.68e-5 |
+| `ko` | **−0.570** (−0.622 .. −0.506) FAIL | **0.050** (0.019 .. 0.056) FAIL | 4.97e-5 |
+| `hi` | **−0.225** (−0.300 .. −0.182) FAIL | **0.067** (0.037 .. 0.074) FAIL | 4.91e-5 |
+| `tr` | +0.139 (+0.068 .. +0.174) PASS | **0.033** (0.019 .. 0.037) FAIL | 4.95e-5 |
+
+The first-slot check fails in all four languages, as it does in English. The
+identical-option control passes in Japanese and Turkish, so on those states it would
+not catch the prior on its own. That is the case for running both checks in every
+language.
+
+### The choice control (`choice_slot0_identical`)
+
+The identical-option control, applied to `choice` (#602, part a). Choice keys must be
+unique, so the options are numbered keys with one shared description (`1: a request`,
+`2: a request`, ...), the counterpart of score's `level N:` prefix. The metric is the
+score control's metric on the choice marker logits: slot 0 minus the mean over the
+options, averaged over the states and both texts. It is gated at 4 options (the gate
+is the same, −0.20), and 3 options are reported beside it. The control runs in every
+`--lang` run, and `--checks choice_slot0_identical` names it anywhere. Without either,
+the default English report is unchanged. With the control, the parity check also
+compares the choice probabilities with `Agent.system_one`.
+
+CPU, fp32, `convaiinnovations/laya@55cf4c4`, laya 0.3.21. Full output:
+`research/results/presentation_checks_choice.json`. `Router` picks `english` for the
+English states and `multilingual` for the rest; every row runs on the checkpoint named.
+
+| checkpoint | language | `choice_slot0_identical`, K = 4 (leave-one-out) | K = 3 | choice parity |
+|---|---|---|---|---|
+| `laya` (english) | `en` | +0.902 (+0.833 .. +0.971) PASS | +0.322 | 4.84e-5 |
+| `laya-multilingual` | `en` | +0.399 (+0.334 .. +0.455) PASS | +0.249 | 4.93e-5 |
+| `laya-multilingual` | `ja` | +0.394 (+0.283 .. +0.493) PASS | +0.196 | 4.89e-5 |
+| `laya-multilingual` | `ko` | +0.096 (−0.025 .. +0.204) PASS | −0.147 | 4.87e-5 |
+| `laya-multilingual` | `hi` | +0.346 (+0.285 .. +0.389) PASS | +0.267 | 4.97e-5 |
+| `laya-multilingual` | `tr` | +0.538 (+0.431 .. +0.588) PASS | +0.360 | 4.95e-5 |
+
+On the same states `laya-multilingual` fails the score first-slot check in every
+language, so its slot-0 deficit is specific to `score`: with choice options it
+favours slot 0 instead. Korean is closest to the gate, and below 0 at 3 options.
+
 ### Tests
 
 `research/eval/test_presentation_checks.py` runs offline, with scripted logits in
 place of a checkpoint:
 
 ```bash
-python research/eval/test_presentation_checks.py     # 69 passed, 0 failed
+python research/eval/test_presentation_checks.py     # 219 passed, 0 failed
 ```
 
 It pins the fixed inputs and both gates. It checks that the identical-option
 questions render as `level i: <same text>`, and that every level sits in every slot
 exactly twice. It also checks the metric arithmetic by hand, the leave-one-out
 bounds, the one-sided gates, and the exit codes. A scripted slot-0 hole fails both
-checks, and an order-invariant model scores exactly 1/3.
+checks, and an order-invariant model scores exactly 1/3. For each language it
+pins ten distinct states, three levels in every slot twice, and routing to
+`multilingual`. It also checks the `--lang` parsing. The default run gives the same
+report as `lang="en"`. For the choice control it checks the `N: <same text>` rendering,
+the centring and the gate at 4 options by hand, the 3-option value beside it, and
+that the control stays out of the default run.
 
 ### Limits
 
@@ -312,18 +379,20 @@ checks, and an order-invariant model scores exactly 1/3.
   (multilingual: −0.75 / −0.52 / −0.25 and −0.58 / −0.47 / −0.37.)
 * Passing is not accuracy. A checkpoint can clear both gates and still rank urgency
   badly; this checks one known failure, not `score` quality.
-* English only, `score` only, 10 states. The states are short support messages, so a
-  checkpoint's behaviour on long inputs or other languages is not covered here.
+* Score checks and the choice control only, 10 states per language. The states are short support messages, so a
+  checkpoint's behaviour on long inputs is not covered here. The Korean, Hindi and
+  Turkish states and levels were written by a non-native speaker; corrections from
+  native speakers are welcome.
 * Thresholds were set on CPU fp32. On CUDA, `Agent` runs the forward pass under
   reduced-precision autocast and `score_cases` does not. The parity check reports that
   difference instead of hiding it.
-* New checks are one function each, registered in `CHECKS`.
+* New checks are one function each, registered in `CHECKS` (score) or `CHOICE_CHECKS`.
 
 
 ## Metamorphic option-order robustness (experimental)
 
 `metamorphic.py` adds the initial scope of
-[#244](https://github.com/NandhaKishorM/laya/issues/244): **choice option order robustness**, without changing model/runtime behavior. Label renaming, neutral labels, paraphrases, structured-state permutations, `score` and `noul` perturbations are intentionally deferred. Run from the repository root after installing Laya and `datasets`:
+[#244](https://github.com/NandhaKishorM/laya/issues/244): **choice option order robustness**, and the label-renaming transformation from [#512](https://github.com/NandhaKishorM/laya/issues/512), without changing model/runtime behavior. Paraphrases, structured-state permutations, `score` and `noul` perturbations are intentionally deferred. Run from the repository root after installing Laya and `datasets`:
 
 ```bash
 python -m research.eval.metamorphic --model convaiinnovations/laya \
@@ -333,18 +402,23 @@ python -m research.eval.metamorphic --model convaiinnovations/laya \
 python -m unittest research.eval.test_metamorphic -v
 ```
 
-Each MASSIVE case uses the existing harness's sampler and produces two inputs:
+Each MASSIVE case uses the existing harness's sampler and produces three inputs:
 
 1. The unchanged baseline.
 2. One seeded shuffle of option order; if the shuffle is the identity, a one-slot
    rotation is used. This is a bounded diagnostic, not exhaustive permutation testing
    or a uniform draw over all nonidentity permutations.
+3. A deterministic label rename: the option at each position keeps its slot and
+   description, and its model-facing key becomes an opaque label (`A`, `B`, `C`, ...
+   `Z`, then `key_26`, `key_27`, ...). Order and semantics are unchanged, so any
+   drift in the `label_rename` group isolates lexical-label sensitivity (the failure
+   mode of #156) from the position sensitivity measured by `option_order`.
 
-Instructions and state are otherwise unchanged. Option key/value pairs are moved together during permutation. Every result is mapped back to the original semantic option order **before** predictions and metrics are computed. Exact ties choose the first canonical option. The RNG starts fresh per language; `--seed` controls both sampling and transformations. `--batch-size` bounds the number of forward-pass inputs and does not alter the generated variants. Model inference may still have small floating-point differences across devices and batch sizes.
+Instructions and state are otherwise unchanged. Option key/value pairs are moved together during permutation. Every result is mapped back to the original semantic option order **before** predictions and metrics are computed, and each variant records the explicit bidirectional mapping so the comparison is auditable. Exact ties choose the first canonical option. The RNG starts fresh per language; `--seed` controls both sampling and transformations. `--batch-size` bounds the number of forward-pass inputs and does not alter the generated variants. Model inference may still have small floating-point differences across devices and batch sizes.
 
 The JSON contains `config`, per-language `report`, and full `cases`. Each case saves its original input, canonical keys and optional gold index; each variant saves its presented keys, explicit `canonical_to_transformed` and `transformed_to_canonical` label mappings, slot-to-canonical indices, complete **canonical-order** probability vector, prediction, confidence, correctness (or `null`), and comparison to baseline. Probabilities are not rounded. The config records model/subfolder, temperature mode and values, truncation settings, dataset, seed and batch size. For reproducible checkpoint comparisons, use a pinned local snapshot and retain the environment versions alongside the report. `--unclamped` has the same meaning as in `laya_eval`. If any language fails, its error is saved and the command exits nonzero while retaining successful languages.
 
-Metrics are grouped under `option_order` and `overall`:
+Metrics are grouped under `option_order`, `label_rename` and `overall`:
 
 | Metric | Definition |
 |---|---|
@@ -358,6 +432,25 @@ Metrics are grouped under `option_order` and `overall`:
 
 `overall` is pair-weighted, not a fraction of cases where *all* variants agree. `quality` separately reports accuracy and the existing harness's 15-bin ECE for baseline and each transformation on labelled cases only. Empty groups contain `n: 0`; unlabelled quality groups contain `n_labelled: 0` without inventing an accuracy or ECE. Robustness agreement is not a correctness measure: consistently wrong predictions can be perfectly invariant.
 
+### Option budget and rendering information
+
+At high option counts Laya's head token budget can cut the options themselves, and two options that share a prefix can come out of the cut as the same token span, which removes the question's ability to tell them apart. This matters for `label_rename`: a shorter label leaves more room for its description, so the baseline and the renamed input can survive the budget with **different content**. For `iot_hue_lightoff: iot hue lightoff` a roomy budget keeps the semantic description on both sides, but a tight budget can keep `iot_` on the baseline and `A: t` on the renamed variant -- no longer information-equivalent.
+
+This section is an evaluation-side follow-up motivated by [#543](https://github.com/NandhaKishorM/laya/issues/543), [#517](https://github.com/NandhaKishorM/laya/issues/517) and [#569](https://github.com/NandhaKishorM/laya/issues/569). #543 raised option collapse at high option counts and was closed as addressed at runtime in v0.3.21 via #569/#542: the model side now reports, for an individual inference, which options lost a token span of their own. That report does not say whether the baseline and transformed variants of a *metamorphic comparison* still carry equivalent option information, which is the question this diagnostic answers -- per comparison, so the resulting drift is not read as pure lexical-label sensitivity.
+
+With a real model, the CLI and `evaluate_variants()` derive a budget probe from the agent (`agent.cfg`) and attach a budget diagnostic to every variant, measured by rendering the options through the same tokenizer/`build_sequence` budget path the model input uses. `evaluate()` has no agent, so it probes only when it is passed an explicit `budget`:
+
+* `budget` per variant: `options`, `distinct_spans` (how many options still have a token span of their own; fewer than `options` means some options can no longer be told apart), `tokens_per_option` (the uniform re-cap applied when the head budget runs out, or `null` when none was), `instruction_tokens`, `span_classes` (which presented options share a span), `retained_text` (the characters the surviving span covers, `null` when unattributable), `retained_descriptions` (the description characters inside that prefix, ignoring the label), `description_present` (whether each option carried description text at all -- `None`, empty and whitespace-only descriptions are absent; numbers, booleans and structured values render as text and count as present), `truncated` and `tail_truncated`.
+* `budget_comparison` per pair: both sides' `options`, `distinct_spans`, `tokens_per_option` and `instruction_tokens`, their `retained_descriptions` aligned back to canonical order, both sides' `description_present` on `label_rename` pairs, `budget_confounded` (`true`, `false`, or `null` when the rendering could not be measured or attributed), and `reasons` naming what decided it: `clean`, `option_count`, `distinct_spans`, `instruction_tokens`, `tail_truncation`, `collision_partition` (the two sides group the options into indistinguishable spans differently, even when the number of collapsed options matches), `retained_description` or `unverified_retained_text` (with the affected canonical `slots`), `missing_semantic_description` (a `label_rename` pair whose options never had description text, with the affected canonical `slots`), or `measurement_error`.
+* `report["budget"]`: `clean`/`confounded`/`unknown` counts and `confounded_rate` for `option_order`, `label_rename` and `overall`. The rate is over verifiable pairs only and is `null` when there are none, so an all-`unknown` run cannot read as clean.
+
+Two conditions make a comparison's validity unknown and are reported as such, never as clean:
+
+* **Renaming options that have no descriptions.** Choice criteria may legitimately carry `None`, empty or whitespace-only descriptions. Then the label is the only semantic content the option had, and rewriting it removes exactly what the transform promises to preserve, so `budget_confounded` is `null` with `missing_semantic_description` even when both sides report empty `retained_descriptions` and the budget never truncates anything. `option_order` pairs are exempt: a permutation moves every key/value pair together, so the content is preserved whatever the descriptions are, and the diagnostic never invents an `unknown` for a permutation.
+* **Unattributable spans.** `retained_text`/`retained_descriptions` are attributed from character prefixes, and the only sound attribution is an exact witness: a prefix whose encoding equals the surviving span token for token. A growing prefix's token count is not guaranteed to be non-decreasing -- a BPE merge can encode a longer prefix to fewer tokens, and lossy normalization can drop characters -- so witnesses need not be adjacent and the search is global, over every character prefix. Exactly one witness is required: none, several, or an option longer than the probe's documented length bound (`metamorphic._ATTRIBUTION_LIMIT` characters) leaves the slot `null` and the pair unknown -- a conservative result instead of a possibly false clean one.
+
+The diagnostic is deterministic and defines no threshold. It never erases or overrides the observed model metrics: a confounded pair still reports its `semantic_agreement` and drift, and `budget_confounded: true` with `semantic_agreement: false` (or with perfect agreement) are both representable. It does **not** prove semantic equivalence -- it reports whether the rendered option content still matches well enough for the drift to be read as lexical-label sensitivity. Options that the budget collapsed on both sides for the same reason stay clean, because option order and label renaming move or rewrite labels by design; only *content* differences count. `tokens_per_option` is reported but never confounds by itself: when the re-cap does not bite, the model sees the same sequence either way. Comparisons the probe cannot measure are reported as unknown rather than assumed clean. Without a model there is no tokenizer to probe, so `evaluate(..., budget=None)` leaves the report byte-identical to earlier versions.
+
 For another corpus, the Python API accepts `(state, questions)` cases in the same shape as the harness, and a callback returning probability vectors in presented option order:
 
 ```python
@@ -366,24 +459,54 @@ agent.model.eval()
 result = evaluate(cases, model_scorer(agent), gold_indices=None, seed=13)
 ```
 
-The first version intentionally accepts only **one choice question per case**, with at least two options. Label renaming and other metamorphic transforms are intentionally deferred as proposed in the issue.
+The first version intentionally accepts only **one choice question per case**, with at least two options. Paraphrases and other metamorphic transforms are intentionally deferred as proposed in the issues.
 
 For an explicit single-case experiment, the same implementation exposes:
 
 ```python
 from research.eval.metamorphic import (
-    MetamorphicCase, permute_options,
+    MetamorphicCase, permute_options, rename_labels,
     evaluate_variants, compare_predictions,
 )
 
 case = MetamorphicCase(state, questions, gold_index=None)
-variants = [permute_options(case, seed=42)]
+variants = [permute_options(case, seed=42), rename_labels(case)]
 agent.model.eval()
 results = evaluate_variants(agent, case, variants)
 report = compare_predictions(baseline=results.baseline, variants=results.variants)
 ```
 
-For offline tests, pass `agent=None, score=fake_scorer` to `evaluate_variants`. The scorer takes a batch of harness `(state, questions)` inputs and returns one probability vector per input. The public transformations return independent copies and explicit mappings in both directions, including identity label mappings for order-only transformations.
+For offline tests, pass `agent=None, score=fake_scorer` to `evaluate_variants`. The scorer takes a batch of harness `(state, questions)` inputs and returns one probability vector per input. The public transformations return independent copies and explicit mappings in both directions, including identity label mappings for order-only transformations. Both entry points accept `budget=BudgetProbe(tok, max_len=..., head_max_len=...)` to attach the budget diagnostic to a stub tokenizer. `evaluate_variants()` derives one from `agent.cfg` automatically when a real agent is used, and skips it when a `score` is injected; `evaluate()` has no agent and probes only when a `budget` is passed explicitly.
 
 **Semantic agreement and distribution stability are different properties.**
-A shift from `[0.91, 0.06, 0.03]` to `[0.88, 0.08, 0.04]` preserves the decision while showing nonzero drift. Switching the winner is reported as disagreement, regardless of whether confidence rises or falls. No metric here automatically classifies either observation as a bug; acceptable variation depends on the use case, and the report deliberately defines no universal pass/fail threshold.
+A shift from `[0.91, 0.06, 0.03]` to `[0.88, 0.08, 0.04]` preserves the decision while showing nonzero drift. Switching the winner is reported as disagreement, regardless of whether confidence rises or falls. No metric here automatically classifies either observation as a bug; acceptable variation depends on the use case, and the report deliberately defines no universal pass/fail threshold. **Experimental validity is a third property.** A `budget_confounded` comparison is still recorded with its metrics, but its drift no longer isolates lexical-label sensitivity.
+
+### Selective prediction: does disagreement predict errors?
+
+Robustness agreement is not a correctness measure, but on labelled cases it can be tested as a *signal* of correctness: are the baseline answers that change under a transform more often wrong? When gold indices are given, the report adds a `selective_prediction` section computed per labelled case from the baseline winner `w`:
+
+| Signal | Definition |
+|---|---|
+| `confidence` | Baseline probability of `w` (the harness's maximum probability) |
+| `agreement_<kind>` | Share of the `<kind>` variants whose canonical argmax is also `w` |
+| `support_<kind>` | Mean probability the `<kind>` variants give `w` |
+| `support_all` | Mean probability of `w` over the baseline and every variant |
+
+`<kind>` is each transform present (`option_order`, `label_rename`). For every signal, `auroc` is the probability that a random correct case scores above a random wrong one (ties count half; `null` unless both correct and wrong cases exist). For the continuous signals, `accuracy_at_coverage` is the accuracy of the highest-scoring fraction of cases at 50, 70, 80 and 90% coverage; `agreement_*` is left out there because with one variant per kind it is binary, and the cut would depend on tie order. `n_labelled` and `n_wrong` give the sample size; unlabelled runs report `n_labelled: 0` only.
+
+This measures whether a signal ranks errors below correct answers; it does not set a threshold. Consistently wrong predictions stay invisible to every `agreement_*` and `support_*` signal. With one variant per kind, `agreement_*` is coarse; the `support_*` signals use the full probability vectors.
+
+#### Measured
+
+MASSIVE `en`, `--per-lang 300 --n-opts 20`, seed 13, laya 0.3.21, CPU (65 wrong answers). Differences vs `confidence` are bootstrap 95% intervals over cases (2,000 resamples):
+
+| Signal | AUROC | vs `confidence` |
+|---|---:|---:|
+| `confidence` | 0.827 | |
+| `support_all` | 0.877 | +0.050 (+0.010 to +0.096) |
+| `support_label_rename` | 0.866 | +0.039 (−0.018 to +0.094) |
+| `support_option_order` | 0.805 | −0.023 (−0.066 to +0.018) |
+| `agreement_label_rename` | 0.744 | −0.084 (−0.155 to −0.010) |
+| `agreement_option_order` | 0.678 | |
+
+With one variant per transform, only `support_all` clearly ranks errors below correct answers better than `confidence`; the binary `agreement_*` signals rank them worse. Keeping the top 70% of cases gives 93.3% accuracy by `support_all` and 91.0% by `confidence`.

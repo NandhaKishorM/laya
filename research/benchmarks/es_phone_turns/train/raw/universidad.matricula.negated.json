@@ -1,0 +1,15 @@
+{
+ "name": "universidad.matricula.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y aclara que NO necesita el área de «matricula» (inscribir clases y pagar el período): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Disculpe, pero yo no necesito el área de matrícula.",
+  "Oiga, por favor no me conecten con inscripciones.",
+  "No, gracias, yo no tengo problema con la matrícula.",
+  "Permiso, evítame pasar por el departamento de matrícula.",
+  "Buenas, dígame, que yo no busco matricularme aquí.",
+  "Perdone, pero no requiero atención del área de matrícula.",
+  "No me atiendan en inscripciones, por favor.",
+  "Oiga, yo no necesito ayuda con el proceso de matrícula."
+ ]
+}

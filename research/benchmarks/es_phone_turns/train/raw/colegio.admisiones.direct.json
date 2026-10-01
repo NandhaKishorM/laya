@@ -1,0 +1,13 @@
+{
+ "name": "colegio.admisiones.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y pide que la comuniquen con el área de «admisiones» (matrícula e inscripción de alumnos nuevos). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buen día, ¿me comunican con admisiones?",
+  "Quisiera hablar con quien esté a cargo de las inscripciones nuevas, por favor.",
+  "Hola, le llamo para solicitar que me pasen al departamento de admisión.",
+  "¿Podría atenderme alguien del área de matrícula? Estoy con prisa.",
+  "Oiga, necesito contactar con el oficial de admisiones si no es mucha molestia.",
+  "Transfiérame a admisiones, por favor."
+ ]
+}

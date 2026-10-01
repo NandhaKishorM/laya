@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.compraventa.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y aclara que NO necesita el área de «compraventa» (comprar o vender una propiedad): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, gracias por atender pero les pido el favor de no pasarme al área de compraventa porque solo tengo una consulta rápida.",
+  "No necesito comprar ni vender, así que por favor atienda la llamada usted o guárdeme en otro departamento, gracias.",
+  "Hola, buen día, déjenme aclarar que mi inquietud no tiene que ver con ventas ni compras de inmuebles.",
+  "Disculpe la molestia, pero le ruego no me transfieran a compraventa porque únicamente deseo hacer una pregunta administrativa.",
+  "No estoy interesado en ese servicio actualmente, así que por favor manténgame en esta línea y atienda mi duda por favor.",
+  "Por nada del mundo necesito ayuda para comprar o vender casa, solo quiero confirmar unos datos con quien atiende el teléfono.",
+  "Hola, buenas tardes, le pido por favor no me desvíen a la sección de compraventa porque eso no es lo que busco.",
+  "No es necesario pasar al área comercial de propiedades, yo solo requiero orientación sobre un trámite específico en esta línea."
+ ]
+}

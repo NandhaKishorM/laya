@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.alquileres.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y necesita que se ocupe de su caso el área que atiende esto: «alquilar una casa, un apartamento o un local». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Mira, yo no puedo cerrar nada todavía porque me faltan los papeles del contrato.",
+  "Buen día, a ver si me puede orientar, que yo nunca he alquilado y ando perdido con esto de la fianza.",
+  "La verdad es que no tengo mucho tiempo para ir allá, ¿podría gestionar el papelito usted por mí?",
+  "Oiga, perdón la molestia pero el formulario en línea no me funciona y ya intenté mil veces.",
+  "Ay bendición, yo no he recibido confirmación alguna del correo y ando preocupado porque se me va a vencer la oferta.",
+  "Es que mi mamá no entiende bien eso de los gastos comunes y necesita que le expliquen con calma.",
+  "Che, no me llegó ni el link para firmar digitalmente, ¿me lo pueden reenviar urgente?",
+  "Señorita, yo no sé cómo proceder para dejar el apartamento actual sin multa, ¿me podría ayudar con ese trámite?"
+ ]
+}

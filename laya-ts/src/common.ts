@@ -38,7 +38,14 @@ export function serializeState(state: unknown): string {
   if (typeof state === "string") return state;
   return pyJson(state) ?? String(state);
 }
-function renderCriterion(v: unknown): string {
+/** The text of a criterion: the string itself, else the JSON the model was shown.
+ *
+ * Exported because `agent.ts` needs it for a `score` answer's `legend`, which maps an index to the
+ * text of that level. Putting the raw value in made the response's JSON types depend on the
+ * caller's input -- a numeric scale came back as `{"0": 1}`, a boolean as `{"0": true}` and a null
+ * as `{"0": null}`, which a Jev client refuses to parse (#302).
+ */
+export function renderCriterion(v: unknown): string {
   return typeof v === "string" ? v : pyJson(v) ?? String(v);
 }
 export function renderOptions(q: InternalQ): string[] {
@@ -67,7 +74,26 @@ export interface QuestionPrefix {
 }
 /** The question half of `buildSequence`: everything before the state tokens. Hoisted out so
  * callers asking several questions about the same state can encode the state text only once. */
+// Per-tokenizer prefix cache (cap 1k, clear on overflow); repeat triage skips re-encode.
+const prefixCache = new WeakMap<object, Map<string, QuestionPrefix>>();
 export function buildQuestionPrefix(tok: TokenizerLike, q: InternalQ,
+    maxLen = 512, headMaxLen = 192, optionOrder?: number[]): QuestionPrefix {
+  let per = prefixCache.get(tok as object);
+  if (!per) {
+    per = new Map();
+    prefixCache.set(tok as object, per);
+  }
+  // Key on what actually builds the prefix: raw criteria lie (JSON.stringify
+  // drops undefined values and throws on BigInt), rendered options don't.
+  const key = JSON.stringify([q.t, q.ins, renderOptions(q), maxLen, headMaxLen, optionOrder ?? null]);
+  const hit = per.get(key);
+  if (hit) return hit;
+  const built = buildQuestionPrefixUncached(tok, q, maxLen, headMaxLen, optionOrder);
+  if (per.size > 1000) per.clear();
+  per.set(key, built);
+  return built;
+}
+function buildQuestionPrefixUncached(tok: TokenizerLike, q: InternalQ,
     maxLen = 512, headMaxLen = 192, optionOrder?: number[]): QuestionPrefix {
   const maskTok = tok.maskToken;
   const opts = renderOptions(q);
@@ -89,19 +115,45 @@ export function buildQuestionPrefix(tok: TokenizerLike, q: InternalQ,
   ids.push(tok.sepId);
   return { ids, markers, nOptions: opts.length };
 }
+export interface SequenceStats {
+  /** Encoded length of the full state, before the window clamp. */
+  state_tokens: number;
+  /** State tokens that actually reached the encoder after the final maxLen clamp. */
+  state_tokens_used: number;
+  /** State tokens dropped by the clamp: state_tokens - state_tokens_used. */
+  state_tokens_dropped: number;
+  /** True when the clamp dropped any state token. */
+  truncated: boolean;
+}
+
 /** Append pre-encoded state tokens to a question prefix. Identical output to building the
  * whole sequence in one pass, but the state only needs encoding once per state, not once
- * per (state, question) pair. */
+ * per (state, question) pair.
+ *
+ * The state is clamped to whatever room the head leaves; `stats` reports that clamp so callers
+ * never have to guess it from the character length of what they sent (issue #174, Python #181). */
 export function sequenceWithState(prefix: QuestionPrefix, stateIds: number[], sepId: number,
-    maxLen = 512, truncateLeft = false): { ids: number[]; markers: number[] } {
+    maxLen = 512, truncateLeft = false): { ids: number[]; markers: number[]; stats: SequenceStats } {
   const room = Math.max(0, maxLen - prefix.ids.length - 1);
   // not stateIds.slice(-room): with no room left, slice(-0) is the whole state rather than none of it
-  const st = truncateLeft ? stateIds.slice(Math.max(0, stateIds.length - room)) : stateIds.slice(0, room);
-  const ids = [...prefix.ids, ...st, sepId].slice(0, maxLen);
-  return { ids, markers: prefix.markers.filter((m) => m < maxLen) };
+  const kept = truncateLeft ? stateIds.slice(Math.max(0, stateIds.length - room)) : stateIds.slice(0, room);
+  const ids = [...prefix.ids, ...kept, sepId].slice(0, maxLen);
+  // Count against the final clamp rather than `kept`: the clamp is what actually decided
+  // which state tokens reached the encoder.
+  const used = Math.max(0, Math.min(kept.length, maxLen - prefix.ids.length));
+  return {
+    ids,
+    markers: prefix.markers.filter((m) => m < maxLen),
+    stats: {
+      state_tokens: stateIds.length,
+      state_tokens_used: used,
+      state_tokens_dropped: stateIds.length - used,
+      truncated: used < stateIds.length,
+    },
+  };
 }
 export function buildSequence(tok: TokenizerLike, state: unknown, q: InternalQ,
-    maxLen = 512, headMaxLen = 192, optionOrder?: number[], truncateLeft = false): { ids: number[]; markers: number[] } {
+    maxLen = 512, headMaxLen = 192, optionOrder?: number[], truncateLeft = false): { ids: number[]; markers: number[]; stats: SequenceStats } {
   const stAll = tok.encode(serializeState(state).split(tok.maskToken).join(" "));
   return sequenceWithState(buildQuestionPrefix(tok, q, maxLen, headMaxLen, optionOrder), stAll, tok.sepId, maxLen, truncateLeft);
 }
@@ -124,6 +176,62 @@ export function answerConfidence(p: number[]): number {
   // confidenceFromProbs, whose entropy scale moves with k.
   if (p.length < 1) return 1.0;
   return Math.min(1, Math.max(0, Math.max(...p)));
+}
+
+function pyRepr(v: unknown): string {
+  if (typeof v === "boolean") return v ? "True" : "False";
+  if (v === null || v === undefined) return "None";
+  if (typeof v === "number") {
+    if (Number.isNaN(v)) return "nan";
+    if (v === Infinity) return "inf";
+    if (v === -Infinity) return "-inf";
+    return String(v);
+  }
+  if (typeof v === "string") return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(pyRepr).join(", ")}]`;
+  return String(v);
+}
+
+/**
+ * Validate opt-in abstention threshold `min_confidence` (#361).
+ *
+ * Must be a real number in [0.0, 1.0]. Booleans are rejected.
+ */
+export function checkMinConfidence(v: unknown): number {
+  if (typeof v === "boolean" || typeof v !== "number" || !Number.isFinite(v) || v < 0.0 || v > 1.0) {
+    throw new Error(`min_confidence must be a float in [0.0, 1.0], got ${pyRepr(v)}`);
+  }
+  return v;
+}
+
+/**
+ * Opt-in abstention marker (#361): flag answers whose confidence falls below `min_confidence`.
+ *
+ * Reads `answer_confidence` (the calibrated max(p) confidence, invariant to label count k),
+ * falling back to `confidence` if `answer_confidence` is absent.
+ * The raw answer and confidence stay intact; `low_confidence: true` is added.
+ */
+export function flagLowConfidence(
+  results: Array<Record<string, unknown>> | Record<string, unknown>,
+  minConfidence: number,
+): void {
+  if (minConfidence === 0.0) return;
+  const list = Array.isArray(results) ? results : [results];
+  for (const res of list) {
+    const answers = res && typeof res === "object" ? (res as Record<string, unknown>).answers : null;
+    if (!answers || typeof answers !== "object") continue;
+    for (const a of Object.values(answers as Record<string, unknown>)) {
+      if (!a || typeof a !== "object") continue;
+      const ansObj = a as Record<string, unknown>;
+      let conf = ansObj.answer_confidence;
+      if (conf === undefined || conf === null) {
+        conf = ansObj.confidence;
+      }
+      if (typeof conf === "number" && !Number.isNaN(conf) && conf < minConfidence) {
+        ansObj.low_confidence = true;
+      }
+    }
+  }
 }
 export const TEMP_MIN = 0.5, TEMP_MAX = 5.0;
 export function clampTemperature(t: unknown): number {

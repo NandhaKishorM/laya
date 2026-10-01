@@ -1,0 +1,15 @@
+{
+ "name": "concesionaria.taller.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una concesionaria de carros y necesita que se ocupe de su caso el área que atiende esto: «reparación y mantenimiento del carro». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, mi carro no prende desde la mañana y necesito una cita urgente",
+  "Me da pena molestarle pero el aceite no llega al nivel correcto",
+  "Pura vida, se me rompió la correa de tiempo y no sé qué hacer",
+  "Por favor, necesito que alguien vea por qué las luces no encienden",
+  "El motor hace un ruido raro y no puedo manejarlo así",
+  "Oiga, pues ya llevo dos días sin que me atiendan el tema del frenos",
+  "Buen día, mi vehículo no arranca por la mañana y requiero asistencia",
+  "Disculpe la molestia pero la batería no dura cargada ni un día"
+ ]
+}

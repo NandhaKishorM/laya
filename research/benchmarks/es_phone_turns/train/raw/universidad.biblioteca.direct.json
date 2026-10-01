@@ -1,0 +1,15 @@
+{
+ "name": "universidad.biblioteca.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y pide que la comuniquen con el área de «biblioteca» (préstamo de libros y multas de la biblioteca). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, le agradezco por favor pasarle al departamento de biblioteca.",
+  "¿Podrían comunicarme con quien atienda las multas y préstamos de la biblioteca?",
+  "Sí, necesito hablar con el área de biblioteca, por favor transfíranme.",
+  "Quisiera que me pasen con la sección de biblioteca.",
+  "Buen día, ¿me atiende alguien del personal de biblioteca para una consulta de multas?",
+  "Por favor, comuníqueme con la oficina de biblioteca y préstamos.",
+  "Necesito pasar con el área de biblioteca.",
+  "Hola, me gustaría que me conectaran con el departamento de biblioteca para revisar mi cuenta."
+ ]
+}

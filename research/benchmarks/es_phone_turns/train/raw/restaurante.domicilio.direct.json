@@ -1,0 +1,15 @@
+{
+ "name": "restaurante.domicilio.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un restaurante y pide que la comuniquen con el área de «domicilio» (pedir comida para llevar o a domicilio). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenas tardes, por favor me comunican con domicilio.",
+  "Hola, ¿me pasan con la sección de pedidos a domicilio?",
+  "Domicilio, por favor.",
+  "Buen día, quiero hablar con el área de repartos.",
+  "Oye, ¿hay alguien en domicilio?",
+  "Sí, hola, necesito que me conecten con quien atiende los domicilios, porfa.",
+  "Domicilio, gracias.",
+  "¿Podrían derivarme a la línea de pedidos para llevar o a domicilio?"
+ ]
+}

@@ -2,7 +2,8 @@
 
 Launches ``python -m laya.mcp.server`` as a subprocess and speaks MCP over
 stdin/stdout (newline-delimited JSON-RPC), exactly like a real MCP client.
-Exercises laya_predict, laya_preset, laya_route, laya_shortlist and laya_status against the
+Exercises laya_predict, laya_predict_batch, laya_route, laya_route_batch, laya_decide,
+laya_preset, laya_shortlist and laya_status against the
 live checkpoints (downloaded via huggingface_hub on first run, cached
 afterwards).
 
@@ -115,7 +116,9 @@ def main():
 
         tools = client.request("tools/list", {})
         names = sorted(t["name"] for t in tools.get("tools", []))
-        ok("e2e/tool_names", names == ["laya_predict", "laya_preset", "laya_route", "laya_shortlist", "laya_status"], repr(names))
+        ok("e2e/tool_names", names == ["laya_decide", "laya_predict", "laya_predict_batch",
+                                       "laya_preset", "laya_route", "laya_route_batch",
+                                       "laya_shortlist", "laya_status"], repr(names))
 
         ticket = {
             "state": {
@@ -159,6 +162,93 @@ def main():
                    repr(payload.get("device")))
             ok("e2e/predict_latency", 0 < payload.get("latency_ms", -1) < 60_000, repr(payload.get("latency_ms")))
             ok("e2e/predict_billing_wins", ans["choice"] == "billing", "ambiguous ticket -> expect billing")
+            solo_routing = payload["routing"]["model"]
+
+            # laya_predict_batch: the same English ticket plus a German one
+            # with an explicit `lang` override, answered in one call. The
+            # English answer must be decision-identical to the solo
+            # laya_predict above -- batching groups and shares forward passes,
+            # it must not change what the model decides.
+            batch_arguments = {
+                "requests": [
+                    {"state": ticket["state"], "questions": ticket["questions"]},
+                    {"state": {"body": "Mein Konto wurde zweimal belastet, bitte erstatten Sie das."},
+                     "questions": ticket["questions"], "lang": "de"},
+                ],
+            }
+            result = client.request("tools/call",
+                                    {"name": "laya_predict_batch", "arguments": batch_arguments})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/batch_not_error", not result.get("isError"), repr(result.get("isError")))
+            entries = payload.get("requests") or []
+            # Entry 0 is the English ticket, so its routing must equal the solo
+            # laya_predict decision made for the same state above: one call per
+            # request, input order preserved.
+            ok("e2e/batch_input_order", len(entries) == 2, repr([e.get("routing") for e in entries]))
+            ok("e2e/batch_routes_like_solo",
+               (entries[0].get("routing") or {}).get("model") == solo_routing,
+               "solo=%r batch=%r" % (solo_routing, (entries[0].get("routing") or {}).get("model")))
+            ok("e2e/batch_decision_parity",
+               (entries[0].get("answers") or {}).get("department", {}).get("choice") == ans["choice"],
+               "solo=%r batch=%r" % (ans.get("choice"),
+                                     (entries[0].get("answers") or {}).get("department", {}).get("choice")))
+            ok("e2e/batch_counts", sum((payload.get("model_counts") or {}).values()) == 2,
+               repr(payload.get("model_counts")))
+            ok("e2e/batch_latency", 0 < payload.get("total_latency_ms", -1) < 60_000
+               and 0 < payload.get("per_request_latency_ms", -1) <= payload["total_latency_ms"],
+               repr(payload.get("total_latency_ms")))
+
+            result = client.request("tools/call",
+                                    {"name": "laya_route_batch", "arguments": batch_arguments})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/route_batch_not_error", not result.get("isError"), repr(result.get("isError")))
+            decisions = payload.get("decisions") or []
+            ok("e2e/route_batch_shape", len(decisions) == 2
+               and all(d.get("model") in ("english", "multilingual", "typed-decisions") and d.get("reason")
+                       for d in decisions), repr(decisions))
+
+            # laya_decide: the same ticket as a JSON-schema decision. The
+            # projected enum must equal laya_predict's choice above -- the tool
+            # translates schema -> questions -> values, it must not move the
+            # decision -- and a rejected schema must come back as a readable
+            # invalid_schema payload, not a crash.
+            decide_arguments = {
+                "state": ticket["state"],
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "department": {
+                            "enum": ["billing", "technical"],
+                            "description": "Which team should handle this ticket?",
+                        },
+                        "urgency": {"type": "integer", "minimum": 0, "maximum": 2},
+                        "needs_human": {"type": "boolean"},
+                    },
+                },
+            }
+            result = client.request("tools/call", {"name": "laya_decide",
+                                                   "arguments": decide_arguments})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/decide_not_error", not result.get("isError"), repr(result.get("isError")))
+            values = payload.get("values") or {}
+            ok("e2e/decide_value_parity", values.get("department") == ans["choice"],
+               "predict=%r decide=%r" % (ans.get("choice"), values.get("department")))
+            ok("e2e/decide_value_types", isinstance(values.get("urgency"), int)
+               and 0 <= values["urgency"] <= 2
+               and isinstance(values.get("needs_human"), bool), repr(values))
+            ok("e2e/decide_confidence", 0.0 < payload.get("confidence", {}).get("department", -1) <= 1.0,
+               repr(payload.get("confidence")))
+            result = client.request("tools/call", {"name": "laya_decide", "arguments": {
+                "state": ticket["state"],
+                "schema": {"type": "object", "properties": {"summary": {"type": "string"}}},
+            }})
+            # mcp 2.x prefixes a raised McpToolError's text with
+            # "Error executing tool <name>: "; the JSON payload starts at the
+            # first brace, so parse from there either way.
+            text = result["content"][0]["text"]
+            payload = json.loads(text[text.index("{"):])
+            ok("e2e/decide_bad_schema", result.get("isError") and payload.get("error") == "invalid_schema"
+               and "properties.summary" in payload.get("message", ""), repr(payload))
 
             result = client.request("tools/call", {"name": "laya_route", "arguments": ticket})
             payload = json.loads(result["content"][0]["text"])
@@ -242,6 +332,120 @@ def main():
             ok("e2e/preset_jailbreak_value", 0.0 <= jailbreak.get("noul", -1) <= 1.0, repr(jailbreak))
             ok("e2e/preset_jailbreak_detected", jailbreak.get("noul", 0) > 0.5,
                "explicit injection prompt -> expect jailbreak flagged: %r" % jailbreak)
+
+            # --- per-call controls over the wire -------------------------------------------
+            # The schema an MCP client actually reads, not the one the module builds.
+            by_name = {t["name"]: t for t in tools.get("tools", [])}
+            for tname, args in (("laya_predict", ["task", "lang", "max_len", "head_max_len"]),
+                                ("laya_shortlist", ["task", "lang", "max_len", "head_max_len"]),
+                                ("laya_preset", ["task", "lang", "max_len", "head_max_len"]),
+                                ("laya_route", ["model", "task", "lang"])):
+                props = (by_name[tname].get("inputSchema") or {}).get("properties") or {}
+                for arg in args:
+                    ok("e2e/schema_%s_%s" % (tname, arg), arg in props, repr(sorted(props)))
+                    ok("e2e/schema_%s_%s_optional" % (tname, arg),
+                       arg not in ((by_name[tname].get("inputSchema") or {}).get("required") or []),
+                       repr(by_name[tname].get("inputSchema")))
+
+            # A two-option choice is nowhere near the head budget, so the controls must not move
+            # the answer: this is the "setting them changes routing/sizing, not this decision"
+            # check, and the one that would fail if a budget were applied to the wrong thing.
+            baseline = json.loads(client.request(
+                "tools/call", {"name": "laya_predict", "arguments": ticket})["content"][0]["text"])
+            sized = dict(ticket)
+            sized.update({"max_len": 1024, "head_max_len": 384})
+            result = client.request("tools/call", {"name": "laya_predict", "arguments": sized})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/controls_predict_not_error", not result.get("isError"), repr(payload)[:300])
+            ok("e2e/controls_budget_leaves_small_choice_alone",
+               (payload.get("answers") or {}).get("department", {}).get("choice")
+               == (baseline.get("answers") or {}).get("department", {}).get("choice"),
+               "sized=%r baseline=%r" % ((payload.get("answers") or {}).get("department"),
+                                         (baseline.get("answers") or {}).get("department")))
+
+            # lang is a routing override, so the checkpoint it names is the answer's own routing.
+            for code, expect in (("en", "english"), ("de", "multilingual")):
+                argued = dict(ticket)
+                argued["lang"] = code
+                payload = json.loads(client.request(
+                    "tools/call", {"name": "laya_predict", "arguments": argued})["content"][0]["text"])
+                ok("e2e/controls_lang_%s_routes_%s" % (code, expect),
+                   payload.get("routing", {}).get("model") == expect, repr(payload.get("routing")))
+                ok("e2e/controls_lang_%s_reason" % code,
+                   "explicit lang" in (payload.get("routing", {}).get("reason") or ""),
+                   repr(payload.get("routing", {}).get("reason")))
+
+            payload = json.loads(client.request(
+                "tools/call",
+                {"name": "laya_route", "arguments": {"state": ticket["state"],
+                                                     "questions": ticket["questions"],
+                                                     "lang": "de"}})["content"][0]["text"])
+            ok("e2e/controls_route_lang", payload.get("model") == "multilingual", repr(payload))
+
+            # A bad value comes back as this layer's code, not internal_error and not a crash:
+            # that distinction is the whole reason the validation sits in the tool layer.
+            # Two shapes are worth separating. A value the schema can carry but the tool refuses
+            # (`max_len: 0`) comes back as this layer's JSON payload; a value the schema cannot
+            # carry at all (`lang: ["de"]`, or an integer written as `"384"`, which the schema
+            # coerces to 384 before the tool ever sees it) is settled by the protocol layer, and
+            # the only promise is that no forward pass happens.
+            def call_predict(**extra):
+                call = dict(ticket)
+                call.update(extra)
+                res = client.request("tools/call", {"name": "laya_predict", "arguments": call})
+                text = res["content"][0]["text"]
+                # A protocol-layer refusal renders the offending value inside its prose (an empty
+                # dict for `head_max_len: {}`), so the first `{` is not always the start of a
+                # complete JSON document. raw_decode reads the object that is there and ignores
+                # the sentence around it; this check only asks whether a forward pass happened.
+                start = text.find("{")
+                payload = {}
+                if start >= 0:
+                    try:
+                        payload = json.JSONDecoder().raw_decode(text, start)[0]
+                    except ValueError:
+                        payload = {}
+                return res, payload
+
+            for args, want in (({"max_len": 0}, "invalid_max_len"),
+                               ({"max_len": -1}, "invalid_max_len"),
+                               ({"head_max_len": 0}, "invalid_head_max_len"),
+                               ({"task": "nope"}, "invalid_task"),
+                               ({"model": "english", "task": "typed_decisions"}, "invalid_task")):
+                res, payload = call_predict(**args)
+                ok("e2e/controls_error_%s" % sorted(args), res.get("isError") is True,
+                   repr(res.get("isError")))
+                ok("e2e/controls_error_code_%s" % sorted(args), payload.get("error") == want,
+                   repr(payload))
+                # A refused *name* says what the names are; a refused *combination* explains the
+                # combination. Both are this layer's words, not internal_error.
+                if args == {"task": "nope"}:
+                    ok("e2e/controls_error_lists_options",
+                       "typed-decisions" in (payload.get("message") or ""), repr(payload))
+
+            # A blank lang is not an error: it resolves to no usable hint and falls through to
+            # detection, exactly as core documents it. The tool must not turn it into a refusal.
+            res, payload = call_predict(lang="")
+            ok("e2e/controls_blank_lang_answers", not res.get("isError")
+               and "answers" in payload, repr(payload)[:200])
+
+            # An integer written as a string is coerced by the schema before the tool sees it, so
+            # the tool's own type check is a backstop for in-process callers, not the wire path.
+            # Recorded here because it is the difference between the two sets of checks.
+            res, sized_string = call_predict(head_max_len="384")
+            ok("e2e/controls_budget_string_coerced", not res.get("isError")
+               and "answers" in sized_string, repr(sized_string)[:200])
+            ok("e2e/controls_budget_string_matches_int",
+               sized_string.get("answers", {}).get("department", {}).get("choice")
+               == payload.get("answers", {}).get("department", {}).get("choice"),
+               repr([sized_string.get("answers"), payload.get("answers")])[:200])
+
+            for args in ({"lang": ["de"]}, {"max_len": "many"}, {"max_len": [1]},
+                         {"head_max_len": {}}):
+                res, payload = call_predict(**args)
+                ok("e2e/controls_schema_rejects_%s" % sorted(args), res.get("isError") is True
+                   or payload.get("error") in ("invalid_max_len", "invalid_head_max_len"),
+                   repr(payload)[:200])
     finally:
         client.close()
 

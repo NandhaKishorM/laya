@@ -68,8 +68,11 @@ work with `docker run -e`; Compose-only settings are identified below.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `LAYA_DEVICE` | `cpu` / `cuda` | Device selected by the base / GPU configuration |
+| `LAYA_CUDA_AMP` | unset (checkpoint's `amp_dtype`) | `fp16`/`float16` or `bf16`/`bfloat16` for the CUDA forward; anything else is ignored. Not cosmetic: the README's threshold section measures bf16 flipping 3 of 864 argmaxes on the parity set where fp16 flips none |
+| `LAYA_CPU_AMP` | unset | `bf16` or `bfloat16` opts the CPU forward into bf16; anything else leaves it fp32. No fp16 spelling turns it on either: CPU autocast has no fp16 fast path that beats fp32, so bf16 is the only reduced precision core offers on this device |
 | `LAYA_MODEL` | `auto` | Router alias: `auto`, `english`, `multilingual`, `typed-decisions` |
 | `LAYA_MODEL_PATH` | unset | Compatible checkpoint path inside the container |
+| `LAYA_REVISION` | unset | Hub commit, branch or tag used for every checkpoint download, or `reviewed` for the reviewed SHAs in `laya/revisions.py`; a `revision=` argument still wins |
 | `LAYA_REQUEST_FILE` | bundled request | JSON request path inside the container |
 | `OMP_NUM_THREADS` | `4` | CPU threads; keep within available cores |
 | `HF_TOKEN` / `HF_TOKEN_FILE` | unset | Optional Hugging Face credential |
@@ -83,7 +86,9 @@ work with `docker run -e`; Compose-only settings are identified below.
 | `LAYA_TORCH_VERSION` | `2.14.0` | **Compose build:** pinned PyTorch version |
 
 Compose forwards the runtime variables except `HF_HOME`, which stays aligned
-with its fixed cache mount. If overriding `HF_HOME` in `docker run` or your own
+with its fixed cache mount, and except `LAYA_MPS_AMP_MIN_ROWS`, the MPS row gate,
+which no image here can reach because no container here can select MPS.
+If overriding `HF_HOME` in `docker run` or your own
 Compose file, provide a matching mount writable by UID 10001. Direct Docker
 builds select PyTorch with `--build-arg TORCH_INDEX=cu128`; runtime `-e` cannot
 change the installed wheel.
@@ -156,6 +161,105 @@ are mutually exclusive. The local-path response comes from the Agent and has no
 Router `routing` metadata. These settings also work with the CUDA override.
 Evaluate fine-tuned checkpoints on held-out examples before relying on them.
 
+## Models from ModelScope
+
+When a host cannot reach huggingface.co, the checkpoint can come from
+[ModelScope](https://modelscope.cn) and be baked into the image at build time. One
+argument selects which checkpoint, and it defaults to the multilingual one. The
+Compose override adds the prefetch arguments to both services and keeps the
+container off the Hub:
+
+```bash
+docker compose -f compose.yaml -f compose.http.yaml -f compose.modelscope.yaml up --build laya-serve
+```
+
+For NVIDIA, add `-f compose.cuda.yaml` before `up`; it repeats its own arguments for
+both services, so the ordering between the two overrides does not matter. Plain
+Docker takes the arguments directly:
+
+```bash
+docker build --build-arg MODELSCOPE_MODEL=multilingual \
+  -t laya:local .
+docker run --rm -e HF_HUB_OFFLINE=1 -p 127.0.0.1:8000:8000 laya:local laya-serve
+```
+
+One prerequisite on a host that has run this before. The baked weights land in
+`$HF_HOME/hub` inside the image, under the cache directory `compose.yaml` mounts
+the `model-cache` volume at (`/home/laya/.cache/huggingface`), and Docker seeds a
+named volume from the image only while that volume is empty. A volume left over
+from the Hub-based quickstart holds the older Hub snapshot, it is never
+re-seeded, and the baked weights stay invisible behind it: the loader resolves
+`refs/main` to the old Hub commit and the container answers with the weights
+that were already downloaded, as if the rebuild had changed nothing. Point the
+deployment at an empty cache volume -- `docker compose down --volumes` with the
+same Compose files and the same `LAYA_CACHE_VOLUME`, or `LAYA_CACHE_VOLUME=<name>`
+for a fresh one. With `HF_HUB_OFFLINE=1` a missing or divergent ref is a load
+failure with no network to fall back to, but the prerequisite is the same.
+
+[`docker/prefetch_modelscope.py`](https://github.com/NandhaKishorM/laya/blob/main/docker/prefetch_modelscope.py)
+lists the repository on modelscope.cn, downloads the checkpoint's own files -- the
+same set `laya/agent.py` asks the Hub for, so no sibling checkpoint is pulled -- and
+writes them into the image's hub cache the way `snapshot_download` lays out a
+snapshot. Nothing else changes: `Agent`, the `Router` that `laya-serve` builds,
+`laya.cli` and the integrations keep their repo ids and resolve them to the baked
+snapshot, so a container built this way needs no network at all. Each file's size
+is checked against what the repository reports before the snapshot is published,
+and its SHA-256 as well when the repository publishes one. A size or digest
+mismatch fails the build. A repository that publishes no digest leaves the
+check to size alone, which cannot detect a same-size substitution.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MODELSCOPE_MODEL` | `multilingual` (Compose); empty in the Dockerfile | Checkpoint to bake: `multilingual`, `english`, `typed-decisions` or `all`. Empty means no prefetch and the unchanged image |
+| `MODELSCOPE_REVISION` | `master` | ModelScope branch, tag or commit to bake |
+| `HF_HUB_OFFLINE` | `1` in the Compose override | `1` never contacts the Hub, so the baked copy is served |
+
+A type expands to that checkpoint's path inside the bundled repository, which is what
+the `Router` and the one-shot quickstart load by default, so a build that names one
+type serves it with no further change:
+
+```bash
+MODELSCOPE_MODEL=english docker compose -f compose.yaml -f compose.http.yaml -f compose.modelscope.yaml up --build laya-serve
+MODELSCOPE_MODEL=all docker compose -f compose.yaml -f compose.http.yaml -f compose.modelscope.yaml up --build laya-serve
+```
+
+`all` is the whole family, about 2.4 GB of weights. The override also sets
+`LAYA_MODELS=multilingual`, because `LAYA_PRELOAD=1` with the default list would try
+to build every checkpoint and fail on the first one that was not baked; set
+`LAYA_MODELS` to the list you baked when you bake more, and `MODELSCOPE_MODEL=all`
+when a deployment really does serve the family.
+
+Several types can be named at once -- `MODELSCOPE_MODEL="english multilingual"`
+bakes both, about 1.5 GB -- which is what a serving image usually wants: the
+`Router` chooses between the English and the multilingual checkpoint on its own,
+and one it was not given answers `500 inference failed` with
+`does not contain 'rl_agent_config.json'` in the log. Checkpoints that share a
+repository always bake into one snapshot, because a cached revision resolves to a
+single directory; the root checkpoint and each subfolder are both in it.
+
+Beyond the types the argument also takes `repo[:subfolder]` specs, comma- or
+space-separated, which is how the mirror's standalone repositories
+([laya](https://modelscope.cn/models/convaiinnovations/laya),
+[laya-multilingual](https://modelscope.cn/models/convaiinnovations/laya-multilingual),
+[laya-typed-decisions](https://modelscope.cn/models/convaiinnovations/laya-typed-decisions))
+or a fine-tuned checkpoint is baked. A standalone repository is what
+`Agent("convaiinnovations/laya-multilingual")` loads directly; the `Router`'s
+default is the bundled path, so a type is normally what a serving image wants.
+
+Two details about pins and provenance. The build prints the commit the snapshot is
+keyed by, which is the tip of the revision that was baked -- pass that SHA as
+`revision=` or `LAYA_REVISION` to pin a load to exactly what was baked. A mirror
+repository can hold files from several uploads, so that tip is the one
+repository-wide key there is. Hub-side pins do not describe a mirror snapshot:
+`reviewed` names Hugging Face commits, and the SHA-256 digest map is keyed to Hub
+artifact hashes, so neither applies here, and no digest pin exists for a mirror
+snapshot either. The build already refuses a download that does not match the
+mirror's own reported size -- and its digest, when the mirror publishes one --
+but this checks consistency with mirror metadata, not an independently pinned
+digest. The weights come from
+whichever mirror account the argument names, which is its own supply-chain
+decision for the deployment to make.
+
 ## Development and cleanup
 
 Open a Python prompt with `docker compose run --rm laya python`. To run the
@@ -212,6 +316,13 @@ The service has a healthcheck on `/health`. The server preloads before it starts
 listening, so with `LAYA_PRELOAD=1` a healthy container has its checkpoints loaded.
 `docker compose ... up -d --wait laya-serve` returns once it is healthy.
 
+`/health` reports `device` as the device a resident checkpoint actually computes
+on, which is not always what `LAYA_DEVICE` asked for: a checkpoint that wants a
+GPU it cannot get falls back to CPU silently and still answers correctly.
+`checkpoint_devices` names each loaded checkpoint, and `device_is_preference` is
+`true` only while nothing is resident, so a deployment that quietly lost its GPU
+says so instead of echoing its own configuration back.
+
 ### Server configuration
 
 These apply to the `laya-serve` service only.
@@ -225,8 +336,18 @@ These apply to the `laya-serve` service only.
 | `LAYA_MODELS` | (all) | comma list to preload: `english,multilingual,typed-decisions` |
 | `LAYA_THREADS` | `OMP_NUM_THREADS` | caps torch intra-op threads; keep at or below physical cores |
 | `LAYA_AUTO_TASK` | `0` | `1` lets the router reach `typed-decisions` automatically |
+| `LAYA_DEFAULT_MODEL` | `english` | Checkpoint a state with no language evidence falls back to (no letters, or Latin text too short to identify). Set `multilingual` for mostly non-English traffic; an unresolvable name stops the container at startup instead of serving a configuration nobody asked for |
+| `LAYA_MAX_LOADED` | `2` | Checkpoints kept resident; `LAYA_AUTO_TASK` makes a third reachable on demand, and a cap below what routing chooses rebuilds one per switch |
+| `LAYA_MAX_CONCURRENT` | `16` | requests admitted at once; later ones get `503` (a value that does not parse, or is not positive, falls back to `16`) |
 | `LAYA_LOG_LEVEL` | `info` | uvicorn log level |
 | `LAYA_API_KEY` | (none) | when set, requires `Authorization: Bearer <key>` |
+| `LAYA_ROOT_PATH` | (empty) | public URL prefix for FastAPI when behind a reverse proxy; the proxy should strip it before forwarding |
+| `LAYA_MAX_TOKEN_BUDGET` | `8192` | cap on per-request `max_len` and `head_max_len` overrides |
+| `LAYA_SHA256_DIGESTS` | (none) | JSON digests checked before a checkpoint is parsed: `{artifact: digest}` for every checkpoint, or `{model: {artifact: digest}}` per checkpoint. See [Security](security.md) |
+
+For example, set `LAYA_ROOT_PATH=/laya` when publishing the API under `/laya`. The proxy must
+strip that prefix before forwarding to the container; this setting updates FastAPI's generated
+URLs and does not change the internal `/health` or `/v1/systemone` routes.
 
 `LAYA_PRELOAD` defaults to `0` here rather than the package default of `1`, because
 preloading makes the first boot download all three checkpoints. Set it to `1` for a

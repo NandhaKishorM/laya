@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.alquileres.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y aclara que NO necesita el área de «alquileres» (alquilar una casa, un apartamento o un local): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Disculpe, por favor no me conecte con alquileres que solo quiero vender.",
+  "No tengo interés en rentar ningún departamento, gracias.",
+  "Oiga, yo no busco arrendar nada así que por aquí no me pase.",
+  "Buenas tardes, le aclaro que no necesito la sección de renta.",
+  "Por favor atienda esta llamada porque para lo otro ya hablé.",
+  "No quiero alquilar casa ni local comercial, es solo una duda.",
+  "Oiga pues no me ponga con los del alquiler porque no me interesa.",
+  "Le digo que no busco propiedad en renta por favor."
+ ]
+}

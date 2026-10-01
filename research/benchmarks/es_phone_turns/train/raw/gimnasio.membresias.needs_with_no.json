@@ -1,0 +1,15 @@
+{
+ "name": "gimnasio.membresias.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un gimnasio y necesita que se ocupe de su caso el área que atiende esto: «inscribirse, renovar o congelar la membresía». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Oiga, buen día, yo quiero renovar pero no me aparece la opción en la app.",
+  "A ver, ¿me pueden ayudar? No me han enviado el correo con los datos para inscribirme ya hace dos días.",
+  "Mire, tengo una urgencia porque no puedo congelar mi membresía desde la plataforma y se me acaba el mes.",
+  "Buenas tardes, escuche, yo no he recibido ni un mensaje confirmando que me dieron de alta en el gimnasio.",
+  "Perdone las molestias, pero por favor, míreme esto: no me funciona el código QR que me mandaron para entrar hoy.",
+  "¿Qué hago pues? No tengo claro cómo se hace para renovar si ya venció la tarjeta de crédito anterior.",
+  "Oiga amable, yo nunca he logrado inscribirme en línea porque el sistema me tira error todo el tiempo.",
+  "Disculpe que lo llame, pero necesito urgirle un asunto: no me han contestado mis mensajes anteriores sobre congelar el plan."
+ ]
+}

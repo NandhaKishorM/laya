@@ -1,0 +1,15 @@
+{
+ "name": "agencia.boletos.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una agencia de viajes y necesita que se ocupe de su caso el área que atiende esto: «comprar boletos de avión». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, no logro avanzar en la compra de mi boleto y necesito que alguien me guíe paso a paso.",
+  "Mira, no me aparece la opción para pagar con tarjeta y ya intenté varias veces sin éxito.",
+  "Oiga, no me ha llegado el comprobante al correo electrónico después de hacer el pago hace una hora.",
+  "¿Aló? No puedo reservar el vuelo porque el sistema me marca un error de disponibilidad inexistente.",
+  "Pues no, no me han confirmado la reserva y ya pasaron las horas prometidas en su página.",
+  "Hola, no tengo acceso a mi cuenta para editar mis datos personales antes de cerrar la compra.",
+  "No me funciona el cupón de descuento que me enviaron por SMS al momento de ingresar el código final.",
+  "Oiga pues, nunca me llegó el ticket electrónico y necesito ese documento para abordar mañana temprano."
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "name": "tienda.garantias.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una tienda de electrodomésticos y necesita que se ocupe de su caso el área que atiende esto: «un producto comprado que salió dañado y está en garantía». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenas tardes, le llamo porque la nevera que compré hace un mes no prende y necesito que me manden a un técnico.",
+  "Oiga, disculpe, pero el microondas no enciende desde ayer, ¿me pueden hacer algo para repararlo rápido?",
+  "Hola, buen día, resulta que la lavadora no gira más y está en garantía, ¿quién me atiende para este tema?",
+  "Perdone, yo compré el aire acondicionado en su tienda y no enfría nada, necesito que lo revisen urgente.",
+  "Oiga mijo, la licuadora no prende ni con todas las ganas, quiero saber si me cobran por el servicio de garantía.",
+  "Disculpe la molestia, pero el televisor no tiene imagen desde hace dos días y requiero apoyo inmediato.",
+  "¿Aló? El refrigerador no congela y ya pasaron los siete días de prueba, ¿me pueden cambiar el equipo?",
+  "Buenas, verán, el horno eléctrico no calienta más y tengo miedo de que se dañe algo más, necesito ayuda."
+ ]
+}

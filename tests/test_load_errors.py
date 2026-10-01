@@ -172,6 +172,24 @@ check_true("options over budget/raises ValueError", isinstance(_outcome, ValueEr
 check_true("options over budget/names the question", "'q'" in str(_outcome), str(_outcome))
 check_true("options over budget/reports the budget",
            "head_max_len" in str(_outcome), str(_outcome))
+
+# The message used to name only `head_max_len`, which pointed at the wrong knob in both
+# directions. The option markers are placed at absolute positions and `build_sequence` drops the
+# ones past `max_len`, so `head_max_len` is how much of the sequence the options were given --
+# lowering it shortens the option block and can bring the question back inside `max_len`, while
+# raising it overflows further. The message has to name `max_len` and say what was measured, or a
+# caller follows it the wrong way. The direction itself is measured against a real checkpoint in
+# the description rather than pinned here, since it needs one this suite does not build.
+check_true("options over budget/names max_len too",
+           "max_len=" in str(_outcome), str(_outcome))
+# The count is the markers that SURVIVED, not `len(seq)`: `build_sequence` truncates to `max_len`
+# first, so `len(seq)` is always exactly `max_len` at this point and reporting it stated the
+# ceiling as though it were the requirement. `only N of its M` is the shape that distinguishes
+# them, and `M` is checkable here because the question has 140 options.
+check_true("options over budget/reports the markers that survived, not the ceiling",
+           "only " in str(_outcome) and "fit in" in str(_outcome), str(_outcome))
+check_true("options over budget/names the option count",
+           "140 option markers" in str(_outcome), str(_outcome))
 # ...and a question that does fit still answers, so the guard is not refusing everything.
 fits = {"q": {"type": "choice", "instructions": "Pick one",
               "criteria": {"department": None, "billing": None}}}
@@ -182,6 +200,24 @@ except Exception:  # noqa: BLE001
     _ok = False
 check_true("options within budget/still answers", _ok)
 del wide_agent
+
+
+# ------------------------------------------- 6. a temperature list of the wrong length
+# `_decode_answers` indexes `temperature` by question type (`QTYPES`), so a checkpoint that
+# ships the wrong number of entries -- say one -- loads cleanly, answers `choice` questions,
+# and then raises a bare `IndexError` on the first `score`/`noul` question: a decode-time
+# crash whose cause is a single config field. The language-override path already refuses this
+# shape ("must be a list of 3 floats"); this pins the same refusal for the checkpoint's own
+# list, where there was none.
+short_temp = Path(TMP.name) / "short-temperature"
+build_checkpoint(short_temp)
+_cfg = json.loads((short_temp / "rl_agent_config.json").read_text())
+_cfg["temperature"] = [0.9]
+(short_temp / "rl_agent_config.json").write_text(json.dumps(_cfg), encoding="utf-8")
+err = load_error(short_temp)
+check_true("short temperature/raises ValueError", isinstance(err, ValueError), repr(err))
+check_true("short temperature/names the field", "temperature" in str(err), str(err))
+check_true("short temperature/says the shape", "list of 3" in str(err), str(err))
 
 
 TMP.cleanup()

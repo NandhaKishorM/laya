@@ -1,0 +1,15 @@
+{
+ "name": "gimnasio.membresias.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un gimnasio y aclara que NO necesita el área de «membresias» (inscribirse, renovar o congelar la membresía): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Hola, buen día, por favor no me envíen al departamento de membresías porque ya estoy suscrito.",
+  "Qué tal, disculpen la molestia pero yo no necesito inscribirme ni renovar nada.",
+  "Aló, oiga, le comento que no tengo problemas de congelación de cuenta así que no me pasen allá.",
+  "Buenos días, le aclaro que solo vengo con una duda técnica y no requiero atención comercial.",
+  "Por favor, no transfieran mi llamada al área de cobranzas o inscripciones.",
+  "Oiga, yo no estoy buscando nuevos planes así que gracias pero no me atienda eso.",
+  "Qué hubo, le digo rápido que no necesito contratar nada sino que solo pregunto por la hora.",
+  "Saludos, mejor hable con otro si lo mío es inscribirse porque a mí ya me alcanza."
+ ]
+}

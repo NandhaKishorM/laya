@@ -1,0 +1,28 @@
+{
+ "name": "universidad.becas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una universidad y necesita que se ocupe de su caso el área que atiende esto: «solicitar o renovar una beca». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Oiga, le comento que mi beca caducó hace tres días y no me ha llegado nada.",
+  "Buenas tardes, necesito urgente saber dónde dejo los papeles para renovar la ayuda económica del próximo semestre.",
+  "Mire, el sistema me da error cuando intento actualizar mi estado de ingresos para la solicitud.",
+  "O sea, que ya envíe todo pero no sé si le llegó a alguien ahí adentro.",
+  "Hola, tengo un problema con el depósito porque dicen que está pendiente y necesito solucionarlo hoy.",
+  "¿Ustedes pueden revisar mi caso? Llevo dos semanas sin respuesta de la oficina de becas.",
+  "Oiga pues, me dijeron que para renovar tenía que entregar certificado médico y no sé dónde lo pido.",
+  "Le escribo porque mi número de estudiante aparece mal en el portal y no me deja continuar.",
+  "Bueno, necesito hablar con alguien que me diga si la prórroga me sigue vigente este mes.",
+  "Mire, me cancelaron la beca sin aviso y quiero que me expliquen por qué fue eso.",
+  "¿Qué tengo que hacer para que mi familia firme el documento digital? No me sale la opción.",
+  "O sea, ya pasé la convocatoria pero me falta subir una carta de recomendación.",
+  "Hola, quería preguntar si puedo cambiar los datos bancarios porque cerré esa cuenta.",
+  "Le comento que nunca recibí el correo con las instrucciones para el trámite presencial.",
+  "Oiga, necesito saber hasta qué hora están abriendo la ventanilla hoy para depositar la documentación faltante.",
+  "Mire, tengo una nota de reintegro que me salió mal y necesito que me la corrijan rápido.",
+  "¿Ustedes manejan algún formato especial si soy menor de edad? Porque no encuentro uno en internet.",
+  "Buenas, quiero pedir que me activen la beca porque se me olvidó confirmar antes del viernes.",
+  "O sea, que si yo cambio de carrera tengo que volver a empezar todo el proceso desde cero.",
+  "Le digo que llevo tres días intentando entrar y el sitio está caído constantemente.",
+  "Hola, necesito saber si el comprobante de pago que adjunté sirve o piden otro diferente."
+ ]
+}

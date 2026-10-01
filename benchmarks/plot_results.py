@@ -8,6 +8,7 @@ states/s, (3) consistency max|dp| per checkpoint with the 2e-2 bar.
 """
 import json
 import os
+import re
 import sys
 
 import matplotlib
@@ -23,19 +24,38 @@ def load(name):
         return json.load(f)
 
 
+def declared_version():
+    """The version the figure is labelled with: ``LAYA_VER`` overrides, pyproject.toml is the default.
+
+    The default used to be a literal -- 0.3.11 -- which every release since the figure was first
+    rendered has left behind: the bump commit touches laya/__init__.py and pyproject.toml, never
+    this script, so a regeneration that does not set LAYA_VER labels a current run with the
+    version the script was written in. Read as text, not with tomllib: this script runs on
+    whatever Python a benchmarking machine has, and pyproject's version line is a literal.
+    """
+    override = os.environ.get("LAYA_VER")
+    if override:
+        return override
+    try:
+        with open(os.path.join(os.path.dirname(HERE), "pyproject.toml"), encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return "unknown"
+    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M)
+    return match.group(1) if match else "unknown"
+
+
 def main():
     agent = load("results-rtx4070.json")
     router = load("results-router-rtx4070.json")
     consist = load("results-consistency-rtx4070.json")
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.2))
-    fig.suptitle("predict_batch on RTX 4070 — laya %s" % os.environ.get("LAYA_VER", "0.3.11"),
+    fig.suptitle("predict_batch on RTX 4070 — laya %s" % declared_version(),
                  fontsize=13, fontweight="bold")
 
     # panel 1: agent-level speedup
     ax = axes[0]
-    for row in agent["bench"]:
-        by_states = {}
     per_ckpt = {}
     for row in agent["bench"]:
         per_ckpt.setdefault(row["checkpoint"], []).append(row)
@@ -79,8 +99,12 @@ def main():
     bars = ax.bar(names, deltas, color=["#4c72b0", "#dd8452", "#55a868", "#c44e52"][:len(names)])
     ax.axhline(0.02, color="red", ls="--", lw=1, label="2e-2 bar")
     ax.set_ylabel("max |Δp| (label-attached)")
-    ax.set_title("batch vs single consistency\n(%d answers, 0 flips)" %
-                 (sum(r["compared"] for r in consist["consistency"]) + rc.get("compared", 0)))
+    # Both halves of this claim are read from the JSONs being plotted.  "0 flips" used to be a
+    # literal in the title, so a regeneration on a run that did register a flip would have
+    # shipped a figure asserting the opposite of the data it was drawn from.
+    compared = sum(r["compared"] for r in consist["consistency"]) + rc.get("compared", 0)
+    flips = sum(r["flips"] for r in consist["consistency"]) + rc.get("flips", 0)
+    ax.set_title("batch vs single consistency\n(%d answers, %d flips)" % (compared, flips))
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3, axis="y")
     for bar, delta in zip(bars, deltas):
@@ -90,6 +114,7 @@ def main():
     plt.tight_layout(rect=[0, 0, 1, 0.94])
     out = os.path.join(HERE, "bench-rtx4070.png")
     plt.savefig(out, dpi=110)
+    print("consistency: %d answers, %d flips -> %s" % (compared, flips, "PASS" if flips == 0 else "FAIL"))
     print("wrote %s" % out)
 
 

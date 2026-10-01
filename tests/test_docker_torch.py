@@ -1,9 +1,12 @@
 """Check the narrow NVIDIA metadata repair without installing CUDA."""
 import base64
+import contextlib
 import csv
 import hashlib
 import importlib.util
+import io
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -76,6 +79,34 @@ class WheelRepairTests(unittest.TestCase):
                     with self.assertRaises((RuntimeError, OSError)):
                         check.repair_cusparselt(dist)
                 self.assertEqual(before, (dist.wheel.read_bytes(), dist.record.read_bytes()))
+
+
+class MainEntryTests(unittest.TestCase):
+    """`main()`'s own contract: a missing argument is a usage error, a missing torch is named.
+
+    The build always calls this with the TORCH_INDEX it installed (`Dockerfile`:19), so both
+    paths are for a person running the script by hand or in a bare environment -- where the
+    old behaviour was `IndexError: list index out of range` and `ModuleNotFoundError`
+    respectively, neither of which says what was wrong with the invocation.
+    """
+
+    def test_missing_expected_tag_is_a_usage_error(self):
+        stderr = io.StringIO()
+        with patch.object(sys, "argv", [str(SCRIPT)]), contextlib.redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as caught:
+                check.main()
+        self.assertEqual(caught.exception.code, 2)
+        self.assertIn("usage", stderr.getvalue())
+        self.assertIn("cu128", stderr.getvalue())
+
+    def test_missing_torch_is_reported_by_name(self):
+        with patch.object(check, "repair_cusparselt"):   # never touch a real env in a unit test
+            with patch.object(sys, "argv", [str(SCRIPT), "cpu"]):
+                with patch.dict(sys.modules, {"torch": None}):   # `import torch` raises
+                    with self.assertRaises(RuntimeError) as caught:
+                        check.main()
+        self.assertIn("not installed", str(caught.exception))
+        self.assertIsInstance(caught.exception.__cause__, ImportError)
 
 
 if __name__ == "__main__":

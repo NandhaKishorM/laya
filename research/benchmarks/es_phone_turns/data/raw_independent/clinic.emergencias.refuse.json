@@ -1,0 +1,12 @@
+{
+ "name": "clinic.emergencias.refuse",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una clínica médica y deja claro que NO quiere que la pasen al área de «emergencias» (alguien está en peligro y necesita atención inmediata). Nombra el área o lo que hace, y la rechaza. No pide ninguna otra área.",
+ "phrases": [
+  "Oiga, ¿me pueden pasar con el médico de urgencias?",
+  "Escúcheme, yo no quiero ser atendido en la emergencia.",
+  "¿Tienen un médico aquí o me tienen que ir al área de urgencias?",
+  "Quiero consulta pero no quiero que me pongan en la sala de emergencias.",
+  "¿Dónde se atienden los pacientes regulares, no los de urgencia?"
+ ]
+}

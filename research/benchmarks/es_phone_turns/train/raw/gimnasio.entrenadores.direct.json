@@ -1,0 +1,14 @@
+{
+ "name": "gimnasio.entrenadores.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un gimnasio y pide que la comuniquen con el área de «entrenadores» (contratar un entrenador personal). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor pásame con la gente de entrenadores personales.",
+  "Oiga, buenos días. ¿Me puede conectar con el departamento de entrenadores? Quiero contratar a uno, gracias.",
+  "Saludos. Necesito hablar con los entrenadores, ¿me comunican ahí?",
+  "Hola, buenas tardes, porfa comuníquemelo con el área de coaches o entrenadores personales que estoy buscando servicio.",
+  "Dígame, buenos días. ¿Con quién hablo yo para agendar un entrenador? Por favor transfórmeme con ese equipo.",
+  "Qué tal, hable con entrenadores, please.",
+  "Buen día, necesito el número directo de los instructores o porfa déjeme hablar con quien lleve eso del área de entrenamiento personal."
+ ]
+}

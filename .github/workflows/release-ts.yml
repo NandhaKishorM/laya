@@ -1,0 +1,136 @@
+name: Release TypeScript (laya-ts)
+
+# Tag a commit laya-ts-v0.1.0 and push it; this runs tests, verifies the version
+# matches the tag, packs the artifact, publishes to npm with provenance, and
+# attaches the tarball to a GitHub Release.
+#
+# Set up once on npm:
+#   Add NPM_TOKEN in GitHub repository secrets (or configure npm Provenance / OIDC Trusted Publisher).
+
+on:
+  push:
+    tags: ["laya-ts-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & verify package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: laya-ts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: laya-ts/package-lock.json
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: npm test -- --run
+
+      - name: Packed package end-to-end test
+        run: npm run test:package
+
+      - name: Version matches tag
+        if: startsWith(github.ref, 'refs/tags/laya-ts-v')
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME#laya-ts-v}"
+          echo "package.json=$pkg tag=$tag"
+          test "$pkg" = "$tag" || { echo "::error::package.json version $pkg does not match tag $tag"; exit 1; }
+
+      - name: Pack release tarball
+        run: npm pack --pack-destination dist/
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: laya-ts-dist
+          path: laya-ts/dist/*.tgz
+
+  npm:
+    name: Publish to npm
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/laya-ts-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm for OIDC Trusted Publishing support
+        run: npm install -g npm@latest
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: laya-ts-dist
+          path: dist
+
+      - name: Publish to npm with provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          tarball=$(ls dist/laya-ts-*.tgz)
+          tag="${GITHUB_REF_NAME#laya-ts-v}"
+          if [[ "$tag" == *-* ]]; then
+            DIST_TAG="next"
+            echo "Prerelease detected ($tag). Publishing under dist-tag: $DIST_TAG"
+          else
+            DIST_TAG="latest"
+            echo "Stable release detected ($tag). Publishing under dist-tag: $DIST_TAG"
+          fi
+          npm publish "$tarball" --access public --provenance --tag "$DIST_TAG"
+
+  github_release:
+    name: Attach to GitHub Release
+    needs: [build, npm]
+    if: startsWith(github.ref, 'refs/tags/laya-ts-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: laya-ts-dist
+          path: dist
+
+      - name: Publish or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME#laya-ts-v}"
+          PRERELEASE_FLAG=""
+          if [[ "$tag" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists - syncing prerelease status and uploading tarball"
+            if [[ "$tag" == *-* ]]; then
+              gh release edit "$GITHUB_REF_NAME" --prerelease
+            else
+              gh release edit "$GITHUB_REF_NAME" --prerelease=false
+            fi
+            gh release upload "$GITHUB_REF_NAME" dist/*.tgz --clobber
+          else
+            echo "creating release $GITHUB_REF_NAME"
+            gh release create "$GITHUB_REF_NAME" dist/*.tgz --title "$GITHUB_REF_NAME" --generate-notes $PRERELEASE_FLAG
+          fi

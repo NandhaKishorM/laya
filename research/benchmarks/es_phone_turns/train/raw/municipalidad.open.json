@@ -1,0 +1,22 @@
+{
+ "name": "municipalidad.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a una municipalidad: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Buenas tardes, ¿a qué hora cierran hoy por favor?",
+  "Disculpe, ¿me podría decir cuál es la dirección exacta del edificio municipal?",
+  "Oiga, les pregunto si mañana que es feriado están operando normalmente.",
+  "¿Aceptan tarjeta de crédito o solo efectivo en ventanilla?",
+  "Estoy buscando, ¿hay espacio para estacionar el carro por ahí afuera?",
+  "Quería saber si tienen alguna oficina sucursal en otro municipio para hacer esto.",
+  "Porfa, ¿qué documentos necesito llevar como mínimo para sacar ese permiso?",
+  "Hola, ¿ustedes manejan cita previa o es fila al momento?",
+  "Le consulto si el pago de impuestos se puede hacer por internet también.",
+  "¿Desde las nueve abren puntual los lunes o llega a ser más tarde?",
+  "Perdone, ¿dónde queda la ventanilla específica para trámites de identidad por favor?",
+  "Me interesa saber si cobran alguna tasa extra por agilizar el proceso.",
+  "Oiga pues, ¿me confirma si aceptan cheques del gobierno?",
+  "¿Están abiertos los sábados por la mañana o solo los días laborables?",
+  "Buenos días, ¿qué hora es el cierre exacto para evitar que nos barran?"
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "name": "hotel.mantenimiento.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y pide que la comuniquen con el área de «mantenimiento» (algo dañado en la habitación: aire, ducha, televisor). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "¿Me pueden pasar con mantenimiento por favor?",
+  "Buenos días, necesito hablar con el área de mantenimiento.",
+  "Ay, pues sí es que el aire no funciona y requiero a mantenimiento.",
+  "Hable con la gente de mantenimiento, le ruego.",
+  "Sí, bueno, me urge ver al de mantenimiento porque se dañó algo en la habitación.",
+  "Comuníqueme con mantenimiento.",
+  "La ducha está rota, por favor hable con mantenimiento.",
+  "Mire, quiero que me pasen a hablar con el área de mantenimiento."
+ ]
+}

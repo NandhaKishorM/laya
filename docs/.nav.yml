@@ -3,14 +3,19 @@
 nav:
   - index.md
   - Guides:
+      - use-cases.md
       - structured.md
       - hooks
       - langchain.md
+      - llamaindex.md
+      - crewai.md
       - glob: "*"
         ignore_no_matches: true
   - Deployment:
       - docker.md
       - docker-platforms.md
+      - security.md
   - Fine-tuning:
+      - finetune.md
       - finetune_browser_agent.md
   - reference

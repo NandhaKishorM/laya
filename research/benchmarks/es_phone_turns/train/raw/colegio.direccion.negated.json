@@ -1,0 +1,15 @@
+{
+ "name": "colegio.direccion.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y aclara que NO necesita el área de «direccion» (asuntos de disciplina y hablar con la directora): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No, gracias, con usted me basta para preguntar.",
+  "Déjenme en este número que no busco a dirección.",
+  "No es tema de disciplina así que no la pasen.",
+  "Por favor, solo quiero aclarar algo rápido, nada de jefes.",
+  "No requiero atención especial, aquí estoy bien atendido.",
+  "No necesito hablar con la directora en absoluto.",
+  "Basta con contestar usted, no busco otra persona.",
+  "No es para informar problemas así que no desvíen."
+ ]
+}

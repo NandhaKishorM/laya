@@ -1,0 +1,27 @@
+{
+ "name": "agencia.visas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una agencia de viajes y necesita que se ocupe de su caso el área que atiende esto: «trámite de visas y pasaportes». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenas tardes, necesito saber qué papeles faltan para mi visa de turismo porque me rechazaron la primera vez.",
+  "Hola, estoy con un apuro tremendo, se me vence el pasaporte mañana y no he podido sacar la cita en línea.",
+  "Oiga, tengo una duda grande: ¿el certificado de antecedentes penales debe ser reciente o con cualquier fecha sirve?",
+  "Le comento que ya pagué la tarifa pero nunca llegó el recibo a mi correo, estoy muy preocupada.",
+  "¿Me podría decir cuánto tarda en salir el pasaporte si solicito el trámite urgente por emergencia familiar?",
+  "Buen día, quiero tramitar la visa para mi hijo menor de edad pero no sé si debo ir todos o solo uno.",
+  "Es que me surgió un problema con la fotografía del documento, ¿aceptan foto digital impresa en color?",
+  "Necesito confirmar si el acta de nacimiento apostillada es suficiente o piden traducción jurada también.",
+  "Le cuento que perdí mi pasaporte viejo y ahora necesito el nuevo pero no sé cuál es el primer paso.",
+  "Oiga, ¿es cierto que ahora hay que agendar la cita por internet o puedo ir directamente a la ventanilla?",
+  "Tengo una cita mañana pero me cambió la fecha de viaje, ¿puedo modificarla sin cancelar todo?",
+  "Me gustaría saber si aceptan pago en efectivo para el trámite de renovación de pasaporte o solo transferencia.",
+  "Hola, mi nombre está mal escrito en la solicitud anterior, ¿cómo hago para corregirlo antes de que impriman el documento?",
+  "Esperaba tener el visado pronto pero ya pasaron dos semanas y sigo sin noticias, me urge salir del país.",
+  "¿Requieren cita previa para recoger el pasaporte listo o puede pasar cualquier persona autorizada con mi cédula?",
+  "Le comento que vivo en otra ciudad y necesito saber si puedo iniciar el trámite por aquí o tengo que ir a mi lugar de origen.",
+  "Oiga, ¿el certificado de vacunas todavía es obligatorio para la visa de estudiante o ya lo quitaron?",
+  "Tengo miedo de que me devuelvan la solicitud porque no entiendo bien los requisitos de ingresos económicos.",
+  "Buenas tardes, quiero saber si el trámite de pasaporte para adultos mayores tiene algún descuento especial.",
+  "Le escribo porque me gustaría saber qué pasa si mi cita se cancela automáticamente por llegar tarde."
+ ]
+}

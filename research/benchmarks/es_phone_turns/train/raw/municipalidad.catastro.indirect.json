@@ -1,0 +1,27 @@
+{
+ "name": "municipalidad.catastro.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una municipalidad y necesita que se ocupe de su caso el área que atiende esto: «medidas, escrituras y registro de terrenos». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buenos días señorita, tengo el título antiguo pero no me reconocen los linderos actuales.",
+  "Es urgente porque mi vecino ya está poniendo cercas en mi propiedad.",
+  "Tengo la escritura firmada pero necesito que validen si está lista para inscripción.",
+  "Por favor, ¿pueden revisar por qué el catastro dice que soy dueño de menos terreno del que compré?",
+  "Oiga, llegué a comprar una parcela herencia y me dicen que tiene gravámenes desconocidos.",
+  "Necesito urgirle la emisión del plano de mensura para cerrar mi trámite.",
+  "Me acababan de decir que estaba aprobado pero ahora me piden un documento que no existía antes.",
+  "Tengo miedo de perder la tierra por falta de pago de contribución aunque ya pagué.",
+  "¿Sabe por qué tardan tanto en registrar una simple compra-venta?",
+  "Mi abuelo dejó el terreno pero nunca hizo la división legal entre los hermanos.",
+  "Necesito urgarles el expediente porque se me vence el plazo para reclamar.",
+  "El señor que me vendió tiene un problema de herencia y yo pago por adelantado.",
+  "Por favor, ¿alguien puede decirme qué paso falta en mi solicitud número 452?",
+  "Tengo una disputa de límites con la comunidad y necesito la resolución oficial del municipio.",
+  "Me acaban de notificar que hay una suspensión temporal de trámites sin previo aviso.",
+  "Oiga, ¿cómo hago para corregir un error en la dirección que puso el escribano?",
+  "Necesito que me confirmen si ya está inscrito o no, llevo tres meses esperando.",
+  "Tengo miedo de que me quiten la tierra porque no tengo recibos de los últimos años.",
+  "¿Pueden revisar mi caso con urgencia? Ya estoy pagando hipoteca y esto me afecta a todos.",
+  "La notificación llegó mal dirigida y perdí el plazo para presentar documentos importantes."
+ ]
+}

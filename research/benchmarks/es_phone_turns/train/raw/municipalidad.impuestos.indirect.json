@@ -1,0 +1,27 @@
+{
+ "name": "municipalidad.impuestos.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una municipalidad y necesita que se ocupe de su caso el área que atiende esto: «bienes inmuebles, solvencia municipal e impuestos de negocio». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Pura vida, buen día, le hablo para saber cómo pago mi impuesto predial sin tener que hacer fila hoy mismo.",
+  "Mire compadre, yo necesito la solvencia municipal urgente porque el banco me la pide ya y no aparece nada en su sistema.",
+  "Llevo tres meses intentando registrar este negocio en el sector 4 y siempre me dicen que está lleno el expediente.",
+  "Buenas tardes señorita, perdón la molestia pero tengo una duda con mi recibo de luz y agua que viene aparte del impuesto de bienes raíces.",
+  "A ver si usted me puede guiar un poco porque no entiendo por qué me cobraron dos veces por la misma patente comercial.",
+  "Hola, le escribo para pedir el certificado de uso de suelo para poder sacar permiso de construcción en mi terreno.",
+  "Oiga pues, tengo un problema que ya no aguanto más, me están cerrando la puerta del negocio por una multa que yo no causé.",
+  "Buen día, quiero saber si puedo pagar mis impuestos atrasados a través de internet o si tengo que ir presencialamente obligatoriamente.",
+  "Disculpe mi amable atreverse, pero necesito cancelar una hipoteca para liberar el gravamen de mi propiedad y me dicen que falta un documento.",
+  "A ver si puede hacerme el favor de decirme qué papeles llevo para sacar la solvencia fiscal del año pasado rápidamente.",
+  "Mire don, yo vendí la casa hace dos años pero siguen llegándome las facturas del predial porque no hicieron el cambio de dueño.",
+  "Saludos cordiales, necesito regularizar mi situación tributaria porque el SAT me está presionando y necesito esa solvencia municipal primero.",
+  "Hola, ¿sabe cómo puedo apelar una multa que me pusieron por publicidad indebida frente a mi negocio hace un mes?",
+  "Pues nada amigo, le llamo porque quiero abrir una tiendita en la plaza central pero no sé qué tasa me corresponde pagar.",
+  "Oiga pues, tengo una herencia de tres terrenos y no sé cómo dividir el impuesto para que no me quede todo a mi nombre.",
+  "Buenas tardes, le consulto si el descuento por pronto pago del impuesto predial ya se acabó o todavía puedo aprovecharlo este mes.",
+  "Mira compa, me urgía la carta de no adeudo para firmar contrato de arrendamiento y hasta ahora no llega nada por correo.",
+  "Perdón que lo interrumpa tan tarde, pero es que mañana cierran el registro y necesito saber si mi solicitud de zonificación está aprobada.",
+  "Hola querido, le quería preguntar si los comercios nocturnos tienen un horario especial para pago de impuestos o es igual al día.",
+  "A ver señora, yo vivo en la zona norte y creo que me están cobrando una tarifa que no me corresponde por el tipo de vivienda."
+ ]
+}

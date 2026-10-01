@@ -1,0 +1,11 @@
+{
+ "name": "gimnasio.clases.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un gimnasio y aclara que NO necesita el área de «clases» (inscribirse a clases de grupo: zumba, yoga, spinning): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me inscriban en nada.",
+  "Necesito atención personalizada.",
+  "Olvídese de las clases grupales.",
+  "Solo quiero hablar con usted."
+ ]
+}

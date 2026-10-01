@@ -6,14 +6,16 @@ services:
   laya:
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cpu}"
-      LAYA_MODEL: "${LAYA_MODEL:-english}"
+      LAYA_MODEL: "${LAYA_MODEL:-auto}"
       LAYA_REQUEST_FILE: /inputs/request.json
       OMP_NUM_THREADS: "${OMP_NUM_THREADS:-4}"
       HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"
 
-      # Local checkpoint: set LAYA_MODEL=auto above, then enable both this
-      # setting and the checkpoint mount below. The directory must be writable
-      # by UID 10001 for tokenizer compatibility updates.
+      # Local checkpoint: leave LAYA_MODEL at the auto default above. The entry
+      # script reads a name here as an explicit alias and refuses an alias and a
+      # path together, so this file cannot preselect one and still show the mount.
+      # Enable both this setting and the checkpoint mount below. The directory
+      # must be writable by UID 10001 for tokenizer compatibility updates.
       # LAYA_MODEL_PATH: /models/custom
 
       # Optional token: enable this setting and its read-only mount below.

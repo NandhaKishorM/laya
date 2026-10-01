@@ -1,0 +1,15 @@
+{
+ "name": "agencia.cambios.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una agencia de viajes y necesita que se ocupe de su caso el área que atiende esto: «cambiar o cancelar un viaje ya comprado». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenos días, oiga, le llamo porque ya no puedo hacer el viaje que reservé y necesito saber si me devuelven el dinero.",
+  "A ver, amigo, es que el código de reserva no me funciona en la app y necesito cambiar los pasajes urgente.",
+  "Perdone la molestia, pero nunca me llegó el comprobante de pago y sin eso no puedo verificar mi boleto.",
+  "Hola, le consulto porque se me cambió la fecha del vuelo y la página web no me deja modificarlo sola.",
+  "Oiga, pues yo necesito cancelar esta reserva porque ya no tengo ganas de ir, pero el sistema no me habilita el botón.",
+  "Disculpe, es que los datos del pasajero no me aparecen bien cargados en su plataforma y requiero ayuda técnica.",
+  "Buenas tardes, le escribo porque mi tarjeta fue rechazada para la renovación y con eso no tengo acceso a mis tickets.",
+  "¿Aló?, oiga, es que por un malentendido pagué dos veces el mismo tour y ese cobro duplicado no me cancelaron."
+ ]
+}

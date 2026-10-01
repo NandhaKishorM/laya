@@ -13,9 +13,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from laya.common import render_options  # noqa: E402
 from research.eval.presentation_checks import (  # noqa: E402
-    CHECKS, FIRST_SLOT_MIN, IDENTICAL_KS, IDENTICAL_TEXTS, INSTRUCTIONS, LEVELS, PARITY_TOL,
-    SLOT0_MIN, STATES, check_score_first_slot_permuted, check_score_slot0_identical, exit_code,
-    identical_question, leave_one_out, passes, permuted_questions, run_checks,
+    ALL_CHECKS, CHECKS, CHOICE_KS, FIRST_SLOT_MIN, IDENTICAL_KS, IDENTICAL_TEXTS, INSTRUCTIONS, LANGUAGES,
+    LEVELS, PARITY_TOL, SLOT0_MIN, STATES, check_choice_slot0_identical, check_score_first_slot_permuted,
+    check_score_slot0_identical, choice_identical_question, exit_code, identical_question, leave_one_out,
+    main, parse_langs, passes, permuted_questions, routes, run_checks,
 )
 
 PASS, FAIL = [], []
@@ -160,6 +161,133 @@ check("exit/pass", exit_code({"passed": True}, 4.9e-5), 0)
 check("exit/fail", exit_code({"passed": False}, 4.9e-5), 1)
 check("exit/parity outranks the verdict", exit_code({"passed": True}, 2e-3), 2)
 check("exit/nan parity is a mismatch", exit_code({"passed": True}, float("nan")), 2)
+
+
+# ------------------------------------------------------- fixed states in other languages
+check("lang/registered", list(LANGUAGES), ["en", "ja", "ko", "hi", "tr"])
+check_true("lang/en is the English constants",
+           LANGUAGES["en"]["states"] is STATES and LANGUAGES["en"]["levels"] is LEVELS
+           and LANGUAGES["en"]["instructions"] == INSTRUCTIONS
+           and LANGUAGES["en"]["identical_texts"] is IDENTICAL_TEXTS)
+for lang, spec in LANGUAGES.items():
+    if lang == "en":
+        continue
+    check("lang/%s ten states" % lang, len(spec["states"]), 10)
+    check("lang/%s no duplicates" % lang, len(set(spec["states"])), 10)
+    check_true("lang/%s no empty state" % lang, all(s.strip() for s in spec["states"]))
+    check_true("lang/%s not the English states" % lang, not set(spec["states"]) & set(STATES))
+    check_true("lang/%s written in the language, not ASCII" % lang,
+               not any(s.isascii() for s in spec["states"]))
+    check("lang/%s three distinct levels" % lang, len(set(spec["levels"])), 3)
+    check("lang/%s two distinct identical texts" % lang, len(set(spec["identical_texts"])), 2)
+    check_true("lang/%s instructions" % lang, bool(spec["instructions"].strip()))
+    for text in spec["identical_texts"]:
+        q = identical_question(text, 3, spec["instructions"])
+        rendered = render_options({"t": q["type"], "ins": q["instructions"], "crit": q["criteria"]})
+        check("lang/%s identical %s renders level-indexed" % (lang, text),
+              rendered, ["level %d: %s" % (i, text) for i in range(3)])
+    design = permuted_questions(spec["levels"], spec["instructions"])
+    check_true("lang/%s every level in every slot twice" % lang,
+               all(sum(1 for order, _ in design if order[slot] == li) == 2
+                   for slot in range(3) for li in range(3)))
+    check_true("lang/%s questions carry the language's instructions" % lang,
+               all(q["instructions"] == spec["instructions"] for _, q in design))
+
+    lang_calls = []
+
+    def lang_counting(state, questions, _calls=lang_calls, _states=spec["states"]):
+        assert state in _states
+        _calls.append(len(questions))
+        return FLAT(state, questions)
+
+    run_checks(lang_counting, lang=lang)
+    check("lang/%s one forward per state per check, on its own states" % lang, len(lang_calls), 20)
+    by_label = scripted([0.0] * 5, dict(zip(spec["levels"], (0.0, 1.0, 2.0))))
+    r = check_score_first_slot_permuted(by_label, lang=lang)
+    check("lang/%s order-invariant model scores exactly 1/3" % lang, r["metric"], round(1 / 3, 4))
+    check("lang/%s picks are counted by its own levels" % lang,
+          r["picks_by_label"], {spec["levels"][0]: 0, spec["levels"][1]: 0, spec["levels"][2]: 60})
+    r = check_score_slot0_identical(NO_SLOT0, lang=lang)
+    check("lang/%s suppressed slot 0 gives the English value" % lang,
+          r["metric"], round((-5 / 3 - 1.875 - 2.0) / 3, 4))
+
+# Routing only, no weights: the non-English states go to the checkpoint #131 is about.
+for lang, spec in LANGUAGES.items():
+    check("route/%s" % lang, routes(spec["states"]),
+          {"english": 10} if lang == "en" else {"multilingual": 10})
+
+
+# --------------------------------------------------- the default run is unchanged
+for fn in (FLAT, NO_SLOT0, EARLY, BY_LABEL):
+    check_true("default/run_checks equals lang=en and states=STATES",
+               run_checks(fn) == run_checks(fn, lang="en") == run_checks(fn, states=STATES))
+check("default/slot0 by hand still", check_score_slot0_identical(NO_SLOT0)["metric"],
+      round((-5 / 3 - 1.875 - 2.0) / 3, 4))
+
+
+# ------------------------------------------------------------------- --lang parsing
+check("langs/none means English", parse_langs(None), ["en"])
+check("langs/single", parse_langs(["ja"]), ["ja"])
+check("langs/comma-separated", parse_langs(["ja,ko"]), ["ja", "ko"])
+check("langs/repeated flag, order kept, no repeats", parse_langs(["tr", "ja", "tr,ko"]), ["tr", "ja", "ko"])
+check("langs/case and spaces", parse_langs([" JA , Hi "]), ["ja", "hi"])
+for bad in (["xx"], ["ja,xx"], [","]):
+    try:
+        parse_langs(bad)
+        FAIL.append("langs/%r should raise" % bad)
+    except ValueError as exc:
+        check_true("langs/%r raises naming the known codes" % bad, "ja, ko, hi, tr" in str(exc), str(exc))
+check("langs/unknown code exits 2 before loading a checkpoint", main(["--lang", "xx"]), 2)
+
+
+# ------------------------------------------------ choice identical-option control (#602 a)
+check("choice/option counts, gated first", CHOICE_KS, (4, 3))
+check("choice/kept out of the default run", sorted(CHECKS), ["score_first_slot_permuted", "score_slot0_identical"])
+check("choice/registered beside it", sorted(ALL_CHECKS),
+      ["choice_slot0_identical", "score_first_slot_permuted", "score_slot0_identical"])
+for lang, spec in LANGUAGES.items():
+    for text in spec["identical_texts"]:
+        for k in CHOICE_KS:
+            q = choice_identical_question(text, k, spec["instructions"])
+            check("choice/%s %s K=%d numbered keys" % (lang, text, k), list(q["criteria"]),
+                  [str(i + 1) for i in range(k)])
+            rendered = render_options({"t": q["type"], "ins": q["instructions"], "crit": q["criteria"]})
+            check("choice/%s %s K=%d renders numbered key + shared description" % (lang, text, k),
+                  rendered, ["%d: %s" % (i + 1, text) for i in range(k)])
+
+r = check_choice_slot0_identical(FLAT)
+check("choice/flat logits sit at zero and pass", (r["metric"], r["passed"]), (0.0, True))
+r = check_choice_slot0_identical(NO_SLOT0)
+# slot 0 at -2, the rest at +0.5: K=4 -2 - (-0.5/4) = -1.875, K=3 -2 - (-1/3) = -5/3
+check("choice/suppressed slot 0 gated at K=4", r["metric"], -1.875)
+check("choice/K=3 reported beside it", r["by_k"], {"4": -1.875, "3": round(-5 / 3, 4)})
+check("choice/suppressed slot 0 fails", (r["k"], r["passed"]), (4, False))
+r = check_choice_slot0_identical(scripted([-0.1, 0.0, 0.0, 0.0, 0.0]))
+check("choice/a slight deficit above the gate passes", (r["metric"], r["passed"]), (-0.075, True))
+r = check_choice_slot0_identical(scripted([-0.3, 0.0, 0.0, 0.0, 0.0]))
+check("choice/a deficit below the gate fails", (r["metric"], r["passed"]), (-0.225, False))
+r = check_choice_slot0_identical(EARLY)
+check_true("choice/one-sided: early-slot preference passes", r["metric"] > 0 and r["passed"], str(r))
+check("choice/one row per state", len(r["per_state"]), len(STATES))
+check("choice/one entry per (text, K)", len(r["per_config"]), len(IDENTICAL_TEXTS) * len(CHOICE_KS))
+for lang, spec in LANGUAGES.items():
+    seen = []
+
+    def recording(state, questions, _seen=seen):
+        _seen.extend(q["instructions"] for q in questions)
+        return FLAT(state, questions)
+
+    r = check_choice_slot0_identical(recording, lang=lang)
+    check_true("choice/%s asks in its own language" % lang, set(seen) == {spec["instructions"]})
+    check("choice/%s per-config keys use its texts" % lang, sorted(r["per_config"]),
+          sorted("%s/K=%d" % (t, k) for t in spec["identical_texts"] for k in CHOICE_KS))
+
+calls = []
+run_checks(lambda s, q: calls.append(len(q)) or FLAT(s, q), list(ALL_CHECKS), lang="ja")
+check("choice/all three checks: one forward per state per check", len(calls), 3 * 10)
+check("choice/default run_checks still runs the two score checks only", sorted(run_checks(FLAT)["checks"]),
+      ["score_first_slot_permuted", "score_slot0_identical"])
+check("choice/unknown check name exits 2", main(["--checks", "nope"]), 2)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

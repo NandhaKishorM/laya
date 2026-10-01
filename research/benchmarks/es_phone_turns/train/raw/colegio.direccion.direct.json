@@ -1,0 +1,15 @@
+{
+ "name": "colegio.direccion.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un colegio y pide que la comuniquen con el área de «direccion» (asuntos de disciplina y hablar con la directora). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor comunicarme con dirección.",
+  "Oiga, ¿pueden pasarme al área de dirección?",
+  "Buen día, que me comuniquen con la directora si está.",
+  "Disculpe, ¿está el señor director? Que lo pasen.",
+  "Hola, requiero hablar con el departamento de disciplina por favor.",
+  "Mande llamar a quien esté al frente de dirección.",
+  "Amiga, porfa pásame con la encargada de disciplina.",
+  "Buenas tardes, necesito ser derivado al área de dirección."
+ ]
+}

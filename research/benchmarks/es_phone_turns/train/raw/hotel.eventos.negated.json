@@ -1,0 +1,15 @@
+{
+ "name": "hotel.eventos.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y aclara que NO necesita el área de «eventos» (salones para bodas, fiestas y reuniones de empresa): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No es para eventos.",
+  "Oiga, no busquen salones.",
+  "Le hablo de otra cosa.",
+  "Ni lo mencione allá.",
+  "Solo una consulta rápida.",
+  "Ya me atiende usted.",
+  "No necesito eso.",
+  "Es un tema personal."
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "name": "colegio.registro.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a un colegio y necesita que se ocupe de su caso el área que atiende esto: «constancias, certificados y notas». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Buen día, le hablo porque necesito urgerizar una constancia de estudios para hoy mismo.",
+  "Oiga, mi hijo se quedó sin su certificado de bachiller y no sabe dónde buscarlo.",
+  "Mire doctora, me equivocaron la fecha de graduación en el documento y debo corregirlo ya.",
+  "Necesito que me avise si están listos los papeles para retirar las notas finales.",
+  "Pura vida, le escribo porque perdí mi constancia de haber cursado el último año.",
+  "¿Me podría pasar con quien maneja la emisión de títulos? Tengo una urgencia administrativa.",
+  "El sistema me marca error al descargar mi certificado y no sé qué hacer.",
+  "Buenos días, necesito tramitar una copia simple de mi acta de graduación para un empleo.",
+  "Oiga jefe, le llamo porque me llegó la nota con una calificación que no es la mía.",
+  "Le escribo desde Honduras, ¿me pueden enviar digitalmente mi constancia de estudios por favor?",
+  "Mire, necesito el certificado al instante porque me caduca el permiso de trabajo en dos días.",
+  "Disculpe, quisiera saber si puedo recoger mi título personalmente o debo esperar correo postal.",
+  "Le comento que la dirección en mi constancia está mal y necesito que la arreglen.",
+  "Oiga mujer, ¿me confirma si ya procesaron mi solicitud de duplicado de notas?",
+  "Necesito hablar con alguien del área académica porque tengo un conflicto con mis registros.",
+  "Le escribo para agilizar el trámite de mi certificado, llevo dos semanas esperando respuesta.",
+  "Mire, me hicieron un cobro doble por la emisión de la constancia y debo pedir reembolso.",
+  "¿Está disponible quien atiende los certificados? Tengo que firmar un documento oficial urgente.",
+  "Le cuento que no aparecemos en el listado de egresados y eso me preocupa mucho.",
+  "Buen día, solicito su ayuda para regularizar mi situación documental con la universidad rápidamente."
+ ]
+}

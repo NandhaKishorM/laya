@@ -1,0 +1,27 @@
+{
+ "name": "tienda.entregas.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una tienda de electrodomésticos y necesita que se ocupe de su caso el área que atiende esto: «cuándo llega a la casa lo que se compró». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Mire, llevo tres semanas esperando la estufa y nadie me dice nada.",
+  "Quiero saber exactamente para qué día tienen programada la entrega de mi refrigerador.",
+  "Me llegó el aviso pero la fecha se corrió y no me han informado.",
+  "Buenas tardes, necesito reagendar la instalación del lavavajillas que compré la semana pasada.",
+  "¿Para cuándo pueden traer el televisor? Porque ayer dijeron lunes y no vinieron.",
+  "Tengo una urgencia con la entrega de mi horno microondas, se me acaba la garantía.",
+  "Quisiera confirmar si mi aire acondicionado ya está en camino a mi domicilio.",
+  "No entendí bien la fecha que me dieron por teléfono para el envío del refrigerador.",
+  "Por favor, necesito que me digan cuándo vienen porque estoy sin cocina desde hace días.",
+  "La persona que llamó para coordinar la entrega no volvió a comunicarse conmigo.",
+  "Solicito que me informen el horario aproximado de llegada de mi lavadora esta semana.",
+  "Tengo un problema con la fecha de entrega, se me fue la cita sin aviso.",
+  "Necesito saber si puedo recibir la secadora mañana mismo o debo esperar a la próxima semana.",
+  "Me dijeron que ya estaba en ruta pero ya pasaron las horas del envío programado.",
+  "¿Cuándo viene el técnico para instalar la cocina que compré en oferta?",
+  "Quiero cancelar la entrega de la licuadora porque cambié de opinión y me urge el crédito.",
+  "No han llamado para coordinar la hora exacta de llegada de mi refrigerador americano.",
+  "Solicito una actualización sobre el estado de mi pedido de electrodomésticos, hace mucho que no sé nada.",
+  "¿Por qué me dieron una fecha y ahora dicen que llega hasta fin de mes?",
+  "Necesito que me confirmen si van a poder pasar hoy a dejar la estufa o debo esperar."
+ ]
+}

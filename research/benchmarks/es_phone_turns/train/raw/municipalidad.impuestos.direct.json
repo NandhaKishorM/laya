@@ -1,0 +1,15 @@
+{
+ "name": "municipalidad.impuestos.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una municipalidad y pide que la comuniquen con el área de «impuestos» (bienes inmuebles, solvencia municipal e impuestos de negocio). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor pásame con impuestos.",
+  "Aló, buenas tardes, necesito hablar con el departamento de solvencia municipal.",
+  "¿Quién habla? Bueno, escuche, le pido por favor que me transfiere al área de bienes inmuebles.",
+  "Por favor, ¿me pueden pasar con la oficina de impuestos de negocios?",
+  "Qué tal, necesito gestión urgente, porfa comuníqueme con solvencia.",
+  "Sí, buen día, oiga, le ruego que me pase con el departamento de tributos o como se llame.",
+  "Hola, buenos días, requiero la extensión de impuestos.",
+  "Mira, es que quiero ver mi estado de cuenta así que porfa líámelo al área de bienes inmuebles."
+ ]
+}

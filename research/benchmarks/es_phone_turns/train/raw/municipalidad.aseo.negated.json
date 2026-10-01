@@ -1,0 +1,15 @@
+{
+ "name": "municipalidad.aseo.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una municipalidad y aclara que NO necesita el área de «aseo» (tren de aseo, basura y alumbrado público): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me transfieran a aseo, gracias.",
+  "Sé que el tren de basura es allá, pero yo necesito otra cosa.",
+  "Agradezco su tiempo, pero no requiero el área de alumbrado público.",
+  "No soy cliente de limpieza urbana, por favor atienda mi consulta.",
+  "Necesito aclarar algo rápido, nada que ver con recolección de residuos.",
+  "Por favor, no me envíen a la sección de ordenamiento ambiental.",
+  "No tengo problemas de basura ni luz pública en este momento.",
+  "Solo quería confirmar un dato, sin necesidad de hablar con el departamento de limpieza."
+ ]
+}

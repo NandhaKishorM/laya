@@ -1,0 +1,12 @@
+{
+ "name": "restaurante.reservas.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un restaurante y pide que la comuniquen con el área de «reservas» (apartar una mesa). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenas tardes, por favor hágame el favor de comunicarme con reservas.",
+  "¡Ey! ¿Me pasan con el departamento de reservas? Porfa.",
+  "Hola, necesito hablar con quien maneja las reservaciones, por favor.",
+  "Que me comuniquen con reservas, sí o no.",
+  "Oiga, le pido un gran favor: pásame con el área de reservas."
+ ]
+}

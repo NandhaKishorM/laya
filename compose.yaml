@@ -7,9 +7,20 @@ services:
         TORCH_VERSION: "${LAYA_TORCH_VERSION:-2.14.0}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cpu}"
+      # The autocast dtype the runtime picks when it builds the model on the selected device
+      # (`laya/agent.py`). An empty value means "use the checkpoint's own `amp_dtype`", which is
+      # what these images have always served. README's threshold section measures what fp16 vs
+      # bf16 decides differently.
+      LAYA_CUDA_AMP: "${LAYA_CUDA_AMP:-}"
+      LAYA_CPU_AMP: "${LAYA_CPU_AMP:-}"
       LAYA_MODEL: "${LAYA_MODEL:-auto}"
       LAYA_MODEL_PATH: "${LAYA_MODEL_PATH:-}"
       LAYA_REQUEST_FILE: "${LAYA_REQUEST_FILE:-/opt/laya/examples/request.json}"
+      # The Hub commit, branch or tag every checkpoint download resolves to, or `reviewed` for the
+      # reviewed SHAs in `laya/revisions.py`. Empty keeps the Hub default, which is what these
+      # images have always done. This service builds its Router with no `revision=` argument
+      # (`examples/docker/quickstart.py`), so this variable is the only way to pin from Compose.
+      LAYA_REVISION: "${LAYA_REVISION:-}"
       HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"
       HF_TOKEN: "${HF_TOKEN:-}"
       HF_TOKEN_FILE: "${HF_TOKEN_FILE:-}"

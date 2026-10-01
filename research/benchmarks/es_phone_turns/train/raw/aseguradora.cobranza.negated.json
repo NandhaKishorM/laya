@@ -1,0 +1,15 @@
+{
+ "name": "aseguradora.cobranza.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una aseguradora y aclara que NO necesita el área de «cobranza» (pago de primas y cuotas atrasadas del seguro): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "No me pasen a cobranza, porfa.",
+  "Tengo otro tema, ni hablen de pagos.",
+  "Solo una consulta rápida, sin reclamos.",
+  "Por favor, eviten el área de adeudos.",
+  "No es deuda, es otra cosa urgente.",
+  "Quedo con usted, gracias por atenderme.",
+  "Ni me mencione la palabra 'prima'.",
+  "Tengo dudas generales, nada que ver con cuentas."
+ ]
+}

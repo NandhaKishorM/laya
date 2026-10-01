@@ -1,0 +1,12 @@
+{
+ "name": "cases.ventas.refuse",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una empresa de telefonía e internet y deja claro que NO quiere que la pasen al área de «ventas» (quiere comprar, contratar, mejorar su plan o pedir una cotización). Nombra el área o lo que hace, y la rechaza. No pide ninguna otra área.",
+ "phrases": [
+  "No, ni me meta al área de ventas que yo estoy llamando por una factura.",
+  "Soy cliente, no me conecte con los de contratos, necesito hablar con el soporte técnico.",
+  "Quiero hablar con alguien del área de cobros, no me saque al departamento comercial.",
+  "No, ni me conecte con los de ventas, solo quiero consultar una promoción de facturación.",
+  "Escúchame bien, no me mande con los de ventas, estoy llamando sobre mi saldo."
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "name": "universidad.open",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 15 preguntas distintas de información general que haría una persona que llama a una universidad: horarios, dirección, si abren feriados, formas de pago, parqueo, sucursales, requisitos. Son preguntas que contesta cualquiera en el mostrador; no piden que las pasen con nadie.",
+ "phrases": [
+  "Disculpe a ver usted si me indica a qué hora cierran hoy por favor.",
+  "Buenas tardes oiga, ¿a dónde queda exactamente la sede principal para que yo llegue sin perderme?",
+  "Usted sabría decirme si el día de los padres ustedes están abiertos o no al público.",
+  "Hola buenas, le quería preguntar si aceptan pago con tarjeta de crédito o es únicamente efectivo.",
+  "Perdone me podría decir cuánto tiempo dura la clase de inglés en turno vespertino por favor.",
+  "Oiga pues mire si hay dónde dejar el carro cerca de la entrada porque anda todo lleno.",
+  "A ver si usted me dice las llaves que necesito traer para inscribirme mañana mismo.",
+  "Hola disculpe, ¿tienen alguna sucursal más cercana al centro de la ciudad o es esta la única?",
+  "Usted sería tan amable de confirmarme si el horario cambia los días festivos o igual cierran a las tres.",
+  "Me interesa saber a cuánto está la cuota mensual para el curso de computación básica por favor.",
+  "Oiga pues mire, ¿me podría pasar el número del correo electrónico donde envían el material de estudio?",
+  "Buenas tardes, le pregunto si se requiere cita previa o puedo llegar y me atienden enseguida.",
+  "A ver si me aclara una duda, ¿las clases de fines de semana son obligatorias o son optativas?",
+  "Hola buenas noches, usted sabría decirme cuál es el documento de identidad válido para los extranjeros.",
+  "Perdone amigo, ¿a partir de qué hora comienza la fila para pagos mañana porque quiero llegar temprano?"
+ ]
+}

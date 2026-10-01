@@ -1,0 +1,15 @@
+{
+ "name": "hotel.mantenimiento.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un hotel y necesita que se ocupe de su caso el área que atiende esto: «algo dañado en la habitación: aire, ducha, televisor». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "La ducha no prende y necesito que revisen urgente.",
+  "A ver, la tele no conecta ninguna señal, ¿qué hago?",
+  "Es que el aire acondicionado no enfría nada, por favor.",
+  "Pues la llave no abre bien, tengo problema ya mismo.",
+  "Oye, no me llega agua caliente en la bañera para nada.",
+  "Qué onda, la luz del cuarto no prende ni se apaga.",
+  "Mire, el Wi-Fi no conecta y estoy trabajando desde ahí.",
+  "Ay Dios mío, no puedo usar la regadera porque gotea todo."
+ ]
+}

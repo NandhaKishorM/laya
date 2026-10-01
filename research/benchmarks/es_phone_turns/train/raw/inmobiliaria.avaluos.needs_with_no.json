@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.avaluos.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y necesita que se ocupe de su caso el área que atiende esto: «saber cuánto vale una propiedad». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Buenos días, la verdad es que no logro entender cómo estimar el precio de mi casa en este barrio.",
+  "Oiga, don, no me sale cuenta nada con lo que piden por los terrenos de mis tíos.",
+  "Mire, pues, no he podido averiguar cuánto andará valiendo el local comercial ese del centro.",
+  "Hola, disculpen la molestia, pero no tengo idea de cuál es el valor real de mi departamento.",
+  "Que tal, le comento que no me han dicho nada claro sobre el avalúo de mi propiedad.",
+  "Buenas tardes, o sea, no sé si lo que me ofrecen por comprar mi casa está bien o no.",
+  "Le llamo porque, la verdad, nunca he sabido cobrar un valor justo por mi apartamento pequeño.",
+  "Hola, pues, no consigo averiguar el precio del terreno donde quiero construir mi futura casita."
+ ]
+}

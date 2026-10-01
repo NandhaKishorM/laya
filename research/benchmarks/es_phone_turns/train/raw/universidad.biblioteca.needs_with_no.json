@@ -1,0 +1,15 @@
+{
+ "name": "universidad.biblioteca.needs_with_no",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una universidad y necesita que se ocupe de su caso el área que atiende esto: «préstamo de libros y multas de la biblioteca». En TODAS la persona cuenta su problema usando una negación: «no me funciona», «no me llegó», «no puedo», «no me han», «nunca me», «no tengo». La persona SÍ necesita ayuda con eso. No nombra el departamento.",
+ "phrases": [
+  "Que le vaya bien, pero no me deja renovar los libros por la web.",
+  "Oiga, buenas tardes, aquí ando perdido porque nunca me aparece el saldo de la multa.",
+  "A ver si puede ayudarme, que no tengo forma de pagar las liquidaciones en línea.",
+  "Perdone la molestia, pero no me han borrado el bloqueo de la cuenta aún.",
+  "¡Qué más pues! Ya le llamé antes y no me solucionaron nada con esos cargos.",
+  "Disculpe, necesito hablar con alguien porque no me aparecen los libros que pedí prestados.",
+  "Le escribo rápido, no me han enviado el comprobante del pago que hice ayer.",
+  "Buen día, a ver si le hago caso, que no puedo sacar turnos para la mesa de partes."
+ ]
+}

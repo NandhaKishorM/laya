@@ -25,12 +25,41 @@ the numbers quoted in the main README — nothing here is imported by the `laya`
 | `scripts/bench_apps.py` | the six application workflows (support triage, email + phishing, guardrails, RAG relevance, moderation, model routing) plus the datasets where public Jev numbers exist |
 | `scripts/bench_latency.py` | inference speed including what routing costs: detection overhead, hot path, cold-swap, mixed-language throughput at several `max_loaded` settings |
 | `scripts/bench_length_batching.py` | compare upstream contiguous batches with optional length sorting on synthetic tickets, including output consistency and optional fresh-process memory profiles (`psutil` required for memory mode) |
+| `scripts/bench_nvidia_capacity.py` | `laya` as a dynamically batched HTTP service on one NVIDIA GPU: open-loop Poisson sweep to the highest rate meeting a p99 SLO, 24-hour curve replay, and the ONNX export the TensorRT rows need (TensorRT via ONNX Runtime, not a laya backend). Results: `results/nvidia_capacity_20260925.json` |
 | `scripts/make_plots.py` | renders `assets/laya_benchmark.png` from the result JSONs |
 | `scripts/bench_long_context.py` | `laya-multilingual` on long documents: 20 support requests in 8 languages, each placed after 0 to 7,000 tokens of unrelated text, scored at the default limit and at `max_len=8192` |
+| `scripts/bench_position_sensitivity.py` | the same 20 requests, filler and question, with the request swept *through* a fixed-length document instead of only appended to it, so the effect of evidence **position** is separable from document **length** |
 | `scripts/plot_long_context.py` | renders `assets/long_context_8192.png` from `results/long_context_multilingual.json` |
 
 Everything runs with `USE_TF=0` — `transformers` probes for TensorFlow at import, and when TF is
 installed its abseil runtime can deadlock model construction on macOS/Python 3.9.
+
+## Running the harnesses
+
+The checkpoints come from `LAYA_MODELS` (default `~/laya_models`, a directory holding `laya/`,
+`laya-multilingual/` and `laya-typed-decisions/`), so a checkout can point them at a local
+`models/` copy:
+
+```bash
+# from the repository root
+LAYA_MODELS=$PWD/models python research/scripts/bench_local.py --langs 10 --per-lang 60 --skip-b
+LAYA_MODELS=$PWD/models BENCH_N=80 python research/scripts/bench_apps.py
+LAYA_MODELS=$PWD/models python research/scripts/bench_latency.py
+```
+
+| option | effect |
+|---|---|
+| `bench_local.py --langs N` | caps the language list (sorted, so `10` is the first ten codes; `0` = all 51) |
+| `bench_local.py --per-lang N` | cases per language (default 120) |
+| `bench_local.py --skip-a` / `--skip-b` | run only the typed-decisions half, or only the MASSIVE half |
+| `bench_apps.py` with `BENCH_N` | cases per application suite (default 400) |
+
+`bench_local.py` and `bench_apps.py` write `research/*_benchmark_results.json`, which is
+gitignored — the curated runs live in `results/`. Set `HF_HOME` inside the checkout to keep the
+dataset cache local.
+
+`bench_local.py` and `bench_latency.py` take the model root from `LAYA_MODELS` rather than assuming
+`~/laya_models`, so the harnesses run against a checkout that keeps its weights under `models/`.
 
 ## Length batching
 
@@ -77,19 +106,53 @@ python research/scripts/bench_length_batching.py MODEL_DIR --count 64 --batch-si
 |---|---|
 | `results/t4_colab_benchmark.json` | 17,416 questions on one T4, both checkpoints, identical questions per model |
 | `results/long_context_multilingual.json` | the long-document run behind `assets/long_context_8192.png`: every prediction, with device and library versions |
-| `results/cpu_51_language_sweep.json` | 51 languages x 2 checkpoints, MASSIVE intent, 20 options |
+| `results/cpu_51_language_sweep.json` | 51 languages x 2 checkpoints, MASSIVE intent, 20 options (committed `part_b` covers the English checkpoint only; a rerun of `research/scripts/bench_local.py` writes the gitignored `research/local_benchmark_results.json` and leaves this file untouched) |
 | `results/cpu_51_language_sweep_clamped.json` | the same 51 languages and 5,100 cases re-run after the temperature clamp, raw temperatures and served temperatures side by side ([#208](https://github.com/NandhaKishorM/laya/issues/208)) |
+| `results/cpu_51_language_sweep_refreshed.json` | both checkpoints with the environment recorded, the superseded committed columns kept beside the new ones. The multilingual half of the committed sweep does not reproduce on current code, so this is what the table in `BENCHMARKS.md` prints ([#208](https://github.com/NandhaKishorM/laya/issues/208)) |
+| `results/app_benchmark_results.json` | Applications run (400 cases per task, seed 13, 2026-09-19); source for the BENCHMARKS Themes / Jev-dataset tables and the README routed AG News / DAIR Emotion cells (a rerun of `research/scripts/bench_apps.py` writes the gitignored `research/app_benchmark_results.json` instead) |
+| `research/latency_benchmark_results.json` | **not committed** (gitignored) — generate with `research/scripts/bench_latency.py`; CPU routing-cost regimes behind the README preload table |
+| `results/position_sensitivity_multilingual.json` | accuracy against evidence position at fixed document length, n=20 per cell, every prediction kept |
 
 ## Headline findings
 
-**Routing takes Laya from 23 to 45 of 51 languages.** On MASSIVE intent (20 options, random =
+**Position matters as much as length, and `bench_long_context.py` samples exactly one position.**
+That script always appends the request to the end of the filler, so it measures a single point on
+the position axis. Sweeping the request through a **fixed-length** document instead
+(`bench_position_sensitivity.py`, the same 20 requests and the same construction, so `position=1.0`
+is the cell `bench_long_context.py` reports) gives, at `max_len=8192` with nothing truncated:
+
+| filler tokens | pos 0.00 | pos 0.25 | pos 0.50 | pos 0.75 | pos 1.00 | spread |
+|---|---|---|---|---|---|---|
+| 4,000 | 0.850 | 0.550 | 0.650 | 0.600 | **0.950** | 0.400 |
+| 7,000 | **0.850** | 0.550 | 0.500 | 0.650 | **0.400** | 0.450 |
+
+The **majority-class rate of this item set is 0.450** (`billing` 9, `technical` 7, `sales` 4,
+`other` 0) — so the interior of the document sits at the floor, where a model that always answered
+`billing` would score the same. A request placed next to the option markers (`pos 0.00`) or, at
+4,000 tokens, at the very end (`pos 1.00`), is answered at 0.85–0.95.
+
+**Which end is best depends on length**, so a pad-only sweep cannot see the shape at all: `pos 1.00`
+is the *best* cell at 4,000 tokens (0.950) and the *worst* at 7,000 (0.400). Paired on the same 20
+items, the interior is significantly worse than an endpoint in both cases — `pos 1.00` vs `pos 0.25`
+at 4,000 tokens is 0 wrong→right / 8 right→wrong (exact McNemar p=0.0078), and `pos 0.00` vs
+`pos 0.25` at 7,000 is 0 / 6 (p=0.031).
+
+*Caveat: n=20 per cell, so each cell carries a ±0.22 95 % interval and the ordering of the interior
+cells is not resolvable. The endpoint-versus-interior gap is well outside that, and the paired tests
+above are on the same items. Read this as "position is a large effect that the existing sweep does
+not sample", not as a per-cell ranking.*
+
+**Routing takes Laya from 23 to 48 of 51 languages.** On MASSIVE intent (20 options, random =
 0.050) the English checkpoint macro-averages 0.227 and clears 3x random on 23 of 51 languages;
-the multilingual checkpoint reaches 0.366 and clears it on 45.
+the multilingual checkpoint reaches 0.401 and clears it on 48. The multilingual figures are the
+re-run, not the committed sweep — see `results/cpu_51_language_sweep_refreshed.json` below.
 
 **The English checkpoint's confidence gives no warning when it cannot read the input.** Khmer:
-0.000 accuracy at 0.952 mean confidence. Macro ECE 0.733 across 51 languages, with mean
-confidence never dropping below 0.885 at any accuracy level. This is why routing has to happen
-*before* the forward pass — confidence gating cannot catch it.
+0.000 accuracy at 0.952 mean confidence — that is the *raw* temperature; as served, after the
+#42 clamp, it is 0.705 at the same 0.000 accuracy. Macro ECE 0.733 across 51 languages as
+committed (0.571 as served), with mean confidence never dropping below 0.885 raw, or 0.621 as
+served, at any accuracy level. This is why routing has to happen *before* the forward pass — confidence gating cannot
+catch it.
 
 **Both checkpoints ship over-confident.** Refitting one temperature per (question type, option
 count) on held-out data moves mean ECE 0.466 -> 0.081 (`laya`) and 0.314 -> 0.106

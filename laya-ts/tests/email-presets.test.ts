@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { cleanEmailBody } from "../src/email.js";
+import { cleanEmailBody, emailState } from "../src/email.js";
 import { triageQuestions, guardQuestions } from "../src/presets.js";
 describe("email+presets", () => {
   it("cuts quoted history", () => {
     const out = cleanEmailBody("Refund please\n\nOn Mon, Bob wrote:\nold text");
     expect(out).toContain("Refund please"); expect(out).not.toContain("old text");
+  });
+  it("emailState passes maxChars to the body budget, as Python does (#589)", () => {
+    const body = "word ".repeat(1000) + "please wire the money today";
+    expect(emailState("s", body).body).toHaveLength(3000);
+    const long = emailState("s", body, null, true, {}, 8000);
+    expect(long.body).toContain("wire the money");
+    expect(long).not.toHaveProperty("max_chars");
+    expect(emailState("s", body, null, false, {}, 10).body).toBe(body);
   });
   it("triage preset has 5 questions", () => {
     expect(Object.keys(triageQuestions()).sort()).toEqual(
@@ -14,6 +22,33 @@ describe("email+presets", () => {
     const out = cleanEmailBody("Please refund my order\n\nSent from my iPhone");
     expect(out).toContain("Please refund my order");
     expect(out).not.toContain("iPhone");
+  });
+  it("cuts extended device footers (Python parity)", () => {
+    const request = "Please refund my order";
+    for (const footer of [
+      "Sent from my iPhone 15 Pro",
+      "Sent from my Android phone",
+      "Sent from my iPad Pro",
+      "Sent from my iPhone using Tapatalk",
+      "Sent from my iPhone device",
+      "Sent from my iPhone Max",
+      "Sent from my iPhone mini",
+      "Sent from my iPhone Plus",
+    ]) {
+      expect(cleanEmailBody(`${request}\n\n${footer}`), footer).toBe(request);
+    }
+  });
+  it("keeps device mentions inside the request (Python parity)", () => {
+    for (const sentence of [
+      "Sent from my iPhone by mistake.",
+      "Sent from my iPad yesterday.",
+      "Sent from my Android by mistake.",
+      "Sent from my mobile yesterday.",
+      "Sent from my iPhone using Tapatalk to report a problem.",
+    ]) {
+      const body = `Hi support,\n${sentence}\nPlease cancel the duplicate order.`;
+      expect(cleanEmailBody(body), sentence).toBe(body);
+    }
   });
   it("keeps a closing sentence that is not a sign-off (Python parity)", () => {
     const body = "Please review the draft when you can.\nIt is two pages.\nThanks for the quick reply.";

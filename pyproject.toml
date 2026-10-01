@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.3.20"
+version = "0.3.22"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -52,7 +52,9 @@ mcp = ["mcp>=2.2.0"]
 # `pip install laya[structured]` adds pydantic for the typed-model helpers (laya/structured.py).
 structured = ["pydantic>=2.0.0"]
 
-onnx = ["onnx", "onnxruntime"]
+# `pip install laya[onnx]` adds ONNX Runtime for `laya.onnx_agent` and `onnxscript`, which
+# `torch.onnx.export` requires (`scripts/export_onnx.py`, `tests/test_onnx.py`).
+onnx = ["onnx", "onnxruntime", "onnxscript"]
 
 # `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
 langchain = [
@@ -62,6 +64,16 @@ langchain = [
 langgraph = [
     "langchain-core>=0.2.0",
     "langgraph>=0.1.0",
+]
+
+# `pip install laya[llamaindex]` adds the LlamaIndex query router & selector integrations (laya.integrations).
+llamaindex = [
+    "llama-index-core>=0.10.0",
+]
+
+# `pip install laya[crewai]` adds the CrewAI multi-agent delegation router (laya.integrations).
+crewai = [
+    "crewai>=0.28.0",
 ]
 
 [project.scripts]

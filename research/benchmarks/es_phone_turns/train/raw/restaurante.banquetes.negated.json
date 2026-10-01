@@ -1,0 +1,15 @@
+{
+ "name": "restaurante.banquetes.negated",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un restaurante y aclara que NO necesita el área de «banquetes» (comida para eventos y fiestas): dice que no la pasen ahí, o que no tiene ese problema, y que solo quiere hacer una pregunta o que la atienda quien contestó. Cada frase tiene que llevar una negación clara.",
+ "phrases": [
+  "Buenas tardes, por favor no me transfieran a banquetes, solo tengo una duda rápida sobre el menú.",
+  "No necesito servicios para eventos, gracias; quería preguntarle algo al encargado de la mesa.",
+  "Aquí no busco salones ni fiestas, le pido que no me pasen ahí y me atienda quien leyó.",
+  "No soy cliente para banquetes, por favor déjeme hablar con quien contestó ahora mismo.",
+  "No requiero el área de celebraciones, gracias; solo quiero aclarar un detalle con usted.",
+  "Oiga, no me lleven a la sección de eventos que no es mi caso y responda por favor.",
+  "No estoy buscando comida para fiesta, así que no me transfiera allá y resuelva mi consulta.",
+  "Le reitero que no necesito banquetes, gracias; solo le hago una pregunta simple al agente."
+ ]
+}

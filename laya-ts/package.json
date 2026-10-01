@@ -1,6 +1,7 @@
 {
   "name": "laya-ts",
   "version": "0.1.0",
+  "description": "Fast, local, on-device decision engine (TypeScript runtime)",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -14,6 +15,26 @@
     "prepack": "npm run build"
   },
   "files": ["dist", "scripts"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NandhaKishorM/laya.git",
+    "directory": "laya-ts"
+  },
+  "keywords": [
+    "decision-model",
+    "system-one",
+    "routing",
+    "guardrails",
+    "moderation",
+    "triage",
+    "onnx"
+  ],
+  "author": "Convai Innovations",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/NandhaKishorM/laya/issues"
+  },
+  "homepage": "https://nandhakishorm.github.io/laya/",
   "devDependencies": { "typescript": "^5.6.0", "vitest": "^2.1.0" },
   "optionalDependencies": { "onnxruntime-node": "^1.20.0", "onnxruntime-web": "^1.20.0" }
 }

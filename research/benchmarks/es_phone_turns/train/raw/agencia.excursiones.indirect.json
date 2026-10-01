@@ -1,0 +1,27 @@
+{
+ "name": "agencia.excursiones.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una agencia de viajes y necesita que se ocupe de su caso el área que atiende esto: «paquetes turísticos y tours». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Sí, quiero cancelar mi reserva en Costa Rica porque se me hizo una emergencia familiar.",
+  "Buen día, les escribo para ver si pueden cambiarme el vuelo de la paquete a Cancún que tengo comprado para el próximo mes.",
+  "Tengo un problema grave con el tour guiado en Antigua que contratamos ayer y necesitamos solución urgente.",
+  "Oiga, mi esposa y yo queremos ampliar días en nuestro paquete de todo incluido en Punta Cana.",
+  "Buenos días, me dieron un descuento que no aplicaron en la factura del viaje a Guatemala.",
+  "Hola, necesito reprogramar la fecha de salida para el tour cultural que reservamos hace dos semanas.",
+  "Me cancelaron el hotel sin avisarme en mi paquete turístico y estoy perdido aquí mismo.",
+  "Dígame, quiero saber si puedo cambiar el nombre del pasajero en mi reserva de viaje.",
+  "Sí, por favor, necesito anular la parte terrestre de mi tour porque ya no viajan mis hijos.",
+  "Buenas tardes, el servicio que me prometieron en el paquete no está siendo cumplido en destino.",
+  "Quisiera agregar un acompañante a mi viaje organizado sin tener que pagar todo otra vez.",
+  "Ayúdeme por favor, perdí los vouchers de entrada para el tour que pagamos online.",
+  "No entiendo por qué me cobran extras que no estaban incluidos en el paquete básico que contraté.",
+  "Buen día, quiero confirmar si el traslado al aeropuerto está incluido en mi reserva actual.",
+  "Me interesa cambiar la fecha de mi salida porque se adelantó un compromiso laboral importante.",
+  "Hola, les llamo para reportar que el guía del tour estuvo inadmisible y pido reembolso parcial.",
+  "Oiga, ¿pueden extender mi estadía en el hotel del paquete por una noche más?",
+  "Quiero solicitar la devolución de dinero por los días no utilizados de mi tour interrumpido.",
+  "Sí, necesito que me envíen los detalles actualizados del itinerario porque cambiaron las actividades sin avisar.",
+  "Buenas, tengo un error en el pasaje aéreo que viene incluido con mi paquete turístico y lo corregimos ayer."
+ ]
+}

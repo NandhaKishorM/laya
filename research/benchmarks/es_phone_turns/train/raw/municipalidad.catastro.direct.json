@@ -1,0 +1,13 @@
+{
+ "name": "municipalidad.catastro.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una municipalidad y pide que la comuniquen con el área de «catastro» (medidas, escrituras y registro de terrenos). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor páseme con Catastro",
+  "Hola, buenos tardes. ¿Me podrían conectar al departamento de Catastro? Necesito información sobre unas medidas de terreno.",
+  "Mande, ¿qué dice?",
+  "Le molesto una pregunta: ¿me puede pasar con el área que se encarga de las escrituras y el registro, o sea Catastro, por favor?",
+  "Pásenme con Catastro",
+  "Oiga, amigo, aquí es para solicitar información del catastro, si me puede hacer el favor de la transferencia."
+ ]
+}

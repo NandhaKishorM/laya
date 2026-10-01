@@ -16,8 +16,11 @@ rejected with an error that names the path.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence as SequenceABC
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+from .confidence import answer_confidence_value, apply_confidence_gate, check_min_confidence
 
 MAX_PROPERTIES = 32
 MAX_OPTIONS = 32
@@ -34,14 +37,33 @@ class DecisionResult:
 
     `values` is the schema-shaped output. `confidence` and `probabilities` are keyed by field,
     and `answers` is Laya's raw answer per field.
+
+    `answer_confidence` is `max(p)` per field -- the probability mass on the answer being
+    reported, under its own name. That makes it the same decision quantity `min_confidence`
+    compares against and the calibration and eval stack measures, which is the reason to report
+    it: a caller filtering this artifact to decide what to automate has to be filtering on the
+    number the gate actually used.
+
+    It is not a claim that the number is right. Reading it as "about c of the answers returned at
+    c are correct" holds only after temperatures are fitted and validated on held-out data for
+    that checkpoint and question shape; the shipped checkpoints are over-confident as shipped and
+    `laya-multilingual` ships with no fitted temperatures at all. See `common.answer_confidence`
+    and the README's Calibration section.
+
+    `confidence` keeps the normalized-entropy value it has always had, because that is a
+    different quantity on a scale that depends on the label count. A field that reported no
+    usable `answer_confidence` maps to `None`, which is not the same as a reported `0.0`.
     """
 
     values: Dict[str, Any]
     confidence: Dict[str, float]
     probabilities: Dict[str, Dict[str, Any]]
     answers: Dict[str, Any]
-    usage: Optional[Dict[str, int]] = None
+    usage: Optional[Dict[str, Any]] = None
     routing: Optional[Dict[str, Any]] = None
+    # Appended with a default so every existing construction of this dataclass keeps working, and
+    # the first six fields keep their positions.
+    answer_confidence: Dict[str, Optional[float]] = field(default_factory=dict)
 
 
 @dataclass
@@ -198,6 +220,9 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
         answer = answers.get(f.name)
         if answer is None:
             continue
+        if answer.get("low_confidence"):
+            values[f.name] = None
+            continue
         if f.kind == "noul":
             values[f.name] = bool(float(answer.get("noul", 0.0)) >= 0.5)
         elif f.kind == "score":
@@ -205,7 +230,13 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
             if probs:
                 idx = max(range(len(probs)), key=lambda i: float(probs.get(str(i), probs.get(i, 0.0))))
             else:
-                idx = int(round(float(answer.get("score", 0.0)))) - int(f.minimum or 0)
+                # `score` is always the probability-weighted 0-based level index (see
+                # `DecisionModel._decode_answers`), the same space `idx` is in above -- not an
+                # absolute field value -- so it is rounded on its own, with no `minimum`
+                # subtracted first. Subtracting it here and adding it back below used to cancel
+                # out, silently dropping `minimum` from every field whose schema does not start
+                # at 0.
+                idx = int(round(float(answer.get("score", 0.0))))
             values[f.name] = int(f.minimum or 0) + idx
         else:  # choice
             label = str(answer.get("choice"))
@@ -226,9 +257,13 @@ def answer_to_pydantic(model: Any, answers: Dict[str, Any]) -> Any:
 
 def _details(values: Dict[str, Any], answers: Dict[str, Any], result: Dict[str, Any]) -> DecisionResult:
     confidence: Dict[str, float] = {}
+    answer_confidence: Dict[str, Optional[float]] = {}
     probabilities: Dict[str, Dict[str, Any]] = {}
     for name, answer in answers.items():
         confidence[name] = float(answer.get("confidence", 0.0))
+        # Read through the module that owns the definition, so this and the `min_confidence` gate
+        # cannot disagree about which quantity is being reported.
+        answer_confidence[name] = answer_confidence_value(answer)
         if answer.get("type") == "noul":
             p = float(answer.get("noul", 0.0))
             probabilities[name] = {"false": round(1.0 - p, 4), "true": round(p, 4)}
@@ -241,11 +276,12 @@ def _details(values: Dict[str, Any], answers: Dict[str, Any], result: Dict[str, 
         answers=dict(answers),
         usage=result.get("usage"),
         routing=result.get("routing"),
+        answer_confidence=answer_confidence,
     )
 
 
 def decide(runner, state: Any, schema: Any = None, *, questions: Optional[Dict[str, Any]] = None,
-           return_details: bool = False, **predict_kwargs) -> Any:
+           return_details: bool = False, min_confidence: Optional[float] = None, **predict_kwargs) -> Any:
     """Answer `state` against a schema (or explicit questions) and return the decided values.
 
     Pass exactly one of `schema` or `questions`. With `schema`, the values follow the schema
@@ -256,17 +292,98 @@ def decide(runner, state: Any, schema: Any = None, *, questions: Optional[Dict[s
     if (schema is None) == (questions is None):
         raise ValueError("pass exactly one of schema= or questions=")
 
+    mc = check_min_confidence(min_confidence) if min_confidence is not None else None
+    if mc is not None:
+        predict_kwargs["min_confidence"] = mc
+
     fields: Optional[List[_Field]] = None
     if schema is not None:
         fields = plan_from_json_schema(_schema_of(schema))
         questions = {f.name: f.question for f in fields}
 
-    result = runner.predict(state, questions, **predict_kwargs)
+    try:
+        result = runner.predict(state, questions, **predict_kwargs)
+    except TypeError as e:
+        if mc is not None and "unexpected keyword argument 'min_confidence'" in str(e):
+            predict_kwargs.pop("min_confidence", None)
+            result = runner.predict(state, questions, **predict_kwargs)
+        else:
+            raise
+
+    if isinstance(result, dict):
+        apply_confidence_gate([result], mc)
+
     answers = result.get("answers", {}) or {}
     values = _project(answers, fields) if fields is not None else dict(answers)
     if return_details:
         return _details(values, answers, result)
     return values
+
+
+def decide_batch(runner, states: Sequence[Any], schema: Any = None, *,
+                 questions: Optional[Dict[str, Any]] = None,
+                 return_details: bool = False, min_confidence: Optional[float] = None,
+                 **predict_kwargs) -> List[Any]:
+    """Answer many states against one schema in one batched call, in input order.
+
+    The throughput form of :meth:`decide`: the schema is planned once and its questions
+    are evaluated over every state through ``runner.predict_batch`` (the same
+    shared-forward-pass path as :meth:`Agent.predict_batch` /
+    :meth:`Router.predict_batch`), then each state's answers are projected exactly as
+    ``decide`` does. Pass exactly one of ``schema`` or ``questions``; extra keyword
+    arguments (``batch_size=``, ``model=``, ``hooks=``, ...) are forwarded to
+    ``runner.predict_batch``. With ``return_details=True`` each item is a
+    ``DecisionResult``. ``min_confidence`` works as in ``decide``: a field whose answer falls
+    below it comes back as ``None``, with the answer kept in the details.
+
+    Both batch calling conventions are handled: an ``Agent``-like runner receives
+    ``(states, questions)``, while a ``Router``-like runner (one exposing
+    ``route_batch``) receives one ``{"state": ..., "questions": ...}`` request per
+    state, so states may route to different checkpoints.
+
+    ``Agent``, ``ONNXAgent`` and ``Router`` all batch. A runner with no ``predict_batch``
+    raises ``TypeError`` here rather than silently degrading to N sequential ``decide``
+    calls -- loop ``decide`` yourself when the runner cannot batch.
+    """
+    if (schema is None) == (questions is None):
+        raise ValueError("pass exactly one of schema= or questions=")
+    if isinstance(states, (str, bytes)) or not isinstance(states, SequenceABC):
+        raise TypeError("states must be a sequence of states, not %s" % type(states).__name__)
+
+    mc = check_min_confidence(min_confidence) if min_confidence is not None else None
+
+    fields: Optional[List[_Field]] = None
+    if schema is not None:
+        fields = plan_from_json_schema(_schema_of(schema))
+        questions = {f.name: f.question for f in fields}
+
+    predict_batch = getattr(runner, "predict_batch", None)
+    if predict_batch is None:
+        raise TypeError(
+            "%s has no predict_batch; loop decide() over the states instead"
+            % type(runner).__name__)
+
+    if hasattr(runner, "route_batch"):
+        # Router convention: one request dict per state, each carrying the shared
+        # questions, so it routes, groups by checkpoint and restores input order.
+        results = predict_batch([{"state": s, "questions": questions} for s in states],
+                                **predict_kwargs)
+    else:
+        # Agent convention: a list of states evaluated against one question set.
+        results = predict_batch(list(states), questions, **predict_kwargs)
+
+    # Applied here rather than passed down, so a runner whose predict_batch predates the
+    # keyword still gets the same projection and the same reported state.
+    apply_confidence_gate([r for r in results if isinstance(r, dict)], mc)
+
+    def _one(r: Dict[str, Any]) -> Any:
+        answers = r.get("answers", {}) or {}
+        values = _project(answers, fields) if fields is not None else dict(answers)
+        if return_details:
+            return _details(values, answers, r)
+        return values
+
+    return [_one(r) for r in results]
 
 
 __all__ = [
@@ -275,6 +392,7 @@ __all__ = [
     "answers_to_json",
     "answer_to_pydantic",
     "decide",
+    "decide_batch",
     "plan_from_json_schema",
     "questions_from_json_schema",
     "questions_from_pydantic",

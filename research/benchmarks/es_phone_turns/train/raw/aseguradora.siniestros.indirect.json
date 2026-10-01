@@ -1,0 +1,27 @@
+{
+ "name": "aseguradora.siniestros.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una aseguradora y necesita que se ocupe de su caso el área que atiende esto: «reportar un accidente, un robo o un daño cubierto por el seguro». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "¡Hola! Buen día, quisiera reportar un choque leve contra una estaca en el barrio",
+  "Soy María, llamo porque me robaron la moto esta mañana frente al mercado",
+  "Buenas tardes, necesito hacer la denuncia del daño por granizo en mi techo",
+  "Pero sí, ya llegué al lugar del accidente y estoy esperando a la policía",
+  "Mi carro fue alcantilado anoche mientras dormía, necesito abrir el siniestro lo antes posible",
+  "Aquí habla Roberto, tengo un problema con la vidriera trasera que se rompió sola",
+  "Miren, ya mandé las fotos por WhatsApp pero quiero confirmar si esto está cubierto",
+  "¡Ay qué lástima! Mi vecino me rayó el carro en el estacionamiento del centro",
+  "Necesito saber cuánto tarda la tasación para el robo de mi celular reciente",
+  "Oiga, pues le cuento que hubo un choque múltiple en la autopista y yo soy responsable parcial",
+  "Quisiera reportar la inundación de mi bodega por las lluvias de hoy",
+  "Bueno, no es nada grave pero tengo una abolladura grande en la puerta del conductor",
+  "Aquí habla don Jorge, perdón si molesto a esta hora pero el seguro vence mañana y hubo un incidente",
+  "Me robaron la mochila con mi laptop dentro mientras esperaba el bus",
+  "Por favor, ¿me pueden enviar al perito para que revise los daños de la fachada?",
+  "Sí, sí estoy bien, gracias por preguntar, lo del accidente fue solo material",
+  "Necesito urgencia porque me van a embargar la casa si no regularizo este siniestro",
+  "Ay Dios mío, el agua se filtró por la tubería y ya inundó mi sala entera",
+  "Llamo para reportar que alguien pintó graffiti en mi portón de garaje con spray",
+  "Ya tengo las fotos del accidente y los datos del otro conductor listos para enviarle"
+ ]
+}

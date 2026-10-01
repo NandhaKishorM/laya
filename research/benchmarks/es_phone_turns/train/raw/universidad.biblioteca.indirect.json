@@ -1,0 +1,27 @@
+{
+ "name": "universidad.biblioteca.indirect",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 20 frases distintas que diría una persona que llama a una universidad y necesita que se ocupe de su caso el área que atiende esto: «préstamo de libros y multas de la biblioteca». La persona QUIERE HACER un trámite o TIENE un problema concreto y lo cuenta. No son preguntas de información general como horarios, precios o dirección. No nombra el departamento ni pide que la transfieran.",
+ "phrases": [
+  "Disculpe, me apareció una multa vieja en el sistema por un libro devuelto hace años.",
+  "Hola, ¿me pueden revisar mi saldo? Dice que debo cien lempiras pero ya pagué.",
+  "Buen día, necesito aclarar que no tengo libros atrasados porque los canjé a tiempo.",
+  "Pues mire, me cobraron dos veces el mismo retraso y quiero que lo arreglen.",
+  "Oiga, me surgió un problema con la renovación online y se me bloquea todo.",
+  "¡Chévere! Le comento que encontré mi tarjeta perdida en casa y ya no debo nada.",
+  "A ver, ojalá me puedan ayudar porque el sistema dice que tengo seis libros pendientes.",
+  "Mira, yo devolví el manual de anatomía hace una semana y sigue saliendo como vencido.",
+  "Perdón si lo molesto, pero necesito que anulen esa multa porque estaba enfermo en hospital.",
+  "Hola, me gustaría saber por qué no me dejan pedir libros nuevos hasta limpiar mi cuenta.",
+  "Aquí le hablo para decirle que ya envié el comprobante del pago por correo.",
+  "Pues sí, oiga, tengo un problema grave con la fecha de devolución que se puso mal.",
+  "Buenas tardes, ¿podrían revisar si realmente devolví esa enciclopedia o me extraviaron el recibo?",
+  "Oye, me urge desbloquear mi préstamo porque necesito sacar materiales para una tesis ya.",
+  "Disculpe la molestia, pero el sistema me marca deuda y yo nunca he tenido libros aquí.",
+  "Aquí le comento que mi caso es especial porque estudié en otra universidad hace diez años.",
+  "Oiga pues, ¿me pueden decir si esa multa se puede pagar o hay que quitarla?",
+  "Mira, tengo un lío con la fecha de hoy que el sistema considera como retraso.",
+  "Hola, le escribo porque quiero saber cómo quito ese registro negro en mi historial.",
+  "Pues mire, necesito urgente que limpien mi nombre para poder graduarme y no me deja."
+ ]
+}

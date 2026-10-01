@@ -257,6 +257,44 @@ with mock.patch.object(torch.Tensor, "to", _to_that_ignores_mps):
     except Exception as e:  # noqa: BLE001
         FAIL.append("fallback/restore-failure not survived: %s: %s" % (type(e).__name__, e))
 
+    # one unsupported autocast op retries that request and leaves AMP on. Three misses in a
+    # row disable it, so a build without the op does not pay for two forwards forever (#351).
+    # CPU so the MPS row gate does not hide the branch.
+    class _AutocastMisses(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.dummy = torch.nn.Parameter(torch.zeros(1))
+            self.calls = 0
+
+        def forward(self, input_ids, attention_mask, marker_pos, marker_mask, qtype):
+            self.calls += 1
+            if self.calls in (1, 3, 5):
+                raise RuntimeError("User specified an unsupported autocast device_type cpu")
+            logits = torch.zeros((input_ids.shape[0], marker_mask.shape[1]))
+            logits[:, 0] = 1.0
+            return logits, torch.tensor([[1.0, 0.0]])
+
+    agent = _bare_agent(_AutocastMisses())
+    agent.device = torch.device("cpu")
+    agent.amp_enabled = True
+    agent.dtype = torch.float16
+    try:
+        result = agent.predict({"body": "some state"}, QUESTIONS)
+        check("autocast/answers after one miss", result["answers"]["q"]["choice"], "a")
+        check("autocast/one miss retries once", agent.model.calls, 2)
+        check("autocast/one miss keeps amp", agent.amp_enabled, True)
+        check("autocast/one miss keeps dtype", agent.dtype, torch.float16)
+        agent.predict({"body": "another state"}, QUESTIONS)
+        check("autocast/two misses keep amp", agent.amp_enabled, True)
+        agent.predict({"body": "third state"}, QUESTIONS)
+        check("autocast/third miss disables amp", agent.amp_enabled, False)
+        check("autocast/third miss drops dtype", agent.dtype, torch.float32)
+        check("autocast/three misses are six forwards", agent.model.calls, 6)
+        agent.predict({"body": "later state"}, QUESTIONS)
+        check("autocast/later request is one forward", agent.model.calls, 7)
+    except Exception as e:  # noqa: BLE001
+        FAIL.append("autocast/streak was not survived: %s: %s" % (type(e).__name__, e))
+
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

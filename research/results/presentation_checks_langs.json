@@ -1,0 +1,539 @@
+{
+ "about": "research/eval/presentation_checks.py --lang ja,ko,hi,tr on laya-multilingual (#602); same gates as the English run",
+ "revision": "convaiinnovations/laya@55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851 (subfolder multilingual)",
+ "environment": {
+  "device": "cpu",
+  "dtype": "float32",
+  "torch": "2.14.0+cpu",
+  "transformers": "5.17.0",
+  "python": "3.11.9",
+  "laya": "0.3.21"
+ },
+ "multilingual": {
+  "config": {
+   "model": "convaiinnovations/laya",
+   "subfolder": "multilingual",
+   "device": "cpu",
+   "langs": [
+    "ja",
+    "ko",
+    "hi",
+    "tr"
+   ],
+   "laya_version": "0.3.21"
+  },
+  "languages": {
+   "ja": {
+    "config": {
+     "states": 10,
+     "instructions": "この依頼の緊急度は？",
+     "identical_texts": [
+      "中程度",
+      "依頼"
+     ],
+     "identical_ks": [
+      3,
+      4,
+      5
+     ],
+     "levels": [
+      "急がない",
+      "早めに",
+      "業務が止まっている"
+     ],
+     "router_picks": {
+      "multilingual": 10
+     }
+    },
+    "parity_max_abs_diff": 4.6754520251379716e-05,
+    "checks": {
+     "score_slot0_identical": {
+      "metric": -0.0183,
+      "threshold": -0.2,
+      "passed": true,
+      "leave_one_out": [
+       -0.1204,
+       0.0313
+      ],
+      "per_state": [
+       0.1001,
+       0.2712,
+       -0.0314,
+       0.9,
+       -0.2066,
+       -0.3125,
+       -0.1266,
+       -0.0819,
+       -0.2302,
+       -0.4654
+      ],
+      "per_config": {
+       "中程度/K=3": -0.4143,
+       "中程度/K=4": -0.2208,
+       "中程度/K=5": 0.0876,
+       "依頼/K=3": 0.0129,
+       "依頼/K=4": 0.1993,
+       "依頼/K=5": 0.2252
+      },
+      "per_slot_centred": {
+       "中程度/K=3": [
+        -0.4143,
+        0.7693,
+        -0.3551
+       ],
+       "中程度/K=4": [
+        -0.2208,
+        0.9156,
+        -0.0359,
+        -0.6589
+       ],
+       "中程度/K=5": [
+        0.0876,
+        1.1026,
+        -0.1029,
+        -0.3562,
+        -0.7311
+       ],
+       "依頼/K=3": [
+        0.0129,
+        0.0993,
+        -0.1122
+       ],
+       "依頼/K=4": [
+        0.1993,
+        0.0885,
+        -0.1,
+        -0.1878
+       ],
+       "依頼/K=5": [
+        0.2252,
+        0.0781,
+        -0.0912,
+        -0.132,
+        -0.0802
+       ]
+      }
+     },
+     "score_first_slot_permuted": {
+      "metric": 0.0,
+      "threshold": 0.15,
+      "passed": false,
+      "leave_one_out": [
+       0.0,
+       0.0
+      ],
+      "decisions": 60,
+      "per_state": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "argmax_by_slot": [
+       0,
+       29,
+       31
+      ],
+      "picks_by_label": {
+       "急がない": 12,
+       "早めに": 18,
+       "業務が止まっている": 30
+      },
+      "order_invariant_states": 0
+     }
+    },
+    "passed": false
+   },
+   "ko": {
+    "config": {
+     "states": 10,
+     "instructions": "이 요청은 얼마나 긴급한가요?",
+     "identical_texts": [
+      "보통",
+      "요청"
+     ],
+     "identical_ks": [
+      3,
+      4,
+      5
+     ],
+     "levels": [
+      "급하지 않음",
+      "빨리",
+      "업무가 멈춤"
+     ],
+     "router_picks": {
+      "multilingual": 10
+     }
+    },
+    "parity_max_abs_diff": 4.968593182863579e-05,
+    "checks": {
+     "score_slot0_identical": {
+      "metric": -0.5695,
+      "threshold": -0.2,
+      "passed": false,
+      "leave_one_out": [
+       -0.6217,
+       -0.5057
+      ],
+      "per_state": [
+       -0.522,
+       -0.7999,
+       -0.5239,
+       -0.1021,
+       -0.3256,
+       -0.6993,
+       -1.1435,
+       -0.0994,
+       -0.5991,
+       -0.8804
+      ],
+      "per_config": {
+       "보통/K=3": -0.9965,
+       "보통/K=4": -0.753,
+       "보통/K=5": -0.5084,
+       "요청/K=3": -0.6171,
+       "요청/K=4": -0.3946,
+       "요청/K=5": -0.1475
+      },
+      "per_slot_centred": {
+       "보통/K=3": [
+        -0.9965,
+        0.7452,
+        0.2513
+       ],
+       "보통/K=4": [
+        -0.753,
+        0.7988,
+        0.317,
+        -0.3628
+       ],
+       "보통/K=5": [
+        -0.5084,
+        0.8851,
+        0.2085,
+        -0.0849,
+        -0.5004
+       ],
+       "요청/K=3": [
+        -0.6171,
+        0.7792,
+        -0.1621
+       ],
+       "요청/K=4": [
+        -0.3946,
+        0.7719,
+        0.2128,
+        -0.5901
+       ],
+       "요청/K=5": [
+        -0.1475,
+        0.8516,
+        0.2394,
+        -0.3379,
+        -0.6057
+       ]
+      }
+     },
+     "score_first_slot_permuted": {
+      "metric": 0.05,
+      "threshold": 0.15,
+      "passed": false,
+      "leave_one_out": [
+       0.0185,
+       0.0556
+      ],
+      "decisions": 60,
+      "per_state": [
+       0.3333,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.1667,
+       0.0
+      ],
+      "argmax_by_slot": [
+       3,
+       34,
+       23
+      ],
+      "picks_by_label": {
+       "급하지 않음": 30,
+       "빨리": 12,
+       "업무가 멈춤": 18
+      },
+      "order_invariant_states": 0
+     }
+    },
+    "passed": false
+   },
+   "hi": {
+    "config": {
+     "states": 10,
+     "instructions": "यह अनुरोध कितना ज़रूरी है?",
+     "identical_texts": [
+      "मध्यम",
+      "एक अनुरोध"
+     ],
+     "identical_ks": [
+      3,
+      4,
+      5
+     ],
+     "levels": [
+      "ज़रूरी नहीं",
+      "जल्द",
+      "काम रुका हुआ है"
+     ],
+     "router_picks": {
+      "multilingual": 10
+     }
+    },
+    "parity_max_abs_diff": 4.9100966272169755e-05,
+    "checks": {
+     "score_slot0_identical": {
+      "metric": -0.2252,
+      "threshold": -0.2,
+      "passed": false,
+      "leave_one_out": [
+       -0.2998,
+       -0.1824
+      ],
+      "per_state": [
+       -0.3324,
+       0.0546,
+       -0.3361,
+       0.4463,
+       -0.3899,
+       -0.6105,
+       -0.1479,
+       -0.4678,
+       -0.4899,
+       0.0215
+      ],
+      "per_config": {
+       "मध्यम/K=3": -0.6239,
+       "मध्यम/K=4": -0.2763,
+       "मध्यम/K=5": -0.0001,
+       "एक अनुरोध/K=3": -0.3694,
+       "एक अनुरोध/K=4": -0.092,
+       "एक अनुरोध/K=5": 0.0104
+      },
+      "per_slot_centred": {
+       "मध्यम/K=3": [
+        -0.6239,
+        0.7648,
+        -0.1409
+       ],
+       "मध्यम/K=4": [
+        -0.2763,
+        0.8558,
+        -0.1443,
+        -0.4351
+       ],
+       "मध्यम/K=5": [
+        -0.0001,
+        0.8603,
+        -0.0434,
+        -0.3431,
+        -0.4737
+       ],
+       "एक अनुरोध/K=3": [
+        -0.3694,
+        0.6559,
+        -0.2865
+       ],
+       "एक अनुरोध/K=4": [
+        -0.092,
+        0.6153,
+        -0.248,
+        -0.2753
+       ],
+       "एक अनुरोध/K=5": [
+        0.0104,
+        0.7579,
+        -0.1775,
+        -0.3007,
+        -0.2901
+       ]
+      }
+     },
+     "score_first_slot_permuted": {
+      "metric": 0.0667,
+      "threshold": 0.15,
+      "passed": false,
+      "leave_one_out": [
+       0.037,
+       0.0741
+      ],
+      "decisions": 60,
+      "per_state": [
+       0.0,
+       0.0,
+       0.1667,
+       0.0,
+       0.0,
+       0.3333,
+       0.0,
+       0.1667,
+       0.0,
+       0.0
+      ],
+      "argmax_by_slot": [
+       4,
+       28,
+       28
+      ],
+      "picks_by_label": {
+       "ज़रूरी नहीं": 16,
+       "जल्द": 10,
+       "काम रुका हुआ है": 34
+      },
+      "order_invariant_states": 1
+     }
+    },
+    "passed": false
+   },
+   "tr": {
+    "config": {
+     "states": 10,
+     "instructions": "Bu talep ne kadar acil?",
+     "identical_texts": [
+      "orta",
+      "bir talep"
+     ],
+     "identical_ks": [
+      3,
+      4,
+      5
+     ],
+     "levels": [
+      "Acil değil",
+      "Yakında",
+      "İş durdu"
+     ],
+     "router_picks": {
+      "multilingual": 10
+     }
+    },
+    "parity_max_abs_diff": 4.95214576753944e-05,
+    "checks": {
+     "score_slot0_identical": {
+      "metric": 0.1386,
+      "threshold": -0.2,
+      "passed": true,
+      "leave_one_out": [
+       0.0684,
+       0.1739
+      ],
+      "per_state": [
+       0.3692,
+       0.0143,
+       -0.048,
+       0.3167,
+       -0.1295,
+       -0.1789,
+       0.0882,
+       -0.1014,
+       0.7705,
+       0.2849
+      ],
+      "per_config": {
+       "orta/K=3": -0.0454,
+       "orta/K=4": 0.1406,
+       "orta/K=5": 0.422,
+       "bir talep/K=3": -0.1856,
+       "bir talep/K=4": 0.142,
+       "bir talep/K=5": 0.358
+      },
+      "per_slot_centred": {
+       "orta/K=3": [
+        -0.0454,
+        0.5798,
+        -0.5344
+       ],
+       "orta/K=4": [
+        0.1406,
+        0.8411,
+        -0.1579,
+        -0.8238
+       ],
+       "orta/K=5": [
+        0.422,
+        0.8838,
+        -0.0243,
+        -0.59,
+        -0.6915
+       ],
+       "bir talep/K=3": [
+        -0.1856,
+        0.4061,
+        -0.2205
+       ],
+       "bir talep/K=4": [
+        0.142,
+        0.6643,
+        -0.2369,
+        -0.5694
+       ],
+       "bir talep/K=5": [
+        0.358,
+        0.7853,
+        -0.1461,
+        -0.4808,
+        -0.5164
+       ]
+      }
+     },
+     "score_first_slot_permuted": {
+      "metric": 0.0333,
+      "threshold": 0.15,
+      "passed": false,
+      "leave_one_out": [
+       0.0185,
+       0.037
+      ],
+      "decisions": 60,
+      "per_state": [
+       0.1667,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.1667,
+       0.0
+      ],
+      "argmax_by_slot": [
+       2,
+       28,
+       30
+      ],
+      "picks_by_label": {
+       "Acil değil": 15,
+       "Yakında": 12,
+       "İş durdu": 33
+      },
+      "order_invariant_states": 0
+     }
+    },
+    "passed": false
+   }
+  },
+  "parity_max_abs_diff": 4.968593182863579e-05,
+  "passed": false,
+  "seconds": 26.1
+ }
+}

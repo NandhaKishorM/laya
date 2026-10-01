@@ -1,0 +1,15 @@
+{
+ "name": "inmobiliaria.compraventa.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una inmobiliaria y pide que la comuniquen con el área de «compraventa» (comprar o vender una propiedad). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor hable con compraventa.",
+  "Oiga, ¿me podría pasar con la gente de compraventa?",
+  "Por aquí compraventa, sígame el hilo.",
+  "Le comento una cosa y me pasan al departamento de compraventa.",
+  "¿Hay alguien en compraventa que me atienda por favor?",
+  "Necesito tratar un tema urgente con el área de compraventa, ¿me la da?",
+  "Hablemos de compraventa, pásame con ellos.",
+  "Buen día, solicito comunicación inmediata con el sector de compraventa para cerrar un trato."
+ ]
+}

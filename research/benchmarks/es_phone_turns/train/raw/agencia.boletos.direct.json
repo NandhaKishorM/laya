@@ -1,0 +1,15 @@
+{
+ "name": "agencia.boletos.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a una agencia de viajes y pide que la comuniquen con el área de «boletos» (comprar boletos de avión). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buenos días, por favor comunicarme con la sección de boletos, gracias.",
+  "Oiga, ¿me atiende alguien del área de boletos?",
+  "Pues oiga, que hablo pa' lo de los boletos de avión, si me pueden pasar.",
+  "Trasladá a mi con el departamento de boletos, porfa.",
+  "Así, quiero comprar un boleto y necesito hablar con quien maneja esa área.",
+  "Al área de boletos, por favor.",
+  "Mira, o sea, yo llamaba porque quería revisar unas opciones de vuelos y me dijeron que te pasara con el equipo de boletos.",
+  "Pásame con boletos aeróreos, gracias."
+ ]
+}

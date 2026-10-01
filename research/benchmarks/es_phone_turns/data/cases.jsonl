@@ -1,0 +1,116 @@
+{"id": "es-001", "text": "Quiero hablar con ventas, por favor.", "gold": "ventas", "tags": ["direct"]}
+{"id": "es-002", "text": "Páseme con el departamento de ventas.", "gold": "ventas", "tags": ["direct"]}
+{"id": "es-003", "text": "¿Me comunica con un asesor de ventas?", "gold": "ventas", "tags": ["direct"]}
+{"id": "es-004", "text": "Con ventas, por favor.", "gold": "ventas", "tags": ["direct", "short"]}
+{"id": "es-005", "text": "Necesito que me transfieran al área comercial.", "gold": "ventas", "tags": ["direct"]}
+{"id": "es-006", "text": "Quiero contratar el servicio de internet para mi casa.", "gold": "ventas", "tags": ["indirect"]}
+{"id": "es-007", "text": "Me interesa adquirir un plan nuevo para la oficina.", "gold": "ventas", "tags": ["indirect"]}
+{"id": "es-008", "text": "Necesito una cotización para veinte líneas telefónicas.", "gold": "ventas", "tags": ["indirect"]}
+{"id": "es-009", "text": "Fíjese que quiero cambiarme a un plan más grande, ¿con quién hablo?", "gold": "ventas", "tags": ["indirect", "hn"]}
+{"id": "es-010", "text": "Vi la promoción en Facebook y quiero comprarla.", "gold": "ventas", "tags": ["indirect"]}
+{"id": "es-011", "text": "Queremos poner el servicio en una sucursal nueva que vamos a abrir.", "gold": "ventas", "tags": ["indirect"]}
+{"id": "es-012", "text": "Quisiera agregar otra línea a mi contrato.", "gold": "ventas", "tags": ["indirect"]}
+{"id": "es-013", "text": "Ando buscando un plan empresarial, quiero que me lo vendan.", "gold": "ventas", "tags": ["indirect", "hn"]}
+{"id": "es-014", "text": "Quiero subir la velocidad de mi plan, ¿quién me lo puede vender?", "gold": "ventas", "tags": ["indirect"]}
+{"id": "es-015", "text": "Comuníqueme con soporte técnico.", "gold": "soporte", "tags": ["direct"]}
+{"id": "es-016", "text": "Necesito hablar con un técnico.", "gold": "soporte", "tags": ["direct"]}
+{"id": "es-017", "text": "Páseme con soporte, por favor.", "gold": "soporte", "tags": ["direct"]}
+{"id": "es-018", "text": "Con el área técnica, si me hace el favor.", "gold": "soporte", "tags": ["direct"]}
+{"id": "es-019", "text": "Quiero reportar una falla con soporte.", "gold": "soporte", "tags": ["direct"]}
+{"id": "es-020", "text": "No tengo internet desde ayer en la noche.", "gold": "soporte", "tags": ["indirect"]}
+{"id": "es-021", "text": "El teléfono no da tono y no puedo hacer llamadas.", "gold": "soporte", "tags": ["indirect"]}
+{"id": "es-022", "text": "Se me cayó el servicio y necesito que lo arreglen.", "gold": "soporte", "tags": ["indirect"]}
+{"id": "es-023", "text": "El módem tiene una luz roja parpadeando y no navega.", "gold": "soporte", "tags": ["indirect"]}
+{"id": "es-024", "text": "Fíjese que el internet está lentísimo, casi no carga nada.", "gold": "soporte", "tags": ["indirect", "hn"]}
+{"id": "es-025", "text": "Las llamadas se cortan a cada rato, así no se puede trabajar.", "gold": "soporte", "tags": ["indirect"]}
+{"id": "es-026", "text": "No me funciona el correo de la empresa desde la mañana.", "gold": "soporte", "tags": ["indirect"]}
+{"id": "es-027", "text": "Se fue la señal en toda la oficina, necesitamos que vengan a revisar.", "gold": "soporte", "tags": ["indirect"]}
+{"id": "es-028", "text": "La extensión de recepción no suena cuando le marcan.", "gold": "soporte", "tags": ["indirect"]}
+{"id": "es-029", "text": "Páseme con facturación.", "gold": "facturacion", "tags": ["direct"]}
+{"id": "es-030", "text": "Necesito hablar con el departamento de cobros.", "gold": "facturacion", "tags": ["direct"]}
+{"id": "es-031", "text": "Quiero hablar con alguien de facturación, por favor.", "gold": "facturacion", "tags": ["direct"]}
+{"id": "es-032", "text": "Con cuentas por cobrar, por favor.", "gold": "facturacion", "tags": ["direct"]}
+{"id": "es-033", "text": "Comuníqueme con el área de pagos.", "gold": "facturacion", "tags": ["direct"]}
+{"id": "es-034", "text": "Me cobraron dos veces este mes y quiero que me devuelvan el dinero.", "gold": "facturacion", "tags": ["indirect"]}
+{"id": "es-035", "text": "La factura me llegó con un monto que no es el que acordamos.", "gold": "facturacion", "tags": ["indirect"]}
+{"id": "es-036", "text": "Ya pagué y me siguen cobrando el mismo recibo.", "gold": "facturacion", "tags": ["indirect"]}
+{"id": "es-037", "text": "Necesito que me reenvíen la factura de agosto con el RTN de la empresa.", "gold": "facturacion", "tags": ["indirect", "hn"]}
+{"id": "es-038", "text": "Quiero hacer un arreglo de pago porque estoy atrasado.", "gold": "facturacion", "tags": ["indirect"]}
+{"id": "es-039", "text": "Me aparece un cargo que no reconozco en el estado de cuenta.", "gold": "facturacion", "tags": ["indirect"]}
+{"id": "es-040", "text": "Hice la transferencia hace tres días y no me han aplicado el pago.", "gold": "facturacion", "tags": ["indirect"]}
+{"id": "es-041", "text": "Quiero saber por qué me subieron el cobro sin avisarme, necesito que lo corrijan.", "gold": "facturacion", "tags": ["indirect"]}
+{"id": "es-042", "text": "Pagué de más y quiero un reembolso.", "gold": "facturacion", "tags": ["indirect"]}
+{"id": "es-043", "text": "Quiero hablar con una persona.", "gold": "operadora", "tags": ["human"]}
+{"id": "es-044", "text": "Páseme con un humano, por favor.", "gold": "operadora", "tags": ["human"]}
+{"id": "es-045", "text": "Necesito hablar con alguien de verdad, no con una máquina.", "gold": "operadora", "tags": ["human"]}
+{"id": "es-046", "text": "¿Me puede pasar con una operadora?", "gold": "operadora", "tags": ["human", "direct"]}
+{"id": "es-047", "text": "Comuníqueme con recepción.", "gold": "operadora", "tags": ["human", "direct"]}
+{"id": "es-048", "text": "Prefiero que me atienda un agente.", "gold": "operadora", "tags": ["human"]}
+{"id": "es-049", "text": "Quiero hablar con un representante.", "gold": "operadora", "tags": ["human"]}
+{"id": "es-050", "text": "Con alguien, por favor, con quien sea.", "gold": "operadora", "tags": ["human", "short"]}
+{"id": "es-051", "text": "Mire, mejor páseme con una persona que me pueda ayudar.", "gold": "operadora", "tags": ["human", "hn"]}
+{"id": "es-052", "text": "No quiero hablar con un robot, páseme con alguien.", "gold": "operadora", "tags": ["human", "negation-in-text"]}
+{"id": "es-053", "text": "¿Hay alguna persona que me pueda atender?", "gold": "operadora", "tags": ["human"]}
+{"id": "es-054", "text": "Déjeme hablar con la secretaria.", "gold": "operadora", "tags": ["human"]}
+{"id": "es-055", "text": "Eso era todo, muchas gracias, hasta luego.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "es-056", "text": "No, gracias, ya no necesito nada más. Adiós.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "es-057", "text": "Listo, muy amable, que tenga buen día.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "es-058", "text": "Vaya pues, gracias, hasta luego.", "gold": "colgar", "tags": ["farewell", "hn"]}
+{"id": "es-059", "text": "Ya puede colgar, gracias.", "gold": "colgar", "tags": ["farewell", "direct"]}
+{"id": "es-060", "text": "Perfecto, era solo eso. Buenas tardes.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "es-061", "text": "Bueno, le agradezco, adiós.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "es-062", "text": "Nada más, gracias. Chao.", "gold": "colgar", "tags": ["farewell", "short"]}
+{"id": "es-063", "text": "Me equivoqué de número, disculpe, hasta luego.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "es-064", "text": "Ya me resolvieron, gracias, feliz tarde.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "es-065", "text": "Está bien, después llamo. Adiós.", "gold": "colgar", "tags": ["farewell"]}
+{"id": "es-066", "text": "Cheque, gracias, eso sería todo.", "gold": "colgar", "tags": ["farewell", "hn"]}
+{"id": "es-067", "text": "¿A qué hora abren mañana?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-068", "text": "¿Dónde queda la oficina principal?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-069", "text": "¿Hasta qué hora atienden los sábados?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-070", "text": "¿Cuál es el correo para mandar documentos?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-071", "text": "¿Ustedes tienen cobertura en San Pedro Sula?", "gold": "ninguno", "tags": ["open", "hn"]}
+{"id": "es-072", "text": "¿Me puede repetir la dirección, por favor?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-073", "text": "¿Qué documentos necesito llevar?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-074", "text": "¿Trabajan los días feriados?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-075", "text": "¿Cómo se llama usted?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-076", "text": "¿Tienen parqueo para clientes?", "gold": "ninguno", "tags": ["open"]}
+{"id": "es-077", "text": "Aló, buenos días.", "gold": "ninguno", "tags": ["noise"]}
+{"id": "es-078", "text": "¿Aló? ¿Me escucha?", "gold": "ninguno", "tags": ["noise"]}
+{"id": "es-079", "text": "Sí.", "gold": "ninguno", "tags": ["noise", "short"]}
+{"id": "es-080", "text": "Este... espere un momento.", "gold": "ninguno", "tags": ["noise"]}
+{"id": "es-081", "text": "Buenas tardes, mire, tengo una consulta.", "gold": "ninguno", "tags": ["noise", "hn"]}
+{"id": "es-082", "text": "Un momentito, que estoy buscando el número de contrato.", "gold": "ninguno", "tags": ["noise"]}
+{"id": "es-083", "text": "¿Cómo dijo? No le entendí.", "gold": "ninguno", "tags": ["noise"]}
+{"id": "es-084", "text": "Ajá, sí, lo escucho.", "gold": "ninguno", "tags": ["noise"]}
+{"id": "es-085", "text": "No me pase con ventas, solo quiero saber el horario.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-086", "text": "No quiero hablar con soporte, ya hablé con ellos ayer.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-087", "text": "No necesito que me transfieran a facturación, solo una pregunta.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-088", "text": "Todavía no me pase con nadie, primero explíqueme usted.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-089", "text": "No, con la operadora no, prefiero que me lo diga usted.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-090", "text": "No es para ventas, es solo para saber dónde están ubicados.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-091", "text": "No tengo ninguna falla, el internet funciona bien, solo llamo por una duda.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-092", "text": "No tengo problema con el cobro, la factura está bien, era otra cosa.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-093", "text": "No quiero comprar nada, solo estoy preguntando por el horario.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-094", "text": "No me transfiera, por favor.", "gold": "ninguno", "tags": ["negation", "short"]}
+{"id": "es-095", "text": "No cuelgue, por favor, todavía tengo otra pregunta.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-096", "text": "Espere, no he terminado, no me corte.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-097", "text": "No, no es todo, me falta preguntarle otra cosa.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-098", "text": "Gracias, pero todavía no me despido, tengo una duda más.", "gold": "ninguno", "tags": ["negation"]}
+{"id": "es-099", "text": "Ventas me prometió una velocidad y el internet no funciona.", "gold": "soporte", "tags": ["hard"]}
+{"id": "es-100", "text": "Soporte ya vino, pero ahora me están cobrando la visita y no estoy de acuerdo.", "gold": "facturacion", "tags": ["hard"]}
+{"id": "es-101", "text": "Hablé con facturación y me dijeron que para contratar otra línea hable con ustedes.", "gold": "ventas", "tags": ["hard"]}
+{"id": "es-102", "text": "Ya hablé con ventas y con soporte y nadie me resuelve, quiero hablar con una persona.", "gold": "operadora", "tags": ["hard"]}
+{"id": "es-103", "text": "Gracias por pasarme antes con soporte; ahora quiero pagar mi factura.", "gold": "facturacion", "tags": ["hard"]}
+{"id": "es-104", "text": "El técnico arregló todo, solo quería agradecer. Hasta luego.", "gold": "colgar", "tags": ["hard"]}
+{"id": "es-105", "text": "eh si buenas mire es que no tengo internet desde la mañana", "gold": "soporte", "tags": ["asr", "indirect"]}
+{"id": "es-106", "text": "quiero este quiero contratar un plan para mi negocio", "gold": "ventas", "tags": ["asr", "indirect"]}
+{"id": "es-107", "text": "me me cobraron doble la factura de este mes", "gold": "facturacion", "tags": ["asr", "indirect"]}
+{"id": "es-108", "text": "paseme con una persona por favor", "gold": "operadora", "tags": ["asr", "human"]}
+{"id": "es-109", "text": "bueno gracias eso era todo hasta luego", "gold": "colgar", "tags": ["asr", "farewell"]}
+{"id": "es-110", "text": "a que hora cierran hoy", "gold": "ninguno", "tags": ["asr", "open"]}
+{"id": "es-111", "text": "no no me pase con ventas solo una pregunta", "gold": "ninguno", "tags": ["asr", "negation"]}
+{"id": "es-112", "text": "alo alo si me escucha", "gold": "ninguno", "tags": ["asr", "noise"]}
+{"id": "es-113", "text": "¿Cuánto cuesta el plan de cincuenta megas?", "gold": "ninguno", "tags": ["borderline"]}
+{"id": "es-114", "text": "Quiero cancelar mi servicio.", "gold": "operadora", "tags": ["borderline"]}
+{"id": "es-115", "text": "¿Qué promociones tienen este mes?", "gold": "ninguno", "tags": ["borderline"]}
+{"id": "es-116", "text": "Necesito cambiar el titular de la cuenta.", "gold": "operadora", "tags": ["borderline"]}

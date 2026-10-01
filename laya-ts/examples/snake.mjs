@@ -1,4 +1,6 @@
 import { Agent } from "../dist/index.js";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 // ---- CLI (no deps) ----
 const args = process.argv.slice(2);
@@ -6,7 +8,13 @@ const opt = (name, def) => {
   const i = args.indexOf(name);
   return i === -1 || i + 1 >= args.length ? def : args[i + 1];
 };
-const MODEL_DIR = opt("--model", "./model-ml");
+const MODEL_DIR = opt("--model", null);
+const HERE_MODEL = ["./model-ml", "../../model-ml"]
+  .map((d) => fileURLToPath(new URL(d, import.meta.url)))
+  .find((d) => existsSync(d));
+if (!MODEL_DIR && !HERE_MODEL) {
+  console.error("no local weights found; downloading convaiinnovations/laya (english) — or export your own: python laya-ts/scripts/export_onnx.py --model-dir <ckpt> --out-dir ./model-ml");
+}
 const TICK_MS = Math.max(20, Number(opt("--tick", "120")) || 120);
 const W = Math.max(10, Number(opt("--width", "20")) || 20);
 const H = Math.max(6, Number(opt("--height", "12")) || 12);
@@ -136,7 +144,9 @@ async function decide() {
 // ---- Main ----
 reset();
 try {
-  agent = await Agent.load(MODEL_DIR);
+  agent = MODEL_DIR ? await Agent.load(MODEL_DIR)
+    : HERE_MODEL ? await Agent.load(HERE_MODEL)
+    : await Agent.load("convaiinnovations/laya");
   src = "model";
 } catch (e) {
   console.error(`snake: model load failed (${e.message}) — heuristic mode`);

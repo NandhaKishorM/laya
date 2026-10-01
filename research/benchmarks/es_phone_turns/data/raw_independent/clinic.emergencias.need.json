@@ -1,0 +1,12 @@
+{
+ "name": "clinic.emergencias.need",
+ "model": "glm-4.7-flash:q8_0",
+ "prompt": "Escribí 5 frases distintas de una persona que llama a una clínica médica y necesita que se ocupe de su caso el área que atiende esto: «alguien está en peligro y necesita atención inmediata». En TODAS cuenta su problema usando una negación («no me funciona», «no me llegó», «no puedo», «nunca me»). No nombra el área.",
+ "phrases": [
+  "Oye, urgente, no me llega la señal de alerta en el teléfono",
+  "Oye, aquí no me funciona el botón de emergencia",
+  "Ayúdeme rápido, por favor, no puedo moverme de la cama",
+  "No, no, no me entendiste, nunca me han respondido los médicos",
+  "Aléjense, por favor, no me dejan respirar"
+ ]
+}

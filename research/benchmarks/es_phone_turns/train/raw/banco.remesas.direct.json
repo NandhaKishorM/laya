@@ -1,0 +1,15 @@
+{
+ "name": "banco.remesas.direct",
+ "model": "qwen3.6:35b-a3b-q8_0",
+ "prompt": "Escribí 8 frases distintas de una persona que llama a un banco y pide que la comuniquen con el área de «remesas» (enviar o cobrar dinero que viene del extranjero). TODAS tienen que pedir que las pasen, comuniquen o transfieran, y nombrar el área. La mitad son muy cortas.",
+ "phrases": [
+  "Buen día, buenas tardes, por favor con Remesas.",
+  "Qué tal, buen día, si no le molesta pásame a la gente de remesas que necesito cobrar.",
+  "Hola, buenos días, ¿me podrían comunicar con el departamento de remesas?",
+  "Con Remesas por favor.",
+  "A ver si me atienden pronto, quiero hablar con el área de remesas para enviar dinero.",
+  "Pásame a remesas, es urgente eso.",
+  "Le comento que necesito contactar con la sección de remesas para una transferencia internacional, gracias.",
+  "Remesas por favor."
+ ]
+}

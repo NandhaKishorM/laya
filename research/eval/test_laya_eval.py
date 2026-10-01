@@ -353,6 +353,19 @@ with tempfile.TemporaryDirectory() as _tmp:
         _written = json.load(_fh)
     check("release/CLI records code revision", _written["config"]["source_revision"], _source_sha)
 
+    with patch.object(laya, "load", return_value=_agent), \
+            patch.object(harness, "run_language", side_effect=RuntimeError("dataset unavailable")), \
+            patch.object(harness, "source_revision", return_value=(_source_sha, False)), \
+            patch.object(harness, "package_version", return_value="1"):
+        _rc = harness.main(["--model-revision", _model_sha,
+                            "--dataset-revision", _dataset_sha, "--per-lang", "1",
+                            "--n-opts", "2", "--out", _out, "--require-complete"])
+    with open(_out, encoding="utf-8") as _fh:
+        _failed = json.load(_fh)
+    check("release/failed run exits nonzero", _rc, 1)
+    check("release/failed run keeps diagnostic artifact",
+          _failed["report"]["en"]["error"], "dataset unavailable")
+
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

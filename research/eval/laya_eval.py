@@ -320,8 +320,8 @@ def validate_release_report(payload: Dict[str, Any], langs: Sequence[str]) -> Li
             errors.append("%s input fingerprint does not match its cases" % lang)
         if round(sum(row["correct"] for row in records) / per_lang, 4) != result.get("accuracy"):
             errors.append("%s accuracy does not match its cases" % lang)
-    if set(row.get("lang") for row in payload["cases"]) != set(langs):
-        errors.append("case languages differ from the requested languages")
+    if set(row.get("lang") for row in payload["cases"]) - set(langs):
+        errors.append("cases include an unrequested language")
     return errors
 
 

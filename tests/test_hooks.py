@@ -436,6 +436,15 @@ with f.hooks_installed(Tag(log, "t"), Tag(log, "t")):
     pass
 check("hooks_installed/no residue when nothing was installed before", len(f.hooks), 0)
 
+# a sequence is accepted the way `add_hook` accepts one, alone or next to single hooks
+log = []
+f = make_fake()
+with f.hooks_installed([Tag(log, "a"), Tag(log, "b")], Tag(log, "c")):
+    check("hooks_installed/a sequence is flattened", len(f.hooks), 3)
+    f.predict_batch(["s0"], QUESTIONS)
+check("hooks_installed/sequence order", log, ["a", "b", "c"])
+check("hooks_installed/a sequence is removed on exit", len(f.hooks), 0)
+
 
 # --------------------------------------------------------------- skip() counts
 # `skip()` replaces the whole call, so the count is part of the contract its docstring

@@ -60,12 +60,13 @@ and a JSON document with four parts:
 
 | key | contents |
 |---|---|
-| `config` | checkpoint, device, `max_len`, `head_max_len`, dataset, `per_lang`, `n_opts`, seed, the fixed instructions, the temperatures in force, laya version |
-| `report` | per language: `n`, `accuracy`, `macro_f1`, `ece`, `mean_confidence`, `acc_at_50_coverage`, `temperature` |
+| `config` | checkpoint, resolved model revision, requested dataset revision, code revision, UTC run time, device, library versions, `max_len`, `head_max_len`, dataset, `per_lang`, `n_opts`, seed, fixed instructions, temperatures, laya version |
+| `report` | per language: `n`, `accuracy`, `macro_f1`, `ece`, `mean_confidence`, `acc_at_50_coverage`, `temperature`, input SHA-256 |
 | `summary` | macro accuracy / ECE / macro-F1 over the languages that ran |
 | `cases` | every individual decision |
 
-Each case carries `state`, `instructions`, `options`, `gold_index`, `gold_label`,
+Each case carries `state`, `instructions`, ordered `options` and model-facing
+`option_texts`, `gold_index`, `gold_label`,
 `pred_index`, `pred_label`, `probability`, `p_gold`, `confidence`, `correct` and the
 `temperature` used. That is enough to re-derive every number in `report` from the
 file alone, with no model and no network:
@@ -77,6 +78,36 @@ n = len(d["cases"])
 acc = sum(c["correct"] for c in d["cases"]) / n
 assert abs(acc - d["report"]["en"]["accuracy"]) < 5e-5
 ```
+
+## English release-candidate run
+
+The [Evals workflow](../../.github/workflows/evals.yml) still runs the English CPU
+check weekly and after a release is published. Before publication, use **Run workflow**
+on the candidate code ref, select `release_candidate`, and supply full 40-character
+commits for `convaiinnovations/laya` and `mteb/amazon_massive_intent`. The manual
+candidate path requires no tracked checkout edits, pinned inputs, exactly 100 scored English
+cases and all 100 per-case records. A partial run fails, but its JSON is uploaded
+for diagnosis when one was written.
+
+The equivalent local command, from a checkout without tracked edits and with
+`datasets` installed, is:
+
+```bash
+python research/eval/laya_eval.py --model convaiinnovations/laya \
+  --langs en --device cpu --per-lang 100 --n-opts 20 \
+  --model-revision <full-checkpoint-sha> \
+  --dataset-revision <full-dataset-sha> \
+  --require-complete --out report.json
+```
+
+`report.en.input_sha256` identifies the ordered states, instructions, option keys,
+rendered option texts and gold positions actually scored. It excludes predictions
+and timing, so two checkpoint revisions can be compared on the same inputs. The
+resolved checkpoint revision and exact runtime versions remain in `config`.
+The existing `check_regression.py` compares numbers with the historical baseline;
+that baseline has no input fingerprint, so a pass there does **not** establish
+identical inputs. Review the new raw JSON before committing it under
+`research/results/` and citing its measured scope from `BENCHMARKS.md`.
 
 ## Method
 

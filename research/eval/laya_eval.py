@@ -36,11 +36,17 @@ be re-derived without re-running the model.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import platform
 import random
+import re
+import subprocess
 import sys
 import time
+from datetime import datetime, timezone
+from importlib import metadata
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 # Running this file directly puts research/eval/ on sys.path, not the repo root, so
@@ -97,11 +103,12 @@ def build_suite(rows: Sequence[Dict[str, Any]], labels: Sequence[str],
     return cases, gold, option_keys
 
 
-def load_language(lang: str, split: str = "test"):
+def load_language(lang: str, split: str = "test", revision: Optional[str] = None):
     """Load one language config. Raises with a readable message if unavailable."""
     from datasets import load_dataset
     try:
-        ds = load_dataset(DATASET, lang, split=split)
+        kw = {"revision": revision} if revision else {}
+        ds = load_dataset(DATASET, lang, split=split, **kw)
     except Exception as exc:                       # pragma: no cover - network path
         raise RuntimeError(
             "could not load %s config %r: %s" % (DATASET, lang, exc)
@@ -109,10 +116,11 @@ def load_language(lang: str, split: str = "test"):
     return [{"text": r["text"], "label_text": r["label_text"]} for r in ds]
 
 
-def available_languages() -> List[str]:
+def available_languages(revision: Optional[str] = None) -> List[str]:
     """Language configs the dataset exposes, excluding the aggregate 'default'."""
     from datasets import get_dataset_config_names
-    names = get_dataset_config_names(DATASET)
+    kw = {"revision": revision} if revision else {}
+    names = get_dataset_config_names(DATASET, **kw)
     return sorted(n for n in names if n != "default")
 
 
@@ -236,13 +244,94 @@ def summarise(confidences, corrects, golds, preds) -> Dict[str, float]:
 
 
 # ------------------------------------------------------------------------ runner
+def input_fingerprint(records: Sequence[Dict[str, Any]]) -> str:
+    """Hash ordered, model-facing inputs without predictions or timing fields."""
+    inputs = [{key: row[key] for key in (
+        "lang", "index", "state", "instructions", "options", "option_texts", "gold_index")}
+        for row in records]
+    blob = json.dumps(inputs, ensure_ascii=False, separators=(",", ":"), sort_keys=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def source_revision() -> Tuple[Optional[str], Optional[bool]]:
+    """Identify the checked-out code, including tracked local edits."""
+    try:
+        head = subprocess.run(["git", "-C", _REPO_ROOT, "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+        status = subprocess.run(["git", "-C", _REPO_ROOT, "status", "--porcelain",
+                                 "--untracked-files=no"], capture_output=True, text=True,
+                                check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None, None
+    return head, bool(status.strip())
+
+
+def package_version(name: str) -> Optional[str]:
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def validate_release_report(payload: Dict[str, Any], langs: Sequence[str]) -> List[str]:
+    """Refuse a release-candidate artifact whose inputs or cases cannot be audited."""
+    config = payload["config"]
+    errors = []
+    for key in ("requested_model_revision", "model_revision", "dataset_revision", "source_revision"):
+        if not re.fullmatch(r"[0-9a-f]{40}", str(config.get(key) or "")):
+            errors.append("%s must be a full commit SHA" % key)
+    if config.get("model_revision") != config.get("requested_model_revision"):
+        errors.append("loaded model revision differs from the requested revision")
+    if config.get("source_dirty") is not False:
+        errors.append("source checkout has tracked changes or cannot be inspected")
+    if any(not config.get("environment", {}).get(name) for name in
+           ("python", "torch", "transformers", "datasets")):
+        errors.append("runtime versions are incomplete")
+    if len(set(langs)) != len(langs):
+        errors.append("requested languages contain duplicates")
+    per_lang = config["per_lang"]
+    if per_lang < 1:
+        errors.append("per_lang must be positive")
+    for lang in langs:
+        result = payload["report"].get(lang, {})
+        records = [row for row in payload["cases"] if row.get("lang") == lang]
+        if "error" in result:
+            errors.append("%s failed: %s" % (lang, result["error"]))
+            continue
+        if result.get("n") != per_lang or len(records) != per_lang:
+            errors.append("%s has incomplete metrics or per-case records" % lang)
+            continue
+        valid = True
+        for i, row in enumerate(records):
+            options, texts = row.get("options"), row.get("option_texts")
+            gold, pred = row.get("gold_index"), row.get("pred_index")
+            if (row.get("index") != i or not isinstance(options, list)
+                    or not isinstance(texts, list) or len(options) != config["n_opts"]
+                    or len(texts) != len(options) or not isinstance(gold, int)
+                    or not 0 <= gold < len(options) or not isinstance(pred, int)
+                    or not 0 <= pred < len(options) or row.get("gold_label") != options[gold]
+                    or row.get("correct") != int(pred == gold)):
+                valid = False
+                break
+        if not valid:
+            errors.append("%s has inconsistent case inputs" % lang)
+            continue
+        if result.get("input_sha256") != input_fingerprint(records):
+            errors.append("%s input fingerprint does not match its cases" % lang)
+        if round(sum(row["correct"] for row in records) / per_lang, 4) != result.get("accuracy"):
+            errors.append("%s accuracy does not match its cases" % lang)
+    if set(row.get("lang") for row in payload["cases"]) != set(langs):
+        errors.append("case languages differ from the requested languages")
+    return errors
+
+
 def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
-                 unclamped: bool = False) -> Dict[str, Any]:
+                 unclamped: bool = False, dataset_revision: Optional[str] = None) -> Dict[str, Any]:
     """Evaluate one language and return its report plus per-case records."""
     import numpy as np
     from laya.common import QTYPES
 
-    rows = load_language(lang)
+    rows = load_language(lang, revision=dataset_revision) if dataset_revision else load_language(lang)
     cases, gold, option_keys = build_suite(
         rows, sorted({r["label_text"] for r in rows}), per_lang, n_opts, seed)
     logits = score_cases(agent, cases)
@@ -263,6 +352,7 @@ def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
             "state": cases[i][0],
             "instructions": INSTRUCTIONS,
             "options": option_keys[i],
+            "option_texts": [render_label(key) for key in option_keys[i]],
             "gold_index": int(gold[i]),
             "gold_label": option_keys[i][gold[i]],
             "pred_index": pred,
@@ -275,6 +365,7 @@ def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
         })
 
     report = summarise(confidences, corrects, gold, preds)
+    report["input_sha256"] = input_fingerprint(records)
     report["temperature"] = round(
         float(temperature_for(agent, QTYPES["choice"], n_opts, unclamped)), 6)
     return {"report": report, "cases": records}
@@ -289,6 +380,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--subfolder", default=None,
                         help="checkpoint subfolder, e.g. multilingual")
     parser.add_argument("--device", default=None, help="cpu, cuda, mps (default: auto)")
+    parser.add_argument("--model-revision", default=None,
+                        help="checkpoint commit, branch or tag (release runs require a full SHA)")
+    parser.add_argument("--dataset-revision", default=None,
+                        help="dataset commit, branch or tag (release runs require a full SHA)")
     parser.add_argument("--langs", default="en",
                         help="comma-separated configs, or 'all'")
     parser.add_argument("--per-lang", type=int, default=PER_LANG)
@@ -297,15 +392,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--out", default=None, help="write the JSON report here")
     parser.add_argument("--no-cases", action="store_true",
                         help="omit per-case records (smaller file)")
+    parser.add_argument("--require-complete", action="store_true",
+                        help="fail unless a pinned, complete, auditable report is produced")
     parser.add_argument("--unclamped", action="store_true",
                         help="score with the checkpoint's RAW bucket temperatures instead "
                              "of the clamped ones Agent applies. This is what reproduces "
                              "the committed pre-#42 sweep")
     args = parser.parse_args(argv)
 
+    if args.require_complete and (not args.out or args.no_cases):
+        parser.error("--require-complete needs --out and per-case records")
+    if args.require_complete:
+        if args.per_lang < 1 or args.n_opts < 2:
+            parser.error("--require-complete needs positive --per-lang and at least two options")
+        for name, revision in (("model", args.model_revision),
+                               ("dataset", args.dataset_revision)):
+            if not re.fullmatch(r"[0-9a-f]{40}", revision or ""):
+                parser.error("--%s-revision must be a full commit SHA" % name)
+
+    code_sha, code_dirty = source_revision()
+    if args.require_complete and (not code_sha or code_dirty):
+        parser.error("--require-complete needs a Git checkout without tracked changes")
+
     if args.langs.strip().lower() == "all":
         try:
-            langs = available_languages()
+            langs = available_languages(args.dataset_revision)
         except Exception as exc:
             print("could not list dataset configs: %s" % exc, file=sys.stderr)
             return 2
@@ -318,11 +429,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     import laya
 
     started = time.time()
-    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder)
+    load_kw = {"revision": args.model_revision} if args.model_revision else {}
+    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder, **load_kw)
     agent.model.eval()
+    if args.require_complete and getattr(agent, "revision", None) != args.model_revision:
+        parser.error("loaded checkpoint revision differs from --model-revision")
     payload: Dict[str, Any] = {
         "config": {
             "model": args.model,
+            "requested_model_revision": args.model_revision,
+            "model_revision": getattr(agent, "revision", None),
+            "dataset_revision": args.dataset_revision,
+            "source_revision": code_sha,
+            "source_dirty": code_dirty,
+            "run_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "environment": {
+                "python": platform.python_version(),
+                "platform": platform.platform(),
+                "processor": platform.processor() or None,
+                "logical_cpus": os.cpu_count(),
+                "torch": package_version("torch"),
+                "transformers": package_version("transformers"),
+                "datasets": package_version("datasets"),
+            },
             "subfolder": args.subfolder,
             "device": str(agent.device),
             "max_len": agent.cfg.get("max_len"),
@@ -345,7 +474,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         t0 = time.time()
         try:
             out = run_language(agent, lang, args.per_lang, args.n_opts,
-                               args.seed, args.unclamped)
+                               args.seed, args.unclamped, args.dataset_revision)
         except Exception as exc:
             print("  %-8s FAILED: %s" % (lang, str(exc)[:110]), file=sys.stderr)
             payload["report"][lang] = {"error": str(exc)[:200]}
@@ -373,11 +502,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
               % (len(scored), payload["summary"]["macro_accuracy"],
                  payload["summary"]["macro_ece"], payload["summary"]["macro_f1"]))
 
+    errors = validate_release_report(payload, langs) if args.require_complete else []
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, ensure_ascii=False, indent=1)
         print("  wrote %s" % args.out)
-    return 0
+    for error in errors:
+        print("  release report invalid: %s" % error, file=sys.stderr)
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":                      # pragma: no cover

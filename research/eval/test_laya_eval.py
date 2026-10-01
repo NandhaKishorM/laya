@@ -10,12 +10,19 @@ Run: python research/eval/test_laya_eval.py
 import os
 import random
 import sys
+import tempfile
+from contextlib import redirect_stderr
+from copy import deepcopy
+from io import StringIO
+from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from research.eval.laya_eval import (  # noqa: E402
-    ECE_BINS, INSTRUCTIONS, N_OPTS, SEED, build_case, build_suite, ece, macro_f1,
-    render_label, summarise, temperature_for,
+    ECE_BINS, INSTRUCTIONS, N_OPTS, SEED, available_languages, build_case, build_suite,
+    ece, input_fingerprint, load_language, macro_f1, render_label, summarise,
+    temperature_for, validate_release_report,
 )
 
 PASS, FAIL = [], []
@@ -242,6 +249,109 @@ check("208/only choice:11+ is the clamped bucket",
       _rerun["temperature_choice_11_plus"]["unclamped_rerun"], 0.10058280825614929)
 check("208/the served bucket is 0.5",
       _rerun["temperature_choice_11_plus"]["clamped_rerun"], 0.5)
+
+
+# --------------------------------------------------------- release-run evidence
+_model_sha, _dataset_sha, _source_sha = "a" * 40, "b" * 40, "c" * 40
+_record = {
+    "lang": "en", "index": 0, "state": {"utterance": "book a flight"},
+    "instructions": INSTRUCTIONS, "options": ["book_flight", "cancel"],
+    "option_texts": ["book flight", "cancel"], "gold_index": 0,
+    "gold_label": "book_flight", "pred_index": 0, "pred_label": "book_flight",
+    "correct": 1, "confidence": 0.9,
+}
+_release = {
+    "config": {
+        "requested_model_revision": _model_sha, "model_revision": _model_sha,
+        "dataset_revision": _dataset_sha, "source_revision": _source_sha,
+        "source_dirty": False, "per_lang": 1, "n_opts": 2,
+        "environment": {"python": "3.11", "torch": "2", "transformers": "5", "datasets": "5"},
+    },
+    "report": {"en": {"n": 1, "accuracy": 1.0, "macro_f1": 1.0,
+                      "ece": 0.1, "mean_confidence": 0.9,
+                      "input_sha256": input_fingerprint([_record])}},
+    "cases": [_record],
+}
+check("release/complete report accepted", validate_release_report(_release, ["en"]), [])
+_changed = deepcopy(_record)
+_changed["pred_index"] = 1
+check("release/predictions do not define input identity",
+      input_fingerprint([_changed]), input_fingerprint([_record]))
+_changed["options"] = list(reversed(_changed["options"]))
+check_true("release/option order defines input identity",
+           input_fingerprint([_changed]) != input_fingerprint([_record]))
+_changed = deepcopy(_release)
+_changed["config"]["dataset_revision"] = None
+check_true("release/missing dataset revision rejected",
+           any("dataset_revision" in e for e in validate_release_report(_changed, ["en"])))
+_changed = deepcopy(_release)
+_changed["config"]["model_revision"] = "d" * 40
+check_true("release/resolved model revision mismatch rejected",
+           any("differs" in e for e in validate_release_report(_changed, ["en"])))
+_changed = deepcopy(_release)
+_changed["config"]["source_dirty"] = True
+check_true("release/dirty checkout rejected", bool(validate_release_report(_changed, ["en"])))
+_changed = deepcopy(_release)
+_changed["cases"] = []
+check_true("release/missing case rejected", bool(validate_release_report(_changed, ["en"])))
+_changed = deepcopy(_release)
+_changed["cases"][0]["state"]["utterance"] = "cancel the flight"
+check_true("release/changed input rejected", bool(validate_release_report(_changed, ["en"])))
+_changed = deepcopy(_release)
+_changed["report"]["en"] = {"error": "dataset unavailable"}
+check_true("release/failed language rejected", bool(validate_release_report(_changed, ["en"])))
+_changed = deepcopy(_release)
+_changed["report"]["en"]["accuracy"] = 0.0
+check_true("release/incorrect accuracy rejected", bool(validate_release_report(_changed, ["en"])))
+
+_dataset_calls = []
+_fake_datasets = SimpleNamespace(
+    load_dataset=lambda *args, **kw: (_dataset_calls.append((args, kw)) or
+                                     [{"text": "hello", "label_text": "greet"}]),
+    get_dataset_config_names=lambda *args, **kw: (_dataset_calls.append((args, kw)) or
+                                                  ["default", "en"]),
+)
+with patch.dict(sys.modules, {"datasets": _fake_datasets}):
+    check("release/pinned dataset rows", load_language("en", revision=_dataset_sha),
+          [{"text": "hello", "label_text": "greet"}])
+    check("release/pinned language list", available_languages(_dataset_sha), ["en"])
+check_true("release/dataset pin passed to both loaders",
+           len(_dataset_calls) == 2 and
+           all(kw.get("revision") == _dataset_sha for _, kw in _dataset_calls))
+
+import laya  # noqa: E402
+from research.eval import laya_eval as harness  # noqa: E402
+
+with redirect_stderr(StringIO()):
+    try:
+        harness.main(["--require-complete", "--out", "report.json",
+                      "--model-revision", "main", "--dataset-revision", _dataset_sha])
+    except SystemExit as _exc:
+        check("release/invalid revision rejected before model load", _exc.code, 2)
+    else:
+        check_true("release/invalid revision rejected before model load", False)
+
+_agent = SimpleNamespace(
+    revision=_model_sha, device="cpu", cfg={"max_len": 512, "head_max_len": 192},
+    model=SimpleNamespace(eval=lambda: None), temperature_by_options={},
+    temperature_by_options_raw={},
+)
+with tempfile.TemporaryDirectory() as _tmp:
+    _out = os.path.join(_tmp, "report.json")
+    with patch.object(laya, "load", return_value=_agent) as _load_model, \
+            patch.object(harness, "run_language", return_value={
+                "report": deepcopy(_release["report"]["en"]), "cases": [deepcopy(_record)]}) as _run, \
+            patch.object(harness, "source_revision", return_value=(_source_sha, False)), \
+            patch.object(harness, "package_version", return_value="1"):
+        _rc = harness.main(["--model-revision", _model_sha,
+                            "--dataset-revision", _dataset_sha, "--per-lang", "1",
+                            "--n-opts", "2", "--out", _out, "--require-complete"])
+    check("release/CLI writes a complete report", _rc, 0)
+    check("release/CLI pins model load", _load_model.call_args.kwargs["revision"], _model_sha)
+    check("release/CLI pins dataset run", _run.call_args.args[-1], _dataset_sha)
+    with open(_out, encoding="utf-8") as _fh:
+        _written = json.load(_fh)
+    check("release/CLI records code revision", _written["config"]["source_revision"], _source_sha)
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

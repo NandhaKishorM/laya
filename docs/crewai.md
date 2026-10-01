@@ -214,10 +214,10 @@ guard = LayaTaskGuard(
 ```
 
 A node built on an `Agent` (`agent=Agent(...)`) reads neither, because an `Agent` has no routing step
-to read them in -- it answers on the checkpoint it was built with. Setting one there raises
-`ValueError` naming the argument instead of taking the call and dropping the hint, and a callable
-`lang_guess` on a `base_url` node raises before the request goes out rather than coming back as
-serve's 422 after it. The same rule lives in `laya.integrations._controls`, which the LangChain and
-LlamaIndex wrappers import; see the [LangChain
+to read them in -- it answers on the checkpoint it was built with. The node stores the hint, and its
+first call raises `ValueError` naming the argument before `predict` is reached rather than taking the
+call and dropping it. A callable `lang_guess` on a `base_url` node raises before the request goes out,
+rather than coming back as serve's 422 after it. The same rule lives in
+`laya.integrations._controls`, which the LangChain and LlamaIndex wrappers import; see the [LangChain
 integration](langchain.md#9-which-checkpoint-answers) for the precedence, the measured count of
 German queries detection leaves on the English checkpoint, and the recorded before.

@@ -531,8 +531,11 @@ with one raises `ValueError` before the request goes out rather than coming back
 after it; install the callable on the `Router` where serve runs, or pass a code.
 
 **`agent=` decides the rule.** A node handed `agent=Agent(...)` is answered by an `Agent`, and an
-`Agent` has no routing step to read a routing hint in -- `Agent.predict` takes neither name. Setting
-a hint on such a node raises instead of being dropped:
+`Agent` has no routing step to read a routing hint in -- `Agent.predict` takes neither name. The node
+still stores the hint, since declaring `extra = "allow"` is what lets a subclass add fields; what
+changes is that the first call raises instead of answering on the checkpoint the `Agent` was built
+with, and it raises before `predict` is reached, so no hook runs on a decision that cannot honour the
+hint:
 
 ```
 ValueError: task is a routing hint, and Agent.predict does not read it: this runner answers on

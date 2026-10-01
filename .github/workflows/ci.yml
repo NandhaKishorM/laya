@@ -259,6 +259,9 @@ jobs:
       - name: Shortlist attribution tests
         run: python -m pytest tests/test_evals_shortlist.py -q
 
+      - name: MASSIVE routing recipe tests
+        run: python -m pytest tests/test_massive_zh_routing.py -q
+
       - name: Eval API guard
         run: python tests/test_evals_api.py
 

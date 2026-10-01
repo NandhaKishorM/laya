@@ -342,7 +342,7 @@ class ONNXAgent(HookRegistry):
                         "predict_batch expects a list of states; pass a single state to predict()/system_one()."
                     )
                 if not isinstance(questions, dict):
-                    raise TypeError(
+                    raise ValueError(
                         "questions must be a dict of question id -> definition, got %s"
                         % type(questions).__name__
                     )
@@ -446,9 +446,9 @@ class ONNXAgent(HookRegistry):
                        "on_predict_end": on_predict_end, "hooks_raise": hooks_raise,
                        "hooks_timeout": hooks_timeout}
         if state is None:
-            raise TypeError("state must not be None; pass a string, dict, or list")
+            raise ValueError("state must not be None; pass a string, dict, or list")
         if not isinstance(questions, dict):
-            raise TypeError("questions must be a dict of question id -> definition, got %s"
+            raise ValueError("questions must be a dict of question id -> definition, got %s"
                             % type(questions).__name__)
         if aggregate != "auto":
             raise ValueError("predict_long: only aggregate='auto' is supported")

@@ -190,7 +190,8 @@ for bad_type in ([], {}):
 for bad_ins in (None, "", "   ", []):
     check_raises("invalid/instructions %r rejected" % (bad_ins,), ValueError,
                  lambda bi=bad_ins: _bare_onnx().predict_batch(STATES, {"q": {"type": "noul", "instructions": bi}}))
-check_raises("invalid/questions not a dict", TypeError,
+# ValueError so laya/serve.py maps malformed questions to HTTP 422 rather than 500
+check_raises("invalid/questions not a dict", ValueError,
              lambda: _bare_onnx().predict_batch(STATES, ["not", "a", "dict"]))
 check_raises("invalid/state is None in batch", TypeError,
              lambda: _bare_onnx().predict_batch([None], QUESTIONS))

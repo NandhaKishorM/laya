@@ -68,20 +68,32 @@ def int8_output_path(output_path: str) -> str:
 # encoder/head pair it writes.
 TRACE_BATCH = 2
 
-# Tolerance for the INT8 graph, which is looser than the fp32 one on purpose: weight-only
-# quantization is *meant* to change the numbers, and how much it changes them is a property of the
-# machine, not of the graph. Measured on the tiny synthetic model in tests/test_onnx_export_batch.py,
-# the worst probability drift over verify's own sweep is 9.95e-04 on macOS/arm64 and 2.53e-02 on the
-# Linux x86 CI runner -- a 25x spread, because `quantize_dynamic` picks its scales from the weights
-# and the arithmetic underneath differs. A tolerance chosen on one of those is a CI failure on the
-# other: 2e-02 passed locally and failed the `onnx export (quantization, weight-free)` job at
-# 2.53e-02. So this is set with headroom over the widest platform seen, not fitted to the narrowest.
+# Tolerance for the INT8 graph, and DO NOT TIGHTEN IT without re-measuring on all three platforms --
+# the obvious review move here is wrong, and the resulting failure looks like a broken quantizer
+# rather than a too-tight tolerance.
 #
-# What the check is really for is that the quantized graph still RUNS at batch > 1: `quantize_model`
-# deletes every `value_info` and rewrites every `MatMul`, exactly the kind of rewrite that can
-# re-specialize an axis. Numerical quality is bounded by the fp32 verification at `atol=1e-3`, which
-# is the one a bad export has to get past. It stays far below 0.5 so a graph whose probabilities have
-# genuinely collapsed still fails.
+# How much weight-only quantization moves the probabilities is a property of the MACHINE, not of the
+# graph: `quantize_dynamic` picks its scales from the weights and the arithmetic underneath differs.
+# What a HEALTHY export drifts by, measured on the same tiny model over verify's own sweep:
+#
+#   macOS / arm64, per-tensor (the default since #790)   1.65e-03
+#   macOS / arm64, per-channel                          9.95e-04
+#   Linux x86 (CI)                                      2.53e-02   <- 2e-02 failed this job
+#   Windows                                             between 5e-02 and 7e-02: a good export
+#                                                       FAILS at 5e-02 and passes at 7e-02
+#
+# Roughly two orders of magnitude across three platforms, and 1e-1 is the only value in that set that
+# accepts all of them. The headroom is not 100x -- on Windows it is under 2x. The Windows figures are
+# @Bruce-Yii's from review; the macOS ones are mine; the Linux one is this PR's own failing CI log.
+#
+# What the check is for is that the quantized graph still RUNS at batch > 1: `quantize_model` deletes
+# every `value_info` and rewrites every `MatMul`, exactly the kind of rewrite that can re-specialize an
+# axis. Numerical quality is bounded by the fp32 verification at `atol=1e-3`, which is the check a bad
+# export actually has to get past. 1e-1 stays far below the 0.5 that a coin flip on a two-class output
+# would mean, so a graph whose probabilities have collapsed still fails.
+#
+# If the gate should carry more numerical weight than "does it still run", the place to add it is a
+# per-platform floor recorded in the test, not a lower constant here.
 INT8_ATOL = 1e-1
 
 INPUT_NAMES = [

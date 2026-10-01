@@ -362,24 +362,14 @@ if loaded is not None:
     }
     check("graph/the declared axes are the ones this suite requires, name by name",
           export_onnx.DYNAMIC_AXES, _WANT_AXES)
-    # One `Dim` per name, SHARED across the inputs that use it. `torch.export.Dim("batch_size")`
-    # called twice returns two unequal objects, so building one per occurrence would declare five
-    # independent batch symbols -- "each input may have its own batch size" instead of "they must
-    # agree". The exported graph names them identically either way and runs either way, so no
-    # behavioural check here can tell them apart; this pins the specification directly, which is
-    # the only place the difference exists.
-    _shapes = export_onnx._dynamic_shapes()
-    check("graph/one dynamic shape entry per input", len(_shapes), len(export_onnx.INPUT_NAMES))
-    _by_label = {}
-    for _name, _entry in zip(export_onnx.INPUT_NAMES, _shapes):
-        for _axis, _dim in _entry.items():
-            _by_label.setdefault(_WANT_AXES[_name][_axis], []).append(_dim)
-    check_true("graph/inputs sharing an axis name share one Dim object",
-               all(all(d is group[0] for d in group) for group in _by_label.values()),
-               {k: len({id(d) for d in v}) for k, v in _by_label.items()})
-    check("graph/and every declared axis name is represented",
-          sorted(_by_label), sorted({lbl for n in export_onnx.INPUT_NAMES
-                                     for lbl in _WANT_AXES[n].values()}))
+    # The axis NAMES are the shared-symbol mechanism under `dynamic_axes`: every input that uses
+    # "batch_size" declares the same string, so a feed is only valid when its rows agree. An earlier
+    # revision of this branch built `torch.export.Dim` objects instead and asserted object identity
+    # here; #726 reverted the declaration to `dynamic_axes` for torch compatibility, so that check is
+    # gone with it and the name table above is what carries the property.
+    check("graph/every input that shares an axis declares the same symbol name",
+          sorted({lbl for n in export_onnx.INPUT_NAMES for lbl in _WANT_AXES[n].values()}),
+          ["batch_size", "num_markers", "seq_len"])
     _wrong = []
     for _name, _axes in _WANT_AXES.items():
         _got = declared.get(_name, [])
@@ -691,6 +681,31 @@ help_text = subprocess.run(
 check_true("cli/--no-verify is documented in --help", "--no-verify" in help_text,
            [ln for ln in help_text.splitlines() if "verify" in ln])
 
+# ---------------------------------------------------- `os._exit` must stay behind the __main__ guard
+# A source check on purpose: this is the one property of this file that cannot be observed by running
+# it the way `ci.yml` does. Unguarded, the exit at the bottom fires at IMPORT time, so `pytest tests/`
+# collects this file, the interpreter leaves during collection, and pytest reports SUCCESS having
+# executed nothing -- 0 bytes of output, exit 0, measured. `sys.exit` is loud in that situation
+# (exit 3 and an INTERNALERROR traceback); the hard exit is silent, which is why this file was the only
+# one in the repository that could turn a red run green by leaving.
+#
+# A mutation sweep driven by `python tests/<name>.py` cannot catch the regression -- in script mode the
+# guard changes nothing -- so it is asserted here rather than left for a reviewer to find again.
+# Assembled at run time, NOT written as one literal: a literal would appear in this file's own source
+# and `_GUARD in _src` would then be true even with the real guard deleted. That mistake survived a
+# mutation sweep once already.
+_GUARD = "if " + "__name__" + ' == "' + "__main__" + '":'
+_src = inspect.getsource(sys.modules[__name__])
+# Only statements that START with the call, so the line above that merely names it does not count.
+_calls = [ln for ln in _src.splitlines() if ln.strip().startswith("os." + "_exit(")]
+check("guard/the hard exit appears exactly once", len(_calls), 1)
+check_true("guard/it is indented, i.e. inside a block rather than at module level",
+           bool(_calls) and _calls[0].startswith("    "), _calls)
+check_true("guard/the file has a __main__ guard", _GUARD in _src, "")
+check_true("guard/and every hard exit is after it, never before",
+           all(ln in _src.split(_GUARD, 1)[-1] for ln in _calls), _calls)
+
+
 # ---------------------------------------------------------------- report
 # The sessions this file opened are dropped before the report, so a torn-down session cannot be
 # blamed for a failure printed after it.
@@ -719,6 +734,32 @@ for f in FAIL:
 # their results are already printed; nothing below this line was going to run anyway. Measured on
 # macOS with onnxruntime 1.30.0: 0 of 40 runs abort, against 4 of 42 for the same tests exiting
 # normally.
-sys.stdout.flush()
-sys.stderr.flush()
-os._exit(1 if FAIL else 0)
+def test_onnx_export_batch_suite():
+    """The pytest entry point: one collected test that reports what the module body already checked.
+
+    This file is a script-style suite -- the checks run at import and accumulate into `PASS`/`FAIL`,
+    which is how every `python tests/<name>.py` suite in this repository works and how `ci.yml` invokes
+    it. Without this function pytest collects nothing and exits 5 ("no tests ran") whatever the checks
+    found, so a real failure would show in stdout and not in the status. With it, `pytest` reports the
+    same verdict the script does.
+    """
+    assert not FAIL, "%d of %d checks failed:\n  %s" % (
+        len(FAIL), len(PASS) + len(FAIL), "\n  ".join(FAIL))
+
+
+if __name__ == "__main__":
+    # GUARDED, and the guard is the point. Without it this `os._exit` runs at IMPORT time, so a plain
+    # `pytest tests/` collects this file, the interpreter leaves during collection, and pytest reports
+    # SUCCESS having executed nothing. Measured on this branch before the guard:
+    #
+    #   python -m pytest tests/test_onnx_export_batch.py -q   ->  0 bytes of output, exit 0
+    #   python -m pytest tests/test_runtime_fixes.py -q       ->  9757 bytes, 103 INTERNALERROR
+    #                                                             lines, exit 3  (it uses sys.exit)
+    #
+    # The control is what makes it damning: `sys.exit` is loud and `os._exit` is silent, so this was
+    # the one file in the repository that could turn a red run green by leaving. `sys.exit` appears 58
+    # times across tests/; `os._exit` appears here and nowhere else. ci.yml runs this file as
+    # `python tests/...` so CI never saw it, which is exactly why it had to be caught by review.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(1 if FAIL else 0)

@@ -344,7 +344,6 @@ from laya.router import Router
 
 CONTROLS = (tuple(_controls.PREDICT_CONTROLS) + tuple(_controls.DECISION_CONTROLS)
             + tuple(_controls.HOOK_CONTROLS))
-CONTROLS = tuple(_controls.PREDICT_CONTROLS) + tuple(_controls.HOOK_CONTROLS)
 ROUTER_HINTS = tuple(_controls.ROUTER_ONLY_CONTROLS)
 
 

@@ -146,10 +146,10 @@ The remote client uses Python's standard library `urllib` with zero heavy depend
 
 `LayaSingleSelector`, `LayaMultiSelector` and `LayaQueryRouter` take the same per-call arguments the
 core API does: the two token budgets (`max_len`, `head_max_len`), the language and abstention
-controls (`lang`, `min_confidence`), and the five prediction-hook
-arguments (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`). They are
-per selector, so a wide routing step can be given room while the rest of the pipeline keeps the
-checkpoint's defaults.
+controls (`lang`, `min_confidence`), the five prediction-hook arguments (`hooks`, `on_predict_start`,
+`on_predict_end`, `hooks_raise`, `hooks_timeout`), and the two routing hints (`task`, `lang_guess`).
+They are per selector, so a wide routing step can be given room while the rest of the pipeline keeps
+the checkpoint's defaults.
 
 A choice question's options share the checkpoint's *option* budget -- `head_max_len`, 192 tokens on
 `laya` -- and every candidate contributes its name and description, so past roughly 20 tools the
@@ -184,8 +184,8 @@ integration](langchain.md#7-widening-the-token-budget-for-many-options) for that
 **Hooks run on the local path only.** A selector with a `base_url` and `hooks=[...]` raises
 `ValueError` rather than reporting a success whose cache never ran -- a hook is a Python callable
 that runs inside `predict`, and no wire format carries it. Install hooks in the process that runs
-inference. The two budgets do travel to a remote node, in the request body, up to its
-`LAYA_MAX_TOKEN_BUDGET` ceiling; a larger value comes back as a 422.
+inference. The two budgets and the two routing hints do travel to a remote node, in the request body,
+up to its `LAYA_MAX_TOKEN_BUDGET` ceiling; a larger value comes back as a 422.
 
 ### Language and abstention
 
@@ -197,10 +197,33 @@ than a forced selection. Both are read by `Agent.predict` and `Router.predict` a
 unset one is omitted, not sent as `None`, so it cannot shadow the deployment's own default;
 `min_confidence=0.0` and `lang=""` are real values and are forwarded as given.
 
+### Which checkpoint answers
+
+**The two routing hints choose the checkpoint that selects.** `task="typed-decisions"` pins the
+workflow rather than waiting for auto task detection to recognise the question ids, and `lang_guess`
+takes a language code -- or a callable of the query being selected against -- from something that
+already knows it, consulted after an explicit `lang` and before core's own script detection; any
+non-English code routes to the multilingual checkpoint. A German-documented index is the case the
+hint is for: measured on sixteen German support queries, detection leaves 6 of the 8 written without
+umlauts and 2 of the 8 carrying them on the `english` checkpoint, while `lang_guess="de"` moves all
+16 to `multilingual`. See the [LangChain
+integration](langchain.md#9-which-checkpoint-answers) for that table and its
+reason strings.
+
 ```python
 selector = LayaSingleSelector(
     instructions="Which tool or query engine is best suited to answer this query?",
-    lang="de",             # answer German queries in German
-    min_confidence=0.3,    # abstain when no tool clears a 0.3 confidence
+    lang="de",               # answer German queries in German
+    min_confidence=0.3,      # abstain when no tool clears a 0.3 confidence
+    lang_guess="de",         # this index's documents are German
 )
 ```
+
+A selector built on an `Agent` (`agent=Agent(...)`) reads neither routing hint, because an `Agent`
+has no routing step to read them in -- it answers on the checkpoint it was built with. Setting one
+there raises `ValueError` naming the argument instead of taking the call and dropping the hint, and a
+callable `lang_guess` on a `base_url` selector raises before the request goes out rather than coming
+back as serve's 422 after it. The same rule lives in `laya.integrations._controls`, which the LangChain
+and CrewAI wrappers import; see the [LangChain
+integration](langchain.md#9-which-checkpoint-answers) for the precedence and the
+recorded before.

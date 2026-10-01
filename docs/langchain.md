@@ -462,3 +462,84 @@ through `on_predict_start=`/`on_predict_end=` instead of `hooks=` measured 359 m
 `laya-serve` has no way to receive or run one, so a node with a `base_url` and any of the five set
 raises `ValueError` naming the arguments rather than reporting success for a cache that never ran.
 Install hooks on the process that runs inference.
+
+---
+
+## 9. Which Checkpoint Answers
+
+`Router.route` decides between the three checkpoints on this precedence -- explicit `model` >
+explicit `task` > detected workflow > explicit `lang` > `lang_guess` > detected script/language --
+and until now a chain step could state only `model` of those six. The two that were missing are the
+two that do not name a repository:
+
+- **`task`** forces a checkpoint by workflow name, so `task="typed-decisions"` answers on the
+  typed-decisions checkpoint without waiting for auto task detection to recognise the question ids.
+  An unknown name raises `ValueError` from core and lists what it does know.
+- **`lang_guess`** is a language code from something that already knows the answer -- a user id, a
+  locale header, an `Accept-Language` value. It is consulted after an explicit `lang` and before
+  detection, and it only answers "can the English checkpoint read this?", so any non-English code
+  routes to the multilingual one. It may also be a callable taking the state, and a blank one falls
+  through to detection, which is how an abstaining language identifier is supposed to behave.
+
+```python
+router = LayaRouter(
+    criteria=queue_criteria,
+    task="typed-decisions",           # this workflow, on that checkpoint, always
+    lang_guess=lambda state: state["locale"][:2],
+)
+```
+
+Both are per node, like the budgets, and unset means unsent: leave one out and the deployment's own
+`Router(task=...)` / `Router(lang_guess=...)` stays in charge rather than being overwritten with
+`None`. `batch()` sends them with every request in the batch, `abatch()` on the same path.
+
+**What the hint moves, measured.** Sixteen German support queries through `Router._route` on
+`6d942c9` -- routing only, so no checkpoint is loaded and no answer is taken -- counted by which
+checkpoint the decision lands on:
+
+| German queries | no hint | `lang_guess="de"` |
+|---|---|---|
+| 8 written without umlauts or `ß` | 6 answered on `english` | 8 on `multilingual` |
+| 8 carrying umlauts or `ß` | 2 answered on `english` | 8 on `multilingual` |
+
+Detection is a good guesser when the text gives it letters to work with; `Zahlung fehlgeschlagen`
+brings it to its stated abstention (`"Latin script, language not identified and no non-English
+letters; using default (english)"`), and `Was kostet die MwSt?` to a wrong read (`"English Latin
+text"`). A caller that knows the language from a user id or an `Accept-Language` header knows better
+than that, which is the whole argument for the hint. What is *not* claimed here is what the two
+checkpoints then score on those queries -- that needs weights and a labelled set, and this table is
+about which one answers, not how well.
+
+**A recorded `before`.** On `6d942c9`, in real (installed `langchain-core`) mode, a node built with
+both hints and a budget, answering through a runner that prints what `predict` received:
+
+```
+node.task           'typed_decisions'        # extra="allow" stores it
+model_extra         {'task': 'typed_decisions', 'lang_guess': 'de'}
+predict() received  {'max_len': 8192}        # and the call sees neither hint
+```
+
+The node *looked* configured -- `router.task` read back what it was given -- and the decision above
+was still taken on the deployment's defaults. The forwarding itself is what the gate asserts, in
+`tests/test_langchain.py`, `tests/test_crewai.py` and `tests/test_llamaindex.py`: no latency claim is
+made for it, because a routing hint changes which weights answer, not how long the pass takes.
+
+**Remote mode sends them; one shape it cannot.** A node with a `base_url` puts both in the request
+body, where `laya-serve` treats them exactly as documented in the [HTTP
+API](http-api.md). The callable form of `lang_guess` does not cross HTTP, so a remote node called
+with one raises `ValueError` before the request goes out rather than coming back as serve's `422`
+after it; install the callable on the `Router` where serve runs, or pass a code.
+
+**`agent=` decides the rule.** A node handed `agent=Agent(...)` is answered by an `Agent`, and an
+`Agent` has no routing step to read a routing hint in -- `Agent.predict` takes neither name. Setting
+a hint on such a node raises instead of being dropped:
+
+```
+ValueError: task is a routing hint, and Agent.predict does not read it: this runner answers on
+the checkpoint it was built with. Pass a Router as `agent=`, or drop it.
+```
+
+The rule is read from the signature of the call about to be made, not from a list of classes, so a
+runner that declares `**kwargs` is forwarded to rather than refused -- the wrapper cannot tell what
+it reads, and refusing on a guess would block a call that works. `laya.integrations.crewai` and
+`laya.integrations.llamaindex` import the same rule from `laya.integrations._controls`.

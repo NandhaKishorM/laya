@@ -34,6 +34,8 @@ from ._controls import budget_kwargs as _budget_kwargs, hook_kwargs as _hook_kwa
 from ._controls import decision_kwargs as _decision_kwargs
 from ._controls import predict_kwargs as _predict_kwargs
 from ._controls import reject_remote_hooks as _reject_remote_hooks
+from ._controls import reject_remote_lang_guess as _reject_remote_lang_guess
+from ._controls import require_router_controls as _require_router_controls, router_kwargs as _router_kwargs
 
 
 class LayaGuardrailError(ValueError):
@@ -161,13 +163,18 @@ def _call_remote(
     head_max_len: Optional[int] = None,
     lang: Optional[str] = None,
     min_confidence: Optional[float] = None,
+    task: Optional[str] = None,
+    lang_guess: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Send decision request to a remote laya-serve HTTP instance using standard library urllib.
 
     `max_len` / `head_max_len` travel in the body; laya-serve applies them up to its
     `LAYA_MAX_TOKEN_BUDGET` ceiling and answers a larger value with 422. `lang` / `min_confidence`
     ride in the same body (they are laya-serve `BODY_CONTROLS` too): the language codes the state
-    for routing and calibration, and the abstention gate flags a low-confidence answer.
+    for routing and calibration, and the abstention gate flags a low-confidence answer. `task` names
+    the checkpoint that answers and `lang_guess` is the language code routing reads before its own
+    detection -- both are laya-serve body controls too, and only `lang_guess`'s string form has a
+    wire representation (`reject_remote_lang_guess` refuses the callable before the request).
     """
     url = base_url.rstrip("/")
     if not url.endswith("/v1/systemone"):
@@ -184,6 +191,10 @@ def _call_remote(
         payload["lang"] = lang
     if min_confidence is not None:
         payload["min_confidence"] = min_confidence
+    if task is not None:
+        payload["task"] = task
+    if lang_guess is not None:
+        payload["lang_guess"] = lang_guess
 
     data = json.dumps(payload).encode("utf-8")
     headers = {"Content-Type": "application/json"}
@@ -227,6 +238,8 @@ def _execute_decision(
     head_max_len: Optional[int] = None,
     lang: Optional[str] = None,
     min_confidence: Optional[float] = None,
+    task: Optional[str] = None,
+    lang_guess: Optional[Any] = None,
     hooks: Optional[Any] = None,
     on_predict_start: Optional[Any] = None,
     on_predict_end: Optional[Any] = None,
@@ -234,14 +247,17 @@ def _execute_decision(
     hooks_timeout: Optional[float] = None,
 ) -> Dict[str, Any]:
     hook_kwargs = _hook_kwargs(hooks, on_predict_start, on_predict_end, hooks_raise, hooks_timeout)
+    router_kwargs = _router_kwargs(task, lang_guess)
     if base_url:
         _reject_remote_hooks(hook_kwargs, base_url)
+        _reject_remote_lang_guess(router_kwargs, base_url)
         budget = _budget_kwargs(max_len, head_max_len)
         decision = _decision_kwargs(lang, min_confidence)
         return _call_remote(base_url, state, questions, api_key=api_key, model=model,
-                            **budget, **decision)
+                            **budget, **decision, **router_kwargs)
     runner = agent if agent is not None else _get_default_router()
     kwargs = _predict_kwargs(model, max_len, head_max_len, lang, min_confidence)
+    kwargs.update(_require_router_controls(runner, "predict", router_kwargs))
     kwargs.update(hook_kwargs)
     return runner.predict(state, questions, **kwargs)
 
@@ -271,19 +287,28 @@ def _execute_batch(
     max_len: Optional[int] = None,
     head_max_len: Optional[int] = None,
     hook_kwargs: Optional[Dict[str, Any]] = None,
+    task: Optional[str] = None,
+    lang_guess: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     """Evaluate one question set over many states, packing them into shared forward passes.
 
     The local sibling of `_execute_decision`; results come back in input order. `Agent`
     and `Router` disagree about how `predict_batch` is called (states plus one question
     set, versus one request dict each), so both forms are built here. The token budget
-    rides on each request for a Router and as call arguments for an Agent.
+    rides on each request for a Router and as call arguments for an Agent, and so does
+    each routing hint -- a Router request dict carries `task` and `lang_guess`, which is
+    how a batch that asks for one checkpoint and one language states that per request.
     """
     runner = agent if agent is not None else _get_default_router()
     overrides = _predict_kwargs(model, max_len, head_max_len)
+    router_kwargs = _router_kwargs(task, lang_guess)
     if hasattr(runner, "route_batch"):
+        # A request dict's `task` / `lang_guess` reach core through `Router.route`, so that is the
+        # signature asked -- `predict_batch` takes neither as a call argument.
+        overrides.update(_require_router_controls(runner, "route", router_kwargs))
         requests = [dict({"state": state, "questions": questions}, **overrides) for state in states]
         return runner.predict_batch(requests)
+    overrides.update(_require_router_controls(runner, "predict_batch", router_kwargs))
     return runner.predict_batch(list(states), questions, **overrides, **(hook_kwargs or {}))
 
 
@@ -352,6 +377,7 @@ class _BatchedRunnable:
         results = _execute_batch(
             states, self._questions(), agent=self.agent, model=self.model,
             max_len=self.max_len, head_max_len=self.head_max_len, hook_kwargs=hook_kwargs,
+            task=self.task, lang_guess=self.lang_guess,
         )
         return [self._finish(result, item) for result, item in zip(results, inputs)]
 
@@ -397,6 +423,8 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
     head_max_len: Optional[int] = None
     lang: Optional[str] = None
     min_confidence: Optional[float] = None
+    task: Optional[str] = None
+    lang_guess: Optional[Any] = None
     hooks: Optional[Any] = None
     on_predict_start: Optional[Any] = None
     on_predict_end: Optional[Any] = None
@@ -424,6 +452,8 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
         head_max_len: Optional[int] = None,
         lang: Optional[str] = None,
         min_confidence: Optional[float] = None,
+        task: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
         hooks: Optional[Any] = None,
         on_predict_start: Optional[Any] = None,
         on_predict_end: Optional[Any] = None,
@@ -446,6 +476,8 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
                 head_max_len=head_max_len,
                 lang=lang,
                 min_confidence=min_confidence,
+                task=task,
+                lang_guess=lang_guess,
                 hooks=hooks,
                 on_predict_start=on_predict_start,
                 on_predict_end=on_predict_end,
@@ -467,6 +499,8 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
             self.head_max_len = head_max_len
             self.lang = lang
             self.min_confidence = min_confidence
+            self.task = task
+            self.lang_guess = lang_guess
             self.hooks = hooks
             self.on_predict_start = on_predict_start
             self.on_predict_end = on_predict_end
@@ -516,6 +550,8 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
             head_max_len=self.head_max_len,
             lang=self.lang,
             min_confidence=self.min_confidence,
+            task=self.task,
+            lang_guess=self.lang_guess,
             hooks=self.hooks,
             on_predict_start=self.on_predict_start,
             on_predict_end=self.on_predict_end,
@@ -557,6 +593,8 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
     head_max_len: Optional[int] = None
     lang: Optional[str] = None
     min_confidence: Optional[float] = None
+    task: Optional[str] = None
+    lang_guess: Optional[Any] = None
     hooks: Optional[Any] = None
     on_predict_start: Optional[Any] = None
     on_predict_end: Optional[Any] = None
@@ -582,6 +620,8 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
         head_max_len: Optional[int] = None,
         lang: Optional[str] = None,
         min_confidence: Optional[float] = None,
+        task: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
         hooks: Optional[Any] = None,
         on_predict_start: Optional[Any] = None,
         on_predict_end: Optional[Any] = None,
@@ -606,6 +646,8 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
                 head_max_len=head_max_len,
                 lang=lang,
                 min_confidence=min_confidence,
+                task=task,
+                lang_guess=lang_guess,
                 hooks=hooks,
                 on_predict_start=on_predict_start,
                 on_predict_end=on_predict_end,
@@ -627,6 +669,8 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
             self.head_max_len = head_max_len
             self.lang = lang
             self.min_confidence = min_confidence
+            self.task = task
+            self.lang_guess = lang_guess
             self.hooks = hooks
             self.on_predict_start = on_predict_start
             self.on_predict_end = on_predict_end
@@ -722,6 +766,8 @@ class LayaGuardrail(_BatchedRunnable, RunnableSerializable):
             head_max_len=self.head_max_len,
             lang=self.lang,
             min_confidence=self.min_confidence,
+            task=self.task,
+            lang_guess=self.lang_guess,
             hooks=self.hooks,
             on_predict_start=self.on_predict_start,
             on_predict_end=self.on_predict_end,
@@ -751,6 +797,8 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
     head_max_len: Optional[int] = None
     lang: Optional[str] = None
     min_confidence: Optional[float] = None
+    task: Optional[str] = None
+    lang_guess: Optional[Any] = None
     hooks: Optional[Any] = None
     on_predict_start: Optional[Any] = None
     on_predict_end: Optional[Any] = None
@@ -772,6 +820,8 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
         head_max_len: Optional[int] = None,
         lang: Optional[str] = None,
         min_confidence: Optional[float] = None,
+        task: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
         hooks: Optional[Any] = None,
         on_predict_start: Optional[Any] = None,
         on_predict_end: Optional[Any] = None,
@@ -790,6 +840,8 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
                 head_max_len=head_max_len,
                 lang=lang,
                 min_confidence=min_confidence,
+                task=task,
+                lang_guess=lang_guess,
                 hooks=hooks,
                 on_predict_start=on_predict_start,
                 on_predict_end=on_predict_end,
@@ -807,6 +859,8 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
             self.head_max_len = head_max_len
             self.lang = lang
             self.min_confidence = min_confidence
+            self.task = task
+            self.lang_guess = lang_guess
             self.hooks = hooks
             self.on_predict_start = on_predict_start
             self.on_predict_end = on_predict_end
@@ -852,6 +906,8 @@ class LayaTriage(_BatchedRunnable, RunnableSerializable):
             head_max_len=self.head_max_len,
             lang=self.lang,
             min_confidence=self.min_confidence,
+            task=self.task,
+            lang_guess=self.lang_guess,
             hooks=self.hooks,
             on_predict_start=self.on_predict_start,
             on_predict_end=self.on_predict_end,
@@ -881,6 +937,8 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
     head_max_len: Optional[int] = None
     lang: Optional[str] = None
     min_confidence: Optional[float] = None
+    task: Optional[str] = None
+    lang_guess: Optional[Any] = None
     hooks: Optional[Any] = None
     on_predict_start: Optional[Any] = None
     on_predict_end: Optional[Any] = None
@@ -903,6 +961,8 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
         head_max_len: Optional[int] = None,
         lang: Optional[str] = None,
         min_confidence: Optional[float] = None,
+        task: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
         hooks: Optional[Any] = None,
         on_predict_start: Optional[Any] = None,
         on_predict_end: Optional[Any] = None,
@@ -922,6 +982,8 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
                 head_max_len=head_max_len,
                 lang=lang,
                 min_confidence=min_confidence,
+                task=task,
+                lang_guess=lang_guess,
                 hooks=hooks,
                 on_predict_start=on_predict_start,
                 on_predict_end=on_predict_end,
@@ -940,6 +1002,8 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
             self.head_max_len = head_max_len
             self.lang = lang
             self.min_confidence = min_confidence
+            self.task = task
+            self.lang_guess = lang_guess
             self.hooks = hooks
             self.on_predict_start = on_predict_start
             self.on_predict_end = on_predict_end
@@ -960,6 +1024,8 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
             head_max_len=self.head_max_len,
             lang=self.lang,
             min_confidence=self.min_confidence,
+            task=self.task,
+            lang_guess=self.lang_guess,
             hooks=self.hooks,
             on_predict_start=self.on_predict_start,
             on_predict_end=self.on_predict_end,
@@ -987,6 +1053,8 @@ class LayaEvaluator(_BatchedRunnable, RunnableSerializable):
             head_max_len=self.head_max_len,
             lang=self.lang,
             min_confidence=self.min_confidence,
+            task=self.task,
+            lang_guess=self.lang_guess,
             hooks=self.hooks,
             on_predict_start=self.on_predict_start,
             on_predict_end=self.on_predict_end,

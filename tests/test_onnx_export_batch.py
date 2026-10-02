@@ -226,7 +226,7 @@ try:
     # `libc++abi: recursive_mutex lock failed` at interpreter shutdown -- exit 134 AFTER the suite
     # printed "0 failed", i.e. a red CI job with a green summary.
     del _sess2, _got
-except BaseException as _err:
+except (SystemExit, Exception) as _err:
     # Recorded rather than raised, for the reason `attempt()` documents: this block exports and RUNS a
     # graph, so the regressions this PR exists to catch -- TRACE_BATCH=1, a dropped `dynamic_axes` --
     # surface here first, at roughly check 12 of 96, and used to end the file on a bare ONNX Runtime
@@ -268,7 +268,8 @@ try:
           _s3.get_inputs()[0].shape[0], "batch_size")
 except _Skip:
     pass
-except BaseException as _err:            # BaseException: verify_batch_dynamic raises SystemExit
+except (SystemExit, Exception) as _err:   # SystemExit is not an Exception, so it must be named;
+                                         # BaseException would also swallow Ctrl-C
     # Recorded, not raised. `attempt()` above promises that "every failure mode has to arrive as a line
     # in the N passed, M failed summary", and this block broke that: it calls `export_module`,
     # `quantize_model` and `verify_batch_dynamic` directly, so TRACE_BATCH=1, a dropped `dynamic_axes`
@@ -337,7 +338,7 @@ try:
                len(_calls) > 1 and _calls[1]["path"] != _calls[0]["path"], _calls)
 except _Skip:
     pass
-except BaseException as _err:            # as above: the CLI path raises SystemExit on a bad export
+except (SystemExit, Exception) as _err:   # as above, and not BaseException: Ctrl-C must still interrupt
     FAIL.append("cli/the block raised instead of reporting: %s: %s"
                 % (type(_err).__name__, str(_err).replace("\n", " ")[:200]))
 finally:
@@ -371,7 +372,7 @@ def _spy_example_inputs(batch=None, seq_len=16, num_markers=2):
 export_onnx.example_inputs = _spy_example_inputs
 try:
     export_onnx.verify_batch_dynamic(_build_model(), onnx_path, batches=(1, 2, 3))
-except BaseException as _err:
+except (SystemExit, Exception) as _err:
     FAIL.append("verify/the input-variety spy raised instead of reporting: %s: %s"
                 % (type(_err).__name__, str(_err).replace("\n", " ")[:200]))
 finally:
@@ -620,7 +621,7 @@ _cap = _io.StringIO()
 try:
     with _contextlib.redirect_stdout(_cap):
         export_onnx.verify_batch_dynamic(model, onnx_path, atol=TINY_ATOL)
-except BaseException as _err:
+except (SystemExit, Exception) as _err:
     # Recorded, not raised. This block only captures the report text, but a genuinely broken export
     # makes `verify_batch_dynamic` raise SystemExit here -- and with no handler that ended the file at
     # roughly check 40 of 96, with no summary. The checks below then fail on an empty report, which is

@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import inspect
+import math
 import threading
 import time
 import uuid
@@ -231,12 +232,16 @@ def validate_timeout(value: Optional[float]) -> Optional[float]:
     A non-positive timeout is rejected here rather than left to
     ``thread.join``: ``join(0)`` and ``join(-1)`` return before the hook has
     started, so the outcome of a fast hook with such a value is a race.
+    Non-finite values are rejected too: ``join(nan)`` raises ``ValueError`` and
+    ``join(inf)`` raises ``OverflowError`` instead of waiting.
     """
     if value is None:
         return None
     timeout = float(value)
+    if not math.isfinite(timeout):
+        raise ValueError("hooks_timeout must be a positive finite number or None; got %r" % (value,))
     if timeout <= 0:
-        raise ValueError("hooks_timeout must be a positive number or None; got %r" % (value,))
+        raise ValueError("hooks_timeout must be a positive finite number or None; got %r" % (value,))
     return timeout
 
 

@@ -36,8 +36,10 @@ be re-derived without re-running the model.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
+import math
 import os
 import platform
 import random
@@ -105,15 +107,23 @@ def build_suite(rows: Sequence[Dict[str, Any]], labels: Sequence[str],
 
 def load_language(lang: str, split: str = "test", revision: Optional[str] = None):
     """Load one language config. Raises with a readable message if unavailable."""
-    from datasets import load_dataset
     try:
-        kw = {"revision": revision} if revision else {}
-        ds = load_dataset(DATASET, lang, split=split, **kw)
+        if revision is not None:
+            from huggingface_hub import hf_hub_download
+            # datasets may fall back to its latest prepared cache when a pin is unavailable.
+            # Hub file lookup keeps the requested revision part of the cache identity.
+            path = hf_hub_download(repo_id=DATASET, filename="%s/%s.json.gz" % (split, lang),
+                                   repo_type="dataset", revision=revision)
+            with gzip.open(path, "rt", encoding="utf-8") as source:
+                ds = [json.loads(line) for line in source]
+        else:
+            from datasets import load_dataset
+            ds = load_dataset(DATASET, lang, split=split)
+        return [{"text": r["text"], "label_text": r["label_text"]} for r in ds]
     except Exception as exc:                       # pragma: no cover - network path
         raise RuntimeError(
             "could not load %s config %r: %s" % (DATASET, lang, exc)
         ) from exc
-    return [{"text": r["text"], "label_text": r["label_text"]} for r in ds]
 
 
 def available_languages(revision: Optional[str] = None) -> List[str]:
@@ -273,9 +283,19 @@ def package_version(name: str) -> Optional[str]:
         return None
 
 
+def _finite_number(value: Any) -> bool:
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and (isinstance(value, int) or math.isfinite(value)))
+
+
 def validate_release_report(payload: Dict[str, Any], langs: Sequence[str]) -> List[str]:
     """Refuse a release-candidate artifact whose inputs or cases cannot be audited."""
-    config = payload["config"]
+    if not isinstance(payload, dict):
+        return ["release report must be an object"]
+    config, report, cases = (payload.get(key) for key in ("config", "report", "cases"))
+    if (not isinstance(config, dict) or not isinstance(report, dict)
+            or not isinstance(cases, list) or any(not isinstance(row, dict) for row in cases)):
+        return ["release report needs config, report and per-case records"]
     errors = []
     for key in ("requested_model_revision", "model_revision", "dataset_revision", "source_revision"):
         if not re.fullmatch(r"[0-9a-f]{40}", str(config.get(key) or "")):
@@ -284,17 +304,30 @@ def validate_release_report(payload: Dict[str, Any], langs: Sequence[str]) -> Li
         errors.append("loaded model revision differs from the requested revision")
     if config.get("source_dirty") is not False:
         errors.append("source checkout has tracked changes or cannot be inspected")
-    if any(not config.get("environment", {}).get(name) for name in
+    environment = config.get("environment")
+    if not isinstance(environment, dict) or any(not environment.get(name) for name in
            ("python", "torch", "transformers", "datasets")):
         errors.append("runtime versions are incomplete")
     if len(set(langs)) != len(langs):
         errors.append("requested languages contain duplicates")
-    per_lang = config["per_lang"]
-    if per_lang < 1:
+    per_lang, n_opts = config.get("per_lang"), config.get("n_opts")
+    if not isinstance(per_lang, int) or isinstance(per_lang, bool) or per_lang < 1:
         errors.append("per_lang must be positive")
+        return errors
+    if not isinstance(n_opts, int) or isinstance(n_opts, bool) or n_opts < 2:
+        errors.append("n_opts must be an integer of at least two")
+        return errors
+    required = {
+        "lang", "index", "state", "instructions", "options", "option_texts",
+        "gold_index", "gold_label", "pred_index", "pred_label", "probability",
+        "p_gold", "confidence", "correct", "temperature",
+    }
     for lang in langs:
-        result = payload["report"].get(lang, {})
-        records = [row for row in payload["cases"] if row.get("lang") == lang]
+        result = report.get(lang, {})
+        records = [row for row in cases if row.get("lang") == lang]
+        if not isinstance(result, dict):
+            errors.append("%s has no metric object" % lang)
+            continue
         if "error" in result:
             errors.append("%s failed: %s" % (lang, result["error"]))
             continue
@@ -303,24 +336,64 @@ def validate_release_report(payload: Dict[str, Any], langs: Sequence[str]) -> Li
             continue
         valid = True
         for i, row in enumerate(records):
+            missing = required - set(row)
+            if missing:
+                errors.append("%s case %d is missing fields: %s" % (lang, i, ", ".join(sorted(missing))))
+                valid = False
+                continue
             options, texts = row.get("options"), row.get("option_texts")
             gold, pred = row.get("gold_index"), row.get("pred_index")
-            if (row.get("index") != i or not isinstance(options, list)
-                    or not isinstance(texts, list) or len(options) != config["n_opts"]
-                    or len(texts) != len(options) or not isinstance(gold, int)
-                    or not 0 <= gold < len(options) or not isinstance(pred, int)
+            if (type(row["index"]) is not int or row["index"] != i
+                    or not isinstance(row["instructions"], str) or not isinstance(options, list)
+                    or not isinstance(texts, list) or len(options) != n_opts
+                    or any(not isinstance(option, str) for option in options)
+                    or any(not isinstance(text, str) for text in texts)
+                    or len(set(options)) != len(options) or len(texts) != len(options)
+                    or type(gold) is not int or not 0 <= gold < len(options) or type(pred) is not int
                     or not 0 <= pred < len(options) or row.get("gold_label") != options[gold]
-                    or row.get("correct") != int(pred == gold)):
+                    or row.get("pred_label") != options[pred] or type(row["correct"]) is not int
+                    or row["correct"] != int(pred == gold)):
+                errors.append("%s case %d has inconsistent inputs or decision labels" % (lang, i))
                 valid = False
-                break
+                continue
+            confidence, probability, p_gold = (row[key] for key in ("confidence", "probability", "p_gold"))
+            if (any(not _finite_number(value) or not 0 <= value <= 1
+                    for value in (confidence, probability, p_gold))
+                    or not _finite_number(row["temperature"]) or row["temperature"] <= 0):
+                errors.append("%s case %d has invalid probabilities or temperature" % (lang, i))
+                valid = False
+                continue
+            # The artifact carries the chosen and gold probabilities, not the whole vector.
+            # These are the argmax facts those two numbers can establish without inventing it.
+            if (abs(probability - confidence) > 1e-12 or probability < 1.0 / n_opts - 1e-12
+                    or p_gold > probability or (pred == gold and abs(p_gold - probability) > 1e-12)
+                    or (pred != gold and p_gold + probability > 1.0 + 1e-12)
+                    or (pred != gold and 1.0 - probability - p_gold > (n_opts - 2) * probability + 1e-12)
+                    or (pred != gold and p_gold == probability and gold < pred)):
+                errors.append("%s case %d probabilities disagree with its decision" % (lang, i))
+                valid = False
         if not valid:
-            errors.append("%s has inconsistent case inputs" % lang)
             continue
-        if result.get("input_sha256") != input_fingerprint(records):
+        try:
+            fingerprint = input_fingerprint(records)
+        except (TypeError, ValueError):
+            errors.append("%s case inputs cannot be serialized" % lang)
+            continue
+        if result.get("input_sha256") != fingerprint:
             errors.append("%s input fingerprint does not match its cases" % lang)
-        if round(sum(row["correct"] for row in records) / per_lang, 4) != result.get("accuracy"):
-            errors.append("%s accuracy does not match its cases" % lang)
-    if set(row.get("lang") for row in payload["cases"]) - set(langs):
+        recomputed = summarise([row["confidence"] for row in records],
+                               [row["correct"] for row in records],
+                               [row["gold_index"] for row in records],
+                               [row["pred_index"] for row in records])
+        for metric, value in recomputed.items():
+            recorded = result.get(metric)
+            if (not _finite_number(recorded) or (metric != "n" and not 0 <= recorded <= 1)
+                    or abs(recorded - value) > 1e-12):
+                errors.append("%s %s does not match its cases" % (lang, metric))
+        if (not _finite_number(result.get("temperature")) or result["temperature"] <= 0
+                or any(row["temperature"] != result["temperature"] for row in records)):
+            errors.append("%s temperature does not match its cases" % lang)
+    if any(row.get("lang") not in langs for row in cases):
         errors.append("cases include an unrequested language")
     return errors
 
@@ -357,17 +430,18 @@ def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
             "gold_label": option_keys[i][gold[i]],
             "pred_index": pred,
             "pred_label": option_keys[i][pred],
-            "probability": round(float(probs[pred]), 6),
-            "p_gold": round(float(probs[gold[i]]), 6),
-            "confidence": round(float(probs.max()), 6),
+            # Keep the scored precision: rounding here can move an ECE bin or reorder
+            # near-tied cases at the 50% coverage cutoff when a report is audited later.
+            "probability": float(probs[pred]),
+            "p_gold": float(probs[gold[i]]),
+            "confidence": float(probs.max()),
             "correct": correct,
-            "temperature": round(float(temperature), 6),
+            "temperature": float(temperature),
         })
 
     report = summarise(confidences, corrects, gold, preds)
     report["input_sha256"] = input_fingerprint(records)
-    report["temperature"] = round(
-        float(temperature_for(agent, QTYPES["choice"], n_opts, unclamped)), 6)
+    report["temperature"] = float(temperature_for(agent, QTYPES["choice"], n_opts, unclamped))
     return {"report": report, "cases": records}
 
 
@@ -427,6 +501,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
 
     import laya
+
+    if args.require_complete:
+        expected = os.path.normcase(os.path.realpath(os.path.join(_REPO_ROOT, "laya", "__init__.py")))
+        loaded = os.path.normcase(os.path.realpath(getattr(laya, "__file__", None) or ""))
+        if loaded != expected:
+            parser.error("--require-complete needs laya imported from the same checkout as this harness")
 
     started = time.time()
     load_kw = {"revision": args.model_revision} if args.model_revision else {}

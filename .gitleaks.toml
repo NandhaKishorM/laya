@@ -1,0 +1,18 @@
+# Keep every default detector. These two published tokenizer file checksums are
+# metadata, not credentials; require the exact rule, artifact path and digest line.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Exact tokenizer SHA256 metadata in the archived MASSIVE evaluation"
+condition = "AND"
+paths = ['''^research/benchmarks/zh_reliability/results/massive_alarm_2026-09-24\.json$''']
+regexTarget = "line"
+# Gitleaks may include the preceding newline in the finding line.
+regexes = [
+  '''^\n?[ \t]*"tokenizer/tokenizer\.json": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f",?[ \t]*\r?$''',
+  '''^\n?[ \t]*"tokenizer/tokenizer_config\.json": "424b69444bf7b5809dc2cd2e36d0bd71b8055124dd24274d6db3c655d38205e7",?[ \t]*\r?$''',
+]

@@ -80,3 +80,6 @@ research/*_benchmark_results.json
 # local checkpoint weights, kept out of the tree
 # (fetch them with: python verify/checkpoints.py --fetch)
 models/
+
+# Local Chinese reliability runs (model copies, data, diagnostics)
+/runs/

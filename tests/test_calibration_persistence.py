@@ -29,21 +29,21 @@ from laya.common import DecisionModel, QTYPES, TEMP_MIN, TEMP_MAX  # noqa: E402
 
 
 def export_notebook_config(cfg, fitted_temps, output_dir):
-    """Execute the notebook's actual config export, without its GPU/training code."""
-    notebook = Path(__file__).resolve().parents[1] / "notebooks" / (
-        "laya_finetune_typed_decisions_2xT4_kaggle.ipynb"
-    )
-    cells = json.loads(notebook.read_text(encoding="utf-8"))["cells"]
-    script, = ["".join(c["source"]) for c in cells
-               if "".join(c["source"]).startswith("%%writefile ")]
+    """Execute the fine-tune save path's config export, without its GPU/training code.
+
+    The export used to live in the notebook's `%%writefile` cell; the fine-tuning loop moved
+    into `laya.finetune.train_rlcd`, so this guard follows the logic there instead.
+    """
+    source = Path(__file__).resolve().parents[1] / "laya" / "finetune.py"
+    script = source.read_text(encoding="utf-8")
     # This contiguous tail includes the temperature update AND the JSON write.
-    # Do not reproduce the export logic here: that would miss notebook regressions.
+    # Do not reproduce the export logic here: that would miss regressions.
     start = script.index('        cfg["fine_tuned"] = True')
-    end = script.index("\n    dist.destroy_process_group()", start)
+    end = script.index("\n    if world_size > 1:", start)
     export = ast.parse(textwrap.dedent(script[start:end]))
-    exec(compile(export, str(notebook), "exec"), {
-        "cfg": cfg, "fitted_temps": fitted_temps, "output_dir": str(output_dir),
-        "os": os, "json": json,
+    exec(compile(export, str(source), "exec"), {
+        "cfg": cfg, "temperatures": fitted_temps, "output_dir": str(output_dir),
+        "os": os, "json": json, "log": lambda *args, **kwargs: None,
     })
     return json.loads((output_dir / "rl_agent_config.json").read_text())
 
@@ -164,22 +164,18 @@ class CalibrationPersistenceTests(unittest.TestCase):
         self.write_config()
         self.assert_inference_temperatures({(t, 2): 1.0 for t in QTYPES})
 
-    def test_notebook_fit_one_temp_clamps_to_common_bounds(self):
-        notebook = Path(__file__).resolve().parents[1] / "notebooks" / (
-            "laya_finetune_typed_decisions_2xT4_kaggle.ipynb"
-        )
-        cells = json.loads(notebook.read_text(encoding="utf-8"))["cells"]
-        script, = ["".join(c["source"]) for c in cells
-                   if "".join(c["source"]).startswith("%%writefile ")]
-        start = script.index("def fit_one_temp(sel):")
-        end = script.index("\ndef main():", start)
-        fn_code = ast.parse(textwrap.dedent(script[start:end]))
-        scope = {"torch": torch, "TEMP_MIN": TEMP_MIN, "TEMP_MAX": TEMP_MAX}
-        exec(compile(fn_code, str(notebook), "exec"), scope)
-        fit_one_temp = scope["fit_one_temp"]
+    def test_fit_temperature_clamps_to_common_bounds(self):
+        """The fit must clamp to the runtime's bounds, not the old 0.1..10.0.
+
+        `fit_one_temp` used to live in the notebook's `%%writefile` cell; the fine-tuning loop
+        moved into `laya.finetune.train_rlcd`, whose `fit_temperature` owns the clamp now, so the
+        guard follows the logic there instead. A fit outside TEMP_MIN..TEMP_MAX is silently
+        re-clamped at inference, so the exported temperature would not be the one the fit chose.
+        """
+        from laya.finetune import fit_temperature
 
         high_sel = [([10.0, 0.0], [0.5, 0.5]) for _ in range(20)]
-        t_high = fit_one_temp(high_sel)
+        t_high = fit_temperature(high_sel)
         self.assertLessEqual(t_high, TEMP_MAX)
         self.assertGreaterEqual(t_high, TEMP_MIN)
 

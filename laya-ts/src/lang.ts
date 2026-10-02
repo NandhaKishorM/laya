@@ -1,3 +1,5 @@
+import { ENGLISH_LEXICON } from "./english-lexicon.js";
+
 type ScriptRanges = Array<[string, Array<[number, number]>]>;
 
 const SCRIPT_RANGES: ScriptRanges = [
@@ -301,11 +303,27 @@ function nonLatinWords(text: string): string[] {
   return runs.filter((w) => [...w].length >= 2 && !/^[\p{Lu}\p{Lt}]/u.test(w));
 }
 
+function englishLexiconWord(word: string): boolean {
+  // `s` is the possessive the word splitter leaves of "today's". One-letter tokens
+  // other than a/i are initials, not vocabulary.
+  if (word === "s" || STOP.en.has(word) || ENGLISH_LEXICON.has(word)) return true;
+  const stem = word.slice(0, -1);
+  return word.length > 3 && word.endsWith("s") && (ENGLISH_LEXICON.has(stem) || STOP.en.has(stem));
+}
+
+function allEnglishLexicon(words: string[]): boolean {
+  return words.length > 0 && words.every(englishLexiconWord);
+}
+
 export interface LatinProfile {
   language: string | null;
   englishHits: number;
   diacriticRate: number;
   looksNonEnglish: boolean;
+  /** Tokens left after identifiers are stripped. Under four, the guess is skipped. */
+  wordCount: number;
+  /** Every token is English vocabulary (content words, not only function words). */
+  allEnglishLexicon: boolean;
 }
 
 export function latinProfile(text: string): LatinProfile {
@@ -319,13 +337,21 @@ export function latinProfile(text: string): LatinProfile {
   }
   const diacRate = diac / Math.max(1, lowered.length);
   const nonEnglish = diacRate >= NON_EN_DIACRITIC_RATE;
+  const allEnglish = allEnglishLexicon(words);
   const nordicOverlap = words.some((w) => NORDIC_OVERLAP_WORDS.has(w)) &&
     !words.some((w) => EN_ONLY_WORDS.has(w));
   if (words.length > 1 && words.length < 4 && words.some((w) => SHORT_SWEDISH_WORDS.has(w))) {
-    return { language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
+    return {
+      language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish,
+      wordCount: words.length, allEnglishLexicon: allEnglish,
+    };
   }
   if (words.length < 4) {
-    return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap };
+    return {
+      language: null, englishHits: 0, diacriticRate: diacRate,
+      looksNonEnglish: nonEnglish || nordicOverlap,
+      wordCount: words.length, allEnglishLexicon: allEnglish,
+    };
   }
   const scores: Record<string, number> = {};
   for (const [lg, sw] of Object.entries(STOP)) {
@@ -355,7 +381,11 @@ export function latinProfile(text: string): LatinProfile {
   } else if (en && (!nonEnglish || englishRescuedByWords(wordSet, diacRate))) {
     lang = "en";
   }
-  return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish || (lang === null && nordicOverlap) };
+  return {
+    language: lang, englishHits: en, diacriticRate: diacRate,
+    looksNonEnglish: nonEnglish || (lang === null && nordicOverlap),
+    wordCount: words.length, allEnglishLexicon: allEnglish,
+  };
 }
 
 export function guessLatinLanguage(text: string): string | null {
@@ -479,10 +509,18 @@ function analyseText(text: string): AnalyseResult {
   const profLat = latinProfile(text);
   const lang = profLat.language;
   const undecided = lang === null;
-  const english = lang === "en" || (undecided && !profLat.looksNonEnglish);
+  // Same call as Python's `_analyse_text`: non-English letters or a shared Swedish-Danish
+  // marker prefer the multilingual checkpoint. Undecided plain-ASCII of four or more words
+  // with neither signal is the same call (#54), unless every word is English vocabulary.
+  // Shorter plain text still goes to English. All-English vocabulary does not follow Router.default.
+  const plainAsciiLong = undecided && profLat.diacriticRate === 0 && profLat.wordCount >= 4
+    && !profLat.allEnglishLexicon;
+  const lexiconEnglish = undecided && profLat.diacriticRate === 0 && profLat.wordCount >= 4
+    && profLat.allEnglishLexicon && !profLat.looksNonEnglish;
+  const english = (lang === "en" || (undecided && !profLat.looksNonEnglish)) && !plainAsciiLong;
   return {
     script: "latin", scriptProfile: prof, language: lang,
-    isEnglish: english, languageUndecided: undecided,
+    isEnglish: english, languageUndecided: undecided && !lexiconEnglish,
     diacriticRate: round4(profLat.diacriticRate),
     nonLatinFraction: nonLatin, mixedSegment: null,
   };

@@ -496,7 +496,7 @@ router.route({"body": "Der Kunde wurde zweimal belastet"}, questions).reason
 # "Latin script but language looks like 'de', not English"
 ```
 
-Very short Latin-script text often carries nothing that identifies its language (`"Quero cancelar"`, `"Esqueci minha senha"`). Such text goes to `default`, which is `"english"` unless you change it. If most of your traffic is not English, set:
+Very short Latin-script text often carries nothing that identifies its language (`"Quero cancelar"`, `"Esqueci minha senha"`). Under four words, such text goes to `default`, which is `"english"` unless you change it. Four or more words of undecided plain-ASCII Latin text go to the multilingual checkpoint, unless every word is in the English word list (`"cancel my seven am alarm"` stays on English; a word from outside that list does not). If most of your traffic is not English, set:
 
 ```python
 router = Router(default="multilingual")

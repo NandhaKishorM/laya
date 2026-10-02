@@ -941,15 +941,25 @@ class Router(HookRegistry):
             elif det["language"]:
                 reason = "Latin script but language looks like %r, not English" % det["language"]
             else:
-                # Unidentified Latin-script language: routed on the non-English letters alone,
-                # because no stopword list here covers it.
-                reason = ("Latin script, language not identified but %.0f%% non-English letters; "
-                          "not safe for the English checkpoint" % (100 * float(det["diacritic_rate"])))
+                # Unidentified Latin-script language. Non-English letters are one reason no
+                # stopword list covers it. Plain ASCII of four or more words is the other (#54):
+                # the lists had a chance to name it and did not. A non-Latin field that did not
+                # win the script vote still has a non-Latin fraction, so it keeps the letter reason.
+                if float(det["diacritic_rate"]) == 0.0 and float(det["non_latin_fraction"]) == 0.0:
+                    reason = ("Latin script, language not identified; four or more words and no "
+                              "non-English letters, not safe for the English checkpoint")
+                else:
+                    reason = ("Latin script, language not identified but %.0f%% non-English letters; "
+                              "not safe for the English checkpoint" % (100 * float(det["diacritic_rate"])))
         elif det["language_undecided"]:
-            # Nothing identifies the language: too short, or only content words ("Quero cancelar",
-            # "Esqueci minha senha"). That is no evidence of English either, so it takes the same
-            # `default` as a state with no letters. A deployment that serves mostly non-English
-            # traffic sets `Router(default="multilingual")`; the stock default keeps it English.
+            # Still sent to `default`: under four words, or a non-English letter too rare to
+            # clear the diacritic floor. Nothing has named the language ("Quero cancelar",
+            # "Esqueci minha senha"), so it takes the same `default` as a state with no letters.
+            # A deployment that serves mostly non-English traffic sets
+            # `Router(default="multilingual")`; the stock default keeps it English.
+            # Plain-ASCII text of four or more words does not reach this branch (#54).
+            # If every word of that text is English vocabulary, `analyse` reports it as
+            # English rather than undecided, so it does not follow `default` either.
             key = self.default
             reason = ("Latin script, language not identified and no non-English letters; "
                       "using default (%s)" % key)

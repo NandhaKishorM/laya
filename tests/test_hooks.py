@@ -436,6 +436,21 @@ with f.hooks_installed(Tag(log, "t"), Tag(log, "t")):
     pass
 check("hooks_installed/no residue when nothing was installed before", len(f.hooks), 0)
 
+# sequences are flattened like add_hook and the hooks= parameter accept them
+log = []
+f = make_fake()
+with f.hooks_installed([Tag(log, "x"), Tag(log, "y")]):
+    f.predict_batch(["s0"], QUESTIONS)
+f.predict_batch(["s0"], QUESTIONS)
+check("hooks_installed/list of hooks fires during the block", log, ["x", "y"])
+check("hooks_installed/list of hooks removed after the block", len(f.hooks), 0)
+
+log = []
+f = make_fake()
+with f.hooks_installed((Tag(log, "a"),), Tag(log, "b")):
+    f.predict_batch(["s0"], QUESTIONS)
+check("hooks_installed/tuple arg and varargs mix in order", log, ["a", "b"])
+
 log = []
 r = Router()
 r.add_hook(Tag(log, "router"))

@@ -2086,6 +2086,42 @@ def test_a_null_hook_control_is_not_a_refusal(monkeypatch, key):
     assert client.post("/v1/systemone", json={**REQ, key: None}).status_code == 200
 
 
+def test_state_token_counts_reaches_the_router_only_when_asked(monkeypatch):
+    """The two state-token counts are opt-in, so the control must travel and `False` must not (#687).
+
+    `usage["state_tokens"]` / `usage["state_tokens_dropped"]` count the whole serialized state, which
+    costs tokenizing all of it; by default the agent reads only what a question's window holds and
+    the keys are absent rather than reported as floors. `False` is forwarded as nothing, for the
+    reason every other control here is: an absent argument means "the caller did not ask", and must
+    not override a deployment that turned the counts on for itself.
+    """
+    client, fake = _budget_client(monkeypatch)
+
+    assert client.post("/v1/systemone", json=REQ).status_code == 200
+    assert "state_token_counts" not in fake.calls[-1], fake.calls[-1]
+
+    assert client.post("/v1/systemone",
+                       json={**REQ, "state_token_counts": True}).status_code == 200
+    assert fake.calls[-1].get("state_token_counts") is True, fake.calls[-1]
+
+    assert client.post("/v1/systemone",
+                       json={**REQ, "state_token_counts": False}).status_code == 200
+    assert "state_token_counts" not in fake.calls[-1], fake.calls[-1]
+
+    assert client.post("/v1/systemone",
+                       json={**REQ, "state_token_counts": None}).status_code == 200
+    assert "state_token_counts" not in fake.calls[-1], fake.calls[-1]
+
+
+@pytest.mark.parametrize("bad", ["true", "yes", 1, 0, 1.0, [], {}])
+def test_state_token_counts_must_be_a_boolean(monkeypatch, bad):
+    """A truthy string would take the expensive path silently, so only the boolean is accepted."""
+    client, _ = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, "state_token_counts": bad})
+    assert r.status_code == 422, (bad, r.status_code, r.text)
+    assert "state_token_counts must be a boolean" in r.text, r.text
+
+
 def test_http_api_page_documents_exactly_the_forwarded_controls():
     """The request-body table and the code must not drift apart in either direction.
 
@@ -2164,7 +2200,8 @@ class StrictBatchRouter(BatchRecordingRouter):
         return super().predict_batch(requests)
 
 
-BATCH_CALL_VALUES = {"batch_size": 4, "min_confidence": 0.9, "sort_by_length": True}
+BATCH_CALL_VALUES = {"batch_size": 4, "min_confidence": 0.9, "sort_by_length": True,
+                     "state_token_counts": True}
 BATCH_ITEM_VALUES = {"max_len": 64, "head_max_len": 32, "task": "typed-decisions",
                      "lang": "de", "lang_guess": "de"}
 
@@ -2572,7 +2609,8 @@ def _decision_response_site(rel):
             names = ([k.value for k in stmt.value.keys
                       if isinstance(k, ast.Constant) and isinstance(k.value, str)]
                      if isinstance(stmt.value, ast.Dict) else [])
-            if isinstance(first, ast.Name) and first.id == "usage" and "state_tokens" in names:
+            if isinstance(first, ast.Name) and first.id == "usage" \
+                    and {"input_tokens", "truncated"} <= set(names):
                 usage = names
             elif isinstance(first, ast.Subscript) and isinstance(first.value, ast.Name):
                 if first.value.id == "usage" and isinstance(first.slice, ast.Constant):
@@ -2587,7 +2625,8 @@ def _decision_response_site(rel):
             assert head, "%s: %s's result dict has no literal `model` constant" % (rel, fn.name)
             return {"keys": sorted(keys), "usage": sorted(usage),
                     "optional": sorted(optional), "head": head}
-    raise AssertionError("%s: no `usage = {...}` literal with a `state_tokens` key" % rel)
+    raise AssertionError(
+        "%s: no `usage = {...}` literal carrying both `input_tokens` and `truncated`" % rel)
 
 
 def _route_decision_keys():
@@ -2702,9 +2741,15 @@ def test_http_api_page_documents_the_decision_response_keys():
     # nothing was cut.
     usage = sample["usage"]
     assert usage["output_tokens"] == 0, "the head generates nothing, so a sample must not show more"
-    assert usage["truncated"] == (usage["state_tokens_dropped"] > 0), usage
     assert (usage["truncated_questions"] == []) == (not usage["truncated"]), usage
-    assert 0 < usage["state_tokens"] and usage["state_tokens_dropped"] < usage["state_tokens"], usage
+    # The two token counts are opt-in (#687): they count the whole serialized state, which costs
+    # tokenizing all of it, so a sample of the DEFAULT response must not show them and the page has
+    # to name the request field that asks for them. `truncated` stays free and exact.
+    assert {"state_tokens", "state_tokens_dropped"} <= set(optional), (
+        "the counts are no longer conditional in the source: always=%s optional=%s"
+        % (always, optional))
+    assert "state_token_counts" in page, (
+        "the page documents two opt-in usage keys but never names the field that asks for them")
 
 
 def _answer_literal_keys(rel):

@@ -35,6 +35,7 @@ from .common import (
     _resolve_noul_labels,
     _reuse_question_tokens,
     _disable_question_token_reuse,
+    encode_state_head,
     encode_text,
     render_criterion,
     render_options,
@@ -1016,11 +1017,15 @@ class Agent(HookRegistry):
         return q
 
     def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Dict],
-                      max_len: Optional[int] = None, head_max_len: Optional[int] = None) -> List[Dict]:
+                      max_len: Optional[int] = None, head_max_len: Optional[int] = None,
+                      state_token_counts: bool = False) -> List[Dict]:
         """Tokenize one state against every (already validated + normalized) question.
 
         `max_len` / `head_max_len` override the agent config for this call (a start hook may set
         `ctx.max_len` / `ctx.head_max_len`).
+
+        `state_token_counts` keeps the whole state's tokenization, so `usage` can report exact
+        `state_tokens` / `state_tokens_dropped`; see the comment on the head path below.
         """
         max_len = self.cfg.get("max_len", 512) if max_len is None else max_len
         head_max_len = self.cfg.get("head_max_len", 192) if head_max_len is None else head_max_len
@@ -1030,13 +1035,25 @@ class Agent(HookRegistry):
         truncate_left = isinstance(state, list)
         # Tokenize the shared state once. The ids are identical for every question, so
         # re-serializing and re-tokenizing it inside build_sequence per question was pure
-        # duplicated work. Tokenize in full and let build_sequence slice per question, so
+        # duplicated work. One tokenization here, sliced per question by build_sequence, so
         # left-truncation for conversation lists keeps its meaning.
-        state_ids = encode_text(
-            self.tok,
-            serialize_state(state).replace(self.tok.mask_token, " "),
-            add_special_tokens=False,
-        )["input_ids"]
+        #
+        # A list is truncated from the left, so the tokens it keeps are at the end of the
+        # document and every one of them has to be produced. Every other state shape keeps a
+        # prefix (`state_ids[:room]`, room < max_len), so the tail past that was tokenized only
+        # to be discarded: `encode_state_head` stops once `max_len` state tokens exist and
+        # returns the same ids up to that point.
+        #
+        # `state_token_counts` opts back out of it. `usage["state_tokens"]` and
+        # `usage["state_tokens_dropped"]` count the WHOLE state, and a prefix cannot report them --
+        # `encode_state_head` returns at least `max_len` ids, so they would be floors rather than
+        # counts. A caller that asks for them pays the full tokenization on this call and gets exact
+        # numbers; one that does not ask does not pay, and does not get the keys (#687).
+        text = serialize_state(state).replace(self.tok.mask_token, " ")
+        if truncate_left or state_token_counts:
+            state_ids = encode_text(self.tok, text, add_special_tokens=False)["input_ids"]
+        else:
+            state_ids = encode_state_head(self.tok, text, max_len)
         items = []
         for qid in ids:
             q = internal[qid]
@@ -1265,7 +1282,8 @@ class Agent(HookRegistry):
                       max_len: Optional[int] = None,
                       head_max_len: Optional[int] = None,
                       sort_by_length: bool = False,
-                      min_confidence: Optional[float] = None) -> List[Dict[str, Any]]:
+                      min_confidence: Optional[float] = None,
+                      state_token_counts: bool = False) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, packing them into shared forward passes.
 
         This is the throughput path. `system_one`/`predict` handle one state per forward pass; on a
@@ -1295,6 +1313,12 @@ class Agent(HookRegistry):
                     smaller than the number of states; otherwise it has no effect. Results retain
                     input order. This buffers up to eight batches of tokenized states instead of
                     one. Changing batch shapes can slightly change floating-point predictions.
+            state_token_counts: Report `usage["state_tokens"]` and `usage["state_tokens_dropped"]`.
+                    They count the whole serialized state, which costs tokenizing all of it: by
+                    default only the head the model can actually read is tokenized, and the two
+                    keys are absent rather than reported as floors. `truncated` and
+                    `truncated_questions` are exact either way, so a caller that only needs to know
+                    whether the answer saw the whole state does not need this.
 
         Returns:
             A list of per-state result dicts, each identical in shape to `system_one`'s output and
@@ -1359,11 +1383,16 @@ class Agent(HookRegistry):
                             amp_stack.callback(_BATCH_AUTOCAST_CACHE.reset, _BATCH_AUTOCAST_CACHE.set(True))
 
                         # Per-call token-budget overrides (a start hook may have set them).
-                        overrides: Dict[str, int] = {}
+                        overrides: Dict[str, Any] = {}
                         if ctx.max_len is not None:
                             overrides["max_len"] = ctx.max_len
                         if ctx.head_max_len is not None:
                             overrides["head_max_len"] = ctx.head_max_len
+                        if state_token_counts:
+                            # Only when asked, as the budget overrides are: a subclass or a test
+                            # double that overrides `_encode_state` without this argument keeps
+                            # working on the default path, which is every call that does not ask.
+                            overrides["state_token_counts"] = True
 
                         results: List[Dict[str, Any]] = []
                         reorder = sort_by_length and 1 < chunk < len(states)
@@ -1372,7 +1401,8 @@ class Agent(HookRegistry):
                         window = chunk * 8 if reorder else chunk
                         for start in range(0, len(states), window):
                             part = states[start:start + window]
-                            encoded = [self._encode_state(st, ids, internal, **overrides) for st in part]
+                            encoded = [self._encode_state(st, ids, internal, **overrides)
+                                       for st in part]
                             order = list(range(len(encoded)))
                             if reorder:
                                 order.sort(key=lambda i: max(len(item["ids"]) for item in encoded[i]))
@@ -1398,14 +1428,23 @@ class Agent(HookRegistry):
                                     usage = {
                                         "input_tokens": n_tokens,
                                         "output_tokens": 0,
-                                        "state_tokens": stats[0]["state_tokens"],
-                                        # worst case: the questions share one state, not one head budget
-                                        "state_tokens_dropped": dropped,
                                         "truncated": dropped > 0,
                                         "truncated_questions": [
                                             qid for qid, s in zip(ids, stats) if s["truncated"]
                                         ],
                                     }
+                                    # `truncated` / `truncated_questions` are exact on every path:
+                                    # `encode_state_head` returns at least `max_len` ids and every
+                                    # question's room is below `max_len`, so a prefix always reports
+                                    # the truncation it really caused. The two counts are exact only
+                                    # when the whole state was tokenized, which is what
+                                    # `state_token_counts` asked for -- on the head path they would be
+                                    # floors, and a key that is sometimes a count and sometimes a
+                                    # floor is worse than one that is absent (#687).
+                                    if state_token_counts:
+                                        usage["state_tokens"] = stats[0]["state_tokens"]
+                                        # worst case: the questions share one state, not one head budget
+                                        usage["state_tokens_dropped"] = dropped
                                     # Only when a question actually lost options to the head
                                     # budget: an answer chosen from 42 distinguishable spans of
                                     # 58 has a ceiling the caller cannot otherwise see, and a
@@ -1453,7 +1492,8 @@ class Agent(HookRegistry):
                      lang: Optional[str] = None,
                      hooks=None, on_predict_start=None, on_predict_end=None,
                      hooks_raise: Optional[bool] = None,
-                     hooks_timeout: Optional[float] = None) -> Dict[str, Any]:
+                     hooks_timeout: Optional[float] = None,
+                     state_token_counts: bool = False) -> Dict[str, Any]:
         """Evaluate questions over a state longer than the context window, scanning it in
         overlapping windows and aggregating per question.
 
@@ -1534,11 +1574,13 @@ class Agent(HookRegistry):
         never reads as a window the model read.
 
         Across several windows the truncation keys are combined like every other `usage` field:
-        `truncated`, `state_tokens` and `state_tokens_dropped` are summed (so `truncated` is the
-        number of windows that were cut, and the token counts include the overlap), and
-        `truncated_questions` is the last window's list. The two can disagree: when only an
-        earlier window was cut, `truncated` is above 0 and `truncated_questions` is empty. A
-        window is cut when it is larger than the room a question's head leaves. Test
+        `truncated` is summed (so it is the number of windows that were cut) and
+        `truncated_questions` is the last window's list. `state_tokens` /
+        `state_tokens_dropped` are present only with `state_token_counts=True`, and are then
+        summed like the rest, so the token counts include the overlap between windows. The two
+        can disagree: when only an earlier window was cut, `truncated` is above 0 and
+        `truncated_questions` is empty. A window is cut when it is larger than the room a
+        question's head leaves. Test
         `usage["truncated"] > 0` here, not `is True`.
         """
         if state is None:
@@ -1620,8 +1662,12 @@ class Agent(HookRegistry):
         # `window_batch_cap`. An explicit batch_size is honoured untouched.
         cap = window_batch_cap(len(windows), budget, max(64, max_len - head_max_len - 8),
                                batch_size)
+        # Passed only when asked, so the default scan hands `predict_batch` exactly the kwargs it
+        # always has -- a replacement `predict_batch` that predates the argument still works, and
+        # `tests/test_predict_long.py` pins that forwarded set.
+        counts = {"state_token_counts": True} if state_token_counts else {}
         results = self.predict_batch(list(windows), questions, batch_size=cap, lang=lang,
-                                     **_with_start_probe(hook_kwargs, probe))
+                                     **counts, **_with_start_probe(hook_kwargs, probe))
         _check_scan_budget(self, evidence, budget, max_len, head_max_len, asked)
 
         if evidence["answered"]:
@@ -1724,7 +1770,8 @@ class Agent(HookRegistry):
                    hooks_timeout: Optional[float] = None,
                    max_len: Optional[int] = None,
                    head_max_len: Optional[int] = None,
-                   min_confidence: Optional[float] = None) -> Dict[str, Any]:
+                   min_confidence: Optional[float] = None,
+                   state_token_counts: bool = False) -> Dict[str, Any]:
         """Evaluate typed questions across state in a single, parallel forward pass.
 
         Args:
@@ -1751,10 +1798,12 @@ class Agent(HookRegistry):
             58 has a ceiling that is the budget's and not the model's. Questions whose options
             all survive are absent, so a request that collapses nothing is unchanged.
 
-            `usage` also reports whether the state fit: `truncated`, `state_tokens`,
-            `state_tokens_dropped`, and `truncated_questions` (the questions whose head left
-            too little room). A caller that cares whether the answer saw the whole state should
-            read `usage["truncated"]` rather than estimate from the length of what it sent.
+            `usage` also reports whether the state fit: `truncated` and `truncated_questions`
+            (the questions whose head left too little room), always. A caller that cares whether
+            the answer saw the whole state should read `usage["truncated"]` rather than estimate
+            from the length of what it sent. `state_tokens` and `state_tokens_dropped` quantify
+            how much was dropped and are reported only with `state_token_counts=True`, which
+            tokenizes the whole state instead of just the head the model can read.
 
         To score many states at once, see `predict_batch`, which shares forward passes across them.
         """
@@ -1763,7 +1812,8 @@ class Agent(HookRegistry):
                                   on_predict_end=on_predict_end, hooks_raise=hooks_raise,
                                   hooks_timeout=hooks_timeout,
                                   max_len=max_len, head_max_len=head_max_len,
-                                  min_confidence=min_confidence)[0]
+                                  min_confidence=min_confidence,
+                                  state_token_counts=state_token_counts)[0]
 
     def __enter__(self):
         return self

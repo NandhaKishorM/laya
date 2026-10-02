@@ -314,6 +314,13 @@ class PredictRequest(BaseModel):
     min_confidence: Optional[float] = Field(
         default=None,
         description="Abstain when answer_confidence is below this threshold (0.0-1.0)")
+    # Not a budget and not a routing hint: it asks for two `usage` counts that are absent by
+    # default, and pays for them by tokenizing the whole state rather than only the part a
+    # question's window can hold. `truncated` / `truncated_questions` arrive either way.
+    state_token_counts: bool = Field(
+        default=False,
+        description="report usage.state_tokens and usage.state_tokens_dropped, counting the whole "
+                    "state instead of only the part the model reads")
 
     _v_model = field_validator("model")(classmethod(lambda cls, v: _check_model(v)))
 
@@ -363,6 +370,8 @@ class BatchRequest(BaseModel):
         default=False,
         description="group similarly sized states in the same pass so each pads to a shorter "
                     "maximum; needs a batch_size below the state count, never changes an answer")
+    state_token_counts: bool = Field(
+        default=False, description="See PredictRequest.state_token_counts")
 
     _v_model = field_validator("model")(classmethod(lambda cls, v: _check_model(v)))
 

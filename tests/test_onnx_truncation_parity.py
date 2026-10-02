@@ -80,7 +80,14 @@ check("empty/usage is unchanged", agent._infer("some state", {})["usage"],
       {"input_tokens": 0, "output_tokens": 0})
 
 # ---------------------------------------------------------------- a state that fits every question
-u = agent._infer("x" * ROOM["flag"], QUESTIONS)["usage"]
+# Default: the two counts are absent, because the state head is all that was tokenized and a
+# count of it would be a floor rather than the whole state (#687).
+u_default = agent._infer("x" * ROOM["flag"], QUESTIONS)["usage"]
+check("fits/default keys match the torch Agent", sorted(u_default),
+      sorted(["input_tokens", "output_tokens", "truncated", "truncated_questions"]))
+check("fits/default still reports truncated", u_default["truncated"], False)
+
+u = agent._infer("x" * ROOM["flag"], QUESTIONS, state_token_counts=True)["usage"]
 check("fits/keys match the torch Agent", sorted(u),
       sorted(["input_tokens", "output_tokens", "state_tokens", "state_tokens_dropped", "truncated",
               "truncated_questions"]))
@@ -91,14 +98,14 @@ check("fits/no question listed", u["truncated_questions"], [])
 
 # ---------------------------------------------------------------- a state only the narrower question truncates
 n = ROOM["flag"] + 6
-u = agent._infer("x" * n, QUESTIONS)["usage"]
+u = agent._infer("x" * n, QUESTIONS, state_token_counts=True)["usage"]
 check("one/state_tokens is the full state", u["state_tokens"], n)
 check("one/dropped is the worst question's", u["state_tokens_dropped"], n - ROOM["flag"])
 check("one/truncated", (u["truncated"], type(u["truncated"])), (True, bool))
 check("one/only the narrower question listed", u["truncated_questions"], ["flag"])
 
 # ---------------------------------------------------------------- a state every question truncates
-u = agent._infer("x" * 500, QUESTIONS)["usage"]
+u = agent._infer("x" * 500, QUESTIONS, state_token_counts=True)["usage"]
 check("all/state_tokens", u["state_tokens"], 500)
 check("all/dropped is the max over questions", u["state_tokens_dropped"], 500 - ROOM["flag"])
 check("all/every question listed, in order", u["truncated_questions"], ["dept", "flag"])
@@ -109,11 +116,46 @@ u = agent._infer(convo, QUESTIONS)["usage"]
 check("list/truncated from the left is still reported", u["truncated"], True)
 
 # ---------------------------------------------------------------- predict_batch reports each state on its own
-res = agent.predict_batch(["x" * ROOM["flag"], "x" * (ROOM["flag"] + 6), "x" * 500], QUESTIONS)
+res = agent.predict_batch(["x" * ROOM["flag"], "x" * (ROOM["flag"] + 6), "x" * 500], QUESTIONS,
+                          state_token_counts=True)
 check("batch/per-state truncated", [r["usage"]["truncated"] for r in res], [False, True, True])
 check("batch/per-state questions", [r["usage"]["truncated_questions"] for r in res], [[], ["flag"], ["dept", "flag"]])
 check("batch/per-state state_tokens", [r["usage"]["state_tokens"] for r in res], [ROOM["flag"], ROOM["flag"] + 6, 500])
 
+
+# ------------------------------------------------- asking restores the full tokenization (#687)
+#
+# Patched on `laya.onnx_agent`, not on `laya.common`: `onnx_agent.py` does
+# `from .common import encode_state_head, encode_text`, so it holds its own names and patching the
+# defining module would leave this measuring nothing.
+import laya.onnx_agent as _onnx_mod  # noqa: E402
+
+
+def _encoders_used(call):
+    used = {"head": 0, "full": 0}
+    real_head, real_full = _onnx_mod.encode_state_head, _onnx_mod.encode_text
+
+    def head(tok, text, need):
+        used["head"] += 1
+        return real_head(tok, text, need)
+
+    def full(tok, text, **kw):
+        used["full"] += 1
+        return real_full(tok, text, **kw)
+
+    _onnx_mod.encode_state_head, _onnx_mod.encode_text = head, full
+    try:
+        call()
+    finally:
+        _onnx_mod.encode_state_head, _onnx_mod.encode_text = real_head, real_full
+    return used
+
+
+_long = "x" * 500
+_off = _encoders_used(lambda: agent._infer(_long, QUESTIONS))
+_on = _encoders_used(lambda: agent._infer(_long, QUESTIONS, state_token_counts=True))
+check("path/the default takes the state head", (_off["head"], _off["full"]), (1, 0))
+check("path/asking takes the full tokenization instead", (_on["head"], _on["full"]), (0, 1))
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

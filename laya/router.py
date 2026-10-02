@@ -202,12 +202,13 @@ class _ScanLong:
     detected -- repeated here because `predict` computes it locally for its own call.
     """
 
-    def __init__(self, window, stride, aggregate, batch_size, lang):
+    def __init__(self, window, stride, aggregate, batch_size, lang, state_token_counts=False):
         self.window = window
         self.stride = stride
         self.aggregate = aggregate
         self.batch_size = batch_size
         self.lang = lang
+        self.state_token_counts = state_token_counts
 
     def on_predict_start(self, ctx):
         if ctx.results is not None:
@@ -221,9 +222,12 @@ class _ScanLong:
         lang = self.lang
         if lang is None:
             lang = (ctx.decision.get("detection") or {}).get("language")
+        # Passed only when asked, as `predict` does with the token budgets: an agent attached
+        # via `attach()` may predate the argument.
+        extra = {"state_token_counts": True} if self.state_token_counts else {}
         ctx.results = [ctx.agent.predict_long(
             ctx.states[0], ctx.questions, window=self.window, stride=self.stride,
-            aggregate=self.aggregate, batch_size=self.batch_size, lang=lang)]
+            aggregate=self.aggregate, batch_size=self.batch_size, lang=lang, **extra)]
 
 
 # Checkpoint options a Router will not accept through `agent_kwargs`: the ones it sets for itself
@@ -976,6 +980,7 @@ class Router(HookRegistry):
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
         min_confidence: Optional[float] = None,
+        state_token_counts: bool = False,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
 
@@ -983,6 +988,9 @@ class Router(HookRegistry):
         Router-level `on_predict_start` / `on_predict_end` hooks wrap the whole route+infer call
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
+        `state_token_counts` asks the agent for exact `usage["state_tokens"]` /
+        `usage["state_tokens_dropped"]`, which costs tokenizing the whole state; `truncated` and
+        `truncated_questions` are reported either way.
         """
         if state is None:
             raise TypeError("state must not be None; pass a string, dict, or list")
@@ -1028,6 +1036,10 @@ class Router(HookRegistry):
                     overrides["max_len"] = ctx.max_len
                 if ctx.head_max_len is not None:
                     overrides["head_max_len"] = ctx.head_max_len
+                if state_token_counts:
+                    # Only when asked, exactly as the token budgets are: an agent attached via
+                    # `attach()` may predate the argument, and the common path must not pass it.
+                    overrides["state_token_counts"] = True
 
                 skip = _SKIP_DEFAULTS.set(True)
                 try:
@@ -1075,6 +1087,7 @@ class Router(HookRegistry):
                      aggregate: str = "auto", batch_size: Optional[int] = None,
                      hooks=None, on_predict_start=None, on_predict_end=None,
                      hooks_raise: Optional[bool] = None, hooks_timeout: Optional[float] = None,
+                     state_token_counts: bool = False,
                      ) -> Dict[str, Any]:
         """Route, then scan every window of the state instead of only its first one.
 
@@ -1112,8 +1125,11 @@ class Router(HookRegistry):
                     `hooks_raise` policy, which defaults to raising.
         """
         per_call = normalise_hooks(hooks, on_predict_start, on_predict_end)
+        # `state_token_counts` goes to the scan hook, not to `predict`: `_ScanLong` sets
+        # `ctx.results`, so `predict` never reaches `system_one` on this path.
         per_call.append(_ScanLong(window=window, stride=stride, aggregate=aggregate,
-                                  batch_size=batch_size, lang=lang))
+                                  batch_size=batch_size, lang=lang,
+                                  state_token_counts=state_token_counts))
         return self.predict(state, questions, model=model, task=task, lang=lang,
                             lang_guess=lang_guess, hooks=per_call,
                             hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
@@ -1217,6 +1233,7 @@ class Router(HookRegistry):
         hooks_timeout: Optional[float] = None,
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
+        state_token_counts: bool = False,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -1360,6 +1377,8 @@ class Router(HookRegistry):
                         # Passed only when on, as the token-budget overrides are: agents attached
                         # via `attach()` may predate the knob (#294).
                         batch_kwargs["sort_by_length"] = True
+                    if state_token_counts:
+                        batch_kwargs["state_token_counts"] = True
                     skip = _SKIP_DEFAULTS.set(True)
                     try:
                         batch_results = agent.predict_batch(
@@ -1372,7 +1391,7 @@ class Router(HookRegistry):
                         # Same tolerance `predict` has for an Agent-like object whose
                         # `predict_batch` predates the `lang` (or `sort_by_length`) argument.
                         retried = False
-                        for kwarg in ("lang", "sort_by_length"):
+                        for kwarg in ("lang", "sort_by_length", "state_token_counts"):
                             if batch_kwargs.get(kwarg) is not None and \
                                     "unexpected keyword argument '%s'" % kwarg in str(e):
                                 batch_kwargs.pop(kwarg)

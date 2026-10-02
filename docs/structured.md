@@ -151,19 +151,21 @@ result.answer_confidence["department"] # 0.94  max(p): the quantity min_confiden
 result.confidence["department"]        # 0.71  normalized entropy, which depends on label count
 result.probabilities["department"]     # {"billing": 0.94, "support": 0.06, "sales": 0.0}
 result.usage                           # {"input_tokens": ..., "output_tokens": 0,
-                                       #  "state_tokens": ..., "state_tokens_dropped": ...,
                                        #  "truncated": ..., "truncated_questions": [...]}
 result.routing                         # the Router decision, when a Router answered
 ```
 
 `usage` is the block `predict()` built, forwarded whole: `input_tokens` sums the state over one
-row per question and `output_tokens` is always 0 because nothing is generated, while the other
-four keys are the truncation report (#174) -- `state_tokens` is what the whole serialized state
-needs, `state_tokens_dropped` the most of it any one question's head gave up, and `truncated` /
-`truncated_questions` say which. A seventh key, `options`, is present only when the head budget
-left some question's options sharing a token span (#538); `docs/http-api.md` documents both this
-block and that field as response keys, and `tests/test_structured_docs.py` holds this page's list
-to the code that builds it.
+row per question and `output_tokens` is always 0 because nothing is generated, while `truncated`
+and `truncated_questions` are the truncation report (#174) -- whether any question's head left the
+state too little room, and which ones. Three more keys appear only when there is something to say.
+`options` is present only when the head budget left some question's options sharing a token span
+(#538). `state_tokens` and `state_tokens_dropped` -- the whole serialized state's token count, and
+the most of it any one question gave up -- are present only when the call passed
+`state_token_counts=True`, which is what makes them exact: tokenizing the whole state is the cost
+of counting it, and by default `predict()` reads only as far as a question's window can hold.
+`docs/http-api.md` documents this block and those fields as response keys, and
+`tests/test_structured_docs.py` holds this page's list to the code that builds it.
 
 `confidence` and `answer_confidence` are different quantities, and the names follow the definitions.
 `answer_confidence` is `max(p)`, the probability mass on the answer being reported. It is what

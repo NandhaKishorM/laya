@@ -127,6 +127,11 @@ def build_parser():
                         help="flag an answer whose calibrated confidence falls below P (0.0-1.0) as"
                              " low-confidence; the answer itself is kept, so this asks for a warning"
                              " rather than a refusal. Needs --predict, --preset or --questions.")
+    parser.add_argument("--state-token-counts", action="store_true", dest="state_token_counts",
+                        help="report how many tokens the whole state needed and how many were"
+                             " dropped (usage.state_tokens / usage.state_tokens_dropped). Counting"
+                             " them means tokenizing the whole state, so this is off by default;"
+                             " whether anything was dropped is always reported either way.")
     parser.add_argument("--device", help="torch device, e.g. cpu or cuda")
     parser.add_argument("--json", action="store_true", help="print the raw result as JSON")
     parser.add_argument("--batch", metavar="FILE",
@@ -238,6 +243,17 @@ def abstention_override(args):
     return {} if value is None else {"min_confidence": value}
 
 
+def state_token_counts_override(args):
+    """`--state-token-counts` as a `predict` / `predict_batch` keyword argument, absent when off.
+
+    Sent only when asked for, as ``sort_by_length`` is: core's own default is ``False``, so an
+    unrequested ``False`` would be indistinguishable from the default while still breaking a stub or
+    an attached agent that predates the argument. A call-level argument on both paths, not a
+    per-request one: it decides how each state is tokenized, and one run asks for one answer.
+    """
+    return {"state_token_counts": True} if getattr(args, "state_token_counts", False) else {}
+
+
 def resolve_questions(args):
     """The question set to answer and the state field it reads, from the flags given."""
     if args.questions and args.preset:
@@ -267,7 +283,8 @@ def run(text, args, router=None):
             result = router.predict(state, questions,
                                     model=args.model, task=args.task, lang=args.lang,
                                     lang_guess=args.lang_guess,
-                                    **budget_overrides(args), **abstention_override(args))
+                                    **budget_overrides(args), **abstention_override(args),
+                                    **state_token_counts_override(args))
             if args.json:
                 print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
             else:
@@ -321,7 +338,8 @@ def run_batch(lines, args, router=None):
             overrides.update(budget_overrides(args))
             requests = [{"state": {key: line}, "questions": questions, **overrides}
                         for line in lines]
-            kwargs = {"batch_size": args.batch_size, **abstention_override(args)}
+            kwargs = {"batch_size": args.batch_size, **abstention_override(args),
+                      **state_token_counts_override(args)}
             if args.sort_by_length:
                 # Sent only when asked for, as Router.predict_batch itself forwards it: a stub or
                 # an attached agent that predates the knob keeps working for every run that does

@@ -1,0 +1,60 @@
+[workspace]
+members = ["samples/laya-sample", "samples/laya-benchmark", "samples/laya-routing"]
+
+[package]
+# Published on crates.io as `laya-onnx`; the library itself is still
+# imported as `laya` (see `[lib]`), so `use laya::...` works unchanged.
+name = "laya-onnx"
+version = "0.1.0"
+edition = "2024"
+description = "Rust port of the Laya Python SDK: run Laya decision models locally on ONNX Runtime"
+license = "Apache-2.0"
+repository = "https://github.com/NandhaKishorM/laya"
+homepage = "https://github.com/NandhaKishorM/laya/tree/main/laya-rust"
+documentation = "https://docs.rs/laya-onnx"
+readme = "README.md"
+keywords = ["laya", "onnx", "nlp", "decision", "inference"]
+categories = ["science", "text-processing"]
+# Ship only the library sources and docs. The golden vectors (tests/golden), the Python tools,
+# the samples and any model artifacts stay in the repository.
+include = ["/src/**/*.rs", "/Cargo.toml", "/README.md", "/MODELS.md"]
+
+[lib]
+name = "laya"
+path = "src/lib.rs"
+
+[dependencies]
+serde = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
+indexmap = "2"
+thiserror = "2"
+ureq = { version = "3", optional = true }
+# `tokenizers`: keep `onig` as the regex backend (matches the Python wheel) but drop the default
+# `esaxx_fast` feature — its C++ helper is built with a static MSVC CRT (/MT) that link-conflicts
+# with `ort-sys`'s prebuilt ONNX Runtime binaries (/MD) on Windows. `esaxx_fast` only accelerates
+# the BPE trainer/encoder; dropping it changes performance, not tokenization output.
+tokenizers = { version = "0.23", default-features = false, features = ["onig", "progressbar"] }
+# `ort`: latest 2.x (still pre-1.0 upstream); default features include `download-binaries`, which
+# fetches a prebuilt CPU ONNX Runtime at build time so no system install is required.
+ort = "2.0.0-rc.13"
+# Routing port (`language_detection.rs`): Python's `str.isalpha()` is Unicode general category
+# L* only, which `char::is_alphabetic` does not match (it also accepts combining marks). This
+# crate gives a direct category lookup instead of hand-rolling Unicode tables.
+unicode-general-category = "1.1.0"
+# Routing port (`laya_email.rs`): quote-header, signature and disclaimer detection. `regex` has no
+# lookbehind, so `email.py`'s one lookbehind pattern (`_SENTENCE`) is hand-written instead of
+# pulling in a second, heavier engine (`fancy-regex`) for a single pattern.
+regex = "1.13.1"
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"
+
+[features]
+# Opt-in artifact download (HuggingFace Hub), via `ureq` (TLS through its default `rustls`
+# feature, so no system OpenSSL is needed). On by default.
+default = ["download"]
+download = ["dep:ureq"]
+# GPU execution providers, forwarded to `ort`'s own features of the same name.
+cuda = ["ort/cuda"]
+directml = ["ort/directml"]

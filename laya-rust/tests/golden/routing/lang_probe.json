@@ -1,0 +1,3548 @@
+[
+  {
+    "label": "script/english",
+    "state": "The customer was charged twice and wants a refund.",
+    "state_text": "The customer was charged twice and wants a refund.",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 3,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "script/armenian",
+    "state": "Հայերեն",
+    "state_text": "Հայերեն",
+    "detect_script": "armenian",
+    "script_profile": {
+      "armenian": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "armenian",
+      "script_profile": {
+        "armenian": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/armenian_uppercase",
+    "state": "ՀԱՅԵՐԵՆ",
+    "state_text": "ՀԱՅԵՐԵՆ",
+    "detect_script": "armenian",
+    "script_profile": {
+      "armenian": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "armenian",
+      "script_profile": {
+        "armenian": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/armenian_punctuation_only",
+    "state": "։֊",
+    "state_text": "։֊",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "script/french",
+    "state": "Le client a été facturé deux fois et demande un remboursement.",
+    "state_text": "Le client a été facturé deux fois et demande un remboursement.",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.04838709677419355,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0484,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "script/hindi",
+    "state": "ग्राहक से दो बार शुल्क लिया गया और वह धनवापसी चाहता है।",
+    "state_text": "ग्राहक से दो बार शुल्क लिया गया और वह धनवापसी चाहता है।",
+    "detect_script": "devanagari",
+    "script_profile": {
+      "devanagari": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "devanagari",
+      "script_profile": {
+        "devanagari": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/japanese",
+    "state": "お客様は二重に請求されたため返金を希望しています。",
+    "state_text": "お客様は二重に請求されたため返金を希望しています。",
+    "detect_script": "kana",
+    "script_profile": {
+      "kana": 0.5833333333333334,
+      "han": 0.4166666666666667
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "kana",
+      "script_profile": {
+        "kana": 0.5833333333333334,
+        "han": 0.4166666666666667
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/chinese",
+    "state": "客户被重复扣款要求退款",
+    "state_text": "客户被重复扣款要求退款",
+    "detect_script": "han",
+    "script_profile": {
+      "han": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "han",
+      "script_profile": {
+        "han": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/korean",
+    "state": "고객이 두 번 청구되어 환불을 원합니다",
+    "state_text": "고객이 두 번 청구되어 환불을 원합니다",
+    "detect_script": "hangul",
+    "script_profile": {
+      "hangul": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "hangul",
+      "script_profile": {
+        "hangul": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/arabic",
+    "state": "تم خصم المبلغ مرتين من العميل ويريد استرداد الأموال",
+    "state_text": "تم خصم المبلغ مرتين من العميل ويريد استرداد الأموال",
+    "detect_script": "arabic",
+    "script_profile": {
+      "arabic": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "arabic",
+      "script_profile": {
+        "arabic": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/tamil",
+    "state": "வாடிக்கையாளரிடம் இருமுறை கட்டணம் வசூலிக்கப்பட்டது",
+    "state_text": "வாடிக்கையாளரிடம் இருமுறை கட்டணம் வசூலிக்கப்பட்டது",
+    "detect_script": "tamil",
+    "script_profile": {
+      "tamil": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "tamil",
+      "script_profile": {
+        "tamil": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/russian",
+    "state": "С клиента дважды сняли деньги и он хочет возврат",
+    "state_text": "С клиента дважды сняли деньги и он хочет возврат",
+    "detect_script": "cyrillic",
+    "script_profile": {
+      "cyrillic": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "cyrillic",
+      "script_profile": {
+        "cyrillic": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/thai",
+    "state": "ลูกค้าถูกเรียกเก็บเงินสองครั้งและต้องการเงินคืน",
+    "state_text": "ลูกค้าถูกเรียกเก็บเงินสองครั้งและต้องการเงินคืน",
+    "detect_script": "thai",
+    "script_profile": {
+      "thai": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "thai",
+      "script_profile": {
+        "thai": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/greek",
+    "state": "Ο πελάτης χρεώθηκε δύο φορές και θέλει επιστροφή χρημάτων",
+    "state_text": "Ο πελάτης χρεώθηκε δύο φορές και θέλει επιστροφή χρημάτων",
+    "detect_script": "greek",
+    "script_profile": {
+      "greek": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "greek",
+      "script_profile": {
+        "greek": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/hebrew",
+    "state": "הלקוח חויב פעמיים ורוצה החזר כספי",
+    "state_text": "הלקוח חויב פעמיים ורוצה החזר כספי",
+    "detect_script": "hebrew",
+    "script_profile": {
+      "hebrew": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "hebrew",
+      "script_profile": {
+        "hebrew": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "script/empty",
+    "state": "",
+    "state_text": "",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "script/digits_only",
+    "state": "12345 6789",
+    "state_text": "12345 6789",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/plain_english",
+    "state": "Please refund the duplicate charge on invoice 4411 today.",
+    "state_text": "Please refund the duplicate charge on invoice 4411 today.",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 3,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/armenian",
+    "state": "Հայերեն",
+    "state_text": "Հայերեն",
+    "detect_script": "armenian",
+    "script_profile": {
+      "armenian": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "armenian",
+      "script_profile": {
+        "armenian": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "is_english/english_short",
+    "state": "refund me",
+    "state_text": "refund me",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/hindi",
+    "state": "ग्राहक से दो बार शुल्क लिया गया",
+    "state_text": "ग्राहक से दो बार शुल्क लिया गया",
+    "detect_script": "devanagari",
+    "script_profile": {
+      "devanagari": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "devanagari",
+      "script_profile": {
+        "devanagari": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "is_english/japanese",
+    "state": "お客様は二重に請求されました",
+    "state_text": "お客様は二重に請求されました",
+    "detect_script": "kana",
+    "script_profile": {
+      "kana": 0.5714285714285714,
+      "han": 0.42857142857142855
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "kana",
+      "script_profile": {
+        "kana": 0.5714285714285714,
+        "han": 0.42857142857142855
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "is_english/russian",
+    "state": "С клиента дважды сняли деньги",
+    "state_text": "С клиента дважды сняли деньги",
+    "detect_script": "cyrillic",
+    "script_profile": {
+      "cyrillic": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "cyrillic",
+      "script_profile": {
+        "cyrillic": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "is_english/french_long",
+    "state": "Le client a été facturé deux fois et il demande un remboursement pour la facture qui a été payée le mois dernier avec la carte de crédit",
+    "state_text": "Le client a été facturé deux fois et il demande un remboursement pour la facture qui a été payée le mois dernier avec la carte de crédit",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.051470588235294115,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0515,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/german_long",
+    "state": "Der Kunde wurde zweimal belastet und möchte eine Rückerstattung für die Rechnung die nicht korrekt ist und auch nicht bezahlt wurde",
+    "state_text": "Der Kunde wurde zweimal belastet und möchte eine Rückerstattung für die Rechnung die nicht korrekt ist und auch nicht bezahlt wurde",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "de",
+      "english_hits": 0,
+      "diacritic_rate": 0.022900763358778626,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "de",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0229,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/romanian",
+    "state": "Gătește-mi o rețetă de sarmale de post pentru mâine.",
+    "state_text": "Gătește-mi o rețetă de sarmale de post pentru mâine.",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "ro",
+      "english_hits": 0,
+      "diacritic_rate": 0.09615384615384616,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "ro",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0962,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/romanian_invoice",
+    "state": "Am fost taxat de două ori pentru factura din luna martie și vreau banii",
+    "state_text": "Am fost taxat de două ori pentru factura din luna martie și vreau banii",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "ro",
+      "english_hits": 0,
+      "diacritic_rate": 0.028169014084507043,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "ro",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0282,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/polish",
+    "state": "Klient został obciążony dwukrotnie i chce zwrot pieniędzy za fakturę",
+    "state_text": "Klient został obciążony dwukrotnie i chce zwrot pieniędzy za fakturę",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 1,
+      "diacritic_rate": 0.07352941176470588,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0735,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/czech",
+    "state": "Zákazníkovi byla částka účtována dvakrát a žádá o vrácení peněz",
+    "state_text": "Zákazníkovi byla částka účtována dvakrát a žádá o vrácení peněz",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.2222222222222222,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.2222,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/turkish",
+    "state": "Müşteriden iki kez ücret alındı ve para iadesi istiyor lütfen yardım",
+    "state_text": "Müşteriden iki kez ücret alındı ve para iadesi istiyor lütfen yardım",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.10294117647058823,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.1029,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/vietnamese",
+    "state": "Khách hàng đã bị thu phí hai lần và muốn được hoàn tiền ngay",
+    "state_text": "Khách hàng đã bị thu phí hai lần và muốn được hoàn tiền ngay",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.13333333333333333,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.1333,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/english_with_loanwords",
+    "state": "We visited a cafe in Zurich and the naive assumption about the invoice was wrong, so please refund the duplicate charge",
+    "state_text": "We visited a cafe in Zurich and the naive assumption about the invoice was wrong, so please refund the duplicate charge",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 8,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/undecided_turkish",
+    "state": "Müşteriden iki kez ücret alındı ve para iadesi istiyor",
+    "state_text": "Müşteriden iki kez ücret alındı ve para iadesi istiyor",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.09259259259259259,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0926,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/english_not_undecided",
+    "state": "Please refund the duplicate charge on the invoice",
+    "state_text": "Please refund the duplicate charge on the invoice",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/romanian_diacritics",
+    "state": "Gătește-mi o rețetă de sarmale",
+    "state_text": "Gătește-mi o rețetă de sarmale",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.13333333333333333,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.1333,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/no_diacritics",
+    "state": "Please refund the duplicate charge today",
+    "state_text": "Please refund the duplicate charge today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 2,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/zero_tie_romanian",
+    "state": "Cât e ora acum la Tokyo",
+    "state_text": "Cât e ora acum la Tokyo",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.043478260869565216,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0435,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "is_english/known_gap_romanian_no_diacritics",
+    "state": "Care este ora in Tokyo?",
+    "state_text": "Care este ora in Tokyo?",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_lang/english",
+    "state": "The customer was charged twice and wants a refund for this invoice",
+    "state_text": "The customer was charged twice and wants a refund for this invoice",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 5,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_lang/french",
+    "state": "Le client a ete facture deux fois et il demande un remboursement pour la facture",
+    "state_text": "Le client a ete facture deux fois et il demande un remboursement pour la facture",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_lang/german",
+    "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung",
+    "state_text": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "de",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "de",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_lang/spanish",
+    "state": "El cliente fue cobrado dos veces y quiere que le devuelvan el dinero por la factura",
+    "state_text": "El cliente fue cobrado dos veces y quiere que le devuelvan el dinero por la factura",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_lang/too_short",
+    "state": "refund",
+    "state_text": "refund",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_lang/long_english_stays_en",
+    "state": "Please refund the duplicate charge on invoice 4411 today because we have been waiting for three days and nobody has replied to us",
+    "state_text": "Please refund the duplicate charge on invoice 4411 today because we have been waiting for three days and nobody has replied to us",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 9,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "state_text/dict",
+    "state": {
+      "body": "charged twice",
+      "n": 3
+    },
+    "state_text": "charged twice",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "state_text/nested",
+    "state": {
+      "a": {
+        "b": [
+          "deep"
+        ]
+      }
+    },
+    "state_text": "deep",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "state_text/list",
+    "state": [
+      "x",
+      {
+        "y": "z"
+      }
+    ],
+    "state_text": "x z",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "state_text/none",
+    "state": null,
+    "state_text": "",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "state_text/keys_ignored",
+    "state": {
+      "subject": "नमस्ते",
+      "body": "ग्राहक से दो बार शुल्क लिया गया"
+    },
+    "state_text": "नमस्ते ग्राहक से दो बार शुल्क लिया गया",
+    "detect_script": "devanagari",
+    "script_profile": {
+      "devanagari": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "devanagari",
+      "script_profile": {
+        "devanagari": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "profile/armenian_pure",
+    "state": "Հայերեն",
+    "state_text": "Հայերեն",
+    "detect_script": "armenian",
+    "script_profile": {
+      "armenian": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "armenian",
+      "script_profile": {
+        "armenian": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "profile/armenian_mixed_with_latin",
+    "state": "Հայերեն abc",
+    "state_text": "Հայերեն abc",
+    "detect_script": "armenian",
+    "script_profile": {
+      "latin": 0.3,
+      "armenian": 0.7
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "armenian",
+      "script_profile": {
+        "latin": 0.3,
+        "armenian": 0.7
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.7
+    }
+  },
+  {
+    "label": "plain_ascii/es_1",
+    "state": "El pedido llego roto y nadie responde cuando escribo al soporte",
+    "state_text": "El pedido llego roto y nadie responde cuando escribo al soporte",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/es_2",
+    "state": "Quiero cancelar mi plan y pedir un reembolso",
+    "state_text": "Quiero cancelar mi plan y pedir un reembolso",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/es_3",
+    "state": "La factura tiene un error en el importe total",
+    "state_text": "La factura tiene un error en el importe total",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/es_4",
+    "state": "Necesito que me devuelvan el dinero de la compra duplicada",
+    "state_text": "Necesito que me devuelvan el dinero de la compra duplicada",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/it_1",
+    "state": "Il cliente e stato addebitato due volte e vuole un rimborso",
+    "state_text": "Il cliente e stato addebitato due volte e vuole un rimborso",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/it_2",
+    "state": "Voglio cancellare il mio abbonamento e chiedere un rimborso",
+    "state_text": "Voglio cancellare il mio abbonamento e chiedere un rimborso",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/it_3",
+    "state": "La fattura contiene un errore nell importo totale",
+    "state_text": "La fattura contiene un errore nell importo totale",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/pt_1",
+    "state": "O cliente foi cobrado duas vezes e quer o dinheiro de volta",
+    "state_text": "O cliente foi cobrado duas vezes e quer o dinheiro de volta",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "pt",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/fr_1",
+    "state": "Le client a ete facture deux fois et demande un remboursement",
+    "state_text": "Le client a ete facture deux fois et demande un remboursement",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "plain_ascii/fr_2",
+    "state": "Je ne peux pas acceder a mon compte et j ai besoin d aide",
+    "state_text": "Je ne peux pas acceder a mon compte et j ai besoin d aide",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "accented/es",
+    "state": "La facturación tiene un error y necesito una corrección urgente",
+    "state_text": "La facturación tiene un error y necesito una corrección urgente",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.031746031746031744,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0317,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "accented/it",
+    "state": "La fattura è sbagliata, devo avere un rimborso per il pagamento",
+    "state_text": "La fattura è sbagliata, devo avere un rimborso per il pagamento",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.015873015873015872,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0159,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "accented/fr",
+    "state": "La commande est arrivée cassée et personne ne répond au support",
+    "state_text": "La commande est arrivée cassée et personne ne répond au support",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.047619047619047616,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0476,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "romance_control/1",
+    "state": "The customer was charged twice and wants a refund for this invoice",
+    "state_text": "The customer was charged twice and wants a refund for this invoice",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 5,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "romance_control/2",
+    "state": "Please cancel my subscription and refund the duplicate charge today",
+    "state_text": "Please cancel my subscription and refund the duplicate charge today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 3,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "romance_control/3",
+    "state": "The report by Smith et al. shows the de facto standard, e.g. the LA office and Rio",
+    "state_text": "The report by Smith et al. shows the de facto standard, e.g. the LA office and Rio",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "romance_control/4",
+    "state": "Our MI5 and UN contacts discussed the DOS attack in LA last month",
+    "state_text": "Our MI5 and UN contacts discussed the DOS attack in LA last month",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 3,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "romance_control/5",
+    "state": "No refund was issued, so I am writing to you again about invoice 4411",
+    "state_text": "No refund was issued, so I am writing to you again about invoice 4411",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "romance_control/6",
+    "state": "no refund no reply",
+    "state_text": "no refund no reply",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "romance_control/7",
+    "state": "The son of the director filed a complaint about the duplicate invoice",
+    "state_text": "The son of the director filed a complaint about the duplicate invoice",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "shared_words/names_nothing",
+    "state": "Cât e ora acum la Tokyo",
+    "state_text": "Cât e ora acum la Tokyo",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.043478260869565216,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0435,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "shared_words/distinctive_names_it",
+    "state": "La fattura contiene un errore nell importo totale",
+    "state_text": "La fattura contiene un errore nell importo totale",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "shared_words/shared_hits_still_count_es",
+    "state": "La factura tiene un error en el importe total",
+    "state_text": "La factura tiene un error en el importe total",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "all_scripts/greek",
+    "state": "Γεια σου κόσμε, πώς είσαι σήμερα;",
+    "state_text": "Γεια σου κόσμε, πώς είσαι σήμερα;",
+    "detect_script": "greek",
+    "script_profile": {
+      "greek": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "greek",
+      "script_profile": {
+        "greek": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/cyrillic",
+    "state": "Привет, как ты себя чувствуешь сегодня?",
+    "state_text": "Привет, как ты себя чувствуешь сегодня?",
+    "detect_script": "cyrillic",
+    "script_profile": {
+      "cyrillic": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "cyrillic",
+      "script_profile": {
+        "cyrillic": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/armenian",
+    "state": "Բարեւ ձեզ, ինչպե՞ս եք այսօր",
+    "state_text": "Բարեւ ձեզ, ինչպե՞ս եք այսօր",
+    "detect_script": "armenian",
+    "script_profile": {
+      "armenian": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "armenian",
+      "script_profile": {
+        "armenian": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/hebrew",
+    "state": "שלום, מה שלומך היום",
+    "state_text": "שלום, מה שלומך היום",
+    "detect_script": "hebrew",
+    "script_profile": {
+      "hebrew": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "hebrew",
+      "script_profile": {
+        "hebrew": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/arabic",
+    "state": "مرحبا كيف حالك اليوم",
+    "state_text": "مرحبا كيف حالك اليوم",
+    "detect_script": "arabic",
+    "script_profile": {
+      "arabic": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "arabic",
+      "script_profile": {
+        "arabic": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/devanagari",
+    "state": "नमस्ते आप कैसे हैं आज",
+    "state_text": "नमस्ते आप कैसे हैं आज",
+    "detect_script": "devanagari",
+    "script_profile": {
+      "devanagari": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "devanagari",
+      "script_profile": {
+        "devanagari": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/bengali",
+    "state": "আমি ভালো আছি, আপনি কেমন আছেন",
+    "state_text": "আমি ভালো আছি, আপনি কেমন আছেন",
+    "detect_script": "bengali",
+    "script_profile": {
+      "bengali": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "bengali",
+      "script_profile": {
+        "bengali": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/gurmukhi",
+    "state": "ਤੁਸੀਂ ਕਿਵੇਂ ਹੋ, ਮੈਂ ਠੀਕ ਹਾਂ",
+    "state_text": "ਤੁਸੀਂ ਕਿਵੇਂ ਹੋ, ਮੈਂ ਠੀਕ ਹਾਂ",
+    "detect_script": "gurmukhi",
+    "script_profile": {
+      "gurmukhi": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "gurmukhi",
+      "script_profile": {
+        "gurmukhi": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/gujarati",
+    "state": "તમે કેમ છો, હું સારો છું",
+    "state_text": "તમે કેમ છો, હું સારો છું",
+    "detect_script": "gujarati",
+    "script_profile": {
+      "gujarati": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "gujarati",
+      "script_profile": {
+        "gujarati": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/oriya",
+    "state": "ତୁମେ କେମିତି ଅଛ, ମୁଁ ଭଲ ଅଛି",
+    "state_text": "ତୁମେ କେମିତି ଅଛ, ମୁଁ ଭଲ ଅଛି",
+    "detect_script": "oriya",
+    "script_profile": {
+      "oriya": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "oriya",
+      "script_profile": {
+        "oriya": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/tamil",
+    "state": "நீங்கள் எப்படி இருக்கிறீர்கள்",
+    "state_text": "நீங்கள் எப்படி இருக்கிறீர்கள்",
+    "detect_script": "tamil",
+    "script_profile": {
+      "tamil": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "tamil",
+      "script_profile": {
+        "tamil": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/telugu",
+    "state": "మీరు ఎలా ఉన్నారు, నేను బాగున్నాను",
+    "state_text": "మీరు ఎలా ఉన్నారు, నేను బాగున్నాను",
+    "detect_script": "telugu",
+    "script_profile": {
+      "telugu": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "telugu",
+      "script_profile": {
+        "telugu": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/kannada",
+    "state": "ನೀವು ಹೇಗಿದ್ದೀರಿ, ನಾನು ಚೆನ್ನಾಗಿದ್ದೇನೆ",
+    "state_text": "ನೀವು ಹೇಗಿದ್ದೀರಿ, ನಾನು ಚೆನ್ನಾಗಿದ್ದೇನೆ",
+    "detect_script": "kannada",
+    "script_profile": {
+      "kannada": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "kannada",
+      "script_profile": {
+        "kannada": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/malayalam",
+    "state": "നിങ്ങൾക്ക് സുഖമാണോ, എനിക്ക് സുഖമാണ്",
+    "state_text": "നിങ്ങൾക്ക് സുഖമാണോ, എനിക്ക് സുഖമാണ്",
+    "detect_script": "malayalam",
+    "script_profile": {
+      "malayalam": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "malayalam",
+      "script_profile": {
+        "malayalam": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/sinhala",
+    "state": "ඔබට කොහොමද, මට හොඳින්",
+    "state_text": "ඔබට කොහොමද, මට හොඳින්",
+    "detect_script": "sinhala",
+    "script_profile": {
+      "sinhala": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "sinhala",
+      "script_profile": {
+        "sinhala": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/thai",
+    "state": "คุณเป็นอย่างไรบ้างวันนี้",
+    "state_text": "คุณเป็นอย่างไรบ้างวันนี้",
+    "detect_script": "thai",
+    "script_profile": {
+      "thai": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "thai",
+      "script_profile": {
+        "thai": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/lao",
+    "state": "ສະບາຍດີ ທ່ານເປັນແນວໃດແດ່",
+    "state_text": "ສະບາຍດີ ທ່ານເປັນແນວໃດແດ່",
+    "detect_script": "lao",
+    "script_profile": {
+      "lao": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "lao",
+      "script_profile": {
+        "lao": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/tibetan",
+    "state": "བཀྲ་ཤིས་བདེ་ལེགས་ཁྱེད་རང་ག་འདྲ་ཡོད",
+    "state_text": "བཀྲ་ཤིས་བདེ་ལེགས་ཁྱེད་རང་ག་འདྲ་ཡོད",
+    "detect_script": "tibetan",
+    "script_profile": {
+      "tibetan": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "tibetan",
+      "script_profile": {
+        "tibetan": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/myanmar",
+    "state": "မင်္ဂလာပါ သင်နေကောင်းလား",
+    "state_text": "မင်္ဂလာပါ သင်နေကောင်းလား",
+    "detect_script": "myanmar",
+    "script_profile": {
+      "myanmar": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "myanmar",
+      "script_profile": {
+        "myanmar": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/georgian",
+    "state": "გამარჯობა როგორ ხარ დღეს",
+    "state_text": "გამარჯობა როგორ ხარ დღეს",
+    "detect_script": "georgian",
+    "script_profile": {
+      "georgian": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "georgian",
+      "script_profile": {
+        "georgian": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/ethiopic",
+    "state": "ሰላም እንዴት ነህ ዛሬ",
+    "state_text": "ሰላም እንዴት ነህ ዛሬ",
+    "detect_script": "ethiopic",
+    "script_profile": {
+      "ethiopic": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "ethiopic",
+      "script_profile": {
+        "ethiopic": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/khmer",
+    "state": "សួស្តី តើអ្នកសុខសប្បាយទេ",
+    "state_text": "សួស្តី តើអ្នកសុខសប្បាយទេ",
+    "detect_script": "khmer",
+    "script_profile": {
+      "khmer": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "khmer",
+      "script_profile": {
+        "khmer": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/hangul",
+    "state": "안녕하세요 오늘 기분이 어때요",
+    "state_text": "안녕하세요 오늘 기분이 어때요",
+    "detect_script": "hangul",
+    "script_profile": {
+      "hangul": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "hangul",
+      "script_profile": {
+        "hangul": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/kana",
+    "state": "こんにちは、今日は元気ですか",
+    "state_text": "こんにちは、今日は元気ですか",
+    "detect_script": "kana",
+    "script_profile": {
+      "kana": 0.6923076923076923,
+      "han": 0.3076923076923077
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "kana",
+      "script_profile": {
+        "kana": 0.6923076923076923,
+        "han": 0.3076923076923077
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/han",
+    "state": "你好，你今天过得怎么样",
+    "state_text": "你好，你今天过得怎么样",
+    "detect_script": "han",
+    "script_profile": {
+      "han": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "han",
+      "script_profile": {
+        "han": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "all_scripts/latin",
+    "state": "Hello, how are you feeling today?",
+    "state_text": "Hello, how are you feeling today?",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 2,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "tie/greek_then_cyrillic_1v1",
+    "state": "ΑА",
+    "state_text": "ΑА",
+    "detect_script": "greek",
+    "script_profile": {
+      "greek": 0.5,
+      "cyrillic": 0.5
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "greek",
+      "script_profile": {
+        "greek": 0.5,
+        "cyrillic": 0.5
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "tie/cyrillic_then_greek_1v1",
+    "state": "АΑ",
+    "state_text": "АΑ",
+    "detect_script": "cyrillic",
+    "script_profile": {
+      "cyrillic": 0.5,
+      "greek": 0.5
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "cyrillic",
+      "script_profile": {
+        "cyrillic": 0.5,
+        "greek": 0.5
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "tie/han_then_latin_1v1",
+    "state": "中 a",
+    "state_text": "中 a",
+    "detect_script": "han",
+    "script_profile": {
+      "latin": 0.5,
+      "han": 0.5
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "han",
+      "script_profile": {
+        "latin": 0.5,
+        "han": 0.5
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.5
+    }
+  },
+  {
+    "label": "tie/latin_then_han_1v1",
+    "state": "a 中",
+    "state_text": "a 中",
+    "detect_script": "han",
+    "script_profile": {
+      "latin": 0.5,
+      "han": 0.5
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "han",
+      "script_profile": {
+        "latin": 0.5,
+        "han": 0.5
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.5
+    }
+  },
+  {
+    "label": "tie/three_way_greek_cyrillic_armenian",
+    "state": "ΑАԱ",
+    "state_text": "ΑАԱ",
+    "detect_script": "greek",
+    "script_profile": {
+      "greek": 0.3333333333333333,
+      "cyrillic": 0.3333333333333333,
+      "armenian": 0.3333333333333333
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "greek",
+      "script_profile": {
+        "greek": 0.3333333333333333,
+        "cyrillic": 0.3333333333333333,
+        "armenian": 0.3333333333333333
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "mixed/latin_han_arabic",
+    "state": "invoice 中文 فاتورة refund",
+    "state_text": "invoice 中文 فاتورة refund",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.6190476190476191,
+      "han": 0.09523809523809523,
+      "arabic": 0.2857142857142857
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.6190476190476191,
+        "han": 0.09523809523809523,
+        "arabic": 0.2857142857142857
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.381
+    }
+  },
+  {
+    "label": "mixed/devanagari_latin_majority_devanagari",
+    "state": "ग्राहक से दो बार शुल्क लिया गया refund",
+    "state_text": "ग्राहक से दो बार शुल्क लिया गया refund",
+    "detect_script": "devanagari",
+    "script_profile": {
+      "latin": 0.2857142857142857,
+      "devanagari": 0.7142857142857143
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "devanagari",
+      "script_profile": {
+        "latin": 0.2857142857142857,
+        "devanagari": 0.7142857142857143
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.7143
+    }
+  },
+  {
+    "label": "mixed/latin_majority_devanagari_minor",
+    "state": "Please refund the customer today ग्राहक",
+    "state_text": "Please refund the customer today ग्राहक",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.875,
+      "devanagari": 0.125
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 2,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.875,
+        "devanagari": 0.125
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.125
+    }
+  },
+  {
+    "label": "latin_tie/fr_vs_de",
+    "state": "être cette nicht sich",
+    "state_text": "être cette nicht sich",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.047619047619047616,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0476,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_tie/de_vs_es",
+    "state": "nicht sich el los",
+    "state_text": "nicht sich el los",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "de",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "de",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_tie/es_vs_pt",
+    "state": "está una dos tres o não está",
+    "state_text": "está una dos tres o não está",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.10714285714285714,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.1071,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "latin_tie/pt_vs_it",
+    "state": "não está o della sono",
+    "state_text": "não está o della sono",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "pt",
+      "english_hits": 0,
+      "diacritic_rate": 0.09523809523809523,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0952,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "astral/emoji_only",
+    "state": "😀🚀❤️",
+    "state_text": "😀🚀❤️",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "astral/emoji_with_latin",
+    "state": "refund please 😀 today",
+    "state_text": "refund please 😀 today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "astral/deseret_letter_alone",
+    "state": "𐐀𐐁𐐂",
+    "state_text": "𐐀𐐁𐐂",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "astral/deseret_mixed_with_latin",
+    "state": "refund 𐐀 today",
+    "state_text": "refund 𐐀 today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "astral/mathematical_bold_letters",
+    "state": "𝐀𝐁𝐂",
+    "state_text": "𝐀𝐁𝐂",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "combining/devanagari_with_virama",
+    "state": "ग्राहक",
+    "state_text": "ग्राहक",
+    "detect_script": "devanagari",
+    "script_profile": {
+      "devanagari": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "devanagari",
+      "script_profile": {
+        "devanagari": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "combining/latin_with_combining_acute",
+    "state": "café résumé",
+    "state_text": "café résumé",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "turkish_i/capital_i_with_dot",
+    "state": "İstanbul",
+    "state_text": "İstanbul",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "turkish_i/mixed_case",
+    "state": "İYİ GÜNLER İstanbul'da",
+    "state_text": "İYİ GÜNLER İstanbul'da",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.04,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.04,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "turkish_i/lowercase_dotless",
+    "state": "ıstanbul",
+    "state_text": "ıstanbul",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.125,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.125,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "numerics/ascii_digits_only",
+    "state": "12345 67890",
+    "state_text": "12345 67890",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "numerics/roman_numeral_nl",
+    "state": "chapter Ⅷ begins",
+    "state_text": "chapter Ⅷ begins",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "numerics/fullwidth_digits",
+    "state": "１２３ refund",
+    "state_text": "１２３ refund",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "numerics/mixed_digits_and_words",
+    "state": "invoice 4411 was paid twice on 2024-01-05",
+    "state_text": "invoice 4411 was paid twice on 2024-01-05",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 2,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "nesting/depth_6_kept",
+    "state": {
+      "a": {
+        "b": {
+          "c": {
+            "d": {
+              "e": {
+                "f": "visible at depth 6"
+              }
+            }
+          }
+        }
+      }
+    },
+    "state_text": "visible at depth 6",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "nesting/depth_7_dropped",
+    "state": {
+      "a": {
+        "b": {
+          "c": {
+            "d": {
+              "e": {
+                "f": {
+                  "g": "invisible past depth 6"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "state_text": "",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "nesting/list_depth_7_dropped",
+    "state": [
+      [
+        [
+          [
+            [
+              [
+                [
+                  "invisible list depth 7"
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    "state_text": "",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "nesting/mixed_depth_boundary",
+    "state": {
+      "a": {
+        "b": {
+          "c": {
+            "d": {
+              "e": [
+                "kept depth 6",
+                {
+                  "f": "dropped depth 7"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "state_text": "kept depth 6",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "long/ascii_over_4000",
+    "state": "refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. ",
+    "state_text": "refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund please. refund ple",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 266,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  },
+  {
+    "label": "long/multibyte_over_4000",
+    "state": "退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 ",
+    "state_text": "退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 ",
+    "detect_script": "han",
+    "script_profile": {
+      "han": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "han",
+      "script_profile": {
+        "han": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0
+    }
+  },
+  {
+    "label": "long/mixed_script_over_4000_boundary_near_switch",
+    "state": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa客户被重复扣款要求退款客户被重复扣款要求退款客户被重复扣款要求退款客户被重复扣款要求退款客户被重复扣款要求退款",
+    "state_text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa客户被重复扣款要求退",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.9975,
+      "han": 0.0025
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.9975,
+        "han": 0.0025
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0025
+    }
+  },
+  {
+    "label": "long/english_over_1000",
+    "state": "Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. ",
+    "state_text": "Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. Please refund the duplicate charge on invoice 4411 today. ",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 60,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0
+    }
+  }
+]

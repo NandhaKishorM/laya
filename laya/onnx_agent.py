@@ -246,7 +246,8 @@ class ONNXAgent(HookRegistry):
                    hooks_timeout: Optional[float] = None,
                    max_len: Optional[int] = None,
                    head_max_len: Optional[int] = None,
-                   min_confidence: Optional[float] = None) -> Dict[str, Any]:
+                   min_confidence: Optional[float] = None,
+                   state_token_counts: bool = False) -> Dict[str, Any]:
         """Evaluate typed questions across state in one ONNX Runtime session run.
 
         `lang` selects a per-language temperature override (see `lang_temperatures`), matching the
@@ -269,6 +270,9 @@ class ONNXAgent(HookRegistry):
             head_max_len: Override the config's `head_max_len` for this call.
             min_confidence: Opt-in abstention threshold on `answer_confidence` (#361); an answer
                     below it is returned flagged with `low_confidence: True`.
+            state_token_counts: Report `usage["state_tokens"]` / `usage["state_tokens_dropped"]`,
+                    tokenizing the whole state to count it. `truncated` / `truncated_questions`
+                    are exact without it; see `Agent.predict_batch`.
 
         Returns:
             Dictionary with answers, probabilities, calibrated confidence, and token usage.
@@ -280,7 +284,8 @@ class ONNXAgent(HookRegistry):
                                   on_predict_end=on_predict_end, hooks_raise=hooks_raise,
                                   hooks_timeout=hooks_timeout,
                                   max_len=max_len, head_max_len=head_max_len,
-                                  min_confidence=min_confidence)[0]
+                                  min_confidence=min_confidence,
+                                  state_token_counts=state_token_counts)[0]
 
     def predict_batch(self, states: List[Union[str, dict, list]], questions: Dict[str, Dict[str, Any]],
                       batch_size: Optional[int] = None, lang: Optional[str] = None,
@@ -290,7 +295,8 @@ class ONNXAgent(HookRegistry):
                       max_len: Optional[int] = None,
                       head_max_len: Optional[int] = None,
                       sort_by_length: bool = False,
-                      min_confidence: Optional[float] = None) -> List[Dict[str, Any]]:
+                      min_confidence: Optional[float] = None,
+                      state_token_counts: bool = False) -> List[Dict[str, Any]]:
         """Evaluate the same questions over many states, sharing ONNX Runtime session runs.
 
         The throughput path, mirroring `laya.agent.Agent.predict_batch`: `system_one` collates one
@@ -365,7 +371,9 @@ class ONNXAgent(HookRegistry):
                         overrides["head_max_len"] = ctx.head_max_len
                     ctx.results = self._infer_batch(states, questions, lang=lang,
                                                     batch_size=batch_size,
-                                                    sort_by_length=sort_by_length, **overrides)
+                                                    sort_by_length=sort_by_length,
+                                                    state_token_counts=state_token_counts,
+                                                    **overrides)
         except BaseException as exc:
             ctx.error = exc
             try:
@@ -393,7 +401,8 @@ class ONNXAgent(HookRegistry):
                      lang: Optional[str] = None,
                      hooks=None, on_predict_start=None, on_predict_end=None,
                      hooks_raise: Optional[bool] = None,
-                     hooks_timeout: Optional[float] = None) -> Dict[str, Any]:
+                     hooks_timeout: Optional[float] = None,
+                     state_token_counts: bool = False) -> Dict[str, Any]:
         """Evaluate questions over a state longer than the context window, scanning it in
         overlapping windows and aggregating per question.
 
@@ -512,8 +521,12 @@ class ONNXAgent(HookRegistry):
         # `window_batch_cap`. An explicit batch_size is honoured untouched.
         cap = window_batch_cap(len(windows), budget, max(64, max_len - head_max_len - 8),
                                batch_size)
+        # Passed only when asked, so the default scan hands `predict_batch` exactly the kwargs it
+        # always has -- a replacement `predict_batch` that predates the argument still works, and
+        # `tests/test_predict_long.py` pins that forwarded set.
+        counts = {"state_token_counts": True} if state_token_counts else {}
         results = self.predict_batch(list(windows), questions, batch_size=cap, lang=lang,
-                                     **_with_start_probe(hook_kwargs, probe))
+                                     **counts, **_with_start_probe(hook_kwargs, probe))
         # Same check as the torch agent, for the same reason and on the same contract: a start hook
         # re-budgets an ONNX scan exactly as it re-budgets a torch one (`predict_batch` applies
         # `ctx.max_len`/`ctx.head_max_len` identically), so leaving it off here meant the bug was
@@ -596,22 +609,24 @@ class ONNXAgent(HookRegistry):
 
     def _infer(self, state: Union[str, dict, list], questions: Dict[str, Dict[str, Any]],
                max_len: Optional[int] = None, head_max_len: Optional[int] = None,
-               lang: Optional[str] = None) -> Dict[str, Any]:
+               lang: Optional[str] = None, state_token_counts: bool = False) -> Dict[str, Any]:
         """Answer one state without hooks: one session run, the `predict_batch([state])` case."""
         return self._infer_batch([state], questions, max_len=max_len, head_max_len=head_max_len,
-                                 lang=lang)[0]
+                                 lang=lang, state_token_counts=state_token_counts)[0]
 
     def _encode_state(self, state: Union[str, dict, list], ids: List[str], internal: Dict[str, Any],
-                      max_len: int, head_max_len: int) -> List[Dict[str, Any]]:
+                      max_len: int, head_max_len: int,
+                      state_token_counts: bool = False) -> List[Dict[str, Any]]:
         """This state's question rows, tokenizing the state once for all of them."""
         truncate_left = isinstance(state, list)
         # Tokenize the shared state once and reuse it across questions, instead of
         # re-serializing and re-tokenizing the same document inside build_sequence per
         # question (the PyTorch Agent already does this via `state_ids`). And, for the shapes
         # whose slice is a prefix, only as far as the sequence can hold -- see
-        # `Agent._encode_state`, which takes the same two paths for the same reason.
+        # `Agent._encode_state`, which takes the same two paths for the same reason, and for why
+        # `state_token_counts` opts back out of the prefix.
         text = serialize_state(state).replace(self.tok.mask_token, " ")
-        if truncate_left:
+        if truncate_left or state_token_counts:
             state_ids = encode_text(self.tok, text, add_special_tokens=False)["input_ids"]
         else:
             state_ids = encode_state_head(self.tok, text, max_len)
@@ -708,7 +723,8 @@ class ONNXAgent(HookRegistry):
                      max_len: Optional[int] = None, head_max_len: Optional[int] = None,
                      lang: Optional[str] = None,
                      batch_size: Optional[int] = None,
-                     sort_by_length: bool = False) -> List[Dict[str, Any]]:
+                     sort_by_length: bool = False,
+                     state_token_counts: bool = False) -> List[Dict[str, Any]]:
         """Validate once, then encode, collate, run and decode in chunks of `batch_size` states.
 
         With `sort_by_length`, chunks are formed from length-sorted states inside a lookahead
@@ -733,9 +749,13 @@ class ONNXAgent(HookRegistry):
         # Bound the tokenized lookahead independently of the input size (same as the torch Agent):
         # sort within windows of eight batches, using each state's longest encoded question row.
         window = chunk * 8 if reorder else chunk
+        # Only when asked, as on the torch Agent: an `_encode_state` override that predates the
+        # argument keeps working on every call that does not ask for the counts.
+        counts = {"state_token_counts": True} if state_token_counts else {}
         for start in range(0, len(states), window):
             part = states[start:start + window]
-            encoded = [self._encode_state(st, ids, internal, max_len, head_max_len) for st in part]
+            encoded = [self._encode_state(st, ids, internal, max_len, head_max_len, **counts)
+                       for st in part]
             order = list(range(len(encoded)))
             if reorder:
                 order.sort(key=lambda i: max(len(item["ids"]) for item in encoded[i]))
@@ -775,12 +795,14 @@ class ONNXAgent(HookRegistry):
                     usage = {
                         "input_tokens": n_tokens,
                         "output_tokens": 0,
-                        "state_tokens": stats[0]["state_tokens"],
-                        # worst case: the questions share one state, not one head budget
-                        "state_tokens_dropped": dropped,
                         "truncated": dropped > 0,
                         "truncated_questions": [qid for qid, s in zip(ids, stats) if s["truncated"]],
                     }
+                    # Exact only when the whole state was tokenized, as on the torch Agent (#687).
+                    if state_token_counts:
+                        usage["state_tokens"] = stats[0]["state_tokens"]
+                        # worst case: the questions share one state, not one head budget
+                        usage["state_tokens_dropped"] = dropped
                     # Only when a question lost options to the head budget, as on the torch Agent.
                     collapsed = collapsed_options(ids, items)
                     if collapsed:

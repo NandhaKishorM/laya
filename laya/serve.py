@@ -100,7 +100,8 @@ DEFAULT_MAX_TOKEN_BUDGET = 8192
 # ``hooks_raise`` / ``hooks_timeout`` govern how the hooks the *operator* installed execute, so
 # none of those five has a meaning a request could give it. Which checkpoint answers, which
 # language it reads, how many tokens it gets and where it abstains are all plain data.
-BODY_CONTROLS = ("model", "max_len", "head_max_len", "task", "lang", "lang_guess", "min_confidence")
+BODY_CONTROLS = ("model", "max_len", "head_max_len", "task", "lang", "lang_guess", "min_confidence",
+                 "state_token_counts")
 BODY_REFUSALS = ("hooks", "on_predict_start", "on_predict_end", "hooks_raise", "hooks_timeout")
 
 # ``Router.predict_batch`` reads two different kinds of control: call-level keyword arguments that
@@ -114,7 +115,7 @@ BODY_REFUSALS = ("hooks", "on_predict_start", "on_predict_end", "hooks_raise", "
 # ``hooks_timeout`` is refused on the batch path the same way it is on the single path: it belongs
 # to ``predict_batch``'s call-level args but governs how the *deployment's* hooks execute, so a
 # caller cannot be allowed to shorten or lengthen that deadline from an HTTP body.
-BATCH_BODY_CALL_CONTROLS = ("batch_size", "min_confidence", "sort_by_length")
+BATCH_BODY_CALL_CONTROLS = ("batch_size", "min_confidence", "sort_by_length", "state_token_counts")
 BATCH_BODY_ITEM_CONTROLS = ("max_len", "head_max_len", "task", "lang", "lang_guess")
 
 
@@ -349,6 +350,30 @@ def _validate_sort_by_length_param(body: Dict[str, Any]) -> Optional[bool]:
         return None
     if not isinstance(val, bool):
         raise HTTPException(status_code=422, detail="sort_by_length must be a boolean")
+    return val
+
+
+def _validate_state_token_counts_param(body: Dict[str, Any]) -> Optional[bool]:
+    """Validate the optional ``state_token_counts`` argument on both predict routes (422).
+
+    Asks for ``usage["state_tokens"]`` and ``usage["state_tokens_dropped"]``, which are absent by
+    default: they count the whole serialized state, and the agent otherwise tokenizes only the head
+    the model can read. ``truncated`` / ``truncated_questions`` are reported either way, so a client
+    that only needs to know whether the answer saw the whole state should not send this.
+
+    Boolean-only, and ``False`` is forwarded as ``None`` for the reason ``sort_by_length`` has: the
+    core default is already ``False``, so "the caller did not ask" must not override a deployment
+    that turned the counts on for itself.
+    """
+    from fastapi import HTTPException
+
+    if "state_token_counts" not in body:
+        return None
+    val = body["state_token_counts"]
+    if val is None:
+        return None
+    if not isinstance(val, bool):
+        raise HTTPException(status_code=422, detail="state_token_counts must be a boolean")
     return val
 
 
@@ -914,6 +939,10 @@ def create_app(router: Optional[Any] = None):
         min_confidence = _validate_min_confidence(body)
         if min_confidence is not None:
             predict_kwargs["min_confidence"] = min_confidence
+        if _validate_state_token_counts_param(body):
+            # Only `True` is forwarded, as with `sort_by_length`: an attached agent that predates
+            # the argument drops it, and the counts are then simply absent rather than wrong.
+            predict_kwargs["state_token_counts"] = True
         if gate is None:
             gate = asyncio.Lock()
         try:
@@ -1020,6 +1049,11 @@ def create_app(router: Optional[Any] = None):
         batch_size = _validate_batch_size_param(body)
         if batch_size is not None:
             call_kwargs["batch_size"] = batch_size
+        state_token_counts = _validate_state_token_counts_param(body)
+        if state_token_counts:
+            # Call-level on `Router.predict_batch`, as `sort_by_length` is -- not per item: it
+            # changes how each state is tokenized, and the whole batch shares one decision.
+            call_kwargs["state_token_counts"] = True
         sort_by_length = _validate_sort_by_length_param(body)
         if sort_by_length:
             # Only `True` is forwarded: `predict_batch`'s own default is `False`, and an attached
@@ -1031,6 +1065,8 @@ def create_app(router: Optional[Any] = None):
         predict_kwargs: Dict[str, Any] = dict(item_overrides)
         if min_confidence is not None:
             predict_kwargs["min_confidence"] = min_confidence
+        if state_token_counts:
+            predict_kwargs["state_token_counts"] = True
         if gate is None:
             gate = asyncio.Lock()
         try:

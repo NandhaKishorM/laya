@@ -116,10 +116,12 @@ curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
 | `max_len` | no | total token window for this request, capped by `LAYA_MAX_TOKEN_BUDGET` |
 | `head_max_len` | no | token window the option prompt shares, same cap; see [Widening the Token Budget](langchain.md) for when a question needs it |
 | `min_confidence` | no | abstention threshold in `[0.0, 1.0]`; an answer whose `answer_confidence` falls below it comes back marked `low_confidence`, and the answer itself is kept |
+| `state_token_counts` | no | `true` adds `state_tokens` and `state_tokens_dropped` to `usage`, tokenizing the whole state to count it rather than only the part a question's window holds; `truncated` is reported either way |
 
-`model`, `task`, `lang`, `lang_guess`, `max_len`, `head_max_len` and `min_confidence` are the
-arguments `Router.predict` takes that a JSON body can state; each is forwarded only when the request
-sends it, so an absent one leaves the deployment's own `Router(...)` setting in charge. The five
+`model`, `task`, `lang`, `lang_guess`, `max_len`, `head_max_len`, `min_confidence` and
+`state_token_counts` are the arguments `Router.predict` takes that a JSON body can state; each is
+forwarded only when the request sends it, so an absent one leaves the deployment's own
+`Router(...)` setting in charge. The five
 hook arguments `predict` also takes -- `hooks`, `on_predict_start`, `on_predict_end`,
 `hooks_raise`, `hooks_timeout` -- are refused with a `422` rather than dropped: a hook is a callable
 that runs inside the server process, and the last two say how the hooks a deployment installed
@@ -149,8 +151,7 @@ other value -- including a Jev id like `jev-1` -- means "let the router choose",
                 "confidence": 0.1925, "answer_confidence": 0.4136,
                 "action": {"act_probability": 1.0}}
   },
-  "usage": {"input_tokens": 83, "output_tokens": 0, "state_tokens": 12,
-            "state_tokens_dropped": 0, "truncated": false, "truncated_questions": []},
+  "usage": {"input_tokens": 83, "output_tokens": 0, "truncated": false, "truncated_questions": []},
   "routing": {"model": "english", "repo": "convaiinnovations/laya", "reason": "English Latin text",
               "detection": {"script": "latin", "script_profile": {"latin": 1.0}, "language": "en",
                             "is_english": true, "language_undecided": false, "diacritic_rate": 0.0,
@@ -193,14 +194,19 @@ question's own option prompt (#174), so these keys are the only place that fact 
 |---|---|
 | `input_tokens` | non-pad tokens of the state's rows -- one row per question, so it grows with the questions rather than being a context length |
 | `output_tokens` | always `0` -- the head answers in one pass, it generates nothing |
-| `state_tokens` | tokens the whole serialized state needs |
-| `state_tokens_dropped` | tokens of it at least one question did not get: the worst case over the questions, since each leaves the state a different room |
+| `state_tokens` | tokens the whole serialized state needs. Present only when the request sent `state_token_counts: true`, because counting the whole state means tokenizing the whole state |
+| `state_tokens_dropped` | tokens of it at least one question did not get: the worst case over the questions, since each leaves the state a different room. Opt-in with `state_tokens` and absent on the same terms |
 | `truncated` | `true` when that worst case dropped anything |
 | `truncated_questions` | the ids of the questions whose own window was cut, `[]` when none |
 | `options` | present only when some question's options no longer have a token span each: keyed by question id, with `total` (the options that question defines), `distinct` (the spans that reached the sequence) and `tokens_per_option` |
 
 A truncated answer is still an answer -- the head decides on the evidence it was given -- but a
-caller sizing states by character count cannot see the cut anywhere else in the response.
+caller sizing states by character count cannot see the cut anywhere else in the response. That is
+why `truncated` and `truncated_questions` are always reported and cost nothing: a request only needs
+`state_token_counts` when it wants to know *how much* was dropped, not *whether* anything was. The
+two counts are absent rather than approximate by default, because the server reads only as much of
+the state as a question's window can hold, and a count of that prefix would be a floor on the real
+total rather than the total.
 
 `routing` records which checkpoint answered and why:
 

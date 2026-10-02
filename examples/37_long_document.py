@@ -104,7 +104,9 @@ for head_max_len, max_len in ((256, 1024), (512, 8192)):
         print("   %-12s head=%3d tokens, state room=%4d -> %4d/%d document tokens visible (%d%%)%s"
               % (qid, head, room, visible, doc_tokens, 100 * visible // doc_tokens,
                  "  TAIL DROPPED" if visible < doc_tokens else "  full document"))
-    result = agent.predict(doc, QUESTIONS)
+    # The two counts are opt-in, because counting the whole state means tokenizing the whole
+    # state; `truncated` is reported either way. See examples/15_truncation_basics.py.
+    result = agent.predict(doc, QUESTIONS, state_token_counts=True)
     usage = result["usage"]
     print("   usage: %d input tokens across %d questions (batch total), %d output tokens"
           % (usage["input_tokens"], len(QUESTIONS), usage["output_tokens"]))
@@ -148,7 +150,7 @@ for label, state in (("a string", turns_text), ("a list", turns)):
     tokens = agent.tok(serialize_state(state), add_special_tokens=False)["input_ids"]
     left = isinstance(state, list)
     kept = tokens[max(0, len(tokens) - room):] if left else tokens[:room]
-    answer = agent.predict(state, TAIL_Q)
+    answer = agent.predict(state, TAIL_Q, state_token_counts=True)
     usage = answer["usage"]
     print("   the same %d tokens as %-9s: `truncate_left` = isinstance(state, list) -> %s,"
           " so `state_tokens_dropped`=%d (my slice: %d)"

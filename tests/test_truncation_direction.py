@@ -227,7 +227,9 @@ def test_predict_batch_usage_reports_truncation():
                   "criteria": {"billing": "invoices and refunds", "tech": "bugs and outages"}},
     }
     states = [" ".join("w%d" % i for i in range(n)) for n in (10, 25, 30)]
-    results = agent.predict_batch(states, questions, max_len=48, head_max_len=32)
+    # The two counts are opt-in (#687); this test reads them, so it asks.
+    results = agent.predict_batch(states, questions, max_len=48, head_max_len=32,
+                                  state_token_counts=True)
 
     for state, result in zip(states, results):
         stats = {qid: build_sequence(agent.tok, state, Agent._to_internal(q), 48, 32,

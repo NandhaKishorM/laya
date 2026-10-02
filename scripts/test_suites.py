@@ -37,6 +37,7 @@ SCRIPT_SUITES = [
     "tests/test_structured.py",
     "tests/test_structured_api.py",
     "tests/test_structured_docs.py",
+    "tests/test_state_token_counts.py",
     "tests/test_onnx_lang_parity.py",
     "tests/test_onnx_truncation_parity.py",
     "tests/test_onnx_batch.py",

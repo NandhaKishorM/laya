@@ -376,8 +376,11 @@ class HookRegistry:
 
             with agent.hooks_installed(tracer):
                 agent.system_one(state, questions)
+
+        Each argument is one hook or a sequence of them, matching `add_hook` and the
+        `hooks=` parameter, so `hooks_installed([tracer, meter])` works too.
         """
-        added = normalise_hooks(list(hooks))
+        added = normalise_hooks([hook for arg in hooks for hook in _as_sequence(arg)])
         self._extend_hooks(added)
         try:
             yield self

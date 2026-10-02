@@ -159,7 +159,14 @@ def example_inputs(batch: Optional[int] = None, seq_len: int = 16, num_markers: 
         # one real token. Unclamped, `seq_len - row` reaches 0 at `row == seq_len` and turns
         # negative after it, so `batch > seq_len` would hand the model an all-padding row -- on
         # which torch and ONNX Runtime legitimately disagree: measured at batch=32, seq_len=16,
-        # where 16 of the 32 rows come out entirely padding, 2.76e-01 on `act_logits` and
+        # where one row (row == seq_len, whose slice start is 0) comes out entirely padding. An earlier
+        # revision said "16 of the 32 rows", which is wrong: a negative slice start wraps, so
+        # `attention_mask[17, -1:] = 0` masks only the LAST token rather than the whole row. Measured
+        # unclamped at batch=32, seq_len=16: 1 row of 32 entirely padding and 2 rows with a single real
+        # token. The clamp is still what the numbers justify -- `act_logits` probability drift 6.35e-02
+        # unclamped against 8.94e-08 clamped, far past `atol=1e-3` -- but via one degenerate row, not
+        # sixteen. The raw-logit figures below are order-of-magnitude rather than exact.
+        # Previously stated as 2.76e-01 on `act_logits` and
         # 1.12e-01 on `logits`, against 2.38e-07 and 1.19e-07 once clamped. The caller would read
         # that as an export failure.
         attention_mask[row, max(1, seq_len - row):] = 0
@@ -277,7 +284,12 @@ def verify_batch_dynamic(model, output_path: str, batches=(1, 2, 3), atol: float
         # Released before returning, not left to the collector. Every call opens a session, and a
         # suite that calls this many times leaves enough of them alive that interpreter shutdown dies
         # with `libc++abi: recursive_mutex lock failed` -- exit 134 AFTER the tests report 0 failed,
-        # i.e. a red job with a green summary. Measured at roughly 1 run in 14 before this.
+        # i.e. a red job with a green summary. Measured at roughly 1 run in 14 before this release was
+        # added -- but see the note in tests/test_onnx_export_batch.py: a later and larger measurement
+        # (3 of 30 WITH every session released, 0 of 30 with the release removed) says this release is
+        # not what fixes the abort, and the base rate is ~4-20% depending on invocation. The release
+        # stays as hygiene; the causation claim in that earlier sentence is withdrawn, and the suite
+        # avoids the abort by not running in pytest's process at all.
         del session
 
 
@@ -300,6 +312,18 @@ def _verify_at_each_batch(model, session, batches, atol, output_path):
             )
         for name, actual, want in zip(OUTPUT_NAMES, got, expected):
             want = want.numpy()
+            # Shapes first. Only `session.run` was inside the try above, so a graph whose output WIDTH
+            # diverges from the model's reached the subtraction below and died with a raw numpy
+            # `ValueError: operands could not be broadcast together with shapes (2,3) (2,2)` -- which is
+            # the ONNX Runtime debugging session this function exists to replace, arriving as a
+            # traceback instead of the message it promises.
+            if actual.shape != want.shape:
+                raise SystemExit(
+                    "verification failed: %s is %s in the exported graph and %s in PyTorch at batch "
+                    "%d, so the graph does not describe this model. ONNXAgent reads %s by position, "
+                    "and a width mismatch there is a wrong answer rather than an error."
+                    % (name, actual.shape, want.shape, batch, name)
+                )
             diff = float(np.max(np.abs(probabilities(actual) - probabilities(want))))
             if not diff <= atol:
                 raise SystemExit("verification failed: %s probabilities differ from PyTorch by "

@@ -198,6 +198,40 @@ class CalibrationPersistenceTests(unittest.TestCase):
         self.assertLessEqual(t_high, TEMP_MAX)
         self.assertGreaterEqual(t_high, TEMP_MIN)
 
+    def test_mps_script_fit_temperature_clamps_to_common_bounds(self):
+        script_path = Path(__file__).resolve().parents[1] / "notebooks" / (
+            "laya_finetune_typed_decisions_mps.py"
+        )
+        script = script_path.read_text(encoding="utf-8")
+        start = script.index("def fit_temperature(samples):")
+        end = script.index("\ndef save_checkpoint(", start)
+        fn_code = ast.parse(textwrap.dedent(script[start:end]))
+        scope = {"torch": torch, "TEMP_MIN": TEMP_MIN, "TEMP_MAX": TEMP_MAX}
+        exec(compile(fn_code, str(script_path), "exec"), scope)
+        fit_temperature = scope["fit_temperature"]
+
+        high_samples = [([10.0, 0.0], [0.5, 0.5]) for _ in range(20)]
+        t_high = fit_temperature(high_samples)
+        self.assertLessEqual(t_high, TEMP_MAX)
+        self.assertGreaterEqual(t_high, TEMP_MIN)
+
+    def test_single_device_script_fit_one_temp_clamps_to_common_bounds(self):
+        script_path = Path(__file__).resolve().parents[1] / "research" / "scripts" / (
+            "finetune_single_device.py"
+        )
+        script = script_path.read_text(encoding="utf-8")
+        start = script.index("def fit_one_temp(sel):")
+        end = script.index("\ndef main():", start)
+        fn_code = ast.parse(textwrap.dedent(script[start:end]))
+        scope = {"torch": torch, "TEMP_MIN": TEMP_MIN, "TEMP_MAX": TEMP_MAX}
+        exec(compile(fn_code, str(script_path), "exec"), scope)
+        fit_one_temp = scope["fit_one_temp"]
+
+        high_sel = [([10.0, 0.0], [0.5, 0.5]) for _ in range(20)]
+        t_high = fit_one_temp(high_sel)
+        self.assertLessEqual(t_high, TEMP_MAX)
+        self.assertGreaterEqual(t_high, TEMP_MIN)
+
 
 if __name__ == "__main__":
     torch.set_num_threads(1)

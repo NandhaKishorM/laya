@@ -290,7 +290,7 @@ check_true("caller/criteria object unchanged", questions["intent"]["criteria"] i
 check("caller/sentinel intact", full["billing"], sentinel)
 
 internal = Agent._to_internal(got_questions["intent"])
-check("predict/internal choice keys are the shortlist", list(internal["crit"]), ["tech", "sales"])
+check("predict/internal choice keys are the shortlist (canonical order)", list(internal["crit"]), ["sales", "tech"])
 check("result/choice is the mock's first shortlisted label", result["answers"]["intent"]["choice"], "tech")
 check("result/shortlist labels", result["shortlist"]["intent"]["labels"], ["tech", "sales"])
 check_true(
@@ -347,9 +347,9 @@ received = list_agent.calls[0][1]["intent"]["criteria"]
 check("list/predict receives a list of k labels", received, ["beta", "alpha"])
 check("list/caller criteria unchanged", list_questions["intent"]["criteria"], ["alpha", "beta", "gamma"])
 check(
-    "list/internal keys follow the shortlist",
+    "list/internal keys follow canonical model order",
     list(Agent._to_internal(list_agent.calls[0][1]["intent"])["crit"]),
-    ["beta", "alpha"],
+    ["alpha", "beta"],
 )
 
 

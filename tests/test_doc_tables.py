@@ -250,6 +250,36 @@ def main() -> int:
     else:
         FAIL.append("51-language/%s is missing, so the table is unbacked" % REFRESH)
 
+    # The English release-check table cites both the older numeric baseline and the
+    # new per-case artifact; compare every displayed value to those files.
+    release_path = os.path.join("research", "results", "massive_en_cpu_release_20261001.json")
+    if os.path.exists(release_path):
+        release = json.loads(read(release_path))
+        baseline = json.loads(read(os.path.join("research", "results",
+                                                "eval_english_51_languages.json")))
+        release_rows = parse_table(read(BENCHMARKS),
+                                   "| metric | committed English baseline | pinned CPU run |")
+        release_metrics = {
+            "accuracy": "accuracy",
+            "macro F1": "macro_f1",
+            "ECE": "ece",
+            "mean confidence": "mean_confidence",
+            "accuracy at 50% coverage": "acc_at_50_coverage",
+        }
+        check("English release table has five metrics", len(release_rows), len(release_metrics))
+        for row in release_rows:
+            key = release_metrics.get(row[0])
+            if key is None or len(row) != 3:
+                FAIL.append("English release table has an unknown or malformed row: %r" % row)
+                continue
+            check("English release/%s baseline" % key, row[1],
+                  "%.4f" % baseline["report"]["en"][key])
+            check("English release/%s pinned" % key, row[2],
+                  "%.4f" % release["report"]["en"][key])
+        check("English release has 100 decisions", len(release["cases"]), 100)
+    else:
+        FAIL.append("English release/%s is missing, so the table is unbacked" % release_path)
+
     # ------------------------------------------------- what this cannot check
     unbacked = [
         ("README.md typed-decisions rows", "no committed artifact for the fine-tuned checkpoint"),

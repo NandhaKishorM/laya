@@ -23,7 +23,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import laya  # noqa: E402
-from laya import Agent, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
+from laya import Agent, AsyncHook, BaseHook, OptionStabilityHook, PredictContext, PredictHook, Router, load  # noqa: E402
 from laya.hooks import HOOK_EVENTS, Hook  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 from laya.router import _question_schema  # noqa: E402
@@ -80,6 +80,16 @@ for label, fn in (("Agent.__init__", Agent.__init__), ("load", load)):
     check_param(label, fn, "compile_cache", False)
     check_param(label, fn, "compile_mode", "default")
 
+# OptionStabilityHook parameters (#635)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "probes", None, inspect.Parameter.KEYWORD_ONLY)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "n_shuffles", 3, inspect.Parameter.KEYWORD_ONLY)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "relabel", True, inspect.Parameter.KEYWORD_ONLY)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "rename_max_options", 20, inspect.Parameter.KEYWORD_ONLY)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "variants", "full", inspect.Parameter.KEYWORD_ONLY)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "accept", 0.77, inspect.Parameter.KEYWORD_ONLY)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "escalate", 0.61, inspect.Parameter.KEYWORD_ONLY)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "seed", None, inspect.Parameter.KEYWORD_ONLY)
+
 # Router keeps lang_guess and explicit per-model revisions too
 check_param("Router.__init__", Router.__init__, "lang_guess", None)
 check_param("Router.__init__", Router.__init__, "revisions", None)
@@ -118,6 +128,18 @@ check_true("Agent.backend_object is a property", isinstance(Agent.backend_object
 
 # ONNXAgent downloads the same Hub artifacts as Agent, so it authenticates the same way
 check_param("ONNXAgent.__init__", ONNXAgent.__init__, "token", None)
+
+# AsyncHook wraps async hooks with an optional loop
+check_param("AsyncHook.__init__", AsyncHook.__init__, "loop", None)
+
+# OptionStabilityHook (issue #635)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "n_shuffles", 3)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "relabel", True)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "variants", "full")
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "accept", 0.77)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "escalate", 0.61)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "seed", None)
+check_true("OptionStabilityHook is a BaseHook", issubclass(OptionStabilityHook, BaseHook))
 
 # --------------------------------------------------------------- predict surfaces
 from laya.mcp.remote import RemoteRouter  # noqa: E402

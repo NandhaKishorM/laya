@@ -293,6 +293,23 @@ check(
     "Bonjour,\n\nJ'ai été facturé deux fois sur la facture de mars. "
     "Merci de rembourser le double paiement aujourd'hui.",
 )
+for footer in [
+    "Envoyé depuis mon iPhone",
+    "Envoyé de mon iPad.",
+    "Envoyé depuis iPhone",
+    "Envoyé de iPad",
+    "ENVOYÉ DEPUIS MON IPHONE",
+]:
+    body = "Merci de rembourser la facture."
+    check("fr/device footer cut/" + footer, clean_email_body(body + "\n\n" + footer), body)
+
+for sentence in [
+    "Envoyé depuis mon iPhone par erreur.",
+    "Envoyé de mon iPad hier.",
+]:
+    body = "Bonjour,\n%s\nMerci de rembourser la facture." % sentence
+    check("fr/device sentence kept/" + sentence, clean_email_body(body), body)
+
 check(
     "fr/outlook original-message block is cut",
     clean_email_body(

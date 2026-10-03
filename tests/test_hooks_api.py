@@ -23,7 +23,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import laya  # noqa: E402
-from laya import Agent, AsyncHook, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
+from laya import Agent, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
 from laya.hooks import HOOK_EVENTS, Hook  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 from laya.router import _question_schema  # noqa: E402
@@ -135,6 +135,7 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
                   ("Agent.system_one", Agent.system_one),
                   ("Agent.predict_long", Agent.predict_long),
                   ("Router.predict", Router.predict),
+                  ("Router.predict_batch", Router.predict_batch),
                   ("Router.predict_long", Router.predict_long),
                   ("ONNXAgent.system_one", ONNXAgent.system_one)):
     check_param(label, fn, "hooks", None)
@@ -165,8 +166,6 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
 
 # Router.predict_batch has no call-level budget: a heterogeneous batch sets it per request, and
 # the request keys `max_len` / `head_max_len` are read into each request's PredictContext.
-check_param("Router.predict_batch", Router.predict_batch, "batch_size", None)
-check_param("Router.predict_batch", Router.predict_batch, "hooks_timeout", None)
 for param in ("max_len", "head_max_len"):
     check("Router.predict_batch/%s is per-request, not a call argument" % param,
           param in sig(Router.predict_batch), False)
@@ -176,10 +175,28 @@ for param in ("max_len", "head_max_len"):
 check_param("shortlist_choice", laya.shortlist_choice, "return_scores", False,
             inspect.Parameter.KEYWORD_ONLY)
 
-# route() takes per-call hooks so a hook can pin a checkpoint for one call
-check_param("Router.route", Router.route, "hooks", None)
-check_param("Router.route", Router.route, "hooks_raise", None)
-check_param("Router.route", Router.route, "hooks_timeout", None)
+# route() and route_batch() take per-call hooks so a hook can pin a checkpoint for one call
+for label, fn in (("Router.route", Router.route),
+                  ("Router.route_batch", Router.route_batch)):
+    check_param(label, fn, "hooks", None)
+    check_param(label, fn, "hooks_raise", None)
+    check_param(label, fn, "hooks_timeout", None)
+
+# Positional compatibility: hook parameters are keyword-only to protect positional callers
+check("Router.route_batch/positional prefix",
+      [p.name for p in sig(Router.route_batch).values()
+       if p.kind != inspect.Parameter.KEYWORD_ONLY and p.name != "self"],
+      ["requests", "hooks_timeout"])
+check("Router.predict_batch/positional prefix",
+      [p.name for p in sig(Router.predict_batch).values()
+       if p.kind != inspect.Parameter.KEYWORD_ONLY and p.name != "self"],
+      ["requests", "batch_size", "min_confidence", "sort_by_length"])
+for param in ("hooks", "hooks_raise"):
+    check("Router.route_batch/%s is keyword-only" % param,
+          sig(Router.route_batch)[param].kind, inspect.Parameter.KEYWORD_ONLY)
+for param in ("hooks_timeout", "hooks", "on_predict_start", "on_predict_end", "hooks_raise"):
+    check("Router.predict_batch/%s is keyword-only" % param,
+          sig(Router.predict_batch)[param].kind, inspect.Parameter.KEYWORD_ONLY)
 
 # --------------------------------------------------------------- aliases
 check_true("Agent.predict is Agent.system_one", Agent.predict is Agent.system_one)

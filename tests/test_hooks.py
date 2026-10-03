@@ -1608,6 +1608,91 @@ check_raises("timeout/route_batch rejects a zero per-call timeout", ValueError,
              lambda: Router().route_batch([req("a")], hooks_timeout=0))
 
 
+# ------------------------------------------- per-call hooks on Router.predict_batch and route_batch (#909)
+per_call_events = []
+
+
+class PerCallTrace:
+    def on_predict_start(self, ctx):
+        per_call_events.append(("start", ctx.states[0]))
+
+    def on_predict_end(self, ctx):
+        per_call_events.append(("end", ctx.states[0]))
+
+    def on_route(self, ctx):
+        per_call_events.append(("route", ctx.states[0]))
+
+
+r_batch, en_batch, _ = batch_router()
+
+# 1. per-call hooks on predict_batch
+r_batch.predict_batch([req("call1"), req("call2")], hooks=[PerCallTrace()])
+check("router_batch/per-call hooks execute for all requests",
+      per_call_events,
+      [("route", "call1"), ("route", "call2"),
+       ("start", "call1"), ("start", "call2"),
+       ("end", "call2"), ("end", "call1")])
+
+per_call_events.clear()
+
+# 2. per-call convenience callables on predict_start and predict_end
+seen_starts = []
+seen_ends = []
+r_batch.predict_batch([req("cb1")],
+                      on_predict_start=lambda c: seen_starts.append(c.states[0]),
+                      on_predict_end=lambda c: seen_ends.append(c.states[0]))
+check("router_batch/per-call callables execute", (seen_starts, seen_ends), (["cb1"], ["cb1"]))
+
+# 3. per-call hooks on route_batch
+route_trace = []
+
+
+class RouteTrace:
+    def on_route(self, ctx):
+        route_trace.append(ctx.states[0])
+
+
+r_batch.route_batch([req("rb1"), req("rb2")], hooks=[RouteTrace()])
+check("router_batch/route_batch per-call hooks execute", route_trace, ["rb1", "rb2"])
+
+# 4. per-call hooks_raise policy
+class FailingStartHook:
+    def on_predict_start(self, ctx):
+        raise ValueError("failing hook")
+
+
+check_raises("router_batch/hooks_raise=True propagates exception",
+             ValueError,
+             lambda: r_batch.predict_batch([req("fail1")], hooks=[FailingStartHook()], hooks_raise=True))
+
+with warnings.catch_warnings(record=True) as _warns:
+    warnings.simplefilter("always")
+    res = r_batch.predict_batch([req("warn1")], hooks=[FailingStartHook()], hooks_raise=False)
+    check("router_batch/hooks_raise=False returns result", len(res), 1)
+    check_true("router_batch/hooks_raise=False warns", any("failing hook" in str(w.message) for w in _warns))
+
+# 5. positional and keyword-only hook controls (#909 review)
+r_pos, _, _ = batch_router()
+
+# route_batch keeps hooks_timeout positional-or-keyword
+pos_decisions = r_pos.route_batch([req("pos1")], 1.0)
+check("router_batch/route_batch positional hooks_timeout", len(pos_decisions), 1)
+
+# route_batch takes hooks as keyword-only
+kw_decisions = r_pos.route_batch([req("pos1")], 1.0, hooks=[RouteTrace()])
+check("router_batch/route_batch keyword-only hooks", len(kw_decisions), 1)
+
+# predict_batch keeps hooks_timeout keyword-only
+pos_results = r_pos.predict_batch([req("pos2")], 8, hooks_timeout=1.0, hooks=[PerCallTrace()])
+check("router_batch/predict_batch keyword-only controls", len(pos_results), 1)
+
+# keyword-only enforcement: passing hook controls positionally raises TypeError
+check_raises("router_batch/route_batch rejects positional hooks", TypeError,
+             lambda: r_pos.route_batch([req("pos1")], 1.0, [RouteTrace()]))
+check_raises("router_batch/predict_batch rejects positional hooks_timeout past sort_by_length", TypeError,
+             lambda: r_pos.predict_batch([req("pos2")], 8, None, False, 1.0))
+
+
 # --------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f_ in FAIL:

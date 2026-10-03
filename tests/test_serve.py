@@ -2419,7 +2419,7 @@ def test_batch_call_controls_are_exactly_predict_batch_kwargs_or_refusal():
     from laya.router import Router
 
     taken = set(inspect.signature(Router.predict_batch).parameters) - {"self", "requests"}
-    declared = set(BATCH_BODY_CALL_CONTROLS) | {"hooks_timeout"}
+    declared = set(BATCH_BODY_CALL_CONTROLS) | set(BODY_REFUSALS)
     assert taken == declared, "predict_batch() takes %s; serve declares %s" % (
         sorted(taken), sorted(declared))
 
@@ -2682,10 +2682,12 @@ def test_health_liveness_is_open_but_the_detail_needs_the_bearer(monkeypatch):
         assert leaked not in anonymous.json()
 
 
-def test_health_without_an_api_key_is_unchanged():
+def test_health_without_an_api_key_is_unchanged(monkeypatch):
     """A deployment that set no key never asked to be gated, so it gets the whole payload."""
     from fastapi.testclient import TestClient
 
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_IDLE_UNLOAD_SECONDS", raising=False)
     client = TestClient(create_app(router=FakeRouter()))
     _, returned = _health_return_keys()
     assert sorted(client.get("/health").json()) == sorted(returned)
@@ -2764,7 +2766,7 @@ def test_http_api_page_documents_exactly_the_health_fields():
         "device_is_preference says %r with checkpoint_devices %r" % (
             sample["device_is_preference"], sample["checkpoint_devices"]))
     if sample["checkpoint_devices"]:
-        assert sample["device"] == next(iter(sample["checkpoint_devices"].values())), (
+        assert sample["device"] == sample["checkpoint_devices"][sample["loaded"][0]], (
             "device must be the first resident checkpoint's device, as serve.py computes it")
 
     # And the shape of a fallback entry, which no page has ever spelled out: read from the dict the

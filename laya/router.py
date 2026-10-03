@@ -1167,6 +1167,9 @@ class Router(HookRegistry):
         self,
         requests: Sequence[Dict[str, Any]],
         hooks_timeout: Optional[float] = None,
+        *,
+        hooks=None,
+        hooks_raise: Optional[bool] = None,
     ) -> List[RouteDecision]:
         """Route a heterogeneous request batch without loading any checkpoints.
 
@@ -1182,6 +1185,8 @@ class Router(HookRegistry):
                 ``questions``.
             hooks_timeout: Override the Router's ``hooks_timeout`` for this call, applied to
                 every request's ``on_route`` dispatch, as on :meth:`route`.
+            hooks (HookArg): Per-call hook or sequence of hooks for this call.
+            hooks_raise: Override the Router's ``hooks_raise`` policy for this call.
         """
         if not isinstance(requests, SequenceABC) or isinstance(requests, (str, bytes)):
             raise TypeError("requests must be a sequence of request dictionaries")
@@ -1210,6 +1215,8 @@ class Router(HookRegistry):
                     task=request.get("task"),
                     lang=request.get("lang"),
                     lang_guess=request.get("lang_guess"),
+                    hooks=hooks,
+                    hooks_raise=hooks_raise,
                     hooks_timeout=hooks_timeout,
                 )
             )
@@ -1220,9 +1227,14 @@ class Router(HookRegistry):
         self,
         requests: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
-        hooks_timeout: Optional[float] = None,
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
+        *,
+        hooks_timeout: Optional[float] = None,
+        hooks=None,
+        on_predict_start=None,
+        on_predict_end=None,
+        hooks_raise: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -1255,17 +1267,22 @@ class Router(HookRegistry):
                 ``lang_guess`` routing overrides and ``max_len`` / ``head_max_len`` token-budget
                 overrides.
             batch_size: Optional maximum number of states per Agent forward-pass batch.
-            hooks_timeout: Override the Router's ``hooks_timeout`` for this call.
+            min_confidence: Optional float or per-bucket mapping for confidence gating.
             sort_by_length: Forwarded to every ``Agent.predict_batch`` call, so each question
                 group pads to a shorter maximum; see ``Agent.predict_batch``. Results retain the
                 input order either way. Silently dropped for an attached agent whose
                 ``predict_batch`` predates the knob (#294).
+            hooks_timeout: Override the Router's ``hooks_timeout`` for this call.
+            hooks (HookArg): Per-call hook or sequence of hooks for this call.
+            on_predict_start (PredictHookArg): Plain callable or sequence of callables for start events.
+            on_predict_end (PredictHookArg): Plain callable or sequence of callables for end events.
+            hooks_raise: Override the Router's ``hooks_raise`` policy for this call.
 
         Returns:
             One normal Router prediction result per request, in the same order as the input.
         """
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
-        decisions = self.route_batch(requests, hooks_timeout=hooks_timeout)
+        decisions = self.route_batch(requests, hooks=hooks, hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
         if not decisions:
             return []
 
@@ -1288,8 +1305,8 @@ class Router(HookRegistry):
         # list alone silently dropped every process-wide default from the batched path while
         # keeping them on `predict`, so a default audit or metrics hook saw no Router-level event
         # for a request that arrived through `predict_batch`.
-        active = compose_hooks(self.hooks)
-        raise_errors = self.hooks_raise
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
+        raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
 
         for model_name, indices in groups.items():

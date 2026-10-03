@@ -193,9 +193,14 @@ class RemoteRouter(Router):
         self,
         requests: Sequence[Dict[str, Any]],
         batch_size: Optional[int] = None,
-        hooks_timeout: Optional[float] = None,
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
+        *,
+        hooks_timeout: Optional[float] = None,
+        hooks=None,
+        on_predict_start=None,
+        on_predict_end=None,
+        hooks_raise: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
         """One ``/v1/systemone`` call per request, answers in input order.
 
@@ -206,8 +211,9 @@ class RemoteRouter(Router):
         keep working. The server applies its own batching inside each call.
         """
         results: List[Dict[str, Any]] = []
-        if hooks_timeout is not None:
-            raise RemoteError("unsupported_remote", "hooks_timeout belongs to the server's hooks")
+        if any(value is not None for value in (hooks, on_predict_start, on_predict_end, hooks_raise, hooks_timeout)):
+            raise RemoteError("unsupported_remote",
+                              "hooks are callables and cannot be sent to laya-serve; install them on the server")
         for item in requests:
             if not isinstance(item, dict):
                 raise TypeError("predict_batch requests must be dicts, got %s" % type(item).__name__)

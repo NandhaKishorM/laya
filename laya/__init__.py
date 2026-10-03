@@ -1,5 +1,12 @@
 """Laya: Fast, non-autoregressive System 1 decision engine with calibrated probabilities."""
 
+import os
+
+# Laya is torch-only. transformers 4.x imports TensorFlow whenever it is installed, and a broken or
+# conflicting TF build then crashes `laya.load()` natively. CI, Docker and the examples already set
+# this; setdefault keeps a value the user chose. transformers 5 never imports TensorFlow.
+os.environ.setdefault("USE_TF", "0")
+
 from .email import clean_email_body, email_state
 from .hooks import AsyncHook, BaseHook, Hook, PredictContext, PredictHook
 from .lang import analyse as detect_language

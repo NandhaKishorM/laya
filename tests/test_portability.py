@@ -296,6 +296,22 @@ with mock.patch.object(torch.Tensor, "to", _to_that_ignores_mps):
         FAIL.append("autocast/streak was not survived: %s: %s" % (type(e).__name__, e))
 
 
+# ------------------------------------------------ 4. a stray TensorFlow install cannot crash loading
+# transformers 4.x imports TensorFlow whenever it is installed and USE_TF is unset, so a broken TF
+# build kills `laya.load()` natively. `import laya` sets USE_TF=0 first, unless the user chose one.
+# Run in a child process: CI exports USE_TF=0, which would hide the default.
+import subprocess  # noqa: E402
+
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for preset, want in ((None, "0"), ("1", "1")):
+    env = {k: v for k, v in os.environ.items() if k != "USE_TF"}
+    if preset is not None:
+        env["USE_TF"] = preset
+    proc = subprocess.run([sys.executable, "-c", "import os, laya; print(os.environ.get('USE_TF'))"],
+                          capture_output=True, text=True, env=env, cwd=_root)
+    check("tensorflow/USE_TF after import laya, preset %r" % preset, proc.stdout.strip(), want)
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

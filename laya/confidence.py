@@ -134,7 +134,9 @@ def flag_low_confidence(results: List[Dict[str, Any]], min_confidence: float) ->
     Reads `answer_confidence` (`max(p)`, the quantity the calibration figures describe and the one
     that does not drift with the number of options), falling back to `confidence` if
     `answer_confidence` is absent.
-    The raw answer and confidence stay intact; `low_confidence: True` is added.
+    The raw answer and confidence stay intact; `low_confidence: True` is added when the answer
+    falls below the threshold, and removed if a previously-flagged answer now clears it (e.g.
+    when a result dict is reused or re-evaluated with a different threshold).
 
     `min_confidence` is either a float (one threshold for every answer) or a per-bucket mapping
     (#394), in which case each answer is gated at the threshold of its own option-count bucket via
@@ -152,10 +154,13 @@ def flag_low_confidence(results: List[Dict[str, Any]], min_confidence: float) ->
                 continue
             conf = _gate_confidence(a)
             if conf is None:
+                a.pop("low_confidence", None)
                 continue
             thr = resolve_min_confidence(a, min_confidence) if is_map else min_confidence
             if conf < thr:
                 a["low_confidence"] = True
+            else:
+                a.pop("low_confidence", None)
 
 
 #: The states :func:`apply_confidence_gate` reports, and the only ones. There is deliberately no
@@ -214,6 +219,8 @@ def apply_confidence_gate(results: List[Dict[str, Any]], min_confidence: Optiona
         for a in answers.values():
             if not isinstance(a, dict):
                 continue
+            if not is_map and min_confidence == 0.0:
+                a.pop("low_confidence", None)
             if a.get("low_confidence"):
                 a["abstention"] = GATE_ABSTAINED
             elif _gate_confidence(a) is None:

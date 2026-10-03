@@ -260,6 +260,54 @@ apply_confidence_gate([None, {"answers": None}, {"answers": [1, 2]}], 0.5)
 apply_confidence_gate([], None)
 PASS.append("gate/non-dict results are skipped without raising")
 
+# --------------------------------------------------------------- BUG-005 regression: stale low_confidence across reuse (#910)
+# `flag_low_confidence` and `apply_confidence_gate` used to only set `low_confidence: True` and
+# never clear it. When a result dict was re-evaluated with a more permissive threshold (or 0.0),
+# the stale flag remained, causing downstream callers to treat the answer as permanently abstained.
+
+# 1. flag_low_confidence clears stale flag on re-evaluation
+reuse_res = [{
+    "answers": {
+        "intent": {"choice": "refund", "answer_confidence": 0.8},
+    }
+}]
+reuse_ans = reuse_res[0]["answers"]["intent"]
+flag_low_confidence(reuse_res, 0.9)
+check_true("stale/flag strict threshold sets flag", reuse_ans.get("low_confidence") is True)
+flag_low_confidence(reuse_res, 0.5)
+check_true("stale/flag permissive threshold clears flag", "low_confidence" not in reuse_ans)
+
+clean_res = [{"answers": {"q": {"answer_confidence": 0.95}}}]
+flag_low_confidence(clean_res, 0.5)
+check_true("stale/unflagged answer stays clean", "low_confidence" not in clean_res[0]["answers"]["q"])
+
+# 2. apply_confidence_gate clears stale flag and updates abstention state on re-evaluation
+gate_reuse = [{
+    "answers": {
+        "intent": {"choice": "refund", "answer_confidence": 0.8},
+    }
+}]
+g_ans = gate_reuse[0]["answers"]["intent"]
+apply_confidence_gate(gate_reuse, 0.9)
+check("stale/gate strict threshold abstains", g_ans["abstention"], GATE_ABSTAINED)
+check_true("stale/gate strict threshold sets low_conf", g_ans.get("low_confidence") is True)
+
+apply_confidence_gate(gate_reuse, 0.5)
+check("stale/gate permissive threshold passes", g_ans["abstention"], GATE_PASSED)
+check_true("stale/gate permissive threshold clears low_conf", "low_confidence" not in g_ans)
+check("stale/gate echoes updated threshold", g_ans["abstention_threshold"], 0.5)
+
+apply_confidence_gate(gate_reuse, 0.0)
+check("stale/gate 0.0 passes", g_ans["abstention"], GATE_PASSED)
+check_true("stale/gate 0.0 clears low_conf", "low_confidence" not in g_ans)
+
+# 3. unusable confidence clears stale low_confidence and marks unevaluated
+odd_reuse = [{"answers": {"q": {"choice": "x", "answer_confidence": 0.2, "low_confidence": True}}}]
+odd_reuse[0]["answers"]["q"]["answer_confidence"] = float("nan")
+apply_confidence_gate(odd_reuse, 0.5)
+check("stale/unusable conf marks unevaluated", odd_reuse[0]["answers"]["q"]["abstention"], GATE_UNEVALUATED)
+check_true("stale/unusable conf clears stale low_conf", "low_confidence" not in odd_reuse[0]["answers"]["q"])
+
 # --------------------------------------------------------------- the operator's three questions
 # End to end through a real call site, weight-free. `decide` forwards to any runner with a
 # `predict`, so this exercises `laya/structured.py`'s own gate call site rather than the helper

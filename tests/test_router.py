@@ -455,9 +455,12 @@ check("route/short english still english", _r_lat.route("refund me").model, "eng
 # `pt`, whatever the router was configured with.
 _r_ml = Router(default="multilingual")
 for text in ["Quero cancelar", "Esqueci minha senha", "Fui cobrado duas vezes",
-             "Produto veio quebrado, quero trocar", "refund me"]:
+             "refund me"]:
     check("route/undecided follows default " + text[:24], _r_ml.route(text).model, "multilingual")
     check("route/undecided stock default " + text[:24], _r_lat.route(text).model, "english")
+# From four words up, a function word English never uses is evidence of its own (#54): `quero`
+check("route/undecided with a foreign word leaves the default",
+      _r_lat.route("Produto veio quebrado, quero trocar").model, "multilingual")
 check("route/undecided reason names the default",
       "using default (multilingual)" in _r_ml.route("Esqueci minha senha").reason, True)
 # identified English is not undecided, so a non-English default leaves it alone
@@ -715,6 +718,61 @@ for text in ["turn off smart lamp in den", "im so sorry, am an hour late, stuck 
 # German words that Spanish (`es`) or French (`du`) also claim would stop naming those languages
 check("latin_lang/spanish es stays evidence", guess_latin_language("que hora es en australia"), "es")
 check("latin_lang/french du stays evidence", guess_latin_language("baisse le volume du haut-parleur"), "fr")
+# Undecided at four or more words (#54). Such text has no English function word, since one would name
+# it `en`. Two different words from other languages' lists, or a non-English letter too rare for the
+# rate, are evidence it is not English even when too thin to say which language. MASSIVE test utterances:
+for text in ["streiche alle meine geplanten termine",                      # de, `alle` (it) and `meine` (de)
+             "me gustaría escuchar algunos buenos chistes divertidos"]:    # es, one `í`
+    check("latin_lang/undecided with evidence " + text, guess_latin_language(text), None)
+    check("route/undecided with evidence " + text, _r_lat.route(text).model, "multilingual")
+check("route/undecided evidence reason names the words", "function words of other languages" in
+      _r_lat.route("streiche alle meine geplanten termine").reason, True)
+check("route/undecided evidence reason names the letter", "a non-English letter" in
+      _r_lat.route("me gustaría escuchar algunos buenos chistes divertidos").reason, True)
+# One word that English uses too is not enough, and neither is one such word twice: `do` and `las`
+# (both from the English texts checked on #286), so such text follows `default`, Portuguese with it
+for text in ["how do my health benefits work", "las vegas weather today",
+             "verificar qualquer email da amazon",                         # pt, `da`
+             "apaga la luz de la cocina"]:                                 # es, `la` twice
+    check("route/one list word follows default " + text, _r_ml.route(text).model, "multilingual")
+    check("route/one list word stock default " + text, _r_lat.route(text).model, "english")
+# Under four words the text is not scored, so two such words are no evidence yet
+check("route/undecided three words follow default", _r_lat.route("wecke mich auf").model, "english")
+# No evidence, no move: English with no function word stays English (the first three are from the 20,000
+# English texts checked on #286, the last from en-US MASSIVE) ...
+for text in ["tell me my current savings account's interest rate", "play recently added music",
+             "how many days before my credit card arrives", "turn off lobby light"]:
+    check("route/english without a function word " + text, _r_lat.route(text).model, "english")
+# ... while languages often typed in plain ASCII now have lists, or more words in theirs (Dutch,
+# Romanian). One word English never uses is enough. MASSIVE test utterances that went to the English
+# checkpoint before:
+for text in ["tolong mainkan lagu dari bruno mars",                        # id, `tolong` and `dari`
+             "batalkan alarm saya pukul tujuh pagi",                       # id, `saya`
+             "olly beritahu saya satu jenaka",                             # ms, `saya`
+             "olly ceritake aku guyonan",                                  # jv, `aku`
+             "tafadhali washa plagi mahiri",                               # sw, `tafadhali`
+             "huwag mo akong gisingin bukas",                              # tl, `bukas`
+             "ken jy enige grappe",                                        # af, `jy`
+             "paid a siarad heddiw",                                       # cy, `heddiw`
+             "schakel de lampen uit",                                      # nl, `uit` (Afrikaans too)
+             "vertel me wat er gebeurt op instagram",                      # nl, `wat` and `op`
+             "speel mijn rock afspeellijst",                               # nl, `mijn`
+             "cine a scris melodia asta",                                  # ro, `cine`
+             "niambie kuhusu kengele zangu",                               # sw, `kuhusu`
+             "vil det regne denne uge",                                    # da, `denne`
+             "slett alarmen jeg nettopp satte",                            # nb, `jeg`
+             "olly kerro minulle vitsi",                                   # fi, `minulle`
+             "kateri alarmi so nastavljeni"]:                              # sl, `kateri`
+    check("route/new list evidence " + text, _r_lat.route(text).model, "multilingual")
+# A word of those lists that English uses too still needs a second one: en-US MASSIVE, `dim` and `kung`
+for text in ["olly give me some dim light", "kung fu panda three"]:
+    check("route/english with a new list word " + text, _r_lat.route(text).model, "english")
+# A word leaves _FOREIGN_WORDS with its list, or it would be evidence for no language at all
+from laya.lang import _FOREIGN_WORDS, _OTHER_WORDS  # noqa: E402
+check("latin_lang/foreign words all come from a list", sorted(_FOREIGN_WORDS - _OTHER_WORDS), [])
+# Danish and Norwegian leave out every word of the Swedish list, so Swedish keeps its name
+check("latin_lang/da and nb share no word with sv",
+      sorted(w for lg in ("da", "nb") for w in _STOP[lg] & _STOP["sv"]), [])
 
 # ------------------------------------------------------------------ accented loanwords in English (#337)
 # The diacritic rate is measured over every character, so one `é` in a short English sentence

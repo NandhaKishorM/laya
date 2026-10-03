@@ -7,6 +7,7 @@ import copy
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 import textwrap
@@ -47,6 +48,40 @@ def export_notebook_config(cfg, fitted_temps, output_dir):
         "os": os, "json": json,
     })
     return json.loads((output_dir / "rl_agent_config.json").read_text())
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _runnable_source(rel):
+    """What a fine-tuning entry point actually executes: its %%writefile cells for a
+    notebook, the file itself for a script."""
+    if rel.endswith(".ipynb"):
+        cells = json.loads((ROOT / rel).read_text(encoding="utf-8"))["cells"]
+        return "".join("".join(c["source"]) for c in cells
+                       if "".join(c["source"]).startswith("%%writefile "))
+    return (ROOT / rel).read_text(encoding="utf-8")
+
+
+def _temperature_fitters():
+    """Every notebook or training script whose fit clamps `exp()` of a log-temperature.
+
+    Walks the tree rather than listing the known entry points, so a fourth script that
+    copies the pattern is held by the same check. Matches on the clamp of an `.exp()`
+    because that is the one shape all three of these share; a fit that stops clamping is
+    reported by the count assertion in the test rather than passing unnoticed.
+    """
+    found = []
+    for base in ("notebooks", "research/scripts"):
+        for path in sorted((ROOT / base).rglob("*")):
+            if path.suffix not in (".py", ".ipynb") or not path.is_file():
+                continue
+            rel = path.relative_to(ROOT).as_posix()
+            text = _runnable_source(rel)
+            for match in re.finditer(r"^def (\w+)\(.*?(?=^\S|\Z)", text, re.M | re.S):
+                if re.search(r"torch\.clamp\(\s*\w+\.exp\(\)", match.group(0)):
+                    found.append((rel, match.group(1), match.group(0)))
+    return found
 
 
 class CalibrationPersistenceTests(unittest.TestCase):
@@ -179,24 +214,33 @@ class CalibrationPersistenceTests(unittest.TestCase):
         self.assertEqual(logits.shape, (2,))
         self.assertEqual(target.tolist(), [0.0, 1.0])
 
-    def test_notebook_fit_one_temp_clamps_to_common_bounds(self):
-        notebook = Path(__file__).resolve().parents[1] / "notebooks" / (
-            "laya_finetune_typed_decisions_2xT4_kaggle.ipynb"
-        )
-        cells = json.loads(notebook.read_text(encoding="utf-8"))["cells"]
-        script, = ["".join(c["source"]) for c in cells
-                   if "".join(c["source"]).startswith("%%writefile ")]
-        start = script.index("def fit_one_temp(sel):")
-        end = script.index("\ndef main():", start)
-        fn_code = ast.parse(textwrap.dedent(script[start:end]))
-        scope = {"torch": torch, "TEMP_MIN": TEMP_MIN, "TEMP_MAX": TEMP_MAX}
-        exec(compile(fn_code, str(notebook), "exec"), scope)
-        fit_one_temp = scope["fit_one_temp"]
+    def test_every_fine_tuning_fit_clamps_to_common_bounds(self):
+        # #642 fixed this for the Kaggle notebook. The Apple Silicon script and
+        # research/scripts/finetune_single_device.py kept `torch.clamp(..., 0.1, 10.0)`, so a
+        # fit either of them persisted could land outside `[TEMP_MIN, TEMP_MAX]` and be
+        # re-clamped when the checkpoint is loaded -- the calibration measured during training
+        # is then not the one that gets served. Derived from the tree rather than listed, so a
+        # script that copies the pattern is held too.
+        fitters = _temperature_fitters()
+        # Non-vacuity: a sweep that matched nothing would pass every assertion below for free.
+        self.assertGreaterEqual(len(fitters), 3, [rel for rel, _, _ in fitters])
 
-        high_sel = [([10.0, 0.0], [0.5, 0.5]) for _ in range(20)]
-        t_high = fit_one_temp(high_sel)
-        self.assertLessEqual(t_high, TEMP_MAX)
-        self.assertGreaterEqual(t_high, TEMP_MIN)
+        # These two drive the LBFGS solution past TEMP_MAX and below TEMP_MIN respectively,
+        # so a range wider than the runtime's is caught in both directions.
+        peaked = [([10.0, 0.0], [0.5, 0.5]) for _ in range(20)]
+        dipped = [([0.0, 4.0], [0.0, 1.0]) for _ in range(20)]
+
+        for rel, name, body in fitters:
+            with self.subTest(source=rel, function=name):
+                scope = {"torch": torch, "TEMP_MIN": TEMP_MIN, "TEMP_MAX": TEMP_MAX}
+                exec(compile(ast.parse(textwrap.dedent(body)), rel, "exec"), scope)
+                fit = scope[name]
+                for label, sel in (("peaked", peaked), ("dipped", dipped)):
+                    fitted = fit(sel)
+                    self.assertGreaterEqual(
+                        fitted, TEMP_MIN, "%s: %s(%s) fitted %.4g" % (rel, name, label, fitted))
+                    self.assertLessEqual(
+                        fitted, TEMP_MAX, "%s: %s(%s) fitted %.4g" % (rel, name, label, fitted))
 
 
 if __name__ == "__main__":

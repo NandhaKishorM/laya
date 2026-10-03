@@ -26,7 +26,7 @@ from safetensors.torch import load_file, save_file
 from transformers import AutoTokenizer
 
 from laya.agent import _fix_tokenizer_config
-from laya.common import QTYPES, build_model, build_sequence, proper_reward, render_options
+from laya.common import QTYPES, TEMP_MAX, TEMP_MIN, build_model, build_sequence, proper_reward, render_options
 
 MODEL_ID = "convaiinnovations/laya"
 DATASET_ID = "LocalLLaMA/typed-decisions"
@@ -215,7 +215,7 @@ def fit_temperature(samples):
         return loss
 
     optimizer.step(closure)
-    return float(torch.clamp(log_temperature.exp(), 0.1, 10.0).item())
+    return float(torch.clamp(log_temperature.exp(), TEMP_MIN, TEMP_MAX).item())
 
 
 def save_checkpoint(model, tokenizer, cfg, output_dir, epoch, final=False):

@@ -90,6 +90,9 @@ class ONNXAgent(HookRegistry):
                                code, each `{"temperature": [3 floats], "temperature_by_options": {}}`.
                                Applied when a `lang=` is passed to `system_one`/`predict`, mirroring
                                the PyTorch `Agent`; a cross-backend swap otherwise loses calibration.
+            calibration: Optional path to a JSON map written by `Agent.save_calibration`
+                         (see `Agent.load_calibration`), read onto this agent after its
+                         checkpoint temperatures; exactly as the PyTorch `Agent` does.
         """
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
@@ -98,6 +101,13 @@ class ONNXAgent(HookRegistry):
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
         self._hooks_mutex = threading.Lock()
         self.model_id = model_id_or_path
+        # The PyTorch `Agent` carries these two names (`agent.py:385-386`) and `calibrate`'s
+        # identity check reads them off whatever object it is handed. Without them here every v2
+        # payload's recorded checkpoint compares against `None`, so the mismatch branch always
+        # fires -- even for the very checkpoint this agent loaded. Mirror `Agent` so the check can
+        # actually match and `load_calibration`'s documented mismatch warning means something.
+        self.model_id_or_path = model_id_or_path
+        self.subfolder = subfolder
 
         import onnxruntime as ort
         from transformers import AutoTokenizer
@@ -213,7 +223,13 @@ class ONNXAgent(HookRegistry):
             self.load_calibration(calibration)
 
     def load_calibration(self, path: str) -> None:
-        """Read a JSON map written by `save_calibration` onto this agent."""
+        """Read a JSON map written by `save_calibration` onto this agent.
+
+        A file with no `version` is treated as version 1 and still loads. A newer file
+        whose recorded checkpoint does not match this agent warns and still loads.
+        Values that are not numbers, or that sit outside `[TEMP_MIN, TEMP_MAX]`, are clamped
+        with `clamp_temperature` the same way checkpoint load is.
+        """
         from .calibrate import apply_calibration_payload
         with open(path) as f:
             payload = json.load(f)

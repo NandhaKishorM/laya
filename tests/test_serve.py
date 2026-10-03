@@ -2410,16 +2410,17 @@ def _batch_client(monkeypatch):
 def test_batch_call_controls_are_exactly_predict_batch_kwargs_or_refusal():
     """A control added to ``Router.predict_batch`` must be placed on one side of the line.
 
-    Either serve forwards it (``BATCH_BODY_CALL_CONTROLS``) or it refuses it (``hooks_timeout``,
-    the one hook-execution arg that ``predict_batch`` takes). Silently ignoring a new kwarg is the
-    failure mode this pin exists to catch: the same reasoning that made ``/v1/systemone`` refuse
-    ``hooks_timeout`` in #724 applies to the batch path -- a caller cannot shorten the deadline
-    on which the operator's own hooks execute.
+    Either serve forwards it (``BATCH_BODY_CALL_CONTROLS``) or it refuses it (``hooks`` and
+    ``hooks_timeout``, the hook-execution args that ``predict_batch`` takes). Silently ignoring a
+    new kwarg is the failure mode this pin exists to catch: the same reasoning that made
+    ``/v1/systemone`` refuse ``hooks`` and ``hooks_timeout`` applies to the batch path -- a caller
+    cannot install a callable in the server process or shorten the deadline on which the
+    operator's own hooks execute.
     """
     from laya.router import Router
 
     taken = set(inspect.signature(Router.predict_batch).parameters) - {"self", "requests"}
-    declared = set(BATCH_BODY_CALL_CONTROLS) | {"hooks_timeout"}
+    declared = set(BATCH_BODY_CALL_CONTROLS) | {"hooks_timeout", "hooks"}
     assert taken == declared, "predict_batch() takes %s; serve declares %s" % (
         sorted(taken), sorted(declared))
 

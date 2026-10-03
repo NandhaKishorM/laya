@@ -253,6 +253,8 @@ def test_remote_batch_refuses_hook_timeouts_and_item_hooks(serve):
     items = [{"state": "x", "questions": _questions()}]
     with pytest.raises(RemoteError, match="hooks_timeout"):
         router.predict_batch(items, hooks_timeout=1)
+    with pytest.raises(RemoteError, match="callables"):
+        router.predict_batch(items, hooks=[])
     items[0]["hooks"] = [lambda ctx: None]
     with pytest.raises(RemoteError, match="per-request hooks"):
         router.predict_batch(items)

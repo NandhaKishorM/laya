@@ -296,6 +296,9 @@ router.predict(state, questions, model=None, task=None, lang=None, lang_guess=No
                hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
                hooks_timeout=None, max_len=None, head_max_len=None)
 
+router.predict_batch(requests, batch_size=None, hooks_timeout=None, min_confidence=None,
+                     sort_by_length=False, hooks=None)
+
 router.system_one(...)      # alias of predict
 router.load(name)           # builds on first use; fires on_load
 router.preload(names=None)  # builds several; fires on_load per build
@@ -304,7 +307,7 @@ router.attach(name, agent)  # registers an existing agent; does not fire on_load
 router.loaded               # list of resident checkpoint names
 ```
 
-- Per-call `hooks=` on `route` and `predict` apply to the whole call, including `on_route`.
+- Per-call `hooks=` on `route`, `predict` and `predict_batch` apply to the whole call, including `on_route`. On `predict_batch` the list is composed the same way as on `predict` (installed hooks first, then the per-call list; `None` and `[]` add nothing) and runs once per request.
 - `route()` is public: calling it dispatches `on_route` with the installed hooks plus any
   per-call `hooks`.
 

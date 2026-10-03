@@ -145,9 +145,10 @@ BODY_REFUSALS = ("hooks", "on_predict_start", "on_predict_end", "hooks_raise", "
 # against ``inspect.signature(Router.predict_batch)`` (call-level) and against the MCP tool's own
 # item key list (per-request), so a control added to either side has to be placed on one side of
 # this split -- forwarded, refused, or moved to the item tuple -- before the suite goes green.
-# ``hooks_timeout`` is refused on the batch path the same way it is on the single path: it belongs
-# to ``predict_batch``'s call-level args but governs how the *deployment's* hooks execute, so a
-# caller cannot be allowed to shorten or lengthen that deadline from an HTTP body.
+# ``hooks`` and ``hooks_timeout`` are refused on the batch path the same way they are on the single
+# path: they belong to ``predict_batch``'s call-level args, but a hook is a callable that runs in
+# the server process and ``hooks_timeout`` governs how the *deployment's* hooks execute, so a
+# caller cannot send either from an HTTP body.
 BATCH_BODY_CALL_CONTROLS = ("batch_size", "min_confidence", "sort_by_length")
 BATCH_BODY_ITEM_CONTROLS = ("max_len", "head_max_len", "task", "lang", "lang_guess")
 

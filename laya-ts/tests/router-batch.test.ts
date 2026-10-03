@@ -174,6 +174,80 @@ describe("Router.routeBatch / predictBatch", () => {
     ]);
   });
 
+  it("accepts per-call hooks in predict order, and treats null and [] as no-ops", async () => {
+    const order: string[] = [];
+    const installed = {
+      onRoute(ctx: { states: unknown[] }) {
+        order.push(`installed:route:${ctx.states[0]}`);
+      },
+      onPredictStart(ctx: { states: unknown[] }) {
+        order.push(`installed:start:${ctx.states[0]}`);
+      },
+      onPredictEnd(ctx: { states: unknown[] }) {
+        order.push(`installed:end:${ctx.states[0]}`);
+      },
+    };
+    const perCall = {
+      onRoute(ctx: { states: unknown[] }) {
+        order.push(`percall:route:${ctx.states[0]}`);
+      },
+      onPredictStart(ctx: { states: unknown[] }) {
+        order.push(`percall:start:${ctx.states[0]}`);
+      },
+      onPredictEnd(ctx: { states: unknown[] }) {
+        order.push(`percall:end:${ctx.states[0]}`);
+      },
+    };
+    const { router } = makeRouter({ hooks: [installed] });
+    const items = [req("one", { model: "english" }), req("two", { model: "english" })];
+    const results = await router.predictBatch(items, null, { hooks: [perCall] });
+    expect(results.map((r) => r.answers.seen)).toEqual(["one", "two"]);
+    // routeBatch runs before any predict hook. End hooks follow start order on this runtime.
+    expect(order).toEqual([
+      "installed:route:one",
+      "percall:route:one",
+      "installed:route:two",
+      "percall:route:two",
+      "installed:start:one",
+      "percall:start:one",
+      "installed:start:two",
+      "percall:start:two",
+      "installed:end:one",
+      "percall:end:one",
+      "installed:end:two",
+      "percall:end:two",
+    ]);
+
+    order.length = 0;
+    await router.predictBatch(items, null, { hooks: null });
+    const noneOrder = [...order];
+    order.length = 0;
+    await router.predictBatch(items, null, { hooks: [] });
+    const emptyOrder = [...order];
+    order.length = 0;
+    await router.predictBatch(items);
+    expect(noneOrder).toEqual(emptyOrder);
+    expect(emptyOrder).toEqual(order);
+    expect(noneOrder).toEqual([
+      "installed:route:one",
+      "installed:route:two",
+      "installed:start:one",
+      "installed:start:two",
+      "installed:end:one",
+      "installed:end:two",
+    ]);
+
+    const { router: bare } = makeRouter();
+    expect((await bare.predictBatch(items, null, { hooks: null })).map((r) => r.answers.seen)).toEqual([
+      "one",
+      "two",
+    ]);
+    expect((await bare.predictBatch(items, null, { hooks: [] })).map((r) => r.answers.seen)).toEqual([
+      "one",
+      "two",
+    ]);
+  });
+
   it("runs router hooks per request and short-circuits skipped requests", async () => {
     const events: string[] = [];
     const { router, calls } = makeRouter({

@@ -198,6 +198,87 @@ def test_same_checkpoint_different_questions_split_agent_batches(fake_agent):
     assert calls[1][2] == q2
 
 
+def test_predict_batch_accepts_per_call_hooks():
+    """`hooks=` matches `predict`: accepted, ordered after `self.hooks`, once per item.
+
+    `None` and `[]` add nothing, so a batch with no per-call hooks behaves as if the
+    argument was omitted. A per-call hook runs for every request, including `on_route`.
+    No checkpoint is built: the agent is attached, the same way the router hook tests stub one.
+    """
+    class Stub:
+        def predict_batch(self, states, questions, batch_size=None, **overrides):
+            return [
+                {"model": "stub", "answers": {"seen": state}, "usage": {}}
+                for state in states
+            ]
+
+    order = []
+
+    class Installed:
+        def on_route(self, ctx):
+            order.append(("installed", "route", ctx.states[0]))
+
+        def on_predict_start(self, ctx):
+            order.append(("installed", "start", ctx.states[0]))
+
+        def on_predict_end(self, ctx):
+            order.append(("installed", "end", ctx.states[0]))
+
+    class PerCall:
+        def on_route(self, ctx):
+            order.append(("percall", "route", ctx.states[0]))
+
+        def on_predict_start(self, ctx):
+            order.append(("percall", "start", ctx.states[0]))
+
+        def on_predict_end(self, ctx):
+            order.append(("percall", "end", ctx.states[0]))
+
+    router = Router(hooks=[Installed()])
+    router.attach("english", Stub())
+    items = [request("one", model="english"), request("two", model="english")]
+    results = router.predict_batch(items, hooks=[PerCall()])
+    assert [r["answers"]["seen"] for r in results] == ["one", "two"]
+    # route_batch runs before any predict hook; within a checkpoint, ends unwind in reverse.
+    assert order == [
+        ("installed", "route", "one"),
+        ("percall", "route", "one"),
+        ("installed", "route", "two"),
+        ("percall", "route", "two"),
+        ("installed", "start", "one"),
+        ("percall", "start", "one"),
+        ("installed", "start", "two"),
+        ("percall", "start", "two"),
+        ("installed", "end", "two"),
+        ("percall", "end", "two"),
+        ("installed", "end", "one"),
+        ("percall", "end", "one"),
+    ]
+
+    order.clear()
+    router.predict_batch(items, hooks=None)
+    none_order = list(order)
+    order.clear()
+    router.predict_batch(items, hooks=[])
+    empty_order = list(order)
+    order.clear()
+    router.predict_batch(items)
+    assert none_order == empty_order == order
+    assert none_order == [
+        ("installed", "route", "one"),
+        ("installed", "route", "two"),
+        ("installed", "start", "one"),
+        ("installed", "start", "two"),
+        ("installed", "end", "two"),
+        ("installed", "end", "one"),
+    ]
+
+    bare = Router()
+    bare.attach("english", Stub())
+    assert [r["answers"]["seen"] for r in bare.predict_batch(items, hooks=None)] == ["one", "two"]
+    assert [r["answers"]["seen"] for r in bare.predict_batch(items, hooks=[])] == ["one", "two"]
+
+
 def test_predict_batch_honours_hooks_timeout(fake_agent):
     def slow_hook(ctx):
         sleep(0.3)

@@ -1167,6 +1167,7 @@ class Router(HookRegistry):
         self,
         requests: Sequence[Dict[str, Any]],
         hooks_timeout: Optional[float] = None,
+        hooks=None,
     ) -> List[RouteDecision]:
         """Route a heterogeneous request batch without loading any checkpoints.
 
@@ -1182,6 +1183,9 @@ class Router(HookRegistry):
                 ``questions``.
             hooks_timeout: Override the Router's ``hooks_timeout`` for this call, applied to
                 every request's ``on_route`` dispatch, as on :meth:`route`.
+            hooks: Per-call hooks, appended after any installed on the Router and applied to
+                every request's ``on_route`` dispatch, as on :meth:`route`. ``None`` and ``[]``
+                add nothing.
         """
         if not isinstance(requests, SequenceABC) or isinstance(requests, (str, bytes)):
             raise TypeError("requests must be a sequence of request dictionaries")
@@ -1210,6 +1214,7 @@ class Router(HookRegistry):
                     task=request.get("task"),
                     lang=request.get("lang"),
                     lang_guess=request.get("lang_guess"),
+                    hooks=hooks,
                     hooks_timeout=hooks_timeout,
                 )
             )
@@ -1223,6 +1228,7 @@ class Router(HookRegistry):
         hooks_timeout: Optional[float] = None,
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
+        hooks=None,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -1260,12 +1266,21 @@ class Router(HookRegistry):
                 group pads to a shorter maximum; see ``Agent.predict_batch``. Results retain the
                 input order either way. Silently dropped for an attached agent whose
                 ``predict_batch`` predates the knob (#294).
+            hooks: Per-call hooks, composed the same way as on :meth:`predict`: installed
+                hooks first, then this list. ``None`` and ``[]`` add nothing. The list runs
+                for every request, including ``on_route`` inside :meth:`route_batch`.
 
         Returns:
             One normal Router prediction result per request, in the same order as the input.
         """
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
-        decisions = self.route_batch(requests, hooks_timeout=hooks_timeout)
+        # Composed before routing, as `predict` does, so a bad per-call hook raises before any
+        # checkpoint loads and the same list reaches `on_route` and the predict lifecycle.
+        # `None` and `[]` normalise to nothing, so they leave the installed hooks alone.
+        active = compose_hooks(self.hooks, hooks)
+        raise_errors = self.hooks_raise
+        timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
+        decisions = self.route_batch(requests, hooks_timeout=hooks_timeout, hooks=hooks)
         if not decisions:
             return []
 
@@ -1283,14 +1298,12 @@ class Router(HookRegistry):
         # `predict` returns as it is.
         results: List[Any] = [None] * len(requests)
         answered = 0
-        # `compose_hooks`, not `list(self.hooks)`: this is the composition `predict` uses at its
-        # own dispatch site, and it is what merges in `set_default_hooks`. Reading the instance
-        # list alone silently dropped every process-wide default from the batched path while
-        # keeping them on `predict`, so a default audit or metrics hook saw no Router-level event
-        # for a request that arrived through `predict_batch`.
-        active = compose_hooks(self.hooks)
-        raise_errors = self.hooks_raise
-        timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
+        # `active` is the composition `predict` uses at its own dispatch site (`compose_hooks`,
+        # not `list(self.hooks)`), including per-call `hooks=`. That is what merges in
+        # `set_default_hooks`. Reading the instance list alone silently dropped every
+        # process-wide default from the batched path while keeping them on `predict`, so a
+        # default audit or metrics hook saw no Router-level event for a request that arrived
+        # through `predict_batch`.
 
         for model_name, indices in groups.items():
             agent = self.load(model_name)

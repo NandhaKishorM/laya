@@ -154,6 +154,15 @@ export interface RouteOptions {
   hooksRaise?: boolean;
 }
 
+/**
+ * Per-call options for `Router.predictBatch` / `predictMany` / `routeBatch`.
+ * `hooks` is composed the same way as on `predict`: installed hooks first, then this list.
+ * `null`, `undefined` and `[]` add nothing.
+ */
+export interface PredictBatchOptions {
+  hooks?: HookArg;
+}
+
 /** One item of a Router.predictBatch/routeBatch batch: state, questions, route overrides. */
 export interface BatchRequest {
   state: unknown;
@@ -682,7 +691,7 @@ export class Router extends HookRegistry {
    * validated before anything loads, so a malformed batch fails fast. Entries keep input
    * order; routing is deterministic, so repeated batches route identically.
    */
-  routeBatch(requests: BatchRequest[]): RouteDecision[] {
+  routeBatch(requests: BatchRequest[], opts: PredictBatchOptions = {}): RouteDecision[] {
     if (!Array.isArray(requests)) {
       throw new TypeError("requests must be an array of request objects");
     }
@@ -711,6 +720,7 @@ export class Router extends HookRegistry {
           task: request.task ?? null,
           lang: request.lang ?? null,
           langGuess: request.langGuess ?? request.lang_guess ?? null,
+          hooks: opts.hooks,
         }),
       );
     }
@@ -731,12 +741,16 @@ export class Router extends HookRegistry {
    * Router-level predict hooks run per request: each request gets its own PredictContext
    * carrying `decision`; `onPredictStart` may rewrite a request or `ctx.skip()` it, and
    * `onPredictEnd` runs once per started request even when the batch fails.
+   * `opts.hooks` are per-call hooks, appended after any installed on the Router, the same
+   * composition `predict` uses. `null` and `[]` add nothing. They apply to `onRoute` as well
+   * as to each request's predict lifecycle.
    */
   async predictBatch(
     requests: BatchRequest[],
     batchSize: number | null = null,
+    opts: PredictBatchOptions = {},
   ): Promise<RoutedResult[]> {
-    const decisions = this.routeBatch(requests);
+    const decisions = this.routeBatch(requests, opts);
     if (decisions.length === 0) return [];
 
     const groups = new Map<string, number[]>();
@@ -748,7 +762,7 @@ export class Router extends HookRegistry {
     }
 
     const results: (RoutedResult | null)[] = new Array(requests.length).fill(null);
-    const active = composeHooks(this.hooks);
+    const active = composeHooks(this.hooks, opts.hooks);
     const raiseErrors = this.hooksRaise;
 
     for (const [modelName, indices] of groups) {
@@ -924,8 +938,9 @@ export class Router extends HookRegistry {
   async predictMany(
     requests: BatchRequest[],
     batchSize: number | null = null,
+    opts: PredictBatchOptions = {},
   ): Promise<RoutedResult[]> {
-    return this.predictBatch(requests, batchSize);
+    return this.predictBatch(requests, batchSize, opts);
   }
 
   /**

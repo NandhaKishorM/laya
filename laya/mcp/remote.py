@@ -196,6 +196,7 @@ class RemoteRouter(Router):
         hooks_timeout: Optional[float] = None,
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
+        hooks=None,
     ) -> List[Dict[str, Any]]:
         """One ``/v1/systemone`` call per request, answers in input order.
 
@@ -203,9 +204,14 @@ class RemoteRouter(Router):
         while a Router batch lets each request carry its own questions and controls, so the general
         form is the per-request call. ``batch_size`` and ``sort_by_length`` shape forward passes and
         have no meaning here; they are accepted and ignored so callers written against ``Router``
-        keep working. The server applies its own batching inside each call.
+        keep working. The server applies its own batching inside each call. ``hooks`` is accepted
+        so the signature matches ``Router.predict_batch`` and refused: a hook is a callable and
+        cannot be sent to ``laya-serve``.
         """
         results: List[Dict[str, Any]] = []
+        if hooks is not None:
+            raise RemoteError("unsupported_remote",
+                              "hooks are callables and cannot be sent to laya-serve; install them on the server")
         if hooks_timeout is not None:
             raise RemoteError("unsupported_remote", "hooks_timeout belongs to the server's hooks")
         for item in requests:

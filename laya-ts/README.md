@@ -146,6 +146,9 @@ const results = await agent.predictBatch(states, questions, { batchSize: 32 });
 // in as few forward passes as possible. Results keep input order and carry `routing`.
 const decisions = router.routeBatch(requests);          // validate + route, nothing loads
 const routed = await router.predictBatch(requests, 32); // == router.predictMany(...)
+// Per-call hooks are composed like predict: installed hooks first, then this list.
+// null and [] add nothing. The list runs once per request, including onRoute.
+const traced = await router.predictBatch(requests, null, { hooks: [tracer] });
 
 // requests routed to the same checkpoint still split into separate batches when their
 // question schemas differ (order-sensitively), when per-request start hooks set

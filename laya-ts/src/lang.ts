@@ -1,3 +1,5 @@
+import { FOREIGN_WORDS } from "./foreign-words.js";
+
 type ScriptRanges = Array<[string, Array<[number, number]>]>;
 
 const SCRIPT_RANGES: ScriptRanges = [
@@ -108,6 +110,35 @@ const STOP: Record<string, Set<string>> = {
     "var", "yox", "yoxdur", "mən", "sən", "biz", "siz", "onlar", "daha", "çox", "cox",
     "hər", "nə", "kimi", "görə", "sonra", "əgər", "eger", "deyil", "lakin", "amma",
     "ancaq", "artıq", "artiq", "də", "isə", "həm", "yalnız", "yalniz"]),
+  // Plain-ASCII languages that had no list (#54); laya/lang.py says what was left out and why.
+  id: new Set(["yang", "untuk", "dengan", "dari", "ke", "ini", "itu", "saya", "aku", "kamu", "anda",
+    "dia", "kami", "kita", "mereka", "apa", "apakah", "bagaimana", "kapan", "dimana", "mana", "siapa",
+    "berapa", "tidak", "bukan", "akan", "sudah", "belum", "sedang", "bisa", "dapat", "harus", "mau",
+    "ingin", "tolong", "juga", "atau", "tetapi", "tapi", "pada", "dalam", "oleh", "karena", "jika",
+    "kalau", "ada", "semua", "lagi", "saja", "nya", "besok", "sekarang"]),
+  ms: new Set(["yang", "untuk", "dengan", "dari", "ke", "ini", "itu", "saya", "aku", "awak", "anda",
+    "dia", "kami", "kita", "mereka", "apa", "adakah", "bagaimana", "bila", "mana", "siapa", "berapa",
+    "tidak", "tak", "bukan", "akan", "sudah", "telah", "boleh", "mahu", "hendak", "tolong", "juga",
+    "atau", "tetapi", "pada", "dalam", "oleh", "kerana", "jika", "kalau", "ada", "semua", "lagi",
+    "sahaja", "esok", "sekarang"]),
+  jv: new Set(["aku", "kowe", "sampeyan", "dheweke", "iki", "kuwi", "iku", "lan", "karo", "ing",
+    "menyang", "saka", "kanggo", "apa", "piye", "kepiye", "kapan", "endi", "sapa", "pira", "ora",
+    "wis", "durung", "arep", "bakal", "isa", "iso", "bisa", "gelem", "tulung", "uga", "utawa",
+    "nanging", "ana", "kabeh", "maneh", "wae", "mung", "kang", "sing", "ning", "neng", "nang", "sesuk",
+    "saiki"]),
+  sw: new Set(["wa", "za", "kwa", "katika", "hii", "hiyo", "huu", "hizi", "mimi", "wewe", "yeye",
+    "sisi", "nyinyi", "wao", "nini", "vipi", "lini", "wapi", "nani", "ngapi", "sana", "tafadhali",
+    "kwamba", "lakini", "kama", "bado", "tena", "pia", "yote", "kila", "leo", "kesho"]),
+  tl: new Set(["ang", "ng", "mga", "ay", "ako", "ikaw", "ka", "siya", "kami", "tayo", "sila", "ko",
+    "niya", "namin", "natin", "nila", "ito", "iyan", "iyon", "ano", "paano", "kailan", "saan", "sino",
+    "ilan", "hindi", "oo", "po", "naman", "lang", "rin", "ngayon", "bukas", "kung", "mayroon", "wala",
+    "gusto", "paki", "pakiusap"]),
+  af: new Set(["en", "nie", "ek", "jy", "hy", "sy", "ons", "julle", "hulle", "vir", "uit", "oor",
+    "wat", "hoe", "wanneer", "waar", "hoeveel", "asseblief", "kan", "sal", "moet", "wil", "gaan",
+    "dit", "hierdie", "daardie", "nog", "vandag", "môre"]),
+  cy: new Set(["yr", "yn", "gyda", "wrth", "oes", "ydy", "yw", "roedd", "bydd", "fy", "dy", "eich",
+    "beth", "sut", "pryd", "ble", "pwy", "faint", "dim", "ddim", "ond", "neu", "hefyd", "nawr",
+    "heddiw", "yfory", "chi", "ti", "nhw", "fe", "gan", "efo"]),
 };
 
 const NON_EN_DIACRITICS = new Set(
@@ -151,6 +182,9 @@ const SHARED_WORDS: Set<string> = (() => {
 const NORDIC_OVERLAP_WORDS = new Set(["hej", "ja", "nej", "jo", "tack", "mig", "min", "om", "kommer", "får", "skulle", "vi"]);
 for (const word of NORDIC_OVERLAP_WORDS) SHARED_WORDS.add(word);
 const EN_ONLY_WORDS = new Set([...STOP["en"]].filter((w) => !SHARED_WORDS.has(w)));
+// Every word a non-English list holds. In undecided text of four or more words, two different ones are
+// evidence of another language, and so is one in FOREIGN_WORDS, which English text never uses (#54).
+const OTHER_WORDS = new Set(Object.entries(STOP).filter(([lg]) => lg !== "en").flatMap(([, ws]) => [...ws]));
 
 // Short support fragments need a narrower vocabulary than the general four-word language guess.
 // Generic words such as "fel" and "hjälp" are deliberately omitted from this subset.
@@ -306,6 +340,7 @@ export interface LatinProfile {
   englishHits: number;
   diacriticRate: number;
   looksNonEnglish: boolean;
+  otherEvidence: boolean;
 }
 
 export function latinProfile(text: string): LatinProfile {
@@ -322,10 +357,13 @@ export function latinProfile(text: string): LatinProfile {
   const nordicOverlap = words.some((w) => NORDIC_OVERLAP_WORDS.has(w)) &&
     !words.some((w) => EN_ONLY_WORDS.has(w));
   if (words.length > 1 && words.length < 4 && words.some((w) => SHORT_SWEDISH_WORDS.has(w))) {
-    return { language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
+    return { language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish, otherEvidence: false };
   }
   if (words.length < 4) {
-    return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap };
+    return {
+      language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap,
+      otherEvidence: false,
+    };
   }
   const scores: Record<string, number> = {};
   for (const [lg, sw] of Object.entries(STOP)) {
@@ -355,7 +393,13 @@ export function latinProfile(text: string): LatinProfile {
   } else if (en && (!nonEnglish || englishRescuedByWords(wordSet, diacRate))) {
     lang = "en";
   }
-  return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish || (lang === null && nordicOverlap) };
+  // a non-English letter too rare for the rate counts as evidence too
+  const otherWords = [...wordSet].filter((w) => OTHER_WORDS.has(w));
+  const otherEvidence = diac > 0 || otherWords.length >= 2 || otherWords.some((w) => FOREIGN_WORDS.has(w));
+  return {
+    language: lang, englishHits: en, diacriticRate: diacRate,
+    looksNonEnglish: nonEnglish || (lang === null && nordicOverlap), otherEvidence,
+  };
 }
 
 export function guessLatinLanguage(text: string): string | null {
@@ -479,7 +523,8 @@ function analyseText(text: string): AnalyseResult {
   const profLat = latinProfile(text);
   const lang = profLat.language;
   const undecided = lang === null;
-  const english = lang === "en" || (undecided && !profLat.looksNonEnglish);
+  // Undecided text with evidence of another language is not English either (#54), see laya/lang.py.
+  const english = lang === "en" || (undecided && !profLat.looksNonEnglish && !profLat.otherEvidence);
   return {
     script: "latin", scriptProfile: prof, language: lang,
     isEnglish: english, languageUndecided: undecided,

@@ -156,6 +156,7 @@ Laya does not open a network port.
 | `laya_predict_batch` | Answers many requests in one call. Requests are routed first and grouped by checkpoint, so matching question schemas share forward passes; answers come back in input order. | `requests`, each `{state, questions, model?, task?, lang?, lang_guess?, max_len?, head_max_len?}`, optional `batch_size` |
 | `laya_route_batch` | Decides which checkpoint would answer each request, with no forward pass and no checkpoint load. | `requests`, same shape as `laya_predict_batch` |
 | `laya_decide` | Answers a JSON-schema-shaped decision in one forward pass and returns the decided values with per-field confidence, instead of an answer map to parse. Schema properties may be enum choices, booleans, or integers with a minimum and maximum; free strings, arrays, and nested objects are rejected by path. | `state`, `schema`, optional `model` |
+| `laya_predict_long` | Scans a state longer than the context window in overlapping windows, then answers with per-answer window attribution and the window count. | `state`, `questions`, optional `model`, optional `window`, optional `stride` |
 
 The three batch and schema tools exist because the same operations are available on the SDK and
 `laya-serve`: handling many requests, or serving a caller that already knows the answer shape,
@@ -167,6 +168,14 @@ shortlisting. `laya_shortlist` keeps the `k` most likely labels before the forwa
 default is `k=20`. It uses mean-pooled embeddings from the answering checkpoint's own encoder,
 so it does not download a second model, and returns the kept labels, cosine scores, `k`, and
 option count for each shortlisted question.
+
+When the state itself does not fit one window, `laya_predict` answers from its first window and
+never reads the rest. `laya_predict_long` tokenizes the state once, scores it in overlapping
+windows sized by `window` (default: the checkpoint budget) stepped by `stride` (default: half
+the window), and aggregates per question -- strongest window for `noul`, most-confident window
+for `choice`/`score`. Each answer names its deciding window, and the result counts the windows
+scored. There is no `min_confidence` here and no `max_len`/`head_max_len`: core's scan takes
+neither.
 
 `state` must be a non-empty JSON object. `questions` must be a non-empty object whose values use
 Laya's typed question schema. `laya_preset` accepts the same five presets the CLI does: `email`,

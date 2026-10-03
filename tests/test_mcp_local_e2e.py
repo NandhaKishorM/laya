@@ -2,8 +2,8 @@
 
 Launches ``python -m laya.mcp.server`` as a subprocess and speaks MCP over
 stdin/stdout (newline-delimited JSON-RPC), exactly like a real MCP client.
-Exercises laya_predict, laya_predict_batch, laya_route, laya_route_batch, laya_decide,
-laya_preset, laya_shortlist and laya_status against the
+Exercises laya_predict, laya_predict_batch, laya_predict_long, laya_route,
+laya_route_batch, laya_decide, laya_preset, laya_shortlist and laya_status against the
 live checkpoints (downloaded via huggingface_hub on first run, cached
 afterwards).
 
@@ -117,8 +117,9 @@ def main():
         tools = client.request("tools/list", {})
         names = sorted(t["name"] for t in tools.get("tools", []))
         ok("e2e/tool_names", names == ["laya_decide", "laya_predict", "laya_predict_batch",
-                                       "laya_preset", "laya_route", "laya_route_batch",
-                                       "laya_shortlist", "laya_status"], repr(names))
+                                       "laya_predict_long", "laya_preset", "laya_route",
+                                       "laya_route_batch", "laya_shortlist", "laya_status"],
+           repr(names))
 
         ticket = {
             "state": {

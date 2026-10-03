@@ -18,11 +18,24 @@ describe("undecided Latin text with evidence of another language", () => {
     "huwag mo akong gisingin bukas",                  // tl, `bukas`
     "ken jy enige grappe",                            // af, `jy`
     "paid a siarad heddiw",                           // cy, `heddiw`
-    "schakel de lampen uit",                          // nl, `uit`
+    "schakel de lampen uit",                          // nl, `uit` (Afrikaans too)
     "vertel me wat er gebeurt op instagram",          // nl, `wat` and `op`
+    "speel mijn rock afspeellijst",                   // nl, `mijn`
+    "cine a scris melodia asta",                      // ro, `cine`
+    "niambie kuhusu kengele zangu",                   // sw, `kuhusu`
+    "vil det regne denne uge",                        // da, `denne`
+    "slett alarmen jeg nettopp satte",                // nb, `jeg`
+    "olly kerro minulle vitsi",                       // fi, `minulle`
+    "kateri alarmi so nastavljeni",                   // sl, `kateri`
   ])("routes to multilingual: %s", (text) => {
-    expect(guessLatinLanguage(text)).toBeNull();
     expect(router.route(text, {}).model).toBe("multilingual");
+  });
+
+  it.each([
+    "streiche alle meine geplanten termine",
+    "me gustaría escuchar algunos buenos chistes divertidos",
+  ])("leaves the language undecided: %s", (text) => {
+    expect(guessLatinLanguage(text)).toBeNull();
   });
 
   it("names the evidence in the reason", () => {

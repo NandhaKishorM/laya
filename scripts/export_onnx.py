@@ -1,8 +1,12 @@
 import argparse
 import os
+from typing import Optional
+
+import numpy as np
 import torch
 
 from laya.agent import Agent
+from laya.common import QTYPES
 
 
 def quantize_model(model_path: str, output_path: str, per_channel: bool = False) -> str:
@@ -54,80 +58,308 @@ def int8_output_path(output_path: str) -> str:
     return "%s.int8%s" % (root, ext or ".onnx")
 
 
-def export_to_onnx(model_id_or_path: str, output_path: str):
-    print(f"Loading PyTorch Agent from: {model_id_or_path}")
-    agent = Agent(model_id_or_path, compile=False, device="cpu")
-    
-    print("Creating dummy input tensors...")
-    # 1. Dummy tensors for tracing. torch.export specialises any dimension that is 1 (or equal
-    # to another) at trace time, so a batch-1 dummy baked batch=1 into the decision head's
-    # attention: the export ran at batch 1 and failed at batch >= 2 (#695). Batch, sequence and
-    # marker counts are therefore all > 1 and pairwise different. laya-ts's exporter does the same.
-    batch, seq_len, num_markers = 2, 17, 3
-    dummy_input_ids = torch.randint(0, 100, (batch, seq_len), dtype=torch.long)
-    dummy_attention_mask = torch.ones((batch, seq_len), dtype=torch.long)
-    dummy_marker_pos = torch.tensor([[1, 5, 9]] * batch, dtype=torch.long)
-    dummy_marker_mask = torch.ones((batch, num_markers), dtype=torch.bool)
-    dummy_qtype = torch.zeros(batch, dtype=torch.long)
+# Tracing shapes. `torch.export` specializes every example dimension whose extent is 1, so a
+# batch-of-one example bakes batch=1 into the decision head's attention reshapes no matter how
+# the batch axis is declared. Nothing about that failure is visible at export time: the graph
+# still *reports* a symbolic batch axis, ONNX Runtime still accepts a wider feed, and the run
+# then dies inside the graph ("Attempting to broadcast an axis by a dimension other than 1") --
+# which is every `ONNXAgent` request carrying more than one question or state.
+# Two rows keep the axis symbolic. laya-ts/scripts/export_onnx.py carries the same note for the
+# encoder/head pair it writes.
+TRACE_BATCH = 2
 
-    inputs = (
-        dummy_input_ids,
-        dummy_attention_mask,
-        dummy_marker_pos,
-        dummy_marker_mask,
-        dummy_qtype,
-    )
+# Tolerance for the INT8 graph, and DO NOT TIGHTEN IT without re-measuring on all three platforms --
+# the obvious review move here is wrong, and the resulting failure looks like a broken quantizer
+# rather than a too-tight tolerance.
+#
+# How much weight-only quantization moves the probabilities is a property of the MACHINE, not of the
+# graph: `quantize_dynamic` picks its scales from the weights and the arithmetic underneath differs.
+# What a HEALTHY export drifts by, measured on the same tiny model over verify's own sweep:
+#
+#   macOS / arm64, per-tensor (the default since #790)   1.65e-03
+#   macOS / arm64, per-channel                          9.95e-04
+#   Linux x86 (CI)                                      2.53e-02   <- 2e-02 failed this job
+#   Windows                                             between 5e-02 and 7e-02: a good export
+#                                                       FAILS at 5e-02 and passes at 7e-02
+#
+# Roughly two orders of magnitude across three platforms, and 1e-1 is the only value in that set that
+# accepts all of them. The headroom is not 100x -- on Windows it is under 2x. The Windows figures are
+# @Bruce-Yii's from review; the macOS ones are mine; the Linux one is this PR's own failing CI log.
+#
+# What the check is for is that the quantized graph still RUNS at batch > 1: `quantize_model` deletes
+# every `value_info` and rewrites every `MatMul`, exactly the kind of rewrite that can re-specialize an
+# axis. Numerical quality is bounded by the fp32 verification at `atol=1e-3`, which is the check a bad
+# export actually has to get past. 1e-1 stays far below the 0.5 that a coin flip on a two-class output
+# would mean, so a graph whose probabilities have collapsed still fails.
+#
+# If the gate should carry more numerical weight than "does it still run", the place to add it is a
+# per-platform floor recorded in the test, not a lower constant here.
+INT8_ATOL = 1e-1
 
-    # 2. Dynamic dimensions. `dynamic_axes` rather than torch.export Dims: it is the declaration
-    # every torch this package supports accepts (`dynamic_shapes` raises under the TorchScript
-    # exporter, the default through torch 2.8, and does not exist before 2.5), and the dynamo
-    # exporter converts it to Dims. With the batch-2 dummies above, both give the same graph;
-    # the dummies are what fix #695, not the declaration.
-    dynamic_axes = {
-        "input_ids": {0: "batch_size", 1: "seq_len"},
-        "attention_mask": {0: "batch_size", 1: "seq_len"},
-        "marker_pos": {0: "batch_size", 1: "num_markers"},
-        "marker_mask": {0: "batch_size", 1: "num_markers"},
-        "qtype": {0: "batch_size"},
-        "logits": {0: "batch_size", 1: "num_markers"},
-        "act_logits": {0: "batch_size"},
-    }
+INPUT_NAMES = [
+    "input_ids",
+    "attention_mask",
+    "marker_pos",
+    "marker_mask",
+    "qtype",
+]
 
-    input_names = [
-        "input_ids",
-        "attention_mask",
-        "marker_pos",
-        "marker_mask",
-        "qtype",
-    ]
-    
-    output_names = ["logits", "act_logits"]
+OUTPUT_NAMES = ["logits", "act_logits"]
 
-    print(f"Exporting to {output_path} (this may take a minute)...")
-    
+# `dynamic_axes` rather than `torch.export.Dim`s, per #726: it is the declaration every torch this
+# package supports accepts (`dynamic_shapes` raises under the TorchScript exporter -- the default
+# through torch 2.8 -- and does not exist before 2.5), and the dynamo exporter converts it to Dims.
+# With the batch-2 example inputs above, both produce the same graph; `TRACE_BATCH` is what fixes
+# #695, not the declaration. An earlier revision of this branch switched to `dynamic_shapes` before
+# that reasoning existed upstream; it is reverted here rather than carried.
+#
+# One `batch_size` symbol shared by every input and output, so a feed is only valid when its rows
+# agree -- which is what `ONNXAgent` always sends.
+DYNAMIC_AXES = {
+    "input_ids": {0: "batch_size", 1: "seq_len"},
+    "attention_mask": {0: "batch_size", 1: "seq_len"},
+    "marker_pos": {0: "batch_size", 1: "num_markers"},
+    "marker_mask": {0: "batch_size", 1: "num_markers"},
+    "qtype": {0: "batch_size"},
+    "logits": {0: "batch_size", 1: "num_markers"},
+    "act_logits": {0: "batch_size"},
+}
+
+
+def example_inputs(batch: Optional[int] = None, seq_len: int = 16, num_markers: int = 2):
+    """Positional inputs for `DecisionModel.forward`, shaped `(batch, ...)`.
+
+    Ragged past the first row on purpose -- padding in `attention_mask` and a masked-off
+    trailing marker -- so tracing and verification both run through `src_key_padding_mask` and
+    the `masked_fill` on the option logits instead of the degenerate all-ones case. Values are
+    deterministic so a verification failure is reproducible.
+
+    `batch` defaults to `TRACE_BATCH` at call time rather than in the signature, so that setting
+    `export_onnx.TRACE_BATCH` reaches this function -- which is the one experiment anybody
+    revisiting the batch bug will want to run.
+    """
+    if batch is None:
+        batch = TRACE_BATCH
+    # `marker_pos` indexes the sequence axis, so it has to stay inside it: the largest position
+    # written below is `num_markers`, and a position at or past `seq_len` makes the head's marker
+    # gather read out of bounds -- `IndexError` in torch, and in ONNX Runtime the much less
+    # obvious "GatherElements op: Out of range value in index tensor".
+    if num_markers >= seq_len:
+        raise ValueError(
+            "num_markers=%d needs seq_len > %d: marker positions index the sequence axis, and "
+            "position %d does not exist in a length-%d sequence"
+            % (num_markers, num_markers, num_markers, seq_len))
+    generator = torch.Generator().manual_seed(0)
+    input_ids = torch.randint(0, 100, (batch, seq_len), generator=generator, dtype=torch.long)
+    attention_mask = torch.ones((batch, seq_len), dtype=torch.long)
+    marker_pos = torch.arange(1, num_markers + 1, dtype=torch.long).repeat(batch, 1)
+    marker_mask = torch.ones((batch, num_markers), dtype=torch.bool)
+    for row in range(1, batch):
+        # One more padded token per row, but never the whole row: `max(1, ...)` keeps at least
+        # one real token. Unclamped, `seq_len - row` reaches 0 at `row == seq_len` and turns
+        # negative after it, so `batch > seq_len` would hand the model an all-padding row -- on
+        # which torch and ONNX Runtime legitimately disagree: measured at batch=32, seq_len=16,
+        # where one row (row == seq_len, whose slice start is 0) comes out entirely padding. An earlier
+        # revision said "16 of the 32 rows", which is wrong: a negative slice start wraps, so
+        # `attention_mask[17, -1:] = 0` masks only the LAST token rather than the whole row. Measured
+        # unclamped at batch=32, seq_len=16: 1 row of 32 entirely padding and 2 rows with a single real
+        # token. The clamp is still what the numbers justify -- `act_logits` probability drift 6.35e-02
+        # unclamped against 8.94e-08 clamped, far past `atol=1e-3` -- but via one degenerate row, not
+        # sixteen. The raw-logit figures below are order-of-magnitude rather than exact.
+        # Previously stated as 2.76e-01 on `act_logits` and
+        # 1.12e-01 on `logits`, against 2.38e-07 and 1.19e-07 once clamped. The caller would read
+        # that as an export failure.
+        attention_mask[row, max(1, seq_len - row):] = 0
+        marker_mask[row, -1] = False
+    qtype = torch.arange(batch, dtype=torch.long) % len(QTYPES)
+    return input_ids, attention_mask, marker_pos, marker_mask, qtype
+
+
+def export_module(model, output_path: str, opset_version: int = 18) -> str:
+    """Write `model` to `output_path` as an ONNX graph with a symbolic batch, sequence and
+    marker axis.
+
+    Split out from `export_to_onnx` so the batch-dynamic contract can be checked on a small
+    hand-built model, with no checkpoint to download; see `tests/test_onnx_export_batch.py`.
+    """
     out_dir = os.path.dirname(os.path.abspath(output_path))
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-    
-    # We must detach the encoder because ONNX export runs the model in trace mode.
-    # The `detach_encoder` flag in forward() just detaches the hidden state gradient, 
-    # but we don't even need to pass it since kwargs are ignored by tracing.
-    
+
+    # The encoder is not detached here: ONNX export runs the model under `torch.no_grad`
+    # semantics anyway, and `detach_encoder` only affects the hidden-state gradient, so the
+    # keyword would change nothing in the exported graph.
+    # Why the declaration is not what fixes this, either way round. Both `dynamic_axes` and
+    # `torch.export.Dim`s produce the same graph from a two-row example, and neither fixes #695 on
+    # its own: `TRACE_BATCH` does, because `torch.export` specializes any example dimension of
+    # extent 1 whatever the axis declaration says. `DYNAMIC_AXES` is the form that ships, per #726
+    # and for the torch-compatibility reason recorded there.
+    #
+    # Torch does call `dynamic_axes` deprecated under `dynamo=True` ("Prefer specifying
+    # ``dynamic_shapes``"), so on the release that drops the conversion an export declaring only
+    # `dynamic_axes` would go *silently* static -- a graph that serves one question, no error,
+    # exactly the failure this file exists to close. That is an argument for keeping
+    # `verify_batch_dynamic` on by default, not for switching the declaration ahead of the torch
+    # versions this package supports: the verification is what would catch that day.
     torch.onnx.export(
-        agent.model,
-        inputs,
+        model,
+        example_inputs(),
         output_path,
         export_params=True,
-        opset_version=18,
+        opset_version=opset_version,
         do_constant_folding=True,
-        input_names=input_names,
-        output_names=output_names,
-        dynamic_axes=dynamic_axes,
+        input_names=INPUT_NAMES,
+        output_names=OUTPUT_NAMES,
+        dynamic_axes=DYNAMIC_AXES,
     )
-    
+    return output_path
+
+
+def probabilities(logits):
+    """Softmax over the last axis -- what `ONNXAgent` turns both outputs into."""
+    shifted = logits - np.max(logits, axis=-1, keepdims=True)
+    exponentiated = np.exp(shifted)
+    return exponentiated / np.sum(exponentiated, axis=-1, keepdims=True)
+
+
+def verify_batch_dynamic(model, output_path: str, batches=(1, 2, 3), atol: float = 1e-3) -> None:
+    """Run the graph at `output_path` in ONNX Runtime at each batch size and compare to `model`.
+
+    This is the check the exporter did not have. Nothing short of running the graph at batch > 1
+    distinguishes a usable export from a batch-1-only one: the declared input shapes read
+    `batch_size` in both cases, and torch reports the problem as a `UserWarning` the script
+    printed straight past. Raises `SystemExit`, because a graph that cannot serve two questions
+    is not a successful export, and writing one without a word is how a user ends up debugging
+    ONNX Runtime instead of reading an error here.
+
+    Compared as probabilities rather than raw logits, because probabilities are what `ONNXAgent`
+    returns and all a decision depends on. The `torch.export` decompositions move a raw logit far
+    more than they move the answer: measured on the 322M multilingual checkpoint, raw `act_logits`
+    differ by up to 1.2e-02 and raw `logits` by 4.3e-04, while the probabilities both produce
+    agree to 6.1e-05. laya-ts/scripts/export_onnx.py compares its act head the same way, for the
+    same reason.
+
+    **Marker width is dynamic for two or more markers, and baked at exactly one.**
+    `DecisionModel.forward` branches on `p.size(-1) >= 2` in Python, so the traced width bakes THAT
+    BRANCH into the graph -- not the width itself. Measured on a graph traced at 2 markers: widths
+    2, 3, 4, 5 and 8 all run and match PyTorch; width 1 raises an ONNX Runtime `TopK` error
+    (`k argument [2] should not be greater than specified axis dim value [1]`), which a one-criterion
+    `score` question produces (`criteria=["only"]` is accepted and yields exactly one marker). An
+    earlier revision of this docstring said the width was "not dynamic", which would have told a user
+    to re-export per criteria count; that is not necessary. The limitation is narrower still, because
+    `collate_items` sizes markers to the batch maximum, so a one-criterion question only hits it when
+    every item in the collated batch has exactly one marker. Removing the Python branch from the model
+    is a separate change.
+
+    Probability space has one blind spot, and it is deliberate: softmax is shift-invariant, so a
+    constant added to every logit in a row is invisible here -- measured on the exported graph,
+    `logits + 100.0` passes while `logits * 3.0` is caught. That is safe only because every
+    consumer softmaxes. `ONNXAgent._decode_answers` is the only reader of `logits`, and it divides
+    by `t_scale` first, so for the `t_scale > 1` part of the clamped [0.5, 5.0] range this check is
+    strictly more sensitive than production; at the bottom of that range production is at most
+    twice as sensitive, still far inside `atol` at the 6.1e-05 the checkpoint produces. A consumer
+    that ever read a raw logit would need a raw-logit check added here.
+    """
+    try:
+        import onnxruntime as ort
+    except ModuleNotFoundError:
+        # The export itself never needed onnxruntime -- `torch.onnx.export` does not touch it -- so
+        # verifying by default makes it a new requirement of a command that used to work without it.
+        # A bare traceback after "Successfully exported" reads as a failed export, which it was not.
+        raise SystemExit(
+            "the export succeeded, but verifying it needs onnxruntime, which is not installed.\n"
+            "Install it with `pip install laya[onnx]`, or skip the check with `--no-verify`.")
+
+    try:
+        session = ort.InferenceSession(output_path, providers=["CPUExecutionProvider"])
+    except Exception as error:
+        # A graph ONNX Runtime will not even load is a failed export too, and the caller should
+        # read that here rather than in a raw ORT traceback.
+        raise SystemExit(
+            "verification failed: ONNX Runtime cannot load the graph just written to %s, so "
+            "ONNXAgent cannot use it. ONNX Runtime said: %s" % (output_path, error))
+    try:
+        _verify_at_each_batch(model, session, batches, atol, output_path)
+    finally:
+        # Released before returning, not left to the collector. Every call opens a session, and a
+        # suite that calls this many times leaves enough of them alive that interpreter shutdown dies
+        # with `libc++abi: recursive_mutex lock failed` -- exit 134 AFTER the tests report 0 failed,
+        # i.e. a red job with a green summary. Measured at roughly 1 run in 14 before this release was
+        # added -- but see the note in tests/test_onnx_export_batch.py: a later and larger measurement
+        # (3 of 30 WITH every session released, 0 of 30 with the release removed) says this release is
+        # not what fixes the abort, and the base rate is ~4-20% depending on invocation. The release
+        # stays as hygiene; the causation claim in that earlier sentence is withdrawn, and the suite
+        # avoids the abort by not running in pytest's process at all.
+        del session
+
+
+def _verify_at_each_batch(model, session, batches, atol, output_path):
+    """The per-batch comparison, split out so `verify_batch_dynamic` can release its session."""
+    for batch in batches:
+        # Sequence and marker counts move with the batch so no run can pass by accidentally
+        # matching the traced shape.
+        inputs = example_inputs(batch=batch, seq_len=16 + 8 * batch, num_markers=1 + batch)
+        with torch.no_grad():
+            expected = model(*inputs)
+        feed = {name: tensor.numpy() for name, tensor in zip(INPUT_NAMES, inputs)}
+        try:
+            got = session.run(OUTPUT_NAMES, feed)
+        except Exception as error:
+            raise SystemExit(
+                "verification failed: the exported graph does not run at batch %d, so ONNXAgent "
+                "cannot serve a request with %d questions or states. ONNX Runtime said: %s"
+                % (batch, batch, error)
+            )
+        for name, actual, want in zip(OUTPUT_NAMES, got, expected):
+            want = want.numpy()
+            # Shapes first. Only `session.run` was inside the try above, so a graph whose output WIDTH
+            # diverges from the model's reached the subtraction below and died with a raw numpy
+            # `ValueError: operands could not be broadcast together with shapes (2,3) (2,2)` -- which is
+            # the ONNX Runtime debugging session this function exists to replace, arriving as a
+            # traceback instead of the message it promises.
+            if actual.shape != want.shape:
+                raise SystemExit(
+                    "verification failed: %s is %s in the exported graph and %s in PyTorch at batch "
+                    "%d, so the graph does not describe this model. ONNXAgent reads %s by position, "
+                    "and a width mismatch there is a wrong answer rather than an error."
+                    % (name, actual.shape, want.shape, batch, name)
+                )
+            diff = float(np.max(np.abs(probabilities(actual) - probabilities(want))))
+            if not diff <= atol:
+                raise SystemExit("verification failed: %s probabilities differ from PyTorch by "
+                                 "%.2e (> %.0e) at batch %d" % (name, diff, atol, batch))
+            print("  batch %-2d %-10s max abs prob diff vs PyTorch %.2e (raw logits %.2e)"
+                  % (batch, name, diff, float(np.max(np.abs(actual - want)))))
+
+
+def export_to_onnx(model_id_or_path: str, output_path: str, verify: bool = True):
+    print(f"Loading PyTorch Agent from: {model_id_or_path}")
+    agent = Agent(model_id_or_path, compile=False, device="cpu")
+
+    print(f"Exporting to {output_path} (this may take a minute)...")
+    export_module(agent.model, output_path)
     print(f"Successfully exported ONNX model to: {output_path}")
 
-if __name__ == "__main__":
+    if verify:
+        print("Verifying the export against PyTorch at batch 1, 2 and 3...")
+        verify_batch_dynamic(agent.model, output_path)
+        print("Verification passed: the graph runs at batch 1, 2 and 3 with 2-4 markers and\n"
+              "              matches PyTorch. Width 1 is baked out by a Python branch -- see\n"
+              "              verify_batch_dynamic.")
+    # Handed back so the caller can verify a quantized copy against the same weights without
+    # loading the checkpoint a second time.
+    return agent.model
+
+
+def main(argv=None):
+    """The CLI, as a function so the arguments it passes can be asserted.
+
+    It was previously inline under `if __name__ == "__main__":`, which meant the only way to pin it
+    was to grep this file for substrings -- and every way of turning the new verification off
+    survived that: `batches=(1,)` on either call, `--no-verify` flipped to `store_false`,
+    `verify=False`, and `atol=1e9` on the INT8 check all shipped a success message while checking
+    nothing, with both suites green.
+    """
     parser = argparse.ArgumentParser(description="Export a Laya model to ONNX format")
     parser.add_argument("--model", type=str, default="convaiinnovations/laya", help="HuggingFace Hub ID or local path")
     parser.add_argument("--output", type=str, default="laya.onnx", help="Output path for the ONNX file")
@@ -139,10 +371,25 @@ if __name__ == "__main__":
                         help="Quantize weights per output channel instead of per tensor. Off by "
                              "default: on the dynamic path per-channel collapses the model (see "
                              "issue #790). Only meaningful with --quantize.")
-    args = parser.parse_args()
+    parser.add_argument("--no-verify", action="store_true",
+                        help="Skip the post-export check that runs the graph in ONNX Runtime at "
+                             "batch 1, 2 and 3 and compares it with PyTorch")
+    args = parser.parse_args(argv)
 
-    export_to_onnx(args.model, args.output)
+    model = export_to_onnx(args.model, args.output, verify=not args.no_verify)
     if args.quantize:
         int8_path = quantize_model(args.output, int8_output_path(args.output),
                                    per_channel=args.per_channel)
         print(f"Successfully wrote INT8 quantized model to: {int8_path}")
+        # The quantized graph is the one docs/evals.md tells people to deploy, and quantization is
+        # precisely the "runs but returns different numbers" case this verifier exists for -- so it
+        # gets checked too, at a tolerance that expects quantization to move the numbers.
+        if not args.no_verify:
+            print("Verifying the INT8 graph at batch 1, 2 and 3...")
+            verify_batch_dynamic(model, int8_path, atol=INT8_ATOL)
+            print("INT8 verification passed: it runs at batch > 1 and stays within "
+                  f"{INT8_ATOL:.0e} of PyTorch in probability space.")
+
+
+if __name__ == "__main__":
+    main()

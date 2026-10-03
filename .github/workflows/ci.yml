@@ -119,9 +119,9 @@ jobs:
         run: python -m unittest discover -s research/benchmarks/zh_short_commands/tests -v
 
   # The `test` job above deliberately stays free of `onnx`: this is the lane that
-  # installs it, so the exporter's quantization suite runs for real instead of
-  # skip-guarding into a trivial pass. Weight-free -- it builds tiny synthetic
-  # graphs, no checkpoint download.
+  # installs it, so the exporter's suites run for real instead of skip-guarding into a
+  # trivial pass. Weight-free -- it builds tiny synthetic graphs and a tiny stand-in
+  # model, no checkpoint download.
   onnx-export:
     name: onnx export (quantization, weight-free)
     runs-on: ubuntu-latest
@@ -137,11 +137,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .
-          pip install onnx onnxruntime
+          # The declared extra rather than a hand-listed pair: it also brings onnxscript, which
+          # torch.onnx.export needs for the torch.export path it takes by default.
+          pip install -e ".[onnx]"
 
       - name: Quantized-export tests
         run: python tests/test_onnx_quantize.py
+
+      # The only step that exports a graph and then runs it. tests/test_onnx_batch.py and
+      # tests/test_onnx_long.py drive ONNXAgent with a stub session, so neither can see an
+      # exporter that bakes the traced batch size into the graph -- which is what it did.
+      - name: Batch-dynamic export tests
+        run: python tests/test_onnx_export_batch.py
 
   # The eval harness needs numpy and laya only, so it stays a separate, weight-free job: metric
   # math, dataset parsing, the CLI and the API guard. The real-checkpoint gate is the scheduled

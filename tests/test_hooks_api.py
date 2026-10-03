@@ -23,7 +23,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import laya  # noqa: E402
-from laya import Agent, AsyncHook, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
+from laya import Agent, AsyncHook, BaseHook, OptionStabilityHook, PredictContext, PredictHook, Router, load  # noqa: E402
 from laya.hooks import HOOK_EVENTS, Hook  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 from laya.router import _question_schema  # noqa: E402
@@ -115,6 +115,18 @@ check_true("Agent.backend_object is a property", isinstance(Agent.backend_object
 
 # ONNXAgent downloads the same Hub artifacts as Agent, so it authenticates the same way
 check_param("ONNXAgent.__init__", ONNXAgent.__init__, "token", None)
+
+# AsyncHook wraps async hooks with an optional loop
+check_param("AsyncHook.__init__", AsyncHook.__init__, "loop", None)
+
+# OptionStabilityHook (issue #635)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "n_shuffles", 3)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "relabel", True)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "variants", "full")
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "accept", 0.77)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "escalate", 0.61)
+check_param("OptionStabilityHook.__init__", OptionStabilityHook.__init__, "seed", None)
+check_true("OptionStabilityHook is a BaseHook", issubclass(OptionStabilityHook, BaseHook))
 
 # --------------------------------------------------------------- predict surfaces
 from laya.mcp.remote import RemoteRouter  # noqa: E402

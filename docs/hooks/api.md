@@ -4,12 +4,13 @@ Everything on this page is importable from `laya` (the common names) or `laya.ho
 whole surface).
 
 ```python
-from laya import PredictContext, PredictHook, Hook
+from laya import PredictContext, PredictHook, Hook, OptionStabilityHook
 from laya.hooks import HOOK_EVENTS, normalise_hooks, dispatch, aggregate_usage
 ```
 
 - [PredictContext](#predictcontext)
 - [Hook protocol](#hook-protocol)
+- [OptionStabilityHook](#optionstabilityhook)
 - [Convenience types](#convenience-types)
 - [Configuration surface](#configuration-surface)
 - [Event payloads](#event-payloads)
@@ -140,6 +141,24 @@ class Audit(BaseHook):
 
 `Hook` is best when you want structural typing (any object with the right methods); `BaseHook` is
 best when you want an explicit base to subclass and call `super()` on.
+
+## OptionStabilityHook
+
+`OptionStabilityHook` evaluates prediction reliability across meaning-preserving option permutations and letter renamings (addressing issue #635). It executes variants in the same single-forward-pass batch without multiple network calls or serial invocations.
+
+```python
+from laya import OptionStabilityHook
+
+stability_hook = OptionStabilityHook(preset="fast", accept_threshold=0.77, escalate_threshold=0.61)
+agent = laya.load("convaiinnovations/laya", hooks=[stability_hook])
+```
+
+It attaches a `reliability` diagnostic block to each choice question's answer:
+- `soft_stability`: Mean probability assigned to the chosen option across all evaluated variants.
+- `stability`: Fraction of variants whose argmax choice agrees with the original decision.
+- `decision`: Categorical classification (`ACCEPT`, `VERIFY`, or `ESCALATE`) against calibrated thresholds.
+- `variant_choices`: Mapping of variant name to decoded choice.
+- `variant_support`: Mapping of variant name to probability mass on the primary choice.
 
 ## Convenience types
 

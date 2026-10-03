@@ -84,6 +84,7 @@ SCRIPT_SUITES = [
     "tests/test_langchain.py",
     "tests/test_portability.py",
     "tests/test_training.py",
+    "tests/test_train.py",
     "tests/test_example_server_limits.py",
     "tests/test_blank_lang_routing.py",
     "tests/test_export_onnx_safety.py",

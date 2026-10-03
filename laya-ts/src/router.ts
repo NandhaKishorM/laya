@@ -1,7 +1,7 @@
 import { analyse, type AnalyseResult } from "./lang.js";
 import type { PredictOptions, QuestionDef, SystemOneResult } from "./agent.js";
 import { checkMinConfidence, flagLowConfidence } from "./common.js";
-import { decide, type DecideOptions, type DecisionResult } from "./structured.js";
+import { decide, decideBatch, type DecideOptions, type DecideBatchOptions, type DecisionResult } from "./structured.js";
 import {
   HookRegistry,
   PredictContext,
@@ -667,6 +667,29 @@ export class Router extends HookRegistry {
     opts: DecideOptions & RouteOptions & PredictOptions = {},
   ): Promise<Record<string, unknown> | DecisionResult> {
     return decide(this, state, schema, opts);
+  }
+
+  /**
+   * Answer many states against one schema in one batched call (Python `Router.decide_batch` parity).
+   * Requests route per state and evaluate through `predictBatch` (grouped forward passes, results
+   * in input order). See `structured.ts`.
+   */
+  async decideBatch(
+    states: unknown[],
+    schema: unknown,
+    opts: DecideBatchOptions & RouteOptions & PredictOptions & { returnDetails: true },
+  ): Promise<DecisionResult[]>;
+  async decideBatch(
+    states: unknown[],
+    schema?: unknown,
+    opts?: DecideBatchOptions & RouteOptions & PredictOptions,
+  ): Promise<Record<string, unknown>[]>;
+  async decideBatch(
+    states: unknown[],
+    schema?: unknown,
+    opts: DecideBatchOptions & RouteOptions & PredictOptions = {},
+  ): Promise<Record<string, unknown>[] | DecisionResult[]> {
+    return decideBatch(this, states, schema, opts);
   }
 
   async systemOne(

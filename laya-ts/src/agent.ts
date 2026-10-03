@@ -19,7 +19,7 @@ import {
 import type { MinConfidence, OptionStats, SequenceStats } from "./common.js";
 import type { Batch, SessionProvider } from "./providers.js";
 import { encodeWithData, parseTokenizerJson, type TokenizerLike } from "./tokenizer.js";
-import { decide, type DecideOptions, type DecisionResult } from "./structured.js";
+import { decide, decideBatch, type DecideOptions, type DecideBatchOptions, type DecisionResult } from "./structured.js";
 import {
   HookRegistry,
   PredictContext,
@@ -816,6 +816,31 @@ export class Agent extends HookRegistry {
     opts: DecideOptions & PredictOptions = {},
   ): Promise<Record<string, unknown> | DecisionResult> {
     return decide(this, state, schema, opts);
+  }
+
+  /**
+   * Answer many states against one schema in one batched call, in input order.
+   *
+   * The throughput form of `decide`: the schema is planned once and evaluated
+   * over every state through `predictBatch` (shared forward passes, results in input order).
+   * See `structured.ts`.
+   */
+  async decideBatch(
+    states: unknown[],
+    schema: unknown,
+    opts: DecideBatchOptions & PredictOptions & { returnDetails: true },
+  ): Promise<DecisionResult[]>;
+  async decideBatch(
+    states: unknown[],
+    schema?: unknown,
+    opts?: DecideBatchOptions & PredictOptions,
+  ): Promise<Record<string, unknown>[]>;
+  async decideBatch(
+    states: unknown[],
+    schema?: unknown,
+    opts: DecideBatchOptions & PredictOptions = {},
+  ): Promise<Record<string, unknown>[] | DecisionResult[]> {
+    return decideBatch(this, states, schema, opts);
   }
 
   static async load(

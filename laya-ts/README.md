@@ -93,8 +93,14 @@ const values = await agent.decide(ticketText, {
 
 `router.decide(...)` works the same way (routing options are forwarded to `predict`), and the
 free `decide(runner, state, schema, opts)` accepts anything with a `predict` method. Pass
-`{ returnDetails: true }` for per-field confidence and probabilities, or `{ questions }`
-instead of a schema to get raw answers. Zod/TypeBox users can pass `z.toJSONSchema(Model)` —
+`{ returnDetails: true }` for per-field `confidence`, `answerConfidence` (calibrated `max(p)`),
+and probabilities, or `{ questions }` instead of a schema to get raw answers.
+
+For high throughput over multiple inputs, `agent.decideBatch(states, schema)` (and `router.decideBatch`,
+or the free `decideBatch(runner, states, schema, opts)`) plans the schema once and evaluates every state
+through shared forward passes on `predictBatch` (mirroring Python's `laya.decide_batch`).
+
+Zod/TypeBox users can pass `z.toJSONSchema(Model)` —
 any object with a `toJSONSchema()` method is accepted. `planFromJsonSchema`,
 `questionsFromJsonSchema` and `answersToJson` expose the planning and projection steps.
 

@@ -376,4 +376,22 @@ describe("Agent.predictBatch", () => {
     expect(results[0].model).toBe("cached");
     expect(encodeCalls).toEqual([]);
   });
+
+  it("router.decideBatch evaluates schema across batch", async () => {
+    const { router } = makeRouter();
+    const schema = {
+      type: "object",
+      properties: {
+        flag: { type: "boolean" },
+      },
+    };
+    const res1 = await router.decideBatch(["alpha", "beta"], schema);
+    expect(res1).toHaveLength(2);
+
+    const res2 = await router.decideBatch(["alpha"], schema, { returnDetails: true });
+    expect(res2).toHaveLength(1);
+    expect(res2[0].values).toBeDefined();
+    expect(res2[0].answerConfidence).toBeDefined();
+    expect(res2[0].confidence).toBeDefined();
+  });
 });

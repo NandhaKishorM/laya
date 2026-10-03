@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   answersToJson,
   decide,
+  decideBatch,
   planFromJsonSchema,
   questionsFromJsonSchema,
   SchemaError,
@@ -362,4 +363,170 @@ describe("structured/min_confidence", () => {
     await expect(decide(runner, "s", SCHEMA, { minConfidence: "0.85" as any })).rejects.toThrow(/min_confidence must be a float/);
   });
 });
+
+describe("structured/answerConfidence", () => {
+  const fakeRunner = (answers: Record<string, any>) => ({
+    async predict(state: unknown, questions: any, opts: any) {
+      return { model: "fake", answers: JSON.parse(JSON.stringify(answers)) };
+    },
+  });
+
+  it("exposes answerConfidence per field on DecisionResult", async () => {
+    const calAnswers = {
+      department: { type: "choice", choice: "billing", confidence: 0.3, answer_confidence: 0.95 },
+      urgency: {
+        type: "score",
+        score: 2.0,
+        confidence: 0.9,
+        answer_confidence: 0.4,
+        probabilities: { "0": 0.1, "1": 0.5, "2": 0.4 },
+      },
+    };
+    const runner = fakeRunner(calAnswers);
+    const det = await decide(runner, "state", SCHEMA, { returnDetails: true });
+
+    expect(det.confidence.department).toBe(0.3);
+    expect(det.confidence.urgency).toBe(0.9);
+    expect(det.answerConfidence.department).toBe(0.95);
+    expect(det.answerConfidence.urgency).toBe(0.4);
+
+    // Entropy conf ranks urgency > department, whereas answerConfidence reverses it
+    expect(det.confidence.department).toBeLessThan(det.confidence.urgency);
+    expect(det.answerConfidence.department).toBeGreaterThan(det.answerConfidence.urgency!);
+  });
+
+  it("maps absent or non-finite answer_confidence to null", async () => {
+    const runner = fakeRunner({
+      department: { type: "choice", choice: "billing", confidence: 0.8 },
+      urgency: { type: "score", score: 1.0, confidence: 0.5, answer_confidence: NaN },
+      needs_human: { type: "noul", noul: 0.9, confidence: 0.9, answer_confidence: true as any },
+    });
+    const det = await decide(runner, "state", SCHEMA, { returnDetails: true });
+    expect(det.answerConfidence.department).toBeNull();
+    expect(det.answerConfidence.urgency).toBeNull();
+    expect(det.answerConfidence.needs_human).toBeNull();
+  });
+});
+
+describe("structured/decideBatch", () => {
+  const fakeBatchRunner = (answersPerState: Record<string, any>[]) => ({
+    calls: [] as any[],
+    async predict(state: unknown, questions: any, opts: any) {
+      return { model: "fake", answers: answersPerState[0] };
+    },
+    async predictBatch(states: unknown[], questions: any, opts: any) {
+      this.calls.push({ states, questions, opts });
+      return states.map((_s, i) => ({
+        model: "fake",
+        answers: JSON.parse(JSON.stringify(answersPerState[i % answersPerState.length])),
+      }));
+    },
+  });
+
+  it("evaluates a batch of states against a schema in input order", async () => {
+    const a1 = { ...ANSWERS, department: { type: "choice", choice: "sales", confidence: 0.9 } };
+    const a2 = { ...ANSWERS, department: { type: "choice", choice: "billing", confidence: 0.9 } };
+    const runner = fakeBatchRunner([a1, a2]);
+
+    const results = await decideBatch(runner, ["state 1", "state 2"], SCHEMA);
+    expect(results).toHaveLength(2);
+    expect(results[0].department).toBe("sales");
+    expect(results[1].department).toBe("billing");
+    expect(runner.calls).toHaveLength(1);
+    expect(runner.calls[0].states).toEqual(["state 1", "state 2"]);
+  });
+
+  it("supports returnDetails: true returning DecisionResult array", async () => {
+    const calAnswer = {
+      department: { type: "choice", choice: "billing", confidence: 0.3, answer_confidence: 0.95 },
+      urgency: { type: "score", score: 2.0, confidence: 0.8, answer_confidence: 0.85, probabilities: { "2": 0.85 } },
+    };
+    const runner = fakeBatchRunner([calAnswer]);
+    const results = await decideBatch(runner, ["s1", "s2"], SCHEMA, { returnDetails: true });
+    expect(results).toHaveLength(2);
+    expect(results[0].values.department).toBe("billing");
+    expect(results[0].answerConfidence.department).toBe(0.95);
+    expect(results[0].confidence.department).toBe(0.3);
+    expect(results[1].values.department).toBe("billing");
+    expect(results[1].answerConfidence.department).toBe(0.95);
+  });
+
+  it("evaluates with explicit questions instead of schema", async () => {
+    const qs = questionsFromJsonSchema(SCHEMA);
+    const runner = fakeBatchRunner([ANSWERS]);
+    const results = await decideBatch(runner, ["s1"], undefined, { questions: qs });
+    expect(results).toHaveLength(1);
+    expect(results[0].department.choice).toBe("billing");
+  });
+
+  it("gates low confidence answers when minConfidence is provided", async () => {
+    const answersWithLowConf = {
+      department: { type: "choice", choice: "billing", confidence: 0.9, answer_confidence: 0.95 },
+      urgency: { type: "score", score: 2.0, confidence: 0.4, answer_confidence: 0.4 },
+    };
+    const runner = fakeBatchRunner([answersWithLowConf]);
+    const results = await decideBatch(runner, ["s1"], SCHEMA, { minConfidence: 0.85, returnDetails: true });
+    expect(results[0].values.department).toBe("billing");
+    expect(results[0].values.urgency).toBeNull();
+    expect((results[0].answers.urgency as any).low_confidence).toBe(true);
+  });
+
+  it("handles empty states array cleanly", async () => {
+    const runner = fakeBatchRunner([ANSWERS]);
+    const results = await decideBatch(runner, [], SCHEMA);
+    expect(results).toEqual([]);
+  });
+
+  it("throws TypeError if states is not an array", async () => {
+    const runner = fakeBatchRunner([ANSWERS]);
+    await expect(decideBatch(runner, "not-an-array" as any, SCHEMA)).rejects.toThrow(TypeError);
+    await expect(decideBatch(runner, 123 as any, SCHEMA)).rejects.toThrow(TypeError);
+    await expect(decideBatch(runner, null as any, SCHEMA)).rejects.toThrow(TypeError);
+  });
+
+  it("throws Error if neither or both schema and questions are passed", async () => {
+    const runner = fakeBatchRunner([ANSWERS]);
+    await expect(decideBatch(runner, ["s1"])).rejects.toThrow("pass exactly one of schema= or questions=");
+    await expect(decideBatch(runner, ["s1"], SCHEMA, { questions: {} as any })).rejects.toThrow(
+      "pass exactly one of schema= or questions=",
+    );
+  });
+
+  it("throws TypeError if runner has no predictBatch", async () => {
+    const plainRunner = {
+      async predict() {
+        return { answers: {} };
+      },
+    };
+    await expect(decideBatch(plainRunner as any, ["s1"], SCHEMA)).rejects.toThrow(/has no predictBatch/);
+  });
+
+  it("routes batch using routeBatch Router convention", async () => {
+    const routerRunner = {
+      calls: [] as any[],
+      routeBatch(reqs: any[]) {
+        return reqs.map(() => ({ model: "router-m" }));
+      },
+      async predictBatch(requests: any[], batchSize?: number | null) {
+        this.calls.push({ requests, batchSize });
+        return requests.map((r: any) => ({
+          model: "router-m",
+          answers: JSON.parse(JSON.stringify(ANSWERS)),
+        }));
+      },
+      async predict() {
+        return { answers: ANSWERS };
+      },
+    };
+
+    const results = await decideBatch(routerRunner as any, ["req1", "req2"], SCHEMA, { batchSize: 4 });
+    expect(results).toHaveLength(2);
+    expect(routerRunner.calls).toHaveLength(1);
+    expect(routerRunner.calls[0].batchSize).toBe(4);
+    expect(routerRunner.calls[0].requests).toHaveLength(2);
+    expect(routerRunner.calls[0].requests[0].state).toBe("req1");
+    expect(routerRunner.calls[0].requests[1].state).toBe("req2");
+  });
+});
+
 

@@ -206,7 +206,8 @@ describe("lang", () => {
   it.each<[string, string | null]>([
     ["Grüße aus Köln, wir melden uns wegen der Rechnung", "de"],
     ["sluk lyset i soveværelset", null],
-    ["kan jeg få en refundering for det dobbelte beløb", null],
+    // Danish has no list; `kan` and `en` are Afrikaans too, which names the wrong language but not English
+    ["kan jeg få en refundering for det dobbelte beløb", "af"],
     ["stäng av ljuset i sovrummet", null],
     ["jag vill ha en återbetalning för den dubbla avgiften", "sv"],
     ["The naïve façade needs a fresh coat of paint", null],

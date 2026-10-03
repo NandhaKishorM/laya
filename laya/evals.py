@@ -713,6 +713,21 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
     examples = dataset.examples
     # Only worth grouping if the runner can be handed the group in one call at all.
     batch_form = _batch_form(runner) if batch_size is not None and batch_size > 1 else None
+    # The chunk grouping hashes the questions each row carries, but a `questions` dict is
+    # only equal as written: the same choice schema with two `criteria` dicts written in a
+    # different key order is a different signature, so rows that would share one forward pass
+    # are scored alone. Canonicalizing the key order is only safe where each row reaches the
+    # runner with its own `questions` object -- the per-request `_BATCH_REQUESTS` form. The
+    # positional `_BATCH_STATES` form hands the whole chunk `chunk[0].questions`, so folding
+    # key order there would render a later row with an earlier row's positional `criteria`
+    # order and silently move the metric. Gate the fold on the call shape: `sort_keys=True`
+    # for per-request runners, `sort_keys=False` (insertion order significant) for positional
+    # ones -- exactly the rule `Router._question_schema` and `_canonical` above keep. A
+    # list-valued `criteria` is positional on both paths, and `sort_keys` leaves lists alone.
+    folded = batch_form == _BATCH_REQUESTS
+    chunk_signatures = [json.dumps(dict(sorted((example.questions or {}).items())),
+                                   sort_keys=folded, default=str)
+                        for example in examples]
     # The chunk shape travels with the calls that have one: a chunk of a single example is a plain
     # `predict`, which has no batch to reorder, and an off control is not sent at all.
     shape = ({"sort_by_length": True}
@@ -731,11 +746,10 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
         # same checkpoint and identical questions. Otherwise every example is one predict.
         chunk = [examples[index]]
         if batch_form:
-            signature = (examples[index].model,
-                         json.dumps(examples[index].questions, sort_keys=False, default=str))
             while (index + len(chunk) < len(examples) and len(chunk) < batch_size
                    and (examples[index + len(chunk)].model,
-                        json.dumps(examples[index + len(chunk)].questions, sort_keys=False, default=str)) == signature):
+                        chunk_signatures[index + len(chunk)]) == (examples[index].model,
+                                                                  chunk_signatures[index])):
                 chunk.append(examples[index + len(chunk)])
         # Why these sit above the call and `waits`/`shares` below: the shape counters answer "what
         # did the harness issue", which is settled the moment the chunk is grouped, while the

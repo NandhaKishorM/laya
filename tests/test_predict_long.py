@@ -6,6 +6,7 @@ window split, the per-type aggregation (noul = strongest window, choice/score = 
 window), and the per-call hook controls it forwards to whichever of those two calls runs. Numerical
 behaviour on real weights is exercised in tests/test_local_e2e.py.
 """
+import functools
 import inspect
 import os
 import re
@@ -1142,6 +1143,751 @@ _no_room_msg = _attempt(lambda: window_budget(TOK, [Agent._to_internal(q_many(40
                                               MAX_LEN, HEAD_MAX_LEN, window=None, stride=None))
 check_true("clamp warning/the no-room refusal names predict_shortlist too",
            "predict_shortlist" in str(_no_room_msg), str(_no_room_msg)[:140])
+
+
+
+# ---------------------------------------------------------------------------------------------
+# The scan is laya's own forward pass, not a caller's hook
+#
+# `Router.predict_long` used to append `_ScanLong` to the start-hook chain, so the scan executed
+# inside `dispatch()` and inherited the caller's hook machinery. Four consequences, all pinned here,
+# none of which any check in this repo caught before: the scan was bounded by `hooks_timeout`, it
+# held the hooks lock for its whole duration, it ran before `_SKIP_DEFAULTS` was entered so every
+# process-wide default hook fired twice, and an error from it was swallowed
+# under `hooks_raise=False`.
+import time as _time  # noqa: E402
+
+from laya.hooks import PredictContext, compose_hooks, dispatch, set_default_hooks  # noqa: E402
+
+
+class _SlowScan:
+    """Both entry points, so a test can tell which one answered, and a scan that takes real time."""
+
+    def __init__(self, seconds=0.30):
+        self.seconds = seconds
+        self.scans = 0
+        self.singles = 0
+
+    def system_one(self, state, questions, **controls):
+        self.singles += 1
+        return {"model": "stub", "answers": {"via": "system_one"}, "usage": {"input_tokens": 1}}
+
+    def predict_long(self, state, questions, **controls):
+        self.scans += 1
+        _time.sleep(self.seconds)
+        return {"model": "stub", "answers": {"via": "predict_long"},
+                "usage": {"input_tokens": 7, "windows": 3}}
+
+
+# 1. a hook timeout must not abort the scan -- it bounds the caller's hooks, not laya's inference
+_slow = _SlowScan(0.30)
+_timed = Router(hooks_timeout=0.05)
+_timed.attach("english", _slow)
+_out, _exc = _attempt(lambda: _timed.predict_long(LONG, Q, model="english"))
+check_true("scan/a hook timeout does not abort it",
+           _exc is None and _out is not None and _out["answers"]["via"] == "predict_long",
+           "exc=%r answers=%r" % (_exc, (_out or {}).get("answers")))
+check("scan/the agent really scanned once", (_slow.scans, _slow.singles), (1, 0))
+
+
+# 2. the hooks lock must not be held across the scan: `hooks_concurrent=False` serialises each hook,
+#    not whole calls (docs/hooks/lifecycle.md). Measured as the longest single hold, so no timing
+#    threshold is involved -- a lock held across a 0.30s scan cannot report a hold near zero.
+class _TimedLock:
+    def __init__(self):
+        self._lock = threading.RLock()
+        self.longest = 0.0
+
+    def __enter__(self):
+        self._entered = _time.perf_counter()
+        self._lock.acquire()
+        return self
+
+    def __exit__(self, *exc):
+        self.longest = max(self.longest, _time.perf_counter() - self._entered)
+        self._lock.release()
+        return False
+
+
+_lock_stub = _SlowScan(0.30)
+_locked = _router(_lock_stub)
+_locked._hooks_lock = _TimedLock()
+_t0 = _time.perf_counter()
+_locked.predict_long(LONG, Q, model="english")
+_wall = _time.perf_counter() - _t0
+check_true("scan/the hooks lock is not held across it",
+           _lock_stub.scans == 1 and _locked._hooks_lock.longest < _wall / 2,
+           "longest hold %.3fs of a %.3fs call" % (_locked._hooks_lock.longest, _wall))
+
+
+# 3. process-wide default hooks fire once. The scan reached the agent before `_SKIP_DEFAULTS` was
+#    set, so `compose_hooks` re-added every `set_default_hooks` hook and the chain ran
+#    twice. Measured
+#    on real weights, `usage` did NOT double -- `input_tokens` is identical on both trees -- so what
+#    this pins is the hook firing, and nothing else.
+_fired = {"start": 0, "end": 0, "shapes": []}
+
+
+class _CountDefaults:
+    def on_predict_start(self, ctx):
+        _fired["start"] += 1
+        _fired["shapes"].append(len(ctx.states))     # 1 = the document, >1 = the windows
+
+    def on_predict_end(self, ctx):
+        _fired["end"] += 1
+
+
+class _ComposingScan:
+    """Composes its own hook list and dispatches, the way `Agent.predict_long` does.
+
+    A plain stub cannot pin this. `_SKIP_DEFAULTS` is read in exactly one place --
+    `laya.hooks.compose_hooks` -- so an agent that never composes fires the process-wide defaults
+    once however the flag is set, and the check below would pass just as happily with the fix
+    reverted. Verified: with a non-composing stub, setting `_SKIP_DEFAULTS` to False instead of True
+    left this check green, which is the whole reason it is written this way.
+    """
+
+    def _answer(self, states, questions):
+        active = compose_hooks([])
+        ctx = PredictContext(states=list(states), questions=questions)
+        dispatch(active, "on_predict_start", ctx, raise_errors=True)
+        result = {"model": "stub", "answers": {}, "usage": {"input_tokens": 5}}
+        ctx.results = [result]
+        dispatch(active, "on_predict_end", ctx, raise_errors=True)
+        return result
+
+    def system_one(self, state, questions, **controls):
+        return self._answer([state], questions)
+
+    def predict_long(self, state, questions, **controls):
+        # `Agent.predict_long` composes and dispatches over the WINDOWS it cut, not over the
+        # document, so the stub does the same: three windows here. A dict or list state is passed
+        # through unsliced -- the window COUNT is what the check reads.
+        text = state if isinstance(state, str) else str(state)
+        windows = [text[:40], text[30:70], text[60:]]
+        return self._answer(windows, questions)
+
+
+set_default_hooks([_CountDefaults()])
+try:
+    _usage = _router(_ComposingScan()).predict_long(LONG, Q, model="english")["usage"]
+finally:
+    set_default_hooks([])
+check("scan/a default hook fires once, not twice", (_fired["start"], _fired["end"]), (1, 1))
+# The count alone does not say WHICH dispatch was dropped. `main` fired for the document and then
+# again for the agent's own windows; the one that survives must be the document, because that is
+# the request the caller made -- and because a hook that mutates state would otherwise be applied
+# per window as well, which measurably moves a scan's answers on real weights.
+check("scan/the surviving dispatch is the document, not the agent's windows",
+      _fired["shapes"], [1])
+# Not a pin for this change -- it passes with the scan back inside the hook chain --
+# but a guard that
+# the double dispatch never starts double-counting, which is what the first version of this comment
+# wrongly claimed it already did.
+check("scan/usage is still counted once (regression guard, not a fix pin)",
+      _usage["input_tokens"], 5)
+
+
+# 4. an agent that cannot scan is refused whatever `hooks_raise` says. As a hook this was swallowed
+#    under `hooks_raise=False` and `system_one` answered one window instead -- a different question
+#    than the caller asked, reported as success.
+class _NoScanBoth:
+    def system_one(self, state, questions, **controls):
+        return {"model": "stub", "answers": {"via": "system_one"}, "usage": {}}
+
+
+for _policy in (True, False):
+    _r = Router(hooks_raise=_policy)
+    _r.attach("english", _NoScanBoth())
+    _out, _exc = _attempt(lambda r=_r: r.predict_long(LONG, Q, model="english"))
+    # The MESSAGE, not just the type: `getattr(agent, "predict_long", None)` is None for this
+    # agent, so a missing guard would call None and raise its own `TypeError` ('NoneType' object is
+    # not callable). Asserting the class alone let that mutant live.
+    check("scan/no predict_long is refused with hooks_raise=%s" % _policy,
+          (_kind(_exc), "has no predict_long" in str(_exc), "_NoScanBoth" in str(_exc)),
+          ("TypeError", True, True))
+
+
+# 5. everything the hook ordering used to give must still hold: the scan runs last, so a caller's
+#    hook that answered wins and one that rewrote the request is what gets scanned.
+class _Skipper:
+    def on_predict_start(self, ctx):
+        ctx.skip([{"model": "cached", "answers": {"via": "hook"}, "usage": {}}])
+
+
+_skipped = _SlowScan(0.0)
+_out = _router(_skipped, hooks=[_Skipper()]).predict_long(LONG, Q, model="english")
+check("scan/a hook that answered still wins", _out["answers"], {"via": "hook"})
+check("scan/the agent was not scanned at all", (_skipped.scans, _skipped.singles), (0, 0))
+
+
+class _RewriteQuestions:
+    def on_predict_start(self, ctx):
+        ctx.questions = {"rewritten": {"type": "noul", "instructions": "?"}}
+
+
+_rewritten = _LongStub()
+_router(_rewritten, hooks=[_RewriteQuestions()]).predict_long(LONG, Q, model="english")
+check("scan/a hook's rewritten questions are what is scanned",
+      sorted(_rewritten.calls[0]["questions"]), ["rewritten"])
+
+
+# 6. the scan must not leak into a `predict` that a hook calls back into. It travels
+#    on a contextvar,
+#    and `predict` clears it on read, so the nested call answers with `system_one`.
+_nested = {"answers": None}
+
+
+class _ReenterPredict:
+    def __init__(self):
+        self.entered = False
+
+    def on_predict_start(self, ctx):
+        # Guard BEFORE the nested call: this hook is installed on the router, so the inner `predict`
+        # fires it again, and a guard set afterwards recurses until the stack runs out.
+        if self.entered:
+            return
+        self.entered = True
+        _nested["answers"] = ctx.router.predict("short", Q, model="english")["answers"]
+
+
+_leak = _SlowScan(0.0)
+_outer = _router(_leak, hooks=[_ReenterPredict()]).predict_long(LONG, Q, model="english")
+check("scan/does not leak into a nested predict from a hook", _nested["answers"],
+      {"via": "system_one"})
+check("scan/the outer call still scanned", _outer["answers"], {"via": "predict_long"})
+check("scan/one scan and one single-window call", (_leak.scans, _leak.singles), (1, 1))
+
+
+# 6b. and an early failure inside `predict` must not leave the scan set for the next call.
+#     `predict` validates `state`/`questions` before it consumes the scan, so without the reset in
+#     `predict_long` the contextvar survives the raise and the NEXT plain `predict` in this context
+#     would scan a document nobody asked it to scan.
+_after_raise = _SlowScan(0.0)
+_raiser = _router(_after_raise)
+_, _early_exc = _attempt(lambda: _raiser.predict_long(None, Q, model="english"))
+check_true("scan/an early failure still raises", isinstance(_early_exc, TypeError),
+           "got %r" % (_early_exc,))
+_raiser.predict("short state", Q, model="english")
+check("scan/an early failure leaves no scan behind for the next call",
+      (_after_raise.scans, _after_raise.singles), (0, 1))
+
+
+# 6c. every window option reaches the agent, including `aggregate` -- which nothing in this repo
+#     asserted through the Router, so forwarding a constant instead of it was a mutation the whole
+#     suite missed. The value asserted here is deliberately NOT "auto": "auto" is both `_ScanLong`'s
+#     default and the stub's own, so asserting it could not tell forwarding from a hardcoded
+#     constant. The stub takes any string; `Agent.predict_long` refuses anything but "auto", and
+#     that refusal is the second half of the evidence.
+_agg = _LongStub()
+_router(_agg).predict_long(LONG, Q, model="english", aggregate="mean")
+check("scan/aggregate is forwarded, not defaulted", _agg.calls[0]["aggregate"], "mean")
+check_raises("scan/an unsupported aggregate is refused by the agent, not swallowed", ValueError,
+             lambda: _router(make_real_agent()).predict_long(LONG, Q, model="english",
+                                                             aggregate="mean"))
+
+
+# 6d. the scan reads `ctx` at the moment it runs, which is what makes it equivalent to the hook it
+#     replaced. A start hook can still swap the agent, rewrite the detected language,
+#     and have its own
+#     `routing` survive -- three things that broke when the scan read `predict`'s locals instead.
+class _SwapAgent:
+    def __init__(self, replacement):
+        self.replacement = replacement
+
+    def on_predict_start(self, ctx):
+        ctx.agent = self.replacement
+
+
+_routed_agent, _swapped_agent = _LongStub(), _LongStub()
+_router(_routed_agent, hooks=[_SwapAgent(_swapped_agent)]).predict_long(LONG, Q, model="english")
+check("scan/a hook that swaps ctx.agent is what gets scanned",
+      (len(_routed_agent.calls), len(_swapped_agent.calls)), (0, 1))
+
+
+class _SetDetectedLanguage:
+    def on_predict_start(self, ctx):
+        ctx.decision["detection"] = {"language": "ja"}
+
+
+_relang = _LongStub()
+_router(_relang, hooks=[_SetDetectedLanguage()]).predict_long(LONG, Q, model="english")
+check("scan/a hook's detected language reaches the scan", _relang.calls[0]["lang"], "ja")
+
+
+class _OwnRouting:
+    def predict_long(self, state, questions, **controls):
+        return {"model": "stub", "answers": {}, "usage": {},
+                "routing": {"model": "the agent's own"}}
+
+    def system_one(self, state, questions, **controls):
+        return {"model": "stub", "answers": {}, "usage": {}}
+
+
+_own = _router(_OwnRouting()).predict_long(LONG, Q, model="english")
+check("scan/an agent's own routing key is preserved", _own["routing"], {"model": "the agent's own"})
+
+
+# 6e. an agent whose `predict_long` has no `lang` parameter. Whether to pass `lang` is read from
+#     the signature, never from catching a `TypeError`: on `main` this agent raised under the
+#     default `hooks_raise=True` and was answered by `system_one` on one window under
+#     `hooks_raise=False` -- symptom 4 -- so there is no prior behaviour to preserve by retrying,
+#     and a retry cannot tell this case from the one below.
+# Resolved defensively so reverting the fix fails these checks rather than aborting the suite on
+# an ImportError, which would report nothing at all.
+import laya.router as _router_mod  # noqa: E402
+
+_takes_lang = getattr(_router_mod, "_takes_lang", None)
+
+
+def _lang_check(fn):
+    """`_attempt`-style, because one of these inputs raises from its own `__signature__`: a
+    narrowed `except` in `_takes_lang` must turn these checks red, not abort the module and take
+    the sixteen checks after them with it."""
+    if _takes_lang is None:
+        return "laya.router has no _takes_lang"
+    out, exc = _attempt(lambda: _takes_lang(fn))
+    return out if exc is None else "raised %s" % _kind(exc)
+
+
+class _NoLangKwarg:
+    def __init__(self):
+        self.calls = 0
+
+    def system_one(self, state, questions, **controls):
+        return {"model": "stub", "answers": {"via": "system_one"}, "usage": {}}
+
+    def predict_long(self, state, questions, window=None, stride=None, aggregate="auto",
+                     batch_size=None):
+        self.calls += 1
+        return {"model": "stub", "answers": {"via": "predict_long"}, "usage": {}}
+
+
+for _policy in (True, False):
+    _old = _NoLangKwarg()
+    _r = Router(hooks_raise=_policy)
+    _r.attach("english", _old)
+    with warnings.catch_warnings(record=True) as _caught:
+        warnings.simplefilter("always")
+        _out, _exc = _attempt(lambda r=_r: r.predict_long(LONG, Q, model="english", lang="de"))
+    check("scan/an agent without a lang parameter is scanned once, not retried (hooks_raise=%s)"
+          % _policy,
+          (_exc is None, (_out or {}).get("answers"), _old.calls),
+          (True, {"via": "predict_long"}, 1))
+    check("scan/dropping the caller's lang is reported (hooks_raise=%s)" % _policy,
+          [w.category.__name__ for w in _caught], ["RuntimeWarning"])
+    # `_msg` rather than `_caught[0]`: with the fix reverted nothing warns, and indexing an empty
+    # list would abort the suite instead of failing this check.
+    _msg = str(_caught[0].message) if _caught else ""
+    check("scan/the warning names the language that did not reach the agent (hooks_raise=%s)"
+          % _policy,
+          ("requested" in _msg, "'de'" in _msg), (True, True))
+
+# and with no language to pass, there is nothing to report
+_quiet = _NoLangKwarg()
+_qr = Router()
+_qr.attach("english", _quiet)
+with warnings.catch_warnings(record=True) as _caught:
+    warnings.simplefilter("always")
+    # `_attempt`, because with the fix reverted this call raises (`main` passes `lang=None`
+    # positionally into an agent that has no such parameter) and an abort reports nothing.
+    _, _quiet_exc = _attempt(lambda: _qr.predict_long(LONG, Q, model="english"))
+check("scan/no warning when there was no language to pass",
+      (_kind(_quiet_exc), [w.category.__name__ for w in _caught], _quiet.calls), (None, [], 1))
+
+
+# 6f. the case a `TypeError` retry would have swallowed: an agent that DOES take `lang` and raises
+#     `TypeError: ... unexpected keyword argument 'lang'` from somewhere deeper inside its own scan.
+#     Matching on the message could not tell this from 6e, so it re-ran the whole scan with `lang`
+#     dropped and -- when the inner failure was conditional on `lang` -- answered as if the caller
+#     had never asked for a language. It must raise, and the scan must run exactly once.
+class _InnerLangFailure:
+    def __init__(self):
+        self.langs = []
+
+    @staticmethod
+    def _helper(state):                     # the helper the lang-aware path forgot to update
+        return state
+
+    def system_one(self, state, questions, **controls):
+        return {"model": "stub", "answers": {"via": "system_one"}, "usage": {}}
+
+    def predict_long(self, state, questions, window=None, stride=None, aggregate="auto",
+                     batch_size=None, lang=None):
+        self.langs.append(lang)
+        if lang is not None:
+            self._helper(state, lang=lang)  # raises TypeError naming 'lang'
+        return {"model": "stub", "answers": {"via": "predict_long", "lang": lang}, "usage": {}}
+
+
+_inner = _InnerLangFailure()
+_ir = Router()
+_ir.attach("english", _inner)
+_out, _exc = _attempt(lambda: _ir.predict_long(LONG, Q, model="english", lang="de"))
+check("scan/an error from inside the agent's own scan is not retried away",
+      (_kind(_exc), (_out or {}).get("answers"), _inner.langs),
+      ("TypeError", None, ["de"]))
+
+# the signature check itself: a `**kwargs` forwarder takes `lang`, and an entry point `inspect`
+# cannot read is given it rather than silently losing it (`min` stands in for any C callable).
+check("scan/_takes_lang: an explicit parameter",
+      _lang_check(lambda state, questions, lang=None: None), True)
+check("scan/_takes_lang: a **kwargs forwarder counts",
+      _lang_check(lambda state, questions, **kw: None), True)
+check("scan/_takes_lang: no lang parameter", _lang_check(lambda state, questions: None), False)
+# The KIND matters, not just the name: neither of these can be given `lang=` as a keyword, so
+# claiming they take one would pass an argument that raises `TypeError` on arrival.
+def _posonly(state, questions, lang, /):       # PEP 570: `lang` cannot be passed by keyword
+    return None
+
+
+check("scan/_takes_lang: a positional-only lang is not a keyword", _lang_check(_posonly), False)
+check("scan/_takes_lang: a *lang var-positional is not a keyword",
+      _lang_check(lambda state, questions, *lang: None), False)
+check("scan/_takes_lang: an unintrospectable callable is given the argument",
+      _lang_check(min), True)
+
+
+class _HostileSignature:
+    """`inspect.signature` reads `__signature__`, which is arbitrary code. A deployer's agent must
+    not become uncallable because that code raises something other than TypeError/ValueError --
+    `main` never introspected at all, so the no-change answer is to pass the argument."""
+
+    @property
+    def __signature__(self):
+        raise KeyError("/srv/laya/secrets/key.pem")
+
+    def __call__(self, state, questions, **controls):
+        return {"model": "stub", "answers": {"via": "predict_long"}, "usage": {}}
+
+
+check("scan/_takes_lang: a __signature__ that raises anything is not fatal",
+      _lang_check(_HostileSignature()), True)
+
+
+class _InterruptingSignature:
+    """`except Exception`, deliberately not `except BaseException`: a deployer's `__signature__`
+    must not be able to swallow Ctrl-C or a `SystemExit` on its way past."""
+
+    @property
+    def __signature__(self):
+        raise KeyboardInterrupt()
+
+    def __call__(self, state, questions, **controls):
+        return {"model": "stub", "answers": {}, "usage": {}}
+
+
+check("scan/_takes_lang: a BaseException from __signature__ still propagates",
+      _lang_check(_InterruptingSignature()), "raised KeyboardInterrupt")
+
+
+# The third cell of the warning table, and the one that was missing: a DETECTED language, with no
+# explicit `lang=` anywhere. Two mutants lived in the gap -- warning only for an explicit `lang`
+# (so a detected one was dropped in silence, which is the whole failure the warning exists for),
+# and hardcoding the word "requested" (so the message would name a language the caller never
+# asked for). Routing has to run for real here, which is why there is no `model=`.
+class _NoLangMultilingual:
+    def __init__(self):
+        self.calls = 0
+
+    def system_one(self, state, questions, **controls):
+        return {"model": "stub", "answers": {"via": "system_one"}, "usage": {}}
+
+    def predict_long(self, state, questions, window=None, stride=None, aggregate="auto",
+                     batch_size=None):
+        self.calls += 1
+        return {"model": "stub", "answers": {"via": "predict_long"}, "usage": {}}
+
+
+# Its own sample rather than `_german` below, which is defined further down the file.
+_german_doc = "Wir wurden zweimal belastet und moechten eine Rueckerstattung erhalten. " * 8
+_detected_drop = _NoLangMultilingual()
+_dd_router = Router()
+_dd_router.attach("multilingual", _detected_drop)
+_dd_router.attach("english", _LongStub())
+with warnings.catch_warnings(record=True) as _caught:
+    warnings.simplefilter("always")
+    # `_attempt` here and below: with the fix reverted these calls raise (`main` passes `lang=`
+    # unconditionally), and an abort would report nothing at all.
+    _dd_out, _dd_exc = _attempt(lambda: _dd_router.predict_long(_german_doc, Q))
+_dd_out = _dd_out or {"answers": None, "routing": {}}
+_dd_msg = str(_caught[0].message) if _caught else ""
+check("scan/a DETECTED language that cannot be passed is reported too",
+      ([w.category.__name__ for w in _caught], _detected_drop.calls), (["RuntimeWarning"], 1))
+check("scan/the warning calls a detected language detected, not requested",
+      ("detected" in _dd_msg, "requested" in _dd_msg, "'de'" in _dd_msg), (True, False, True))
+check("scan/the warning names the agent that could not take it",
+      "_NoLangMultilingual" in _dd_msg, True)
+check("scan/a short language is not marked as truncated", "..." in _dd_msg, False)
+
+# The language goes into a log line, and `serve.py` caps the body size but not this field, so the
+# message truncates it: `%r` of a megabyte of `lang` would otherwise be six megabytes of warning.
+_long_lang = _NoLangKwarg()
+_llr = Router()
+_llr.attach("english", _long_lang)
+with warnings.catch_warnings(record=True) as _caught:
+    warnings.simplefilter("always")
+    _attempt(lambda: _llr.predict_long(LONG, Q, model="english", lang="de" + "A" * 5000))
+_ll_msg = str(_caught[0].message) if _caught else ""
+check("scan/a hostile language value cannot amplify the warning",
+      (len(_ll_msg) < 200, "..." in _ll_msg, "A" * 64 in _ll_msg, _long_lang.calls),
+      (True, True, False, 1))
+# and the cap is exactly 32 characters of the value, not merely "some cap": a band would let 33 or
+# 40 through, and the sliced prefix is what says where the cut fell.
+check("scan/the warning carries exactly the first 32 characters",
+      repr("de" + "A" * 30) + "..." in _ll_msg, True)
+
+
+# The cap slices the VALUE, not the rendered text, and names a non-`str` by its type instead of
+# rendering it: a `str` subclass can report `len() == 2` and a megabyte of `__repr__`, and a
+# non-`str` object's `__repr__` is caller code laya has no business running at all.
+class _SneakyStr(str):
+    def __repr__(self):
+        return "'" + "A" * 100000 + "'"
+
+
+class _SneakySlice(str):
+    """`type(lang) is str`, not `isinstance`: slicing a subclass runs the subclass's own
+    `__getitem__`, so an `isinstance` test would hand the slice straight back to caller code."""
+
+    def __getitem__(self, key):
+        return _WatchedRepr()
+
+
+class _WatchedRepr:
+    rendered = 0
+
+    def __repr__(self):
+        type(self).rendered += 1
+        return "<" + "B" * 100000 + ">"
+
+
+for _label, _hostile in (("str subclass with a huge repr", _SneakyStr("de")),
+                         ("str subclass with its own __getitem__", _SneakySlice("de")),
+                         ("a non-str list", ["C" * 20000]),
+                         ("a non-str object", _WatchedRepr())):
+    _hl = _NoLangKwarg()
+    _hr = Router()
+    _hr.attach("english", _hl)
+    with warnings.catch_warnings(record=True) as _caught:
+        warnings.simplefilter("always")
+        _attempt(lambda h=_hostile: _hr.predict_long(LONG, Q, model="english", lang=h))
+    _h_msg = str(_caught[0].message) if _caught else ""
+    check("scan/%s cannot amplify the warning either" % _label,
+          (len(_h_msg) < 200, _hl.calls), (True, 1))
+check("scan/a non-str language is a constant, never rendered",
+      (_WatchedRepr.rendered, "<not a string>" in _h_msg), (0, True))
+
+
+# `type(lang).__name__` was the next thing along, and it is caller-reachable too: a writable slot
+# on any heap type, and a metaclass can make it a property that returns a megabyte, returns an
+# object whose `__str__` then runs, or raises and fails the whole call. The branch is a constant
+# for exactly that reason, so none of these four can reach the message.
+_name_ran = []
+
+
+class _StringyName:
+    def __str__(self):
+        _name_ran.append(1)
+        return "C" * 20000
+
+
+class _MetaBig(type):
+    @property
+    def __name__(cls):
+        return "B" * 20000
+
+
+class _MetaObj(type):
+    @property
+    def __name__(cls):
+        return _StringyName()
+
+
+class _MetaRaise(type):
+    @property
+    def __name__(cls):
+        raise RuntimeError("boom from __name__")
+
+
+class _BigNameSlot:
+    pass
+
+
+_BigNameSlot.__name__ = "A" * 20000
+
+
+class _PropName(metaclass=_MetaBig):
+    pass
+
+
+class _ObjName(metaclass=_MetaObj):
+    pass
+
+
+class _RaiseName(metaclass=_MetaRaise):
+    pass
+
+
+for _label, _hostile in (("a writable 1MB __name__", _BigNameSlot()),
+                         ("a metaclass __name__ property", _PropName()),
+                         ("a metaclass __name__ returning an object", _ObjName()),
+                         ("a metaclass __name__ that raises", _RaiseName())):
+    _nl = _NoLangKwarg()
+    _nr = Router()
+    _nr.attach("english", _nl)
+    with warnings.catch_warnings(record=True) as _caught:
+        warnings.simplefilter("always")
+        _, _n_exc = _attempt(lambda h=_hostile: _nr.predict_long(LONG, Q, model="english", lang=h))
+    _n_msg = str(_caught[0].message) if _caught else ""
+    check("scan/%s cannot reach the warning" % _label,
+          (_kind(_n_exc), len(_n_msg) < 200, _nl.calls), (None, True, 1))
+check("scan/no __name__ code ran while building the warning", _name_ran, [])
+check("scan/the document was still scanned, on the routed checkpoint",
+      (_kind(_dd_exc), _dd_out["answers"], _dd_out.get("routing", {}).get("model")),
+      (None, {"via": "predict_long"}, "multilingual"))
+
+
+# The warning has to reach the CALLER, not just be emitted: `warnings.warn` is called three frames
+# below `predict_long`, and the default "once per location" filter keys its registry on the frame
+# `stacklevel` selects. Attributed to this file, two call sites warn twice; attributed to
+# `router.py`, they collapse to one and every later call site in the process is silent.
+_attr = _NoLangKwarg()
+_ar = Router()
+_ar.attach("english", _attr)
+
+
+def _warn_site():
+    """Calls `predict_long` DIRECTLY, so the frame distance is the real one.
+
+    Not `_attempt(lambda: ...)`: that inserts the lambda and `_attempt` between this line and
+    `predict_long`, which leaves a `stacklevel` two too large still landing in this file on a
+    distinct line -- which is why the check below asserts the LINE, and why asserting only the file
+    and the dedup behaviour was not enough. The `try` keeps a revert from aborting the module,
+    exactly as `_attempt` would.
+    """
+    try:
+        return _ar.predict_long(LONG, Q, model="english", lang="de")
+    except TypeError:
+        return None
+
+
+# Located by reading the function's own source, not by a hand-counted offset that editing the
+# docstring above would silently break.
+_site_lines, _site_start = inspect.getsourcelines(_warn_site)
+_want_line = _site_start + next((i for i, line in enumerate(_site_lines)
+                                 if "_ar.predict_long(" in line), -1)
+with warnings.catch_warnings(record=True) as _caught:
+    warnings.simplefilter("always")
+    _warn_site()
+check("scan/the warning points at the predict_long call's own line",
+      (os.path.basename(_caught[0].filename), _caught[0].lineno) if _caught else None,
+      (os.path.basename(__file__), _want_line))
+check("scan/the warning is attributed to the caller, not to laya",
+      os.path.basename(_caught[0].filename) if _caught else "no warning",
+      os.path.basename(__file__))
+with warnings.catch_warnings(record=True) as _caught:
+    warnings.resetwarnings()
+    warnings.simplefilter("default")                  # the interpreter's own default, not "always"
+    _attempt(lambda: _ar.predict_long(LONG, Q, model="english", lang="de"))
+    _attempt(lambda: _ar.predict_long(LONG, Q, model="english", lang="de"))
+check("scan/two call sites each warn under the default filter, rather than collapsing to one",
+      len(_caught), 2)
+
+
+# A decorator built with `functools.wraps` must be followed through to the entry point that really
+# runs: that is `inspect.signature`'s default, and it is how a real agent's `predict_long` most
+# often ends up wrapped. Reading the wrapper's own `(*a, **kw)` instead would pass `lang` to an
+# inner function that cannot take it.
+class _WrappedScan:
+    def __init__(self):
+        self.calls = 0
+
+    def system_one(self, state, questions, **controls):
+        return {"model": "stub", "answers": {"via": "system_one"}, "usage": {}}
+
+    def _inner(self, state, questions, window=None, stride=None, aggregate="auto",
+               batch_size=None):
+        self.calls += 1
+        return {"model": "stub", "answers": {"via": "predict_long"}, "usage": {}}
+
+    @functools.wraps(_inner)
+    def predict_long(self, *args, **kwargs):
+        return self._inner(*args, **kwargs)
+
+
+_wrapped = _WrappedScan()
+_wr = Router()
+_wr.attach("english", _wrapped)
+with warnings.catch_warnings(record=True) as _caught:
+    warnings.simplefilter("always")
+    _wout, _wexc = _attempt(lambda: _wr.predict_long(LONG, Q, model="english", lang="de"))
+check("scan/a functools.wraps wrapper is followed to the signature that really runs",
+      (_kind(_wexc), (_wout or {}).get("answers"), _wrapped.calls,
+       [w.category.__name__ for w in _caught]),
+      (None, {"via": "predict_long"}, 1, ["RuntimeWarning"]))
+
+
+class _KwargsScan:
+    def __init__(self):
+        self.kwargs = []
+
+    def system_one(self, state, questions, **controls):
+        return {"model": "stub", "answers": {"via": "system_one"}, "usage": {}}
+
+    def predict_long(self, state, questions, **controls):
+        self.kwargs.append(controls)
+        return {"model": "stub", "answers": {"via": "predict_long"}, "usage": {}}
+
+
+_kw = _KwargsScan()
+with warnings.catch_warnings(record=True) as _caught:
+    warnings.simplefilter("always")
+    _router(_kw).predict_long(LONG, Q, model="english", lang="de")
+check("scan/a **kwargs agent receives lang",
+      (_kw.kwargs[0].get("lang"), [w.category.__name__ for w in _caught]), ("de", []))
+
+
+# 6g. the other half of the `routing` line this change split in two. The scan path uses
+#     `setdefault` so an agent's own `routing` survives (6d above); the plain `predict` path still
+#     OVERWRITES, because `predict` promises a `routing` key that records the router's decision and
+#     an agent must not be able to forge it. Nothing in the repo held that branch.
+class _ForgesRouting:
+    def system_one(self, state, questions, **controls):
+        return {"model": "stub", "answers": {"via": "system_one"}, "usage": {},
+                "routing": {"model": "forged by the agent"}}
+
+
+_forged = _router(_ForgesRouting()).predict("a short state", Q, model="english")
+check("predict/an agent cannot forge the routing key", _forged["routing"]["model"], "english")
+
+
+# 7. `lang` still follows `predict`'s rule -- an explicit `lang=` wins, otherwise the language the
+#    routing detected. The rule used to be written twice; it is computed once now and passed in.
+_lang_explicit = _LongStub()
+_router(_lang_explicit).predict_long(LONG, Q, model="english", lang="de")
+check("scan/an explicit lang reaches the agent", _lang_explicit.calls[0]["lang"], "de")
+
+# Both halves set at once, which is what pins the PRECEDENCE rather than each branch separately:
+# an explicit `lang=` and a hook that writes a different detected language. Checked with the hook,
+# because `model=` short-circuits detection, so this is the only way to have both.
+_lang_both = _LongStub()
+_router(_lang_both, hooks=[_SetDetectedLanguage()]).predict_long(
+    LONG, Q, model="english", lang="de")
+check("scan/an explicit lang outranks a detected one", _lang_both.calls[0]["lang"], "de")
+
+# And with no explicit `lang`, the language the routing detected. This needs routing to actually run
+# -- an explicit `model=` short-circuits it and leaves `detection` empty -- so it is the one check
+# here that routes for real, and it is what fails if the scan goes back to reading its own `lang`
+# attribute (None) instead of the value `predict` computed.
+_lang_detected = _LongStub()
+_detect_router = Router()
+_detect_router.attach("multilingual", _lang_detected)
+_detect_router.attach("english", _LongStub())
+_german = "Wir wurden zweimal belastet und moechten eine Rueckerstattung erhalten. " * 8
+_detected = _detect_router.predict_long(_german, Q)
+check("scan/routing detected German", _detected["routing"]["model"], "multilingual")
+check("scan/the detected language reaches the agent", _lang_detected.calls[0]["lang"], "de")
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

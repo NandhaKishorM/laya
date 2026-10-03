@@ -27,12 +27,14 @@ primary routing signal.
 `auto_task_detection=True` or pass `task="typed_decisions"`: it is fine-tuned on four specific
 synthetic workflows and should not be a silent default.
 """
+import contextvars
 import gc
 import inspect
 import json
 import os
 import threading
 import time
+import warnings
 from collections.abc import Sequence as SequenceABC
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
@@ -192,14 +194,51 @@ def _english_from_code(value: Any) -> Optional[bool]:
     return primary in _ENGLISH_SUBTAGS
 
 
-class _ScanLong:
-    """Last start hook of `Router.predict_long`: score the routed state with the agent's
-    `predict_long` rather than leave `predict` to call `system_one` on one window of it.
+def _takes_lang(fn) -> bool:
+    """Whether `fn` can be given `lang=` as a keyword, read from its signature.
 
-    It is appended after every other start hook, so a caller's hook has already had its say: one
-    that answered (`ctx.skip(...)`) or rewrote the state/questions wins, and only what is left is
-    scanned. The `lang` rule is `predict`'s -- an explicit `lang=`, else the language routing
-    detected -- repeated here because `predict` computes it locally for its own call.
+    The same predicate `laya.evals` uses for the optional arguments it forwards (`_takes_lang`'s
+    `sort_by_length` and `min_confidence` siblings), with two differences worth naming:
+
+    * The kind is checked, not just the name: a positional-only `lang` (`..., lang, /`) or a
+      `*lang` cannot be passed as a keyword, so neither counts. A `**kwargs` forwarder does count,
+      because whatever it forwards to is the real entry point, and a decorator built with
+      `functools.wraps` is followed through to that entry point (`inspect.signature`'s default).
+    * A callable whose signature `inspect` cannot produce is given the argument, where
+      `laya.evals` withholds it. Opposite defaults for opposite stakes: `sort_by_length` is an
+      optimisation whose absence changes no answer, while dropping a `lang` silently changes which
+      language the document is read as. Passing it is also exactly what the Router did before, so
+      it is the no-change branch. `Exception` rather than `(TypeError, ValueError)` for the same
+      reason: `inspect.signature` reads `__signature__`, which is arbitrary code that can raise
+      anything, and a deployer's agent must not become uncallable because its signature is
+      awkward to introspect. (A `__call__` object is not this case: `inspect` reads its `__call__`
+      and it is handled like any other signature.)
+    """
+    try:
+        params = inspect.signature(fn).parameters.values()
+    except Exception:                      # see above: any failure to introspect means "unknown"
+        return True
+    return any((p.name == "lang" and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY))
+               or p.kind is p.VAR_KEYWORD for p in params)
+
+
+class _ScanLong:
+    """The scan `Router.predict_long` asks `predict` to run instead of `system_one`.
+
+    This was a start hook, appended after every other one, and being a hook is what made the scan
+    inherit the caller's hook machinery: `hooks_timeout` bounded laya's own inference and aborted
+    it, so any timeout shorter than the scan failed the call (measured: a ~4 s scan failed at both
+    `hooks_timeout=0.5` and `2.0`), `hooks_concurrent=False` held the hooks lock across the whole
+    forward pass instead of across each hook, `_SKIP_DEFAULTS` had not been entered yet so every
+    process-wide default hook fired a second time, and an error from the scan was swallowed under
+    `hooks_raise=False`, answering a single window where a scan was asked for. It is a plain
+    command object now, and `predict` runs it after the start chain returns.
+
+    Everything it reads, it reads from `ctx` at the moment it runs, which is what keeps this
+    equivalent to the hook it replaces: `ctx.agent` rather than the agent `predict` resolved, and
+    `ctx.decision` for the detected language, both of which a start hook can still have rewritten.
+    `predict` runs it last and only when nothing else has answered, so a hook that called
+    `ctx.skip(...)` or rewrote the state/questions wins exactly as before.
     """
 
     def __init__(self, window, stride, aggregate, batch_size, lang):
@@ -209,21 +248,68 @@ class _ScanLong:
         self.batch_size = batch_size
         self.lang = lang
 
-    def on_predict_start(self, ctx):
-        if ctx.results is not None:
-            return
-        if not hasattr(ctx.agent, "predict_long"):
+    def run(self, ctx):
+        """Scan `ctx.states[0]` on `ctx.agent`, or refuse plainly when that agent cannot."""
+        agent = ctx.agent
+        scan = getattr(agent, "predict_long", None)
+        if scan is None:
             raise TypeError(
                 "%s has no predict_long, so a state longer than its window cannot be scanned; "
-                "the PyTorch Agent implements it, and an ONNX or hand-attached agent needs it too"
-                % type(ctx.agent).__name__
+                "the PyTorch Agent and ONNXAgent implement it, and an agent attached by hand needs "
+                "it too" % type(agent).__name__
             )
         lang = self.lang
         if lang is None:
-            lang = (ctx.decision.get("detection") or {}).get("language")
-        ctx.results = [ctx.agent.predict_long(
-            ctx.states[0], ctx.questions, window=self.window, stride=self.stride,
-            aggregate=self.aggregate, batch_size=self.batch_size, lang=lang)]
+            lang = ((ctx.decision or {}).get("detection") or {}).get("language")
+        kwargs = {"window": self.window, "stride": self.stride, "aggregate": self.aggregate,
+                  "batch_size": self.batch_size}
+        # `lang` is passed only to an entry point whose signature takes it -- the check
+        # `laya.evals` already makes for the arguments it forwards. Deciding this from the
+        # signature rather than from a `TypeError` matters here: catching the error cannot tell
+        # `predict_long` refusing `lang` from something deeper inside it refusing `lang`, so a
+        # retry would re-run the whole scan, drop the caller's language, and answer as if nothing
+        # had happened. Nothing is caught, so every error the scan raises is the caller's to see.
+        if _takes_lang(scan):
+            kwargs["lang"] = lang
+        elif lang is not None:
+            # What reaches the log line is bounded, and so is the work of building it, because
+            # `lang` is caller data: `serve.py` type-checks it but does not cap its length, and the
+            # library entry point does not even do that. So an exact `str` is sliced to 32
+            # characters BEFORE it is rendered -- slicing the value rather than the rendered text,
+            # because a `str` subclass can report `len() == 2` with a megabyte of `__repr__`, and
+            # because slicing a subclass would run the subclass's `__getitem__` -- and anything
+            # else is a constant. Not even its type name: `__name__` is a writable slot on any heap
+            # type and a metaclass can make it a property that returns a megabyte, returns an
+            # object whose `__str__` then runs, or simply raises. A constant has no such reach.
+            # `repr` on the `str` branch is not decoration -- it is what escapes NUL and
+            # ANSI escapes out of the value, so a terminal-injection payload in `lang` reaches a
+            # log inert. Simplifying it to `%s` would be a regression, not a tidy-up.
+            if type(lang) is str:
+                shown = repr(lang[:32]) + ("..." if len(lang) > 32 else "")
+            else:
+                shown = "<not a string>"
+            warnings.warn(
+                "laya: Router.predict_long: %s.predict_long has no `lang` parameter, so the %s "
+                "language %s is not reaching it and the scan runs without it"
+                % (type(agent).__name__,
+                   "requested" if self.lang is not None else "detected", shown),
+                # 4, not 2: the frames from here are `run` -> `predict` -> `predict_long` -> the
+                # caller, so 2 points inside this file. That is not only the wrong attribution --
+                # the default "once per location" filter keys its registry on the frame this picks,
+                # so at 2 a process that drops the same language at twenty call sites would warn
+                # once and stay silent for the rest of its life.
+                RuntimeWarning, stacklevel=4)
+        return scan(ctx.states[0], ctx.questions, **kwargs)
+
+
+# How `predict_long` reaches `predict` without widening `predict`'s signature: a parameter there is
+# public API -- `tests/test_serve.py` asserts `predict`'s parameter list equals serve's
+# `BODY_CONTROLS | BODY_REFUSALS`, so a new one has to be forwarded from or refused on the HTTP body
+# -- and this is internal plumbing with no wire meaning. It travels the way `_SKIP_DEFAULTS` does.
+# `predict` clears it on read, so a hook that calls back into `predict` cannot inherit a scan that
+# was not meant for it.
+_SCAN: "contextvars.ContextVar[Optional[_ScanLong]]" = contextvars.ContextVar(
+    "laya_router_scan", default=None)
 
 
 # Checkpoint options a Router will not accept through `agent_kwargs`: the ones it sets for itself
@@ -1009,6 +1095,11 @@ class Router(HookRegistry):
             max_len=max_len,
             head_max_len=head_max_len,
         )
+        # Read and clear: this call owns the scan, and a hook that calls back into `predict` must
+        # not inherit it. `predict_long` restores the previous value when it returns.
+        scan = _SCAN.get()
+        if scan is not None:
+            _SCAN.set(None)
         try:
             # Per-call hooks apply to the whole call, including on_route inside route().
             decision = self.route(state, questions, model=model, task=task, lang=lang,
@@ -1027,25 +1118,41 @@ class Router(HookRegistry):
             ctx.started_at = time.perf_counter()
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             if ctx.results is None:
-                # Pass token-budget overrides only when set, so any Agent-like object that does
-                # not accept them still works on the default path.
-                overrides = {}
-                if ctx.max_len is not None:
-                    overrides["max_len"] = ctx.max_len
-                if ctx.head_max_len is not None:
-                    overrides["head_max_len"] = ctx.head_max_len
-
                 skip = _SKIP_DEFAULTS.set(True)
                 try:
-                    result = agent.system_one(ctx.states[0], ctx.questions, lang=effective_lang, **overrides)
-                except TypeError as e:
-                    if "unexpected keyword argument 'lang'" in str(e):
-                        result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
+                    if scan is not None:
+                        # After the start chain, not inside it: the scan is laya's own forward pass,
+                        # so it is not bounded by `hooks_timeout`, does not hold the hooks lock, and
+                        # runs under `_SKIP_DEFAULTS` like every other inference this method does.
+                        # It sizes its windows from `window`/`stride` and the agent's own config, so
+                        # `ctx.max_len`/`ctx.head_max_len` do not reach it -- as has always been the
+                        # case, and as `predict_long` documents by not accepting them.
+                        result = scan.run(ctx)
                     else:
-                        raise
+                        # Pass token-budget overrides only when set, so any Agent-like object that
+                        # does not accept them still works on the default path.
+                        overrides = {}
+                        if ctx.max_len is not None:
+                            overrides["max_len"] = ctx.max_len
+                        if ctx.head_max_len is not None:
+                            overrides["head_max_len"] = ctx.head_max_len
+                        try:
+                            result = agent.system_one(ctx.states[0], ctx.questions,
+                                                      lang=effective_lang, **overrides)
+                        except TypeError as e:
+                            if "unexpected keyword argument 'lang'" in str(e):
+                                result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
+                            else:
+                                raise
                 finally:
                     _SKIP_DEFAULTS.reset(skip)
-                result["routing"] = dict(decision)
+                if scan is not None:
+                    # `setdefault`, because the scan used to set `ctx.results` from inside the
+                    # hook chain and reach the branch below: an agent whose `predict_long` returns
+                    # its own `routing` kept it, and that stays true.
+                    result.setdefault("routing", dict(decision))
+                else:
+                    result["routing"] = dict(decision)
                 ctx.results = [result]
             else:
                 # A cache hit short-circuits inference, but Router.predict still promises a
@@ -1113,16 +1220,26 @@ class Router(HookRegistry):
             The usual `predict` payload, with `usage["windows"]` counting the windows scored.
 
         Raises:
-            TypeError: the routed agent has no `predict_long` (an ONNX agent, or one attached by
-                    hand), so there is nothing to scan with. Raised under the router's
-                    `hooks_raise` policy, which defaults to raising.
+            TypeError: the routed agent has no `predict_long` -- one attached by hand, since both
+                    `Agent` and `ONNXAgent` implement it -- so there is nothing to scan with.
+                    Always raised, whatever `hooks_raise` is, and so is every other error the scan
+                    itself raises -- none are caught: the scan is this method's own work, not a
+                    caller's hook, so the hook error policy does not decide whether it may be
+                    skipped. It previously ran as a start hook, where `hooks_raise=False` swallowed
+                    this and returned one window scored by `system_one` -- a different question than
+                    the one asked. An agent whose `predict_long` has no `lang` parameter is scanned
+                    without one and warned about, not failed; that is a signature check, not a
+                    swallowed error.
         """
-        per_call = normalise_hooks(hooks, on_predict_start, on_predict_end)
-        per_call.append(_ScanLong(window=window, stride=stride, aggregate=aggregate,
-                                  batch_size=batch_size, lang=lang))
-        return self.predict(state, questions, model=model, task=task, lang=lang,
-                            lang_guess=lang_guess, hooks=per_call,
-                            hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
+        token = _SCAN.set(_ScanLong(window=window, stride=stride, aggregate=aggregate,
+                                    batch_size=batch_size, lang=lang))
+        try:
+            return self.predict(state, questions, model=model, task=task, lang=lang,
+                                lang_guess=lang_guess,
+                                hooks=normalise_hooks(hooks, on_predict_start, on_predict_end),
+                                hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
+        finally:
+            _SCAN.reset(token)
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
                questions: Optional[Dict[str, Any]] = None, return_details: bool = False,

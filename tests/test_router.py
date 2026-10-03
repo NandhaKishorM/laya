@@ -743,9 +743,9 @@ check("route/undecided three words follow default", _r_lat.route("wecke mich auf
 for text in ["tell me my current savings account's interest rate", "play recently added music",
              "how many days before my credit card arrives", "turn off lobby light"]:
     check("route/english without a function word " + text, _r_lat.route(text).model, "english")
-# ... while Indonesian, Malay, Javanese, Swahili, Tagalog, Afrikaans and Welsh, typed in plain ASCII,
-# now have lists. One word English never uses is enough, and Dutch gains too (`uit` is Afrikaans as well).
-# MASSIVE test utterances that went to the English checkpoint before:
+# ... while languages often typed in plain ASCII now have lists, or more words in theirs (Dutch,
+# Romanian). One word English never uses is enough. MASSIVE test utterances that went to the English
+# checkpoint before:
 for text in ["tolong mainkan lagu dari bruno mars",                        # id, `tolong` and `dari`
              "batalkan alarm saya pukul tujuh pagi",                       # id, `saya`
              "olly beritahu saya satu jenaka",                             # ms, `saya`
@@ -754,8 +754,15 @@ for text in ["tolong mainkan lagu dari bruno mars",                        # id,
              "huwag mo akong gisingin bukas",                              # tl, `bukas`
              "ken jy enige grappe",                                        # af, `jy`
              "paid a siarad heddiw",                                       # cy, `heddiw`
-             "schakel de lampen uit",                                      # nl, `uit`
-             "vertel me wat er gebeurt op instagram"]:                     # nl, `wat` and `op`
+             "schakel de lampen uit",                                      # nl, `uit` (Afrikaans too)
+             "vertel me wat er gebeurt op instagram",                      # nl, `wat` and `op`
+             "speel mijn rock afspeellijst",                               # nl, `mijn`
+             "cine a scris melodia asta",                                  # ro, `cine`
+             "niambie kuhusu kengele zangu",                               # sw, `kuhusu`
+             "vil det regne denne uge",                                    # da, `denne`
+             "slett alarmen jeg nettopp satte",                            # nb, `jeg`
+             "olly kerro minulle vitsi",                                   # fi, `minulle`
+             "kateri alarmi so nastavljeni"]:                              # sl, `kateri`
     check("route/new list evidence " + text, _r_lat.route(text).model, "multilingual")
 # A word of those lists that English uses too still needs a second one: en-US MASSIVE, `dim` and `kung`
 for text in ["olly give me some dim light", "kung fu panda three"]:
@@ -763,6 +770,9 @@ for text in ["olly give me some dim light", "kung fu panda three"]:
 # A word leaves _FOREIGN_WORDS with its list, or it would be evidence for no language at all
 from laya.lang import _FOREIGN_WORDS, _OTHER_WORDS  # noqa: E402
 check("latin_lang/foreign words all come from a list", sorted(_FOREIGN_WORDS - _OTHER_WORDS), [])
+# Danish and Norwegian leave out every word of the Swedish list, so Swedish keeps its name
+check("latin_lang/da and nb share no word with sv",
+      sorted(w for lg in ("da", "nb") for w in _STOP[lg] & _STOP["sv"]), [])
 
 # ------------------------------------------------------------------ accented loanwords in English (#337)
 # The diacritic rate is measured over every character, so one `é` in a short English sentence

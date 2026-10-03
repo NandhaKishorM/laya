@@ -116,8 +116,13 @@ _STOP = {
            # shared articles (`la fattura`) still name the language rather than stay undecided
            "nel", "nell", "negli", "sul", "sulla", "sulle", "dal", "dalla", "dallo", "dagli", "dei",
            "delle", "dello", "degli", "agli", "alle", "col"},
+    # The pronouns and auxiliaries after `wordt` (`mijn`, `ik`, `heb`) carry most plain Dutch requests,
+    # which otherwise share only `de` and `het` with their neighbours.
     "nl": {"het", "een", "van", "is", "op", "te", "dat", "niet", "met", "voor", "zijn", "aan",
-           "door", "maar", "ook", "worden", "deze", "naar", "wordt"},
+           "door", "maar", "ook", "worden", "deze", "naar", "wordt",
+           "mijn", "ik", "mij", "jij", "jouw", "uw", "zij", "wij", "hij", "hem", "haar", "onze", "hun",
+           "alsjeblieft", "alstublieft", "graag", "heb", "hebt", "heeft", "kun", "zal", "geen", "bij",
+           "tot", "welke", "waarom", "morgen", "er"},
     # Swedish function words and common auxiliaries. Several overlap with English or German
     # (`i`, `kan`, `har`), so the distinctive words below are what lets Swedish text survive an
     # ASCII-normalising ticket pipeline without treating one stray Nordic letter as the only hint.
@@ -133,10 +138,15 @@ _STOP = {
            "appen"},
     # Romanian words that its Romance neighbours do not share, so adding `ro` cannot steal a
     # French/Spanish/Italian/Portuguese state: `la`, `o`, `un`, `de`, `pe`, `ca` are deliberately
-    # left out for that reason, and the diacritic signal below carries the rest.
+    # left out for that reason, and the diacritic signal below carries the rest. Romanian typed without
+    # diacritics has no such signal, so the words after `nu` are ASCII spellings (`cand`, `fara`) and
+    # words no neighbour uses (`cum`, `cu`, `rog`).
     "ro": {"și", "să", "este", "sunt", "care", "pentru", "din", "dar", "după", "până", "fără",
            "ale", "lui", "în", "fost", "acum", "vreau", "trebuie", "foarte", "acest", "această",
-           "acesta", "aceasta", "mi", "ți", "vă", "nu"},
+           "acesta", "aceasta", "mi", "ți", "vă", "nu",
+           "despre", "cum", "rog", "cu", "mea", "mei", "azi", "astazi", "cand", "poti", "unde", "cine",
+           "cate", "cati", "imi", "iti", "vrea", "poate", "pot", "fara", "dupa", "pana", "maine", "aici",
+           "acolo"},
     # Romanized Bangla ("Banglish"): how Bangla is typed in chats, tickets and email when no Bengali
     # keyboard is at hand. It has no diacritics, so without a list it read as undecided-but-English
     # and went to the English checkpoint, which scores 0.08 on Bangla at 0.94 confidence. Spelling
@@ -166,31 +176,42 @@ _STOP = {
            "hər", "nə", "kimi", "görə", "sonra", "əgər", "eger", "deyil", "lakin", "amma",
            "ancaq", "artıq", "artiq", "də", "isə", "həm", "yalnız", "yalniz"},
 
-    # Indonesian, Malay, Javanese, Swahili, Tagalog, Afrikaans and Welsh are mostly typed in plain ASCII,
-    # so with no list they left no evidence at all and went to the English checkpoint (#54). Two kinds of
-    # word are left out. A word another list already holds (`di`, `na`, `ni`, `si`, `ya`, `het`, `op`,
-    # `ar`) would change that language's score. A word found in more than 1 in 2,000 English documents
-    # (`dan`, `yen`, `au`, `sa`, `mo`, `pa`, `met`, `van`, `os`, `hi`, `mae`, `y`) would be English
-    # evidence as often as foreign. Indonesian and Malay share most of theirs, so a shared word names
-    # neither and only `mau`, `mahu`, `kamu` and the like tell them apart.
+    # Indonesian, Malay, Javanese, Swahili, Tagalog, Afrikaans, Welsh, Danish, Norwegian, Finnish and
+    # Slovenian are often typed in plain ASCII, so with no list they left no evidence at all and went to
+    # the English checkpoint (#54). Two kinds of word are left out. A word another list already holds
+    # (`di`, `na`, `ni`, `si`, `ya`, `het`, `op`, `ar`, `du`, `je`) would change that language's score. A
+    # word found in more than 1 in 2,000 English documents (`dan`, `yen`, `au`, `sa`, `mo`, `pa`, `met`,
+    # `van`, `os`, `hi`, `mae`, `y`, `me`, `he`) would be English evidence as often as foreign.
+    # Indonesian and Malay share most of theirs, so a shared word names neither and only `mau`, `mahu`,
+    # `kamu` and the like tell them apart.
     "id": {"yang", "untuk", "dengan", "dari", "ke", "ini", "itu", "saya", "aku", "kamu", "anda", "dia",
            "kami", "kita", "mereka", "apa", "apakah", "bagaimana", "kapan", "dimana", "mana", "siapa",
            "berapa", "tidak", "bukan", "akan", "sudah", "belum", "sedang", "bisa", "dapat", "harus",
-           "mau", "ingin", "tolong", "juga", "atau", "tetapi", "tapi", "pada", "dalam", "oleh",
-           "karena", "jika", "kalau", "ada", "semua", "lagi", "saja", "nya", "besok", "sekarang"},
+           "mau", "ingin", "tolong", "juga", "atau", "tetapi", "tapi", "pada", "dalam", "oleh", "karena",
+           "jika", "kalau", "ada", "semua", "lagi", "saja", "nya", "besok", "sekarang", "tentang",
+           "kepada", "daripada", "mengapa", "kenapa", "silakan", "bisakah", "dapatkah", "sesudah",
+           "sebelum", "setelah", "hingga", "sampai", "sangat", "lebih", "paling", "masih", "hanya",
+           "punya", "kalian", "saat", "ketika", "sini"},
     "ms": {"yang", "untuk", "dengan", "dari", "ke", "ini", "itu", "saya", "aku", "awak", "anda", "dia",
            "kami", "kita", "mereka", "apa", "adakah", "bagaimana", "bila", "mana", "siapa", "berapa",
-           "tidak", "tak", "bukan", "akan", "sudah", "telah", "boleh", "mahu", "hendak", "tolong",
-           "juga", "atau", "tetapi", "pada", "dalam", "oleh", "kerana", "jika", "kalau", "ada",
-           "semua", "lagi", "sahaja", "esok", "sekarang"},
+           "tidak", "tak", "bukan", "akan", "sudah", "telah", "boleh", "mahu", "hendak", "tolong", "juga",
+           "atau", "tetapi", "pada", "dalam", "oleh", "kerana", "jika", "kalau", "ada", "semua", "lagi",
+           "sahaja", "esok", "sekarang", "berapakah", "kepada", "daripada", "bilakah", "semula", "kenapa",
+           "mengapa", "siapakah", "dimanakah", "manakah", "sekali", "pun", "sangat", "lebih", "paling",
+           "masih", "hanya", "punya", "kalian", "semasa", "ketika", "sini"},
     "jv": {"aku", "kowe", "sampeyan", "dheweke", "iki", "kuwi", "iku", "lan", "karo", "ing", "menyang",
            "saka", "kanggo", "apa", "piye", "kepiye", "kapan", "endi", "sapa", "pira", "ora", "wis",
-           "durung", "arep", "bakal", "isa", "iso", "bisa", "gelem", "tulung", "uga", "utawa",
-           "nanging", "ana", "kabeh", "maneh", "wae", "mung", "kang", "sing", "ning", "neng", "nang",
-           "sesuk", "saiki"},
+           "durung", "arep", "bakal", "isa", "iso", "bisa", "gelem", "tulung", "uga", "utawa", "nanging",
+           "ana", "kabeh", "maneh", "wae", "mung", "kang", "sing", "ning", "neng", "nang", "sesuk",
+           "saiki", "opo", "ku", "kula", "soko", "babagan", "dadi", "kanthi", "menawa", "pengin",
+           "sampun", "mboten", "nggih", "kulo", "panjenengan", "niki", "menika", "punika", "saking",
+           "dhateng", "kaliyan", "ugi", "utawi", "luwih"},
     "sw": {"wa", "za", "kwa", "katika", "hii", "hiyo", "huu", "hizi", "mimi", "wewe", "yeye", "sisi",
            "nyinyi", "wao", "nini", "vipi", "lini", "wapi", "nani", "ngapi", "sana", "tafadhali",
-           "kwamba", "lakini", "kama", "bado", "tena", "pia", "yote", "kila", "leo", "kesho"},
+           "kwamba", "lakini", "kama", "bado", "tena", "pia", "yote", "kila", "leo", "kesho", "yangu",
+           "yako", "yake", "wangu", "wako", "kwenye", "cha", "vya", "gani", "kutoka", "kuhusu", "zaidi",
+           "hivi", "kuna", "nataka", "ninataka", "naomba", "sasa", "pamoja", "ndiyo", "hapana", "asante",
+           "ndani", "nje", "hapa", "pale", "wakati", "kabla", "baada", "ili"},
     "tl": {"ang", "ng", "mga", "ay", "ako", "ikaw", "ka", "siya", "kami", "tayo", "sila", "ko", "niya",
            "namin", "natin", "nila", "ito", "iyan", "iyon", "ano", "paano", "kailan", "saan", "sino",
            "ilan", "hindi", "oo", "po", "naman", "lang", "rin", "ngayon", "bukas", "kung", "mayroon",
@@ -200,7 +221,32 @@ _STOP = {
            "hierdie", "daardie", "nog", "vandag", "môre"},
     "cy": {"yr", "yn", "gyda", "wrth", "oes", "ydy", "yw", "roedd", "bydd", "fy", "dy", "eich", "beth",
            "sut", "pryd", "ble", "pwy", "faint", "dim", "ddim", "ond", "neu", "hefyd", "nawr", "heddiw",
-           "yfory", "chi", "ti", "nhw", "fe", "gan", "efo"},
+           "yfory", "chi", "ti", "nhw", "fe", "gan", "efo", "yma", "gyfer", "sydd", "dwi", "unrhyw",
+           "wedi", "gallu", "eisiau", "isio", "fyddai", "rhaid", "chdi", "fo", "hwn", "hon", "hyn", "yna",
+           "rhywbeth", "pob", "mwy", "iawn", "diolch", "plis"},
+    # Danish and Norwegian (Bokmål) share most function words with each other, so a shared word names
+    # neither. A word they also share with Swedish (`det`, `med`, `på`, `av`, `som`, `har`) is left
+    # out as well as any other list's word, so Swedish text keeps its name.
+    "da": {"jeg", "hun", "ham", "hende", "jer", "dine", "hendes", "vores", "jeres", "deres", "og", "af",
+           "til", "ved", "hos", "før", "mellem", "hvad", "hvem", "hvor", "hvornår", "hvornaar", "hvordan",
+           "hvorfor", "hvilken", "hvilket", "hvilke", "er", "havde", "kunne", "skal", "ikke", "venligst",
+           "imorgen", "denne", "dette", "disse", "noget", "nogen", "også", "ogsaa", "meget", "mere",
+           "kun", "paa"},
+    "nb": {"jeg", "hun", "dere", "meg", "deg", "ham", "dine", "våre", "deres", "og", "til", "ved", "hos",
+           "etter", "før", "mellom", "hva", "hvem", "hvor", "når", "hvordan", "hvorfor", "hvilken",
+           "hvilket", "hvilke", "er", "hadde", "kunne", "skal", "ikke", "nei", "takk", "vennligst", "nå",
+           "imorgen", "denne", "dette", "disse", "noe", "noen", "også", "mye", "kun"},
+    "fi": {"minä", "mina", "sinä", "sina", "hän", "minun", "sinun", "hänen", "hanen", "meidän", "teidän",
+           "heidän", "minulle", "sinulle", "minua", "sinua", "mitä", "mita", "mikä", "mika", "missä",
+           "missa", "mistä", "mista", "mihin", "milloin", "miten", "kuinka", "kuka", "kenen", "miksi",
+           "paljonko", "onko", "voitko", "voisitko", "haluan", "haluaisin", "ole", "oli", "ovat", "tai",
+           "mutta", "että", "etta", "jos", "kun", "myös", "myos", "nyt", "tänään", "tanaan", "huomenna",
+           "kiitos", "kaikki", "jotain", "joku", "tämä", "tama", "tämän", "taman", "nämä", "nama",
+           "siellä", "siella", "täällä", "taalla"},
+    "sl": {"jaz", "ona", "oni", "moj", "moja", "moje", "tvoj", "tvoja", "njegov", "njen", "naš", "vaš",
+           "vas", "kaj", "kdo", "kje", "kdaj", "kako", "zakaj", "koliko", "kateri", "katera", "katero",
+           "sem", "smo", "ste", "bo", "bom", "bi", "ker", "če", "z", "iz", "od", "pri", "prosim", "hvala",
+           "danes", "jutri", "zdaj", "sedaj", "tudi", "samo", "vse", "nekaj"},
 }
 
 # Short support fragments often consist of only two or three words, so they do not reach the
@@ -235,9 +281,9 @@ _NON_EN_DIACRITICS = set(
 # way), though it still counts toward the total of a language that also matched a word of its own.
 _SHARED_WORDS = {w for w in {word for words in _STOP.values() for word in words}
                  if sum(w in words for words in _STOP.values()) > 1}
-# Danish is not in `_STOP`, but several of its common words also occur in the Swedish list.
-# Do not let these words alone name a Danish sentence as Swedish; they remain useful score hits
-# when another, more distinctive Swedish word is present.
+# Several common Danish and Norwegian words are also in the Swedish list, and the `da` and `nb` lists
+# leave them out. Do not let these words alone name a Danish sentence as Swedish; they remain useful
+# score hits when another, more distinctive Swedish word is present.
 _NORDIC_OVERLAP_WORDS = {
     "hej", "ja", "nej", "jo", "tack", "mig", "min", "om", "kommer", "får", "skulle", "vi",
 }
@@ -267,43 +313,61 @@ _OTHER_WORDS = frozenset(w for lg, words in _STOP.items() if lg != "en" for w in
 # and `laya-ts/src/foreign-words.ts`; `--check` says whether they are current. A word added to a list is
 # not here until the script runs again, so it needs a second word like `do` does: the safe side.
 _FOREIGN_WORDS = frozenset("""
-    abar abbiamo aceasta această acest acesta acum adakah adesso agora ainda ajke akan akhon ako
-    aku algo alguem alguém alla alle alors amader amake amma amra ancaq anche ancora apakah
-    apnake apnar apnara apni appen aqui aquí arep artiq artıq asbe asseblief atau aterbetala
-    aterbetalning até auch auf aunque avete awak bado bagaimana bakal behover behöver belum
-    berapa besok bhai bhalo bien bila bir bisa bitte ble blivit boleh bolte bolun bukan bukas
-    bydd cadê chaina ciao como consigo cuando daardie dagli daha dalam dalla dallo dapat dari
-    dat ddim debiterade degli dello dengan depois dessa detta deu deux deve devo devono deyil
-    deze dheweke dhonnobad dich diese diesen dieser dieses dilam dimana dir dite diye diyechi
-    dois doit donc donde dorkar duibar după durung də efo eger ei eich ein eine einen einer eita
-    ekbar ekhon ekhono ekta elles endi entao então esok esta estamos estava esto estou está
-    faktura fel ferot ficou fiz foarte foi fois fost fra från fue fueron får für fără gaan gan
-    ganger geche gelem gese gibt già gli gostaria gyda gång gånger gör göra görə habe haben
-    harus heddiw hefyd hemos hendak heute hierdie hii hittar hiyo hizi hjalp hjalpa hjälp hjälpa
-    hobe hocche hoeveel hoise hoje hoye hoyeche hoyni hulle huu här həm hər ich ieri ikaw iki
-    iku ile ilə ingin ini installningarna installningen inställningarna inställningen inte isso
-    isto isə iyan iyon jabe jetzt jika jodi jonno jours juga julle jy já kabeh kailan kalau
-    kalke kama kami kamu kanggo kann kannst kapan karena karo katika keno kepiye kerana kesho
-    keu kharap khub kibhabe kichu kila kintu kita kivabe kokhon kommer korbo korchi kore koreche
-    korechi korlam korsi korte korun kothay koto kowe kraschar kuwi kvittot kwa kwamba lagbe
-    lagi lakin lakini lini losenord lui lösenord maar mahu mais mana maneh mau mayroon meine
-    meinem meinen meiner menyang mereka mes meu meus mimi minha minhas moddhe mois molto muito
-    mung más måste môre mən naar nach nai naman namin nang nanging nani nao nar natin nawr
-    necesito negli nel nella neng nenhum nenhuma neu ngapi ngayon nhw nicht nie niet nila ning
-    ninguem ninguém nini niya niye noch nog noite nossa nosso nous nya nyinyi não när nästa nə
-    obrigada obrigado och också oder oggi oi olan oleh olmasa olub olá ond onde onek onlar ontem
-    oor oppnar ora paano pabo pada paini paket paki pakiusap parben parbo parchi parchina pela
-    pelo pentru perche peux peyechi pira piye più poco pode podem por porque pourquoi preciso
-    pryd puede pueden pwy până quand quando quero questa questo quiero roedd saan sahaja saja
-    saka sampeyan sapa sathe saya scusa sedang sekarang sempre semua sesuk shathe shob shomossa
-    siapa sich sila sisi siya siz skicka skulle sobre somossa sono sonra sparningen spårningen
-    stato sua sudah sul sulla sulle sunt sut são säger să sən tader tafadhali tahole tambem
-    também tapi tarde tayo telah tena tengo tenho tetapi theke tidak tiene tienen tolong tomar
-    tomra tous toute trebuie très três tudo tulung tumi tuo tva två tá ucun uga uit untuk upp
-    uppdaterats utawa valo vandag var veut veux vill vipi voces você vocês voglio voor vorrei
-    vous vreau vă və waar wae wala wann wanneer wao wapi welche werden wewe wir wird worden
-    wordt wrth wurde yalniz yalnız ydy yeye yfory yn yote yox yoxdur yw zijn zum zur är
-    återbetala återbetalning çox è é être în öppnar üçün și ți əgər
+    abar abbiamo aceasta această acest acesta acolo acum adakah adesso agora aici ainda ajke
+    akan akhon ako aku algo alguem alguém alla alle alors alsjeblieft alstublieft amader amake
+    amma amra ancaq anche ancora apakah apnake apnar apnara apni appen aqui aquí arep artiq
+    artıq asbe asseblief astazi atau aterbetala aterbetalning até auch auf aunque avete awak azi
+    baada babagan bado bagaimana bakal behover behöver belum berapa berapakah besok bhai bhalo
+    bien bij bila bilakah bir bisa bisakah bitte ble blivit boleh bolte bolun bukan bukas bydd
+    cadê cand cati chaina chdi ciao cine como consigo cuando daardie dadi dagli daha dalam dalla
+    dallo dapat dapatkah dari daripada dat ddim debiterade deg degli dello dengan denne depois
+    dere deres despre dessa detta dette deu deux deve devo devono deyil deze dhateng dheweke
+    dhonnobad dich diese diesen dieser dieses dilam dimana dimanakah diolch dir disse dite diye
+    diyechi dois doit donc donde dorkar duibar dupa după durung də efo eger ei eich ein eine
+    einen einer eisiau eita ekbar ekhon ekhono ekta elles endi entao então esok esta estamos
+    estava esto estou está etta etter että faktura fara fel ferot ficou fiz foarte foi fois fost
+    fra från fue fueron fyddai får før für fără gaan gallu gan ganger gani geche geen gelem gese
+    gibt già gli gostaria graag gyda gyfer gång gånger gör göra görə habe haben hadde haluaisin
+    haluan hanen hanya hapa hapana harus havde heb hebt heddiw heeft hefyd heidän hemos hendak
+    hende hendes heute hierdie hii hij hingga hittar hivi hiyo hizi hjalp hjalpa hjälp hjälpa
+    hobe hocche hoeveel hoise hoje hoye hoyeche hoyni hulle huomenna huu hva hvad hvala hvem
+    hvilke hvilken hvilket hvor hvordan hvorfor hvornaar hvornår hwn hyn hän hänen här həm hər
+    iawn ich ieri ik ikaw iki ikke iku ile ili ilə imorgen ingin ini installningarna
+    installningen inställningarna inställningen inte isio isso isto isə iti iyan iyon jabe jaz
+    jeg jer jeres jetzt jij jika jodi joku jonno jotain jours jouw juga julle jutri jy já kabeh
+    kabla kaikki kailan kaj kako kalau kalian kaliyan kalke kama kami kamu kanggo kann kannst
+    kanthi kapan karena karo katera kateri katero katika kdaj kdo kenapa kenen keno kepada
+    kepiye kerana kesho ketika keu kharap khub kibhabe kichu kiitos kila kintu kita kivabe kje
+    kokhon koliko kommer korbo korchi kore koreche korechi korlam korsi korte korun kothay koto
+    kowe kraschar kuhusu kuinka kuka kula kulo kuna kunne kutoka kuwi kvittot kwa kwamba kwenye
+    lagbe lagi lakin lakini lebih lini losenord lui luwih lösenord maar mahu mais mana manakah
+    maneh masih mau mayroon mboten meget meidän meine meinem meinen meiner mellem mellom menawa
+    mengapa menika menyang mereka mes meu meus mihin mij mijn miksi mikä milloin mimi mina minha
+    minhas minua minulle minun minä missa missä mista mistä mita miten mitä moddhe mois moj moja
+    moje molto muito mung mutta mye myos myös más måste môre mən naar nach nai nama naman namin
+    nang nanging nani nao naomba nar nataka natin nawr naš ndani ndiyo necesito negli nei nekaj
+    nel nella neng nenhum nenhuma neu ngapi ngayon nggih nhw nicht nie niet nila ninataka ning
+    ninguem ninguém nini niya niye nje njegov njen noch noen nog nogen noget noite nossa nosso
+    nous nya nyinyi não nämä när nästa nå når nə obrigada obrigado och också od oder oggi ogsaa
+    også oi olan oleh oli olmasa olub olá ond onde onek oni onko onlar ontem onze oor opo oppnar
+    ora ovat paano pabo pada paini paket paki pakiusap paling paljonko pamoja panjenengan parben
+    parbo parchi parchina pela pelo pengin pentru perche peux peyechi pira piye più plis poate
+    pob poco pode podem por porque poti pourquoi preciso prosim pryd puede pueden punika punya
+    pwy până quand quando quero questa questo quiero rhaid rhywbeth roedd saan saat sahaja saja
+    saka saking samo sampai sampeyan sampun sangat sapa sathe saya scusa sebelum sedaj sedang
+    sekali sekarang semasa sempre semua semula sesudah sesuk setelah shathe shob shomossa siapa
+    siapakah sich siella siellä sila silakan sina sini sinua sinulle sinun sinä sisi siya siz
+    skal skicka skulle smo sobre soko somossa sono sonra sparningen spårningen stato ste sua
+    sudah sul sulla sulle sunt sut sydd são säger să sən taalla tader tafadhali tahole takk tama
+    taman tambem também tanaan tapi tarde tayo teidän telah tena tengo tenho tentang tetapi
+    theke tidak tiene tienen tolong tomar tomra tous toute trebuie très três tudi tudo tulung
+    tumi tuo tva tvoj tvoja två tá tämä tämän tänään täällä ucun uga ugi uit unde unrhyw untuk
+    upp uppdaterats utawa utawi valo vandag var vas vaš ved venligst vennligst veut veux vill
+    vipi voces você vocês voglio voisitko voitko voor vores vorrei vous vrea vreau vse vya våre
+    vă və waar waarom wae wakati wala wangu wann wanneer wao wapi wedi welche werden wewe wij
+    wir wird worden wordt wrth wurde yake yako yalniz yalnız yangu ydy yeye yfory yma yn yna
+    yote yox yoxdur yw zaidi zakaj zal zdaj zij zijn zum zur är återbetala återbetalning çox è é
+    être în öppnar üçün če și ți əgər
 """.split())
 
 _WORD = re.compile(r"[^\W\d_]+", re.UNICODE)

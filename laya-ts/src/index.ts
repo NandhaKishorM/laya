@@ -37,7 +37,8 @@ export {
   HOOK_EVENTS,
 } from "./hooks.js";
 export type { Hook, HookEvent, HookArg, PredictHook, PredictHookArg } from "./hooks.js";
-export { triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions } from "./presets.js";
+export { triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions, presetLabels, triageLabels } from "./presets.js";
+export type { PresetName } from "./presets.js";
 export {
   decide,
   planFromJsonSchema,

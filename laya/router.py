@@ -944,7 +944,7 @@ class Router(HookRegistry):
                 # Too few non-English letters to count alone: `analyse` routed it on four or more
                 # words with no English function word and some evidence of another language (#54).
                 evidence = ("a non-English letter" if det["diacritic_rate"]
-                            else "two function words of other languages")
+                            else "function words of other languages")
                 reason = ("Latin script, language not identified; no English function word, but %s; "
                           "not safe for the English checkpoint" % evidence)
             else:

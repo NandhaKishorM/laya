@@ -31,6 +31,8 @@ from transformers import AutoTokenizer
 from laya.agent import _fix_tokenizer_config
 from laya.common import (
     QTYPES,
+    TEMP_MAX,
+    TEMP_MIN,
     build_model,
     build_sequence,
     proper_reward,
@@ -151,7 +153,7 @@ def fit_one_temp(sel):
         return loss
 
     opt.step(closure)
-    return float(torch.clamp(log_t.exp(), 0.1, 10.0).item())
+    return float(torch.clamp(log_t.exp(), TEMP_MIN, TEMP_MAX).item())
 
 
 def main():

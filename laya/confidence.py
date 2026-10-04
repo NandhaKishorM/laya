@@ -206,20 +206,41 @@ def apply_confidence_gate(results: List[Dict[str, Any]], min_confidence: Optiona
     if min_confidence is None:
         return
     is_map = isinstance(min_confidence, dict)
-    flag_low_confidence(results, min_confidence)
+
+    # The answers this gate is about, gathered once so the flag can be cleared and the state
+    # written in one pass.
+    gated: List[Dict[str, Any]] = []
     for res in results:
         answers = res.get("answers") if isinstance(res, dict) else None
         if not isinstance(answers, dict):
             continue
         for a in answers.values():
-            if not isinstance(a, dict):
-                continue
-            if a.get("low_confidence"):
-                a["abstention"] = GATE_ABSTAINED
-            elif _gate_confidence(a) is None:
-                a["abstention"] = GATE_UNEVALUATED
-            else:
-                a["abstention"] = GATE_PASSED
-            # With a per-bucket map, echo the threshold this answer's bucket was actually gated at.
-            a["abstention_threshold"] = float(
-                resolve_min_confidence(a, min_confidence) if is_map else min_confidence)
+            if isinstance(a, dict):
+                gated.append(a)
+
+    # Clear the flag first, so that what this function reports is decided at THIS threshold and
+    # nowhere else. `flag_low_confidence` only ever adds the flag -- it sets `True` for a
+    # below-threshold answer and does nothing otherwise, which is right for a function whose
+    # docstring says the flag "is added" -- so a result dict already gated once kept its old
+    # `low_confidence: True` through a later, looser call. The two halves of the report then
+    # disagreed, because `abstention` below is computed fresh: re-gating an answer at 0.8 with 0.9
+    # and then 0.5 left `abstention: "abstained"` beside `abstention_threshold: 0.5`, a verdict at a
+    # threshold the answer never failed (#910).
+    #
+    # Clearing here rather than inside `flag_low_confidence` keeps that function's contract as
+    # written, and this function already owns writing the gate's state onto the answers.
+    for a in gated:
+        a.pop("low_confidence", None)
+
+    flag_low_confidence(results, min_confidence)
+
+    for a in gated:
+        if a.get("low_confidence"):
+            a["abstention"] = GATE_ABSTAINED
+        elif _gate_confidence(a) is None:
+            a["abstention"] = GATE_UNEVALUATED
+        else:
+            a["abstention"] = GATE_PASSED
+        # With a per-bucket map, echo the threshold this answer's bucket was actually gated at.
+        a["abstention_threshold"] = float(
+            resolve_min_confidence(a, min_confidence) if is_map else min_confidence)

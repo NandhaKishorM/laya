@@ -217,6 +217,61 @@ apply_confidence_gate(zero, 0.0)
 check("gate/0.0 reports passed", zero[0]["answers"]["q_low"]["abstention"], GATE_PASSED)
 check_true("gate/0.0 still flags nothing", "low_confidence" not in zero[0]["answers"]["q_low"])
 
+# Re-gating: the report is decided at the threshold of THIS call, so a result dict that was already
+# gated keeps nothing from the earlier one. `flag_low_confidence` only ever adds its flag and
+# `abstention` was always computed fresh, so before this the two halves could disagree -- a re-gated
+# answer read `abstained` beside a threshold it had never failed (#910). A caller reuses result
+# dicts because the function mutates in place and returns None, so this is the normal way it is used.
+regated = fresh()
+apply_confidence_gate(regated, 0.80)
+
+regated_loose = copy.deepcopy(regated)
+apply_confidence_gate(regated_loose, 0.30)
+check("gate/re-gated looser: the previously-flagged answer passes",
+      regated_loose[0]["answers"]["q_low"]["abstention"], GATE_PASSED)
+check_true("gate/re-gated looser: its flag is gone",
+           "low_confidence" not in regated_loose[0]["answers"]["q_low"])
+check("gate/re-gated looser: echoes the new threshold",
+      regated_loose[0]["answers"]["q_low"]["abstention_threshold"], 0.30)
+
+# ...and it lands on exactly the state a fresh dict at that threshold gets, which is the property
+# that makes the report trustworthy: same answer, same threshold, same three fields.
+fresh_loose = fresh()
+apply_confidence_gate(fresh_loose, 0.30)
+check("gate/re-gated looser matches a fresh gate",
+      {k: v for k, v in regated_loose[0]["answers"]["q_low"].items()},
+      {k: v for k, v in fresh_loose[0]["answers"]["q_low"].items()})
+
+# The reverse direction must keep abstaining, or the clearing would be a pass-through
+regated_tight = copy.deepcopy(fresh())
+apply_confidence_gate(regated_tight, 0.30)
+apply_confidence_gate(regated_tight, 0.80)
+check("gate/re-gated tighter abstains", regated_tight[0]["answers"]["q_low"]["abstention"],
+      GATE_ABSTAINED)
+check("gate/re-gated tighter is flagged", regated_tight[0]["answers"]["q_low"]["low_confidence"], True)
+
+# A 0.0 re-gate runs the gate and nothing can fail, so it clears -- and it must still agree with a
+# fresh 0.0 gate, which the no-op in `flag_low_confidence` is what produces
+regated_zero = copy.deepcopy(fresh())
+apply_confidence_gate(regated_zero, 0.80)
+apply_confidence_gate(regated_zero, 0.0)
+check("gate/re-gated at 0.0 reports passed",
+      regated_zero[0]["answers"]["q_low"]["abstention"], GATE_PASSED)
+check_true("gate/re-gated at 0.0 flags nothing",
+           "low_confidence" not in regated_zero[0]["answers"]["q_low"])
+
+# A per-bucket map re-gate has the same property: the flag is decided at the map's threshold for
+# that answer's own bucket, not at whatever the earlier call used. `default` stands in for the
+# bucket, because the fixture answers carry no option count for a `choice:N` key to match on.
+map_regated = fresh()
+apply_confidence_gate(map_regated, {"default": 0.80})
+apply_confidence_gate(map_regated, {"default": 0.30})
+check("gate/re-gated with a map passes", map_regated[0]["answers"]["q_low"]["abstention"], GATE_PASSED)
+check_true("gate/re-gated with a map clears the flag",
+           "low_confidence" not in map_regated[0]["answers"]["q_low"])
+check("gate/re-gated with a map echoes the map threshold",
+      map_regated[0]["answers"]["q_low"]["abstention_threshold"], 0.30)
+
 # A non-finite or missing confidence is skipped by `flag_low_confidence`, so it is not an
 # abstention. It is also not a pass: the gate ran and could not decide, which is the state Argo
 # Rollouts ships as `Inconclusive` and the one collapsing it into success would be the same lie

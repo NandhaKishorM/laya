@@ -25,6 +25,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SCRIPT_SUITES = [
+    "tests/test_comparison.py",
+    "tests/test_comparison_models.py",
     "tests/test_router.py",
     "tests/test_criteria.py",
     "tests/test_batch.py",

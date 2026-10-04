@@ -57,6 +57,8 @@ def int8_output_path(output_path: str) -> str:
 def export_to_onnx(model_id_or_path: str, output_path: str):
     print(f"Loading PyTorch Agent from: {model_id_or_path}")
     agent = Agent(model_id_or_path, compile=False, device="cpu")
+    from laya._residual import reject_unsupported_backend
+    reject_unsupported_backend(agent.model, "ONNX export")
     
     print("Creating dummy input tensors...")
     # 1. Dummy tensors for tracing. torch.export specialises any dimension that is 1 (or equal

@@ -16,6 +16,7 @@ nav:
       - docker-platforms.md
       - security.md
   - Fine-tuning:
+      - residual-adapters.md
       - finetune.md
       - finetune_browser_agent.md
   - reference

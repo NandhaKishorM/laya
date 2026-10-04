@@ -41,6 +41,8 @@ _cudagraph_lock = threading.Lock()
 
 def compile_model(model, **kwargs):
     """`torch.compile(model, dynamic=True)`; `kwargs` go to `torch.compile` (tests pass `backend=`)."""
+    from ._residual import reject_unsupported_backend
+    reject_unsupported_backend(model, "torch.compile")
     return torch.compile(model, dynamic=True, **kwargs)
 
 

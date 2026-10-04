@@ -29,6 +29,7 @@ import urllib.request
 import urllib.parse
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+from ..hooks import HookArg
 from ..router import Router
 from ..serve import BODY_CONTROLS, BODY_REFUSALS
 
@@ -196,7 +197,7 @@ class RemoteRouter(Router):
         hooks_timeout: Optional[float] = None,
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
-        hooks=None,
+        hooks: HookArg = None,
     ) -> List[Dict[str, Any]]:
         """One ``/v1/systemone`` call per request, answers in input order.
 

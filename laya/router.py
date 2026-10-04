@@ -38,8 +38,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from .confidence import apply_confidence_gate, check_min_confidence
 from .hooks import (
-    HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch, normalise_hooks,
-    validate_timeout,
+    HookArg, HookRegistry, PredictContext, aggregate_usage, compose_hooks, dispatch,
+    normalise_hooks, validate_timeout,
 )
 from .hooks import _SKIP_DEFAULTS
 from .lang import analyse
@@ -1167,7 +1167,7 @@ class Router(HookRegistry):
         self,
         requests: Sequence[Dict[str, Any]],
         hooks_timeout: Optional[float] = None,
-        hooks=None,
+        hooks: HookArg = None,
     ) -> List[RouteDecision]:
         """Route a heterogeneous request batch without loading any checkpoints.
 
@@ -1183,9 +1183,9 @@ class Router(HookRegistry):
                 ``questions``.
             hooks_timeout: Override the Router's ``hooks_timeout`` for this call, applied to
                 every request's ``on_route`` dispatch, as on :meth:`route`.
-            hooks: Per-call hooks, appended after any installed on the Router and applied to
-                every request's ``on_route`` dispatch, as on :meth:`route`. ``None`` and ``[]``
-                add nothing.
+            hooks (HookArg): Per-call hooks, appended after any installed on the Router and
+                applied to every request's ``on_route`` dispatch, as on :meth:`route`. ``None``
+                and ``[]`` add nothing.
         """
         if not isinstance(requests, SequenceABC) or isinstance(requests, (str, bytes)):
             raise TypeError("requests must be a sequence of request dictionaries")
@@ -1228,7 +1228,7 @@ class Router(HookRegistry):
         hooks_timeout: Optional[float] = None,
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
-        hooks=None,
+        hooks: HookArg = None,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -1266,9 +1266,9 @@ class Router(HookRegistry):
                 group pads to a shorter maximum; see ``Agent.predict_batch``. Results retain the
                 input order either way. Silently dropped for an attached agent whose
                 ``predict_batch`` predates the knob (#294).
-            hooks: Per-call hooks, composed the same way as on :meth:`predict`: installed
-                hooks first, then this list. ``None`` and ``[]`` add nothing. The list runs
-                for every request, including ``on_route`` inside :meth:`route_batch`.
+            hooks (HookArg): Per-call hooks, composed the same way as on :meth:`predict`:
+                installed hooks first, then this list. ``None`` and ``[]`` add nothing. The
+                list runs for every request, including ``on_route`` inside :meth:`route_batch`.
 
         Returns:
             One normal Router prediction result per request, in the same order as the input.

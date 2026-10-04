@@ -35,6 +35,7 @@ SCRIPT_SUITES = [
     "tests/test_state_budget.py",
     "tests/test_hooks.py",
     "tests/test_hooks_api.py",
+    "tests/test_presets.py",
     "tests/test_structured.py",
     "tests/test_structured_api.py",
     "tests/test_structured_docs.py",

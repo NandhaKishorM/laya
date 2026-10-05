@@ -248,6 +248,93 @@ describe("Router.routeBatch / predictBatch", () => {
     ]);
   });
 
+  // The rest of the per-call hook surface `predict` takes, which the batch path used to drop
+  // without a word: `onPredictStart`, `onPredictEnd` and `hooksRaise` were accepted by
+  // `PredictBatchOptions`' siblings but ignored here, so a caller passing them got no hook and no
+  // error (#935).
+  it("honours per-call onPredictStart and onPredictEnd, not just hooks", async () => {
+    const order: string[] = [];
+    const { router } = makeRouter({});
+    const items = [req("one", { model: "english" }), req("two", { model: "english" })];
+    await router.predictBatch(items, null, {
+      onPredictStart(ctx: never) {
+        order.push(`start:${(ctx as { states: unknown[] }).states[0]}`);
+      },
+      onPredictEnd(ctx: never) {
+        order.push(`end:${(ctx as { states: unknown[] }).states[0]}`);
+      },
+    });
+    // one start/end per request, which is the documented per-request lifecycle on this path
+    expect(order).toEqual(["start:one", "start:two", "end:one", "end:two"]);
+  });
+
+  it("appends per-call callbacks after per-call hooks, the composition predict uses", async () => {
+    const order: string[] = [];
+    const { router } = makeRouter({ installedMarker: true } as never);
+    await router.predictBatch([req("s", { model: "english" })], null, {
+      hooks: [{
+        onPredictStart() {
+          order.push("hooks");
+        },
+      }],
+      onPredictStart() {
+        order.push("onPredictStart");
+      },
+    });
+    expect(order).toEqual(["hooks", "onPredictStart"]);
+  });
+
+  it("lets a per-call hooksRaise override the router-level flag", async () => {
+    // The router raises by default, so a per-call `false` is only observable if it takes effect:
+    // a hook that throws must be swallowed instead of failing the call.
+    const throwing = {
+      onPredictEnd() {
+        throw new Error("hook blew up");
+      },
+    };
+
+    const raises = makeRouter({ hooks: [throwing] });
+    await expect(raises.router.predictBatch([req("s", { model: "english" })])).rejects.toThrow(
+      "hook blew up",
+    );
+
+    const quiet = makeRouter({ hooks: [throwing] });
+    const results = await quiet.router.predictBatch([req("s", { model: "english" })], null, {
+      hooksRaise: false,
+    });
+    expect(results.map((r) => r.answers.seen)).toEqual(["s"]);
+  });
+
+  it("lets a per-call hooksRaise turn raising on where the router has it off", async () => {
+    const throwing = {
+      onPredictEnd() {
+        throw new Error("hook blew up");
+      },
+    };
+    const quiet = makeRouter({ hooks: [throwing], hooksRaise: false });
+    // router-level off: the call succeeds
+    expect((await quiet.router.predictBatch([req("s", { model: "english" })])).length).toBe(1);
+
+    const loud = makeRouter({ hooks: [throwing], hooksRaise: false });
+    await expect(
+      loud.router.predictBatch([req("s", { model: "english" })], null, { hooksRaise: true }),
+    ).rejects.toThrow("hook blew up");
+  });
+
+  it("predictMany honours the same per-call callbacks, since it forwards to predictBatch", async () => {
+    const order: string[] = [];
+    const { router } = makeRouter({});
+    await router.predictMany([req("s", { model: "english" })], null, {
+      onPredictStart() {
+        order.push("start");
+      },
+      onPredictEnd() {
+        order.push("end");
+      },
+    });
+    expect(order).toEqual(["start", "end"]);
+  });
+
   it("runs router hooks per request and short-circuits skipped requests", async () => {
     const events: string[] = [];
     const { router, calls } = makeRouter({

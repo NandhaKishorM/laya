@@ -158,9 +158,18 @@ export interface RouteOptions {
  * Per-call options for `Router.predictBatch` / `predictMany` / `routeBatch`.
  * `hooks` is composed the same way as on `predict`: installed hooks first, then this list.
  * `null`, `undefined` and `[]` add nothing.
+ *
+ * `onPredictStart`, `onPredictEnd` and `hooksRaise` are the rest of the per-call hook surface
+ * `predict` takes, and they mean the same thing here: the two callbacks are appended after
+ * `hooks` in the same composition order, and `hooksRaise` overrides the router-level flag for
+ * this call only. They were accepted by `predict` and silently dropped by the batch path, so a
+ * caller passing them got no hook and no error (#935).
  */
 export interface PredictBatchOptions {
   hooks?: HookArg;
+  onPredictStart?: PredictHook;
+  onPredictEnd?: PredictHook;
+  hooksRaise?: boolean;
 }
 
 /** One item of a Router.predictBatch/routeBatch batch: state, questions, route overrides. */
@@ -762,8 +771,12 @@ export class Router extends HookRegistry {
     }
 
     const results: (RoutedResult | null)[] = new Array(requests.length).fill(null);
-    const active = composeHooks(this.hooks, opts.hooks);
-    const raiseErrors = this.hooksRaise;
+    // The same composition `predict` uses at its own dispatch site -- per-call callbacks after
+    // per-call hooks, both after the installed ones -- and the same per-call override of the
+    // router's `hooksRaise`. Composing only `opts.hooks` here meant a per-call `onPredictStart`,
+    // `onPredictEnd` or `hooksRaise` was discarded without a word (#935).
+    const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
+    const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
 
     for (const [modelName, indices] of groups) {
       const agent = (await this.load(modelName)) as {

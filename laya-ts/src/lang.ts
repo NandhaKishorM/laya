@@ -1,3 +1,5 @@
+import { FOREIGN_WORDS } from "./foreign-words.js";
+
 type ScriptRanges = Array<[string, Array<[number, number]>]>;
 
 const SCRIPT_RANGES: ScriptRanges = [
@@ -76,7 +78,10 @@ const STOP: Record<string, Set<string>> = {
     "nel", "nell", "negli", "sul", "sulla", "sulle", "dal", "dalla", "dallo", "dagli", "dei",
     "delle", "dello", "degli", "agli", "alle", "col"]),
   nl: new Set(["het", "een", "van", "is", "op", "te", "dat", "niet", "met", "voor", "zijn", "aan",
-    "door", "maar", "ook", "worden", "deze", "naar", "wordt"]),
+    "door", "maar", "ook", "worden", "deze", "naar", "wordt",
+    "mijn", "ik", "mij", "jij", "jouw", "uw", "zij", "wij", "hij", "hem", "haar", "onze",
+    "hun", "alsjeblieft", "alstublieft", "graag", "heb", "hebt", "heeft", "kun", "zal", "geen", "bij",
+    "tot", "welke", "waarom", "morgen", "er"]),
   // Keep Swedish routing in parity with Python. Distinctive words help ASCII-normalised ticket text;
   // shared Nordic words are tracked separately so Danish and Norwegian are not named Swedish.
   sv: new Set(["jag", "är", "och", "inte", "att", "från", "till", "behöver", "får", "skulle", "ska",
@@ -89,7 +94,10 @@ const STOP: Record<string, Set<string>> = {
     "blivit", "debiterade", "appen"]),
   ro: new Set(["și", "să", "este", "sunt", "care", "pentru", "din", "dar", "după", "până", "fără",
     "ale", "lui", "în", "fost", "acum", "vreau", "trebuie", "foarte", "acest", "această",
-    "acesta", "aceasta", "mi", "ți", "vă", "nu"]),
+    "acesta", "aceasta", "mi", "ți", "vă", "nu",
+    "despre", "cum", "rog", "cu", "mea", "mei", "azi", "astazi", "cand", "poti", "unde",
+    "cine", "cate", "cati", "imi", "iti", "vrea", "poate", "pot", "fara", "dupa", "pana", "maine", "aici",
+    "acolo"]),
   // Romanized Bangla ("Banglish"): how Bangla is typed in chats, tickets and email when no Bengali
   // keyboard is at hand. It has no diacritics, so without a list it read as undecided-but-English
   // and went to the English checkpoint, which scores 0.08 on Bangla at 0.94 confidence.
@@ -108,6 +116,67 @@ const STOP: Record<string, Set<string>> = {
     "var", "yox", "yoxdur", "mən", "sən", "biz", "siz", "onlar", "daha", "çox", "cox",
     "hər", "nə", "kimi", "görə", "sonra", "əgər", "eger", "deyil", "lakin", "amma",
     "ancaq", "artıq", "artiq", "də", "isə", "həm", "yalnız", "yalniz"]),
+  // Plain-ASCII languages that had no list (#54); laya/lang.py says what was left out and why.
+  id: new Set(["yang", "untuk", "dengan", "dari", "ke", "ini", "itu", "saya", "aku", "kamu", "anda",
+    "dia", "kami", "kita", "mereka", "apa", "apakah", "bagaimana", "kapan", "dimana", "mana", "siapa",
+    "berapa", "tidak", "bukan", "akan", "sudah", "belum", "sedang", "bisa", "dapat", "harus", "mau",
+    "ingin", "tolong", "juga", "atau", "tetapi", "tapi", "pada", "dalam", "oleh", "karena", "jika",
+    "kalau", "ada", "semua", "lagi", "saja", "nya", "besok", "sekarang", "tentang", "kepada", "daripada",
+    "mengapa", "kenapa", "silakan", "bisakah", "dapatkah", "sesudah", "sebelum", "setelah", "hingga",
+    "sampai", "sangat", "lebih", "paling", "masih", "hanya", "punya", "kalian", "saat", "ketika",
+    "sini"]),
+  ms: new Set(["yang", "untuk", "dengan", "dari", "ke", "ini", "itu", "saya", "aku", "awak", "anda",
+    "dia", "kami", "kita", "mereka", "apa", "adakah", "bagaimana", "bila", "mana", "siapa", "berapa",
+    "tidak", "tak", "bukan", "akan", "sudah", "telah", "boleh", "mahu", "hendak", "tolong", "juga",
+    "atau", "tetapi", "pada", "dalam", "oleh", "kerana", "jika", "kalau", "ada", "semua", "lagi",
+    "sahaja", "esok", "sekarang", "berapakah", "kepada", "daripada", "bilakah", "semula", "kenapa",
+    "mengapa", "siapakah", "dimanakah", "manakah", "sekali", "pun", "sangat", "lebih", "paling", "masih",
+    "hanya", "punya", "kalian", "semasa", "ketika", "sini"]),
+  jv: new Set(["aku", "kowe", "sampeyan", "dheweke", "iki", "kuwi", "iku", "lan", "karo", "ing",
+    "menyang", "saka", "kanggo", "apa", "piye", "kepiye", "kapan", "endi", "sapa", "pira", "ora", "wis",
+    "durung", "arep", "bakal", "isa", "iso", "bisa", "gelem", "tulung", "uga", "utawa", "nanging", "ana",
+    "kabeh", "maneh", "wae", "mung", "kang", "sing", "ning", "neng", "nang", "sesuk", "saiki", "opo",
+    "ku", "kula", "soko", "babagan", "dadi", "kanthi", "menawa", "pengin", "sampun", "mboten", "nggih",
+    "kulo", "panjenengan", "niki", "menika", "punika", "saking", "dhateng", "kaliyan", "ugi", "utawi",
+    "luwih"]),
+  sw: new Set(["wa", "za", "kwa", "katika", "hii", "hiyo", "huu", "hizi", "mimi", "wewe", "yeye", "sisi",
+    "nyinyi", "wao", "nini", "vipi", "lini", "wapi", "nani", "ngapi", "sana", "tafadhali", "kwamba",
+    "lakini", "kama", "bado", "tena", "pia", "yote", "kila", "leo", "kesho", "yangu", "yako", "yake",
+    "wangu", "wako", "kwenye", "cha", "vya", "gani", "kutoka", "kuhusu", "zaidi", "hivi", "kuna",
+    "nataka", "ninataka", "naomba", "sasa", "pamoja", "ndiyo", "hapana", "asante", "ndani", "nje", "hapa",
+    "pale", "wakati", "kabla", "baada", "ili"]),
+  tl: new Set(["ang", "ng", "mga", "ay", "ako", "ikaw", "ka", "siya", "kami", "tayo", "sila", "ko",
+    "niya", "namin", "natin", "nila", "ito", "iyan", "iyon", "ano", "paano", "kailan", "saan", "sino",
+    "ilan", "hindi", "oo", "po", "naman", "lang", "rin", "ngayon", "bukas", "kung", "mayroon", "wala",
+    "gusto", "paki", "pakiusap"]),
+  af: new Set(["en", "nie", "ek", "jy", "hy", "sy", "ons", "julle", "hulle", "vir", "uit", "oor",
+    "wat", "hoe", "wanneer", "waar", "hoeveel", "asseblief", "kan", "sal", "moet", "wil", "gaan",
+    "dit", "hierdie", "daardie", "nog", "vandag", "môre"]),
+  cy: new Set(["yr", "yn", "gyda", "wrth", "oes", "ydy", "yw", "roedd", "bydd", "fy", "dy", "eich",
+    "beth", "sut", "pryd", "ble", "pwy", "faint", "dim", "ddim", "ond", "neu", "hefyd", "nawr", "heddiw",
+    "yfory", "chi", "ti", "nhw", "fe", "gan", "efo", "yma", "gyfer", "sydd", "dwi", "unrhyw", "wedi",
+    "gallu", "eisiau", "isio", "fyddai", "rhaid", "chdi", "fo", "hwn", "hon", "hyn", "yna", "rhywbeth",
+    "pob", "mwy", "iawn", "diolch", "plis"]),
+  da: new Set(["jeg", "hun", "ham", "hende", "jer", "dine", "hendes", "vores", "jeres", "deres", "og",
+    "af", "til", "ved", "hos", "før", "mellem", "hvad", "hvem", "hvor", "hvornår", "hvornaar", "hvordan",
+    "hvorfor", "hvilken", "hvilket", "hvilke", "er", "havde", "kunne", "skal", "ikke", "venligst",
+    "imorgen", "denne", "dette", "disse", "noget", "nogen", "også", "ogsaa", "meget", "mere", "kun",
+    "paa"]),
+  nb: new Set(["jeg", "hun", "dere", "meg", "deg", "ham", "dine", "våre", "deres", "og", "til", "ved",
+    "hos", "etter", "før", "mellom", "hva", "hvem", "hvor", "når", "hvordan", "hvorfor", "hvilken",
+    "hvilket", "hvilke", "er", "hadde", "kunne", "skal", "ikke", "nei", "takk", "vennligst", "nå",
+    "imorgen", "denne", "dette", "disse", "noe", "noen", "også", "mye", "kun"]),
+  fi: new Set(["minä", "mina", "sinä", "sina", "hän", "minun", "sinun", "hänen", "hanen", "meidän",
+    "teidän", "heidän", "minulle", "sinulle", "minua", "sinua", "mitä", "mita", "mikä", "mika", "missä",
+    "missa", "mistä", "mista", "mihin", "milloin", "miten", "kuinka", "kuka", "kenen", "miksi",
+    "paljonko", "onko", "voitko", "voisitko", "haluan", "haluaisin", "ole", "oli", "ovat", "tai", "mutta",
+    "että", "etta", "jos", "kun", "myös", "myos", "nyt", "tänään", "tanaan", "huomenna", "kiitos",
+    "kaikki", "jotain", "joku", "tämä", "tama", "tämän", "taman", "nämä", "nama", "siellä", "siella",
+    "täällä", "taalla"]),
+  sl: new Set(["jaz", "ona", "oni", "moj", "moja", "moje", "tvoj", "tvoja", "njegov", "njen", "naš",
+    "vaš", "vas", "kaj", "kdo", "kje", "kdaj", "kako", "zakaj", "koliko", "kateri", "katera", "katero",
+    "sem", "smo", "ste", "bo", "bom", "bi", "ker", "če", "z", "iz", "od", "pri", "prosim", "hvala",
+    "danes", "jutri", "zdaj", "sedaj", "tudi", "samo", "vse", "nekaj"]),
 };
 
 const NON_EN_DIACRITICS = new Set(
@@ -151,6 +220,9 @@ const SHARED_WORDS: Set<string> = (() => {
 const NORDIC_OVERLAP_WORDS = new Set(["hej", "ja", "nej", "jo", "tack", "mig", "min", "om", "kommer", "får", "skulle", "vi"]);
 for (const word of NORDIC_OVERLAP_WORDS) SHARED_WORDS.add(word);
 const EN_ONLY_WORDS = new Set([...STOP["en"]].filter((w) => !SHARED_WORDS.has(w)));
+// Every word a non-English list holds. In undecided text of four or more words, two different ones are
+// evidence of another language, and so is one in FOREIGN_WORDS, which English text never uses (#54).
+const OTHER_WORDS = new Set(Object.entries(STOP).filter(([lg]) => lg !== "en").flatMap(([, ws]) => [...ws]));
 
 // Short support fragments need a narrower vocabulary than the general four-word language guess.
 // Generic words such as "fel" and "hjälp" are deliberately omitted from this subset.
@@ -306,6 +378,7 @@ export interface LatinProfile {
   englishHits: number;
   diacriticRate: number;
   looksNonEnglish: boolean;
+  otherEvidence: boolean;
 }
 
 export function latinProfile(text: string): LatinProfile {
@@ -322,10 +395,13 @@ export function latinProfile(text: string): LatinProfile {
   const nordicOverlap = words.some((w) => NORDIC_OVERLAP_WORDS.has(w)) &&
     !words.some((w) => EN_ONLY_WORDS.has(w));
   if (words.length > 1 && words.length < 4 && words.some((w) => SHORT_SWEDISH_WORDS.has(w))) {
-    return { language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
+    return { language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish, otherEvidence: false };
   }
   if (words.length < 4) {
-    return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap };
+    return {
+      language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap,
+      otherEvidence: false,
+    };
   }
   const scores: Record<string, number> = {};
   for (const [lg, sw] of Object.entries(STOP)) {
@@ -355,7 +431,13 @@ export function latinProfile(text: string): LatinProfile {
   } else if (en && (!nonEnglish || englishRescuedByWords(wordSet, diacRate))) {
     lang = "en";
   }
-  return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish || (lang === null && nordicOverlap) };
+  // a non-English letter too rare for the rate counts as evidence too
+  const otherWords = [...wordSet].filter((w) => OTHER_WORDS.has(w));
+  const otherEvidence = diac > 0 || otherWords.length >= 2 || otherWords.some((w) => FOREIGN_WORDS.has(w));
+  return {
+    language: lang, englishHits: en, diacriticRate: diacRate,
+    looksNonEnglish: nonEnglish || (lang === null && nordicOverlap), otherEvidence,
+  };
 }
 
 export function guessLatinLanguage(text: string): string | null {
@@ -479,7 +561,8 @@ function analyseText(text: string): AnalyseResult {
   const profLat = latinProfile(text);
   const lang = profLat.language;
   const undecided = lang === null;
-  const english = lang === "en" || (undecided && !profLat.looksNonEnglish);
+  // Undecided text with evidence of another language is not English either (#54), see laya/lang.py.
+  const english = lang === "en" || (undecided && !profLat.looksNonEnglish && !profLat.otherEvidence);
   return {
     script: "latin", scriptProfile: prof, language: lang,
     isEnglish: english, languageUndecided: undecided,

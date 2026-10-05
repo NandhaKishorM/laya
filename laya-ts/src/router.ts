@@ -1,4 +1,4 @@
-import { analyse, type AnalyseResult } from "./lang.js";
+import { NON_EN_DIACRITIC_RATE, analyse, type AnalyseResult } from "./lang.js";
 import type { PredictOptions, QuestionDef, SystemOneResult } from "./agent.js";
 import { checkMinConfidence, flagLowConfidence } from "./common.js";
 import { decide, type DecideOptions, type DecisionResult } from "./structured.js";
@@ -550,6 +550,13 @@ export class Router extends HookRegistry {
           `(${JSON.stringify(det.mixedSegment.slice(0, 60))}); the English checkpoint cannot read it`;
       } else if (det.language) {
         reason = `Latin script but language looks like ${JSON.stringify(det.language)}, not English`;
+      } else if (det.diacriticRate < NON_EN_DIACRITIC_RATE) {
+        // Too few non-English letters to count alone: `analyse` routed it on four or more words with no
+        // English function word and some evidence of another language (#54).
+        const evidence = det.diacriticRate ? "a non-English letter" : "function words of other languages";
+        reason =
+          `Latin script, language not identified; no English function word, but ${evidence}; ` +
+          "not safe for the English checkpoint";
       } else {
         reason =
           `Latin script, language not identified but ${Math.round(100 * det.diacriticRate)}% ` +

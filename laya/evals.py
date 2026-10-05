@@ -596,8 +596,12 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
     # key order there would render a later row with an earlier row's positional `criteria`
     # order and silently move the metric. Gate the fold on the call shape: `sort_keys=True`
     # for per-request runners, `sort_keys=False` (insertion order significant) for positional
-    # ones -- exactly the rule `Router._question_schema` and `_canonical` above keep. A
-    # list-valued `criteria` is positional on both paths, and `sort_keys` leaves lists alone.
+    # ones. This is a harness-side grouping relaxation and it is looser than core, which never
+    # relaxes: both `Router._question_schema` and `_canonical` above hash `sort_keys=False`
+    # unconditionally. On the per-request path two key orderings that share one harness chunk
+    # can therefore still split into separate groups inside the Router, which costs throughput
+    # and never correctness, because each request carries its own `questions`. A list-valued
+    # `criteria` is positional on both paths, and `sort_keys` leaves lists alone.
     folded = batch_form == _BATCH_REQUESTS
     chunk_signatures = [json.dumps(dict(sorted((example.questions or {}).items())),
                                    sort_keys=folded, default=str)

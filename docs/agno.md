@@ -17,6 +17,8 @@ Supports both **local in-process inference** (`Agent` or `Router`) and **remote 
 pip install "laya[agno]"
 ```
 
+Requires **`agno>=1.0.0`** (the version that introduced `Team(members=..., mode=TeamMode.route)`).
+
 ---
 
 ## 1. Sub-35ms Agent & Team Routing (`LayaAgnoRouter`)
@@ -26,6 +28,7 @@ In Agno multi-agent teams configured with `Team(mode="route")`, a leader LLM eva
 ```python
 from agno.agent import Agent
 from agno.team import Team
+from agno.team.mode import TeamMode
 from laya.integrations.agno import LayaAgnoRouter
 
 # Define specialized worker agents
@@ -56,11 +59,11 @@ router = LayaAgnoRouter(
 query = "Write a Python function to reverse a linked list and handle edge cases."
 
 # Route and select agent in ~33ms:
-decision = router.route(query, agents)
+decision = router.route(query, agents)  # or equivalently: router.run(query, agents)
 print(f"Routed to: {decision.name} (Role: {decision.role}, Confidence: {decision.confidence:.3f})")
 
-# Direct Agno Team helper:
-team = Team(agents=agents, mode="route")
+# Direct Agno Team helper — note: current Agno uses members=, not agents=:
+team = Team(members=agents, mode=TeamMode.route)
 team_decision = router.route_team(query, team)
 print(f"Team decision: {team_decision.name}")
 ```

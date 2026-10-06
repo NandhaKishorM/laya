@@ -124,7 +124,7 @@ print(f"Reason: {decision.reason}")
 # Directly pass an Agno Team instance with specialist agents:
 
 team = AgnoTeam(
-    agents=[financial_agent, coder_agent, writer_agent],
+    members=[financial_agent, coder_agent, writer_agent],
     mode="route",
 )
 

@@ -62,13 +62,19 @@ except ImportError:
 
     @dataclass
     class AgnoTeam:  # type: ignore[no-redef]
-        """Lightweight shim when ``agno`` is not installed."""
-        agents: List[Any] = None  # type: ignore[assignment]
+        """Lightweight shim when ``agno`` is not installed.
+
+        Uses ``members`` to match the current Agno ``Team`` contract
+        (``Team(members=[...], mode=TeamMode.route)``).  The legacy field
+        name ``agents`` is accepted in :meth:`route_team` for compatibility
+        with older hand-crafted dicts or mocked objects.
+        """
+        members: List[Any] = None  # type: ignore[assignment]
         mode: str = "route"
 
         def __post_init__(self):
-            if self.agents is None:
-                self.agents = []
+            if self.members is None:
+                self.members = []
 
 
 # ---------------------------------------------------------------------------
@@ -583,20 +589,47 @@ class LayaAgnoRouter:
         message: Any,
         team: AgnoTeam,
     ) -> AgnoRouteDecision:
-        """Convenience wrapper: route *message* using agents from an ``AgnoTeam``.
+        """Convenience wrapper: route *message* using members from an ``AgnoTeam``.
 
-        This is a thin call through to :meth:`route` using ``team.agents``.
-        If *team* carries no agents a :exc:`ValueError` is raised.
+        Reads ``team.members`` (the current Agno ``Team`` contract, ``agno>=1.0.0``)
+        with a compat fallback to ``team.agents`` for hand-crafted mocks or test
+        objects using the old attribute name.  Members may also be a callable factory
+        (Agno supports dynamic member lists); it is called with no arguments.
 
         Args:
             message: The message to route.
-            team: An ``AgnoTeam`` instance whose ``.agents`` list is used as the
-                candidate pool.
+            team: An ``AgnoTeam`` instance (``Team(members=[...], mode=TeamMode.route)``).
 
         Returns:
             :class:`AgnoRouteDecision` with the selected agent and confidence.
         """
-        agents = getattr(team, "agents", None) or []
+        # Primary: current Agno Team API (>=1.0.0) uses .members
+        members = getattr(team, "members", None)
+        if not members:
+            # Compat fallback for hand-crafted dicts / mocks using the old .agents attribute
+            members = getattr(team, "agents", None) or []
+        # Agno supports a callable factory for dynamic member lists
+        if callable(members):
+            members = members()
+        return self.route(message, members)
+
+    def run(
+        self,
+        message: Any,
+        agents: Sequence[Union[AgnoAgent, Dict[str, Any], str, Any]],
+    ) -> AgnoRouteDecision:
+        """Route *message* and return the selected :class:`AgnoRouteDecision`.
+
+        Alias for :meth:`route`; provided so that ``LayaAgnoRouter`` follows
+        the ``agent.run()`` calling convention used throughout Agno.
+        """
+        return self.route(message, agents)
+
+    def __call__(
+        self,
+        message: Any,
+        agents: Sequence[Union[AgnoAgent, Dict[str, Any], str, Any]],
+    ) -> AgnoRouteDecision:
         return self.route(message, agents)
 
     async def aroute(
@@ -612,8 +645,20 @@ class LayaAgnoRouter:
         message: Any,
         team: AgnoTeam,
     ) -> AgnoRouteDecision:
-        """Asynchronously route *message* using agents from an ``AgnoTeam``."""
+        """Asynchronously route *message* using members from an ``AgnoTeam``."""
         return await asyncio.to_thread(self.route_team, message, team)
+
+    async def arun(
+        self,
+        message: Any,
+        agents: Sequence[Union[AgnoAgent, Dict[str, Any], str, Any]],
+    ) -> AgnoRouteDecision:
+        """Asynchronously route *message* without blocking the event loop.
+
+        Alias for :meth:`aroute`; provided to match Agno's ``agent.arun()``
+        calling convention.
+        """
+        return await asyncio.to_thread(self.route, message, agents)
 
 
 class LayaAgnoGuardrail:

@@ -192,11 +192,33 @@ check("router/name_2", dec2.name, "Coder")
 dec1 = router.route("Draft a blog post about machine learning", agents)
 check("router/agent_index_1", dec1.agent_index, 1)
 
-# route_team convenience method
-team_obj = AgnoTeam(agents=agents, mode="route")
+# route_team convenience method — current Agno API: members= (agno>=1.0.0)
+team_obj = AgnoTeam(members=agents, mode="route")
 dec_team = router.route_team("Find recent research papers on LLMs", team_obj)
 check("router/route_team_index", dec_team.agent_index, 0)
 check("router/route_team_name", dec_team.name, "Researcher")
+
+# route_team compat: older mocked objects may use .agents fallback
+class _OldStyleTeam:
+    def __init__(self, a):
+        self.agents = a
+        self.mode = "route"
+_old_team = _OldStyleTeam(agents)
+dec_old = router.route_team("Find recent research papers on LLMs", _old_team)
+check("router/route_team_compat_index", dec_old.agent_index, 0)
+check("router/route_team_compat_name", dec_old.name, "Researcher")
+
+# route_team with callable factory for dynamic member lists
+class _CallableTeam:
+    def __init__(self, a):
+        self._members = a
+        self.mode = "route"
+    @property
+    def members(self):
+        return lambda: self._members  # callable factory
+_callable_team = _CallableTeam(agents)
+dec_callable = router.route_team("Find recent research papers on LLMs", _callable_team)
+check("router/route_team_callable_index", dec_callable.agent_index, 0)
 
 # Empty agents validation
 try:
@@ -205,15 +227,20 @@ try:
 except ValueError:
     check("router/empty_agents", True, True)
 
-# route_team with empty agents list
+# route_team with empty members list
 try:
-    router.route_team("message", AgnoTeam(agents=[], mode="route"))
+    router.route_team("message", AgnoTeam(members=[], mode="route"))
     check("router/route_team_empty", False, True)
 except ValueError:
     check("router/route_team_empty", True, True)
 
 # last_decision is set
 check_true("router/last_decision_set", router.last_decision is not None)
+
+# run() is an alias for route()
+dec_run = router.run("Research the latest AI papers", agents)
+check("router/run_index", dec_run.agent_index, 0)
+check("router/run_name", dec_run.name, "Researcher")
 
 # Confidence threshold with fallback agent
 fallback_router = LayaAgnoRouter(
@@ -250,6 +277,11 @@ async def run_async_router():
 
     dec_async_team = await router.aroute_team("Write documentation", team_obj)
     check("router/async_team_index", dec_async_team.agent_index, 1)
+
+    # arun() is an alias for aroute()
+    dec_arun = await router.arun("Research the latest AI papers", agents)
+    check("router/arun_index", dec_arun.agent_index, 0)
+    check("router/arun_name", dec_arun.name, "Researcher")
 
 
 asyncio.run(run_async_router())

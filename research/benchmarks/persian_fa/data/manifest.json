@@ -1,0 +1,41 @@
+{
+  "name": "persian_fa",
+  "title": "Persian support-triage decisions",
+  "version": "1.0",
+  "task": "4-way choice: which department handles a Persian support message",
+  "labels": [
+    "billing",
+    "technical",
+    "cancel",
+    "other"
+  ],
+  "modes": [
+    "choice_fa",
+    "choice_en"
+  ],
+  "n_cases": 64,
+  "families": {
+    "formal": 8,
+    "colloquial": 8,
+    "finglish": 8,
+    "orthography": 8,
+    "code_mixed": 8,
+    "negation": 8,
+    "sarcasm_taarof": 8,
+    "digits": 8
+  },
+  "label_counts": {
+    "billing": 16,
+    "technical": 16,
+    "cancel": 16,
+    "other": 16
+  },
+  "sha256": {
+    "data/cases.jsonl": "32141393d78cfe78740ce88487a5e11b554c2d47d6a1809cf0bab8637c4e12e3",
+    "prompts.py": "871cc7517c01eb68bb899d3251161d1bf81c809e9f768a2d08597f4024168e13",
+    "normalize.py": "f433f925324bfd798087f4d57f15ba8f38e3915c8593aa4bb30be8860abea76c"
+  },
+  "label_policy": "Label = the department that must act on the message's main request. A mentioned-but-negated topic ('I don't want to cancel, just ...') does not set the label. Sarcastic thanks is labelled by the complaint it carries; genuine thanks is 'other'. Stopping auto-renewal or closing/deleting the account is 'cancel'.",
+  "provenance": "Synthetic messages written for this benchmark, drafted with AI assistance. No real customer data.",
+  "reviewed_by": "Ali Jahani - https://t.me/@tatfandoonchannel"
+}

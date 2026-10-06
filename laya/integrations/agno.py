@@ -25,7 +25,7 @@ Typical usage::
     # → Coder  0.94
 
     # Or pass a Team directly:
-    team = Team(agents=[researcher, writer, coder], mode="route")
+    team = Team(members=[researcher, writer, coder], mode="route")
     decision = router.route_team("Summarise the latest IPCC report", team)
 """
 from __future__ import annotations
@@ -64,8 +64,8 @@ except ImportError:
     class AgnoTeam:  # type: ignore[no-redef]
         """Lightweight shim when ``agno`` is not installed.
 
-        Uses ``members`` to match the current Agno ``Team`` contract
-        (``Team(members=[...], mode=TeamMode.route)``).  The legacy field
+        Uses ``members`` to match the Agno ``Team`` contract
+        (``Team(members=[...], mode="route")``).  The legacy field
         name ``agents`` is accepted in :meth:`route_team` for compatibility
         with older hand-crafted dicts or mocked objects.
         """
@@ -591,19 +591,19 @@ class LayaAgnoRouter:
     ) -> AgnoRouteDecision:
         """Convenience wrapper: route *message* using members from an ``AgnoTeam``.
 
-        Reads ``team.members`` (the current Agno ``Team`` contract, ``agno>=1.0.0``)
+        Reads ``team.members`` (the Agno ``Team`` contract, ``agno>=1.1.14,<2``)
         with a compat fallback to ``team.agents`` for hand-crafted mocks or test
         objects using the old attribute name.  Members may also be a callable factory
         (Agno supports dynamic member lists); it is called with no arguments.
 
         Args:
             message: The message to route.
-            team: An ``AgnoTeam`` instance (``Team(members=[...], mode=TeamMode.route)``).
+            team: An ``AgnoTeam`` instance (``Team(members=[...], mode="route")``).
 
         Returns:
             :class:`AgnoRouteDecision` with the selected agent and confidence.
         """
-        # Primary: current Agno Team API (>=1.0.0) uses .members
+        # Primary: Agno Team API (>=1.1.14,<2) uses .members
         members = getattr(team, "members", None)
         if not members:
             # Compat fallback for hand-crafted dicts / mocks using the old .agents attribute
@@ -620,8 +620,8 @@ class LayaAgnoRouter:
     ) -> AgnoRouteDecision:
         """Route *message* and return the selected :class:`AgnoRouteDecision`.
 
-        Alias for :meth:`route`; provided so that ``LayaAgnoRouter`` follows
-        the ``agent.run()`` calling convention used throughout Agno.
+        Alias for :meth:`route`; provided for API convention consistency with
+        Agno without executing the selected agent directly.
         """
         return self.route(message, agents)
 
@@ -655,8 +655,8 @@ class LayaAgnoRouter:
     ) -> AgnoRouteDecision:
         """Asynchronously route *message* without blocking the event loop.
 
-        Alias for :meth:`aroute`; provided to match Agno's ``agent.arun()``
-        calling convention.
+        Alias for :meth:`aroute`; returns the selected :class:`AgnoRouteDecision`
+        without executing the selected agent directly.
         """
         return await asyncio.to_thread(self.route, message, agents)
 

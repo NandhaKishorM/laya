@@ -17,7 +17,7 @@ Supports both **local in-process inference** (`Agent` or `Router`) and **remote 
 pip install "laya[agno]"
 ```
 
-Requires **`agno>=1.0.0`** (the version that introduced `Team(members=..., mode=TeamMode.route)`).
+Requires **`agno>=1.1.14,<2`** (the release where Agno's dedicated `Team` class and `mode="route"` multi-agent routing were introduced).
 
 ---
 
@@ -28,7 +28,6 @@ In Agno multi-agent teams configured with `Team(mode="route")`, a leader LLM eva
 ```python
 from agno.agent import Agent
 from agno.team import Team
-from agno.team.mode import TeamMode
 from laya.integrations.agno import LayaAgnoRouter
 
 # Define specialized worker agents
@@ -62,13 +61,13 @@ query = "Write a Python function to reverse a linked list and handle edge cases.
 decision = router.route(query, agents)  # or equivalently: router.run(query, agents)
 print(f"Routed to: {decision.name} (Role: {decision.role}, Confidence: {decision.confidence:.3f})")
 
-# Direct Agno Team helper — note: current Agno uses members=, not agents=:
-team = Team(members=agents, mode=TeamMode.route)
+# Direct Agno Team helper with mode="route":
+team = Team(members=agents, mode="route")
 team_decision = router.route_team(query, team)
 print(f"Team decision: {team_decision.name}")
 ```
 
-Both synchronous `route()` / `route_team()` and non-blocking asynchronous `aroute()` / `aroute_team()` are supported. You can also run the winning agent directly via `router.run(message, agents)` and `await router.arun(message, agents)`.
+Both synchronous `route()` / `route_team()` and non-blocking asynchronous `aroute()` / `aroute_team()` are supported. For API convention consistency with Agno, `router.run(message, agents)` and `await router.arun(message, agents)` are available as routing aliases returning the selected `AgnoRouteDecision` (they do not execute the winning agent directly).
 
 ---
 

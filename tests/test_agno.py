@@ -192,7 +192,7 @@ check("router/name_2", dec2.name, "Coder")
 dec1 = router.route("Draft a blog post about machine learning", agents)
 check("router/agent_index_1", dec1.agent_index, 1)
 
-# route_team convenience method — current Agno API: members= (agno>=1.0.0)
+# route_team convenience method — Agno API: members=, mode="route" (agno>=1.1.14,<2)
 team_obj = AgnoTeam(members=agents, mode="route")
 dec_team = router.route_team("Find recent research papers on LLMs", team_obj)
 check("router/route_team_index", dec_team.agent_index, 0)

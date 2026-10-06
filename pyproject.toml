@@ -76,6 +76,11 @@ crewai = [
     "crewai>=0.28.0",
 ]
 
+# `pip install laya[agno]` adds the Agno multi-agent team routing and guardrail integration (laya.integrations).
+agno = [
+    "agno>=0.7.0",
+]
+
 [project.scripts]
 laya = "laya.cli:main"
 laya-serve = "laya.serve:main"

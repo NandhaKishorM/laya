@@ -12,6 +12,7 @@ the numbers quoted in the main README — nothing here is imported by the `laya`
 
 ## Community diagnostics
 
+- [Persian support triage](benchmarks/persian_fa/README.md) — 64 frozen synthetic messages, Persian/English instructions, a normalization ablation, and 1,152 archived answer records. Reports false cancellation routing, family/trap breakdowns and calibration. Start with `python research/benchmarks/persian_fa/audit.py`; no models or third-party packages required.
 - [Chinese workplace decisions (Feishu-style)](benchmarks/feishu_zh/README.md) — 64 synthetic scenarios, paired recorded Laya/Jev responses, English/Chinese cards, and a model-free audit. [中文入口](benchmarks/feishu_zh/README.zh-CN.md). Start with `python research/benchmarks/feishu_zh/audit.py`; no downloads or API keys required. This is a contributed historical snapshot, separate from the upstream sweeps below.
 - [Chinese short-command routing](benchmarks/zh_short_commands/README.md) — 18 frozen Chinese voice commands, a seven-rung ablation of the documented prompt guidance on both the six-way `choice` path and the four-question `noul` path, and every per-case decision archived. [中文入口](benchmarks/zh_short_commands/README.zh-CN.md). Start with `python research/benchmarks/zh_short_commands/audit.py`; the audit needs no downloads and the archive records which weights produced the numbers.
 

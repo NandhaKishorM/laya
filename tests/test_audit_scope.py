@@ -86,14 +86,14 @@ if len(od) > 1:
 
 check_true("pyproject/core parses", len(core) == 5, core)
 check("pyproject/extra tables found", sorted(extras),
-      ["crewai", "fast", "langchain", "langgraph", "llamaindex", "mcp", "onnx", "serve",
+      ["agno", "crewai", "fast", "langchain", "langgraph", "llamaindex", "mcp", "onnx", "serve",
        "structured"])
 declared = list(core) + [s for names in extras.values() for s in names]
 expected = sorted(set(declared))
 check("pyproject/extras add names the core does not have",
       sorted({re.split(r"[<>=!;\[ ]", s)[0] for s in declared}
              - {re.split(r"[<>=!;\[ ]", s)[0] for s in core}),
-      ["crewai", "fastapi", "langchain-core", "langgraph", "llama-index-core", "mcp", "onnx",
+      ["agno", "crewai", "fastapi", "langchain-core", "langgraph", "llama-index-core", "mcp", "onnx",
        "onnxruntime", "onnxscript", "pydantic", "python-multipart", "tilelang", "uvicorn"])
 
 # The two scopes: shipped (blocking) is the core plus [serve]; everything else is advisory.

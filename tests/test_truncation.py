@@ -155,7 +155,13 @@ from laya import agent as _agent  # noqa: E402
 _src = inspect.getsource(_agent.Agent._encode_state) + inspect.getsource(_agent.Agent.predict_batch)
 check_true("usage/asks build_sequence for the stats", "return_truncation_stats=True" in _src)
 check_true("usage/publishes the flag", '"truncated": dropped > 0' in _src)
-check_true("usage/publishes the dropped count", '"state_tokens_dropped": dropped' in _src)
+check_true("usage/publishes the dropped count", 'usage["state_tokens_dropped"] = dropped' in _src)
+# The two counts are exact only when the whole state was tokenized, so they are opt-in: asking
+# restores the full tokenization for that call, and not asking leaves them out rather than
+# reporting a floor. Both halves have to be in the source, or one of them has gone missing.
+check_true("usage/the counts are behind the opt-in", "if state_token_counts:" in _src)
+check_true("usage/asking restores the full tokenization",
+           "if truncate_left or state_token_counts:" in _src)
 check_true("usage/names the questions that truncated", '"truncated_questions"' in _src)
 check_true("usage/keeps the existing token counts",
            '"input_tokens": n_tokens' in _src and '"output_tokens": 0' in _src)
@@ -187,16 +193,38 @@ def _tree(rel):
 
 
 def _published(rel):
-    """The keys of the `usage = {..}` literal the module builds for an answered call."""
-    found = [tuple(k.value for k in node.value.keys if isinstance(k, ast.Constant))
-             for node in ast.walk(_tree(rel))
-             if isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)
-             and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "usage"]
-    # Exactly one. A call with no questions builds its two keys inside the result literal rather than
-    # by a Name assignment, and `predict_long` aggregates into an annotated dict: this must read the
-    # answered shape, or the example would be held to the wrong one.
-    check_true("report/one usage dict is built in %s" % rel, len(found) == 1, "(found %d)" % len(found))
-    return found[0] if found else ()
+    """Every usage key the module can publish for an answered call, literal and conditional.
+
+    The `usage = {..}` literal is the always-on part. Keys added afterwards as `usage["k"] = ...` are
+    published too, just not on every call -- `options` only when a question's options collapsed
+    (#538), `state_tokens` / `state_tokens_dropped` only when the caller asked for them (#687). An
+    example that reads one of those is reading something the agent really does publish, so both
+    sources count here; whether the example asks for it is its own business.
+    """
+    always, conditional = (), ()
+    for fn in ast.walk(_tree(rel)):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        literal, keys = None, set()
+        for node in ast.walk(fn):
+            if not (isinstance(node, ast.Assign) and node.targets):
+                continue
+            target = node.targets[0]
+            if (isinstance(target, ast.Name) and target.id == "usage"
+                    and isinstance(node.value, ast.Dict)):
+                literal = tuple(k.value for k in node.value.keys if isinstance(k, ast.Constant))
+            elif (isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name)
+                    and target.value.id == "usage" and isinstance(target.slice, ast.Constant)
+                    and isinstance(target.slice.value, str)):
+                keys.add(target.slice.value)
+        if literal is not None:
+            # Scoped to the one function that builds it. `predict_long` also assigns into a `usage`
+            # name while aggregating windows, and reading its `usage["windows"]` here would hold the
+            # examples to a key no single-window answer carries.
+            always, conditional = literal, tuple(sorted(keys - set(literal)))
+            break
+    check_true("report/a usage dict is built in %s" % rel, bool(always), "(found none)")
+    return always, conditional
 
 
 def _strings(rel):
@@ -223,11 +251,18 @@ def _usage_reads(rel):
     return tuple(sorted(found))
 
 
-published = _published("laya/agent.py")
-# The two token totals are example 03's subject; everything else in the dict is this report (#174).
-report = tuple(k for k in published if k not in ("input_tokens", "output_tokens"))
+published, conditional = _published("laya/agent.py")
+# Named rather than inferred by subtraction. "Everything in the dict that is not a token total" was
+# this report while the dict held exactly those keys, and it no longer is: `options` sits in the same
+# block but belongs to #538, and `state_tokens` / `state_tokens_dropped` are published only when the
+# caller asks for them (#687). So the four keys are named, and then checked to be published at all --
+# which is the half of the old check that had teeth.
+report = ("state_tokens", "state_tokens_dropped", "truncated", "truncated_questions")
 check_true("report/the report is more than the two token totals",
            len(report) >= 4, "(%r)" % (report,))
+check_true("report/every key of the report is published by the agent",
+           all(k in published + conditional for k in report),
+           "(always %r, conditional %r)" % (published, conditional))
 
 UNREPORTED = re.compile(r"nothing warns|is silent|silent in|no warning|not reported"
                         r"|nothing says|never says|cannot be seen", re.I)
@@ -235,7 +270,7 @@ UNREPORTED = re.compile(r"nothing warns|is silent|silent in|no warning|not repor
 for tag, rel in EXAMPLES:
     missing = tuple(k for k in report if k not in _usage_reads(rel))
     check("%s/prints every key of the report from a live call" % tag, missing, ())
-    extra = tuple(k for k in _usage_reads(rel) if k not in published)
+    extra = tuple(k for k in _usage_reads(rel) if k not in published + conditional)
     check("%s/reads no key the agents do not publish" % tag, extra, ())
     prose = " ".join(_strings(rel))
     for key in report:

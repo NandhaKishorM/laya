@@ -264,12 +264,13 @@ class _ScanLong:
     `ctx.skip(...)` or rewrote the state/questions wins exactly as before.
     """
 
-    def __init__(self, window, stride, aggregate, batch_size, lang):
+    def __init__(self, window, stride, aggregate, batch_size, lang, state_token_counts=False):
         self.window = window
         self.stride = stride
         self.aggregate = aggregate
         self.batch_size = batch_size
         self.lang = lang
+        self.state_token_counts = state_token_counts
 
     def run(self, ctx):
         """Scan `ctx.states[0]` on `ctx.agent`, or refuse plainly when that agent cannot."""
@@ -286,6 +287,13 @@ class _ScanLong:
             lang = ((ctx.decision or {}).get("detection") or {}).get("language")
         kwargs = {"window": self.window, "stride": self.stride, "aggregate": self.aggregate,
                   "batch_size": self.batch_size}
+        # Asked for only when the caller asked: an agent attached via `attach()` may
+        # predate the argument, so the common path must not pass it. Unlike `lang` above
+        # this is not withheld on a signature that lacks it -- a caller who asked for
+        # exact counts is better served by the TypeError than by counts silently absent
+        # from `usage`.
+        if self.state_token_counts:
+            kwargs["state_token_counts"] = True
         # `lang` is passed only to an entry point whose signature takes it -- the check
         # `laya.evals` already makes for the arguments it forwards. Deciding this from the
         # signature rather than from a `TypeError` matters here: catching the error cannot tell
@@ -1252,6 +1260,7 @@ class Router(HookRegistry):
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
         min_confidence: Optional[float] = None,
+        state_token_counts: bool = False,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
 
@@ -1259,6 +1268,9 @@ class Router(HookRegistry):
         Router-level `on_predict_start` / `on_predict_end` hooks wrap the whole route+infer call
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
+        `state_token_counts` asks the agent for exact `usage["state_tokens"]` /
+        `usage["state_tokens_dropped"]`, which costs tokenizing the whole state; `truncated` and
+        `truncated_questions` are reported either way.
         """
         if state is None:
             raise TypeError("state must not be None; pass a string, dict, or list")
@@ -1320,6 +1332,11 @@ class Router(HookRegistry):
                             overrides["max_len"] = ctx.max_len
                         if ctx.head_max_len is not None:
                             overrides["head_max_len"] = ctx.head_max_len
+                        if state_token_counts:
+                            # Only when asked, exactly as the token budgets are: an agent
+                            # attached via `attach()` may predate the argument, and the
+                            # common path must not pass it.
+                            overrides["state_token_counts"] = True
                         try:
                             result = agent.system_one(ctx.states[0], ctx.questions,
                                                       lang=effective_lang, **overrides)
@@ -1372,6 +1389,7 @@ class Router(HookRegistry):
                      aggregate: str = "auto", batch_size: Optional[int] = None,
                      hooks=None, on_predict_start=None, on_predict_end=None,
                      hooks_raise: Optional[bool] = None, hooks_timeout: Optional[float] = None,
+                     state_token_counts: bool = False,
                      ) -> Dict[str, Any]:
         """Route, then scan every window of the state instead of only its first one.
 
@@ -1415,8 +1433,11 @@ class Router(HookRegistry):
                     without one and warned about, not failed; that is a signature check, not a
                     swallowed error.
         """
+        # `state_token_counts` rides on the scan object, not on `predict`: the scan answers
+        # this call, so `predict` never reaches `system_one` on this path.
         token = _SCAN.set(_ScanLong(window=window, stride=stride, aggregate=aggregate,
-                                    batch_size=batch_size, lang=lang))
+                                    batch_size=batch_size, lang=lang,
+                                    state_token_counts=state_token_counts))
         try:
             return self.predict(state, questions, model=model, task=task, lang=lang,
                                 lang_guess=lang_guess,
@@ -1532,6 +1553,10 @@ class Router(HookRegistry):
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
         *,
+        # Keyword-only, behind the `*`: a positional slot here would widen the positional
+        # prefix and `tests/test_hooks.py` pins that a sixth positional argument is refused,
+        # which is what keeps `hooks` from being passed by position.
+        state_token_counts: bool = False,
         hooks=None,
         on_predict_start=None,
         on_predict_end=None,
@@ -1685,6 +1710,8 @@ class Router(HookRegistry):
                         # Passed only when on, as the token-budget overrides are: agents attached
                         # via `attach()` may predate the knob (#294).
                         batch_kwargs["sort_by_length"] = True
+                    if state_token_counts:
+                        batch_kwargs["state_token_counts"] = True
                     skip = _SKIP_DEFAULTS.set(True)
                     try:
                         batch_results = agent.predict_batch(
@@ -1697,7 +1724,7 @@ class Router(HookRegistry):
                         # Same tolerance `predict` has for an Agent-like object whose
                         # `predict_batch` predates the `lang` (or `sort_by_length`) argument.
                         retried = False
-                        for kwarg in ("lang", "sort_by_length"):
+                        for kwarg in ("lang", "sort_by_length", "state_token_counts"):
                             if batch_kwargs.get(kwarg) is not None and \
                                     "unexpected keyword argument '%s'" % kwarg in str(e):
                                 batch_kwargs.pop(kwarg)

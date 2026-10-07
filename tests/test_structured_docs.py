@@ -517,12 +517,15 @@ def main() -> int:
     onnx_always, onnx_added, empty_o = usage_shape(ONNX_PY)
     check("usage/onnx_agent builds the same keys as agent", onnx_always, always)
     check("usage/onnx_agent adds the same keys as agent", onnx_added, added)
-    check("usage/the only sometimes key is options", added, ["options"])
-    check_true("usage/options is not also always built", "options" not in always,
-               "`options` is also in the always keys %s" % (always,))
-    check_true("usage/an answer carries the truncation report",
-               {"state_tokens", "state_tokens_dropped", "truncated", "truncated_questions"}
-               <= set(always), "got %s" % (always,))
+    check("usage/the sometimes keys are options and the two token counts", added,
+          ["options", "state_tokens", "state_tokens_dropped"])
+    for sometimes in ("options", "state_tokens", "state_tokens_dropped"):
+        check_true("usage/%s is not also always built" % sometimes, sometimes not in always,
+                   "`%s` is also in the always keys %s" % (sometimes, always))
+    # The truncation SIGNAL is free and always there; the two counts that quantify it are opt-in,
+    # because they count the whole serialized state and the head path never tokenizes all of it.
+    check_true("usage/an answer always carries the truncation signal",
+               {"truncated", "truncated_questions"} <= set(always), "got %s" % (always,))
 
     check("usage/no-questions shape matches between agents", empty_o, empty_t)
     check_true("usage/no-questions is a different shape from an answer",
@@ -551,6 +554,13 @@ def main() -> int:
         check_true("examples/03 explains `%s`" % key, "`%s`" % key in example_text, "no sentence names it")
     check_true("docs/structured.md calls `options` conditional",
                mentions_only_conditionally(text, "options"), "the page names it without bounding it")
+    for sometimes in ("state_tokens", "state_tokens_dropped"):
+        check_true("docs/structured.md calls `%s` conditional" % sometimes,
+                   mentions_only_conditionally(text, sometimes),
+                   "the page names it without bounding it")
+        check_true("examples/03 calls `%s` conditional" % sometimes,
+                   mentions_only_conditionally(example_text, sometimes),
+                   "the example names it without bounding it")
     check_true("examples/03 calls `options` conditional",
                mentions_only_conditionally(example_text, "options"), "named without bounding")
 

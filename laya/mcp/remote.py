@@ -174,6 +174,7 @@ class RemoteRouter(Router):
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
         min_confidence: Optional[float] = None,
+        state_token_counts: bool = False,
     ) -> Dict[str, Any]:
         if hooks_timeout is not None:
             raise RemoteError("unsupported_remote", "hooks_timeout belongs to the server's hooks")
@@ -189,6 +190,10 @@ class RemoteRouter(Router):
                 if key == "lang_guess" and not isinstance(value, str):
                     raise RemoteError("unsupported_remote", "a callable lang_guess cannot be sent over HTTP")
                 body[key] = value
+        if state_token_counts:
+            # Only when asked, and never a bare `False`: the server treats the key's
+            # absence as off, and an older laya-serve rejects an unknown body key.
+            body["state_token_counts"] = True
         return self._request("/v1/systemone", body)
 
     def predict_batch(
@@ -199,6 +204,7 @@ class RemoteRouter(Router):
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
         *,
+        state_token_counts: bool = False,
         hooks=None,
         on_predict_start=None,
         on_predict_end=None,
@@ -227,6 +233,8 @@ class RemoteRouter(Router):
                       if k in item}
             if min_confidence is not None:
                 kwargs["min_confidence"] = min_confidence
+            if state_token_counts:
+                kwargs["state_token_counts"] = True
             results.append(self.predict(item["state"], item["questions"], **kwargs))
         return results
 

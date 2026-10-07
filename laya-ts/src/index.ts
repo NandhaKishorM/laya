@@ -16,7 +16,7 @@ export type {
 export { createNodeProvider, createWebProvider, feed, feedHead, loadNodeBundle, loadWebBundle, PINNED_REVISIONS, resolveRevision } from "./providers.js";
 export type { Batch, SessionProvider, ProviderOptions, NodeBundle, WebBundle } from "./providers.js";
 export { Router, normaliseName, DEFAULT_MODELS, digestsFromEnv, _digestsFromEnv } from "./router.js";
-export type { RoutedResult, RouteDecision, ModelName, ModelSpec, BatchRequest, RouterOptions, RouteOptions } from "./router.js";
+export type { RoutedResult, RouteDecision, ModelName, ModelSpec, BatchRequest, PredictBatchOptions, RouterOptions, RouteOptions } from "./router.js";
 export { shortlistChoice, predictShortlist, embedFnFromAgent, DEFAULT_SHORTLIST_K } from "./shortlist.js";
 export type { EmbedFn, ShortlistMeta } from "./shortlist.js";
 export { analyse, isEnglish, guessLatinLanguage, detectScript } from "./lang.js";
@@ -60,14 +60,31 @@ export {
   confidenceFromProbs,
   answerConfidence,
   checkMinConfidence,
+  checkMinConfidenceMap,
   flagLowConfidence,
+  optionBucket,
+  resolveMinConfidence,
   clampTemperature,
   tempBucket,
+  applyBinningMap,
+  checkBinningMap,
   collateItems,
   TEMP_MIN,
   TEMP_MAX,
 } from "./common.js";
-export type { QType, InternalQ, CollateItem, CollatedBatch, QuestionPrefix, SequenceStats, OptionStats } from "./common.js";
+export type {
+  QType,
+  InternalQ,
+  CollateItem,
+  CollatedBatch,
+  QuestionPrefix,
+  SequenceStats,
+  OptionStats,
+  MinConfidence,
+  MinConfidenceMap,
+  BinningEntry,
+  BinningMap,
+} from "./common.js";
 export { q, best, topK, isConfident } from "./dx.js";
 export { bpeEncode, metaspaceEncode, encodeWithData, parseTokenizerJson, loadTokenizerJson, CHECKPOINT_IDS, SPECIAL_ALIASES, METASPACE_REPLACEMENT } from "./tokenizer.js";
 export type { TokenizerLike, TokenizerData, TokenizerIds, PreTokenizerKind } from "./tokenizer.js";

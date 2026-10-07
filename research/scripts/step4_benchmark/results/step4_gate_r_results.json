@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "pinned_sha": "a4a8921afebfd852bba0000475cfb6ab737a124c",
+    "torch": "2.11.0+cu128",
+    "gpu": "Tesla T4",
+    "visible_gpus": 1,
+    "train_seconds": 2691.3,
+    "peak_gpu_gb": 0.0,
+    "train_split_line": "train items 5600, calibration items 400, skipped {}, device cuda",
+    "base_config": {
+      "max_len": 512,
+      "head_max_len": 192
+    },
+    "n_train_cases": 1200,
+    "n_test_cases": 400
+  },
+  "rlcd_seed0": {
+    "checkpoint": "/kaggle/working/run_rlcd_seed0",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.775,
+    "ece": 0.1504,
+    "brier": 0.0519,
+    "soft_accuracy": 0.5654,
+    "score_mae": 0.2246,
+    "within_one_level": 0.99,
+    "per_type_accuracy": {
+      "choice": 0.7417,
+      "noul": 0.8517,
+      "score": 0.7425
+    },
+    "n_brier_decisions": 1200
+  },
+  "base": {
+    "checkpoint": "convaiinnovations/laya",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.362,
+    "ece": 0.1741,
+    "brier": 0.3287,
+    "soft_accuracy": 0.3656,
+    "score_mae": 0.6936,
+    "within_one_level": 0.7525,
+    "per_type_accuracy": {
+      "choice": 0.29,
+      "noul": 0.4867,
+      "score": 0.3225
+    },
+    "n_brier_decisions": 1200
+  },
+  "published": {
+    "checkpoint": "convaiinnovations/laya-typed-decisions",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.7665,
+    "ece": 0.2137,
+    "brier": 0.0658,
+    "soft_accuracy": 0.5087,
+    "score_mae": 0.2424,
+    "within_one_level": 0.995,
+    "per_type_accuracy": {
+      "choice": 0.7333,
+      "noul": 0.8567,
+      "score": 0.7238
+    },
+    "n_brier_decisions": 1200
+  }
+}

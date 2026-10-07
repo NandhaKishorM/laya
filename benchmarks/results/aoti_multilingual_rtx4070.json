@@ -1,0 +1,161 @@
+{
+  "base_commit": "fa9a2a7",
+  "date": "2026-10-03",
+  "transformers": "5.17.0",
+  "python": "3.12.13",
+  "method": "Median of five synchronized wall-clock groups of 30 forwards after ten warmups; torch.compile(dynamic=True), default mode, no explicit CUDA graphs. Each run starts with its own empty Inductor cache; AMP compilation precedes packaging. Shared GPU and CPU, clocks not locked.",
+  "before": {
+    "torch": "2.11.0+cu130",
+    "model": "/home/ckl/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+    "gpu": "NVIDIA GeForce RTX 4070 Ti SUPER",
+    "cache": "/tmp/laya-aoti-before/cache",
+    "gpu_state_before": "Sat Oct  3 18:42:26 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 4070 ...    On  |   00000000:26:00.0 Off |                  N/A |\n|  0%   33C    P8             12W /  295W |    2817MiB /  16376MiB |     28%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|    0   N/A  N/A             892      G   Hyprland                                156MiB |\n|    0   N/A  N/A             952      G   quickshell                               38MiB |\n|    0   N/A  N/A             995      G   Xwayland                                  4MiB |\n|    0   N/A  N/A            1168      G   monocloud                                 3MiB |\n|    0   N/A  N/A            3324    C+G   /usr/bin/sunshine                       215MiB |\n|    0   N/A  N/A           12883      G   /usr/bin/ghostty                        100MiB |\n|    0   N/A  N/A         3906709    C+G   ...rack-uuid=3190708988185955192         35MiB |\n|    0   N/A  N/A         4068228      C   ...jects/S/laya/.venv/bin/python       2074MiB |\n+-----------------------------------------------------------------------------------------+\n",
+    "amp_eager_ms": [
+      15.1173,
+      15.4687,
+      14.8452
+    ],
+    "amp_compiled_ms": [
+      6.7117,
+      6.7274,
+      7.3872
+    ],
+    "export_s": 5.004336104961112,
+    "failure_stage": "package",
+    "failure_s": 16.594587769010104,
+    "error": "mat1 and mat2 must have the same dtype, but got Float and BFloat16",
+    "package_s": null,
+    "package_bytes": null,
+    "aoti_ms": null,
+    "gpu_state_after": "Sat Oct  3 18:43:47 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 4070 ...    On  |   00000000:26:00.0 Off |                  N/A |\n| 30%   36C    P3             23W /  295W |    8560MiB /  16376MiB |     10%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|    0   N/A  N/A             892      G   Hyprland                                156MiB |\n|    0   N/A  N/A             952      G   quickshell                               38MiB |\n|    0   N/A  N/A             995      G   Xwayland                                  4MiB |\n|    0   N/A  N/A            1168      G   monocloud                                 3MiB |\n|    0   N/A  N/A            3324    C+G   /usr/bin/sunshine                       215MiB |\n|    0   N/A  N/A           12883      G   /usr/bin/ghostty                        100MiB |\n|    0   N/A  N/A         3906709    C+G   ...rack-uuid=3190708988185955192         35MiB |\n|    0   N/A  N/A         4069106      C   ...jects/S/laya/.venv/bin/python       3176MiB |\n|    0   N/A  N/A         4070160      C   ...jects/S/laya/.venv/bin/python       2174MiB |\n|    0   N/A  N/A         4070256      C   ...jects/S/laya/.venv/bin/python       1990MiB |\n|    0   N/A  N/A         4070519      C   ...jects/S/laya/.venv/bin/python        246MiB |\n|    0   N/A  N/A         4070896      C   python                                  210MiB |\n+-----------------------------------------------------------------------------------------+\n"
+  },
+  "after": {
+    "torch": "2.11.0+cu130",
+    "model": "/home/ckl/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/1c5edc17a7acd8701df6fc341c0d179f1c62c982/multilingual",
+    "gpu": "NVIDIA GeForce RTX 4070 Ti SUPER",
+    "cache": "/tmp/laya-aoti-after/cache",
+    "gpu_state_before": "Sat Oct  3 18:44:33 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 4070 ...    On  |   00000000:26:00.0 Off |                  N/A |\n| 30%   33C    P8             12W /  295W |    2634MiB /  16376MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|    0   N/A  N/A             892      G   Hyprland                                146MiB |\n|    0   N/A  N/A             952      G   quickshell                               38MiB |\n|    0   N/A  N/A             995      G   Xwayland                                  4MiB |\n|    0   N/A  N/A            1168      G   monocloud                                 3MiB |\n|    0   N/A  N/A            3324    C+G   /usr/bin/sunshine                       215MiB |\n|    0   N/A  N/A           12883      G   /usr/bin/ghostty                        100MiB |\n|    0   N/A  N/A         3906709    C+G   ...rack-uuid=3190708988185955192         53MiB |\n|    0   N/A  N/A         4070160      C   ...jects/S/laya/.venv/bin/python       1632MiB |\n|    0   N/A  N/A         4070519      C   ...jects/S/laya/.venv/bin/python        246MiB |\n+-----------------------------------------------------------------------------------------+\n",
+    "existing_eager_max_delta": 0.0,
+    "amp_eager_ms": [
+      14.12,
+      14.4156,
+      14.5384
+    ],
+    "amp_compiled_ms": [
+      6.9076,
+      5.4772,
+      5.5934
+    ],
+    "export_s": 3.8901766380295157,
+    "package_s": 60.01539184397552,
+    "package_bytes": 645729621,
+    "load_s": 0.44709984108339995,
+    "cases": [
+      {
+        "shape": [
+          2,
+          128,
+          3
+        ],
+        "aoti_vs_bf16_eager": {
+          "decision_logits": 0.1875,
+          "decision_probabilities": 3.672063542126125e-09,
+          "decision_answers_equal": true,
+          "action_logits": 0.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        },
+        "aoti_vs_amp_eager": {
+          "decision_logits": 0.25,
+          "decision_probabilities": 6.553003473186436e-09,
+          "decision_answers_equal": true,
+          "action_logits": 0.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        },
+        "bf16_eager_ms": 13.9635,
+        "aoti_ms": 2.2674,
+        "bf16_compiled_ms": 4.8835,
+        "compiled_vs_bf16_eager": {
+          "decision_logits": 0.1875,
+          "decision_probabilities": 4.09005274093488e-09,
+          "decision_answers_equal": true,
+          "action_logits": 0.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        }
+      },
+      {
+        "shape": [
+          1,
+          256,
+          3
+        ],
+        "aoti_vs_bf16_eager": {
+          "decision_logits": 0.1875,
+          "decision_probabilities": 3.672063542126125e-09,
+          "decision_answers_equal": true,
+          "action_logits": 0.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        },
+        "aoti_vs_amp_eager": {
+          "decision_logits": 0.3125,
+          "decision_probabilities": 8.276904495119197e-09,
+          "decision_answers_equal": true,
+          "action_logits": 0.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        },
+        "bf16_eager_ms": 14.7994,
+        "aoti_ms": 2.4154,
+        "bf16_compiled_ms": 4.725,
+        "compiled_vs_bf16_eager": {
+          "decision_logits": 0.1875,
+          "decision_probabilities": 4.09005274093488e-09,
+          "decision_answers_equal": true,
+          "action_logits": 0.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        }
+      },
+      {
+        "shape": [
+          4,
+          160,
+          5
+        ],
+        "aoti_vs_bf16_eager": {
+          "decision_logits": 0.5625,
+          "decision_probabilities": 0.0065985918045043945,
+          "decision_answers_equal": true,
+          "action_logits": 0.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        },
+        "aoti_vs_amp_eager": {
+          "decision_logits": 0.4375,
+          "decision_probabilities": 0.007699102163314819,
+          "decision_answers_equal": true,
+          "action_logits": 8.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        },
+        "bf16_eager_ms": 14.7115,
+        "aoti_ms": 3.6018,
+        "bf16_compiled_ms": 5.1393,
+        "compiled_vs_bf16_eager": {
+          "decision_logits": 0.5,
+          "decision_probabilities": 0.0065985918045043945,
+          "decision_answers_equal": true,
+          "action_logits": 8.0,
+          "action_probabilities": 0.0,
+          "action_answers_equal": true
+        }
+      }
+    ],
+    "gpu_state_after": "Sat Oct  3 18:48:36 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 4070 ...    On  |   00000000:26:00.0 Off |                  N/A |\n|  0%   42C    P2            160W /  295W |    6476MiB /  16376MiB |     73%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|    0   N/A  N/A             892      G   Hyprland                                156MiB |\n|    0   N/A  N/A             952      G   quickshell                               38MiB |\n|    0   N/A  N/A             995      G   Xwayland                                  4MiB |\n|    0   N/A  N/A            1168      G   monocloud                                 3MiB |\n|    0   N/A  N/A            3324    C+G   /usr/bin/sunshine                       215MiB |\n|    0   N/A  N/A           12883      G   /usr/bin/ghostty                        100MiB |\n|    0   N/A  N/A         3906709    C+G   ...rack-uuid=3190708988185955192         36MiB |\n|    0   N/A  N/A         4072238      C   ...jects/S/laya/.venv/bin/python       3802MiB |\n|    0   N/A  N/A         4077174      C   ...jects/S/laya/.venv/bin/python       1926MiB |\n+-----------------------------------------------------------------------------------------+\n",
+    "fresh_process_load_s": 4.867020106990822,
+    "fresh_process_note": "Standalone package and saved inputs only, torch.compile and aoti_compile_and_package blocked; both heads agree on all seven rows. Empty cache acquired a CPU AVX capability probe (.cpp/.so/lock), no model graph or CUDA kernels."
+  }
+}

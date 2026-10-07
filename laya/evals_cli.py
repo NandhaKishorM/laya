@@ -17,7 +17,7 @@ import math
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from . import _eval_policy, evals
+from . import _eval_policy, evals, evidence
 from .evals import EvalError
 
 
@@ -106,6 +106,18 @@ def _parse_pairs(pairs: Optional[Sequence[str]]) -> Dict[str, float]:
     return out
 
 
+def _limit(raw: str) -> float:
+    """argparse `type=` for `--min-accuracy` and `--max-ece`: refuse "nan" as `_parse_pairs` does."""
+    try:
+        number = float(raw)
+    except ValueError:
+        raise argparse.ArgumentTypeError("%r is not a number" % raw)
+    # float() accepts "nan", and a NaN limit would disable the gate it names.
+    if math.isnan(number):
+        raise argparse.ArgumentTypeError("%r is not a number" % raw)
+    return number
+
+
 def _parse_revisions(pairs: Optional[Sequence[str]]) -> Tuple[Optional[str], Dict[str, str]]:
     """Read `--revision` into the two forms `Router` takes: one commit, or one per checkpoint.
 
@@ -180,12 +192,16 @@ def _build_parser() -> argparse.ArgumentParser:
                           "examples into the same forward pass so each pads to a shorter maximum; "
                           "scores the same answers, in the same order")
     run.add_argument("--min-confidence", dest="min_confidence", type=float, metavar="THRESHOLD",
-                     help="abstention threshold on `answer_confidence` (#361): answers below it "
-                          "come back abstained, so the run scores the policy at that threshold "
-                          "rather than the raw argmax. Accepted range is core's -- "
-                          "`laya.confidence.check_min_confidence` -- not a copy of it here, and a "
-                          "runner that predates the gate is refused with a named error rather "
-                          "than silently scored without it")
+                     help="abstention threshold on `answer_confidence` (#361): every answer below "
+                          "it is returned flagged with `low_confidence: True` and "
+                          "`abstention: \"abstained\"`. The gate writes those state fields and "
+                          "leaves `answer[\"choice\"] / [\"noul\"] / [\"score\"]` as the raw argmax, "
+                          "so the metrics are identical at every threshold -- what changes is the "
+                          "report's config, which names the threshold and asserts it was sent. "
+                          "Accepted range is core's -- `laya.confidence.check_min_confidence` -- "
+                          "not a copy of it here, and a runner that predates the gate is refused "
+                          "with a named error rather than publishing a `min_confidence` it never "
+                          "applied")
     run.add_argument("--on-error", choices=("fail", "skip"), default="fail",
                      help="'fail' (the default) stops the run when a runner call raises; 'skip' "
                           "lists every row it could not score under the report's config.errored "
@@ -193,9 +209,9 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--baseline", help="a baseline report JSON to compare against")
     run.add_argument("--tolerance", action="append", metavar="METRIC=VALUE",
                      help="allowed absolute drift from the baseline; repeatable")
-    run.add_argument("--min-accuracy", type=float,
+    run.add_argument("--min-accuracy", type=_limit,
                      help="minimum accuracy (choice, else noul) for the whole dataset")
-    run.add_argument("--max-ece", type=float, help="maximum expected calibration error")
+    run.add_argument("--max-ece", type=_limit, help="maximum expected calibration error")
     run.add_argument("--score-within", dest="score_within", type=float, action="append",
                      metavar="TOL",
                      help="also report score_within_TOL, the fraction of score answers within TOL "
@@ -218,6 +234,13 @@ def _build_parser() -> argparse.ArgumentParser:
                          help="allowed absolute drift; repeatable")
     compare.add_argument("--gate-policy", metavar="FILE",
                          help="apply opt-in per-slice quality rules from a JSON policy")
+    evidence_cmd = sub.add_parser("evidence",
+                                  help="read-only evidence inspection over a checkpoint config and an eval report",
+                                  epilog="example: laya-evals evidence --checkpoint ./my-checkpoint --report report.json")
+    evidence_cmd.add_argument("--checkpoint", required=True,
+                              help="checkpoint directory containing rl_agent_config.json")
+    evidence_cmd.add_argument("--report", default=None,
+                              help="an existing laya-evals report JSON")
 
     return parser
 
@@ -255,6 +278,12 @@ def _print_deltas(deltas: Dict[str, Dict[str, Any]]) -> None:
     for metric, delta in sorted(deltas.items()):
         if delta.get("missing"):
             print("%-18s baseline=%.4f missing from the report" % (metric, delta["baseline"]))
+            continue
+        if delta.get("incomparable"):
+            # The diff is NaN by construction here, and "diff=+nan" on its own is not a
+            # diagnosis: print the reason the comparison was refused, not just its symptom.
+            print("%-18s baseline=%.4f value=%.4f not compared: %s"
+                  % (metric, delta["baseline"], delta["value"], delta["incomparable"]))
             continue
         print("%-18s baseline=%.4f value=%.4f diff=%+.4f (tol %.4f)"
               % (metric, delta["baseline"], delta["value"], delta["diff"], delta["tolerance"]))
@@ -418,6 +447,16 @@ def _cmd_run(args) -> int:
     return 0
 
 
+def _cmd_evidence(args) -> int:
+    try:
+        result = evidence.inspect_checkpoint(args.checkpoint, args.report)
+    except (FileNotFoundError, ValueError) as exc:
+        print("laya-evals: %s" % exc, file=sys.stderr)
+        return 2
+    print(evidence.format_summary(result))
+    return 0
+
+
 def _cmd_compare(args) -> int:
     # `_identity_of` rather than a bare `config` slice, because a report may carry its identity
     # at the top level -- `research/evals/act_head_eval.py` puts `schema` there -- and
@@ -456,6 +495,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return _cmd_validate(args)
         if args.command == "run":
             return _cmd_run(args)
+        if args.command == "evidence":
+            return _cmd_evidence(args)
         return _cmd_compare(args)
     except EvalError as exc:
         # A malformed dataset, an unreadable report, or a mistyped pin is a usage error, not a

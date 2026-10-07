@@ -20,7 +20,7 @@ read the [Router](#routerpredict) one; it is the superset.
 ```
 predict_batch(states, questions, batch_size=..., hooks=..., ...)
   │
-  ├─ active  = installed hooks + per-call hooks         (installed first)
+  ├─ active  = default hooks + installed hooks + per-call hooks   (defaults first)
   ├─ ctx     = PredictContext(states, questions, model=self.model_id, agent=self)
   │
   ├─ try:
@@ -71,7 +71,7 @@ So `system_one` inherits every hook and the same lifecycle, with `ctx.states == 
 ```
 Router.predict(state, questions, model=..., hooks=..., on_predict_start=..., on_predict_end=...)
   │
-  ├─ active = installed hooks + per-call hooks
+  ├─ active = default hooks + installed hooks + per-call hooks
   │
   ├─ route(state, questions, ..., hooks=per-call, hooks_raise=...)
   │    │
@@ -116,9 +116,10 @@ Each result is what `predict` returns for that request, so Router-level predict 
 request here too: every request gets its own `PredictContext`, `run_id` and `elapsed_ms`.
 
 ```
-Router.predict_batch(requests, batch_size=...)
+Router.predict_batch(requests, batch_size=..., hooks=...)
   │
-  ├─ route_batch(requests) ──► on_route, once per request   (no checkpoint loaded yet)
+  ├─ active = default hooks + installed hooks + per-call hooks   (defaults first; None and [] add nothing)
+  ├─ route_batch(requests, hooks=per-call) ──► on_route, once per request   (no checkpoint loaded yet)
   │
   └─ for each checkpoint, in order of first appearance:
        │
@@ -222,16 +223,17 @@ No tokenization or forward pass happens in these cases, but `on_predict_start` a
 
 ## Ordering rules
 
-1. Installed hooks run before per-call hooks, always.
+1. Process-wide default hooks run before installed hooks, and installed hooks run before
+   per-call hooks, always.
 2. Within a list, hooks run in list order.
 3. For one event, every hook that implements it runs, in that order, before the next event.
 4. `on_error` runs before `on_predict_end` on the failure path.
 5. `on_evict` runs before `on_load` when a single `load` both evicts and builds.
 
 ```
-installed: [A, B]   per-call: [C]
-on_predict_start: A, B, C
-on_predict_end:   A, B, C
+defaults: [D]      installed: [A, B]      per-call: [C]
+on_predict_start: D, A, B, C
+on_predict_end:   D, A, B, C
 ```
 
 ## Concurrency

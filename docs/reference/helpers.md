@@ -34,6 +34,8 @@
 
 ::: laya.shortlist.predict_shortlist
 
+::: laya.shortlist.predict_tournament
+
 ::: laya.shortlist.embed_fn_from_agent
 
 ::: laya.shortlist.cached_embed_fn
@@ -70,6 +72,8 @@
 ::: laya.calibrate.fit_binning_map
 
 ::: laya.calibrate.apply_binning_map
+
+::: laya.agent.Agent.fit_binning
 
 ::: laya.common.render_options
 

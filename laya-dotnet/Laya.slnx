@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Laya.Benchmark/Laya.Benchmark.csproj" />
+    <Project Path="samples/Laya.Routing/Laya.Routing.csproj" />
+    <Project Path="samples/Laya.Sample/Laya.Sample.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Laya/Laya.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Laya.Tests/Laya.Tests.csproj" />
+  </Folder>
+</Solution>

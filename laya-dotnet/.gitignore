@@ -1,0 +1,37 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+
+# Test results and coverage
+TestResults/
+*.trx
+coverage*.json
+coverage*.xml
+*.coverage
+
+# BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# IDE / user state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.rsuser
+*.DotSettings.user
+
+# Downloaded model artifacts
+*.onnx
+*.onnx_data
+
+# Python tool caches (tools/)
+__pycache__/
+*.pyc

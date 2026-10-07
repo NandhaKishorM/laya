@@ -1,0 +1,8 @@
+# Gradle build state and outputs. The wrapper itself (gradlew, gradlew.bat, gradle/wrapper) IS
+# committed, because a build that cannot be reproduced from a clean checkout is not a build.
+.gradle/
+build/
+
+# Downloaded checkpoints and exported graphs, written by scripts/prepare_checkpoint.py. Gigabytes,
+# and reproducible from the pinned revision, so they are never committed.
+.work/

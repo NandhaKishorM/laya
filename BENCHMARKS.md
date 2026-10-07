@@ -269,6 +269,40 @@ The best setting is the physical core count plus a little, not one thread per vC
 
 CPU scales roughly linearly with question count (288.2 -> 2608.7 ms, 9.1x for 10x the questions), while XPU scales sub-linearly (29.7 -> 96.9 ms, 3.3x), so the speedup widens from ~10x to ~27x. The XPU p95 stays within ~6% of its p50 on every row (30.4, 46.8, 102.5). At one question the Arc B390 is slightly faster than the T4's 32.8 ms p50 above.
 
+### Apple M1 Pro, MPS — fp16 autocast against fp32
+
+On MPS, `Agent` autocasts a forward to fp16 at or above `mps_amp_min_rows` question rows (default 5, `LAYA_MPS_AMP_MIN_ROWS`). The default came from one M5 (#109), where fp16 won from four rows. On an M1 Pro (16 GB, macOS 26.1, torch 2.14.0, transformers 5.17.0, laya 0.3.26) it loses almost everywhere. `benchmarks/bench_mps_autocast.py` runs every request once in fp32 and once in fp16 on the same loaded agent, back to back with the order alternating, so both modes see the same load (the machine was not idle: 1-min load 6 to 10). 72 pairs per row: 24 states, three passes. A short state is one message, a long one a thread of six. Results in `benchmarks/results/mps_autocast_*_m1pro.json`.
+
+`english` (ModernBERT-large), median ms, and fp16 minus fp32 per request:
+
+| state | rows | fp32 | fp16 | fp16 − fp32 | max probability change |
+|---|---|---|---|---|---|
+| short | 1 | 58.2 | 79.4 | +21.0 | 0.0011 |
+| short | 4 | 147.6 | 170.4 | +23.6 | 0.0061 |
+| short | 5 | 190.4 | 213.6 | +22.9 | 0.0061 |
+| short | 8 | 290.6 | 316.4 | +28.6 | 0.0061 |
+| long | 1 | 133.7 | 157.3 | +24.2 | 0.0081 |
+| long | 4 | 458.1 | 492.6 | +23.8 | 0.0081 |
+| long | 5 | 394.4 | 403.3 | +9.1 | 0.0081 |
+| long | 8 | 585.5 | 566.6 | **−13.7** | 0.0081 |
+
+`multilingual` (mmBERT-base):
+
+| state | rows | fp32 | fp16 | fp16 − fp32 | max probability change |
+|---|---|---|---|---|---|
+| short | 1 | 25.5 | 34.7 | +9.8 | 0.0038 |
+| short | 4 | 45.9 | 55.7 | +9.9 | 0.0038 |
+| short | 5 | 56.4 | 66.5 | +10.3 | 0.0038 |
+| short | 8 | 78.1 | 90.9 | +11.8 | 0.0038 |
+| long | 1 | 44.0 | 53.7 | +9.3 | 0.0107 |
+| long | 4 | 145.4 | 157.1 | +11.7 | 0.0106 |
+| long | 5 | 183.6 | 195.1 | +12.9 | 0.0106 |
+| long | 8 | 267.6 | 283.6 | +17.2 | 0.0206 |
+
+fp16 costs about 20 to 30 ms per request on `english` and about 10 ms on `multilingual`, whatever the row count; it only wins on long `english` states with eight rows. So at the default of 5 an M1 Pro pays for autocast on every request of five or more rows. `LAYA_MPS_AMP_MIN_ROWS=1000000` keeps fp32 throughout.
+
+Of 1,248 decisions per checkpoint, fp16 changed none on `english` and one on `multilingual` (a `noul` next to 0.5). A decision near the boundary can flip.
+
 ### Calibration on a routing task runs the other way
 
 On laya_router's 180 requests (zero-shot, one 3-tier `choice`), nearly every configuration we measured was **under**-confident (the few exceptions were +0.01 to +0.06, and among the least accurate). Mean P(chosen) (the chosen option's probability, not the entropy-based `confidence` field) sat below accuracy, by −0.18 on the root checkpoint with example-led tier descriptions (0.562 vs 0.744) and by −0.19 on `typed-decisions` (0.501 vs 0.694). This is one task and one set of labels, so it does not contradict the over-confidence reported above. It does mean the direction of the miscalibration depends on the task, and a temperature fit on your own data is the right fix either way.

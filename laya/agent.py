@@ -13,10 +13,13 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import torch
 
-from ._compile import compile_model, independent_dims
+from ._compile import compile_model, independent_dims, configure_cache, cuda_graph_step
 from .calibrate import (
     _install_temperatures,
+    apply_binning_map,
     apply_calibration_payload,
+    MIN_BINNING_BUCKET_N,
+    fit_binning_map,
     calibration_payload,
     fit_temperature_map,
 )
@@ -43,6 +46,7 @@ from .common import (
     serialize_state,
     temp_bucket,
     unpermute_probs,
+    uses_parallel_layout,
     window_batch_cap,
     state_room,
     window_budget,
@@ -466,6 +470,9 @@ class Agent(HookRegistry):
     _amp_failures = 0
     # The stock forward is also used by lightweight runtimes built with __new__ in tests.
     _fast = None
+    _backend = None
+    # The checkpoint's `option_layout` (see `uses_parallel_layout`); runtimes built with __new__ are sequential.
+    parallel_options = False
     # Scoped CPU-fallback observability: how often _infer's per-request OOM fallback fired
     # and what the last failure was, so an operator sees a slow lane in /health instead of
     # discovering it by accident. Class defaults cover instances built without __init__.
@@ -473,6 +480,7 @@ class Agent(HookRegistry):
     last_fallback_reason = None
     # Set when `compile=True` wrapped the model in torch.compile.
     _compiled = False
+    _reduce_overhead = False
     _gate = _InferenceGate()
 
     def __init__(
@@ -493,8 +501,16 @@ class Agent(HookRegistry):
         hooks_concurrent: bool = True,
         hooks_timeout: Optional[float] = None,
         calibration: Optional[str] = None,
+        backend: Optional[str] = None,
+        compile_warmup: bool = True,
+        compile_cache: bool = False,
+        compile_mode: str = "default",
     ):
         """Load a Laya checkpoint.
+
+        `backend` selects "eager", "auto", "compile" or "tilelang"; see `laya.backends`.
+        It takes precedence over `fast` and `compile`. Omit it to keep those legacy flags.
+        For ONNX use `load(backend="onnx")` instead.
 
         `revision` optionally pins the Hub download to an explicit commit SHA/branch/tag;
         when omitted, huggingface_hub's normal default and existing offline cache are used.
@@ -511,6 +527,13 @@ class Agent(HookRegistry):
         new one on almost every request, so those graphs usually cost more than they return;
         use it when the traffic is repetitive. `fast=True` takes precedence, because the
         TileLang path replaces the forward that would be compiled.
+        Compiled agents run `warmup()` before returning; `compile_warmup=False` defers that
+        work to requests or a manual `warmup()` call. Eager and fast agents are unchanged.
+        `compile_cache=True` opts into a persistent Laya Inductor directory (process-wide),
+        respecting any existing `TORCHINDUCTOR_CACHE_DIR`; see the compile engineering notes.
+        `compile_mode="reduce-overhead"` opts into CUDA graphs. It can retain more GPU memory
+        and records each new shape separately. CUDA outputs are copied before the next replay;
+        compiled CUDA graph forwards are serialized. The default mode remains "default".
 
         `subfolder` selects one checkpoint from a repo that bundles several, e.g.
         `Agent("convaiinnovations/laya", subfolder="multilingual")`. Only that subfolder is
@@ -525,6 +548,16 @@ class Agent(HookRegistry):
         `hooks_concurrent=False` serialises hooks that are not safe to run in parallel, and
         `hooks_timeout` bounds each hook call in seconds (None means no limit).
         """
+        if backend is not None:
+            from .backends import normalise
+            backend = normalise(backend)
+            if backend == "onnx":
+                raise ValueError("use laya.load(..., backend='onnx') or ONNXAgent")
+            fast = compile = False
+
+        # Model loading can import Dynamo, which populates Inductor's default directory.
+        if compile and not fast and compile_cache:
+            configure_cache()
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
         self.hooks_concurrent = bool(hooks_concurrent)
@@ -586,6 +619,7 @@ class Agent(HookRegistry):
 
         with open(cfg_path) as f:
             self.cfg = json.load(f)
+        self.parallel_options = uses_parallel_layout(self.cfg)
 
         weights_path = os.path.join(model_dir, "model.safetensors")
         if not os.path.exists(weights_path):
@@ -594,12 +628,28 @@ class Agent(HookRegistry):
             )
 
         # 1. Device resolution with automatic fallback
+        if isinstance(device, str) and device.strip().lower() == "auto":
+            device = None
         if device is not None:
             target_device = torch.device(device)
             if target_device.type == "cuda" and not torch.cuda.is_available():
                 warnings.warn("Warning: CUDA requested but not available. Falling back to CPU.",
                               RuntimeWarning)
                 self.device = torch.device("cpu")
+            elif target_device.type == "cuda" and target_device.index is not None:
+                # `is_available` only says a GPU exists; a bad ordinal sails through it
+                # and dies later in `.to()` with a bare CUDA error. Check up front.
+                try:
+                    count = torch.cuda.device_count()
+                except (RuntimeError, AttributeError):
+                    count = 0
+                if target_device.index < 0 or target_device.index >= max(count, 1):
+                    warnings.warn("Warning: CUDA device %s not found (%d visible). Falling back to CPU."
+                                  % (target_device, count),
+                                  RuntimeWarning)
+                    self.device = torch.device("cpu")
+                else:
+                    self.device = target_device
             elif target_device.type == "mps" and not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
                 warnings.warn("Warning: MPS requested but not available. Falling back to CPU.",
                               RuntimeWarning)
@@ -646,7 +696,11 @@ class Agent(HookRegistry):
         # dynamic=True plus independent dimensions (laya/_compile.py) so a new request shape
         # does not recompile.
         if compile and not fast:
-            self.model = compile_model(self.model)
+            if compile_mode not in ("default", "reduce-overhead"):
+                raise ValueError("compile_mode must be 'default' or 'reduce-overhead'")
+            self._reduce_overhead = compile_mode == "reduce-overhead"
+            compile_kwargs = {"mode": compile_mode} if self._reduce_overhead else {}
+            self.model = compile_model(self.model, **compile_kwargs)
             self._compiled = True
 
         # Keep what the checkpoint shipped for inspection, but only ever apply clamped values:
@@ -663,6 +717,9 @@ class Agent(HookRegistry):
         self.temperature = [clamp_temperature(t) for t in self.temperature_raw]
         self.temperature_by_options = {k: clamp_temperature(v)
                                        for k, v in self.temperature_by_options_raw.items()}
+        # Optional histogram-binning map installed by `load_calibration` or fit via
+        # `fit_binning`; absent/None means answer_confidence is the temperature-scaled one.
+        self.binning_map = None
 
         # Shared with `ONNXAgent` so both backends accept the same option and produce the same
         # confidences; see `common.resolve_lang_temperatures` for why the shape is checked before
@@ -704,10 +761,20 @@ class Agent(HookRegistry):
         self.mps_amp_min_rows = _mps_amp_min_rows()
         if self.device.type == "cuda":
             self.amp_enabled = True
-            if torch.cuda.get_device_capability(self.device)[0] < 8:
+            try:
+                major = torch.cuda.get_device_capability(self.device)[0]
+            except (RuntimeError, AttributeError):
+                # A driver that reports a GPU but cannot answer the capability query
+                # cannot be trusted with bf16 either; fp16 is the safe default and
+                # placement below still decides whether the device is usable at all.
+                warnings.warn("Warning: could not query CUDA capability; assuming fp16 defaults.",
+                              RuntimeWarning)
                 self.dtype = torch.float16
             else:
-                self.dtype = _cuda_amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+                if major < 8:
+                    self.dtype = torch.float16
+                else:
+                    self.dtype = _cuda_amp_dtype(self.cfg.get("amp_dtype", "fp16"))
         elif self.device.type == "mps":
             self.amp_enabled = True
             self.dtype = torch.float16
@@ -742,7 +809,9 @@ class Agent(HookRegistry):
             else:
                 raise e
 
-        if fast:
+        if backend is not None:
+            self.set_backend(backend)
+        elif fast:
             self.accelerate()
 
         if fell_back_from is not None:
@@ -751,10 +820,49 @@ class Agent(HookRegistry):
                 "  Reason: %s\n"
                 "  Inference will be roughly 10-15x slower (~200-500 ms rather than ~35 ms).\n"
                 "  If this is a newer NVIDIA GPU (Blackwell / RTX 50-series), your PyTorch build\n"
-                "  may not support its CUDA architecture:\n"
-                "    pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128\n"
+                "  may predate stable Blackwell support (stable since torch 2.6, CUDA 12.8+).\n"
+                "  Upgrade to a current stable build with a CUDA 13.x wheel, e.g.:\n"
+                "    pip install --upgrade torch --index-url https://download.pytorch.org/whl/cu130\n"
                 "  See https://pytorch.org/get-started/locally/\n"
                 % (fell_back_from, fell_back_why), RuntimeWarning)
+
+        if self._compiled and compile_warmup:
+            try:
+                self.warmup()
+            except Exception as e:
+                # Compilation is lazy: unavailable toolchains fail on the first forward.
+                # Only automatic warm-up is best effort; explicit warmup() still raises.
+                warnings.warn("Warning: laya compile warm-up failed (%s: %s); keeping the compiled model. "
+                              "Later requests and explicit warmup() calls may still raise."
+                              % (type(e).__name__, e), RuntimeWarning)
+
+    @property
+    def backend(self) -> str:
+        """The active inference backend, including the legacy compile and fast flags."""
+        if self._backend is not None:
+            return self._backend.name
+        return "tilelang" if self._fast is not None else "compile" if self._compiled else "eager"
+
+    @property
+    def backend_object(self):
+        """The installed Backend object, or None for a legacy runtime."""
+        return self._backend
+
+    def set_backend(self, name: str = "auto", strict: bool = False, **options) -> str:
+        """Switch backends; unavailable backends warn and use eager unless `strict=True`.
+
+        Options go to the backend constructor, e.g. `warmup=False` for compile or
+        `use_graphs=False` for tilelang. Switching waits for in-flight inference.
+        """
+        from . import backends
+        name = backends.normalise(name)
+        with self._gate.write_lock():
+            self.deaccelerate()
+            if self._compiled:
+                self.model = self.model._orig_mod
+                self._compiled = False
+                self.model.encoder.config.reference_compile = False
+            return backends.install(self, name, strict=strict, **options).name
 
     def accelerate(self, use_graphs: bool = True, strict: bool = False):
         """Replace the model forward with the TileLang fast path (fused GEMM/GEGLU/LayerNorm/RoPE kernels,
@@ -771,6 +879,8 @@ class Agent(HookRegistry):
             if strict:
                 raise RuntimeError("laya fast path needs a CUDA device")
             return False
+        if self._backend is not None:
+            self.deaccelerate()
         last = None
         for _attempt in range(2):  # tilelang's JIT cache has been seen to fail once, then succeed
             try:
@@ -799,10 +909,10 @@ class Agent(HookRegistry):
     def warmup(self, shapes=None) -> float:
         """Run the forward on synthetic input of each shape now and return the seconds it took.
 
-        `compile=True` traces and compiles on the first request that needs a graph (tens of
-        seconds on a GPU), and `fast=True` builds its kernels and CUDA graphs per shape bucket on
-        first use. Calling this after loading, before serving, moves that cost out of the first
-        requests. With the stock forward it is a few ordinary forward passes. `shapes` is a list
+        `compile=True` calls this at load unless `compile_warmup=False`. Extra shapes can still
+        be warmed manually. `fast=True` builds its kernels and CUDA graphs per shape bucket on
+        first use; calling this before serving moves that cost out of the first requests.
+        With the stock forward it is a few ordinary forward passes. `shapes` is a list
         of (rows, tokens, markers); tokens are capped at the agent's `max_len`. Nothing is
         returned to or recorded for any caller, and hooks do not run.
         """
@@ -824,7 +934,11 @@ class Agent(HookRegistry):
 
     def deaccelerate(self):
         """Restore the stock forward."""
-        if self._fast is not None:
+        if self._backend is not None:
+            self._backend.uninstall()
+            self._backend = None
+            self._fast = None
+        elif self._fast is not None:
             self.model.forward = self._stock_forward
             self._fast = None
 
@@ -1057,10 +1171,10 @@ class Agent(HookRegistry):
         items = []
         for qid in ids:
             q = internal[qid]
-            seq, markers, stats, state_stats = build_sequence(self.tok, state, q, max_len, head_max_len,
-                                                              option_order=q.get("option_order"),
-                                                              truncate_left=truncate_left, state_ids=state_ids,
-                                                              return_stats=True, return_truncation_stats=True)
+            seq, markers, stats, state_stats, *layout = build_sequence(
+                self.tok, state, q, max_len, head_max_len, option_order=q.get("option_order"),
+                truncate_left=truncate_left, state_ids=state_ids, return_stats=True,
+                return_truncation_stats=True, return_layout=self.parallel_options)
             n_opts = len(render_options(q))
             if len(markers) != n_opts:
                 # The markers are placed at absolute positions and `build_sequence` then drops the
@@ -1078,8 +1192,11 @@ class Agent(HookRegistry):
                     "head_max_len=%d spent on the question; lower head_max_len, raise max_len, "
                     "or use fewer options"
                     % (qid, len(markers), n_opts, max_len, head_max_len))
-            items.append({"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]], "options": stats,
-                          "state_stats": state_stats})
+            item = {"ids": seq, "markers": markers, "qtype": QTYPES[q["t"]], "options": stats,
+                    "state_stats": state_stats}
+            if layout:
+                item["layout"] = layout[0]
+            items.append(item)
         return items
 
     def _amp_enabled_for(self, rows: int) -> bool:
@@ -1106,10 +1223,20 @@ class Agent(HookRegistry):
 
     def _infer(self, b: Dict):
         """Run the forward pass under autocast, degrading gracefully on OOM or unsupported autocast."""
+        if "option_ids" in b and (self._fast is not None or self._compiled
+                                  or getattr(self._backend, "name", "eager") != "eager"):
+            # Those forwards take only the five sequential-layout inputs and would run this
+            # checkpoint's batch without its masks.
+            raise ValueError("this checkpoint uses option_layout='parallel', which only the eager "
+                             "backend runs; load it without fast=/compile= or call set_backend('eager')")
         if self._compiled and self._fast is None and self.device.type == "cuda":
             b = _pad_cuda_compile_batch(b, self.tok.pad_token_id)
         use_amp = self._amp_enabled_for(b["input_ids"].shape[0])
 
+        limit = getattr(self._backend, "max_len", None)
+        if limit is not None and b["input_ids"].shape[1] > limit:
+            raise ValueError("the %s backend was built for max_len=%d; this request needs %d tokens"
+                             % (self.backend, limit, b["input_ids"].shape[1]))
         if self._fast is not None and b["input_ids"].shape[1] > self._fast.max_len:
             raise ValueError(
                 "the CUDA fast path was built for max_len=%d; this request needs %d tokens. "
@@ -1124,14 +1251,20 @@ class Agent(HookRegistry):
             if enabled is None:
                 enabled = self._amp_enabled_for(b["input_ids"].shape[0])
             dims = independent_dims() if self._compiled else nullcontext()
-            with _amp_context(self.device, self.dtype, enabled), dims:
-                return self.model(
+            graph_outputs = self._reduce_overhead and self._fast is None and self.device.type == "cuda"
+            step = cuda_graph_step() if graph_outputs else nullcontext()
+            with _amp_context(self.device, self.dtype, enabled), dims, step:
+                out = self.model(
                     b["input_ids"].to(self.device),
                     b["attention_mask"].to(self.device),
                     b["marker_pos"].to(self.device),
                     b["marker_mask"].to(self.device),
                     b["qtype"].to(self.device),
+                    **({"position_ids": b["position_ids"].to(self.device),
+                        "option_ids": b["option_ids"].to(self.device)} if "option_ids" in b else {}),
                 )
+                # CUDA graph outputs belong to a reusable pool; callers can retain our copies.
+                return tuple(t.clone() for t in out) if graph_outputs else out
 
         try:
             with self._gate.read_lock():
@@ -1157,7 +1290,8 @@ class Agent(HookRegistry):
                     if self.device.type == "cpu":
                         return run()
                     held_device, held_dtype, held_amp = self.device, self.dtype, self.amp_enabled
-                    had_fast = self._fast is not None
+                    held_backend = self._backend
+                    had_fast = self._fast is not None and held_backend is None
                     # Only our batch scope can retain BF16 copies after this failed forward.
                     # Release them before moving the model and retrying on CPU.
                     if self.device.type == "cuda" and _BATCH_AUTOCAST_CACHE.get():
@@ -1176,6 +1310,15 @@ class Agent(HookRegistry):
                         return run()
                     finally:
                         self._restore_runtime(held_device, held_dtype, held_amp, had_fast)
+                        if held_backend is not None and self.device == held_device:
+                            from .backends import BackendUnavailable, warn_fallback
+                            try:
+                                held_backend.install()
+                            except BackendUnavailable as exc:
+                                warn_fallback(held_backend.name, exc)
+                            else:
+                                self._backend = held_backend
+                                self._fast = getattr(held_backend, "fast", None)
             if use_amp and self.device.type in ("mps", "cpu"):
                 # Not every MPS/CPU build implements autocast for every op. Retry this
                 # request in full precision. One miss must not turn AMP off; a build that
@@ -1228,7 +1371,14 @@ class Agent(HookRegistry):
             # scaling fits and ECE measures. Rather than change one underneath existing
             # callers, report both: `answer_confidence` is the calibrated one, on every
             # question type, so a caller can gate across types on a single number.
-            ans_conf = round(answer_confidence(p, k), 4)
+            ans_raw = answer_confidence(p, k)
+            lang_override = bool(lang and lang.split("-")[0].lower() in self.lang_temperatures)
+            if getattr(self, "binning_map", None) and not lang_override:
+                ans_conf = round(
+                    apply_binning_map(ans_raw, temp_bucket(qt, k), self.binning_map), 4
+                )
+            else:
+                ans_conf = round(ans_raw, 4)
             ext = {"act_probability": round(float(act[r, 0]), 4)}
 
             if q["t"] == "choice":
@@ -1376,7 +1526,7 @@ class Agent(HookRegistry):
                         # caller already owns a CUDA autocast scope, its cache is sufficient.
                         if (chunk < len(states) and getattr(self, "device", None) is not None
                                 and self.device.type == "cuda" and self.amp_enabled
-                                and self._fast is None and not self._compiled
+                                and self._fast is None and not self._compiled and self.backend != "compile"
                                 and not torch.is_autocast_enabled()):
                             amp_stack.enter_context(torch.autocast(device_type="cuda", dtype=self.dtype,
                                                                    enabled=False))
@@ -1517,7 +1667,8 @@ class Agent(HookRegistry):
         That span is the one the model read, not merely the one asked for: the window is capped at
         the room the questions leave, so what is handed to `predict_batch` is not cut short again.
 
-        A state that already fits one window is passed straight to `system_one` (identical output).
+        A state the questions leave room for is passed straight to `system_one` (identical output),
+        since `system_one` reads it whole; with an explicit `window`, a state that fits that window.
 
         The hooks wrap the inference that answers the state, which for a document needing several
         windows is the one shared `predict_batch` over them: `on_predict_start` fires once, and
@@ -1533,9 +1684,11 @@ class Agent(HookRegistry):
             above describe this method's windows, not the text the model read
 
         Args:
-            window: state tokens per window. Defaults to the checkpoint's state budget
-                    (`max_len - head_max_len - 8`), and either way is capped at the room the
-                    questions leave for the state inside `max_len` -- the smallest room of them,
+            window: state tokens per window. Defaults to the checkpoint's state budget,
+                    `max(64, max_len - head_max_len - 8)` -- the 64 is a floor, so widening
+                    `head_max_len` stops shrinking the default once the budget reaches it -- and
+                    either way is capped at the room the questions leave for the state inside
+                    `max_len` -- the smallest room of them,
                     because one list of windows is scored for every question. A wider window is
                     re-truncated on the way to the model, so it is clamped instead, with a
                     `RuntimeWarning` when the caller is the one who asked for it. Options are what
@@ -1608,8 +1761,8 @@ class Agent(HookRegistry):
         for qid in ids:
             self._check_question(qid, questions[qid])
         internal = {qid: self._to_internal(questions[qid]) for qid in ids}
-        budget, step, _ = window_budget(self.tok, [internal[qid] for qid in ids], max_len,
-                                        head_max_len, window=window, stride=stride)
+        budget, step, room = window_budget(self.tok, [internal[qid] for qid in ids], max_len,
+                                           head_max_len, window=window, stride=stride)
         # Snapshot the questions the scan was just sized against, BEFORE any start hook can
         # rewrite them, and compare against this instead of `questions` itself. `==` over the
         # mapping cannot see an in-place rewrite: a hook that adds options to
@@ -1627,7 +1780,10 @@ class Agent(HookRegistry):
         # ask "how much of the document did the model read?" without handling a KeyError on the
         # shortest, most common inputs. The result is copied first: a start hook that answers with
         # `ctx.skip(...)` hands back its own payload dict, and it may be a cached object.
-        if len(state_ids) <= budget:
+        # "Fits" is the room the questions leave, not the default window: `system_one` reads a
+        # state up to that room whole, so windowing one between the two only re-reads it in pieces
+        # and lets the per-window max inflate the answer. An explicit `window` still scans.
+        if len(state_ids) <= (budget if window and window > 0 else room):
             probe, evidence = _start_evidence()
             single = dict(self.system_one(state, questions, lang=lang,
                                           **_with_start_probe(hook_kwargs, probe)))
@@ -1638,7 +1794,10 @@ class Agent(HookRegistry):
             # fit one window was silently truncated by a re-budgeting hook and still reported
             # `windows: 1`, i.e. "the model read all of it" -- measured, 138 of 240 state tokens
             # never reached the model, while a longer document on the identical input hard-failed.
-            _check_scan_budget(self, evidence, budget, max_len, head_max_len, asked)
+            # Sized for the whole state when it is longer than the window, so a hook that narrows
+            # the room below it is refused rather than cutting its tail.
+            _check_scan_budget(self, evidence, max(budget, len(state_ids)), max_len, head_max_len,
+                               asked)
             single["usage"] = {**(single.get("usage") or {}), "windows": 0 if evidence["answered"] else 1}
             return single
 
@@ -1759,7 +1918,9 @@ class Agent(HookRegistry):
         usage["windows"] = len(results)
         result = {"model": "laya-rl-agent", "answers": answers, "usage": usage}
         # `predict_long` accepts no `min_confidence` -- the window loop has no single confidence to
-        # gate on -- so every answer reports that it ran ungated rather than reporting nothing.
+        # gate on. The gate is still called, per its contract in laya/confidence.py: with
+        # `min_confidence` None it writes nothing, so the payload comes back exactly as the
+        # windows built it -- no `abstention`, no `abstention_threshold`, no flag.
         apply_confidence_gate([result], None)
         return result
 
@@ -1882,14 +2043,28 @@ class Agent(HookRegistry):
         _install_temperatures(self, result["temperature"], result["temperature_by_options"], warn=False)
         return result
 
+    def fit_binning(self, records, min_bucket_n: int = MIN_BINNING_BUCKET_N) -> Dict[str, Any]:
+        """Fit a histogram-binning map on top of this agent's fitted temperatures and store it.
+
+        `records` are the same `(qtype, logits, target[, k])` tuples as `fit_temperatures`
+        consumed. The map is keyed exactly like `temperature_by_options`, composes on top of
+        the current temperatures, and is written out by `save_calibration` as `binning_map`.
+        """
+        self.binning_map = fit_binning_map(
+            records, self.temperature, self.temperature_by_options, min_bucket_n=min_bucket_n
+        )
+        return self.binning_map
+
     def save_calibration(self, path: str) -> None:
-        """Write temperatures and the checkpoint they were fitted for. Does not write weights."""
+        """Write `temperature`, `temperature_by_options`, `binning_map` when the agent has one, and
+        the checkpoint they were fitted for. Does not write weights."""
         payload = calibration_payload(
             self.temperature,
             self.temperature_by_options,
             model_id_or_path=getattr(self, "model_id_or_path", None),
             subfolder=getattr(self, "subfolder", None),
             config=getattr(self, "cfg", None),
+            binning_map=getattr(self, "binning_map", None),
         )
         destination = os.path.realpath(path)
         fd, temporary = tempfile.mkstemp(dir=os.path.dirname(destination), prefix=".calibration.", suffix=".tmp")
@@ -1916,10 +2091,17 @@ class Agent(HookRegistry):
     def load_calibration(self, path: str) -> None:
         """Read a JSON map written by `save_calibration` onto this agent.
 
+        The file carries three fields and all three are installed: `temperature`,
+        `temperature_by_options` and `binning_map`. A file with no `binning_map` key installs
+        `None`, so loading one clears a map this agent's `fit_binning` fitted -- the file is the
+        whole calibration state, not a patch onto the current one.
+
         A file with no `version` is treated as version 1 and still loads. A newer file
         whose recorded checkpoint does not match this agent warns and still loads.
-        Values that are not numbers, or that sit outside `[TEMP_MIN, TEMP_MAX]`, are clamped
-        with `clamp_temperature` the same way checkpoint load is.
+        Temperatures that are not numbers, or that sit outside `[TEMP_MIN, TEMP_MAX]`, are
+        clamped with `clamp_temperature` the same way checkpoint load is; binning values are
+        not clamped, they are refused with a `ValueError` naming the field, because an
+        out-of-range binning value would move a confidence with nothing to fall back to.
         """
         with open(path) as f:
             payload = json.load(f)
@@ -1957,7 +2139,9 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
          hooks=None, on_predict_start=None, on_predict_end=None,
          hooks_raise: bool = True, hooks_concurrent: bool = True,
          hooks_timeout: Optional[float] = None,
-         calibration: Optional[str] = None) -> Agent:
+         calibration: Optional[str] = None, backend: Optional[str] = None,
+         onnx_path: Optional[str] = None, compile_warmup: bool = True,
+         compile_cache: bool = False, compile_mode: str = "default") -> Agent:
     """Load a Laya agent.
 
     `subfolder` picks one checkpoint out of a repo that bundles several:
@@ -1974,6 +2158,10 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
         laya.load("ml")                                               # multilingual
 
     Anything else (a Hub repo id, a local directory) is passed to `Agent` unchanged.
+
+    `backend` selects "auto", "eager", "compile", "tilelang" or "onnx". ONNX returns
+    the existing `ONNXAgent`, with `onnx_path` (default "laya.onnx").
+    Other backends use `Agent`; an explicit backend takes precedence over the legacy flags.
 
     `revision`/`expected_sha256` pin and verify the downloaded artifacts; see `Agent`.
     `hooks` / `on_predict_start` / `on_predict_end` observe or shape every prediction; see
@@ -1992,10 +2180,22 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
         spec = resolve_model_spec(model_id_or_path)
         if spec is not None:
             model_id_or_path, subfolder = spec
+    if backend is not None:
+        from .backends import normalise
+        backend = normalise(backend)
+    if backend == "onnx":
+        from .onnx_agent import ONNXAgent
+        return ONNXAgent(model_id_or_path, onnx_path=onnx_path or "laya.onnx",
+                         token=token, subfolder=subfolder, revision=revision, expected_sha256=expected_sha256,
+                         lang_temperatures=lang_temperatures, calibration=calibration,
+                         hooks=hooks, on_predict_start=on_predict_start, on_predict_end=on_predict_end,
+                         hooks_raise=hooks_raise, hooks_concurrent=hooks_concurrent, hooks_timeout=hooks_timeout)
+    options = {"backend": backend} if backend is not None else {}
     return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast,
-                 compile=compile,
+                 compile=compile, compile_warmup=compile_warmup, compile_cache=compile_cache,
+                 compile_mode=compile_mode,
                  revision=revision, expected_sha256=expected_sha256,
                  lang_temperatures=lang_temperatures,
                  hooks=hooks, on_predict_start=on_predict_start, on_predict_end=on_predict_end,
                  hooks_raise=hooks_raise, hooks_concurrent=hooks_concurrent,
-                 hooks_timeout=hooks_timeout, calibration=calibration)
+                 hooks_timeout=hooks_timeout, calibration=calibration, **options)

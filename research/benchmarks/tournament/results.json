@@ -1,0 +1,439 @@
+{
+ "note": "Accuracy runs (test, sample) ran with up to two benchmark processes on one GPU; latency comes from the separate latency runs, one process at a time.",
+ "test": {
+  "banking77": {
+   "split": "test",
+   "rows": 3076,
+   "options": 77,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.4301,
+     "ece": 0.3499,
+     "calls_per_row": 1.0
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.6096,
+     "ece": 0.0816,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 779,
+      "lost": 227
+     }
+    }
+   }
+  },
+  "clinc150": {
+   "split": "test",
+   "rows": 4500,
+   "options": 150,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.6247,
+     "ece": 0.2972,
+     "calls_per_row": 1.0
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.8758,
+     "ece": 0.057,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 1302,
+      "lost": 172
+     }
+    }
+   }
+  },
+  "massive": {
+   "split": "test",
+   "rows": 2974,
+   "options": 60,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.5148,
+     "ece": 0.3696,
+     "calls_per_row": 1.0
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.5686,
+     "ece": 0.1359,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 486,
+      "lost": 326
+     }
+    }
+   }
+  }
+ },
+ "sample": {
+  "banking77": {
+   "split": "test",
+   "rows": 500,
+   "options": 77,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.416,
+     "ece": 0.3549,
+     "calls_per_row": 1.0
+    },
+    "wide": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.554,
+     "ece": 0.308,
+     "calls_per_row": 1.0,
+     "vs_single": {
+      "gained": 96,
+      "lost": 27
+     }
+    },
+    "shortlist": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.224,
+     "ece": 0.4552,
+     "calls_per_row": 1.0,
+     "vs_single": {
+      "gained": 60,
+      "lost": 156
+     }
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.584,
+     "ece": 0.1114,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 126,
+      "lost": 42
+     }
+    }
+   }
+  },
+  "clinc150": {
+   "split": "test",
+   "rows": 500,
+   "options": 150,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.604,
+     "ece": 0.3201,
+     "calls_per_row": 1.0
+    },
+    "wide": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.68,
+     "ece": 0.2659,
+     "calls_per_row": 1.0,
+     "vs_single": {
+      "gained": 53,
+      "lost": 15
+     }
+    },
+    "shortlist": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.188,
+     "ece": 0.6247,
+     "calls_per_row": 1.0,
+     "vs_single": {
+      "gained": 54,
+      "lost": 262
+     }
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.894,
+     "ece": 0.0538,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 161,
+      "lost": 16
+     }
+    }
+   }
+  },
+  "massive": {
+   "split": "test",
+   "rows": 500,
+   "options": 60,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.542,
+     "ece": 0.3492,
+     "calls_per_row": 1.0
+    },
+    "wide": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.622,
+     "ece": 0.2704,
+     "calls_per_row": 1.0,
+     "vs_single": {
+      "gained": 58,
+      "lost": 18
+     }
+    },
+    "shortlist": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.184,
+     "ece": 0.6364,
+     "calls_per_row": 1.0,
+     "vs_single": {
+      "gained": 23,
+      "lost": 202
+     }
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.59,
+     "ece": 0.1253,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 85,
+      "lost": 61
+     }
+    }
+   }
+  }
+ },
+ "latency": {
+  "banking77": {
+   "split": "test",
+   "rows": 300,
+   "options": 77,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.4267,
+     "ece": 0.3375,
+     "mean_ms": 71.7,
+     "p50_ms": 69.3,
+     "p95_ms": 81.7,
+     "calls_per_row": 1.0
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.58,
+     "ece": 0.1254,
+     "mean_ms": 149.2,
+     "p50_ms": 145.4,
+     "p95_ms": 173.6,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 67,
+      "lost": 21
+     }
+    }
+   }
+  },
+  "clinc150": {
+   "split": "test",
+   "rows": 300,
+   "options": 150,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.6133,
+     "ece": 0.3313,
+     "mean_ms": 103.9,
+     "p50_ms": 103.3,
+     "p95_ms": 108.7,
+     "calls_per_row": 1.0
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.8767,
+     "ece": 0.0496,
+     "mean_ms": 187.3,
+     "p50_ms": 186.9,
+     "p95_ms": 205.3,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 90,
+      "lost": 11
+     }
+    }
+   }
+  },
+  "massive": {
+   "split": "test",
+   "rows": 300,
+   "options": 60,
+   "revisions": {
+    "mteb/banking77": "18072d2685ea682290f7b8924d94c62acc19c0b2",
+    "clinc/clinc_oos": "155b9c710419136e17307b80d0a13e68cd46b4ec",
+    "SetFit/amazon_massive_intent_en-US": "f7672a018e8ceb37fc0184dcfbb7e665155ffea6"
+   },
+   "model": "english",
+   "device": "mps",
+   "laya": "0.3.27",
+   "machine": "arm64",
+   "strategies": {
+    "single": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.4767,
+     "ece": 0.3974,
+     "mean_ms": 56.8,
+     "p50_ms": 56.1,
+     "p95_ms": 60.8,
+     "calls_per_row": 1.0
+    },
+    "tournament": {
+     "errors": 0,
+     "first_error": null,
+     "accuracy": 0.52,
+     "ece": 0.1738,
+     "mean_ms": 100.8,
+     "p50_ms": 99.5,
+     "p95_ms": 110.0,
+     "calls_per_row": 2.0,
+     "vs_single": {
+      "gained": 46,
+      "lost": 33
+     }
+    }
+   }
+  }
+ },
+ "development": {
+  "banking77": {
+   "split": "train",
+   "rows": 600,
+   "options": 77,
+   "accuracy": {
+    "single": 0.37,
+    "tournament-8": 0.57,
+    "tournament-12": 0.5933,
+    "tournament-16": 0.5833,
+    "tournament-24": 0.5817,
+    "tournament-32": 0.61,
+    "top2-16": 0.6017
+   }
+  },
+  "clinc150": {
+   "split": "validation",
+   "rows": 600,
+   "options": 150,
+   "accuracy": {
+    "single": 0.6317,
+    "tournament-12": 0.8317,
+    "tournament-16": 0.855,
+    "tournament-24": 0.8633
+   }
+  },
+  "massive": {
+   "split": "validation",
+   "rows": 600,
+   "options": 60,
+   "accuracy": {
+    "single": 0.5433,
+    "tournament-12": 0.5883,
+    "tournament-16": 0.58,
+    "tournament-24": 0.5633,
+    "tournament-32": 0.5683,
+    "top2-16": 0.5867
+   }
+  }
+ }
+}

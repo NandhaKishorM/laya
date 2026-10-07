@@ -1,0 +1,2040 @@
+[
+  {
+    "label": "upstream/undetermined_latin_custom_default",
+    "router_kwargs": {
+      "default": "multilingual"
+    },
+    "route_kwargs": {
+      "state": "Hello"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "upstream/mixed_foreign_line",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please review the error and send me the details.\nEu nao consigo entrar na minha conta."
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, mostly English, but a line or field reads as 'pt' ('Eu nao consigo entrar na minha conta.'); the English checkpoint cannot read it",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "pt",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": "Eu nao consigo entrar na minha conta."
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "english_text",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "I was charged twice, please refund."
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "armenian_text",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "Հայերեն"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (armenian, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "armenian",
+        "script_profile": {
+          "armenian": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "armenian_explicit_override",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "Հայերեն"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "model": "english"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit model='english'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "hindi_text",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "मुझसे दो बार शुल्क लिया गया"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "devanagari",
+        "script_profile": {
+          "devanagari": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "japanese_text",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "二重に請求されました"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (kana, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "kana",
+        "script_profile": {
+          "han": 0.4,
+          "kana": 0.6
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "korean_text",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "두 번 청구되었습니다"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (hangul, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "hangul",
+        "script_profile": {
+          "hangul": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "arabic_text",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "تم خصم المبلغ مرتين"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (arabic, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "arabic",
+        "script_profile": {
+          "arabic": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "german_text",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'de', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "de",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_model",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "anything"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "model": "multilingual"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit model='multilingual'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_model_overrides_script",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "मुझसे दो बार"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "model": "english"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit model='english'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_task",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "x"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "task": "typed_decisions"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "explicit task='typed_decisions'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_lang_en",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "मुझसे दो बार"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "lang": "en"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='en'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_lang_de",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "hello there"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "lang": "de"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit lang='de'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_lang_eng_alias",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "hello"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "lang": "eng"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='eng'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_lang_english_word",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "hello"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "lang": "English"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='English'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_lang_en_us",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "hello"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "lang": "en-US"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='en-US'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "explicit_lang_fr",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "hello"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      },
+      "lang": "fr"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit lang='fr'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "td_workflow_auto_off",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "I was charged twice"
+      },
+      "questions": {
+        "action": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "category": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "churn_risk": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "needs_human": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": "customer_service"
+    }
+  },
+  {
+    "label": "empty_state",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {},
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "no letters detected in state; using default (english)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "none_state",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": null,
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "no letters detected in state; using default (english)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "no_questions_none",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "मुझसे दो बार"
+      },
+      "questions": null
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "devanagari",
+        "script_profile": {
+          "devanagari": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "td_agent_trace_observability_auto_on",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "trace"
+      },
+      "questions": {
+        "action": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "needs_review": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "outcome": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "risk": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "question ids match the 'agent_trace_observability' typed-decisions workflow",
+      "detection": null,
+      "workflow": "agent_trace_observability"
+    }
+  },
+  {
+    "label": "td_customer_service_auto_on",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "I was charged twice"
+      },
+      "questions": {
+        "action": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "category": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "churn_risk": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "needs_human": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "question ids match the 'customer_service' typed-decisions workflow",
+      "detection": null,
+      "workflow": "customer_service"
+    }
+  },
+  {
+    "label": "td_invoice_processing_auto_on",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "invoice mismatch"
+      },
+      "questions": {
+        "discrepancy_severity": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "disposition": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "duplicate": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "matches_order": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "question ids match the 'invoice_processing' typed-decisions workflow",
+      "detection": null,
+      "workflow": "invoice_processing"
+    }
+  },
+  {
+    "label": "td_security_incidents_auto_on",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "possible breach"
+      },
+      "questions": {
+        "credential_compromise": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "disposition": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "severity": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "true_positive": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "question ids match the 'security_incidents' typed-decisions workflow",
+      "detection": null,
+      "workflow": "security_incidents"
+    }
+  },
+  {
+    "label": "td_auto_on_but_generic_questions",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "I was charged twice"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "td_explicit_beats_workflow",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "x"
+      },
+      "questions": {
+        "action": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "category": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "churn_risk": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "needs_human": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      },
+      "model": "multilingual"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit model='multilingual'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "td_near_miss_partial_overlap",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "x"
+      },
+      "questions": {
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "category": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "td_near_miss_superset",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "x"
+      },
+      "questions": {
+        "action": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "category": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "churn_risk": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "needs_human": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "extra_field": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "td_near_miss_subset",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "x"
+      },
+      "questions": {
+        "discrepancy_severity": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "disposition": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "duplicate": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "matches_order": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "td_near_miss_one_id_swapped",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": {
+        "body": "x"
+      },
+      "questions": {
+        "credential_compromise": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "disposition": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "severity": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "true_positive": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "not_a_real_field": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "unknown_latin_romanian",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Gătește-mi o rețetă de sarmale de post pentru mâine."
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'ro', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "ro",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0962,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "unknown_latin_romanian_agent_request",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Exportă APK-ul pentru Android și pune-l pe Drive ca să-l instalez."
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'ro', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "ro",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0455,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "unknown_latin_polish",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Klient został obciążony dwukrotnie i chce zwrot pieniędzy za fakturę"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified but 7% non-English letters; not safe for the English checkpoint",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0735,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "unknown_latin_turkish",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Müşteriden iki kez ücret alındı ve para iadesi istiyor lütfen yardım"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified but 10% non-English letters; not safe for the English checkpoint",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.1029,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "unknown_latin_undecided_reason",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Müşteriden iki kez ücret alındı ve para iadesi istiyor"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified but 9% non-English letters; not safe for the English checkpoint",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0926,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "english_still_english",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please refund the duplicate charge on invoice 4411 today."
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "short_english_still_english",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "refund me"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "plain_ascii_es_1",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "El pedido llego roto y nadie responde cuando escribo al soporte"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'es', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "es",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "plain_ascii_it_1",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Il cliente e stato addebitato due volte e vuole un rimborso"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'it', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "it",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "plain_ascii_pt_1",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "O cliente foi cobrado duas vezes e quer o dinheiro de volta"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'pt', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "pt",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "plain_ascii_fr_1",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Le client a ete facture deux fois et demande un remboursement"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'fr', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "fr",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "accented_es",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "La facturación tiene un error y necesito una corrección urgente"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'es', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "es",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0317,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "accented_it",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "La fattura è sbagliata, devo avere un rimborso per il pagamento"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'it', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "it",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0159,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "accented_fr",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "La commande est arrivée cassée et personne ne répond au support"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script but language looks like 'fr', not English",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "fr",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0476,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "romance_control_1",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "The customer was charged twice and wants a refund for this invoice"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "romance_control_2",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Our MI5 and UN contacts discussed the DOS attack in LA last month"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "shared_words_still_multilingual",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Cât e ora acum la Tokyo"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified but 4% non-English letters; not safe for the English checkpoint",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0435,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "custom_default_multilingual",
+    "router_kwargs": {
+      "default": "multilingual"
+    },
+    "route_kwargs": {
+      "state": "12345"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "no letters detected in state; using default (multilingual)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "custom_default_typed_decisions",
+    "router_kwargs": {
+      "default": "typed-decisions"
+    },
+    "route_kwargs": {
+      "state": ""
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "no letters detected in state; using default (typed-decisions)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "custom_default_english_script_unknown",
+    "router_kwargs": {
+      "default": "english"
+    },
+    "route_kwargs": {
+      "state": "12345 6789"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "no letters detected in state; using default (english)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "bundle_default_hindi",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "m": "मुझसे दो बार"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "devanagari",
+        "script_profile": {
+          "devanagari": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "standalone_opt_in_hindi",
+    "router_kwargs": {
+      "standalone_repos": true
+    },
+    "route_kwargs": {
+      "state": {
+        "m": "मुझसे दो बार"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "devanagari",
+        "script_profile": {
+          "devanagari": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "standalone_english_unchanged",
+    "router_kwargs": {
+      "standalone_repos": true
+    },
+    "route_kwargs": {
+      "state": {
+        "m": "I was charged twice"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "local_path_override",
+    "router_kwargs": {
+      "models": {
+        "english": "/tmp/en",
+        "multilingual": "/tmp/ml"
+      }
+    },
+    "route_kwargs": {
+      "state": {
+        "m": "मुझसे दो बार"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "devanagari",
+        "script_profile": {
+          "devanagari": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_en",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "en"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit model='en'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_laya",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "laya"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit model='laya'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_default",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "default"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit model='default'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_multi",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "multi"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit model='multi'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_ml",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "ml"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit model='ml'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_laya_multilingual",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "laya-multilingual"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit model='laya-multilingual'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_typed",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "typed"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "explicit model='typed'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_typed_decisions",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "typed_decisions"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "explicit model='typed_decisions'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_laya_typed_decisions",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "laya-typed-decisions"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "explicit model='laya-typed-decisions'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_decisions",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "decisions"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "explicit model='decisions'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_uppercase_ML",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "ML"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit model='ML'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_mixed_case_English",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "English"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit model='English'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_via_task_typed_decisions_with_dash",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "task": "typed-decisions"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "explicit task='typed-decisions'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "alias_via_task_typed_decisions_with_underscore",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "task": "typed_decisions"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "explicit task='typed_decisions'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "payload_shape_hindi",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "body": "मुझसे दो बार शुल्क लिया गया"
+      },
+      "questions": {
+        "dept": {
+          "type": "choice",
+          "instructions": "Which team?",
+          "criteria": {
+            "billing": null,
+            "tech": null
+          }
+        }
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "devanagari",
+        "script_profile": {
+          "devanagari": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "payload_shape_armenian_non_latin_percent",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Հայերեն abc"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (armenian, 70% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "armenian",
+        "script_profile": {
+          "latin": 0.3,
+          "armenian": 0.7
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.7,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "payload_shape_unidentified_latin_percent",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Müşteriden iki kez ücret alındı ve para iadesi istiyor"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified but 9% non-English letters; not safe for the English checkpoint",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0926,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  }
+]

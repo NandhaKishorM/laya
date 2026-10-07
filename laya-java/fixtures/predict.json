@@ -1,0 +1,1456 @@
+{
+  "checkpoint": "multilingual",
+  "graph": "laya.onnx",
+  "single": {
+    "billing-mixed": {
+      "state": "We were billed twice for March and want a refund today.",
+      "lang": null,
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What does the customer want?",
+          "criteria": {
+            "refund": "money back for a duplicate charge",
+            "replace": "a replacement unit",
+            "info": "an explanation only"
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "instructions": "How urgent is this?",
+          "criteria": [
+            "not urgent",
+            "somewhat",
+            "urgent",
+            "critical"
+          ]
+        },
+        "duplicate": {
+          "type": "noul",
+          "instructions": "The customer was charged more than once."
+        }
+      },
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "intent": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 1.0,
+            "replace": 0.0,
+            "info": 0.0
+          },
+          "confidence": 1.0,
+          "answer_confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.3835,
+          "legend": {
+            "0": "not urgent",
+            "1": "somewhat",
+            "2": "urgent",
+            "3": "critical"
+          },
+          "probabilities": {
+            "0": 0.0521,
+            "1": 0.6075,
+            "2": 0.245,
+            "3": 0.0954
+          },
+          "confidence": 0.2603,
+          "answer_confidence": 0.6075,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "duplicate": {
+          "type": "noul",
+          "noul": 0.9972,
+          "confidence": 0.9972,
+          "answer_confidence": 0.9972,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 141,
+        "output_tokens": 0,
+        "state_tokens": 12,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    "cjk": {
+      "state": "我们三月份被重复扣费了两次，请今天退还。",
+      "lang": "zh",
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "客户想要什么？",
+          "criteria": {
+            "refund": "退款",
+            "replace": "更换"
+          }
+        },
+        "holds": {
+          "type": "noul",
+          "instructions": "客户被重复扣费。"
+        }
+      },
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "intent": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.9999,
+            "replace": 0.0001
+          },
+          "confidence": 0.9991,
+          "answer_confidence": 0.9999,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "holds": {
+          "type": "noul",
+          "noul": 0.9856,
+          "confidence": 0.9856,
+          "answer_confidence": 0.9856,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 83,
+        "output_tokens": 0,
+        "state_tokens": 15,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    "many-options": {
+      "state": "The reply was polite but arrived nine days late.",
+      "lang": null,
+      "questions": {
+        "grade": {
+          "type": "choice",
+          "instructions": "Grade the reply.",
+          "criteria": {
+            "g00": "grade band number 0",
+            "g01": "grade band number 1",
+            "g02": "grade band number 2",
+            "g03": "grade band number 3",
+            "g04": "grade band number 4",
+            "g05": "grade band number 5",
+            "g06": "grade band number 6",
+            "g07": "grade band number 7",
+            "g08": "grade band number 8",
+            "g09": "grade band number 9",
+            "g10": "grade band number 10",
+            "g11": "grade band number 11",
+            "g12": "grade band number 12",
+            "g13": "grade band number 13"
+          }
+        }
+      },
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "grade": {
+          "type": "choice",
+          "choice": "g01",
+          "probabilities": {
+            "g00": 0.0681,
+            "g01": 0.3935,
+            "g02": 0.0186,
+            "g03": 0.0166,
+            "g04": 0.0176,
+            "g05": 0.0172,
+            "g06": 0.0167,
+            "g07": 0.0167,
+            "g08": 0.0167,
+            "g09": 0.0382,
+            "g10": 0.0729,
+            "g11": 0.0702,
+            "g12": 0.0843,
+            "g13": 0.1527
+          },
+          "confidence": 0.2286,
+          "answer_confidence": 0.3935,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 165,
+        "output_tokens": 0,
+        "state_tokens": 10,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    "structured-state": {
+      "state": {
+        "order": 1182,
+        "items": [
+          "widget",
+          "case"
+        ],
+        "charged": 2,
+        "currency": "NGN",
+        "note": null
+      },
+      "lang": null,
+      "questions": {
+        "double": {
+          "type": "noul",
+          "instructions": "This order was charged twice."
+        },
+        "band": {
+          "type": "score",
+          "instructions": "Rate the severity.",
+          "criteria": [
+            {
+              "d": "none"
+            },
+            "minor",
+            3
+          ]
+        }
+      },
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "double": {
+          "type": "noul",
+          "noul": 0.9999,
+          "confidence": 0.9999,
+          "answer_confidence": 0.9999,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "band": {
+          "type": "score",
+          "score": 1.8251,
+          "legend": {
+            "0": "{\"d\": \"none\"}",
+            "1": "minor",
+            "2": "3"
+          },
+          "probabilities": {
+            "0": 0.0172,
+            "1": 0.1405,
+            "2": 0.8423
+          },
+          "confidence": 0.5538,
+          "answer_confidence": 0.8423,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 139,
+        "output_tokens": 0,
+        "state_tokens": 36,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    "long-state": {
+      "state": "evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. ",
+      "lang": null,
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What should we do?",
+          "criteria": {
+            "refund": "send money back",
+            "escalate": "pass to a human"
+          }
+        }
+      },
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "intent": {
+          "type": "choice",
+          "choice": "escalate",
+          "probabilities": {
+            "refund": 0.1964,
+            "escalate": 0.8036
+          },
+          "confidence": 0.2852,
+          "answer_confidence": 0.8036,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1024,
+        "output_tokens": 0,
+        "state_tokens": 1081,
+        "state_tokens_dropped": 82,
+        "truncated": true,
+        "truncated_questions": [
+          "intent"
+        ]
+      }
+    },
+    "unicode-mixed": {
+      "state": "Refund 退款 استرداد वापसी 😀 now!",
+      "lang": "ar",
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "Pick one.",
+          "criteria": {
+            "a": "first",
+            "b": "second"
+          }
+        }
+      },
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "intent": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.8326,
+            "b": 0.1674
+          },
+          "confidence": 0.3484,
+          "answer_confidence": 0.8326,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 29,
+        "output_tokens": 0,
+        "state_tokens": 11,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  },
+  "batch": [
+    {
+      "batch_size": null,
+      "sort_by_length": false,
+      "states": [
+        "We were billed twice for March and want a refund today.",
+        "我们三月份被重复扣费了两次，请今天退还。",
+        "The reply was polite but arrived nine days late.",
+        {
+          "order": 1182,
+          "items": [
+            "widget",
+            "case"
+          ],
+          "charged": 2,
+          "currency": "NGN",
+          "note": null
+        },
+        "evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. ",
+        "Refund 退款 استرداد वापसी 😀 now!",
+        "short one",
+        "another short state",
+        ""
+      ],
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What should we do?",
+          "criteria": {
+            "refund": "send money back",
+            "escalate": "pass to a human",
+            "ignore": "no action"
+          }
+        },
+        "urgent": {
+          "type": "noul",
+          "instructions": "This needs a human today."
+        }
+      },
+      "results": [
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9999,
+                "escalate": 0.0,
+                "ignore": 0.0
+              },
+              "confidence": 0.9995,
+              "answer_confidence": 0.9999,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0283,
+              "confidence": 0.9717,
+              "answer_confidence": 0.9717,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 86,
+            "output_tokens": 0,
+            "state_tokens": 12,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9986,
+                "escalate": 0.0001,
+                "ignore": 0.0013
+              },
+              "confidence": 0.9899,
+              "answer_confidence": 0.9986,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0251,
+              "confidence": 0.9749,
+              "answer_confidence": 0.9749,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 92,
+            "output_tokens": 0,
+            "state_tokens": 15,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.02,
+                "escalate": 0.0219,
+                "ignore": 0.9581
+              },
+              "confidence": 0.8154,
+              "answer_confidence": 0.9581,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0417,
+              "confidence": 0.9583,
+              "answer_confidence": 0.9583,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 82,
+            "output_tokens": 0,
+            "state_tokens": 10,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9669,
+                "escalate": 0.0055,
+                "ignore": 0.0275
+              },
+              "confidence": 0.8541,
+              "answer_confidence": 0.9669,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.2902,
+              "confidence": 0.7098,
+              "answer_confidence": 0.7098,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 134,
+            "output_tokens": 0,
+            "state_tokens": 36,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.0165,
+                "escalate": 0.0737,
+                "ignore": 0.9098
+              },
+              "confidence": 0.6852,
+              "answer_confidence": 0.9098,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.9176,
+              "confidence": 0.9176,
+              "answer_confidence": 0.9176,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 2048,
+            "output_tokens": 0,
+            "state_tokens": 1081,
+            "state_tokens_dropped": 89,
+            "truncated": true,
+            "truncated_questions": [
+              "intent",
+              "urgent"
+            ]
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9989,
+                "escalate": 0.0002,
+                "ignore": 0.0009
+              },
+              "confidence": 0.9918,
+              "answer_confidence": 0.9989,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.7928,
+              "confidence": 0.7928,
+              "answer_confidence": 0.7928,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 84,
+            "output_tokens": 0,
+            "state_tokens": 11,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.1705,
+                "escalate": 0.1067,
+                "ignore": 0.7229
+              },
+              "confidence": 0.2946,
+              "answer_confidence": 0.7229,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.2339,
+              "confidence": 0.7661,
+              "answer_confidence": 0.7661,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 66,
+            "output_tokens": 0,
+            "state_tokens": 2,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.0447,
+                "escalate": 0.2633,
+                "ignore": 0.6921
+              },
+              "confidence": 0.3219,
+              "answer_confidence": 0.6921,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.291,
+              "confidence": 0.709,
+              "answer_confidence": 0.709,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 68,
+            "output_tokens": 0,
+            "state_tokens": 3,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.2294,
+                "escalate": 0.0721,
+                "ignore": 0.6984
+              },
+              "confidence": 0.2918,
+              "answer_confidence": 0.6984,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.6362,
+              "confidence": 0.6362,
+              "answer_confidence": 0.6362,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 62,
+            "output_tokens": 0,
+            "state_tokens": 0,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        }
+      ]
+    },
+    {
+      "batch_size": 2,
+      "sort_by_length": false,
+      "states": [
+        "We were billed twice for March and want a refund today.",
+        "我们三月份被重复扣费了两次，请今天退还。",
+        "The reply was polite but arrived nine days late.",
+        {
+          "order": 1182,
+          "items": [
+            "widget",
+            "case"
+          ],
+          "charged": 2,
+          "currency": "NGN",
+          "note": null
+        },
+        "evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. ",
+        "Refund 退款 استرداد वापसी 😀 now!",
+        "short one",
+        "another short state",
+        ""
+      ],
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What should we do?",
+          "criteria": {
+            "refund": "send money back",
+            "escalate": "pass to a human",
+            "ignore": "no action"
+          }
+        },
+        "urgent": {
+          "type": "noul",
+          "instructions": "This needs a human today."
+        }
+      },
+      "results": [
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9999,
+                "escalate": 0.0,
+                "ignore": 0.0
+              },
+              "confidence": 0.9995,
+              "answer_confidence": 0.9999,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0283,
+              "confidence": 0.9717,
+              "answer_confidence": 0.9717,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 86,
+            "output_tokens": 0,
+            "state_tokens": 12,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9986,
+                "escalate": 0.0001,
+                "ignore": 0.0013
+              },
+              "confidence": 0.9899,
+              "answer_confidence": 0.9986,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0251,
+              "confidence": 0.9749,
+              "answer_confidence": 0.9749,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 92,
+            "output_tokens": 0,
+            "state_tokens": 15,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.02,
+                "escalate": 0.0219,
+                "ignore": 0.9581
+              },
+              "confidence": 0.8154,
+              "answer_confidence": 0.9581,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0417,
+              "confidence": 0.9583,
+              "answer_confidence": 0.9583,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 82,
+            "output_tokens": 0,
+            "state_tokens": 10,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9669,
+                "escalate": 0.0055,
+                "ignore": 0.0275
+              },
+              "confidence": 0.8541,
+              "answer_confidence": 0.9669,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.2902,
+              "confidence": 0.7098,
+              "answer_confidence": 0.7098,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 134,
+            "output_tokens": 0,
+            "state_tokens": 36,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.0165,
+                "escalate": 0.0737,
+                "ignore": 0.9098
+              },
+              "confidence": 0.6852,
+              "answer_confidence": 0.9098,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.9176,
+              "confidence": 0.9176,
+              "answer_confidence": 0.9176,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 2048,
+            "output_tokens": 0,
+            "state_tokens": 1081,
+            "state_tokens_dropped": 89,
+            "truncated": true,
+            "truncated_questions": [
+              "intent",
+              "urgent"
+            ]
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9989,
+                "escalate": 0.0002,
+                "ignore": 0.0009
+              },
+              "confidence": 0.9918,
+              "answer_confidence": 0.9989,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.7928,
+              "confidence": 0.7928,
+              "answer_confidence": 0.7928,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 84,
+            "output_tokens": 0,
+            "state_tokens": 11,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.1705,
+                "escalate": 0.1067,
+                "ignore": 0.7229
+              },
+              "confidence": 0.2946,
+              "answer_confidence": 0.7229,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.2339,
+              "confidence": 0.7661,
+              "answer_confidence": 0.7661,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 66,
+            "output_tokens": 0,
+            "state_tokens": 2,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.0447,
+                "escalate": 0.2633,
+                "ignore": 0.6921
+              },
+              "confidence": 0.3219,
+              "answer_confidence": 0.6921,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.291,
+              "confidence": 0.709,
+              "answer_confidence": 0.709,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 68,
+            "output_tokens": 0,
+            "state_tokens": 3,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.2294,
+                "escalate": 0.0721,
+                "ignore": 0.6984
+              },
+              "confidence": 0.2918,
+              "answer_confidence": 0.6984,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.6362,
+              "confidence": 0.6362,
+              "answer_confidence": 0.6362,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 62,
+            "output_tokens": 0,
+            "state_tokens": 0,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        }
+      ]
+    },
+    {
+      "batch_size": 3,
+      "sort_by_length": true,
+      "states": [
+        "We were billed twice for March and want a refund today.",
+        "我们三月份被重复扣费了两次，请今天退还。",
+        "The reply was polite but arrived nine days late.",
+        {
+          "order": 1182,
+          "items": [
+            "widget",
+            "case"
+          ],
+          "charged": 2,
+          "currency": "NGN",
+          "note": null
+        },
+        "evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. evidence sentence number one about the duplicate charge. ",
+        "Refund 退款 استرداد वापसी 😀 now!",
+        "short one",
+        "another short state",
+        ""
+      ],
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What should we do?",
+          "criteria": {
+            "refund": "send money back",
+            "escalate": "pass to a human",
+            "ignore": "no action"
+          }
+        },
+        "urgent": {
+          "type": "noul",
+          "instructions": "This needs a human today."
+        }
+      },
+      "results": [
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9999,
+                "escalate": 0.0,
+                "ignore": 0.0
+              },
+              "confidence": 0.9995,
+              "answer_confidence": 0.9999,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0283,
+              "confidence": 0.9717,
+              "answer_confidence": 0.9717,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 86,
+            "output_tokens": 0,
+            "state_tokens": 12,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9986,
+                "escalate": 0.0001,
+                "ignore": 0.0013
+              },
+              "confidence": 0.9899,
+              "answer_confidence": 0.9986,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0251,
+              "confidence": 0.9749,
+              "answer_confidence": 0.9749,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 92,
+            "output_tokens": 0,
+            "state_tokens": 15,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.02,
+                "escalate": 0.0219,
+                "ignore": 0.9581
+              },
+              "confidence": 0.8154,
+              "answer_confidence": 0.9581,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.0417,
+              "confidence": 0.9583,
+              "answer_confidence": 0.9583,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 82,
+            "output_tokens": 0,
+            "state_tokens": 10,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9669,
+                "escalate": 0.0055,
+                "ignore": 0.0275
+              },
+              "confidence": 0.8541,
+              "answer_confidence": 0.9669,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.2902,
+              "confidence": 0.7098,
+              "answer_confidence": 0.7098,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 134,
+            "output_tokens": 0,
+            "state_tokens": 36,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.0165,
+                "escalate": 0.0737,
+                "ignore": 0.9098
+              },
+              "confidence": 0.6852,
+              "answer_confidence": 0.9098,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.9176,
+              "confidence": 0.9176,
+              "answer_confidence": 0.9176,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 2048,
+            "output_tokens": 0,
+            "state_tokens": 1081,
+            "state_tokens_dropped": 89,
+            "truncated": true,
+            "truncated_questions": [
+              "intent",
+              "urgent"
+            ]
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "refund",
+              "probabilities": {
+                "refund": 0.9989,
+                "escalate": 0.0002,
+                "ignore": 0.0009
+              },
+              "confidence": 0.9918,
+              "answer_confidence": 0.9989,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.7928,
+              "confidence": 0.7928,
+              "answer_confidence": 0.7928,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 84,
+            "output_tokens": 0,
+            "state_tokens": 11,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.1705,
+                "escalate": 0.1067,
+                "ignore": 0.7229
+              },
+              "confidence": 0.2946,
+              "answer_confidence": 0.7229,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.2339,
+              "confidence": 0.7661,
+              "answer_confidence": 0.7661,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 66,
+            "output_tokens": 0,
+            "state_tokens": 2,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.0447,
+                "escalate": 0.2633,
+                "ignore": 0.6921
+              },
+              "confidence": 0.3219,
+              "answer_confidence": 0.6921,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.291,
+              "confidence": 0.709,
+              "answer_confidence": 0.709,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 68,
+            "output_tokens": 0,
+            "state_tokens": 3,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        },
+        {
+          "model": "laya-rl-agent-onnx",
+          "answers": {
+            "intent": {
+              "type": "choice",
+              "choice": "ignore",
+              "probabilities": {
+                "refund": 0.2294,
+                "escalate": 0.0721,
+                "ignore": 0.6984
+              },
+              "confidence": 0.2918,
+              "answer_confidence": 0.6984,
+              "action": {
+                "act_probability": 1.0
+              }
+            },
+            "urgent": {
+              "type": "noul",
+              "noul": 0.6362,
+              "confidence": 0.6362,
+              "answer_confidence": 0.6362,
+              "action": {
+                "act_probability": 1.0
+              }
+            }
+          },
+          "usage": {
+            "input_tokens": 62,
+            "output_tokens": 0,
+            "state_tokens": 0,
+            "state_tokens_dropped": 0,
+            "truncated": false,
+            "truncated_questions": []
+          }
+        }
+      ]
+    }
+  ]
+}

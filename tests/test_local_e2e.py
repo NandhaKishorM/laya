@@ -161,7 +161,7 @@ print("\n   -- phishing / email triage --", flush=True)
 PHISH = [
     ("phishing", "security@wellsf-argo-verify.com", "Urgent: your account is locked",
      "Your account has been locked for security reasons. Verify immediately at "
-     "http://wellsfargo--verify.tj49.wsipv6.com or it will be closed permanently.", True),
+     "http://secure-bank--verify.account-check.example or it will be closed permanently.", True),
     ("legit billing", "ap@acme.com", "Invoice 4411 duplicate charge",
      "Hi, we were billed twice for invoice 4411 in March. Could you refund the duplicate? Thanks.", False),
     ("legit newsletter", "news@python.org", "PyCon 2026 schedule is live",

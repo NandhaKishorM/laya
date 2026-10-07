@@ -1,11 +1,40 @@
 """Example 21 -- routing decisions without running a model.
 
 Calls `router.route(...)` only: pick a checkpoint from the state and its detected script,
-paying microseconds and loading no weights at all.
+paying microseconds and loading no weights at all. The closing paragraph phrases its cost
+and residency claims off the measurements the page just took.
 """
 import time
 
 from _common import banner, heading, router, timed
+
+
+def cost_verdict(total_ms, threshold_ms=1.0):
+    """The phrasing the measured total earns: under the bar, or not.
+
+    Main's page asserted a fixed sub-millisecond threshold in the closing paragraph without
+    reading it back off `total_ms`, and named a fixed case count without reading `len(CASES)`.
+    This helper turns a measurement into a verdict against a threshold; the sentence below
+    interpolates both the raw number and the verdict, so a slower machine or a longer
+    `CASES` list rephrases the claim rather than silently contradicting it.
+    """
+    if total_ms < threshold_ms:
+        return "under %.1f ms" % threshold_ms
+    return "%.1f ms or over on this run" % threshold_ms
+
+
+def resident_state(r):
+    """Whether `route()` left anything resident -- read from the router, not asserted.
+
+    The old page's closing paragraph claimed a zero-checkpoint outcome in prose. If a caller
+    lengthens `CASES`, changes the router's defaults, or a future change causes `route()` to
+    warm a checkpoint, the assertion would go stale silently. This helper reads `r.loaded`
+    directly so the sentence stays truthful about whatever actually happened.
+    """
+    if not r.loaded:
+        return "the router holds zero checkpoints"
+    return "the router holds %d: %r" % (len(r.loaded), list(r.loaded))
+
 
 banner("21", "Route without running", """
     `route()` is the whole routing decision and nothing else: no checkpoint is built, no
@@ -70,7 +99,7 @@ print("   one route() call       %.3f ms (median of 200)" % median_ms)
 print("   all %d cases           %.3f ms total" % (len(CASES), total_ms))
 print("   router.loaded after:   %r" % r.loaded)
 print("""
-   Ten routing decisions cost well under a millisecond in total, and the router still
-   holds zero checkpoints. `route()` is therefore safe to call on every inbound request,
-   even one you end up answering with a conventional LLM.
-   """)
+   %d routing decisions cost %s in total (%.3f ms measured this run), and %s. `route()`
+   is therefore safe to call on every inbound request, even one you end up answering with
+   a conventional LLM.
+   """ % (len(CASES), cost_verdict(total_ms), total_ms, resident_state(r)))

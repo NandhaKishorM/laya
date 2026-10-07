@@ -134,19 +134,26 @@ def score_cases(agent, cases) -> List[Any]:
     here so the caller can score under more than one regime from one pass.
     """
     import torch
-    from laya.common import QTYPES, build_sequence, collate_items, render_options
+    from laya.common import QTYPES, build_sequence, collate_items, render_options, uses_parallel_layout
 
     max_len = agent.cfg.get("max_len", 512)
     head_max_len = agent.cfg.get("head_max_len", 192)
+    parallel = uses_parallel_layout(agent.cfg)
     items = []
     for state, questions in cases:
         for _qid, qdef in questions.items():
             q = internal_question(qdef)
-            ids, markers = build_sequence(agent.tok, state, q, max_len, head_max_len)
+            ids, markers, *layout = build_sequence(agent.tok, state, q, max_len, head_max_len,
+                                                   return_layout=parallel)
             if len(markers) != len(render_options(q)):
                 raise ValueError("marker/option count mismatch; question exceeds head_max_len")
-            items.append({"ids": ids, "markers": markers, "qtype": QTYPES[q["t"]]})
+            item = {"ids": ids, "markers": markers, "qtype": QTYPES[q["t"]]}
+            if layout:
+                item["layout"] = layout[0]
+            items.append(item)
     batch = collate_items([items], agent.tok.pad_token_id)
+    extra = ({"position_ids": batch["position_ids"].to(agent.device),
+              "option_ids": batch["option_ids"].to(agent.device)} if parallel else {})
     with torch.no_grad():
         logits, _ = agent.model(
             batch["input_ids"].to(agent.device),
@@ -154,6 +161,7 @@ def score_cases(agent, cases) -> List[Any]:
             batch["marker_pos"].to(agent.device),
             batch["marker_mask"].to(agent.device),
             batch["qtype"].to(agent.device),
+            **extra,
         )
     logits = logits.float().cpu().numpy()
     return [logits[i, :len(it["markers"])] for i, it in enumerate(items)]

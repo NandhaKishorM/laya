@@ -205,7 +205,7 @@ _src = inspect.getsource(_agent.Agent.__init__)
 check_true("fallback/flag is initialised", "fell_back_from = fell_back_why = None" in _src)
 check_true("fallback/warns only on a real fallback", "if fell_back_from is not None:" in _src)
 check_true("fallback/reports the underlying reason", "Reason: %s" in _src)
-check_true("fallback/keeps the actionable advice", "download.pytorch.org/whl/nightly" in _src)
+check_true("fallback/keeps the actionable advice", "download.pytorch.org/whl/cu130" in _src)
 check_true("fallback/no bare cuda probe for the warning",
            "torch.cuda.is_available() or getattr(torch.version" not in _src)
 
@@ -604,6 +604,57 @@ for room, kept in [(0, []), (2, ["two", "three"]), (10, ["one", "two", "three"])
     ids = build_sequence(_tok, "one two three", _q, _full + room, truncate_left=True)[0]
     check("truncate_left/room=%d keeps the tail" % room, ids[_full - 1:],
           [_tok.vocab[w] for w in kept] + [_tok.sep_token_id])
+
+
+# --------------------------------------------------------------- render_criterion's separators
+# The docstring claimed structured values become "compact JSON". Compact JSON is
+# separators=(",", ":"); the implementation passes separators=(", ", ": "), the default spelling.
+# The docstring now names the separators, and this gate holds it to the bytes the code emits.
+import ast  # noqa: E402
+
+_common_src_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                "laya", "common.py")
+with open(_common_src_path) as _common_f:
+    _common_src = _common_f.read()
+_criterion_doc = ""
+for _node in ast.parse(_common_src).body:
+    if isinstance(_node, ast.FunctionDef) and _node.name == "render_criterion":
+        _criterion_doc = ast.get_docstring(_node) or ""
+check_true("criterion/docstring found", len(_criterion_doc) > 0, "no docstring on render_criterion")
+check_true("criterion/docstring drops the compact-JSON claim",
+           "compact" not in _criterion_doc.lower(),
+           "the pre-fix wording is still on the function: %r" % _criterion_doc)
+check_true("criterion/docstring names the member separator",
+           '", "' in _criterion_doc,
+           "the docstring must spell the separator the code passes: %r" % _criterion_doc)
+check_true("criterion/docstring names the key separator",
+           '": "' in _criterion_doc,
+           "the docstring must spell the separator the code passes: %r" % _criterion_doc)
+check_true("criterion/docstring still promises single-line JSON",
+           "single-line JSON" in _criterion_doc,
+           "the one property 'compact' was reaching for must stay stated: %r" % _criterion_doc)
+
+# The implementation's own spelling, read out of the AST rather than retyped here.
+_criterion_sep = None
+for _fn in [n for n in ast.parse(_common_src).body
+            if isinstance(n, ast.FunctionDef) and n.name == "render_criterion"]:
+    for _call in ast.walk(_fn):
+        if isinstance(_call, ast.Call) and getattr(_call.func, "attr", None) == "dumps":
+            for _kw in _call.keywords:
+                if _kw.arg == "separators":
+                    _criterion_sep = tuple(ast.literal_eval(_e) for _e in _kw.value.elts)
+check("criterion/code passes the default separators", _criterion_sep, (", ", ": "))
+
+# Live witness: multi-member values carry the space-padded separators, so the docstring's spelling
+# is what the bytes look like -- and a genuinely compact dump would differ.
+_two = render_criterion({"a": 1, "b": 2})
+check("criterion/dict renders default separators", _two, '{"a": 1, "b": 2}')
+check_true("criterion/dict is not compact",
+           _two != json.dumps({"a": 1, "b": 2}, separators=(",", ":")),
+           "the bytes match a compact dump, so the docstring should say compact: %r" % _two)
+check_true("criterion/dict stays on one line", "\n" not in _two, repr(_two))
+check("criterion/list renders default separators", render_criterion(["a", "b", "c"]),
+      '["a", "b", "c"]')
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

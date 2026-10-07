@@ -112,6 +112,9 @@ test('invalid model and control values fail before sending a request', async () 
     { lang: 12 }, { lang: '   ' }, { langGuess: 42 },
     { maxLen: 0 }, { maxLen: 2.5 }, { headMaxLen: -1 },
     { minConfidence: -0.1 }, { minConfidence: 1.5 }, { minConfidence: NaN },
+    { minConfidence: true }, { minConfidence: [] }, { minConfidence: {} },
+    { minConfidence: { 'choice:2': 1.5 } }, { minConfidence: { 'choice:2': 'high' } },
+    { minConfidence: { 'choice:2': NaN } },
   ]) {
     await assert.rejects(client.predict('hello', questions, options), LayaValidationError, JSON.stringify(options));
   }
@@ -136,6 +139,18 @@ test('per-request controls reach the wire under their server names', async () =>
     task: 'typed', lang: 'de', langGuess: 'fr',
     maxLen: 2048, headMaxLen: 256, minConfidence: 0.8,
   });
+});
+
+test('a per-bucket threshold map reaches the wire as min_confidence', async () => {
+  // The server's abstention gate resolves each answer's threshold from its own option-count
+  // bucket (#394), so the map must arrive verbatim: re-keying or dropping `default` here
+  // would silently change which answers abstain.
+  const map = { 'choice:2': 0.9, default: 0.3 };
+  const client = new Laya({ fetch: async (_url, init) => {
+    assert.deepEqual(JSON.parse(init.body).min_confidence, map);
+    return json(prediction);
+  } });
+  await client.predict('hello', questions, { minConfidence: map });
 });
 
 test('bad JavaScript inputs fail before fetch without lossy serialization', async () => {

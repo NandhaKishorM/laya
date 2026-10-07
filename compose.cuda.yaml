@@ -5,7 +5,11 @@ services:
   laya:
     build:
       args:
-        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
+        # cu130, not cu128: compose.yaml pins TORCH_VERSION 2.14.0 and the cu128 index has no
+        # 2.14.0 wheel (its newest is 2.11.0), so the documented CUDA path could not resolve its
+        # own pin (#971). cu126 also carries 2.14.0; cu130 is chosen because docker.yml already
+        # builds the CUDA images with it, so Compose and CI now agree.
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu130}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
       # The runtime reads these when it picks the autocast dtype; empty keeps the checkpoint's
@@ -24,7 +28,7 @@ services:
     build:
       context: .
       args:
-        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu128}"
+        TORCH_INDEX: "${LAYA_TORCH_INDEX:-cu130}"
     environment:
       LAYA_DEVICE: "${LAYA_DEVICE:-cuda}"
       # The runtime reads these when it picks the autocast dtype; empty keeps the checkpoint's

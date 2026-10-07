@@ -320,6 +320,24 @@ class DownloadTests(unittest.TestCase):
         self.assertIsInstance(compiled.model, OptimizedModule)
         self.assertIsInstance(compiled.model._orig_mod, DecisionModel)
 
+    def test_backend_selection_preserves_legacy_compile_and_can_replace_it(self):
+        compiled = load(str(self.repo), device="cpu", compile=True)
+        self.assertEqual(compiled.backend, "compile")
+        self.assertIsNone(compiled.backend_object)
+        self.assertEqual(compiled.set_backend("eager"), "eager")
+        self.assertNotIsInstance(compiled.model, OptimizedModule)
+        self.assertFalse(compiled.model.encoder.config.reference_compile)
+        self.assertEqual(compiled.predict("hello", self.questions)["answers"], self.expected["answers"])
+
+    def test_explicit_backend_takes_precedence_over_legacy_flags(self):
+        agent = load(str(self.repo), device="cpu", backend="eager", fast=True, compile=True)
+        self.assertEqual(agent.backend, "eager")
+        self.assertIsNotNone(agent.backend_object)
+        self.assertNotIsInstance(agent.model, OptimizedModule)
+        self.assertFalse(agent.model.encoder.config.reference_compile)
+        self.assertIsNone(agent._fast)
+        self.assertEqual(agent.predict("hello", self.questions)["answers"], self.expected["answers"])
+
     def test_onnx_agent_accepts_every_hub_option_the_agent_does(self):
         # Both runtimes download the same checkpoint from the same place, so an option that
         # selects *which* checkpoint, or *how* to authenticate for it, has to exist on both.
@@ -327,10 +345,14 @@ class DownloadTests(unittest.TestCase):
         # copied across rather than silently diverging again.
         #   fast/compile -- the TileLang path and torch.compile, neither of which exists
         #                    inside onnxruntime.
+        #   backend      -- selects a PyTorch forward; load() routes ONNX to ONNXAgent.
+        #   compile_warmup/compile_cache/compile_mode -- configure torch.compile, which
+        #                    does not exist inside onnxruntime either.
         #   device       -- ONNXAgent picks an execution provider from what onnxruntime
         #                    reports and takes no override; a different asymmetry, with its
         #                    own fix.
-        not_for_onnxruntime = {"fast", "compile", "device"}
+        not_for_onnxruntime = {"fast", "compile", "device", "backend",
+                               "compile_warmup", "compile_cache", "compile_mode"}
         agent_side = (set(inspect.signature(Agent.__init__).parameters)
                       - {"self", "model_id_or_path"} - not_for_onnxruntime)
         onnx_side = set(inspect.signature(ONNXAgent.__init__).parameters) - {"self"}

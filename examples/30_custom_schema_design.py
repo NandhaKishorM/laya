@@ -1,8 +1,11 @@
 """Example 30 -- writing your own question schema.
 
 The presets are fixed schemas; this builds a four-question bug-triage schema from scratch
-as ordinary Python, runs it on two contrasting reports, then takes the design apart.
+as ordinary Python, runs it on two contrasting reports, then takes the design apart --
+including a recomputation of the score field's `confidence` from its own probabilities.
 """
+
+import math
 
 from _common import banner, describe, device_line, heading, load, top
 
@@ -70,6 +73,23 @@ PROBE = ("label typo", {
                "else works fine.",
 })
 
+
+def entropy_confidence(probs):
+    """1 - H/log(k) over a reported distribution: `confidence`'s definition, recomputed by hand.
+
+    Same formula as `laya.common.confidence_from_probs`, and the published probabilities are
+    rounded to 4 dp while the agent computed the field from unrounded ones, so the recomputation
+    is compared against the reported field rather than substituted for it. A wide-but-ordered
+    distribution therefore reads as a LOW confidence here, which is the point the score guidance
+    makes below.
+    """
+    k = len(probs)
+    if k < 2:
+        return 1.0
+    ent = -sum(p * math.log(max(p, 1e-12)) for p in probs)
+    return max(0.0, min(1.0, 1.0 - ent / math.log(k)))
+
+
 agent = load("english")
 device_line(agent)
 
@@ -121,8 +141,20 @@ print("   versus UI %.2f / 3. A choice question (\"severe: yes/no\") would throw
       % ui["severity"]["score"])
 print("   away. Use a score when the levels are ordered and you will threshold or compare")
 print("   them, and a choice when the labels are unordered. Read the score itself: `confidence`")
-print("   on a score is normalised entropy, so a wide-but-ordered distribution looks")
-print("   unconfident even when the expected level is informative.")
+print("   on a score is 1 - H/log(k), one MINUS the normalised entropy, so a wide-but-ordered")
+print("   distribution looks unconfident even when the expected level is informative. Both")
+print("   records here:")
+for label, ans in (("crash", crash), ("UI", ui)):
+    probs = list(ans["severity"]["probabilities"].values())
+    reported = ans["severity"]["confidence"]
+    recomputed = entropy_confidence(probs)
+    print("     %-6s k=%d  entropy confidence: reported %.4f, recomputed %.4f (%.6f apart)"
+          % (label, len(probs), reported, recomputed, abs(reported - recomputed)))
+print("   The recomputation matches the reported field to the rounding (probabilities are")
+print("   published at 4 dp while the agent computed the field from unrounded logits), and each")
+print("   number is well below the corresponding `answer_confidence`, which is max(p) on the")
+print("   same distribution: the expected severity level is informative, the entropy scale is")
+print("   the wider, more conservative of the two.")
 
 heading("4. every question shares one forward pass")
 tokens = runs[0][2]["usage"]["input_tokens"]

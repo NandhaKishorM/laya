@@ -1,0 +1,210 @@
+name: .NET
+
+# Parity lane for laya-dotnet. The golden fixtures under laya-dotnet/tests/Laya.Tests/golden are
+# recorded from the Python `laya` package, so this runs on EVERY push and pull request (no path
+# filter): a change to laya/ that moves what the goldens capture shows up here rather than as
+# silent drift. Each run re-records the goldens from the Python code at that commit
+# (tools/regen_golden.py) and runs the C# tests against the fresh copies.
+#
+# ADVISORY, not blocking. Both jobs carry `continue-on-error`, so this lane reports drift and
+# attributes it to the pull request that caused it without failing that pull request. The reason
+# is direction: the Python package is the product and laya-dotnet follows it, so a Python-side
+# improvement must not be blocked on a C# port catching up. The optional-dependency CVE audit in
+# security.yml is advisory for the same reason ("visible here, not blocking PRs"). When this lane
+# goes red, the fix is a follow-up port, not a revert of the Python change.
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotnet-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  # Cancel outdated pull request runs. Pushes get a per-commit group so each one finishes.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # transformers probes for TensorFlow at import; when TF is present its abseil runtime can
+  # deadlock model construction. Laya is torch-only.
+  USE_TF: "0"
+  USE_TORCH: "1"
+  TOKENIZERS_PARALLELISM: "false"
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  GOLDEN: laya-dotnet/tests/Laya.Tests/golden
+
+jobs:
+  build:
+    name: build + model-free tests
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory: see the header
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: laya-dotnet/tools/requirements-regen.txt
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # CPU-only torch; the routing goldens only import laya, they never run a model
+          pip install "torch==2.14.0" --index-url https://download.pytorch.org/whl/cpu
+          pip install -r laya-dotnet/tools/requirements-regen.txt
+      - name: Test regeneration cache and skip guard
+        run: python laya-dotnet/tools/test_ci_tools.py
+      - name: Regenerate the routing goldens from Python
+        run: python laya-dotnet/tools/regen_golden.py --checkpoint routing
+      - name: Golden drift vs. committed (informational)
+        run: |
+          git --no-pager diff --stat -- "$GOLDEN"
+          git status --short -- "$GOLDEN"
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: laya-dotnet/global.json
+      - name: Build (library, samples and tests, warnings are errors)
+        working-directory: laya-dotnet
+        run: dotnet build Laya.slnx -c Release
+      - name: Tests that need no model
+        working-directory: laya-dotnet
+        run: >
+          dotnet test --solution Laya.slnx -c Release --no-build
+          --results-directory "$RUNNER_TEMP/trx" --report-xunit-trx --report-xunit-trx-filename build.trx
+          --filter-not-class Laya.Tests.PredictParityTests
+          --filter-not-class Laya.Tests.ShapeSweepTests
+          --filter-not-class Laya.Tests.TokenizerParityTests
+          --filter-not-class Laya.Tests.RouterEndToEndTests
+          --filter-not-class Laya.Tests.ShortlistEndToEndTests
+      # With the model-backed classes filtered out nothing may be skipped, so every checkpoint
+      # is listed as expected to run.
+      - name: No test was skipped
+        if: ${{ !cancelled() }}
+        run: >
+          python laya-dotnet/tools/check_test_skips.py "$RUNNER_TEMP/trx/build.trx"
+          --have english multilingual typed-decisions --min-passed 600
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ failure() }}
+        with:
+          name: dotnet-build-diagnostics
+          path: |
+            ${{ runner.temp }}/trx
+            ${{ env.GOLDEN }}/routing
+
+  parity:
+    name: parity (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory: see the header
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: english
+            checkpoints: english
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests
+            min-passed: 50
+          - name: multilingual
+            checkpoints: multilingual
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests
+            min-passed: 50
+          - name: typed-decisions
+            checkpoints: typed-decisions
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests
+            min-passed: 50
+          # The router end-to-end tests load english and multilingual side by side.
+          - name: router
+            checkpoints: english multilingual
+            filter: --filter-class Laya.Tests.RouterEndToEndTests
+            min-passed: 1
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: laya-dotnet/tools/requirements-regen.txt
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install "torch==2.14.0" --index-url https://download.pytorch.org/whl/cpu
+          pip install -r laya-dotnet/tools/requirements-regen.txt
+
+      # The exports are the slow part (download, trace, verify). They depend only on the pinned
+      # Hugging Face revision (HF_REVISION in regen_golden.py), the two exporters, the pinned
+      # toolchain and the model definition in laya/common.py, so that is the cache key; the
+      # script re-checks the same inputs itself before it reuses a directory. The goldens are
+      # never cached: they are always re-recorded.
+      - name: Cache pinned Hugging Face downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/huggingface/hub
+          key: laya-hf-${{ runner.os }}-${{ matrix.name }}-${{ hashFiles('laya-dotnet/tools/regen_golden.py', 'laya-dotnet/tools/export_onnx.py', 'laya-ts/scripts/export_onnx.py') }}
+      - name: Cache exported english artifacts
+        if: ${{ contains(matrix.checkpoints, 'english') }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            onnx/english
+            onnx-split/english
+          key: laya-onnx-${{ runner.os }}-english-${{ hashFiles('laya-dotnet/tools/regen_golden.py', 'laya-dotnet/tools/export_onnx.py', 'laya-ts/scripts/export_onnx.py', 'laya-dotnet/tools/requirements-regen.txt', 'laya/common.py') }}
+      - name: Cache exported multilingual artifacts
+        if: ${{ contains(matrix.checkpoints, 'multilingual') }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            onnx/multilingual
+            onnx-split/multilingual
+          key: laya-onnx-${{ runner.os }}-multilingual-${{ hashFiles('laya-dotnet/tools/regen_golden.py', 'laya-dotnet/tools/export_onnx.py', 'laya-ts/scripts/export_onnx.py', 'laya-dotnet/tools/requirements-regen.txt', 'laya/common.py') }}
+      - name: Cache exported typed-decisions artifacts
+        if: ${{ contains(matrix.checkpoints, 'typed-decisions') }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            onnx/typed-decisions
+            onnx-split/typed-decisions
+          key: laya-onnx-${{ runner.os }}-typed-decisions-${{ hashFiles('laya-dotnet/tools/regen_golden.py', 'laya-dotnet/tools/export_onnx.py', 'laya-ts/scripts/export_onnx.py', 'laya-dotnet/tools/requirements-regen.txt', 'laya/common.py') }}
+
+      - name: Export the checkpoints and regenerate their goldens from Python
+        run: |
+          args=()
+          for c in ${{ matrix.checkpoints }}; do args+=(--checkpoint "$c"); done
+          python laya-dotnet/tools/regen_golden.py "${args[@]}"
+      # Informational only: float noise across platforms is expected, the C# tests and their
+      # tolerances are the gate.
+      - name: Golden drift vs. committed (informational)
+        run: |
+          git --no-pager diff --stat -- "$GOLDEN"
+          git status --short -- "$GOLDEN"
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: laya-dotnet/global.json
+      # The fused layout is found through LAYA_ONNX_ROOT; the split layout through the test
+      # project's walk-up to <repo>/onnx-split, which is where the script wrote it.
+      - name: Run the tests against the fresh goldens
+        working-directory: laya-dotnet
+        env:
+          LAYA_ONNX_ROOT: ${{ github.workspace }}/onnx
+          LAYA_TEST_CHECKPOINTS: ${{ matrix.checkpoints }}
+        run: >
+          dotnet test --solution Laya.slnx -c Release
+          --results-directory "$RUNNER_TEMP/trx" --report-xunit-trx --report-xunit-trx-filename parity.trx
+          ${{ matrix.filter }}
+      # Missing artifacts make the model-backed tests skip, and a skip is not a failure to
+      # `dotnet test`. Fail the run unless every skip is for a checkpoint this job does not own.
+      - name: No model-backed test was skipped
+        if: ${{ !cancelled() }}
+        run: >
+          python laya-dotnet/tools/check_test_skips.py "$RUNNER_TEMP/trx/parity.trx"
+          --have ${{ matrix.checkpoints }} --min-passed ${{ matrix.min-passed }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ failure() }}
+        with:
+          name: dotnet-parity-diagnostics-${{ matrix.name }}
+          path: |
+            ${{ runner.temp }}/trx
+            ${{ env.GOLDEN }}

@@ -138,9 +138,12 @@ class RouterPredictBatchTests(unittest.TestCase):
         return [{"state": s, "questions": questions} for s in states]
 
     def test_mixed_language_batch_routes_and_preserves_order(self):
-        states = ["hello",                        # latin -> english
-                  "नमस्ते",                         # devanagari -> multilingual
-                  "goodbye"]                      # latin -> english
+        # Sentences rather than single words: a bare "hello" names no language, so since 0.4.0 it
+        # follows `default` and all three rows would group together, which would stop this
+        # testing that a mixed batch routes per item at all.
+        states = ["Please refund the duplicate charge on my invoice",   # identified en -> english
+                  "नमस्ते",                                               # devanagari -> multilingual
+                  "I would like to close my account today please"]     # identified en -> english
         results = self.router.predict_batch(self._requests(states))
         self.assertEqual(len(results), 3)
         self.assertEqual([r["routing"]["model"] for r in results],

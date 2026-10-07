@@ -1,0 +1,96 @@
+[
+  {
+    "repeat": 1,
+    "checks": [
+      {
+        "name": "lint",
+        "command": ".venv/bin/ruff check laya/ --select=E9,F63,F7,F82,F401,F811 --line-length=120",
+        "exit_code": 0,
+        "seconds": 0.01,
+        "summary": "All checks passed!"
+      },
+      {
+        "name": "new-files-lint",
+        "command": ".venv/bin/ruff check tests/test_mcp_remote.py research/benchmarks/idle_unload/benchmark.py --select=E9,F63,F7,F82,F401,F811 --line-length=120",
+        "exit_code": 0,
+        "seconds": 0.009,
+        "summary": "All checks passed!"
+      },
+      {
+        "name": "compile",
+        "command": ".venv/bin/python -m compileall -q laya/ tests/ research/benchmarks/idle_unload/",
+        "exit_code": 0,
+        "seconds": 0.034,
+        "summary": ""
+      },
+      {
+        "name": "suites",
+        "command": ".venv/bin/python scripts/test_suites.py",
+        "exit_code": 0,
+        "seconds": 81.638,
+        "summary": "360 passed, 1 skipped, 5 warnings in 13.63s\n\nall 78 suites passed"
+      },
+      {
+        "name": "docs",
+        "command": ".venv/bin/zensical build --strict --clean",
+        "exit_code": 0,
+        "seconds": 1.656,
+        "summary": "Build started\nNo issues found\nBuild finished in 1.41s"
+      },
+      {
+        "name": "diff",
+        "command": "git diff --check",
+        "exit_code": 0,
+        "seconds": 0.011,
+        "summary": ""
+      }
+    ]
+  },
+  {
+    "repeat": 2,
+    "checks": [
+      {
+        "name": "lint",
+        "command": ".venv/bin/ruff check laya/ --select=E9,F63,F7,F82,F401,F811 --line-length=120",
+        "exit_code": 0,
+        "seconds": 0.015,
+        "summary": "All checks passed!"
+      },
+      {
+        "name": "new-files-lint",
+        "command": ".venv/bin/ruff check tests/test_mcp_remote.py research/benchmarks/idle_unload/benchmark.py --select=E9,F63,F7,F82,F401,F811 --line-length=120",
+        "exit_code": 0,
+        "seconds": 0.01,
+        "summary": "All checks passed!"
+      },
+      {
+        "name": "compile",
+        "command": ".venv/bin/python -m compileall -q laya/ tests/ research/benchmarks/idle_unload/",
+        "exit_code": 0,
+        "seconds": 0.038,
+        "summary": ""
+      },
+      {
+        "name": "suites",
+        "command": ".venv/bin/python scripts/test_suites.py",
+        "exit_code": 0,
+        "seconds": 77.435,
+        "summary": "360 passed, 1 skipped, 5 warnings in 13.74s\n\nall 78 suites passed"
+      },
+      {
+        "name": "docs",
+        "command": ".venv/bin/zensical build --strict --clean",
+        "exit_code": 0,
+        "seconds": 1.54,
+        "summary": "Build started\nNo issues found\nBuild finished in 1.37s"
+      },
+      {
+        "name": "diff",
+        "command": "git diff --check",
+        "exit_code": 0,
+        "seconds": 0.011,
+        "summary": ""
+      }
+    ]
+  }
+]

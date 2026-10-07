@@ -93,9 +93,41 @@ def test_multi_option_question_is_unaffected():
     assert torch.isfinite(act_logits).all()
 
 
+def test_action_head_explicit_dtype_and_autocast():
+    # The old boundary always passed fp32 to the head. Preserve that under AMP,
+    # including bf16 weights with fp16 autocast (an extra bf16 cast would round twice).
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    for weights in (torch.float32, torch.bfloat16):
+        for amp in (None, torch.bfloat16, torch.float16):
+            if device == "cpu" and amp == torch.float16:
+                continue
+            # A bf16 forward on a Windows CPU can die with an uncatchable SIGILL on recent
+            # torch builds (pytorch/pytorch#152385); sentence-transformers and TabPFN skip
+            # the same combination. It takes the whole `windows-latest` lane down, and
+            # Linux/macOS CPU and CUDA still run the bf16 legs.
+            if os.name == "nt" and device == "cpu" and (
+                    weights == torch.bfloat16 or amp == torch.bfloat16):
+                continue
+            model = _tiny_model().to(device=device, dtype=weights)
+            inputs = tuple(t.to(device) for t in _inputs(2, 10, 4))
+            captured = []
+            hook = model.act_head.register_forward_pre_hook(lambda module, args: captured.append(args[0]))
+            with torch.no_grad(), torch.autocast(device, dtype=amp or torch.bfloat16, enabled=amp is not None):
+                logits, act_logits = model(*inputs)
+                hook.remove()
+                expected_dtype = torch.float32 if amp is not None else weights
+                assert captured[0].dtype == expected_dtype
+                assert logits.dtype == torch.float32
+                assert torch.isfinite(act_logits).all()
+                if amp is not None or weights == torch.float32:
+                    legacy = model.act_head(captured[0].float())
+                    torch.testing.assert_close(act_logits, legacy, rtol=0, atol=0)
+
+
 if __name__ == "__main__":
     test_single_option_question_does_not_crash()
     test_single_option_top1_minus_top2_is_exactly_one()
     test_multi_option_question_is_unaffected()
+    test_action_head_explicit_dtype_and_autocast()
     print("all decision model tests passed")
 

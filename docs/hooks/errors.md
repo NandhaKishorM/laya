@@ -20,8 +20,11 @@ is the exact policy.
 | `True` (default) | the hook exception propagates out of the call. |
 | `False` | the hook is skipped with a `RuntimeWarning` and the call continues. |
 
-It is set per instance and can be overridden per call (`hooks_raise=` on `predict_batch`,
-`system_one`, `Router.route`, `Router.predict`). Per-call `None` means "use the instance value".
+It is set per instance and can be overridden per call on every public per-call surface of the
+three agents: `Agent.predict_batch`, `Agent.system_one`, `Agent.predict_long`, `Router.route`,
+`Router.route_batch`, `Router.predict`, `Router.predict_batch`, `Router.predict_long`,
+`ONNXAgent.system_one`, `ONNXAgent.predict_batch` and `ONNXAgent.predict_long` (as
+`hooks_raise=`). Per-call `None` means "use the instance value".
 
 ```python
 # strict: a broken audit hook fails the request
@@ -134,10 +137,12 @@ as a hook failure: `TimeoutError` when `hooks_raise=True`, a `RuntimeWarning` wh
 laya.load("convaiinnovations/laya", on_predict_end=metrics, hooks_timeout=2.0)
 ```
 
-It can be set per instance or overridden per call on `predict_batch`, `system_one`,
-`Router.route`, `Router.predict` and `ONNXAgent.system_one`. The value must be positive; `0` or a
-negative number raises `ValueError` at the point it is set, rather than racing on a zero-length
-`join`.
+It can be set per instance or overridden per call on every public per-call surface of the three
+agents: `Agent.predict_batch`, `Agent.system_one`, `Agent.predict_long`, `Router.route`,
+`Router.route_batch`, `Router.predict`, `Router.predict_batch`, `Router.predict_long`,
+`ONNXAgent.system_one`, `ONNXAgent.predict_batch` and `ONNXAgent.predict_long`. The value must
+be positive; `0` or a negative number raises `ValueError` at the point it is set, rather than
+racing on a zero-length `join`.
 
 A timed hook runs on a worker thread in a copy of the caller's `contextvars` context, so a
 request id or tracing span set by the caller is visible to the hook.

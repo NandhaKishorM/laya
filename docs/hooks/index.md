@@ -73,8 +73,11 @@ hooks.set_default_hooks(hooks=[Tracer()])
 There are three ideas.
 
 1. **A hook is a callable or an object.** A plain function is convenient for one event; an
-   object is convenient for several. Both are passed to `hooks=` / `on_predict_start=` /
-   `on_predict_end=`.
+   object is convenient for several. Only the object form goes to `hooks=` -- a plain callable
+   there is refused at construction, because `hooks=` reads for lifecycle methods (`on_route`,
+   `on_load`, `on_evict`, `on_predict_start`, `on_predict_end`) and a bare function has none of
+   them. Pass a plain callable as `on_predict_start=` or `on_predict_end=`; those are the
+   single-event parameters, so a callable is exactly what they take.
 
 2. **Every hook of one call shares one mutable `PredictContext`.** It carries the states,
    questions, results, routing decision, model name, usage, timing and any error. A call can carry

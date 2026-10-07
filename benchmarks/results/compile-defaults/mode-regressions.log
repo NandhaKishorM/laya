@@ -1,0 +1,56 @@
+
+$ /home/ckl/projects/S/laya/.venv/bin/python tests/test_batch.py
+
+78 passed, 0 failed
+
+exit=0
+
+$ /home/ckl/projects/S/laya/.venv/bin/python tests/test_predict_batch.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 1.995s
+
+OK
+
+exit=0
+
+$ /home/ckl/projects/S/laya/.venv/bin/python tests/test_runtime_fixes.py
+/home/ckl/projects/S/laya-wt/compile-defaults/laya/agent.py:1198: RuntimeWarning: Warning: autocast failed 3 times in a row. Disabling mixed precision.
+  warnings.warn("Warning: autocast failed %d times in a row. "
+/home/ckl/projects/S/laya-wt/compile-defaults/laya/agent.py:1153: RuntimeWarning: Warning: GPU memory exceeded during inference. Retrying this request on CPU...
+  warnings.warn("Warning: GPU memory exceeded during inference. "
+
+86 passed, 0 failed
+all runtime-fix tests passed
+
+exit=0
+
+$ /home/ckl/projects/S/laya/.venv/bin/python tests/test_load_errors.py
+
+52 passed, 0 failed
+
+exit=0
+
+$ /home/ckl/projects/S/laya/.venv/bin/python tests/test_doc_tables.py
+
+114 passed, 0 failed
+every cell of the parity table matches its committed JSON
+not checkable from this repository (not asserted either way):
+  - README.md typed-decisions rows: no committed artifact for the fine-tuned checkpoint
+  - README.md / BENCHMARKS.md 103-332 q/s throughput: hand-picked from a range spanning 55-553
+  - BENCHMARKS.md fast-path latency table: the committed fast_*.json have no 'eval' key
+  - README.md CPU/T4 reload latencies: research/latency_benchmark_results.json is absent
+
+exit=0
+
+$ /home/ckl/projects/S/laya/.venv/bin/python tests/test_portability.py
+/home/ckl/projects/S/laya-wt/compile-defaults/laya/agent.py:1153: RuntimeWarning: Warning: GPU memory exceeded during inference. Retrying this request on CPU...
+  warnings.warn("Warning: GPU memory exceeded during inference. "
+/home/ckl/projects/S/laya-wt/compile-defaults/laya/agent.py:867: RuntimeWarning: Warning: could not move the model back to mps after the CPU retry (CUDA out of memory: model no longer fits after the retry); staying on CPU.
+  warnings.warn("Warning: could not move the model back to %s after the CPU retry (%s); "
+/home/ckl/projects/S/laya-wt/compile-defaults/laya/agent.py:1198: RuntimeWarning: Warning: autocast failed 3 times in a row. Disabling mixed precision.
+  warnings.warn("Warning: autocast failed %d times in a row. "
+
+35 passed, 0 failed
+
+exit=0

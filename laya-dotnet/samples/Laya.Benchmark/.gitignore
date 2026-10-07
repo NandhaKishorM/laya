@@ -1,0 +1,9 @@
+[Bb]in/
+[Oo]bj/
+*.user
+BenchmarkDotNet.Artifacts/
+
+# Downloaded model artifacts / run output
+*.onnx
+*.onnx_data
+*.csv

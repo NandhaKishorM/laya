@@ -184,7 +184,11 @@ EXAMPLES = (("15", EX15), ("37", EX37))
 
 
 def _tree(rel):
-    with open(os.path.join(ROOT, rel)) as fh:
+    """Parse a repo file. The encoding is pinned because `open()` would otherwise take the runner's
+    locale codec -- cp1252 on `tests (windows)`, which cannot decode examples/37's UTF-8. The gate
+    that keeps every such read pinned lives in tests/test_portability.py.
+    """
+    with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
         return ast.parse(fh.read(), filename=rel)
 
 
@@ -297,7 +301,7 @@ for tag, rel in EXAMPLES:
 # `build_sequence` call, and the examples' claim has to survive that reformatting or keep its meaning.
 CLAMP = re.compile(r"truncate_left[^\n]*?isinstance\(state, ?list\)")
 for rel in ("laya/agent.py", "laya/onnx_agent.py"):
-    with open(os.path.join(ROOT, rel)) as fh:
+    with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
         src = fh.read()
     check_true("clamp/%s clamps from the state's type" % rel, CLAMP.search(src) is not None,
                "no `truncate_left = isinstance(state, list)`")

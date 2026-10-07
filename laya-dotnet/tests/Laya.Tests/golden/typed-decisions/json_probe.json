@@ -1,0 +1,270 @@
+[
+  {
+    "value": "plain string",
+    "state_dialect": "plain string",
+    "criterion_dialect": "plain string",
+    "instructions_dialect": "plain string"
+  },
+  {
+    "value": {
+      "a": 1
+    },
+    "state_dialect": "{\"a\": 1}",
+    "criterion_dialect": "{\"a\": 1}",
+    "instructions_dialect": "{\"a\": 1}"
+  },
+  {
+    "value": {
+      "a": 1,
+      "b": "two"
+    },
+    "state_dialect": "{\"a\": 1, \"b\": \"two\"}",
+    "criterion_dialect": "{\"a\": 1, \"b\": \"two\"}",
+    "instructions_dialect": "{\"a\": 1, \"b\": \"two\"}"
+  },
+  {
+    "value": {
+      "nested": {
+        "x": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "state_dialect": "{\"nested\": {\"x\": [1, 2, 3]}}",
+    "criterion_dialect": "{\"nested\": {\"x\": [1, 2, 3]}}",
+    "instructions_dialect": "{\"nested\": {\"x\": [1, 2, 3]}}"
+  },
+  {
+    "value": [
+      1,
+      2,
+      3
+    ],
+    "state_dialect": "[1, 2, 3]",
+    "criterion_dialect": "[1, 2, 3]",
+    "instructions_dialect": "[1, 2, 3]"
+  },
+  {
+    "value": [
+      "a",
+      "b"
+    ],
+    "state_dialect": "[\"a\", \"b\"]",
+    "criterion_dialect": "[\"a\", \"b\"]",
+    "instructions_dialect": "[\"a\", \"b\"]"
+  },
+  {
+    "value": [],
+    "state_dialect": "[]",
+    "criterion_dialect": "[]",
+    "instructions_dialect": "[]"
+  },
+  {
+    "value": {},
+    "state_dialect": "{}",
+    "criterion_dialect": "{}",
+    "instructions_dialect": "{}"
+  },
+  {
+    "value": 0,
+    "state_dialect": "0",
+    "criterion_dialect": "0",
+    "instructions_dialect": "0"
+  },
+  {
+    "value": 0.0,
+    "state_dialect": "0.0",
+    "criterion_dialect": "0.0",
+    "instructions_dialect": "0.0"
+  },
+  {
+    "value": 1.0,
+    "state_dialect": "1.0",
+    "criterion_dialect": "1.0",
+    "instructions_dialect": "1.0"
+  },
+  {
+    "value": 2.0,
+    "state_dialect": "2.0",
+    "criterion_dialect": "2.0",
+    "instructions_dialect": "2.0"
+  },
+  {
+    "value": -0.125,
+    "state_dialect": "-0.125",
+    "criterion_dialect": "-0.125",
+    "instructions_dialect": "-0.125"
+  },
+  {
+    "value": 0.5,
+    "state_dialect": "0.5",
+    "criterion_dialect": "0.5",
+    "instructions_dialect": "0.5"
+  },
+  {
+    "value": 1e+21,
+    "state_dialect": "1e+21",
+    "criterion_dialect": "1e+21",
+    "instructions_dialect": "1e+21"
+  },
+  {
+    "value": 1e-07,
+    "state_dialect": "1e-07",
+    "criterion_dialect": "1e-07",
+    "instructions_dialect": "1e-07"
+  },
+  {
+    "value": 0.3333333333333333,
+    "state_dialect": "0.3333333333333333",
+    "criterion_dialect": "0.3333333333333333",
+    "instructions_dialect": "0.3333333333333333"
+  },
+  {
+    "value": 1000000000000000.0,
+    "state_dialect": "1000000000000000.0",
+    "criterion_dialect": "1000000000000000.0",
+    "instructions_dialect": "1000000000000000.0"
+  },
+  {
+    "value": 1e+16,
+    "state_dialect": "1e+16",
+    "criterion_dialect": "1e+16",
+    "instructions_dialect": "1e+16"
+  },
+  {
+    "value": 1e+17,
+    "state_dialect": "1e+17",
+    "criterion_dialect": "1e+17",
+    "instructions_dialect": "1e+17"
+  },
+  {
+    "value": 0.0001,
+    "state_dialect": "0.0001",
+    "criterion_dialect": "0.0001",
+    "instructions_dialect": "0.0001"
+  },
+  {
+    "value": 1e-05,
+    "state_dialect": "1e-05",
+    "criterion_dialect": "1e-05",
+    "instructions_dialect": "1e-05"
+  },
+  {
+    "value": 123456789012345.6,
+    "state_dialect": "123456789012345.6",
+    "criterion_dialect": "123456789012345.6",
+    "instructions_dialect": "123456789012345.6"
+  },
+  {
+    "value": -0.0,
+    "state_dialect": "-0.0",
+    "criterion_dialect": "-0.0",
+    "instructions_dialect": "-0.0"
+  },
+  {
+    "value": 5e-324,
+    "state_dialect": "5e-324",
+    "criterion_dialect": "5e-324",
+    "instructions_dialect": "5e-324"
+  },
+  {
+    "value": 1.7976931348623157e+308,
+    "state_dialect": "1.7976931348623157e+308",
+    "criterion_dialect": "1.7976931348623157e+308",
+    "instructions_dialect": "1.7976931348623157e+308"
+  },
+  {
+    "value": 1234567890123456789,
+    "state_dialect": "1234567890123456789",
+    "criterion_dialect": "1234567890123456789",
+    "instructions_dialect": "1234567890123456789"
+  },
+  {
+    "value": true,
+    "state_dialect": "true",
+    "criterion_dialect": "true",
+    "instructions_dialect": "true"
+  },
+  {
+    "value": false,
+    "state_dialect": "false",
+    "criterion_dialect": "false",
+    "instructions_dialect": "false"
+  },
+  {
+    "value": null,
+    "state_dialect": "null",
+    "criterion_dialect": "null",
+    "instructions_dialect": "null"
+  },
+  {
+    "value": "quote \" backslash \\ slash /",
+    "state_dialect": "quote \" backslash \\ slash /",
+    "criterion_dialect": "quote \" backslash \\ slash /",
+    "instructions_dialect": "quote \" backslash \\ slash /"
+  },
+  {
+    "value": "html < > & ' chars",
+    "state_dialect": "html < > & ' chars",
+    "criterion_dialect": "html < > & ' chars",
+    "instructions_dialect": "html < > & ' chars"
+  },
+  {
+    "value": "newline \n tab \t return \r",
+    "state_dialect": "newline \n tab \t return \r",
+    "criterion_dialect": "newline \n tab \t return \r",
+    "instructions_dialect": "newline \n tab \t return \r"
+  },
+  {
+    "value": "control chars \u0001 \u001f",
+    "state_dialect": "control chars \u0001 \u001f",
+    "criterion_dialect": "control chars \u0001 \u001f",
+    "instructions_dialect": "control chars \u0001 \u001f"
+  },
+  {
+    "value": "accents naïve résumé Müller",
+    "state_dialect": "accents naïve résumé Müller",
+    "criterion_dialect": "accents naïve résumé Müller",
+    "instructions_dialect": "accents naïve résumé Müller"
+  },
+  {
+    "value": "我这个月",
+    "state_dialect": "我这个月",
+    "criterion_dialect": "我这个月",
+    "instructions_dialect": "我这个月"
+  },
+  {
+    "value": "😀 emoji",
+    "state_dialect": "😀 emoji",
+    "criterion_dialect": "😀 emoji",
+    "instructions_dialect": "😀 emoji"
+  },
+  {
+    "value": {
+      "mixed": "Müller & co <urgent>",
+      "n": 2.0,
+      "flag": true,
+      "none": null
+    },
+    "state_dialect": "{\"mixed\": \"Müller & co <urgent>\", \"n\": 2.0, \"flag\": true, \"none\": null}",
+    "criterion_dialect": "{\"mixed\": \"Müller & co <urgent>\", \"n\": 2.0, \"flag\": true, \"none\": null}",
+    "instructions_dialect": "{\"mixed\": \"Müller & co <urgent>\", \"n\": 2.0, \"flag\": true, \"none\": null}"
+  },
+  {
+    "value": [
+      {
+        "role": "user",
+        "content": "hi"
+      },
+      {
+        "role": "assistant",
+        "content": "hello"
+      }
+    ],
+    "state_dialect": "[{\"role\": \"user\", \"content\": \"hi\"}, {\"role\": \"assistant\", \"content\": \"hello\"}]",
+    "criterion_dialect": "[{\"role\": \"user\", \"content\": \"hi\"}, {\"role\": \"assistant\", \"content\": \"hello\"}]",
+    "instructions_dialect": "[{\"role\": \"user\", \"content\": \"hi\"}, {\"role\": \"assistant\", \"content\": \"hello\"}]"
+  }
+]

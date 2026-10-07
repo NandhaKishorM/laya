@@ -106,6 +106,23 @@ def _value(report: evals.EvalReport, dimension: str, value: str,
     return float(result)
 
 
+def _incomparable_coverage_definitions(report: evals.EvalReport, baseline: Any,
+                                       metric: str) -> Optional[str]:
+    """Why a relative rule on `metric` must not subtract these two reports, or None.
+
+    Delegates to `evals.coverage_definition_conflict` so that this gate and `EvalReport.compare`
+    cannot drift apart about what "comparable" means -- they are the same rule, not two copies of
+    it. Both the candidate and the baseline are checked: see that function for why a stale
+    candidate is the more dangerous of the two.
+    """
+    if not evals.is_coverage_metric(metric):
+        return None
+    conflict = evals.coverage_definition_conflict(report.config, baseline)
+    if conflict is None:
+        return None
+    return "%s on a relative limit" % conflict
+
+
 def check_policy(report: evals.EvalReport, policy: Dict[str, Any],
                  baseline: Optional[Dict[str, Any]] = None) -> List[str]:
     """Return actionable failures. Missing measurements never count as a pass."""
@@ -147,6 +164,12 @@ def check_policy(report: evals.EvalReport, policy: Dict[str, Any],
         comparator = next(name for name in _LIMITS if name in rule)
         limit = rule[comparator]
         if comparator in _RELATIVE:
+            # the raw baseline document, not `base_report`: that is rebuilt as an
+            # `EvalReport` and carries only what `_identity_of` kept
+            stale = _incomparable_coverage_definitions(report, baseline, metric)
+            if stale is not None:
+                failures.append("%s: %s" % (label, stale))
+                continue
             previous = _value(base_report, dimension, value, metric)
             previous_count = _count(base_report, dimension, value, metric)
             if previous is None:

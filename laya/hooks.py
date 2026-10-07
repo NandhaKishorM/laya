@@ -1,8 +1,10 @@
 """Opt-in prediction hooks: observe or shape every decision without forking.
 
-A hook is either a plain callable or an object implementing any subset of the lifecycle
-methods on `Hook`. Hooks are configured on `Agent` / `Router` and can be overridden per call.
-Everything here is pure Python: importing `laya` must not start pulling torch.
+A hook on `hooks=` is an object implementing any subset of the lifecycle methods on `Hook`;
+a plain callable is only accepted on the single-event `on_predict_start=` / `on_predict_end=`
+parameters, because `hooks=` reads for method names and a bare function has none. Hooks are
+configured on `Agent` / `Router` and can be overridden per call. Everything here is pure
+Python: importing `laya` must not start pulling torch.
 """
 from __future__ import annotations
 

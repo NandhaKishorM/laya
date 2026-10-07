@@ -1,0 +1,15 @@
+# Python toolchain for laya-dotnet/tools/regen_golden.py (and the .NET parity CI lane).
+#
+# Pinned to the versions the committed goldens were recorded with (see the
+# "*_version" fields in tests/Laya.Tests/golden/<checkpoint>/meta.json) so a toolchain
+# release cannot move the goldens. Bump deliberately, together with a regeneration.
+#
+# torch is not listed: it needs the CPU-only index, so install it first with
+#   pip install "torch==2.14.0" --index-url https://download.pytorch.org/whl/cpu
+transformers==5.17.0
+safetensors==0.8.0
+huggingface_hub==1.33.0
+numpy==2.5.3
+onnx==1.23.0
+onnxruntime==1.30.0
+onnxscript==0.7.2

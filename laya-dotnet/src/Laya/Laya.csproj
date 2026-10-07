@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Shipped as Laya.Onnx (package and assembly); the public namespace stays Laya. -->
+    <AssemblyName>Laya.Onnx</AssemblyName>
+    <RootNamespace>Laya</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package">
+    <!-- Versioned independently of the Python package. -->
+    <Version>0.1.0</Version>
+    <PackageId>Laya.Onnx</PackageId>
+    <Authors>Convai Innovations</Authors>
+    <Description>.NET port of the Laya Python SDK. Runs the multilingual, english and typed-decisions checkpoints locally on ONNX Runtime, with no Python at runtime. Laya is a non-autoregressive System 1 decision engine with calibrated probabilities.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/NandhaKishorM/laya/tree/main/laya-dotnet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NandhaKishorM/laya</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>laya;onnx;onnxruntime;llm;classification;nlp;decision-engine</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- laya-dotnet/README.md -->
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Laya.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" />
+    <PackageReference Include="Tokenizers.DotNet" Version="1.4.1" />
+    <PackageReference Include="Tokenizers.DotNet.runtime.linux-arm64" Version="1.4.1" />
+    <PackageReference Include="Tokenizers.DotNet.runtime.linux-x64" Version="1.4.1" />
+    <PackageReference Include="Tokenizers.DotNet.runtime.osx-arm64" Version="1.4.1" />
+    <PackageReference Include="Tokenizers.DotNet.runtime.osx-x64" Version="1.4.1" />
+    <PackageReference Include="Tokenizers.DotNet.runtime.win-x64" Version="1.4.1" />
+  </ItemGroup>
+
+</Project>

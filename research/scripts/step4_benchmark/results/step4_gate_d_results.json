@@ -1,0 +1,308 @@
+{
+  "meta": {
+    "pinned_sha": "a4a8921afebfd852bba0000475cfb6ab737a124c",
+    "torch": "2.11.0+cu128",
+    "gpu": "Tesla T4",
+    "visible_gpus": 1,
+    "base_config": {
+      "max_len": 512,
+      "head_max_len": 192
+    },
+    "n_train_cases": 1200,
+    "n_test_cases": 400,
+    "reused": {
+      "rlcd_seed0": "Gate R kernel (separate session, same SHA/data/command)"
+    }
+  },
+  "rlcd_seed0": {
+    "checkpoint": "Gate R kernel run_rlcd_seed0 (reused)",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.775,
+    "ece": 0.1504,
+    "brier": 0.0519,
+    "soft_accuracy": 0.5654,
+    "per_type_accuracy": {
+      "choice": 0.7417,
+      "noul": 0.8517,
+      "score": 0.7425
+    },
+    "loss": "rlcd",
+    "seed": 0,
+    "wall_clock_s": 2691.3
+  },
+  "base": {
+    "checkpoint": "convaiinnovations/laya",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.362,
+    "ece": 0.1741,
+    "brier": 0.3287,
+    "soft_accuracy": 0.3656,
+    "score_mae": 0.6936,
+    "within_one_level": 0.7525,
+    "per_type_accuracy": {
+      "choice": 0.29,
+      "noul": 0.4867,
+      "score": 0.3225
+    },
+    "n_brier_decisions": 1200
+  },
+  "rlcd_seed1": {
+    "checkpoint": "/kaggle/working/run_rlcd_seed1",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.778,
+    "ece": 0.1477,
+    "brier": 0.0519,
+    "soft_accuracy": 0.5652,
+    "score_mae": 0.2155,
+    "within_one_level": 0.9888,
+    "per_type_accuracy": {
+      "choice": 0.74,
+      "noul": 0.8467,
+      "score": 0.755
+    },
+    "n_brier_decisions": 1200,
+    "loss": "rlcd",
+    "seed": 1,
+    "wall_clock_s": 2697.6,
+    "temperature": [
+      1.0706707239151,
+      1.0655159950256348,
+      1.1516488790512085
+    ],
+    "calibration": {
+      "choice": {
+        "items": 141,
+        "temperature": 1.0706707239151,
+        "issues": [],
+        "accuracy": 0.7588652482269503,
+        "mean_confidence": 0.6076728429612874
+      },
+      "score": {
+        "items": 153,
+        "temperature": 1.0655159950256348,
+        "issues": [],
+        "accuracy": 0.7843137254901961,
+        "mean_confidence": 0.5692810567559323
+      },
+      "noul": {
+        "items": 106,
+        "temperature": 1.1516488790512085,
+        "issues": [],
+        "accuracy": 0.8584905660377359,
+        "mean_confidence": 0.7542289320023828
+      }
+    },
+    "split_line": "train items 5600, calibration items 400, skipped {}, device cuda",
+    "finite": true
+  },
+  "soft-ce_seed0": {
+    "checkpoint": "/kaggle/working/run_soft_ce_seed0",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.7605,
+    "ece": 0.1353,
+    "brier": 0.0532,
+    "soft_accuracy": 0.5642,
+    "score_mae": 0.2456,
+    "within_one_level": 0.9938,
+    "per_type_accuracy": {
+      "choice": 0.7417,
+      "noul": 0.855,
+      "score": 0.7037
+    },
+    "n_brier_decisions": 1200,
+    "loss": "soft-ce",
+    "seed": 0,
+    "wall_clock_s": 2691.4,
+    "temperature": [
+      1.0631763935089111,
+      1.0451915264129639,
+      1.0851869583129883
+    ],
+    "calibration": {
+      "choice": {
+        "items": 141,
+        "temperature": 1.0631763935089111,
+        "issues": [],
+        "accuracy": 0.7943262411347518,
+        "mean_confidence": 0.6069391803631538
+      },
+      "score": {
+        "items": 153,
+        "temperature": 1.0451915264129639,
+        "issues": [],
+        "accuracy": 0.7843137254901961,
+        "mean_confidence": 0.5572438980445797
+      },
+      "noul": {
+        "items": 106,
+        "temperature": 1.0851869583129883,
+        "issues": [],
+        "accuracy": 0.839622641509434,
+        "mean_confidence": 0.7526641343832678
+      }
+    },
+    "split_line": "train items 5600, calibration items 400, skipped {}, device cuda",
+    "finite": true
+  },
+  "soft-ce_seed1": {
+    "checkpoint": "/kaggle/working/run_soft_ce_seed1",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.7915,
+    "ece": 0.1574,
+    "brier": 0.0481,
+    "soft_accuracy": 0.5705,
+    "score_mae": 0.2105,
+    "within_one_level": 0.9912,
+    "per_type_accuracy": {
+      "choice": 0.77,
+      "noul": 0.8583,
+      "score": 0.7575
+    },
+    "n_brier_decisions": 1200,
+    "loss": "soft-ce",
+    "seed": 1,
+    "wall_clock_s": 2705.1,
+    "temperature": [
+      1.0398290157318115,
+      1.0743035078048706,
+      1.139175534248352
+    ],
+    "calibration": {
+      "choice": {
+        "items": 141,
+        "temperature": 1.0398290157318115,
+        "issues": [],
+        "accuracy": 0.8014184397163121,
+        "mean_confidence": 0.615891238130113
+      },
+      "score": {
+        "items": 153,
+        "temperature": 1.0743035078048706,
+        "issues": [],
+        "accuracy": 0.7777777777777778,
+        "mean_confidence": 0.5753281628764587
+      },
+      "noul": {
+        "items": 106,
+        "temperature": 1.139175534248352,
+        "issues": [],
+        "accuracy": 0.839622641509434,
+        "mean_confidence": 0.7543471859560601
+      }
+    },
+    "split_line": "train items 5600, calibration items 400, skipped {}, device cuda",
+    "finite": true
+  },
+  "rlcd_seed2": {
+    "checkpoint": "/kaggle/working/run_rlcd_seed2",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.7755,
+    "ece": 0.153,
+    "brier": 0.049,
+    "soft_accuracy": 0.5638,
+    "score_mae": 0.2195,
+    "within_one_level": 0.9938,
+    "per_type_accuracy": {
+      "choice": 0.745,
+      "noul": 0.845,
+      "score": 0.7462
+    },
+    "n_brier_decisions": 1200,
+    "loss": "rlcd",
+    "seed": 2,
+    "wall_clock_s": 2708.5,
+    "temperature": [
+      1.112676978111267,
+      1.054789662361145,
+      1.1128166913986206
+    ],
+    "calibration": {
+      "choice": {
+        "items": 141,
+        "temperature": 1.112676978111267,
+        "issues": [],
+        "accuracy": 0.7730496453900709,
+        "mean_confidence": 0.5887910391183622
+      },
+      "score": {
+        "items": 153,
+        "temperature": 1.054789662361145,
+        "issues": [],
+        "accuracy": 0.7908496732026143,
+        "mean_confidence": 0.5640255503811176
+      },
+      "noul": {
+        "items": 106,
+        "temperature": 1.1128166913986206,
+        "issues": [],
+        "accuracy": 0.8584905660377359,
+        "mean_confidence": 0.7526793880094345
+      }
+    },
+    "split_line": "train items 5600, calibration items 400, skipped {}, device cuda",
+    "finite": true
+  },
+  "soft-ce_seed2": {
+    "checkpoint": "/kaggle/working/run_soft_ce_seed2",
+    "temperatures": "shipped",
+    "n_cases": 400,
+    "n_decisions": 2000,
+    "accuracy": 0.777,
+    "ece": 0.1471,
+    "brier": 0.0513,
+    "soft_accuracy": 0.5667,
+    "score_mae": 0.214,
+    "within_one_level": 0.99,
+    "per_type_accuracy": {
+      "choice": 0.75,
+      "noul": 0.8467,
+      "score": 0.745
+    },
+    "n_brier_decisions": 1200,
+    "loss": "soft-ce",
+    "seed": 2,
+    "wall_clock_s": 2701.8,
+    "temperature": [
+      1.0387086868286133,
+      1.053942084312439,
+      1.08060884475708
+    ],
+    "calibration": {
+      "choice": {
+        "items": 141,
+        "temperature": 1.0387086868286133,
+        "issues": [],
+        "accuracy": 0.7730496453900709,
+        "mean_confidence": 0.6111094674737355
+      },
+      "score": {
+        "items": 153,
+        "temperature": 1.053942084312439,
+        "issues": [],
+        "accuracy": 0.8300653594771242,
+        "mean_confidence": 0.5717240346959584
+      },
+      "noul": {
+        "items": 106,
+        "temperature": 1.08060884475708,
+        "issues": [],
+        "accuracy": 0.8584905660377359,
+        "mean_confidence": 0.7583364282950572
+      }
+    },
+    "split_line": "train items 5600, calibration items 400, skipped {}, device cuda",
+    "finite": true
+  }
+}

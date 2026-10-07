@@ -1,0 +1,91 @@
+Sat Oct  3 18:50:43 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4070 ...    On  |   00000000:26:00.0 Off |                  N/A |
+|  0%   35C    P3             19W /  295W |     728MiB /  16376MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A             892      G   Hyprland                                146MiB |
+|    0   N/A  N/A             952      G   quickshell                               38MiB |
+|    0   N/A  N/A             995      G   Xwayland                                  4MiB |
+|    0   N/A  N/A            1168      G   monocloud                                 3MiB |
+|    0   N/A  N/A            3324    C+G   /usr/bin/sunshine                       215MiB |
+|    0   N/A  N/A           12883      G   /usr/bin/ghostty                        100MiB |
+|    0   N/A  N/A         3906709    C+G   ...rack-uuid=3190708988185955192         35MiB |
++-----------------------------------------------------------------------------------------+
+
+torch 2.11.0+cu130 model /home/ckl/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851
+/home/ckl/projects/S/laya-wt/compile-defaults/benchmarks/bench_compile_defaults.py:41: RuntimeWarning: laya: this checkpoint ships invalid temperatures or values outside [0.5, 5]; using choice:11+=0.10058280825614929 -> 0.5. Treat confidence from the affected entries as uncalibrated.
+  agent = Agent(args.model, device="cuda", compile=True, **kw)
+load_s 49.84901165601332 cache /home/ckl/.hermes/cache/scratch/torchinductor_ckl
+request 1 seconds 0.021522802067920566 graphs 2
+request 2 seconds 0.0127951999893412 graphs 2
+request 3 seconds 0.009552222094498575 graphs 2
+request 4 seconds 0.013322615996003151 graphs 2
+request 5 seconds 0.008758343057706952 graphs 2
+request 6 seconds 0.02338546304963529 graphs 2
+request 7 seconds 0.015908485976979136 graphs 2
+request 8 seconds 0.008505699923262 graphs 2
+request 9 seconds 0.02822929003741592 graphs 2
+request 10 seconds 0.014193495968356729 graphs 2
+request 11 seconds 0.009512242046184838 graphs 2
+request 12 seconds 0.011779058026149869 graphs 2
+request 13 seconds 0.009392678970471025 graphs 2
+request 14 seconds 0.013497408013790846 graphs 2
+request 15 seconds 0.008576749940402806 graphs 2
+request 16 seconds 0.022936348104849458 graphs 2
+request 17 seconds 0.01577090402133763 graphs 2
+request 18 seconds 0.0081936459755525 graphs 2
+request 19 seconds 0.028569523943588138 graphs 2
+request 20 seconds 0.015004775952547789 graphs 2
+request 21 seconds 0.009698834037408233 graphs 2
+request 22 seconds 0.011769518023356795 graphs 2
+request 23 seconds 0.009374139015562832 graphs 2
+request 24 seconds 0.013569338945671916 graphs 2
+request 25 seconds 0.008530530030839145 graphs 2
+request 26 seconds 0.02300787903368473 graphs 2
+request 27 seconds 0.015862375032156706 graphs 2
+request 28 seconds 0.00838116800878197 graphs 2
+request 29 seconds 0.028341430937871337 graphs 2
+request 30 seconds 0.014030663995072246 graphs 2
+RESULT {"load_s": 49.84901165601332, "requests_s": [0.021522802067920566, 0.0127951999893412, 0.009552222094498575, 0.013322615996003151, 0.008758343057706952, 0.02338546304963529, 0.015908485976979136, 0.008505699923262, 0.02822929003741592, 0.014193495968356729, 0.009512242046184838, 0.011779058026149869, 0.009392678970471025, 0.013497408013790846, 0.008576749940402806, 0.022936348104849458, 0.01577090402133763, 0.0081936459755525, 0.028569523943588138, 0.015004775952547789, 0.009698834037408233, 0.011769518023356795, 0.009374139015562832, 0.013569338945671916, 0.008530530030839145, 0.02300787903368473, 0.015862375032156706, 0.00838116800878197, 0.028341430937871337, 0.014030663995072246], "allocated_mib": 1616.48291015625, "reserved_mib": 1796.0, "peak_allocated_mib": 1671.017578125, "peak_reserved_mib": 1796.0, "counters": {"stats": {"calls_captured": 6700, "unique_graphs": 2}, "inductor": {"triton_bundler_load_static_autotuner": 68, "async_compile_cache_miss": 243, "async_compile_cache_hit": 149, "pattern_matcher_count": 20, "pattern_matcher_nodes": 26, "extern_calls": 384, "fxgraph_cache_hit": 2}}}
+Sat Oct  3 18:51:33 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4070 ...    On  |   00000000:26:00.0 Off |                  N/A |
+|  0%   48C    P2            105W /  295W |    3134MiB /  16376MiB |     82%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A             892      G   Hyprland                                146MiB |
+|    0   N/A  N/A             952      G   quickshell                               38MiB |
+|    0   N/A  N/A             995      G   Xwayland                                  4MiB |
+|    0   N/A  N/A            1168      G   monocloud                                 3MiB |
+|    0   N/A  N/A            3324    C+G   /usr/bin/sunshine                       215MiB |
+|    0   N/A  N/A           12883      G   /usr/bin/ghostty                        100MiB |
+|    0   N/A  N/A         3906709    C+G   ...rack-uuid=3190708988185955192         35MiB |
+|    0   N/A  N/A         4079529      C   ...jects/S/laya/.venv/bin/python       2056MiB |
+|    0   N/A  N/A         4079725      C   ...jects/S/laya/.venv/bin/python        340MiB |
++-----------------------------------------------------------------------------------------+
+

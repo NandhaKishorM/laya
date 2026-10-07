@@ -12,6 +12,8 @@ import re
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 # The page under test lives in this checkout, so the library it is compared against has to come
 # from here too: an installed `laya` would let the page and a stale default agree.
@@ -112,6 +114,31 @@ def derived_default(tree):
 
 
 class RouterMemoryTests(unittest.TestCase):
+    def test_mps_cache_is_released_after_unload_and_eviction(self):
+        for operation in ("one", "all", "evict"):
+            for available in (False, True):
+                with self.subTest(operation=operation, available=available):
+                    empty_cache = Mock()
+                    torch = SimpleNamespace(
+                        cuda=SimpleNamespace(is_available=lambda: False),
+                        backends=SimpleNamespace(mps=SimpleNamespace(is_available=lambda: available)),
+                        mps=SimpleNamespace(empty_cache=empty_cache),
+                    )
+                    r = Router(max_loaded=1)
+                    r._agents["english"] = MockAgent("en")
+                    r._order.append("english")
+                    with patch.dict(sys.modules, {"torch": torch}):
+                        if operation == "one":
+                            r.unload("english")
+                        elif operation == "all":
+                            r.unload()
+                        else:
+                            r._agents["multilingual"] = MockAgent("multi")
+                            r._order.append("multilingual")
+                            r._evict()
+                    self.assertNotIn("english", r.loaded)
+                    self.assertEqual(empty_cache.call_count, int(available))
+
     def test_evict_and_unload_memory_release(self):
         r = Router(max_loaded=1)
         r.attach("english", MockAgent("en"))
@@ -209,6 +236,100 @@ class ExampleResidencyPageTests(unittest.TestCase):
         # `%`-placeholder or a digit in front of "times" is what that looks like in a template.
         self.assertRegex(PROSE, r"(?:%[-\d.]*[dfi]|\d+(?:\.\d+)?)\s+times",
                          "the page makes no ratio claim, so the scale rule sees nothing")
+
+
+# ------------------------------------------------------------------ examples/21: route() cost page
+# `examples/21_routing_without_running.py` measures `median_ms` and `total_ms` from real
+# `perf_counter`/`timed()` calls, prints both, and then used to close with:
+#     "Ten routing decisions cost well under a millisecond in total, and the router still
+#      holds zero checkpoints."
+# Every clause in that sentence is a quantity the same page already measured but did not read
+# back: "Ten" was a hardcoded count while `len(CASES)` sat right there; "well under a
+# millisecond" was a threshold assertion that goes stale on slower hardware; "still holds zero
+# checkpoints" asserted residency rather than reading `r.loaded`. The page now phrases its
+# verdict through two pure helpers, `cost_verdict(total_ms, threshold_ms)` and
+# `resident_state(r)`, and interpolates the raw measurement into the sentence, so a slower
+# machine or a longer `CASES` list rephrases the claim instead of silently contradicting it.
+EXAMPLE_21 = Path(__file__).resolve().parents[1] / "examples" / "21_routing_without_running.py"
+TREE_21 = ast.parse(EXAMPLE_21.read_text(encoding="utf-8"))
+HELPERS_21 = ("cost_verdict", "resident_state")
+
+# The page as it ships on main: three literal assertions the closing paragraph makes. Every
+# ban below must fire on this wording, and every positive rule must NOT match this text.
+OLD_PAGE_21 = '''
+   Ten routing decisions cost well under a millisecond in total, and the router still
+   holds zero checkpoints. `route()` is therefore safe to call on every inbound request,
+   even one you end up answering with a conventional LLM.
+'''
+
+HARD_COUNT = re.compile(r"\bTen routing decisions\b")
+THRESHOLD_CLAIM = re.compile(r"well under a millisecond", re.I)
+RESIDENCY_CLAIM = re.compile(r"still\s+holds\s+zero\s+checkpoints", re.I)
+
+
+def helpers_21():
+    """Exec the example's top-level pure helpers -- no weights, no `router()` construction."""
+    nodes = [n for n in TREE_21.body
+             if isinstance(n, ast.FunctionDef) and n.name in HELPERS_21]
+    ns = {}
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), str(EXAMPLE_21), "exec"), ns)  # noqa: S102
+    return ns, {n.name for n in nodes}
+
+
+class ExampleRouteCostPageTests(unittest.TestCase):
+    """What the routing-cost page may claim about the numbers it just measured."""
+
+    def test_page21_helpers_are_defined_and_pure(self):
+        _, defined = helpers_21()
+        self.assertEqual(defined, set(HELPERS_21), "example 21 lost or renamed a helper")
+        for name in HELPERS_21:
+            node = next(n for n in TREE_21.body
+                        if isinstance(n, ast.FunctionDef) and n.name == name)
+            prints = [c for c in ast.walk(node)
+                      if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
+                      and c.func.id == "print"]
+            self.assertFalse(prints, "%s prints instead of returning" % name)
+
+    def test_cost_verdict_flips_on_the_measured_total(self):
+        ns, _ = helpers_21()
+        # under-threshold: the phrase names the bar and says "under"
+        self.assertIn("under 1.0 ms", ns["cost_verdict"](0.437))
+        # over-threshold: the phrase stops claiming "under"
+        over = ns["cost_verdict"](3.7)
+        self.assertIn("or over", over)
+        self.assertNotIn("under", over)
+        # a caller-set threshold is respected
+        self.assertIn("under 5.0 ms", ns["cost_verdict"](3.7, threshold_ms=5.0))
+
+    def test_resident_state_reads_the_router_state(self):
+        ns, _ = helpers_21()
+        empty = SimpleNamespace(loaded=[])
+        one = SimpleNamespace(loaded=["english"])
+        two = SimpleNamespace(loaded=["english", "multilingual"])
+        self.assertEqual(ns["resident_state"](empty), "the router holds zero checkpoints")
+        # non-empty must report the actual count and names, not silently say zero
+        self.assertIn("1", ns["resident_state"](one))
+        self.assertIn("english", ns["resident_state"](one))
+        self.assertIn("2", ns["resident_state"](two))
+        self.assertIn("multilingual", ns["resident_state"](two))
+        self.assertNotIn("zero", ns["resident_state"](one) + ns["resident_state"](two))
+
+    def test_page21_drops_the_three_hardcoded_closing_claims(self):
+        src = EXAMPLE_21.read_text(encoding="utf-8")
+        for name, rule in (("hard-coded count", HARD_COUNT),
+                           ("unmeasured threshold", THRESHOLD_CLAIM),
+                           ("asserted residency", RESIDENCY_CLAIM)):
+            self.assertTrue(rule.search(OLD_PAGE_21),
+                            "ban does not fire on main's wording: %s" % name)
+            self.assertFalse(rule.search(src), "%s is still in example 21" % name)
+
+    def test_page21_closing_interpolates_helpers_count_and_ms(self):
+        src = EXAMPLE_21.read_text(encoding="utf-8")
+        for frag in ("cost_verdict(total_ms)", "resident_state(r)", "len(CASES)"):
+            self.assertIn(frag, src, "the closing sentence no longer interpolates %r" % frag)
+            self.assertNotIn(frag, OLD_PAGE_21)
+        # the sentence still carries a raw measured number, not only a qualitative verdict
+        self.assertRegex(src, r"%d routing decisions cost %s in total \(%\.3f ms")
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import laya  # noqa: E402
-from laya import Agent, AsyncHook, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
+from laya import Agent, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
 from laya.hooks import HOOK_EVENTS, Hook  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 from laya.router import _question_schema  # noqa: E402
@@ -75,6 +75,11 @@ for label, fn in (("Agent.__init__", Agent.__init__), ("load", load),
     for param, default in HOOK_KEYS.items():
         check_param(label, fn, param, default)
 
+for label, fn in (("Agent.__init__", Agent.__init__), ("load", load)):
+    check_param(label, fn, "compile_warmup", True)
+    check_param(label, fn, "compile_cache", False)
+    check_param(label, fn, "compile_mode", "default")
+
 # Router keeps lang_guess and explicit per-model revisions too
 check_param("Router.__init__", Router.__init__, "lang_guess", None)
 check_param("Router.__init__", Router.__init__, "revisions", None)
@@ -82,6 +87,9 @@ check_param("Router.__init__", Router.__init__, "revisions", None)
 check_param("Router.__init__", Router.__init__, "agent_kwargs", None)
 # ...and the per-checkpoint digests that `revisions` has always had a sibling need for
 check_param("Router.__init__", Router.__init__, "sha256_digests", None)
+# ...and the checkpoints a caller registers beside the built-ins: `resolve` and `unregister` are the instance side
+check_true("Router/resolve", callable(getattr(Router, "resolve", None)))
+check_param("Router.unregister", Router.unregister, "name", inspect.Parameter.empty)
 
 # What the constructor does NOT raise over is part of its contract too: a shared
 # `agent_kwargs["expected_sha256"]` overlapping a per-checkpoint `sha256_digests` entry on one file
@@ -100,15 +108,37 @@ except ValueError as exc:
 # load() forwards Agent's own construction options, so none of them is reachable only
 # through the class; tests/test_download.py asserts that against both signatures.
 check_param("load", load, "compile", False)
+check_param("load", load, "backend", None)
+check_param("load", load, "onnx_path", None)
+check_param("Agent.__init__", Agent.__init__, "backend", None)
+check_param("Agent.set_backend", Agent.set_backend, "name", "auto")
+check_param("Agent.set_backend", Agent.set_backend, "strict", False)
+check_true("Agent.backend is a property", isinstance(Agent.backend, property))
+check_true("Agent.backend_object is a property", isinstance(Agent.backend_object, property))
 
 # ONNXAgent downloads the same Hub artifacts as Agent, so it authenticates the same way
 check_param("ONNXAgent.__init__", ONNXAgent.__init__, "token", None)
 
 # --------------------------------------------------------------- predict surfaces
+from laya.mcp.remote import RemoteRouter  # noqa: E402
+
+check_true("RemoteRouter/is a Router", issubclass(RemoteRouter, Router))
+check_param("RemoteRouter.__init__", RemoteRouter.__init__, "base_url", inspect.Parameter.empty)
+check_param("RemoteRouter.__init__", RemoteRouter.__init__, "api_key", None)
+check_param("RemoteRouter.__init__", RemoteRouter.__init__, "timeout", None)
+for method in ("predict", "predict_batch"):
+    check("RemoteRouter/%s signature" % method,
+          [(p.name, p.kind, p.default) for p in sig(getattr(RemoteRouter, method)).values()],
+          [(p.name, p.kind, p.default) for p in sig(getattr(Router, method)).values()])
+for method in ("route", "route_batch"):
+    check_true("RemoteRouter/%s stays local" % method,
+               getattr(RemoteRouter, method) is getattr(Router, method))
+
 for label, fn in (("Agent.predict_batch", Agent.predict_batch),
                   ("Agent.system_one", Agent.system_one),
                   ("Agent.predict_long", Agent.predict_long),
                   ("Router.predict", Router.predict),
+                  ("Router.predict_batch", Router.predict_batch),
                   ("Router.predict_long", Router.predict_long),
                   ("ONNXAgent.system_one", ONNXAgent.system_one)):
     check_param(label, fn, "hooks", None)
@@ -139,8 +169,6 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
 
 # Router.predict_batch has no call-level budget: a heterogeneous batch sets it per request, and
 # the request keys `max_len` / `head_max_len` are read into each request's PredictContext.
-check_param("Router.predict_batch", Router.predict_batch, "batch_size", None)
-check_param("Router.predict_batch", Router.predict_batch, "hooks_timeout", None)
 for param in ("max_len", "head_max_len"):
     check("Router.predict_batch/%s is per-request, not a call argument" % param,
           param in sig(Router.predict_batch), False)
@@ -150,10 +178,31 @@ for param in ("max_len", "head_max_len"):
 check_param("shortlist_choice", laya.shortlist_choice, "return_scores", False,
             inspect.Parameter.KEYWORD_ONLY)
 
-# route() takes per-call hooks so a hook can pin a checkpoint for one call
-check_param("Router.route", Router.route, "hooks", None)
-check_param("Router.route", Router.route, "hooks_raise", None)
-check_param("Router.route", Router.route, "hooks_timeout", None)
+# predict_tournament splits a choice into groups of 16 labels unless the caller picks a size
+check_param("predict_tournament", laya.predict_tournament, "group_size", 16)
+
+# route() and route_batch() take per-call hooks so a hook can pin a checkpoint for one call
+for label, fn in (("Router.route", Router.route),
+                  ("Router.route_batch", Router.route_batch)):
+    check_param(label, fn, "hooks", None)
+    check_param(label, fn, "hooks_raise", None)
+    check_param(label, fn, "hooks_timeout", None)
+
+# Positional compatibility: hook parameters are keyword-only to protect positional callers
+check("Router.route_batch/positional prefix",
+      [p.name for p in sig(Router.route_batch).values()
+       if p.kind != inspect.Parameter.KEYWORD_ONLY and p.name != "self"],
+      ["requests", "hooks_timeout"])
+check("Router.predict_batch/positional prefix",
+      [p.name for p in sig(Router.predict_batch).values()
+       if p.kind != inspect.Parameter.KEYWORD_ONLY and p.name != "self"],
+      ["requests", "batch_size", "hooks_timeout", "min_confidence", "sort_by_length"])
+for param in ("hooks", "hooks_raise"):
+    check("Router.route_batch/%s is keyword-only" % param,
+          sig(Router.route_batch)[param].kind, inspect.Parameter.KEYWORD_ONLY)
+for param in ("hooks", "on_predict_start", "on_predict_end", "hooks_raise"):
+    check("Router.predict_batch/%s is keyword-only" % param,
+          sig(Router.predict_batch)[param].kind, inspect.Parameter.KEYWORD_ONLY)
 
 # --------------------------------------------------------------- aliases
 check_true("Agent.predict is Agent.system_one", Agent.predict is Agent.system_one)
@@ -745,15 +794,24 @@ check("patterns.md/enrich still guards the recursion", len(ctx.results), len(BAT
 
 
 class ChildCaller(Enricher):
-    """The nested-call page's stand-in enricher: it remembers the child calls it is asked to make."""
+    """The nested-call page's stand-in enricher.
+
+    Mirrors `Agent.predict` exactly: `state` and `questions` positional, `on_predict_start`
+    fired before the return with a fresh child `PredictContext`, and NO `run_id` in the
+    payload (that field lives on `PredictContext`, `laya/hooks.py:35`, and no predict path
+    writes it into the response dict).
+    """
 
     def __init__(self):
         self.calls = []
 
-    def predict(self, state, questions):
+    def predict(self, state, questions, on_predict_start=None):
         result = Enricher.predict(self, state, questions)
-        result["run_id"] = "child-%d" % (len(self.calls) + 1)
         self.calls.append(state)
+        child_ctx = taught_ctx(states=[state], confidence=[0.4])
+        child_ctx.run_id = "child-%d" % len(self.calls)
+        if on_predict_start is not None:
+            on_predict_start(child_ctx)
         return result
 
 
@@ -903,6 +961,555 @@ check_param("evaluate_shortlist", evaluate_shortlist, "k", 20)
 check_param("evaluate_shortlist", evaluate_shortlist, "dataset_path", None)
 for param in ("checkpoint_id", "embedder_id"):
     check_param("evaluate_shortlist", evaluate_shortlist, param, inspect.Parameter.empty)
+
+
+# docs/hooks/examples.md ## Composition teaches one scope ordering contract; the pre-fix wording
+# ("Installed hooks first, then convenience callables") named only two tiers and put installed at
+# the head, which compose_hooks contradicts.
+from laya import hooks as _examples_hooks_mod  # noqa: E402
+
+_examples_md = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                            "docs", "hooks", "examples.md")
+with open(_examples_md) as _examples_f:
+    _examples_text = _examples_f.read()
+
+check_true("examples.md drops the two-tier Composition claim",
+           "Installed hooks first, then convenience callables" not in _examples_text,
+           "pre-fix wording is still on the page")
+
+_examples_head = _examples_text.split("## Composition", 1)[1].split("\n```python", 1)[0]
+_examples_flat = " ".join(_examples_head.split())
+for _token in ("hooks=[...]", "on_predict_start=", "on_predict_end=",
+               "Within one scope", "Across scopes",
+               "process-wide default", "instance's hooks", "per-call hooks"):
+    check("examples.md Composition names %r" % _token, _token in _examples_flat, True)
+
+_pos_within = _examples_flat.find("Within one scope")
+_pos_across = _examples_flat.find("Across scopes")
+_pos_defaults = _examples_flat.find("process-wide default")
+_pos_instance = _examples_flat.find("instance's hooks")
+_pos_percall = _examples_flat.find("per-call hooks")
+check("examples.md Composition: within precedes across", -1 < _pos_within < _pos_across, True)
+check("examples.md Composition: tiers in order",
+      -1 < _pos_defaults < _pos_instance < _pos_percall, True)
+
+# Live driver: compose_hooks must emit defaults, then installed, then hooks=[...], then
+# on_predict_start, then on_predict_end -- matching the paragraph's claimed order.
+_examples_emitted = []
+
+class _ExamplesOrderProbe(BaseHook):
+    def __init__(self, tag):
+        self.tag = tag
+
+    def on_predict_start(self, ctx):
+        _examples_emitted.append(self.tag)
+
+    def on_predict_end(self, ctx):
+        _examples_emitted.append(self.tag + "-end")
+
+_examples_hooks_mod = _examples_hooks_mod
+try:
+    _examples_hooks_mod.set_default_hooks(hooks=[_ExamplesOrderProbe("D")])
+    _examples_composed = _examples_hooks_mod.compose_hooks(
+        [_ExamplesOrderProbe("A"), _ExamplesOrderProbe("B")],
+        hooks=[_ExamplesOrderProbe("X")],
+        on_predict_start=lambda ctx: _examples_emitted.append("S"),
+        on_predict_end=lambda ctx: _examples_emitted.append("E"),
+    )
+    for _h in _examples_composed:
+        _sm = getattr(_h, "on_predict_start", None)
+        if _sm is not None:
+            _sm(None)
+    for _h in reversed(_examples_composed):
+        _em = getattr(_h, "on_predict_end", None)
+        if _em is not None:
+            _em(None)
+    # start tier must be D, A, B, X, S (default → installed → hooks=[...] → start convenience)
+    check("examples.md Composition: start tier order D, A, B, X, S",
+          _examples_emitted[:5], ["D", "A", "B", "X", "S"])
+    # Structural check on the normalised list tail: the _StartAdapter for the on_predict_start
+    # convenience callable must come before the _EndAdapter for the on_predict_end one. The
+    # probes are BaseHook subclasses (both methods), so their positions cannot be told from
+    # adapter tags alone -- we key on which method is defined.
+    def _kind(h):
+        has_start = getattr(h, "on_predict_start", None) is not None
+        has_end = getattr(h, "on_predict_end", None) is not None
+        if has_start and not has_end:
+            return "start_only"
+        if has_end and not has_start:
+            return "end_only"
+        return "both"
+    check("examples.md Composition: _StartAdapter sits before _EndAdapter",
+          [_kind(_h) for _h in _examples_composed],
+          ["both", "both", "both", "both", "start_only", "end_only"])
+finally:
+    _examples_hooks_mod.set_default_hooks(hooks=[])
+    _examples_emitted.clear()
+
+
+# Pin the optional TileLang entry points without importing the fast extra in CI.
+import ast  # noqa: E402
+
+# `encoding="utf-8"` because a bare `open()` takes the runner's locale codec, which is cp1252 on
+# `tests (windows)`; the gate that keeps every repo read in tests/ pinned is section 4 of
+# tests/test_portability.py.
+with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "laya", "tl_kernels.py"),
+          encoding="utf-8") as f:
+    _tl_defs = {node.name: node for node in ast.parse(f.read()).body if isinstance(node, ast.FunctionDef)}
+for _name in ("gemm_kernel", "gemm_geglu_kernel", "add_ln_kernel", "rope_kernel", "attn_kernel"):
+    _args = _tl_defs[_name].args
+    check("%s/cpu keyword-only" % _name, [arg.arg for arg in _args.kwonlyargs], ["cpu"])
+    check("%s/cpu default" % _name, ast.literal_eval(_args.kw_defaults[0]), False)
+    check("%s/GPU dtype default" % _name, ast.literal_eval(_args.defaults[-1]), "bfloat16")
+_args = _tl_defs["compile_cpu"].args
+check("compile_cpu/arguments", [arg.arg for arg in _args.args], ["kernel"])
+check("compile_cpu/varargs", _args.vararg.arg, "args")
+check("compile_cpu/kwargs", _args.kwarg.arg, "kwargs")
+
+
+# --------------------------------- docs/hooks/api.md signature blocks: hooks_timeout is
+# named next to every hooks_raise the page shows. Router.__init__, Router.route and
+# ONNXAgent.__init__ used to omit it while Agent, load, predict, predict_long, predict_batch
+# and system_one all carried it, so a reader copying one of those three blocks got the
+# instance default instead of the per-call override.
+_api_md_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "docs", "hooks", "api.md")
+with open(_api_md_path, encoding="utf-8") as _api_f:
+    _api_text = _api_f.read()
+
+_python_blocks = re.findall(r"```python\n(.*?)\n```", _api_text, re.DOTALL)
+_raise_signatures = []
+for _block in _python_blocks:
+    for _chunk in _block.split("\n\n"):
+        _chunk = _chunk.strip()
+        if "hooks_raise" in _chunk and "(" in _chunk:
+            _raise_signatures.append(_chunk)
+
+check_true("docs/hooks/api.md has hooks_raise signature blocks to gate",
+           len(_raise_signatures) >= 6,
+           "found %d" % len(_raise_signatures))
+_missing_timeout = [s.splitlines()[0].split("(")[0].strip()
+                    for s in _raise_signatures if "hooks_timeout" not in s]
+check("docs/hooks/api.md every block that names hooks_raise also names hooks_timeout",
+      _missing_timeout, [])
+
+# Ban the pre-fix wordings so a future edit cannot just rename the parameter and go green.
+check_true("docs/hooks/api.md Router constructor no longer ends at hooks_concurrent",
+           "hooks_raise=True, hooks_concurrent=True,\n)\n\nrouter.route" not in _api_text)
+check_true("docs/hooks/api.md route() no longer ends at hooks_raise=None",
+           "hooks=None, hooks_raise=None)\n\nrouter.predict(" not in _api_text)
+check_true("docs/hooks/api.md ONNXAgent constructor no longer ends at hooks_concurrent",
+           "hooks_raise=True, hooks_concurrent=True)\n\nonnx_agent.system_one" not in _api_text)
+
+# Code truth: every documented surface really accepts hooks_timeout, so the ban cannot be
+# re-falsified by removing the parameter from the code.
+from laya.router import Router as _ApiRouter  # noqa: E402
+from laya.onnx_agent import ONNXAgent as _ApiONNXAgent  # noqa: E402
+from laya.agent import Agent as _ApiAgent  # noqa: E402
+from laya import load as _api_load  # noqa: E402
+
+for _label, _obj in [
+    ("Agent.__init__", _ApiAgent.__init__),
+    ("load", _api_load),
+    ("Agent.system_one", _ApiAgent.system_one),
+    ("Agent.predict_batch", _ApiAgent.predict_batch),
+    ("Router.__init__", _ApiRouter.__init__),
+    ("Router.route", _ApiRouter.route),
+    ("Router.predict", _ApiRouter.predict),
+    ("Router.predict_batch", _ApiRouter.predict_batch),
+    ("ONNXAgent.__init__", _ApiONNXAgent.__init__),
+    ("ONNXAgent.system_one", _ApiONNXAgent.system_one),
+]:
+    check("hooks_timeout is a real parameter of %s" % _label,
+          "hooks_timeout" in inspect.signature(_obj).parameters, True)
+# --------------------------------------------- docs/hooks/tracing.md nested-calls example
+# reads the child's `run_id`. `Agent.predict` returns `model`/`answers`/`usage` and `Router.predict`
+# adds `routing` -- no path returns a `run_id`, which is a `PredictContext` field
+# (laya/hooks.py:35). The pre-fix example's `child.get("run_id")` silently recorded `None`, so a
+# reader copying it linked every child span to no run at all.
+_tracing_md = os.path.join(REPO, "docs", "hooks", "tracing.md")
+with open(_tracing_md, encoding="utf-8") as _tf:
+    _tracing_text = _tf.read()
+
+check_true("docs/hooks/tracing.md drops the child.get('run_id') read",
+           'child.get("run_id")' not in _tracing_text and 'child["run_id"]' not in _tracing_text)
+check_true("docs/hooks/tracing.md nested-call example reads child_ctx.run_id",
+           "child_ctx.run_id" in _tracing_text)
+check_true("docs/hooks/tracing.md nested-call example passes a per-call on_predict_start",
+           "on_predict_start=link" in _tracing_text)
+
+# Code truth: no laya predict path ever writes `"run_id":` as a payload key, so the ban cannot be
+# re-falsified by adding the key at a later refactor.
+for _src_rel in ("laya/agent.py", "laya/router.py", "laya/onnx_agent.py", "laya/serve.py"):
+    with open(os.path.join(REPO, _src_rel), encoding="utf-8") as _sf:
+        _src_text = _sf.read()
+    check('%s never writes "run_id" as a payload key' % _src_rel,
+          '"run_id":' in _src_text, False)
+
+# PredictContext really exposes run_id, which is the field the corrected example reads.
+_pc_fields = {f.name for f in dataclasses.fields(PredictContext)}
+check("PredictContext/run_id is a dataclass field", "run_id" in _pc_fields, True)
+# --------------------------------------- docs/hooks/errors.md hooks_raise and hooks_timeout
+# enumerations. Pre-fix the page named 4 surfaces for hooks_raise and 5 for hooks_timeout, so a
+# reader never knew predict_long / ONNXAgent.predict_batch / ONNXAgent.predict_long /
+# Router.route_batch / Router.predict_batch carried the controls. The code truth is: every
+# public class-body `def` on Agent / Router / ONNXAgent that takes a `hooks_raise` or
+# `hooks_timeout` kwarg, with the alias assignments (`predict = system_one`,
+# `system_one = predict`, `predict = system_one`) excluded so the page does not double-list.
+_errors_md = os.path.join(REPO, "docs", "hooks", "errors.md")
+with open(_errors_md, encoding="utf-8") as _ef:
+    _errors_text = _ef.read()
+
+check_true("docs/hooks/errors.md drops the pre-fix hooks_raise parenthetical",
+           "(`hooks_raise=` on `predict_batch`,\n`system_one`, `Router.route`, `Router.predict`)"
+           not in _errors_text)
+check_true("docs/hooks/errors.md drops the pre-fix hooks_timeout four-plus-one list",
+           "per call on `predict_batch`, `system_one`,\n`Router.route`, `Router.predict` "
+           "and `ONNXAgent.system_one`" not in _errors_text)
+
+
+def _paragraph(marker):
+    start = _errors_text.index(marker)
+    stop = _errors_text.find("\n\n", start)
+    return _errors_text[start:stop if stop != -1 else len(_errors_text)]
+
+
+_QUALIFIED = re.compile(r"`([A-Z][A-Za-z]+\.[a-z_]+)`")
+_raise_doc = set(_QUALIFIED.findall(_paragraph("It is set per instance and can be overridden")))
+_timeout_doc = set(_QUALIFIED.findall(_paragraph("It can be set per instance or overridden")))
+
+check_true("docs/hooks/errors.md hooks_raise paragraph names at least 11 surfaces",
+           len(_raise_doc) >= 11, "found %d" % len(_raise_doc))
+check_true("docs/hooks/errors.md hooks_timeout paragraph names at least 11 surfaces",
+           len(_timeout_doc) >= 11, "found %d" % len(_timeout_doc))
+
+
+def _canonical_surfaces(module_path, cls_name):
+    with open(module_path, encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    alias_names = set()
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Name):
+            for tgt in node.targets:
+                if isinstance(tgt, ast.Name):
+                    alias_names.add(tgt.id)
+    for cls in tree.body:
+        if isinstance(cls, ast.ClassDef) and cls.name == cls_name:
+            for sub in cls.body:
+                if isinstance(sub, ast.Assign) and isinstance(sub.value, ast.Name):
+                    for tgt in sub.targets:
+                        if isinstance(tgt, ast.Name):
+                            alias_names.add(tgt.id)
+            out = {"hooks_raise": set(), "hooks_timeout": set()}
+            for sub in cls.body:
+                if not isinstance(sub, ast.FunctionDef):
+                    continue
+                if sub.name in alias_names or sub.name.startswith("_"):
+                    continue
+                kwnames = {a.arg for a in list(sub.args.args) + list(sub.args.kwonlyargs)}
+                for kw in ("hooks_raise", "hooks_timeout"):
+                    if kw in kwnames:
+                        out[kw].add("%s.%s" % (cls_name, sub.name))
+            return out
+    raise AssertionError("%s not a top-level class in %s" % (cls_name, module_path))
+
+
+_real_raise, _real_timeout = set(), set()
+for _mod_rel, _cls in [("laya/agent.py", "Agent"),
+                        ("laya/router.py", "Router"),
+                        ("laya/onnx_agent.py", "ONNXAgent")]:
+    _per = _canonical_surfaces(os.path.join(REPO, _mod_rel), _cls)
+    _real_raise |= _per["hooks_raise"]
+    _real_timeout |= _per["hooks_timeout"]
+
+check("docs/hooks/errors.md hooks_raise surfaces match laya's class bodies",
+      _raise_doc, _real_raise)
+check("docs/hooks/errors.md hooks_timeout surfaces match laya's class bodies",
+      _timeout_doc, _real_timeout)
+check_true("laya's AST scan finds at least 9 hooks_raise surfaces",
+           len(_real_raise) >= 9, "found %d" % len(_real_raise))
+check_true("laya's AST scan finds at least 11 hooks_timeout surfaces",
+           len(_real_timeout) >= 11, "found %d" % len(_real_timeout))
+# --------------------------------------- docs/hooks/lifecycle.md three-tier composition
+# laya/hooks.py::compose_hooks returns `defaults + installed + per-call`, so every lifecycle
+# diagram and the ordering rules must name all three tiers with defaults first. Pre-fix, the
+# Agent.predict_batch diagram said `installed hooks + per-call hooks (installed first)`, the
+# Router.predict diagram said the same without the parenthetical, the Router.predict_batch
+# diagram added `None and [] add nothing` on top of the same two-tier wording, rule 1 read
+# `Installed hooks run before per-call hooks, always.`, and the example block skipped the
+# defaults row entirely. docs/hooks/patterns.md:261 already documents `Defaults run before the
+# instance and per-call hooks`, so lifecycle.md contradicted both the code and the rest of the
+# docs page set.
+_lifecycle_md = os.path.join(REPO, "docs", "hooks", "lifecycle.md")
+with open(_lifecycle_md, encoding="utf-8") as _lf:
+    _lifecycle_text = _lf.read()
+
+# Three pre-fix diagram substrings and the pre-fix rule/example block, banned verbatim.
+check_true("docs/hooks/lifecycle.md drops the two-tier Agent.predict_batch diagram line",
+           "active  = installed hooks + per-call hooks         (installed first)"
+           not in _lifecycle_text)
+check_true("docs/hooks/lifecycle.md drops the two-tier Router.predict diagram line",
+           "\n  ├─ active = installed hooks + per-call hooks\n" not in _lifecycle_text)
+check_true("docs/hooks/lifecycle.md drops the two-tier Router.predict_batch diagram line",
+           "active = installed hooks + per-call hooks          (installed first; None and [] "
+           "add nothing)" not in _lifecycle_text)
+check_true("docs/hooks/lifecycle.md drops the pre-fix rule 1",
+           "1. Installed hooks run before per-call hooks, always." not in _lifecycle_text)
+check_true("docs/hooks/lifecycle.md drops the pre-fix example block",
+           "installed: [A, B]   per-call: [C]\non_predict_start: A, B, C\non_predict_end:   A, B, C"
+           not in _lifecycle_text)
+
+# Every `active =` composition line must name all three tiers in the order compose_hooks
+# concatenates them: defaults first, installed second, per-call third.
+_ACTIVE_LINES = [ln for ln in _lifecycle_text.splitlines() if "active = default hooks" in ln
+                 or "active  = default hooks" in ln]
+check_true("docs/hooks/lifecycle.md has at least 3 active-composition lines to gate",
+           len(_ACTIVE_LINES) >= 3, "found %d" % len(_ACTIVE_LINES))
+for _i, _line in enumerate(_ACTIVE_LINES):
+    _d = _line.find("default hooks")
+    _ins = _line.find("installed hooks")
+    _pc = _line.find("per-call hooks")
+    check_true("docs/hooks/lifecycle.md active line %d lists all three tiers" % _i,
+               _d != -1 and _ins != -1 and _pc != -1, _line)
+    check_true("docs/hooks/lifecycle.md active line %d orders defaults < installed < per-call"
+               % _i, _d < _ins < _pc, _line)
+
+check_true("docs/hooks/lifecycle.md rule 1 names defaults as the head tier",
+           "Process-wide default hooks run before installed hooks" in _lifecycle_text)
+check_true("docs/hooks/lifecycle.md example block includes a defaults row",
+           "defaults: [D]" in _lifecycle_text and
+           "on_predict_start: D, A, B, C" in _lifecycle_text and
+           "on_predict_end:   D, A, B, C" in _lifecycle_text)
+
+
+# AST-side truth: compose_hooks's return must be exactly `defaults + list(installed) +
+# normalise_hooks(...)`. If a future change reorders the concat, the doc gate above would still
+# pass on stale wording, so bind the doc to the code with this second check.
+from laya import hooks as _hooks_mod  # noqa: E402
+
+_compose_src = inspect.getsource(_hooks_mod.compose_hooks)
+_compose_tree = ast.parse(_compose_src.strip(), "<compose_hooks>")
+_ret = next(n for n in ast.walk(_compose_tree) if isinstance(n, ast.Return))
+_bin = _ret.value
+check_true("laya/hooks.compose_hooks returns a left-nested BinOp of three Add parts",
+           isinstance(_bin, ast.BinOp) and isinstance(_bin.op, ast.Add)
+           and isinstance(_bin.left, ast.BinOp) and isinstance(_bin.left.op, ast.Add),
+           ast.dump(_bin)[:200])
+# Flatten: ((A + B) + C) -> [A, B, C]
+_parts = []
+_node = _bin
+while isinstance(_node, ast.BinOp) and isinstance(_node.op, ast.Add):
+    _parts.append(_node.right)
+    _node = _node.left
+_parts.append(_node)
+_parts.reverse()
+_part_names = []
+for _p in _parts:
+    if isinstance(_p, ast.Name):
+        _part_names.append(_p.id)
+    elif isinstance(_p, ast.Call) and isinstance(_p.func, ast.Name):
+        _part_names.append(_p.func.id + "()")
+    elif isinstance(_p, ast.List):
+        _part_names.append("[]")
+    else:
+        _part_names.append(ast.dump(_p)[:40])
+check("laya/hooks.compose_hooks concat order is defaults, installed, per-call",
+      _part_names, ["defaults", "list()", "normalise_hooks()"])
+# The head part is a local `defaults` binding; prove it is the ternary that reads
+# default_hooks() behind _SKIP_DEFAULTS, so the doc's "defaults first" claim is anchored to
+# the process-wide registry and not to an arbitrary local list.
+_defaults_assign = None
+for _stmt in ast.walk(_compose_tree):
+    if isinstance(_stmt, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "defaults" for t in _stmt.targets):
+        _defaults_assign = _stmt.value
+        break
+check_true("compose_hooks binds `defaults` to a ternary on _SKIP_DEFAULTS",
+           isinstance(_defaults_assign, ast.IfExp),
+           ast.dump(_defaults_assign)[:200] if _defaults_assign else "no assign")
+_ifexp_src = ast.dump(_defaults_assign)
+check_true("compose_hooks's defaults ternary reads default_hooks()",
+           "default_hooks" in _ifexp_src)
+check_true("compose_hooks's defaults ternary respects _SKIP_DEFAULTS",
+           "_SKIP_DEFAULTS" in _ifexp_src)
+
+
+# Live-driver: call compose_hooks directly with a set default hook and observe the composition
+# order. This is the exact concatenation the doc's three-tier diagrams describe.
+_compose_probe_seen = []
+
+
+class _ComposeProbe(_hooks_mod.BaseHook):
+    def __init__(self, label):
+        self.label = label
+
+    def on_predict_start(self, ctx):
+        _compose_probe_seen.append(self.label)
+
+
+_installed_probe = _ComposeProbe("installed")
+_per_call_probe = _ComposeProbe("per-call")
+_default_probe = _ComposeProbe("defaults")
+try:
+    _hooks_mod.set_default_hooks(hooks=[_default_probe])
+    _composed = _hooks_mod.compose_hooks([_installed_probe], hooks=[_per_call_probe])
+    check("compose_hooks returns defaults, installed, per-call in that order",
+          [h.label for h in _composed], ["defaults", "installed", "per-call"])
+    _ctx_probe = PredictContext(states=["s"], questions={}, model="m")
+    _hooks_mod.dispatch(_composed, "on_predict_start", _ctx_probe, raise_errors=True)
+    check("dispatch of composed hooks fires defaults, installed, per-call in order",
+          _compose_probe_seen, ["defaults", "installed", "per-call"])
+finally:
+    _hooks_mod.clear_default_hooks()
+# --------------------------------------- README.md batch path: predict_batch vs route_batch
+# README.md's "Per-call hooks reach the batch path" bullet claims specific kwargs for
+# Router.predict_batch and Router.route_batch. Pre-fix it lumped both together and claimed
+# they both take `hooks`, `on_predict_start`, `on_predict_end` and `hooks_raise`, but
+# route_batch fires only on_route and has no predict events to bind convenience callables
+# to, so its signature carries neither on_predict_start nor on_predict_end. Both take
+# hooks_timeout, which the pre-fix bullet did not mention.
+_readme_md = os.path.join(REPO, "README.md")
+with open(_readme_md, encoding="utf-8") as _rmf:
+    _readme_text = _rmf.read()
+
+check_true("README.md drops the pre-fix combined batch-hooks claim",
+           "Router.predict_batch` and `Router.route_batch` take `hooks`, `on_predict_start`, "
+           "`on_predict_end` and `hooks_raise`, matching `predict`" not in _readme_text)
+
+# Pull the bullet that names the batch path so the gate reads one specific claim.
+_bullets = [ln for ln in _readme_text.splitlines()
+            if ln.startswith("* ")
+            and "Router.predict_batch" in ln and "Router.route_batch" in ln]
+check_true("README.md has one Per-call-hooks-reach-the-batch bullet",
+           len(_bullets) == 1, "found %d" % len(_bullets))
+_batch_bullet = _bullets[0] if _bullets else ""
+
+# Each named Router entry must appear with the kwarg set the actual signature has.
+_predict_batch_params = set(inspect.signature(Router.predict_batch).parameters) - {"self"}
+_route_batch_params = set(inspect.signature(Router.route_batch).parameters) - {"self"}
+check_true("Router.predict_batch really does not take on_predict_start / on_predict_end",
+           {"on_predict_start", "on_predict_end"}.issubset(_predict_batch_params),
+           sorted(_predict_batch_params))
+check_true("Router.route_batch really does not take on_predict_start / on_predict_end",
+           {"on_predict_start", "on_predict_end"}.isdisjoint(_route_batch_params),
+           sorted(_route_batch_params))
+for _kw in ("hooks", "hooks_raise", "hooks_timeout"):
+    check("Router.predict_batch takes %s" % _kw, _kw in _predict_batch_params, True)
+    check("Router.route_batch takes %s" % _kw, _kw in _route_batch_params, True)
+
+# The bullet must name hooks_timeout for both, must name the two convenience callables for
+# predict_batch, and must NOT name them for route_batch. Locate each sub-claim by the entry
+# name and read the kwargs list that follows it up to the next semicolon / period.
+def _kw_backtick_names(sentence_fragment):
+    return set(re.findall(r"`([a-z_]+)`", sentence_fragment))
+
+
+_pb_zone = _batch_bullet.split("`Router.predict_batch`", 1)[1].split(";")[0]
+_rb_zone = _batch_bullet.split("`Router.route_batch`", 1)[1].split("(")[0]
+_pb_named = _kw_backtick_names(_pb_zone)
+_rb_named = _kw_backtick_names(_rb_zone)
+check("README predict_batch clause names exactly its hooks kwargs",
+      _pb_named & {"hooks", "on_predict_start", "on_predict_end", "hooks_raise", "hooks_timeout"},
+      {"hooks", "on_predict_start", "on_predict_end", "hooks_raise", "hooks_timeout"})
+check("README route_batch clause names exactly its hooks kwargs",
+      _rb_named & {"hooks", "on_predict_start", "on_predict_end", "hooks_raise", "hooks_timeout"},
+      {"hooks", "hooks_raise", "hooks_timeout"})
+
+
+# --------------------------------------------------------------- patterns.md composition order
+# `docs/hooks/patterns.md`'s Composition paragraph told the reader "installed hooks run first,
+# in order". Two things are wrong with that: `laya/hooks.py::compose_hooks` returns
+# `defaults + installed + per-call`, so process-wide defaults -- not installed hooks -- are at
+# the head; and the same page's "Process-wide instrumentation" section (line 261) already says
+# "Defaults run before the instance and per-call hooks", so the sentence contradicts a section
+# further down its own file. `lifecycle.md`'s rule 1 (fixed in #991) says the same thing. The
+# gate bans the pre-fix wording, requires the tier vocabulary, and drives `compose_hooks` live
+# to prove the emitted order matches the prose.
+from laya import hooks as _hooks_mod  # noqa: E402
+
+check_true("hooks module exports compose_hooks", callable(_hooks_mod.compose_hooks))
+
+_patterns_md = os.path.join(REPO, "docs", "hooks", "patterns.md")
+with open(_patterns_md, encoding="utf-8", newline="") as _pmf:
+    _patterns_text = _pmf.read().replace("\r\n", "\n")
+
+check_true("docs/hooks/patterns.md drops the pre-fix installed-hooks-run-first composition claim",
+           "installed hooks run first, in order" not in _patterns_text)
+
+def _section(marker):
+    """Return the paragraph block that follows `marker` up to the next blank-line heading."""
+    idx = _patterns_text.find(marker)
+    if idx < 0:
+        return ""
+    start = _patterns_text.find("\n", idx) + 1
+    # Read to the next blank-line-then-heading boundary so we only see the Composition prose.
+    end = len(_patterns_text)
+    for probe in re.finditer(r"\n###?\s", _patterns_text[start:] + "\n"):
+        end = start + probe.start()
+        break
+    return _patterns_text[start:end]
+
+_comp = _section("### Composition")
+check_true("docs/hooks/patterns.md has a Composition paragraph", bool(_comp.strip()),
+           "no prose after '### Composition'")
+# The prose wraps in the 5th column; fold whitespace so the tier phrases below need no
+# knowledge of the file's wrap points.
+_comp_flat = " ".join(_comp.split())
+
+# The corrected prose must name every tier and the within-scope sequence.
+for _token in ("hooks=[...]", "on_predict_start=", "on_predict_end=",
+               "Within one scope", "Across scopes",
+               "process-wide default", "instance's hooks", "per-call hooks"):
+    check("docs/hooks/patterns.md Composition names %r" % _token, _token in _comp_flat, True)
+
+# Tier vocabulary must appear in the order compose_hooks actually joins them:
+# defaults -> instance -> per-call.
+def _tier_pos(needles):
+    for n in needles:
+        i = _comp_flat.find(n)
+        if i >= 0:
+            return i
+    return -1
+
+_defaults_i = _tier_pos(("process-wide default",))
+_instance_i = _tier_pos(("instance's hooks,", "instance's hooks",))
+_percall_i = _tier_pos(("before per-call hooks", "per-call hooks"))
+check_true("docs/hooks/patterns.md Composition order: defaults < instance < per-call",
+           0 <= _defaults_i < _instance_i < _percall_i,
+           "defaults=%d instance=%d per-call=%d" % (_defaults_i, _instance_i, _percall_i))
+
+# Live driver: the emitted on_predict_start order must be defaults, installed list in order,
+# per-call hooks=[...] in order, per-call on_predict_start.
+_emitted = []
+
+class _OrderProbe(BaseHook):
+    def __init__(self, label):
+        self.label = label
+
+    def on_predict_start(self, ctx):
+        _emitted.append(self.label)
+
+try:
+    _hooks_mod.clear_default_hooks()
+    _hooks_mod.set_default_hooks(hooks=[_OrderProbe("D")])
+    _installed = [_OrderProbe("A"), _OrderProbe("B")]
+    _composed = _hooks_mod.compose_hooks(
+        _installed,
+        hooks=[_OrderProbe("X")],
+        on_predict_start=lambda ctx: _emitted.append("C"),
+    )
+    _ctx = PredictContext(states=[{"text": "x"}], questions={})
+    for _h in _composed:
+        _fn = getattr(_h, "on_predict_start", None)
+        if callable(_fn):
+            _fn(_ctx)
+    check("compose_hooks emits defaults -> installed -> per-call hooks -> per-call start",
+          _emitted, ["D", "A", "B", "X", "C"])
+    # And the composition length reflects all five tiers entries (D, A, B, X, adapter(C)).
+    check("compose_hooks returns one entry per tier member",
+          len(_composed), 5)
+finally:
+    _hooks_mod.clear_default_hooks()
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

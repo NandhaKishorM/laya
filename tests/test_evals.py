@@ -4,6 +4,9 @@ Run: python -m pytest tests/test_evals.py -q
 """
 import json
 import re
+import warnings
+
+import numpy as np
 
 import pytest
 
@@ -83,6 +86,145 @@ def test_calibration_uses_answer_confidence():
     assert report.overall["mean_confidence"] == pytest.approx(0.9)
 
 
+# ---------------------------------------------------------------- which confidence a metric reads
+# `_answer_confidence` prefers `answer_confidence`, and an answer that carries none gets the entropy
+# `confidence` -- a different quantity on a different scale (#394), which the docstring used to call
+# "the calibrated confidence Laya reports ... on every answer type" while docs/evals.md told the
+# operator the same. The shape that really arrives without the field is the strict Jev wire contract:
+# `LAYA_JEV_STRICT` drops it (`laya/serve.py::_project_jev_strict`, documented in docs/http-api.md).
+# So the stripped answers below are made by the server's own projector rather than hand-written -- a
+# hand copy could drift from what the server serves and this gate would still pass. `laya.serve`
+# imports with neither fastapi nor torch at module scope, which is why it is affordable here.
+
+_CONTRACT_PROBS = {"choice": [0.95, 0.03, 0.02], "score": [0.05, 0.90, 0.05], "noul": [0.13, 0.87]}
+_CONTRACT_KEYS = {"choice": ["billing", "sales", "other"], "score": ["low", "mid", "high"],
+                  "noul": ["no", "yes"]}
+_CONTRACT_LABEL = {"choice": "billing", "score": "mid", "noul": True}
+
+
+def _agent_answer(kind):
+    """The answer dict `laya/agent.py` publishes, built the way the decoder builds it: entropy
+    `confidence` for `choice` and `score`, `max(p_true, 1 - p_true)` for `noul`, and
+    `answer_confidence` = max(p) -- see laya/agent.py:1373, :1392, :1400."""
+    p = _CONTRACT_PROBS[kind]
+    argmax = max(range(len(p)), key=lambda i: p[i])
+    from laya.common import confidence_from_probs
+    conf = (round(max(p[1], 1.0 - p[1]), 4) if kind == "noul"
+            else round(confidence_from_probs(np.asarray(p), len(p)), 4))
+    answer = {"confidence": conf, "answer_confidence": round(float(p[argmax]), 4),
+              "type": kind}
+    if kind == "choice":
+        return dict(answer, choice=_CONTRACT_KEYS[kind][argmax],
+                    probabilities=dict(zip(_CONTRACT_KEYS[kind], p)))
+    if kind == "score":
+        return dict(answer, score=round(sum(i * v for i, v in enumerate(p)), 4),
+                    legend={str(i): k for i, k in enumerate(_CONTRACT_KEYS[kind])},
+                    probabilities={str(i): v for i, v in enumerate(p)})
+    return dict(answer, noul=p[1])
+
+
+def _contract_shapes():
+    """`(full, strict)` -- the payload the agents publish, and the same payload put through the
+    projector that serves the strict Jev contract."""
+    from laya.serve import _project_jev_strict
+    full = {kind: _agent_answer(kind) for kind in _CONTRACT_PROBS}
+    strict = _project_jev_strict({"model": "stub", "answers": dict(full),
+                                  "usage": {"prompt_tokens": 1, "completion_tokens": 1}})["answers"]
+    return full, strict
+
+
+def _contract_report(shapes):
+    questions = {"q": {"type": "choice", "instructions": "?",
+                       "criteria": dict(zip(_CONTRACT_KEYS["choice"], ["c"] * 3))}}
+    by_state = {"state-%s" % kind: {"q": shapes[kind]} for kind in shapes}
+    dataset = Dataset([Example("state-%s" % kind, questions, {"q": _CONTRACT_LABEL[kind]})
+                       for kind in shapes])
+    return evaluate(StubRunner(by_state), dataset)
+
+
+def test_serve_contract_projection_is_the_shape_without_the_field():
+    full, strict = _contract_shapes()
+    for kind in ("choice", "score", "noul"):
+        assert "answer_confidence" in full[kind]
+        assert "answer_confidence" not in strict[kind], (
+            "the projector is what makes the fallback reachable; if it stopped dropping the field, "
+            "the prose this test guards would need re-reading, not these numbers")
+    assert "confidence" in strict["choice"] and "confidence" in strict["score"]
+    assert "confidence" not in strict["noul"], "docs/http-api.md: noul keeps only `noul`"
+
+
+def test_a_strict_answer_is_calibrated_against_the_entropy_number():
+    full, strict = _contract_shapes()
+    for kind in ("choice", "score"):
+        assert evals._answer_confidence(full[kind]) == pytest.approx(full[kind]["answer_confidence"])
+        assert evals._answer_confidence(strict[kind]) == pytest.approx(full[kind]["confidence"]), \
+            "with the field gone the column silently becomes the entropy number"
+    # A strict `noul` carries neither field, so it is the only fallback that lands on the right
+    # quantity: max(p_true, 1 - p_true) is what the decoder reports as its answer_confidence.
+    assert evals._answer_confidence(strict["noul"]) == pytest.approx(
+        full["noul"]["answer_confidence"])
+
+
+def test_the_two_shapes_do_not_score_the_same_report():
+    full, strict = _contract_shapes()
+    over_full, over_strict = _contract_report(full), _contract_report(strict)
+    assert over_full.overall["mean_confidence"] == pytest.approx(0.9066666666666666)
+    assert over_strict.overall["mean_confidence"] == pytest.approx(0.7665666666666667)
+    # ece sees the two rows whose answer type yields a known label (choice, noul); the score row has
+    # no correctness rule, so only mean_confidence moves for it.
+    assert over_full.overall["ece"] == pytest.approx(0.09)
+    assert over_strict.overall["ece"] == pytest.approx(0.17065)
+    assert over_strict.overall["ece"] - over_full.overall["ece"] == pytest.approx(0.08065), \
+        "the same answers, the same labels, a different field: 0.09 -> 0.17065"
+
+
+def test_the_docs_name_the_fallback_and_refuse_to_call_the_shipped_number_calibrated():
+    import ast
+    import inspect
+    import pathlib
+
+    doc = inspect.getsource(evals._answer_confidence)
+    flat = " ".join(doc.split())
+    assert "falls through" in flat and "normalized entropy" in flat
+    # The number of fallbacks the docstring teaches is read off the code's own Returns, so a fourth
+    # fallback cannot be added without re-teaching the sentence that enumerates them.
+    reads = [node for node in ast.walk(ast.parse(doc).body[0])
+             if isinstance(node, ast.Return) and not isinstance(node.value, ast.Constant)]
+    words = ("zero", "one", "two", "three", "four", "five", "six", "seven")
+    taught = words[len(reads) - 1]
+    assert "falls through %s more reads, in order" % taught in flat, (
+        "the docstring must enumerate the fallbacks in order, and the count it teaches must be the "
+        "code's: %d returning reads, one of them the preferred `answer_confidence`" % len(reads))
+    assert "LAYA_JEV_STRICT" in flat, "the shape that lacks the field has to be named"
+    assert "over-confident" in flat, "the shipped level must not be called calibrated"
+    assert "is not *calibrated* as shipped" in flat
+    assert "The calibrated confidence" not in doc, "main's opening claim, verbatim"
+
+    page = (pathlib.Path(__file__).resolve().parent.parent
+            / "docs" / "evals.md").read_text(encoding="utf-8")
+    prose = " ".join(page.split())
+    assert "the calibrated probability Laya reports on every answer type" not in prose
+    assert "`laya.evals._answer_confidence`" in prose, "the page names the function it describes"
+    assert "then\n`max(p, 1 - p)`" in page or "then `max(p, 1 - p)`" in prose
+    assert "LAYA_JEV_STRICT" in prose and "over-confident" in prose
+    assert "## Which confidence a metric reads" in page, "the fallback needs a home, not a footnote"
+
+    # Every metrics-table row that names the column has to carry the same hedge the prose does.
+    rows = [line for line in page.splitlines()
+            if line.startswith("| `") and 'answer["answer_confidence"]' in line]
+    assert rows, "the page must tell the operator which field the metrics read"
+    for row in rows:
+        assert "where the answer carries it" in row or "#which-confidence-a-metric-reads" in row, (
+            "a row that names only `answer_confidence` claims the fallback away: %s" % row[:100])
+
+    # And the claim the evals page leans on has to still be the one the HTTP page makes.
+    api = (pathlib.Path(__file__).resolve().parent.parent
+           / "docs" / "http-api.md").read_text(encoding="utf-8")
+    row = [line for line in api.splitlines() if "`LAYA_JEV_STRICT`" in line]
+    assert row and "no per-answer `action` / `answer_confidence`" in row[0]
+
+
+
 def test_compare_ignores_latency_by_default():
     report = EvalReport(overall={"choice_accuracy": 0.8, "latency_p50_ms": 12.0})
     baseline = {"overall": {"choice_accuracy": 0.8, "latency_p50_ms": 5.0}}
@@ -116,6 +258,438 @@ def test_selective_metrics_on_known_inputs():
     for name in ("ece", "brier", "aurc", "selective_accuracy@50"):
         assert is_confidence_metric(name)
     assert not is_confidence_metric("choice_accuracy")
+
+
+def test_coverage_cut_does_not_split_a_tie_group():
+    """A coverage cut is a confidence threshold, so permuting the dataset cannot move it.
+
+    Before this was fixed, a stable sort made the result reproducible but not order-independent:
+    `y[:k]` took whichever tie members the dataset listed first. Ties are the normal case, not a
+    corner -- `common.answer_confidence`'s own docstring records that the shipped `choice:11+`
+    bucket "returns a point mass at 1.0".
+    """
+    conf = [1.0] * 8
+    correct_first = [True, True, True, True, False, False, False, False]
+    wrong_first = [False, False, False, False, True, True, True, True]
+    interleaved = [True, False, True, False, True, False, True, False]
+    # 8 rows, 4 correct, every confidence identical: the only honest answer is the group's own
+    # accuracy, whatever order the rows arrive in. Before: 1.000 / 0.000 / 0.500 for sel@50.
+    for y in (correct_first, wrong_first, interleaved):
+        assert selective_accuracy(conf, y, 0.5) == pytest.approx(0.5)
+        assert selective_accuracy(conf, y, 0.8) == pytest.approx(0.5)
+        assert aurc(conf, y) == pytest.approx(0.5)
+    # `brier` and `ece` do not cut, so a change to what a cut accepts cannot move them. Asserted on
+    # DISTINCT, deliberately unsorted confidences and by comparing two orderings to each other: on
+    # the all-tied data above, any confidence-sorting rewrite is the identity, so a mutant that
+    # permuted the rows by confidence passed every one of these.
+    jumbled_conf = [0.3, 0.95, 0.6, 0.1, 0.8]
+    jumbled_corr = [False, True, True, False, False]
+    order = [3, 0, 4, 2, 1]
+    other_conf = [jumbled_conf[i] for i in order]
+    other_corr = [jumbled_corr[i] for i in order]
+    assert brier(jumbled_conf, jumbled_corr) == pytest.approx(
+        brier(other_conf, other_corr), abs=1e-12)
+    assert ece(jumbled_conf, jumbled_corr) == pytest.approx(
+        ece(other_conf, other_corr), abs=1e-12)
+    # and the values themselves, so a rewrite that made both sides equally wrong is still caught
+    assert brier(jumbled_conf, jumbled_corr) == pytest.approx(
+        sum((c - y) ** 2 for c, y in zip(jumbled_conf, jumbled_corr)) / 5, abs=1e-12)
+
+
+def test_coverage_cut_extends_through_the_tie_it_lands_in():
+    """The threshold is the confidence at the cut, and it accepts every row at that confidence."""
+    # two groups: 0.9 (both correct) and 0.5 (two correct of four). The FIRST member of the 0.5
+    # group is wrong on purpose: with a correct one there, accepting a row below the threshold
+    # cannot change the mean, and an implementation that over-accepts passes unnoticed.
+    conf = [0.9, 0.9, 0.5, 0.5, 0.5, 0.5]
+    corr = [True, True, False, True, True, False]
+    # coverage 1/3 -> k = ceil(2.0) = 2, the cut is 0.9, and nothing at 0.5 is accepted. If one
+    # were, this would be 2/3 rather than 1.0.
+    assert selective_accuracy(conf, corr, 1 / 3) == pytest.approx(1.0)
+    # coverage 0.5 -> k = ceil(3.0) = 3, which lands inside the 0.5 group, so the threshold is
+    # 0.5 and all six rows are accepted: 4 correct of 6. The figure therefore covers the group's
+    # upper edge (6 answers) rather than the 3 asked for -- the only order-independent reading.
+    assert selective_accuracy(conf, corr, 0.5) == pytest.approx(4 / 6)
+    assert selective_accuracy(conf, corr, 0.8) == pytest.approx(4 / 6)
+    # aurc integrates one risk per distinct level over the ROWS that level spans: 0.9 -> 2 rows
+    # accepted, 0 errors, risk 0; 0.5 -> 6 accepted, 2 errors, risk 2/6, spanning the other 4 rows.
+    # Weighted, not averaged: an unweighted mean of the two risks would weight a 2-row level the
+    # same as a 4-row one, which is how a 999-row level and a 1-row level came to count alike.
+    assert aurc(conf, corr) == pytest.approx((0.0 * 2 + (2 / 6) * 4) / 6)
+
+
+def test_coverage_metrics_are_unchanged_without_ties():
+    """Distinct confidences must produce exactly what they always did, to the last bit.
+
+    The fix is only allowed to move a number a permutation of the same dataset could already
+    move. With no ties there is one level per row, so every point of the risk-coverage curve --
+    and `k` itself -- is what it was before.
+    """
+    conf, corr = [0.9, 0.8, 0.2, 0.1], [True, True, False, False]
+    # the hand-computed values from `test_selective_metrics_on_known_inputs`, restated as floats
+    # so this fails if the definition drifts rather than if that test is edited
+    assert aurc(conf, corr) == pytest.approx((0 + 0 + 1 / 3 + 1 / 2) / 4, abs=1e-12)
+    assert selective_accuracy(conf, corr, 0.5) == pytest.approx(1.0, abs=1e-12)
+    assert selective_accuracy(conf, corr, 0.75) == pytest.approx(2 / 3, abs=1e-12)
+    assert selective_accuracy(conf, corr, 1.0) == pytest.approx(0.5, abs=1e-12)
+    # a single row, and a coverage that rounds below one row, still report that row
+    assert selective_accuracy([0.4], [True], 0.01) == pytest.approx(1.0)
+    assert aurc([0.4], [False]) == pytest.approx(1.0)
+    # `coverage * n` is rarely an integer, and the fraction rounds UP so the answer covers at
+    # least the fraction asked for. Five rows at 0.5 means three, not two -- every case above
+    # happens to land on a whole row, so nothing here could see a floor in place of the ceiling.
+    five, corr5 = [0.9, 0.8, 0.7, 0.6, 0.5], [True, True, False, True, True]
+    assert selective_accuracy(five, corr5, 0.5) == pytest.approx(2 / 3)     # ceil(2.5) = 3 rows
+    # 0.3 -> ceil(1.5) = 2 rows. The second row is WRONG, so a floor (1 row) would report 1.0.
+    five_mixed = [0.9, 0.8, 0.7, 0.6, 0.5]
+    corr_mixed = [True, False, True, True, True]
+    assert selective_accuracy(five_mixed, corr_mixed, 0.3) == pytest.approx(0.5)
+    assert selective_accuracy(five, corr5, 0.7) == pytest.approx(3 / 4)     # ceil(3.5) = 4 rows
+
+
+def test_non_finite_confidences_are_order_independent_too():
+    """A NaN confidence must not reintroduce the order-dependence this change removes.
+
+    Confidences come from whatever a runner returns, so NaN and infinities are reachable --
+    `_eval_policy._finite_number` exists because this codebase already expects that. `NaN != NaN`,
+    so a boundary test written on `!=` alone would make every NaN row its own level and walk them
+    in dataset order: the headline defect, surviving for exactly the input a custom runner is most
+    likely to hand over by accident. All NaNs are one group, ranked last.
+
+    These VALUES differ from what the old definition reported. They have to: the old ones were
+    whichever rows the dataset listed first. `docs/evals.md` says so.
+    """
+    nan, inf = float("nan"), float("inf")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")                # a RuntimeWarning here fails the test
+        # all NaN: one group, so every coverage reports the group's own accuracy
+        for y in ([True, False, True], [True, True, False], [False, True, True]):
+            assert selective_accuracy([nan] * 3, y, 0.5) == pytest.approx(2 / 3)
+            assert aurc([nan] * 3, y) == pytest.approx(1 / 3)
+        # a NaN among finite values: the finite ones rank above it, the NaN group below
+        assert selective_accuracy([0.9, nan, 0.5], [True, False, True], 0.5) == pytest.approx(1.0)
+        # infinities are ordinary numbers to a comparison, and keep ranking normally
+        assert selective_accuracy([inf, 0.5, -inf], [True, True, False], 0.5) == pytest.approx(1.0)
+        assert aurc([0.9, 0.7, nan, 0.2], [True, False, True, True]) == pytest.approx(
+            (0 * 1 + 0.5 * 1 + (1 - 2 / 3) * 1 + (1 - 3 / 4) * 1) / 4, abs=1e-12)
+
+    # and the whole report, through `evaluate()`, with only the NaN rows reordered
+    def report_for(rows):
+        examples = [Example("s%d" % i, Q, {"intent": "a"}) for i, _ in enumerate(rows)]
+        answers = {"s%d" % i: {"intent": dict(choice_answer("a" if ok else "b", conf),
+                                              answer_confidence=conf)}
+                   for i, (conf, ok) in enumerate(rows)}
+        rep = evaluate(StubRunner(answers), Dataset(examples), evaluators=[ChoiceAccuracy()])
+        return {n: rep.overall[n] for n in ("aurc", "selective_accuracy@50",
+                                           "selective_accuracy@80")}
+
+    finite = [(0.9, True), (0.8, True), (0.7, True), (0.6, True)]
+    block = [(nan, True), (nan, False), (nan, True), (nan, False), (nan, True), (nan, False)]
+    assert report_for(finite + block) == report_for(finite + block[::-1])
+
+
+def test_confidences_group_on_exact_equality():
+    """Two confidences that differ by one ULP are two levels, not one.
+
+    A threshold comparison is exact, so grouping has to be too. Nothing else in this file puts two
+    confidences closer together than 0.1, which let a tolerance window or an `isclose` boundary
+    pass every check while changing which answers a cut accepts. The shipped agents round
+    confidence to 4 decimals, so this is reachable only from a custom runner -- which is also true
+    of every NaN case above.
+    """
+    one = 1.0
+    just_below = 1.0 - 2 ** -52                      # the next double below 1.0
+    assert just_below != one and round(just_below, 4) == round(one, 4)
+    # two levels: the correct answer ranks first and the 50% cut takes only it
+    assert selective_accuracy([one, just_below], [True, False], 0.5) == pytest.approx(1.0)
+    assert aurc([one, just_below], [True, False]) == pytest.approx((0.0 * 1 + 0.5 * 1) / 2)
+    # one level, were they treated as equal, would report the pair's own accuracy instead
+    assert selective_accuracy([one, one], [True, False], 0.5) == pytest.approx(0.5)
+
+
+def test_corrects_are_read_as_booleans():
+    """`corrects` is a correctness flag, not a count.
+
+    `_levels` reads it through `dtype=bool`; reading it as a float lets a value outside {0, 1}
+    produce a NEGATIVE risk, and `brier` already reads the same argument as a float, so the two
+    readings were unpinned and mutually inconsistent.
+    """
+    assert aurc([0.9, 0.8], [2, 0]) == pytest.approx(aurc([0.9, 0.8], [True, False]))
+    assert aurc([0.9, 0.8], [2, 0]) >= 0.0
+    assert selective_accuracy([0.9, 0.8], [2, 0], 1.0) == pytest.approx(0.5)
+
+
+def test_a_0d_confidence_still_answers():
+    """A bare scalar used to answer, and indexing it with an argsort result raises.
+
+    Reachable only from the library entry point, and `_aggregate` always builds lists -- but an
+    `IndexError` escaping `laya-evals` exits 1, which is the code that means "the model regressed".
+    """
+    assert selective_accuracy(np.float64(0.5), np.True_, 0.5) == pytest.approx(1.0)
+    assert aurc(np.float64(0.5), np.False_) == pytest.approx(1.0)
+
+
+def test_report_metrics_survive_a_permuted_dataset():
+    """The gate reads these through `evaluate()`, so permuting a JSONL must not move them.
+
+    `_eval_policy.check_policy` gates a slice on whatever metric a policy names, and
+    `evals.is_confidence_metric` recognises `aurc` and `selective_accuracy@*` by name -- so a
+    coverage metric that depended on row order meant a shuffled dataset could pass or fail a
+    release gate on nothing at all.
+    """
+    examples = [Example("s%d" % i, Q, {"intent": "a"}) for i in range(1, 9)]
+    # every answer at the same confidence, half of them wrong: the tie case, through the report
+    answers = {"s%d" % i: {"intent": choice_answer("a" if i <= 4 else "b", 1.0)}
+               for i in range(1, 9)}
+    names = ("aurc", "selective_accuracy@50", "selective_accuracy@80", "ece", "brier")
+
+    def metrics(order):
+        report = evaluate(StubRunner(answers), Dataset([examples[i] for i in order]),
+                          evaluators=[ChoiceAccuracy()])
+        return {n: report.overall[n] for n in names}
+
+    forward = metrics(range(8))
+    assert metrics(range(7, -1, -1)) == forward
+    assert metrics([4, 0, 5, 1, 6, 2, 7, 3]) == forward
+    # and the values are the tie group's own accuracy, not whichever half came first
+    assert forward["selective_accuracy@50"] == pytest.approx(0.5)
+    assert forward["aurc"] == pytest.approx(0.5)
+
+
+def test_a_relative_rule_refuses_a_baseline_from_the_old_coverage_definition(tmp_path):
+    """A `max_drop` across definitions is unsafe in the PASS direction, so it must not be computed.
+
+    The two definitions disagree by up to 0.500 on the same answers. A slice recorded at 0.033
+    by the old one reads 0.517 under this one, so subtracting them lets a candidate that genuinely
+    dropped 0.217 clear a `max_drop` of 0.05 -- a real regression shipping because a baseline is
+    stale. `comparable_to` cannot see it: the dataset bytes and the question schema are identical,
+    and its "a key missing on either side is unknown" rule exists so a patch release cannot
+    invalidate a baseline. A definition change is not a patch release, so this refuses on the
+    key's ABSENCE.
+    """
+    from laya import _eval_policy
+
+    policy = _eval_policy.load_policy(_write_gate_policy(
+        tmp_path, {"slice": {"language": "zh"}, "metric": "selective_accuracy@50",
+                   "min_count": 5, "max_drop": 0.05}))
+    candidate = EvalReport(**_coverage_gate_report(0.30, evals.COVERAGE_METRIC_DEFINITION))
+
+    stale = _coverage_gate_report(0.033333, None)
+    failures = _eval_policy.check_policy(candidate, policy, stale)
+    assert any("regenerate it before comparing" in f for f in failures), failures
+    assert any("the baseline says 1 (unrecorded)" in f for f in failures), failures
+    # an explicit version 1 is refused the same way
+    assert any("regenerate it before comparing" in f for f in
+               _eval_policy.check_policy(candidate, policy, _coverage_gate_report(0.033333, 1)))
+
+    # regenerated under this definition, the same gate CATCHES the regression it was hiding
+    fresh = _coverage_gate_report(0.516667, evals.COVERAGE_METRIC_DEFINITION)
+    failures = _eval_policy.check_policy(candidate, policy, fresh)
+    assert any("max_drop" in f and "exceeded" in f for f in failures), failures
+    assert not any("regenerate" in f for f in failures), failures
+
+
+def test_the_refusal_is_limited_to_metrics_a_cut_can_move(tmp_path):
+    """`ece` and `brier` do not cut, so a baseline that predates the change stays comparable.
+
+    Sweeping them into the refusal would break every committed baseline for no reason.
+    """
+    from laya import _eval_policy
+
+    candidate = EvalReport(**_coverage_gate_report(0.10, evals.COVERAGE_METRIC_DEFINITION,
+                                                   metric="ece"))
+    stale = _coverage_gate_report(0.11, None, metric="ece")
+    policy = _eval_policy.load_policy(_write_gate_policy(
+        tmp_path, {"slice": {"language": "zh"}, "metric": "ece",
+                   "min_count": 5, "max_drop": 0.05}))
+    assert _eval_policy.check_policy(candidate, policy, stale) == []
+    assert evals.is_coverage_metric("aurc")
+    assert evals.is_coverage_metric("selective_accuracy@80")
+    assert not evals.is_coverage_metric("ece")
+    assert not evals.is_coverage_metric("brier")
+    assert not evals.is_coverage_metric("choice_accuracy")
+
+
+def test_an_absolute_rule_needs_no_baseline_and_is_unaffected(tmp_path):
+    """Only the relative comparison is across definitions; a `min` reads this run alone."""
+    from laya import _eval_policy
+
+    policy = _eval_policy.load_policy(_write_gate_policy(
+        tmp_path, {"slice": {"language": "zh"}, "metric": "selective_accuracy@50",
+                   "min_count": 5, "min": 0.2}))
+    candidate = EvalReport(**_coverage_gate_report(0.30, evals.COVERAGE_METRIC_DEFINITION))
+    assert _eval_policy.check_policy(candidate, policy, None) == []
+
+
+def test_a_stale_candidate_is_refused_as_well_as_a_stale_baseline(tmp_path):
+    """The dangerous direction: an old-definition CANDIDATE can read BETTER than the truth.
+
+    A report scored by the old definition carries a row-order artifact. Here the same slice reads
+    1.000 under definition 1 (its correct rows happened to be listed first) where definition 2 says
+    0.500, so subtracting it from a correctly regenerated 0.500 baseline shows no drop at all and
+    the gate passes -- while the honestly scored candidate fails. Checking only the baseline leaves
+    this open, and it is the easier of the two to reach by accident: a CI artifact produced by a
+    pinned older `laya`, or an archived report re-checked after the baseline was regenerated.
+    """
+    from laya import _eval_policy
+
+    policy = _eval_policy.load_policy(_write_gate_policy(
+        tmp_path, {"slice": {"language": "zh"}, "metric": "selective_accuracy@50",
+                   "min_count": 5, "max_drop": 0.05}))
+    fresh_baseline = _coverage_gate_report(0.50, evals.COVERAGE_METRIC_DEFINITION)
+    stale_candidate = EvalReport(**_coverage_gate_report(1.0, None))
+
+    failures = _eval_policy.check_policy(stale_candidate, policy, fresh_baseline)
+    assert any("this report says 1 (unrecorded)" in f for f in failures), failures
+    # Proof the refusal is what stops it: the subtraction itself sees 1.0 against 0.50, which is a
+    # GAIN, so without the refusal there is no `max_drop` failure to catch the regression.
+    assert not any("max_drop" in f for f in failures), failures
+    # both sides stale is refused too, and says so about both
+    both = _eval_policy.check_policy(stale_candidate, policy, _coverage_gate_report(0.50, None))
+    assert any("this report says" in f and "the baseline says" in f for f in both), both
+
+
+def test_compare_refuses_a_coverage_metric_across_definitions():
+    """`EvalReport.compare` is the gate this project's docs lead with, and it also subtracts.
+
+    `--gate-policy` is opt-in; `--baseline --tolerance` is the documented default. A refusal that
+    covered only the policy gate would leave the usual path performing exactly the cross-definition
+    subtraction the policy gate exists to refuse.
+    """
+    report = EvalReport(**_coverage_gate_report(0.50, evals.COVERAGE_METRIC_DEFINITION))
+    stale = _coverage_gate_report(0.47, None)
+
+    ok, deltas = report.compare(stale, {"selective_accuracy@50": 0.10})
+    assert not ok, deltas
+    assert "incomparable" in deltas["selective_accuracy@50"], deltas
+    # Without the refusal this passes: 0.50 against 0.47 is a 0.03 move inside a 0.10 tolerance,
+    # while the regenerated baseline for the same answers is 0.03 and the real move is 0.47.
+    fresh = _coverage_gate_report(0.47, evals.COVERAGE_METRIC_DEFINITION)
+    ok_same_definition, deltas_same = report.compare(fresh, {"selective_accuracy@50": 0.10})
+    assert ok_same_definition, deltas_same
+    assert "incomparable" not in deltas_same["selective_accuracy@50"]
+    # `ece` does not cut, so an unstamped baseline stays comparable
+    ece = EvalReport(**_coverage_gate_report(0.10, evals.COVERAGE_METRIC_DEFINITION, metric="ece"))
+    ok_ece, deltas_ece = ece.compare(_coverage_gate_report(0.11, None, metric="ece"),
+                                     {"ece": 0.05})
+    assert ok_ece, deltas_ece
+
+
+def test_the_refusal_bounds_a_hostile_recorded_definition(tmp_path):
+    """The stamp is read from a report file, which on a pull-request gate the author writes.
+
+    The refusal names the value it found, and that message is printed to a CI log, so the value is
+    attacker-controlled content on its way into a log. Five megabytes in the field produced a
+    five-megabyte failure line before this was bounded.
+    """
+    from laya import _eval_policy
+
+    policy = _eval_policy.load_policy(_write_gate_policy(
+        tmp_path, {"slice": {"language": "zh"}, "metric": "selective_accuracy@50",
+                   "min_count": 5, "max_drop": 0.05}))
+    candidate = EvalReport(**_coverage_gate_report(0.30, evals.COVERAGE_METRIC_DEFINITION))
+
+    failures = _eval_policy.check_policy(candidate, policy,
+                                         _coverage_gate_report(0.03, "x" * 5_000_000))
+    assert failures
+    assert max(len(f) for f in failures) < 400, max(len(f) for f in failures)
+    assert any("truncated" in f for f in failures), failures
+
+
+def test_every_report_records_which_coverage_definition_produced_it():
+    report = evaluate(StubRunner({"s1": {"intent": choice_answer("a")}}),
+                      Dataset([Example("s1", Q, {"intent": "a"})]))
+    assert report.config["coverage_metric_definition"] == evals.COVERAGE_METRIC_DEFINITION
+    assert evals.COVERAGE_METRIC_DEFINITION == 2
+
+
+def test_aurc_is_bit_identical_to_the_per_answer_mean_without_ties():
+    """Not `approx`: the claim is bit-identity, and only an exact comparison can hold it.
+
+    With no ties every level holds one answer, so weighting by rows and dividing once at the end
+    reduces to the same pairwise sum over the same denominator. Weighting by the coverage width
+    instead -- mathematically the same area -- loses the last bits on about half of all datasets,
+    which would quietly move every committed number that has no tie in it.
+    """
+    import random
+
+    random.seed(5)
+    for _ in range(200):
+        n = random.randint(1, 40)
+        conf = random.sample([i / 10000 for i in range(1, 9999)], n)
+        corr = [random.random() < 0.6 for _ in range(n)]
+        order = np.argsort(-np.asarray(conf, dtype=float), kind="mergesort")
+        y = np.asarray(corr, dtype=bool)[order].astype(float)
+        per_answer = 1.0 - np.cumsum(y) / np.arange(1, n + 1)
+        assert aurc(conf, corr) == float(np.mean(per_answer))
+
+
+def test_a_single_cut_agrees_with_the_risk_coverage_curve():
+    """The two routes to one rule must not drift apart, so a test holds them together.
+
+    `selective_accuracy` answers for one cut (`_accepted_at_cut`, a binary search) what `_levels`
+    answers for every level (a full scan, which `aurc` integrates). Deriving the single cut from
+    the full scan was measured 19% to 58% slower for no change in any value, so both exist -- and
+    a comment asserting they agree would be enforced by nothing. This is the enforcement: an edit
+    to either side fails here.
+
+    Exact equality, not `approx`: both routes divide one exact integer count by another, over the
+    same accepted set, so any difference at all is a real divergence rather than rounding.
+    """
+    import math
+    import random
+
+    rng = random.Random(13)
+    pool = [0.0, -0.0, 1.0, 0.5, 0.25, -1.0, 2.0,
+            float("nan"), float("inf"), -float("inf"), 1.0 - 2.0 ** -52]
+    for _ in range(4000):
+        n = rng.randint(1, 14)
+        conf = [rng.choice(pool) for _ in range(n)]
+        corr = [rng.random() < 0.5 for _ in range(n)]
+        accepted, hits, levels_n = evals._levels(conf, corr)
+        assert levels_n == n
+        for coverage in (0.01, 0.25, 0.5, 0.8, 1.0):
+            k = max(1, int(math.ceil(coverage * n)))
+            level = int(np.searchsorted(accepted, k, side="left"))
+            # the two routes must agree on how many answers the cut accepts ...
+            #
+            # Sorted the way `_levels` sorts: `argsort(-c)` ranks NaN LAST, where
+            # `np.sort(c)[::-1]` would rank it first and feed the lookup a different array.
+            column = np.asarray(conf, dtype=float)
+            sorted_desc = column[np.argsort(-column, kind="mergesort")]
+            assert evals._accepted_at_cut(sorted_desc, k) == int(accepted[level]), (
+                n, k, conf)
+            # ... and therefore on the accuracy over them
+            assert selective_accuracy(conf, corr, coverage) == float(hits[level] / accepted[level]), (
+                n, coverage, conf, corr)
+
+
+def test_selective_accuracy_is_bit_identical_to_the_accepted_slice_mean():
+    """Not `approx`: the claim is bit-identity with what this function answered before.
+
+    `selective_accuracy` now reads the same levels `aurc` reads, so it had to be shown that routing
+    it through them does not move a value. It returns `hits / accepted` -- the exact count of
+    correct answers over the exact count accepted -- because `corrects` is 0.0/1.0 and every
+    partial sum is therefore an exact integer in float64.
+
+    Recovering the same number as `1 - risk` instead, from a risk the levels had already divided,
+    round-trips through a subtraction and differs in the last bits on about one value in eight. A
+    gate would not notice; a user diffing two reports of the same no-tie data would, and this
+    change is not allowed to move a number that no tie could move.
+    """
+    import random
+
+    random.seed(11)
+    for _ in range(200):
+        n = random.randint(1, 40)
+        conf = random.sample([i / 10000 for i in range(1, 9999)], n)   # distinct: no ties
+        corr = [random.random() < 0.6 for _ in range(n)]
+        order = np.argsort(-np.asarray(conf, dtype=float), kind="mergesort")
+        y = np.asarray(corr, dtype=bool)[order].astype(float)
+        for coverage in (0.1, 0.25, 0.5, 0.8, 1.0):
+            k = max(1, int(np.ceil(coverage * n)))
+            assert selective_accuracy(conf, corr, coverage) == float(np.mean(y[:k])), (
+                n, coverage, conf, corr)
 
 
 def test_selective_metrics_reach_the_report():
@@ -470,10 +1044,14 @@ def test_a_pass_through_wrapper_is_given_the_knob():
 # ------------------------------------------------------- abstention gate (#361 knob)
 #
 # `Router.predict` / `Router.predict_batch` and `ONNXAgent.predict` gate on `answer_confidence`
-# and mark answers below `min_confidence` with `low_confidence: True` (#361). That is a scoring
-# control: an answer below the threshold is not the same decision as one above. A `laya-evals run`
-# that could not pass it through had no way to measure `precision@coverage` at any threshold
-# except by wrapping a Router by hand -- the exact class of thing this harness exists to be.
+# and mark answers below `min_confidence` with `low_confidence: True` and `abstention:
+# "abstained"` (#361). The gate is a *reporting* control: `apply_confidence_gate` leaves
+# `answer["choice"] / ["noul"] / ["score"]` as the raw argmax, so every metric in `_aggregate`
+# reads the same numbers at every threshold. What the harness forwards is the *claim* the
+# report makes: `report.config["timing"]["min_confidence"]` names the threshold and
+# `["min_confidence_sent"]` asserts the call carried it. A `laya-evals run` that could not pass
+# the kwarg through had no way to publish that claim on a real Router -- the exact class of
+# thing this harness exists to be.
 
 UNSET = object()   # no caller sends it, so `mc is UNSET` distinguishes "absent" from 0.0 or None
 
@@ -556,8 +1134,9 @@ def test_min_confidence_zero_is_still_a_threshold():
 
 
 def test_a_runner_without_the_gate_is_refused_not_silently_scored():
-    """Silently dropping a scoring control would report `precision@coverage` for a policy that
-    never ran. `RequestsRunner`'s `predict_batch(requests, batch_size=None)` is exactly what a
+    """Silently dropping the kwarg would let `report.config["timing"]["min_confidence"]` name a
+    threshold the harness never applied -- a lying report even though the metric numbers stay
+    identical. `RequestsRunner`'s `predict_batch(requests, batch_size=None)` is exactly what a
     pre-#361 runner looks like, so a run that asks for a threshold on it must fail loudly."""
     with pytest.raises(EvalError) as exc:
         evaluate(RequestsRunner(ANSWERS3), _three(), evaluators=[ChoiceAccuracy()],
@@ -870,7 +1449,8 @@ def test_docs_and_the_harness_name_the_same_timing_metrics(monkeypatch):
     import pathlib
     import re
 
-    page = (pathlib.Path(__file__).resolve().parent.parent / "docs" / "evals.md").read_text()
+    page = (pathlib.Path(__file__).resolve().parent.parent / "docs" / "evals.md").read_text(
+        encoding="utf-8")
     batched, _ = _timed_pair(monkeypatch, 8)
     published = {metric for metric in batched.overall if metric.endswith("_ms")}
 
@@ -960,11 +1540,21 @@ def test_a_nan_metric_fails_every_gate():
     assert healthy.compare({"overall": {"choice_accuracy": 0.9}})[0]
 
 
-def test_cli_rejects_a_nan_limit_or_tolerance():
+def test_cli_rejects_a_nan_limit_or_tolerance(capsys):
     from laya import evals_cli
 
     with pytest.raises(EvalError, match="not a number"):
         evals_cli._parse_pairs(["choice_accuracy=nan"])
+
+    # The two dedicated flags bypass `_parse_pairs`; a NaN there disabled the gate the same way.
+    for flag in ("--min-accuracy", "--max-ece"):
+        with pytest.raises(SystemExit) as exc:
+            evals_cli.main(["run", "data.jsonl", flag, "nan"])
+        assert exc.value.code == 2
+        assert "not a number" in capsys.readouterr().err
+    args = evals_cli._build_parser().parse_args(["run", "data.jsonl", "--min-accuracy", "0.8",
+                                                 "--max-ece", "0.1"])
+    assert (args.min_accuracy, args.max_ece) == (0.8, 0.1)
 
 
 def test_default_evaluators_cover_the_three_types():
@@ -1625,7 +2215,7 @@ def test_docs_and_the_cli_name_the_same_flags():
         taught - registered)
     # The other half of parity: a registered flag nobody documents is unreachable in practice. The
     # page that teaches `--batch-size` has to teach the grouping that makes a bounded pass cheaper,
-    # and the abstention threshold that changes which answers score at all.
+    # and the abstention threshold the report names even though the gate flags rather than rescores.
     assert {"--batch-size", "--sort-by-length", "--min-confidence"} <= taught, \
         "the evals page teaches the batch size but not the grouping or abstention knobs"
     assert "--score-within" in quickstart, "the tolerance metric has to be reachable from the quickstart"
@@ -1749,6 +2339,22 @@ def _slice_gate_report(en_correct, zh_correct):
             "slices": {"language": {"en": {"choice_accuracy": en_correct / 180},
                                     "zh": {"choice_accuracy": zh_correct / 20}}},
             "cases": cases}
+
+
+def _coverage_gate_report(value, definition, metric="selective_accuracy@50"):
+    """A slice-gate report carrying a coverage metric and a definition stamp.
+
+    `definition=None` is a report written before `coverage_metric_definition` existed, which is
+    exactly what every committed baseline is.
+    """
+    cases = [{"language": "zh", "scores": {}, "confidence": 0.8, "correct": True}
+             for _ in range(20)]
+    config = {"schema": evals.REPORT_SCHEMA, "dataset_sha256": "a" * 64,
+              "questions_sha256": "b" * 64}
+    if definition is not None:
+        config["coverage_metric_definition"] = definition
+    return {"config": config, "overall": {metric: value},
+            "slices": {"language": {"zh": {metric: value}}}, "cases": cases}
 
 
 def _write_gate_policy(tmp_path, rule):

@@ -337,6 +337,25 @@ _states = [list(r["state"].values()) for r in stub.predict_batch_calls[0][0]]
 check("batch -: stdin is decoded as utf-8, like FILE", code == 0 and _states == [[_hindi]],
       "code %r states %r" % (code, _states))
 
+# The same holds on the way out: redirected output is encoded with the locale's codec, which
+# cannot hold the request each batch line echoes, so the run failed instead of writing it.
+_hindi_path = os.path.join(tmp, "hindi.txt")
+with open(_hindi_path, "w", encoding="utf-8") as handle:
+    handle.write(_hindi + "\n")
+_raw = io.BytesIO()
+_redirected = io.TextIOWrapper(_raw, encoding="latin-1")
+_original_make_router = cli.make_router
+cli.make_router = lambda args: BatchRouter()
+try:
+    with redirect_stdout(_redirected), redirect_stderr(io.StringIO()) as err:
+        code = cli.main(["--batch", _hindi_path])
+    _redirected.flush()
+finally:
+    cli.make_router = _original_make_router
+check("batch: redirected stdout is written as utf-8", code == 0
+      and _hindi in _raw.getvalue().decode("utf-8", "replace"),
+      "code %r err %r out %r" % (code, err.getvalue(), _raw.getvalue()))
+
 # ------------------------------------------------------------- --sort-by-length (#294 knob)
 #
 # `Agent.predict_batch` and `Router.predict_batch` have grouped similarly sized states into one
@@ -683,6 +702,10 @@ code, out, err, stub = run_cli(["--predict", "--min-confidence", "0.5", "--json"
                                router=GatedRouter(mark=True))
 check("threshold: --json still carries the raw key",
       '"low_confidence": true' in out, out)
+
+# --------------------------------------------------------------------- train subcommand
+code, out, err, stub = run_cli(["train", "--help"])
+check("train subcommand: dispatches to train_cli and shows help", code == 0 and "laya-train" in out, out)
 
 # Drift pin, the other direction: every control `predict` takes that the parser can name must
 # arrive in the call, and the ones it cannot name must be the accepted three. A control added to

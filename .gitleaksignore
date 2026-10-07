@@ -1,0 +1,4 @@
+# Gitleaks ignore file
+# False positives: SHA-256 digests of model tokenizer files in Chinese reliability benchmark results (commit 7c8b8316)
+7c8b8316410dc391d0fb2425986ff58e76035250:research/benchmarks/zh_reliability/results/massive_alarm_2026-09-24.json:generic-api-key:53
+7c8b8316410dc391d0fb2425986ff58e76035250:research/benchmarks/zh_reliability/results/massive_alarm_2026-09-24.json:generic-api-key:54

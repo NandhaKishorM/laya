@@ -299,9 +299,12 @@ The server reports the same thing, which is the quickest way to confirm a deploy
 the checkpoint you think it is:
 
 ```bash
-curl -s localhost:8000/health
-# {"status":"ok","loaded":["english"],"revisions":{"english":"55cf4c4e…"},"device":"auto"}
+curl -s localhost:8000/health | jq '.revisions'
+# {"english": "55cf4c4e…"}
 ```
+
+`/health` returns seven top-level fields, documented in [the HTTP API page](http-api.md);
+this section filters to the one it is about.
 
 ## laya-ts
 

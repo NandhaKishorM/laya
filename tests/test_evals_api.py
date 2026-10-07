@@ -44,10 +44,16 @@ check_true("ScoreWithin names its tolerance", evals.ScoreWithin(0.25).name == "s
 # --------------------------------------------------------------- exports / callables
 for name in ("Dataset", "Example", "EvalError", "EvalReport", "evaluate", "ece", "assert_regression",
              "REPORT_SCHEMA", "questions_fingerprint", "file_fingerprint",
-             "brier", "aurc", "selective_accuracy", "is_confidence_metric"):
+             "brier", "aurc", "selective_accuracy", "is_confidence_metric",
+             # `_eval_policy` imports these three, so they are a contract between two modules in
+             # this package, not internals -- a rename would break the release gate, not just a
+             # caller.
+             "is_coverage_metric", "coverage_definition_conflict",
+             "COVERAGE_METRIC_DEFINITION"):
     check_true("laya.evals.%s exists" % name, hasattr(evals, name))
 
 check("REPORT_SCHEMA", evals.REPORT_SCHEMA, "laya-evals-report/1")
+check("the coverage-cut definition this code computes", evals.COVERAGE_METRIC_DEFINITION, 2)
 check_true("EvalReport.comparable_to is part of the report contract",
            callable(getattr(evals.EvalReport, "comparable_to", None)))
 check("EvalReport fields are unchanged", [f.name for f in dataclasses.fields(evals.EvalReport)],
@@ -78,8 +84,10 @@ check_true("evaluate: the abstention knob sits after the batch size it may apply
 # The two batch entry points the CLI wires up: both have to take the knob by the same name, or a
 # `--sort-by-length` run reports `sort_by_length_sent: false` for the surface it ships. The same
 # is true for the abstention threshold; a `--min-confidence` run that silently dropped the
-# argument would publish a `precision@coverage` figure for a policy that never ran, so the CLI
-# runner shapes have to accept the kwarg under the same name the guard on `evaluate` checks.
+# argument would publish `report.config["timing"]["min_confidence"]` naming a threshold that was
+# never applied -- the metrics stay identical (the gate flags, it does not overwrite the argmax),
+# but the report itself would lie -- so the CLI runner shapes have to accept the kwarg under the
+# same name the guard on `evaluate` checks.
 from laya import evals_cli  # noqa: E402
 
 for label, fn in (("RouterRunner.predict_batch", evals_cli.RouterRunner.predict_batch),
@@ -150,7 +158,7 @@ def _subparsers(parser):
 
 
 _subs = _subparsers(evals_cli._build_parser())
-check("laya-evals subcommands", sorted(_subs), ["compare", "run", "validate"])
+check("laya-evals subcommands", sorted(_subs), ["compare", "evidence", "run", "validate"])
 
 _unhelped, _unstated, _options = [], [], {}
 for _sub, _parser in sorted(_subs.items()):

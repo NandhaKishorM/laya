@@ -2,7 +2,7 @@
 
 Two operational patterns: an in-memory answer cache keyed by the state and the question
 definitions, and a confidence monitor that buckets a batch of answers into auto, review and
-escalate.
+escalate -- reading back the temperature each of those numbers was actually scaled by.
 """
 import hashlib
 import json
@@ -10,6 +10,7 @@ import math
 import time
 
 from _common import laya, banner, device_line, heading, load
+from laya.common import QTYPES, temp_bucket
 
 banner("40", "Caching and monitoring", """
     The model is stateless and deterministic, so the same state and the same question
@@ -17,9 +18,12 @@ banner("40", "Caching and monitoring", """
     the inputs, keep the result, and pay for the forward pass once.
 
     Part A measures a real forward pass against a cache hit. Part B runs 15 tickets through
-    the triage preset and gates on `answer_confidence`, the calibrated probability of the
-    answer Laya reports, to sort every answer into auto-action, human review or escalation --
-    the operational shape example 41 builds on.
+    the triage preset and gates on `answer_confidence`, the probability of the answer Laya
+    reports, to sort every answer into auto-action, human review or escalation -- the
+    operational shape example 41 builds on. Part C then prints the temperature this
+    checkpoint actually applies to each of those five questions, because that is what decides
+    whether the number is a calibrated one or the raw softmax the thresholds below are
+    measuring.
     """)
 
 agent = load("english")
@@ -115,12 +119,61 @@ TICKETS = [
 
 
 def bucket(confidence):
-    """Our thresholds, not the model's: application policy over a calibrated number."""
+    """Our thresholds, not the model's: application policy over the reported answer probability."""
     if confidence >= AUTO_CONFIDENCE:
         return "auto"
     if confidence >= REVIEW_CONFIDENCE:
         return "review"
     return "escalate"
+
+
+def option_count(question):
+    """k: the number of options this answer was scored over, the other half of the bucket key."""
+    if question["type"] == "noul":
+        return 2
+    return len(question["criteria"])
+
+
+def scale_for(agent, qtype, k):
+    """(bucket, temperature really applied, whether the bucket map carried it) for one shape.
+
+    A replay of `Agent.predict_batch`'s own lookup -- `temperature_by_options` keyed by
+    `temp_bucket`, falling back to the per-type `temperature` -- read off the loaded agent rather
+    than restated here, so this page cannot describe a scaling the code does not perform. A
+    temperature of 1.0 leaves the logits unscaled, which is the difference between a calibrated
+    probability and the raw softmax.
+    """
+    name = temp_bucket(QTYPES[qtype], k)
+    if name in agent.temperature_by_options:
+        return name, agent.temperature_by_options[name], True
+    return name, agent.temperature[QTYPES[qtype]], False
+
+
+def clamped_buckets(agent):
+    """Buckets whose shipped temperature the runtime refused, as `name=shipped -> applied`.
+
+    This is the condition behind the loader's own warning: the checkpoint ships a value outside
+    the range `common.clamp_temperature` accepts, so the scaling published for it is not the one
+    recorded on the Hub.
+    """
+    return ["%s=%.4f -> %.4f" % (name, agent.temperature_by_options_raw[name], applied)
+            for name, applied in agent.temperature_by_options.items()
+            if name in agent.temperature_by_options_raw
+            and agent.temperature_by_options_raw[name] != applied]
+
+
+def entropy_confidence(probs):
+    """1 - H/log(k) over a reported distribution: `confidence`'s definition, recomputed by hand.
+
+    The probabilities a page can read back are rounded to 4 dp while the agent computed the field
+    from unrounded ones, so this is compared against the reported value rather than substituted
+    for it.
+    """
+    k = len(probs)
+    if k < 2:
+        return 1.0
+    ent = -sum(p * math.log(max(p, 1e-12)) for p in probs)
+    return 1.0 - ent / math.log(k)
 
 
 answer_buckets = {"auto": 0, "review": 0, "escalate": 0}
@@ -173,19 +226,52 @@ for name, answers, weakest_id, weakest_conf, action, top_intent in rows:
           % (name, answers["intent"]["choice"], top_intent,
              "%s=%.4f" % (weakest_id, weakest_conf), why))
 
+heading("part C: what each answer's number was actually scaled by")
+print("   %-19s %-7s %-4s %-13s %-9s %s"
+      % ("question", "type", "k", "bucket", "applied", "source"))
+unscaled = []
+for qid, q in QUESTIONS.items():
+    k = option_count(q)
+    name, applied, in_map = scale_for(agent, q["type"], k)
+    if abs(applied - 1.0) < 1e-3:
+        unscaled.append(qid)
+    print("   %-19s %-7s %-4d %-13s %-9.4f %s"
+          % (qid, q["type"], k, name, applied,
+             "bucket map" if in_map else "per-type default"))
+clamped = clamped_buckets(agent)
+if clamped:
+    print("   shipped but refused by the runtime: %s" % ", ".join(clamped))
+print("   at a temperature indistinguishable from 1.0: %s (%d of %d question shapes). For those"
+      % (", ".join("`%s`" % q for q in unscaled) or "none", len(unscaled), len(QUESTIONS)))
+print("   the published number is the raw softmax, so the split above sorts an uncalibrated")
+print("   answer by a cutoff nothing has measured.")
+
 vague = next(answers for name, answers, *_ in rows if name == "vague")
 p = list(vague["intent"]["probabilities"].values())
-entropy = -sum(x * math.log(max(x, 1e-12)) for x in p) / math.log(len(p))
+recomputed = entropy_confidence(p)
+reported = vague["intent"]["confidence"]
 print("""
-   The monitor gates on `answer_confidence`: the calibrated probability of the answer Laya
-   reports, defined the same way on every question type. `confidence` is a different measure --
-   on `choice` and `score` it is 1 - H/log(k), how concentrated the distribution is -- and the
-   README warns against carrying a threshold over from it. For the "vague" ticket the intent
-   distribution has H/log(k) = %.2f, so `confidence` is %.2f while `answer_confidence` is %.2f:
-   the model is stating that the message does not identify one intent, and the monitor
-   escalates it.
+   The monitor gates on `answer_confidence`: the probability of the reported answer, `max(p)`,
+   defined the same way on every question type. Whether that probability is a calibrated one is a
+   claim about the temperatures rather than about the field -- it is the quantity temperature
+   scaling fits and the number `min_confidence` reads, so it carries the meaning a threshold
+   assumes only where a fitted temperature was really applied. Part C prints the value this
+   checkpoint applies to each shape this page asks for, the bucket it refused to apply, and the
+   answers whose value sits at 1.0. The README's Calibration section is the loop that closes it.
 
-   The thresholds, the 0.5 spam-style gates and the auto/review/escalate split are ours.
-   The probabilities are the model's, and they are the only reason a threshold means
-   anything. Example 41 turns exactly this monitor into a service policy.
-   """ % (entropy, 1 - entropy, vague["intent"]["answer_confidence"]))
+   `confidence` is a different measure -- on `choice` and `score` it is 1 - H/log(k), how
+   concentrated the whole distribution is -- and the README warns against carrying a threshold
+   over from it. For the "vague" ticket, recomputing it by hand from the published probabilities
+   gives %.4f against the %.4f the agent reported for the same answer, %.6f apart; any gap is
+   rounding, because `probabilities` is published at 4 dp while the agent scaled unrounded logits.
+   `answer_confidence` for that answer is %.2f. The two entropy figures agree because they are the
+   same formula, which is why this page prints the reported field beside its own arithmetic
+   instead of substituting the arithmetic for the field. Read together: the model is stating that
+   the message does not identify one intent, and the monitor escalates it.
+
+   The thresholds, the 0.5 spam-style gates and the auto/review/escalate split are ours. The
+   probabilities are the model's, and Part C is what separates the share of their meaning the
+   checkpoint carries from the share that is still yours to measure. Example 41 turns exactly this
+   monitor into a service policy.
+   """ % (recomputed, reported, abs(recomputed - reported),
+          vague["intent"]["answer_confidence"]))

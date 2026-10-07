@@ -40,6 +40,25 @@ def version_tuple(text):
 pyproject = read("pyproject.toml")
 setup_py = read("setup.py")
 
+# An explicit package list keeps setuptools from treating assets/, research/ and notebooks/ as
+# top-level packages, but it also means a new importable subpackage can disappear from wheels
+# while editable installs and source-tree tests keep passing. Derive both sides so additions and
+# removals stay in lockstep.
+package_list = re.search(r"^packages\s*=\s*(\[[^\]]*\])", pyproject, re.M)
+check_true("setuptools/declares an explicit package list", package_list is not None)
+try:
+    declared_packages = set(ast.literal_eval(package_list.group(1))) if package_list else set()
+except (SyntaxError, ValueError):
+    declared_packages = set()
+source_packages = set()
+for package_root, _dirs, files in os.walk(os.path.join(ROOT, "laya")):
+    if "__init__.py" not in files:
+        continue
+    relative = os.path.relpath(package_root, ROOT)
+    source_packages.add(relative.replace(os.sep, "."))
+check("setuptools/packages match every importable laya package",
+      sorted(declared_packages), sorted(source_packages))
+
 requires_python = re.search(r'requires-python\s*=\s*"[>=~^]*\s*([\d.]+)"', pyproject)
 check_true("pyproject/declares requires-python", requires_python is not None)
 floor = version_tuple(requires_python.group(1)) if requires_python else (0, 0)
@@ -206,6 +225,8 @@ EXEMPT_TEST_SUITES = {
     "test_mcp_local_e2e.py": "Requires local checkpoints under ~/laya_models (AGENTS.md)",
     "test_onnx.py": "Requires onnx extra; skip-guarded on lane without it (AGENTS.md)",
     "test_fast.py": "Requires CUDA and tilelang extra (AGENTS.md)",
+    "test_fast_cpu.py": "Requires tilelang extra and a C++ compiler; optional CUDA parity",
+    "test_compile_cuda.py": "Requires CUDA; CI installs CPU-only torch",
     "test_server_example.py": "Requires cached or downloaded weights for examples/server.py",
 }
 
@@ -248,9 +269,11 @@ def _headings(path):
 _md = []
 for _dirpath, _dirnames, _filenames in os.walk("."):
     # `.pytest_cache` ships a README of its own and `.venv` is where CONTRIBUTING tells
-    # contributors to install; neither is part of the repository.
+    # contributors to install; neither is part of the repository. `.hf-cache` holds
+    # third-party dataset cards downloaded by setup_laya.sh (gitignored).
     _dirnames[:] = [d for d in _dirnames
-                    if d not in (".git", "__pycache__", "node_modules", ".pytest_cache", ".venv")]
+                    if d not in (".git", "__pycache__", "node_modules", ".pytest_cache",
+                                 ".venv", ".hf-cache")]
     _md.extend(os.path.normpath(os.path.join(_dirpath, f))
                for f in _filenames if f.endswith(".md"))
 _md = sorted(_md)
@@ -346,7 +369,7 @@ check_true("compose.cuda/covers laya-serve too",
            re.search(r"^\s{2}laya-serve:", cuda, re.M) is not None,
            "compose.cuda.yaml does not mention laya-serve, so GPU serving would be CPU")
 check("compose.cuda/repeats the torch index for the base service",
-      len(re.findall(r'TORCH_INDEX: "\$\{LAYA_TORCH_INDEX:-cu128\}"', cuda)), 2)
+      len(re.findall(r'TORCH_INDEX: "\$\{LAYA_TORCH_INDEX:-cu130\}"', cuda)), 2)
 check("compose.cuda/repeats the device reservation for both services",
       len(re.findall(r"driver: nvidia", cuda)), 2)
 check_true("compose.cuda/no stale reference to a missing file",
@@ -481,7 +504,9 @@ check_true("nix/module still joins models into LAYA_MODELS",
 #
 # This set is derived from the whole package, not from `laya/serve.py`. Reading serve.py alone is
 # a scope error that passed: the three runtime knobs below were invisible to it. A deployment unit
-# configures a *process*, and the process is `laya`.
+# configures a *process*. The MCP launcher and remote transport are separate entry points;
+# their exclusive variables do not configure the HTTP service. Shared helpers (mcp/device.py
+# included) still count, so excluding those two entry points does not hide device controls.
 #
 # Both regexes carry `[A-Z0-9_]` for the same reason: `LAYA_SHA256_DIGESTS`. `[A-Z_]+` matches a
 # prefix of that name, so a narrower pattern reports no gap rather than the one it cannot see.
@@ -491,7 +516,7 @@ _READ_PATTERNS = (r'environ\.get\("(LAYA_[A-Z0-9_]+)"', r'_env_bool\("(LAYA_[A-Z
                   r'environ\["(LAYA_[A-Z0-9_]+)"\]', r'_ENV_KEY = "(LAYA_[A-Z0-9_]+)"')
 
 
-def env_reads():
+def env_reads(excluded_paths=()):
     """Every `LAYA_*` name the package looks up, by walking laya/ rather than listing files."""
     found = set()
     for root, dirs, files in os.walk(os.path.join(ROOT, "laya")):
@@ -500,13 +525,17 @@ def env_reads():
             if not name.endswith(".py"):
                 continue
             rel = os.path.relpath(os.path.join(root, name), ROOT)
+            if rel.replace(os.sep, "/") in excluded_paths:
+                continue
             src = read(rel)
             for pat in _READ_PATTERNS:
                 found.update(re.findall(pat, src))
     return found
 
 
-read_names = env_reads()
+read_names = env_reads(("laya/mcp/server.py", "laya/mcp/remote.py"))
+check("nix/only the two MCP transport variables are excluded from the HTTP process",
+      sorted(env_reads() - read_names), ["LAYA_BASE_URL", "LAYA_REMOTE_TIMEOUT"])
 # An assignment only. The `models` description names `LAYA_MODELS` in prose, and prose that
 # mentions a variable sets nothing.
 assigned = sorted(set(re.findall(r'\b(LAYA_[A-Z0-9_]+)\s*=', nix_module))
@@ -525,7 +554,7 @@ check_true("nix/the derivation reaches a digit-bearing env var",
 # shell-quoting claim holds -- nothing in CI evaluates a NixOS module, so every check here is
 # textual. Listing the exception keeps the gap asserted at exactly one name.
 UNWIRED = {"LAYA_SHA256_DIGESTS"}
-check("nix/module reaches every env var laya reads",
+check("nix/module reaches every env var the HTTP process reads",
       sorted(read_names - set(assigned) - UNWIRED), [])
 # The other direction is the silent failure: a misspelled name is a perfectly good string,
 # systemd exports it, no Python ever looks at it, and the operator's setting does nothing.
@@ -565,7 +594,7 @@ def option_type(opt):
 # Every new knob is opt-in: unset means the unit exports nothing and the runtime's own default
 # applies, so a host that ignores them gets today's behaviour byte for byte.
 for opt in ("rootPath", "logLevel", "maxConcurrent", "cudaAmp", "cpuAmp", "mpsAmpMinRows",
-            "maxLoaded", "maxTokenBudget", "revision", "defaultModel"):
+            "maxLoaded", "maxTokenBudget", "revision", "defaultModel", "idleUnloadSeconds"):
     _t = option_text(opt)
     check_true("nix/module declares %s" % opt, _t != "", "option not found")
     check_true("nix/%s is opt-in (nullOr, default null)" % opt,
@@ -574,6 +603,9 @@ for opt in ("rootPath", "logLevel", "maxConcurrent", "cudaAmp", "cpuAmp", "mpsAm
     check_true("nix/%s is guarded by a != null optionalAttrs" % opt,
                re.search(r"lib\.optionalAttrs \(cfg\.%s != null\)" % opt, nix_module) is not None,
                "the unit would export the variable even when the host left it unset")
+
+check("nix/idleUnloadSeconds accepts zero to disable unloading",
+      option_type("idleUnloadSeconds"), "lib.types.nullOr lib.types.ints.unsigned")
 
 # The same lesson as `models`, stated for the whole module: no option may carry a closed list of
 # names that somebody else validates. uvicorn checks the log level, laya checks the checkpoint

@@ -1,0 +1,619 @@
+{
+  "baseline": "same implementation with idle unload disabled; local MCP versus shared-server MCP",
+  "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+  "device": "mps",
+  "hardware": "Apple M4 Pro",
+  "implementation_commit": "c8ddefa4836a463f54d46accd19adfeefff82bbc",
+  "memory_unit": "MiB",
+  "packages": {
+    "fastapi": "0.142.2",
+    "mcp": "2.3.0",
+    "torch": "2.14.1",
+    "transformers": "5.18.0"
+  },
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "python": "3.12.12",
+  "runs": [
+    {
+      "idle-off": {
+        "after_idle": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 307.984
+        },
+        "after_next_request": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 308.109
+        },
+        "answer_parity": true,
+        "answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "load_seconds": 3.461,
+        "mode": "idle-off",
+        "next_request_ms": 213.075,
+        "resident": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 307.969
+        },
+        "warm_ms": 190.518
+      },
+      "idle-on": {
+        "after_idle": {
+          "metal_driver_mb": 0.703,
+          "metal_mb": 0.0,
+          "rss_mb": 492.312
+        },
+        "after_next_request": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 1159.766
+        },
+        "answer_parity": true,
+        "answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "load_seconds": 2.918,
+        "mode": "idle-on",
+        "next_request_ms": 727.361,
+        "resident": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 419.984
+        },
+        "warm_ms": 188.836
+      },
+      "local_remote_answer_parity": true,
+      "mcp-local": {
+        "after_tools_rss_mb": 1074.453,
+        "answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "batch_answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "decided_values": {
+          "dept": "billing"
+        },
+        "imported_rss_mb": 67.688,
+        "loaded": [
+          "english"
+        ],
+        "mode": "mcp-local",
+        "preset_answers": {
+          "churn_risk": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9997,
+            "confidence": 0.9997,
+            "noul": 0.0003,
+            "type": "noul"
+          },
+          "frustration": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.5295,
+            "confidence": 0.1579,
+            "legend": {
+              "0": "calm and neutral",
+              "1": "concerned but civil",
+              "2": "clearly annoyed",
+              "3": "very angry or using strong language"
+            },
+            "probabilities": {
+              "0": 0.114,
+              "1": 0.2523,
+              "2": 0.5295,
+              "3": 0.1042
+            },
+            "score": 1.6239,
+            "type": "score"
+          },
+          "intent": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9996,
+            "choice": "refund",
+            "confidence": 0.9978,
+            "probabilities": {
+              "billing_question": 0.0002,
+              "cancellation": 0.0,
+              "information": 0.0,
+              "other": 0.0001,
+              "refund": 0.9996,
+              "technical_help": 0.0
+            },
+            "type": "choice"
+          },
+          "is_urgent": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.8974,
+            "confidence": 0.8974,
+            "noul": 0.1026,
+            "type": "noul"
+          },
+          "refund_requested": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.8634,
+            "confidence": 0.8634,
+            "noul": 0.8634,
+            "type": "noul"
+          }
+        },
+        "torch_imported": true
+      },
+      "mcp-remote": {
+        "after_tools_rss_mb": 71.453,
+        "answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "batch_answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "decided_values": {
+          "dept": "billing"
+        },
+        "imported_rss_mb": 67.984,
+        "loaded": [
+          "english"
+        ],
+        "mode": "mcp-remote",
+        "preset_answers": {
+          "churn_risk": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9997,
+            "confidence": 0.9997,
+            "noul": 0.0003,
+            "type": "noul"
+          },
+          "frustration": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.5295,
+            "confidence": 0.1579,
+            "legend": {
+              "0": "calm and neutral",
+              "1": "concerned but civil",
+              "2": "clearly annoyed",
+              "3": "very angry or using strong language"
+            },
+            "probabilities": {
+              "0": 0.114,
+              "1": 0.2523,
+              "2": 0.5295,
+              "3": 0.1042
+            },
+            "score": 1.6239,
+            "type": "score"
+          },
+          "intent": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9996,
+            "choice": "refund",
+            "confidence": 0.9978,
+            "probabilities": {
+              "billing_question": 0.0002,
+              "cancellation": 0.0,
+              "information": 0.0,
+              "other": 0.0001,
+              "refund": 0.9996,
+              "technical_help": 0.0
+            },
+            "type": "choice"
+          },
+          "is_urgent": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.8974,
+            "confidence": 0.8974,
+            "noul": 0.1026,
+            "type": "noul"
+          },
+          "refund_requested": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.8634,
+            "confidence": 0.8634,
+            "noul": 0.8634,
+            "type": "noul"
+          }
+        },
+        "torch_imported": false
+      },
+      "repeat": 1
+    },
+    {
+      "idle-off": {
+        "after_idle": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 408.672
+        },
+        "after_next_request": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 408.703
+        },
+        "answer_parity": true,
+        "answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "load_seconds": 3.322,
+        "mode": "idle-off",
+        "next_request_ms": 168.304,
+        "resident": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 408.672
+        },
+        "warm_ms": 98.172
+      },
+      "idle-on": {
+        "after_idle": {
+          "metal_driver_mb": 0.703,
+          "metal_mb": 0.0,
+          "rss_mb": 488.719
+        },
+        "after_next_request": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 1167.906
+        },
+        "answer_parity": true,
+        "answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "load_seconds": 3.072,
+        "mode": "idle-on",
+        "next_request_ms": 836.043,
+        "resident": {
+          "metal_driver_mb": 2056.703,
+          "metal_mb": 1610.387,
+          "rss_mb": 462.406
+        },
+        "warm_ms": 193.897
+      },
+      "local_remote_answer_parity": true,
+      "mcp-local": {
+        "after_tools_rss_mb": 308.516,
+        "answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "batch_answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "decided_values": {
+          "dept": "billing"
+        },
+        "imported_rss_mb": 67.719,
+        "loaded": [
+          "english"
+        ],
+        "mode": "mcp-local",
+        "preset_answers": {
+          "churn_risk": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9997,
+            "confidence": 0.9997,
+            "noul": 0.0003,
+            "type": "noul"
+          },
+          "frustration": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.5295,
+            "confidence": 0.1579,
+            "legend": {
+              "0": "calm and neutral",
+              "1": "concerned but civil",
+              "2": "clearly annoyed",
+              "3": "very angry or using strong language"
+            },
+            "probabilities": {
+              "0": 0.114,
+              "1": 0.2523,
+              "2": 0.5295,
+              "3": 0.1042
+            },
+            "score": 1.6239,
+            "type": "score"
+          },
+          "intent": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9996,
+            "choice": "refund",
+            "confidence": 0.9978,
+            "probabilities": {
+              "billing_question": 0.0002,
+              "cancellation": 0.0,
+              "information": 0.0,
+              "other": 0.0001,
+              "refund": 0.9996,
+              "technical_help": 0.0
+            },
+            "type": "choice"
+          },
+          "is_urgent": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.8974,
+            "confidence": 0.8974,
+            "noul": 0.1026,
+            "type": "noul"
+          },
+          "refund_requested": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.8634,
+            "confidence": 0.8634,
+            "noul": 0.8634,
+            "type": "noul"
+          }
+        },
+        "torch_imported": true
+      },
+      "mcp-remote": {
+        "after_tools_rss_mb": 71.672,
+        "answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "batch_answers": {
+          "dept": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9855,
+            "choice": "billing",
+            "confidence": 0.8908,
+            "probabilities": {
+              "billing": 0.9855,
+              "technical": 0.0145
+            },
+            "type": "choice"
+          }
+        },
+        "checkpoint_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+        "decided_values": {
+          "dept": "billing"
+        },
+        "imported_rss_mb": 68.094,
+        "loaded": [
+          "english"
+        ],
+        "mode": "mcp-remote",
+        "preset_answers": {
+          "churn_risk": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9997,
+            "confidence": 0.9997,
+            "noul": 0.0003,
+            "type": "noul"
+          },
+          "frustration": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.5295,
+            "confidence": 0.1579,
+            "legend": {
+              "0": "calm and neutral",
+              "1": "concerned but civil",
+              "2": "clearly annoyed",
+              "3": "very angry or using strong language"
+            },
+            "probabilities": {
+              "0": 0.114,
+              "1": 0.2523,
+              "2": 0.5295,
+              "3": 0.1042
+            },
+            "score": 1.6239,
+            "type": "score"
+          },
+          "intent": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.9996,
+            "choice": "refund",
+            "confidence": 0.9978,
+            "probabilities": {
+              "billing_question": 0.0002,
+              "cancellation": 0.0,
+              "information": 0.0,
+              "other": 0.0001,
+              "refund": 0.9996,
+              "technical_help": 0.0
+            },
+            "type": "choice"
+          },
+          "is_urgent": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.8974,
+            "confidence": 0.8974,
+            "noul": 0.1026,
+            "type": "noul"
+          },
+          "refund_requested": {
+            "action": {
+              "act_probability": 1.0
+            },
+            "answer_confidence": 0.8634,
+            "confidence": 0.8634,
+            "noul": 0.8634,
+            "type": "noul"
+          }
+        },
+        "torch_imported": false
+      },
+      "repeat": 2
+    }
+  ],
+  "timestamp_utc": "2026-10-03T07:57:57.606565+00:00"
+}

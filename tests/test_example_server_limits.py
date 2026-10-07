@@ -65,9 +65,11 @@ this file.
 
 Run: python tests/test_example_server_limits.py
 """
+import ast
 import importlib
 import json
 import os
+import re as _re          # `main()` already binds a local `re` further down; F811 off both
 import sys
 import types
 
@@ -289,6 +291,66 @@ def main():
     for label, st, qs in parity_cases:
         s, d = serve_verdict(st, qs), demo_verdict(st, qs)
         ok("parity with laya.serve: %s" % label, s == d, "serve=%s demo=%s" % (s, d))
+
+    # The BATCH shape, which these parity cases could not reach: every case above drives
+    # `_check_request_limits` with one state, so nothing compared how the two surfaces SIZE a batch.
+    # `laya.serve` splits a batch so one forward pass stays inside its token budget rather than
+    # refusing it, and the demo must split it identically -- it binds the planner from `laya.serve` by
+    # getattr, so this checks the binding took AND that the plan reaches the call.
+    serve_plan = _serve_mod._batch_chunk_size
+    demo_plan = demo._batch_chunk_size
+
+    tiny = {"q": {"type": "noul", "instructions": "True?"}}
+    four = dict(("q%03d" % i, tiny["q"]) for i in range(4))
+    thirty_two = dict(("q%03d" % i, tiny["q"]) for i in range(32))
+    many = dict(("q%03d" % i, tiny["q"]) for i in range(MAX_QUESTIONS))
+    wide = _serve_mod.DEFAULT_MAX_TOKEN_BUDGET
+    for label, ns, nq, mlen in [
+            ("an ordinary batch fits, no split", 2, len(four), None),
+            ("64 states x 4 questions fits", 64, len(four), None),
+            ("8 states x 32 questions fits", 8, len(thirty_two), None),
+            ("9 states x 32 questions splits", 9, len(thirty_two), None),
+            ("64 states x 64 questions splits", 64, len(many), None),
+            ("a wide max_len splits harder", 8, len(thirty_two), wide),
+            ("a wide max_len with few rows fits", 2, 1, wide)]:
+        a, b = serve_plan(ns, nq, mlen), demo_plan(ns, nq, mlen)
+        ok("batch plan parity with laya.serve: %s" % label, a == b, "serve=%r demo=%r" % (a, b))
+
+    # Equal on both sides is not enough -- they bind the same function, so both could be wrong
+    # together. The plan itself has to be the right shape.
+    ok("batch plan/a fitting batch is not split", serve_plan(8, len(thirty_two)) is None,
+       repr(serve_plan(8, len(thirty_two))))
+    split = serve_plan(64, len(many))
+    ok("batch plan/an oversized batch is split", split is not None and split >= 1, repr(split))
+    ok("batch plan/one pass fits the budget",
+       split * len(many) * _serve_mod._BATCH_ROW_TOKENS_ASSUMED
+       <= _serve_mod.DEFAULT_MAX_BATCH_TOKENS,
+       "%r states x %d questions" % (split, len(many)))
+
+    # And the demo's route sends it, rather than computing it and dropping it.
+    sent = {}
+    real_router = demo._router
+
+    class _Recorder:
+        def predict_batch(self, requests, **kwargs):
+            sent.update(kwargs)
+            sent["n"] = len(requests)
+            return [{"model": "m", "answers": {}, "usage": {"input_tokens": 1}} for _ in requests]
+
+    demo._router = lambda: _Recorder()
+    try:
+        code = client.post("/predict/batch",
+                           json={"states": ["hi"] * 64, "questions": many}).status_code
+        ok("batch plan/the demo answers an oversized batch instead of refusing it", code == 200, code)
+        ok("batch plan/the demo forwards the planned batch_size",
+           sent.get("batch_size") == serve_plan(64, len(many)),
+           "sent=%r planned=%r" % (sent.get("batch_size"), serve_plan(64, len(many))))
+        ok("batch plan/every state is still sent", sent.get("n") == 64, sent.get("n"))
+        sent.clear()
+        client.post("/predict/batch", json={"states": ["hi"] * 2, "questions": four})
+        ok("batch plan/a fitting batch is passed no batch_size", "batch_size" not in sent, sent)
+    finally:
+        demo._router = real_router
 
     # Parity alone cannot see a bug both surfaces share, and `getattr` guarantees they share one:
     # with `_state_length` measuring `str(state)` again, both agree on accepting a state that
@@ -780,6 +842,139 @@ def main():
         _router_mod.DEFAULT_MODELS.pop("spanish", None)
         _router_mod._ALIASES.pop("es", None)
         demo = importlib.reload(demo)
+
+    # --- the certainty chip: it names a formula, so it has to name that type's formula ---
+    # `confidence` is per-type in the decoders (normalized entropy on `choice`/`score`, the reported
+    # side's probability on `noul`), but the demo's chip said "entropy" for all three and its tooltip
+    # defined the field as one formula. The three have to agree: what the agents write, what the chip
+    # says per type, and what the tooltip attributes to which type. Weight-free -- no Router is built.
+    with open(os.path.join(ROOT, "examples", "server.py"), encoding="utf-8") as handle:
+        srv = handle.read()
+
+    def _decoded_kinds():
+        """The question types this page draws distribution rows for."""
+        tree = ast.parse(srv)
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == "_answer_dist")
+        return sorted({c.value for n in ast.walk(fn) if isinstance(n, ast.Compare)
+                       and isinstance(n.left, ast.Name) and n.left.id == "kind"
+                       for c in n.comparators
+                       if isinstance(c, ast.Constant) and isinstance(c.value, str)})
+
+    def _decoder_formulas(relpath):
+        """{question type: "entropy" | "maxp"}, read off the `confidence` each builder writes."""
+        with open(os.path.join(ROOT, relpath), encoding="utf-8") as handle:
+            tree = ast.parse(handle.read())
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == "_decode_answers")
+        bound = {}
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+                bound[node.targets[0].id] = node.value
+        got = {}
+        for node in ast.walk(fn):
+            if not isinstance(node, ast.Dict):
+                continue
+            fields = {k.value: v for k, v in zip(node.keys, node.values)
+                      if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+            if "type" not in fields or "confidence" not in fields:
+                continue
+            kind = fields["type"].value
+            expr = fields["confidence"]
+            while isinstance(expr, ast.Name) and expr.id in bound:   # `conf_score = round(...)`
+                expr = bound[expr.id]
+            called = {c.func.id for c in ast.walk(expr)
+                      if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+            formula = "entropy" if "confidence_from_probs" in called else "maxp" if "max" in called else None
+            if formula is None:
+                raise SystemExit("%s: %s's `confidence` is neither confidence_from_probs nor a max(): %s"
+                                 % (relpath, kind, ast.dump(expr)))
+            if got.get(kind) not in (None, formula):
+                raise SystemExit("%s: %s writes `confidence` two ways" % (relpath, kind))
+            got[kind] = formula
+        return got
+
+    def _sentence_types(prose, kinds):
+        """{formula: the question types named, in backticks, in the same sentence as it}."""
+        got = {}
+        for sentence in _re.split(r"(?<=[.!?])\s+", prose):
+            named = {t for t in _re.findall(r"`([a-z]+)`", sentence) if t in kinds}
+            if not named:
+                continue
+            for formula, words in (("entropy", "entropy"), ("maxp", "max(p")):
+                if words in sentence:
+                    got.setdefault(formula, set()).update(named)
+        return {key: sorted(value) for key, value in sorted(got.items())}
+
+    def _chip(row):
+        hit = _re.search(r"<code>confidence</code> <b>([0-9.]+)</b> (.*?) <svg", row)
+        return (hit.group(1), hit.group(2)) if hit else (None, None)
+
+    kinds = _decoded_kinds()
+    label = demo._CERTAINTY_LABEL
+    tip = demo._CERTAINTY_TIP
+    ok("the chip has a label for every type the page draws rows for, and no other",
+       sorted(label) == kinds, "%r vs the page's %r" % (sorted(label), kinds))
+
+    page_formula = {kind: ("entropy" if "entropy" in text else "maxp") for kind, text in sorted(label.items())}
+    for relpath in ("laya/agent.py", "laya/onnx_agent.py"):
+        decoders = _decoder_formulas(relpath)
+        ok("%s writes `confidence` the way this page labels it" % relpath,
+           decoders == page_formula, "%r vs the chip's %r" % (decoders, page_formula))
+
+    said = _sentence_types(tip, set(kinds))
+    ok("the tooltip attributes entropy to exactly the types whose chip says entropy",
+       said.get("entropy") == sorted(k for k, f in page_formula.items() if f == "entropy"),
+       "tooltip %r vs chip %r" % (said, page_formula))
+    ok("and the reported side's max(p_true, 1 - p_true) to exactly the types whose chip does not",
+       said.get("maxp") == sorted(k for k, f in page_formula.items() if f == "maxp"),
+       "tooltip %r vs chip %r" % (said, page_formula))
+    ok("so the tooltip names both formulas rather than defining the field as one",
+       len(said) == 2 and set(said) == {"entropy", "maxp"}, repr(said))
+
+    OLD_BLANKET = "The `confidence` field is 1 minus the normalized entropy of the whole distribution:"
+    ok("the blanket sentence this replaced is gone", OLD_BLANKET not in srv, OLD_BLANKET)
+    ok("and the page no longer promises an accuracy rate for a confidence value",
+       "are right about 90% of the time" not in srv
+       and "gate on a threshold you have measured" in tip, tip)
+
+    OLD_JS_CHIP = 'toFixed(4)}), "entropy, not calibrated",\n        icon("info")'
+    ok("the browser's chip reads the table by the row's type, in the block the page ships",
+       OLD_JS_CHIP not in srv and "CERTAINTY_LABEL[kind]" in demo._PLAYGROUND_JS)
+    page = client.get("/").text
+    ok("the browser gets the label table from this dict, not a copy of it",
+       "const CERTAINTY_LABEL = " + json.dumps(label) in page, json.dumps(label))
+    ok("and the tooltip it shows is this same text",
+       "is not one formula, and it is not calibrated, so do not gate on it" in page)
+
+    import numpy as np
+    from laya.common import confidence_from_probs
+
+    spread = [0.62, 0.25, 0.13]
+    ent = round(confidence_from_probs(np.asarray(spread), 3), 4)
+    row = demo._answer_row("q", {"type": "choice", "choice": "billing", "answer_confidence": 0.62,
+                                 "confidence": ent, "probabilities": {"billing": 0.62, "support": 0.25,
+                                                                     "sales": 0.13}},
+                           {"type": "choice", "instructions": "?"}, 1)
+    ok("a choice row reads as the entropy it is", _chip(row) == ("%.4f" % ent, label["choice"]),
+       "%r" % (_chip(row),))
+    row = demo._answer_row("q", {"type": "score", "score": 1.2, "answer_confidence": 0.5,
+                                 "confidence": round(confidence_from_probs(np.asarray([0.3, 0.5, 0.2]), 3), 4),
+                                 "legend": {"0": "low", "1": "mid", "2": "high"},
+                                 "probabilities": {"0": 0.3, "1": 0.5, "2": 0.2}},
+                           {"type": "score", "instructions": "?"}, 1)
+    ok("so does a score row", _chip(row) == ("%.4f" % round(
+        confidence_from_probs(np.asarray([0.3, 0.5, 0.2]), 3), 4), label["score"]), "%r" % (_chip(row),))
+
+    p_true = 0.8727
+    side = round(max(p_true, 1 - p_true), 4)
+    two_option_entropy = round(confidence_from_probs(np.asarray([p_true, 1 - p_true]), 2), 4)
+    row = demo._answer_row("q", {"type": "noul", "noul": p_true, "answer_confidence": 0.79,
+                                 "confidence": side}, {"type": "noul", "instructions": "?"}, 1)
+    ok("a noul row's confidence is the side being reported, not an entropy",
+       side == p_true and abs(side - two_option_entropy) > 0.4
+       and _chip(row) == ("%.4f" % side, label["noul"])
+       and "entropy" not in _chip(row)[1], "%r %r" % (_chip(row), two_option_entropy))
 
     print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
     for f in FAIL:

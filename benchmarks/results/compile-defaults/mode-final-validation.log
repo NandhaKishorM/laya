@@ -1,0 +1,58 @@
+PATH=/home/ckl/projects/S/laya/.venv/bin:$PATH
+
+$ ruff check laya/ --select=E9,F63,F7,F82,F401,F811 --line-length=120
+All checks passed!
+
+exit=0
+
+$ python -m compileall -q laya/ tests/
+
+exit=0
+
+$ python tests/test_compile.py
+ok test_cuda_compile_padding_masks_only_the_new_tail
+ok test_one_graph_across_shapes_and_same_outputs
+ok test_warmup_builds_every_graph_before_the_first_request
+ok test_duck_shape_restored_after_errors_and_nesting
+ok test_duck_shape_restored_across_threads
+ok test_eager_agent_leaves_the_setting_alone
+ok test_constructor_warms_only_the_active_compiled_path
+ok test_persistent_cache_is_opt_in_and_respects_the_environment
+ok test_cuda_graph_step_marks_each_forward_and_releases_after_failure
+all compile tests passed
+
+exit=0
+
+$ python tests/test_hooks_api.py
+
+403 passed, 0 failed
+all hook API tests passed
+
+exit=0
+
+$ python tests/test_router.py
+
+703 passed, 0 failed
+all routing tests passed
+
+exit=0
+
+$ python tests/test_criteria.py
+
+198 passed, 0 failed
+
+exit=0
+
+$ python tests/test_hooks.py
+
+240 passed, 0 failed
+all hook tests passed
+
+exit=0
+
+$ zensical build --strict --clean
+Build started
+No issues found
+Build finished in 2.01s
+
+exit=0

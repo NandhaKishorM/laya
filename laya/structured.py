@@ -50,9 +50,13 @@ class DecisionResult:
     `laya-multilingual` ships with no fitted temperatures at all. See `common.answer_confidence`
     and the README's Calibration section.
 
-    `confidence` keeps the normalized-entropy value it has always had, because that is a
-    different quantity on a scale that depends on the label count. A field that reported no
-    usable `answer_confidence` maps to `None`, which is not the same as a reported `0.0`.
+    `confidence` keeps the value each field's type has always produced: normalized entropy
+    `1 - H(p) / log(k)` for `choice` and `score`, whose scale depends on the label count,
+    and `max(p_true, 1 - p_true)` for `noul` -- a probability of the reported side, not an
+    entropy, and not label-count dependent. `structured._details` reads the answer verbatim,
+    so the formula is per-type; a single sentence cannot describe every field in this dict.
+    A field that reported no usable `answer_confidence` maps to `None`, which is not the same
+    as a reported `0.0`.
     """
 
     values: Dict[str, Any]
@@ -142,9 +146,44 @@ def _score_field(path: str, name: str, prop: Dict[str, Any],
     return _Field(name=name, kind="score", question=question, minimum=lo)
 
 
-def _field(path: str, name: str, prop: Dict[str, Any]) -> _Field:
+_LOCAL_REFS = (("#/$defs/", "$defs"), ("#/definitions/", "definitions"))
+
+
+def _inline_ref(path: str, prop: Dict[str, Any], root: Dict[str, Any],
+                seen: Tuple[str, ...]) -> Tuple[Dict[str, Any], Tuple[str, ...]]:
+    """Replace a local `$ref` with the definition it names, the property's own keys on top.
+
+    Pydantic renders every `Enum` field as `{"$ref": "#/$defs/<Name>"}` (draft-07 and pydantic v1
+    spell it `#/definitions/`), with a sibling `description` when the field has one. The
+    definition's own `description` is dropped: pydantic fills it from the enum's docstring (v1 with
+    "An enumeration." when there is none), which describes the type rather than asking about this
+    field, so the wording stays the field's and an `Enum` asks what the same `Literal` would. Only
+    this schema's own definitions are looked up; anything else is rejected rather than fetched, and
+    a ref met twice on one path is a cycle.
+    """
+    ref = prop["$ref"]
+    if ref in seen:
+        raise SchemaError("%s: $ref %r is recursive; flatten the schema" % (path, ref))
+    target = None
+    for prefix, key in _LOCAL_REFS:
+        defs = root.get(key)
+        if isinstance(ref, str) and ref.startswith(prefix) and isinstance(defs, dict):
+            target = defs.get(ref[len(prefix):])
+    if not isinstance(target, dict):
+        raise SchemaError("%s: $ref %r does not resolve to an entry of this schema's '$defs' or "
+                          "'definitions'" % (path, ref))
+    # a `$ref` the definition carries is an alias, followed by the caller's loop
+    merged = {k: v for k, v in target.items() if k != "description"}
+    merged.update((k, v) for k, v in prop.items() if k != "$ref")
+    return merged, seen + (ref,)
+
+
+def _field(path: str, name: str, prop: Dict[str, Any], root: Optional[Dict[str, Any]] = None,
+           seen: Tuple[str, ...] = ()) -> _Field:
     if not isinstance(prop, dict):
         raise SchemaError("%s: property must be an object, got %s" % (path, type(prop).__name__))
+    while "$ref" in prop:
+        prop, seen = _inline_ref(path, prop, root or {}, seen)
     description = prop.get("description")
     # Pydantic v2 renders `Optional[X]` as `{"anyOf": [<X>, {"type": "null"}]}` with no
     # top-level type/enum/const, the same nullable shape the list form `type: ["string", "null"]`
@@ -152,6 +191,13 @@ def _field(path: str, name: str, prop: Dict[str, Any]) -> _Field:
     # so `Optional[Literal[...]]`, `Optional[int]` and friends map instead of raising. A union of
     # two real types is genuinely ambiguous and still rejected.
     if not ({"const", "enum", "type"} & set(prop)):
+        # pydantic v1 wraps a described `$ref` as `{"allOf": [{"$ref": ...}], "description": ...}`;
+        # a one-item `allOf` is that schema, so it is unwrapped too, the outer keys on top.
+        wrapped = prop.get("allOf")
+        if isinstance(wrapped, list) and len(wrapped) == 1 and isinstance(wrapped[0], dict):
+            branch = dict(wrapped[0])
+            branch.update((k, v) for k, v in prop.items() if k != "allOf")
+            return _field(path, name, branch, root, seen)
         union = prop.get("anyOf") or prop.get("oneOf")
         if union is not None:
             branches = [b for b in union if isinstance(b, dict) and b.get("type") != "null"]
@@ -161,7 +207,7 @@ def _field(path: str, name: str, prop: Dict[str, Any]) -> _Field:
                     % (path, len(branches)))
             branch = dict(branches[0])
             branch.setdefault("description", description)
-            return _field(path, name, branch)
+            return _field(path, name, branch, root, seen)
     if "const" in prop:
         return _enum_field(path, name, [prop["const"]], description)
     if "enum" in prop:
@@ -184,8 +230,6 @@ def _field(path: str, name: str, prop: Dict[str, Any]) -> _Field:
         raise SchemaError("%s: arrays are not supported; ask one field per element" % path)
     if jtype == "object":
         raise SchemaError("%s: nested objects are not supported; flatten the schema" % path)
-    if "$ref" in prop:
-        raise SchemaError("%s: $ref/recursion is not supported; flatten the schema" % path)
     raise SchemaError("%s: unsupported schema %r" % (path, prop))
 
 
@@ -200,7 +244,7 @@ def plan_from_json_schema(schema: Dict[str, Any]) -> List[_Field]:
         raise SchemaError("'properties' must be a non-empty object")
     if len(properties) > MAX_PROPERTIES:
         raise SchemaError("%d properties exceeds MAX_PROPERTIES=%d" % (len(properties), MAX_PROPERTIES))
-    return [_field("properties.%s" % name, name, prop) for name, prop in properties.items()]
+    return [_field("properties.%s" % name, name, prop, schema) for name, prop in properties.items()]
 
 
 def questions_from_json_schema(schema: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:

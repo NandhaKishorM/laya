@@ -1,0 +1,90 @@
+Sat Oct  3 18:56:59 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4070 ...    On  |   00000000:26:00.0 Off |                  N/A |
+|  0%   36C    P8             11W /  295W |     734MiB /  16376MiB |     28%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A             892      G   Hyprland                                156MiB |
+|    0   N/A  N/A             952      G   quickshell                               38MiB |
+|    0   N/A  N/A             995      G   Xwayland                                  4MiB |
+|    0   N/A  N/A            1168      G   monocloud                                 3MiB |
+|    0   N/A  N/A            3324    C+G   /usr/bin/sunshine                       215MiB |
+|    0   N/A  N/A           12883      G   /usr/bin/ghostty                        100MiB |
+|    0   N/A  N/A         3906709    C+G   ...rack-uuid=3190708988185955192         31MiB |
++-----------------------------------------------------------------------------------------+
+
+torch 2.11.0+cu130 model /home/ckl/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851
+/home/ckl/projects/S/laya-wt/compile-defaults/benchmarks/bench_compile_defaults.py:41: RuntimeWarning: laya: this checkpoint ships invalid temperatures or values outside [0.5, 5]; using choice:11+=0.10058280825614929 -> 0.5. Treat confidence from the affected entries as uncalibrated.
+  agent = Agent(args.model, device="cuda", compile=True, **kw)
+load_s 46.659154976019636 cache /home/ckl/.cache/laya-compile-defaults-verified-20261003/laya/torchinductor
+request 1 seconds 0.02227416110690683 graphs 2
+request 2 seconds 0.013271530973725021 graphs 2
+request 3 seconds 0.009847079985775054 graphs 2
+request 4 seconds 0.01395110902376473 graphs 2
+request 5 seconds 0.009092980995774269 graphs 2
+request 6 seconds 0.024529938003979623 graphs 2
+request 7 seconds 0.016685683047398925 graphs 2
+request 8 seconds 0.008671556017361581 graphs 2
+request 9 seconds 0.029906653915531933 graphs 2
+request 10 seconds 0.014891040977090597 graphs 2
+request 11 seconds 0.009502526023425162 graphs 2
+request 12 seconds 0.01175652293022722 graphs 2
+request 13 seconds 0.00937346403952688 graphs 2
+request 14 seconds 0.013521144981496036 graphs 2
+request 15 seconds 0.008561403956264257 graphs 2
+request 16 seconds 0.022972889011725783 graphs 2
+request 17 seconds 0.01577568193897605 graphs 2
+request 18 seconds 0.008254111045971513 graphs 2
+request 19 seconds 0.028295972966589034 graphs 2
+request 20 seconds 0.014113781973719597 graphs 2
+request 21 seconds 0.00948852498549968 graphs 2
+request 22 seconds 0.011776432977057993 graphs 2
+request 23 seconds 0.009372873930260539 graphs 2
+request 24 seconds 0.013515894999727607 graphs 2
+request 25 seconds 0.008511213934980333 graphs 2
+request 26 seconds 0.02297718997579068 graphs 2
+request 27 seconds 0.015807762974873185 graphs 2
+request 28 seconds 0.008288851007819176 graphs 2
+request 29 seconds 0.02831886406056583 graphs 2
+request 30 seconds 0.01407532102894038 graphs 2
+RESULT {"load_s": 46.659154976019636, "requests_s": [0.02227416110690683, 0.013271530973725021, 0.009847079985775054, 0.01395110902376473, 0.009092980995774269, 0.024529938003979623, 0.016685683047398925, 0.008671556017361581, 0.029906653915531933, 0.014891040977090597, 0.009502526023425162, 0.01175652293022722, 0.00937346403952688, 0.013521144981496036, 0.008561403956264257, 0.022972889011725783, 0.01577568193897605, 0.008254111045971513, 0.028295972966589034, 0.014113781973719597, 0.00948852498549968, 0.011776432977057993, 0.009372873930260539, 0.013515894999727607, 0.008511213934980333, 0.02297718997579068, 0.015807762974873185, 0.008288851007819176, 0.02831886406056583, 0.01407532102894038], "answers": [{"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.7064, "team1": 0.202, "team2": 0.0586, "team3": 0.033}, "confidence": 0.3887, "answer_confidence": 0.7064, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team1", "probabilities": {"team0": 0.3572, "team1": 0.5618, "team2": 0.0525, "team3": 0.0285}, "confidence": 0.3164, "answer_confidence": 0.5618, "action": {"act_probability": 1.0}}, "q2": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.3673, "team1": 0.3346, "team2": 0.2558, "team3": 0.0423}, "confidence": 0.1223, "answer_confidence": 0.3673, "action": {"act_probability": 1.0}}, "q3": {"type": "choice", "choice": "team3", "probabilities": {"team0": 0.2634, "team1": 0.2405, "team2": 0.1972, "team3": 0.2989}, "confidence": 0.008, "answer_confidence": 0.2989, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.7116, "team1": 0.1982, "team2": 0.0593, "team3": 0.031}, "confidence": 0.3955, "answer_confidence": 0.7116, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5216, "team1": 0.3789, "team2": 0.068, "team3": 0.0316}, "confidence": 0.2793, "answer_confidence": 0.5216, "action": {"act_probability": 1.0}}, "q2": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.4358, "team1": 0.3617, "team2": 0.1669, "team3": 0.0357}, "confidence": 0.1723, "answer_confidence": 0.4358, "action": {"act_probability": 1.0}}, "q3": {"type": "choice", "choice": "team3", "probabilities": {"team0": 0.2222, "team1": 0.2336, "team2": 0.1975, "team3": 0.3467}, "confidence": 0.0179, "answer_confidence": 0.3467, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.706, "team1": 0.2044, "team2": 0.0578, "team3": 0.0319}, "confidence": 0.3906, "answer_confidence": 0.706, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team1", "probabilities": {"team0": 0.4021, "team1": 0.5087, "team2": 0.0583, "team3": 0.0309}, "confidence": 0.2907, "answer_confidence": 0.5087, "action": {"act_probability": 1.0}}, "q2": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.3836, "team1": 0.3542, "team2": 0.221, "team3": 0.0411}, "confidence": 0.1343, "answer_confidence": 0.3836, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.8163, "team1": 0.1837}, "confidence": 0.312, "answer_confidence": 0.8163, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team1", "probabilities": {"team0": 0.3627, "team1": 0.6373}, "confidence": 0.0551, "answer_confidence": 0.6373, "action": {"act_probability": 1.0}}, "q2": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.6074, "team1": 0.3926}, "confidence": 0.0336, "answer_confidence": 0.6074, "action": {"act_probability": 1.0}}, "q3": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5892, "team1": 0.4108}, "confidence": 0.0231, "answer_confidence": 0.5892, "action": {"act_probability": 1.0}}, "q4": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.6157, "team1": 0.3843}, "confidence": 0.039, "answer_confidence": 0.6157, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.8281, "team1": 0.1261, "team2": 0.0458}, "confidence": 0.4915, "answer_confidence": 0.8281, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.61, "team1": 0.3255, "team2": 0.0646}, "confidence": 0.232, "answer_confidence": 0.61, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.6964, "team1": 0.156, "team2": 0.0818, "team3": 0.0382, "team4": 0.0275}, "confidence": 0.3972, "answer_confidence": 0.6964, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5545, "team1": 0.2619, "team2": 0.1073, "team3": 0.045, "team4": 0.0312}, "confidence": 0.276, "answer_confidence": 0.5545, "action": {"act_probability": 1.0}}, "q2": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.4954, "team1": 0.2435, "team2": 0.1825, "team3": 0.0476, "team4": 0.0311}, "confidence": 0.2202, "answer_confidence": 0.4954, "action": {"act_probability": 1.0}}, "q3": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5082, "team1": 0.2196, "team2": 0.1485, "team3": 0.0892, "team4": 0.0345}, "confidence": 0.1973, "answer_confidence": 0.5082, "action": {"act_probability": 1.0}}, "q4": {"type": "choice", "choice": "team4", "probabilities": {"team0": 0.1385, "team1": 0.1616, "team2": 0.1441, "team3": 0.1157, "team4": 0.4401}, "confidence": 0.0939, "answer_confidence": 0.4401, "action": {"act_probability": 1.0}}, "q5": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5591, "team1": 0.2101, "team2": 0.124, "team3": 0.0641, "team4": 0.0426}, "confidence": 0.2405, "answer_confidence": 0.5591, "action": {"act_probability": 1.0}}, "q6": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5558, "team1": 0.2121, "team2": 0.1255, "team3": 0.0623, "team4": 0.0443}, "confidence": 0.2377, "answer_confidence": 0.5558, "action": {"act_probability": 1.0}}, "q7": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5773, "team1": 0.2057, "team2": 0.1185, "team3": 0.059, "team4": 0.0395}, "confidence": 0.2607, "answer_confidence": 0.5773, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.8306, "team1": 0.1225, "team2": 0.035, "team3": 0.0068, "team4": 0.0031, "team5": 0.002}, "confidence": 0.6689, "answer_confidence": 0.8306, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5518, "team1": 0.3974, "team2": 0.0394, "team3": 0.0063, "team4": 0.003, "team5": 0.002}, "confidence": 0.5065, "answer_confidence": 0.5518, "action": {"act_probability": 1.0}}, "q2": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.4753, "team1": 0.2883, "team2": 0.221, "team3": 0.0093, "team4": 0.0037, "team5": 0.0023}, "confidence": 0.3725, "answer_confidence": 0.4753, "action": {"act_probability": 1.0}}, "q3": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5962, "team1": 0.2447, "team2": 0.1065, "team3": 0.0452, "team4": 0.0048, "team5": 0.0026}, "confidence": 0.4013, "answer_confidence": 0.5962, "action": {"act_probability": 1.0}}, "q4": {"type": "choice", "choice": "team4", "probabilities": {"team0": 0.1874, "team1": 0.1468, "team2": 0.103, "team3": 0.0381, "team4": 0.5195, "team5": 0.0052}, "confidence": 0.2624, "answer_confidence": 0.5195, "action": {"act_probability": 1.0}}, "q5": {"type": "choice", "choice": "team5", "probabilities": {"team0": 0.018, "team1": 0.0253, "team2": 0.0233, "team3": 0.0073, "team4": 0.0046, "team5": 0.9215}, "confidence": 0.7829, "answer_confidence": 0.9215, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.7733, "team1": 0.1752, "team2": 0.0516}, "confidence": 0.4021, "answer_confidence": 0.7733, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.7494, "team1": 0.1764, "team2": 0.0742}, "confidence": 0.3489, "answer_confidence": 0.7494, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5272, "team1": 0.368, "team2": 0.1048}, "confidence": 0.1428, "answer_confidence": 0.5272, "action": {"act_probability": 1.0}}, "q2": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.439, "team1": 0.3469, "team2": 0.2141}, "confidence": 0.0363, "answer_confidence": 0.439, "action": {"act_probability": 1.0}}, "q3": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.586, "team1": 0.2731, "team2": 0.141}, "confidence": 0.1409, "answer_confidence": 0.586, "action": {"act_probability": 1.0}}, "q4": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5872, "team1": 0.2668, "team2": 0.146}, "confidence": 0.1388, "answer_confidence": 0.5872, "action": {"act_probability": 1.0}}, "q5": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.6022, "team1": 0.2635, "team2": 0.1343}, "confidence": 0.1567, "answer_confidence": 0.6022, "action": {"act_probability": 1.0}}, "q6": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.613, "team1": 0.2585, "team2": 0.1285}, "confidence": 0.1686, "answer_confidence": 0.613, "action": {"act_probability": 1.0}}}, {"q0": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.6977, "team1": 0.1946, "team2": 0.067, "team3": 0.0407}, "confidence": 0.3644, "answer_confidence": 0.6977, "action": {"act_probability": 1.0}}, "q1": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5732, "team1": 0.2913, "team2": 0.0869, "team3": 0.0486}, "confidence": 0.2516, "answer_confidence": 0.5732, "action": {"act_probability": 1.0}}, "q2": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.5202, "team1": 0.2908, "team2": 0.1395, "team3": 0.0495}, "confidence": 0.1901, "answer_confidence": 0.5202, "action": {"act_probability": 1.0}}, "q3": {"type": "choice", "choice": "team0", "probabilities": {"team0": 0.2906, "team1": 0.2515, "team2": 0.1768, "team3": 0.2811}, "confidence": 0.0122, "answer_confidence": 0.2906, "action": {"act_probability": 1.0}}}], "cuda_graph_nodes": 0, "pass_memory": [{"allocated_mib": 1616.48291015625, "reserved_mib": 1796.0}, {"allocated_mib": 1616.48291015625, "reserved_mib": 1796.0}, {"allocated_mib": 1616.48291015625, "reserved_mib": 1796.0}], "allocated_mib": 1616.48291015625, "reserved_mib": 1796.0, "peak_allocated_mib": 1671.017578125, "peak_reserved_mib": 1796.0, "counters": {"stats": {"calls_captured": 6700, "unique_graphs": 2}, "inductor": {"triton_bundler_load_static_autotuner": 68, "async_compile_cache_miss": 243, "async_compile_cache_hit": 149, "pattern_matcher_count": 20, "pattern_matcher_nodes": 26, "extern_calls": 384, "fxgraph_cache_hit": 2}}}
+Sat Oct  3 18:57:46 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4070 ...    On  |   00000000:26:00.0 Off |                  N/A |
+|  0%   46C    P2             79W /  295W |    2789MiB /  16376MiB |     82%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A             892      G   Hyprland                                146MiB |
+|    0   N/A  N/A             952      G   quickshell                               38MiB |
+|    0   N/A  N/A             995      G   Xwayland                                  4MiB |
+|    0   N/A  N/A            1168      G   monocloud                                 3MiB |
+|    0   N/A  N/A            3324    C+G   /usr/bin/sunshine                       215MiB |
+|    0   N/A  N/A           12883      G   /usr/bin/ghostty                        100MiB |
+|    0   N/A  N/A         3906709    C+G   ...rack-uuid=3190708988185955192         36MiB |
+|    0   N/A  N/A         4085393      C   ...jects/S/laya/.venv/bin/python       2056MiB |
++-----------------------------------------------------------------------------------------+
+

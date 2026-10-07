@@ -157,13 +157,16 @@ serving concurrently. See [patterns](patterns.md#blocking-work).
 ## Nested calls
 
 A hook that calls `predict` again starts a new call with a new `run_id`. The parent and child are
-independent unless you link them yourself. Capture the parent id and pass it along:
+independent unless you link them yourself. The child's `run_id` lives on the child's own
+`PredictContext`, not on the payload `predict` returns, so capture it with a per-call hook:
 
 ```python
 def enrich(ctx):
     for state in ctx.states:                     # a hook sees every state of the call
-        child = enricher.predict(state, EXTRA_QUESTIONS)
-        record_child_span(parent_run_id=ctx.run_id, child_run_id=child.get("run_id"))
+        def link(child_ctx, parent_run_id=ctx.run_id):
+            record_child_span(parent_run_id=parent_run_id, child_run_id=child_ctx.run_id)
+
+        enricher.predict(state, EXTRA_QUESTIONS, on_predict_start=link)
 ```
 
 One parent `run_id`, one child call per state. A body that reads `ctx.states[0]` links the first

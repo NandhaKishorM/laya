@@ -1,0 +1,1644 @@
+{
+  "score_decimals": 9,
+  "default_k": 20,
+  "embed_dim": 8,
+  "embed_probe": {
+    "": [
+      0.9430000000000001,
+      0.732,
+      -0.635,
+      -0.846,
+      0.09899999999999998,
+      -0.11199999999999999,
+      0.5209999999999999,
+      0.31000000000000005
+    ],
+    "a": [
+      0.20599999999999996,
+      0.41700000000000004,
+      -0.21599999999999997,
+      -0.0050000000000000044,
+      -0.95,
+      -0.739,
+      0.6279999999999999,
+      0.839
+    ],
+    "refund: money back": [
+      -0.17600000000000005,
+      0.03499999999999992,
+      0.246,
+      0.4570000000000001,
+      0.6679999999999999,
+      0.879,
+      -0.91,
+      -0.6990000000000001
+    ],
+    "My card was charged twice for the same order last Tuesday.": [
+      0.861,
+      0.6499999999999999,
+      0.43900000000000006,
+      0.22799999999999998,
+      0.016999999999999904,
+      -0.19399999999999995,
+      -0.405,
+      -0.616
+    ]
+  },
+  "cases": [
+    {
+      "name": "large-top-5",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 5,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "wrong_amount_of_cash_received",
+        "card_arrival",
+        "failed_transfer",
+        "card_not_working",
+        "card_delivery_estimate"
+      ],
+      "scores": [
+        0.947468947,
+        0.907542741,
+        0.58401055,
+        0.523549809,
+        0.430750026
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount",
+        "card_arrival": "where is my new card",
+        "failed_transfer": "a transfer did not arrive",
+        "card_not_working": "the card is declined",
+        "card_delivery_estimate": "when will the card arrive"
+      }
+    },
+    {
+      "name": "large-top-1",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 1,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "wrong_amount_of_cash_received"
+      ],
+      "scores": [
+        0.947468947
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      }
+    },
+    {
+      "name": "large-top-16-of-17",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 16,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "wrong_amount_of_cash_received",
+        "card_arrival",
+        "failed_transfer",
+        "card_not_working",
+        "card_delivery_estimate",
+        "direct_debit_payment_not_recognised",
+        "request_refund",
+        "verify_my_identity",
+        "exchange_rate",
+        "declined_card_payment",
+        "pending_card_payment",
+        "cash_withdrawal_charge",
+        "reverted_card_payment",
+        "top_up_failed",
+        "transfer_fee_charged",
+        "lost_or_stolen_card"
+      ],
+      "scores": [
+        0.947468947,
+        0.907542741,
+        0.58401055,
+        0.523549809,
+        0.430750026,
+        0.416119356,
+        0.367579135,
+        0.29895681,
+        0.196754725,
+        0.132558512,
+        0.107369708,
+        -0.133314504,
+        -0.164844835,
+        -0.247795808,
+        -0.920650596,
+        -0.947114785
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount",
+        "card_arrival": "where is my new card",
+        "failed_transfer": "a transfer did not arrive",
+        "card_not_working": "the card is declined",
+        "card_delivery_estimate": "when will the card arrive",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "request_refund": "I want money back",
+        "verify_my_identity": "identity verification",
+        "exchange_rate": "what rate was applied",
+        "declined_card_payment": "a payment was declined",
+        "pending_card_payment": "a payment is still pending",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "lost_or_stolen_card": "the card is gone"
+      }
+    },
+    {
+      "name": "large-k-equals-n",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 17,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "card_arrival",
+        "card_delivery_estimate",
+        "card_not_working",
+        "cash_withdrawal_charge",
+        "declined_card_payment",
+        "direct_debit_payment_not_recognised",
+        "exchange_rate",
+        "failed_transfer",
+        "lost_or_stolen_card",
+        "pending_card_payment",
+        "refund_not_showing_up",
+        "request_refund",
+        "reverted_card_payment",
+        "top_up_failed",
+        "transfer_fee_charged",
+        "verify_my_identity",
+        "wrong_amount_of_cash_received"
+      ],
+      "scores": null,
+      "passthrough": true,
+      "n": 17,
+      "subset_criteria": null
+    },
+    {
+      "name": "large-k-over-n",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 99,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "card_arrival",
+        "card_delivery_estimate",
+        "card_not_working",
+        "cash_withdrawal_charge",
+        "declined_card_payment",
+        "direct_debit_payment_not_recognised",
+        "exchange_rate",
+        "failed_transfer",
+        "lost_or_stolen_card",
+        "pending_card_payment",
+        "refund_not_showing_up",
+        "request_refund",
+        "reverted_card_payment",
+        "top_up_failed",
+        "transfer_fee_charged",
+        "verify_my_identity",
+        "wrong_amount_of_cash_received"
+      ],
+      "scores": null,
+      "passthrough": true,
+      "n": 17,
+      "subset_criteria": null
+    },
+    {
+      "name": "small-k-2",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "refund": "money back",
+        "technical": "a bug",
+        "billing": "an invoice"
+      },
+      "k": 2,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "refund: money back",
+        "technical: a bug",
+        "billing: an invoice"
+      ],
+      "labels": [
+        "refund",
+        "technical"
+      ],
+      "scores": [
+        0.304439082,
+        -0.609827189
+      ],
+      "passthrough": false,
+      "n": 3,
+      "subset_criteria": {
+        "refund": "money back",
+        "technical": "a bug"
+      }
+    },
+    {
+      "name": "one-option-k-1",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "only": "the only option"
+      },
+      "k": 1,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "only: the only option"
+      ],
+      "labels": [
+        "only"
+      ],
+      "scores": null,
+      "passthrough": true,
+      "n": 1,
+      "subset_criteria": null
+    },
+    {
+      "name": "structured-state",
+      "state": {
+        "kind": "json",
+        "value": {
+          "subject": "duplicate charge",
+          "body": "billed twice in March"
+        }
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 4,
+      "instructions": null,
+      "query_text": "{\"subject\": \"duplicate charge\", \"body\": \"billed twice in March\"}",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "lost_or_stolen_card",
+        "refund_not_showing_up",
+        "transfer_fee_charged",
+        "pending_card_payment"
+      ],
+      "scores": [
+        0.772003688,
+        0.697649917,
+        0.695222725,
+        0.318564649
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "lost_or_stolen_card": "the card is gone",
+        "refund_not_showing_up": "a refund has not arrived",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "pending_card_payment": "a payment is still pending"
+      }
+    },
+    {
+      "name": "empty-state",
+      "state": {
+        "kind": "string",
+        "value": ""
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 4,
+      "instructions": null,
+      "query_text": "",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "pending_card_payment",
+        "verify_my_identity",
+        "reverted_card_payment",
+        "direct_debit_payment_not_recognised"
+      ],
+      "scores": [
+        0.939301271,
+        0.882771142,
+        0.468142801,
+        0.462660253
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "pending_card_payment": "a payment is still pending",
+        "verify_my_identity": "identity verification",
+        "reverted_card_payment": "a payment was reversed",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit"
+      }
+    },
+    {
+      "name": "none-state",
+      "state": {
+        "kind": "json",
+        "value": null
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 4,
+      "instructions": null,
+      "query_text": "null",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "lost_or_stolen_card",
+        "refund_not_showing_up",
+        "transfer_fee_charged",
+        "pending_card_payment"
+      ],
+      "scores": [
+        0.696734262,
+        0.619005676,
+        0.612605419,
+        0.359794007
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "lost_or_stolen_card": "the card is gone",
+        "refund_not_showing_up": "a refund has not arrived",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "pending_card_payment": "a payment is still pending"
+      }
+    },
+    {
+      "name": "non-latin-state",
+      "state": {
+        "kind": "string",
+        "value": "注文が届きません"
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 4,
+      "instructions": null,
+      "query_text": "注文が届きません",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "card_arrival",
+        "wrong_amount_of_cash_received",
+        "top_up_failed",
+        "request_refund"
+      ],
+      "scores": [
+        0.330675885,
+        0.257026035,
+        0.24352605,
+        0.223691482
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "card_arrival": "where is my new card",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount",
+        "top_up_failed": "a top up did not work",
+        "request_refund": "I want money back"
+      }
+    },
+    {
+      "name": "with-instructions",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 4,
+      "instructions": "What does the customer want in `body`?",
+      "query_text": "What does the customer want in `body`?\nMy card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "request_refund",
+        "exchange_rate",
+        "card_arrival",
+        "failed_transfer"
+      ],
+      "scores": [
+        0.986196757,
+        0.936378299,
+        0.48456007,
+        0.443639854
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "request_refund": "I want money back",
+        "exchange_rate": "what rate was applied",
+        "card_arrival": "where is my new card",
+        "failed_transfer": "a transfer did not arrive"
+      }
+    },
+    {
+      "name": "instructions-empty-string",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "card_arrival": "where is my new card",
+        "card_delivery_estimate": "when will the card arrive",
+        "card_not_working": "the card is declined",
+        "cash_withdrawal_charge": "charged for an ATM withdrawal",
+        "declined_card_payment": "a payment was declined",
+        "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+        "exchange_rate": "what rate was applied",
+        "failed_transfer": "a transfer did not arrive",
+        "lost_or_stolen_card": "the card is gone",
+        "pending_card_payment": "a payment is still pending",
+        "refund_not_showing_up": "a refund has not arrived",
+        "request_refund": "I want money back",
+        "reverted_card_payment": "a payment was reversed",
+        "top_up_failed": "a top up did not work",
+        "transfer_fee_charged": "charged a fee for a transfer",
+        "verify_my_identity": "identity verification",
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+      },
+      "k": 4,
+      "instructions": "",
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "card_arrival: where is my new card",
+        "card_delivery_estimate: when will the card arrive",
+        "card_not_working: the card is declined",
+        "cash_withdrawal_charge: charged for an ATM withdrawal",
+        "declined_card_payment: a payment was declined",
+        "direct_debit_payment_not_recognised: an unrecognised direct debit",
+        "exchange_rate: what rate was applied",
+        "failed_transfer: a transfer did not arrive",
+        "lost_or_stolen_card: the card is gone",
+        "pending_card_payment: a payment is still pending",
+        "refund_not_showing_up: a refund has not arrived",
+        "request_refund: I want money back",
+        "reverted_card_payment: a payment was reversed",
+        "top_up_failed: a top up did not work",
+        "transfer_fee_charged: charged a fee for a transfer",
+        "verify_my_identity: identity verification",
+        "wrong_amount_of_cash_received: the ATM gave the wrong amount"
+      ],
+      "labels": [
+        "wrong_amount_of_cash_received",
+        "card_arrival",
+        "failed_transfer",
+        "card_not_working"
+      ],
+      "scores": [
+        0.947468947,
+        0.907542741,
+        0.58401055,
+        0.523549809
+      ],
+      "passthrough": false,
+      "n": 17,
+      "subset_criteria": {
+        "wrong_amount_of_cash_received": "the ATM gave the wrong amount",
+        "card_arrival": "where is my new card",
+        "failed_transfer": "a transfer did not arrive",
+        "card_not_working": "the card is declined"
+      }
+    },
+    {
+      "name": "no-descriptions",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": {
+        "a": null,
+        "b": null,
+        "c": null,
+        "d": null
+      },
+      "k": 2,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "labels": [
+        "c",
+        "a"
+      ],
+      "scores": [
+        0.304439082,
+        -0.123272322
+      ],
+      "passthrough": false,
+      "n": 4,
+      "subset_criteria": {
+        "c": null,
+        "a": null
+      }
+    },
+    {
+      "name": "list-criteria",
+      "state": {
+        "kind": "string",
+        "value": "My card was charged twice for the same order last Tuesday."
+      },
+      "criteria": [
+        "alpha",
+        "beta",
+        "gamma",
+        "delta"
+      ],
+      "k": 2,
+      "instructions": null,
+      "query_text": "My card was charged twice for the same order last Tuesday.",
+      "option_texts": [
+        "alpha",
+        "beta",
+        "gamma",
+        "delta"
+      ],
+      "labels": [
+        "delta",
+        "beta"
+      ],
+      "scores": [
+        0.426002656,
+        0.128698818
+      ],
+      "passthrough": false,
+      "n": 4,
+      "subset_criteria": [
+        "delta",
+        "beta"
+      ]
+    }
+  ],
+  "nan_ranking": {
+    "criteria": {
+      "a": "A",
+      "b": "B",
+      "c": "C"
+    },
+    "k": 2,
+    "option_texts": [
+      "a: A",
+      "b: B",
+      "c: C"
+    ],
+    "query_text": "state",
+    "sims": [
+      "nan",
+      0.0,
+      0.0
+    ],
+    "labels": [
+      "b",
+      "c"
+    ],
+    "scores": [
+      0.0,
+      0.0
+    ]
+  },
+  "cosine": [
+    {
+      "name": "ordinary",
+      "query": [
+        1.0,
+        0.0
+      ],
+      "docs": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          -1.0,
+          0.0
+        ]
+      ],
+      "sims": [
+        1.0,
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "name": "zero-query",
+      "query": [
+        0.0,
+        0.0
+      ],
+      "docs": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ]
+      ],
+      "sims": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "zero-doc",
+      "query": [
+        1.0,
+        0.0
+      ],
+      "docs": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "sims": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "all-zero",
+      "query": [
+        0.0,
+        0.0
+      ],
+      "docs": [
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "sims": [
+        0.0
+      ]
+    },
+    {
+      "name": "negatives",
+      "query": [
+        1.0,
+        1.0
+      ],
+      "docs": [
+        [
+          -1.0,
+          -1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "sims": [
+        -1.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "needs-clipping",
+      "query": [
+        1e-200,
+        1e-200
+      ],
+      "docs": [
+        [
+          1e-200,
+          1e-200
+        ]
+      ],
+      "sims": [
+        0.0
+      ]
+    },
+    {
+      "name": "large-magnitudes",
+      "query": [
+        1e+200,
+        1e+200
+      ],
+      "docs": [
+        [
+          1e+200,
+          1e+200
+        ],
+        [
+          -1e+200,
+          1e+200
+        ]
+      ],
+      "sims": [
+        "nan",
+        "nan"
+      ]
+    },
+    {
+      "name": "no-docs",
+      "query": [
+        1.0,
+        1.0
+      ],
+      "docs": [],
+      "sims": []
+    },
+    {
+      "name": "underflowing-query",
+      "query": [
+        1e-200,
+        1e-200
+      ],
+      "docs": [
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "sims": [
+        0.0
+      ]
+    },
+    {
+      "name": "self-cosine-over-one",
+      "query": [
+        0.3333333333333333,
+        0.3333333333333333,
+        2.6666666666666665
+      ],
+      "docs": [
+        [
+          0.3333333333333333,
+          0.3333333333333333,
+          2.6666666666666665
+        ]
+      ],
+      "sims": [
+        1.0
+      ]
+    }
+  ],
+  "nonfinite": [
+    {
+      "name": "nan",
+      "rows": [
+        [
+          "nan",
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "cleaned": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "posinf",
+      "rows": [
+        [
+          "inf",
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "cleaned": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "neginf",
+      "rows": [
+        [
+          "-inf",
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "cleaned": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "all-nan",
+      "rows": [
+        [
+          "nan",
+          "nan"
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "cleaned": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ]
+    }
+  ],
+  "cache_counters": [
+    {
+      "texts": [
+        "a",
+        "a",
+        "b"
+      ],
+      "size": 2,
+      "maxsize": 64,
+      "hits": 0,
+      "misses": 3
+    },
+    {
+      "texts": [
+        "a",
+        "b",
+        "c"
+      ],
+      "size": 3,
+      "maxsize": 64,
+      "hits": 2,
+      "misses": 4
+    },
+    {
+      "texts": [
+        "q",
+        "a"
+      ],
+      "size": 4,
+      "maxsize": 64,
+      "hits": 3,
+      "misses": 5
+    }
+  ],
+  "refusals": [
+    {
+      "name": "k-zero",
+      "error": "ValueError",
+      "message": "k must be a positive integer, got 0"
+    },
+    {
+      "name": "k-negative",
+      "error": "ValueError",
+      "message": "k must be a positive integer, got -1"
+    },
+    {
+      "name": "k-bool",
+      "error": "ValueError",
+      "message": "k must be a positive integer, got True"
+    },
+    {
+      "name": "criteria-empty-dict",
+      "error": "ValueError",
+      "message": "choice criteria must contain at least one option"
+    },
+    {
+      "name": "criteria-empty-list",
+      "error": "ValueError",
+      "message": "choice criteria must contain at least one option"
+    },
+    {
+      "name": "criteria-wrong-type",
+      "error": "TypeError",
+      "message": "choice criteria must be a dict or list, got str"
+    },
+    {
+      "name": "criteria-duplicate-label",
+      "error": "ValueError",
+      "message": "choice criteria label 'a' is duplicated"
+    },
+    {
+      "name": "embed-not-callable",
+      "error": "TypeError",
+      "message": "embed_fn must be callable"
+    },
+    {
+      "name": "embed-wrong-rows",
+      "error": "ValueError",
+      "message": "embed_fn must return an array of shape (4, dim), got (1, 1)"
+    },
+    {
+      "name": "embed-one-dimensional",
+      "error": "ValueError",
+      "message": "embed_fn must return an array of shape (4, dim), got (4,)"
+    },
+    {
+      "name": "questions-not-dict",
+      "error": "TypeError",
+      "message": "questions must be a dict of question id -> definition"
+    },
+    {
+      "name": "choice-without-criteria",
+      "error": "ValueError",
+      "message": "question 'q' is a choice but has no criteria"
+    }
+  ],
+  "predicts": [
+    {
+      "name": "choice-reduced",
+      "k": 4,
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What does the customer want?",
+          "criteria": {
+            "card_arrival": "where is my new card",
+            "card_delivery_estimate": "when will the card arrive",
+            "card_not_working": "the card is declined",
+            "cash_withdrawal_charge": "charged for an ATM withdrawal",
+            "declined_card_payment": "a payment was declined",
+            "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+            "exchange_rate": "what rate was applied",
+            "failed_transfer": "a transfer did not arrive",
+            "lost_or_stolen_card": "the card is gone",
+            "pending_card_payment": "a payment is still pending",
+            "refund_not_showing_up": "a refund has not arrived",
+            "request_refund": "I want money back",
+            "reverted_card_payment": "a payment was reversed",
+            "top_up_failed": "a top up did not work",
+            "transfer_fee_charged": "charged a fee for a transfer",
+            "verify_my_identity": "identity verification",
+            "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+          }
+        }
+      },
+      "asked": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What does the customer want?",
+          "criteria": {
+            "pending_card_payment": "a payment is still pending",
+            "verify_my_identity": "identity verification",
+            "cash_withdrawal_charge": "charged for an ATM withdrawal",
+            "direct_debit_payment_not_recognised": "an unrecognised direct debit"
+          }
+        }
+      },
+      "shortlist": {
+        "intent": {
+          "labels": [
+            "pending_card_payment",
+            "verify_my_identity",
+            "cash_withdrawal_charge",
+            "direct_debit_payment_not_recognised"
+          ],
+          "scores": [
+            0.997976344,
+            0.796074858,
+            0.470105773,
+            0.395362718
+          ],
+          "k": 4,
+          "n": 17,
+          "passthrough": false
+        }
+      },
+      "caller_questions_unmutated": true
+    },
+    {
+      "name": "choice-passthrough",
+      "k": 20,
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "x",
+          "criteria": {
+            "refund": "money back",
+            "technical": "a bug",
+            "billing": "an invoice"
+          }
+        }
+      },
+      "asked": {
+        "intent": {
+          "type": "choice",
+          "instructions": "x",
+          "criteria": {
+            "refund": "money back",
+            "technical": "a bug",
+            "billing": "an invoice"
+          }
+        }
+      },
+      "shortlist": {
+        "intent": {
+          "labels": [
+            "refund",
+            "technical",
+            "billing"
+          ],
+          "scores": null,
+          "k": 20,
+          "n": 3,
+          "passthrough": true
+        }
+      },
+      "caller_questions_unmutated": true
+    },
+    {
+      "name": "mixed-questions",
+      "k": 3,
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What?",
+          "criteria": {
+            "card_arrival": "where is my new card",
+            "card_delivery_estimate": "when will the card arrive",
+            "card_not_working": "the card is declined",
+            "cash_withdrawal_charge": "charged for an ATM withdrawal",
+            "declined_card_payment": "a payment was declined",
+            "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+            "exchange_rate": "what rate was applied",
+            "failed_transfer": "a transfer did not arrive",
+            "lost_or_stolen_card": "the card is gone",
+            "pending_card_payment": "a payment is still pending",
+            "refund_not_showing_up": "a refund has not arrived",
+            "request_refund": "I want money back",
+            "reverted_card_payment": "a payment was reversed",
+            "top_up_failed": "a top up did not work",
+            "transfer_fee_charged": "charged a fee for a transfer",
+            "verify_my_identity": "identity verification",
+            "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+          }
+        },
+        "urgent": {
+          "type": "noul",
+          "instructions": "Is this urgent?"
+        },
+        "severity": {
+          "type": "score",
+          "instructions": "How bad?",
+          "criteria": [
+            "low",
+            "high"
+          ]
+        }
+      },
+      "asked": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What?",
+          "criteria": {
+            "cash_withdrawal_charge": "charged for an ATM withdrawal",
+            "pending_card_payment": "a payment is still pending",
+            "verify_my_identity": "identity verification"
+          }
+        },
+        "urgent": {
+          "type": "noul",
+          "instructions": "Is this urgent?"
+        },
+        "severity": {
+          "type": "score",
+          "instructions": "How bad?",
+          "criteria": [
+            "low",
+            "high"
+          ]
+        }
+      },
+      "shortlist": {
+        "intent": {
+          "labels": [
+            "cash_withdrawal_charge",
+            "pending_card_payment",
+            "verify_my_identity"
+          ],
+          "scores": [
+            0.952893873,
+            0.471447845,
+            0.444003217
+          ],
+          "k": 3,
+          "n": 17,
+          "passthrough": false
+        }
+      },
+      "caller_questions_unmutated": true
+    },
+    {
+      "name": "two-choices",
+      "k": 2,
+      "questions": {
+        "a": {
+          "type": "choice",
+          "instructions": "A?",
+          "criteria": {
+            "card_arrival": "where is my new card",
+            "card_delivery_estimate": "when will the card arrive",
+            "card_not_working": "the card is declined",
+            "cash_withdrawal_charge": "charged for an ATM withdrawal",
+            "declined_card_payment": "a payment was declined",
+            "direct_debit_payment_not_recognised": "an unrecognised direct debit",
+            "exchange_rate": "what rate was applied",
+            "failed_transfer": "a transfer did not arrive",
+            "lost_or_stolen_card": "the card is gone",
+            "pending_card_payment": "a payment is still pending",
+            "refund_not_showing_up": "a refund has not arrived",
+            "request_refund": "I want money back",
+            "reverted_card_payment": "a payment was reversed",
+            "top_up_failed": "a top up did not work",
+            "transfer_fee_charged": "charged a fee for a transfer",
+            "verify_my_identity": "identity verification",
+            "wrong_amount_of_cash_received": "the ATM gave the wrong amount"
+          }
+        },
+        "b": {
+          "type": "choice",
+          "instructions": "B?",
+          "criteria": {
+            "refund": "money back",
+            "technical": "a bug",
+            "billing": "an invoice"
+          }
+        }
+      },
+      "asked": {
+        "a": {
+          "type": "choice",
+          "instructions": "A?",
+          "criteria": {
+            "lost_or_stolen_card": "the card is gone",
+            "refund_not_showing_up": "a refund has not arrived"
+          }
+        },
+        "b": {
+          "type": "choice",
+          "instructions": "B?",
+          "criteria": {
+            "technical": "a bug",
+            "billing": "an invoice"
+          }
+        }
+      },
+      "shortlist": {
+        "a": {
+          "labels": [
+            "lost_or_stolen_card",
+            "refund_not_showing_up"
+          ],
+          "scores": [
+            0.52596532,
+            0.453712617
+          ],
+          "k": 2,
+          "n": 17,
+          "passthrough": false
+        },
+        "b": {
+          "labels": [
+            "technical",
+            "billing"
+          ],
+          "scores": [
+            0.357736269,
+            0.121869246
+          ],
+          "k": 2,
+          "n": 3,
+          "passthrough": false
+        }
+      },
+      "caller_questions_unmutated": true
+    }
+  ]
+}

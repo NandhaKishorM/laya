@@ -5,8 +5,14 @@ For every checkpoint:
      layout (`rope_parameters` on transformers 5; `global_rope_theta` / `local_rope_theta` on
      4.x).
   2. Run-to-run determinism (same model, same input, twice) -- the float32 noise floor.
-  3. SDPA (what Laya asks transformers for) vs eager (reference math), on the user-visible
-     answers: choice labels, probabilities, confidence, noul, score.
+  3. SDPA (what Laya asks transformers for) vs eager (reference math), on the outputs the
+     answers are built from. Every number in the answer payload is rounded to 4 dp on the
+     way out (`_decode_answers`), which quantises backend noise away: sdpa and eager move
+     the hidden states by ~2e-5 here and the rounded answers by exactly 0, so comparing
+     answers reported a perfect 0.00e+00 behind a 1e-3 tolerance nothing could breach.
+     `run` hooks `_forward` and compares the unrounded (logits, act) pair instead, and
+     compares the answer labels exactly -- the previous numeric-only flattening dropped
+     strings entirely, so a flipped choice label was outside its reach too.
 
 Run:  python verify/numerics_check.py
 """
@@ -21,6 +27,7 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)          # repository root; <root>/laya/email.py must not shadow stdlib email
 
+import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from transformers import AutoConfig  # noqa: E402
 
@@ -42,24 +49,57 @@ STATES = [{"body": "I was charged twice for invoice 4411, please refund it today
           {"body": "मुझसे इनवॉइस 4411 के लिए दो बार शुल्क लिया गया, कृपया पैसे वापस करें।"}]
 
 
-def flatten(node, prefix=""):
-    """Every float/number in an answers payload, keyed by path."""
-    out = {}
+def strip_numbers(node):
+    """The answer payload with every number removed: question types and chosen labels.
+
+    The numbers themselves are compared on the raw outputs in `run` -- the payload rounds
+    them to 4 dp, which is what made the old numeric-only comparison blind (module
+    docstring, point 3). Labels and structure have no rounding, so comparing them exactly
+    adds what that flattening never had: a flipped choice label, a missing question, a
+    wrong type.
+    """
     if isinstance(node, dict):
-        for k, v in node.items():
-            out.update(flatten(v, "%s.%s" % (prefix, k)))
-    elif isinstance(node, list):
-        for i, v in enumerate(node):
-            out.update(flatten(v, "%s[%d]" % (prefix, i)))
-    elif isinstance(node, bool):
-        out[prefix] = float(node)
-    elif isinstance(node, (int, float)):
-        out[prefix] = float(node)
-    return out
+        return {k: strip_numbers(v) for k, v in node.items()}
+    if isinstance(node, list):
+        return [strip_numbers(v) for v in node]
+    if isinstance(node, bool) or isinstance(node, (int, float)):
+        return None
+    return node
 
 
 def run(agent):
-    return [flatten(agent.predict(state, QUESTIONS)["answers"]) for state in STATES]
+    """One pass over STATES: the unrounded (logits, act) pair behind each answer, plus the
+    non-numeric half of the answers themselves.
+
+    `_forward` is the numpy output pair `_decode_answers` turns into the answer payload,
+    and `_decode_answers` rounds every number it touches to 4 dp before anything leaves
+    `predict`. Hooking `_forward` compares the values the rounding starts from: sdpa and
+    eager differ by ~1e-5 there and by exactly 0 after rounding, so the answers alone
+    cannot show whether the forward pass changed. The hook is dropped as soon as the pass
+    completes (`del`, so the class method is visible again).
+    """
+    captured = []
+    original = agent._forward
+
+    def spy(b):
+        out = original(b)
+        captured.append((np.array(out[0], copy=True), np.array(out[1], copy=True)))
+        return out
+
+    agent._forward = spy
+    try:
+        answers = [agent.predict(state, QUESTIONS)["answers"] for state in STATES]
+    finally:
+        del agent._forward
+
+    numeric = []
+    for logits, act in captured:
+        row = {"logits[%d][%d]" % (i, j): float(v)
+               for i, row_values in enumerate(logits) for j, v in enumerate(row_values)}
+        row.update({"act[%d][%d]" % (i, j): float(v)
+                    for i, row_values in enumerate(act) for j, v in enumerate(row_values)})
+        numeric.append(row)
+    return numeric, [strip_numbers(a) for a in answers]
 
 
 def compare(label, a, b):
@@ -121,21 +161,23 @@ def main():
             failures.append("%s rope theta" % name)
 
         agent = laya.load(path, device="cpu")
-        first = run(agent)
-        second = run(agent)                      # noise floor: identical input, same weights
+        first, first_decisions = run(agent)
+        second, _ = run(agent)                   # noise floor: identical input, same weights
         floor = max(compare("", a, b)[0] for a, b in zip(first, second))
 
         impl = agent.model.encoder.config._attn_implementation
         agent.model.encoder.config._attn_implementation = "eager"
-        eager = run(agent)
+        eager, eager_decisions = run(agent)
         agent.model.encoder.config._attn_implementation = impl
         del agent
 
         backend = max(compare("", a, b)[0] for a, b in zip(first, eager))
         _, worst_key = max(compare("", a, b) for a, b in zip(first, eager))
-        ok = backend <= max(1e-3, floor * 10)
-        print("   %-16s float32 noise floor %.2e | sdpa-vs-eager %.2e (worst: %s)  %s"
-              % (name, floor, backend, worst_key.strip("."), "OK" if ok else "DIFFERS"))
+        decisions_same = first_decisions == eager_decisions
+        ok = backend <= max(1e-3, floor * 10) and decisions_same
+        print("   %-16s float32 noise floor %.2e | sdpa-vs-eager %.2e (worst: %s, labels %s)  %s"
+              % (name, floor, backend, worst_key.strip("."),
+                 "same" if decisions_same else "FLIPPED", "OK" if ok else "DIFFERS"))
         if not ok:
             failures.append("%s sdpa/eager" % name)
 

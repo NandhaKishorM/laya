@@ -233,7 +233,10 @@ router.unload()                               # on_evict fires per freed checkpo
 
 ## Composition
 
-Installed hooks first, then convenience callables; all share one context.
+Several hooks of different kinds compose naturally. Within one scope, `hooks=[...]` entries run in
+list order and the `on_predict_start=` / `on_predict_end=` convenience callables follow. Across
+scopes, process-wide default hooks come before an instance's hooks, and an instance's hooks before
+per-call hooks. Every hook of one call shares that call's context.
 
 ```python
 import laya
@@ -250,9 +253,9 @@ def audit(ctx):
 
 agent = laya.load(
     "convaiinnovations/laya",
-    hooks=[Metrics()],              # installed, runs first
-    on_predict_start=redact,        # convenience, appended
-    on_predict_end=audit,           # convenience, appended
+    hooks=[Metrics()],              # hooks=[...] entries run in list order
+    on_predict_start=redact,        # convenience callables follow the entries
+    on_predict_end=audit,           # both kinds share one ctx per call
     hooks_raise=True,
 )
 ```

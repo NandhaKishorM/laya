@@ -27,12 +27,15 @@ primary routing signal.
 `auto_task_detection=True` or pass `task="typed_decisions"`: it is fine-tuned on four specific
 synthetic workflows and should not be a silent default.
 """
+import contextvars
 import gc
 import inspect
 import json
 import os
+import re
 import threading
 import time
+import warnings
 from collections.abc import Sequence as SequenceABC
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
@@ -90,6 +93,22 @@ _TYPED_DECISION_WORKFLOWS = {
     "security_incidents": {"credential_compromise", "disposition", "severity", "true_positive", "urgency"},
 }
 
+# What a caller may name a checkpoint of their own, once `canonical_name` has trimmed and
+# lowercased it (so `Papers` is registered as `papers`): letters, digits, `.`, `_` and `-`, starting
+# with a letter or digit. No `/`, because a Hub id or a path is a source, not a name.
+_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+
+
+def canonical_name(name: Any) -> str:
+    """Trim, lowercase and resolve an alias, without asking whether the result names a checkpoint.
+
+    The spelling half of :func:`normalise_name`. `Router.resolve` applies it and then checks the
+    Router's own registry, which holds the built-in checkpoints plus any the caller registered;
+    `normalise_name` applies it and checks the built-in table alone.
+    """
+    key = str(name).strip().lower()
+    return _ALIASES.get(key, key)
+
 
 class RouteDecision(dict):
     """The routing outcome: which model, why, and what was detected.
@@ -110,8 +129,14 @@ class RouteDecision(dict):
 
 
 def normalise_name(name: str) -> str:
-    key = str(name).strip().lower()
-    key = _ALIASES.get(key, key)
+    """Canonical name of a built-in checkpoint, or ValueError.
+
+    This is the registry of the checkpoints the package ships. A Router may know more -- the
+    checkpoints registered on it with `Router(models=...)` or `Router.register` -- and resolves
+    names through `Router.resolve`, which accepts those too. Code with no Router at hand (the CLI's
+    `--model`, `laya.load`) keeps using this one.
+    """
+    key = canonical_name(name)
     if key not in DEFAULT_MODELS:
         raise ValueError("unknown model %r; choose one of %s (or an alias: %s)"
                          % (name, sorted(DEFAULT_MODELS), sorted(_ALIASES)))
@@ -192,14 +217,51 @@ def _english_from_code(value: Any) -> Optional[bool]:
     return primary in _ENGLISH_SUBTAGS
 
 
-class _ScanLong:
-    """Last start hook of `Router.predict_long`: score the routed state with the agent's
-    `predict_long` rather than leave `predict` to call `system_one` on one window of it.
+def _takes_lang(fn) -> bool:
+    """Whether `fn` can be given `lang=` as a keyword, read from its signature.
 
-    It is appended after every other start hook, so a caller's hook has already had its say: one
-    that answered (`ctx.skip(...)`) or rewrote the state/questions wins, and only what is left is
-    scanned. The `lang` rule is `predict`'s -- an explicit `lang=`, else the language routing
-    detected -- repeated here because `predict` computes it locally for its own call.
+    The same predicate `laya.evals` uses for the optional arguments it forwards (`_takes_lang`'s
+    `sort_by_length` and `min_confidence` siblings), with two differences worth naming:
+
+    * The kind is checked, not just the name: a positional-only `lang` (`..., lang, /`) or a
+      `*lang` cannot be passed as a keyword, so neither counts. A `**kwargs` forwarder does count,
+      because whatever it forwards to is the real entry point, and a decorator built with
+      `functools.wraps` is followed through to that entry point (`inspect.signature`'s default).
+    * A callable whose signature `inspect` cannot produce is given the argument, where
+      `laya.evals` withholds it. Opposite defaults for opposite stakes: `sort_by_length` is an
+      optimisation whose absence changes no answer, while dropping a `lang` silently changes which
+      language the document is read as. Passing it is also exactly what the Router did before, so
+      it is the no-change branch. `Exception` rather than `(TypeError, ValueError)` for the same
+      reason: `inspect.signature` reads `__signature__`, which is arbitrary code that can raise
+      anything, and a deployer's agent must not become uncallable because its signature is
+      awkward to introspect. (A `__call__` object is not this case: `inspect` reads its `__call__`
+      and it is handled like any other signature.)
+    """
+    try:
+        params = inspect.signature(fn).parameters.values()
+    except Exception:                      # see above: any failure to introspect means "unknown"
+        return True
+    return any((p.name == "lang" and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY))
+               or p.kind is p.VAR_KEYWORD for p in params)
+
+
+class _ScanLong:
+    """The scan `Router.predict_long` asks `predict` to run instead of `system_one`.
+
+    This was a start hook, appended after every other one, and being a hook is what made the scan
+    inherit the caller's hook machinery: `hooks_timeout` bounded laya's own inference and aborted
+    it, so any timeout shorter than the scan failed the call (measured: a ~4 s scan failed at both
+    `hooks_timeout=0.5` and `2.0`), `hooks_concurrent=False` held the hooks lock across the whole
+    forward pass instead of across each hook, `_SKIP_DEFAULTS` had not been entered yet so every
+    process-wide default hook fired a second time, and an error from the scan was swallowed under
+    `hooks_raise=False`, answering a single window where a scan was asked for. It is a plain
+    command object now, and `predict` runs it after the start chain returns.
+
+    Everything it reads, it reads from `ctx` at the moment it runs, which is what keeps this
+    equivalent to the hook it replaces: `ctx.agent` rather than the agent `predict` resolved, and
+    `ctx.decision` for the detected language, both of which a start hook can still have rewritten.
+    `predict` runs it last and only when nothing else has answered, so a hook that called
+    `ctx.skip(...)` or rewrote the state/questions wins exactly as before.
     """
 
     def __init__(self, window, stride, aggregate, batch_size, lang, state_token_counts=False):
@@ -210,24 +272,75 @@ class _ScanLong:
         self.lang = lang
         self.state_token_counts = state_token_counts
 
-    def on_predict_start(self, ctx):
-        if ctx.results is not None:
-            return
-        if not hasattr(ctx.agent, "predict_long"):
+    def run(self, ctx):
+        """Scan `ctx.states[0]` on `ctx.agent`, or refuse plainly when that agent cannot."""
+        agent = ctx.agent
+        scan = getattr(agent, "predict_long", None)
+        if scan is None:
             raise TypeError(
                 "%s has no predict_long, so a state longer than its window cannot be scanned; "
-                "the PyTorch Agent implements it, and an ONNX or hand-attached agent needs it too"
-                % type(ctx.agent).__name__
+                "the PyTorch Agent and ONNXAgent implement it, and an agent attached by hand needs "
+                "it too" % type(agent).__name__
             )
         lang = self.lang
         if lang is None:
-            lang = (ctx.decision.get("detection") or {}).get("language")
-        # Passed only when asked, as `predict` does with the token budgets: an agent attached
-        # via `attach()` may predate the argument.
-        extra = {"state_token_counts": True} if self.state_token_counts else {}
-        ctx.results = [ctx.agent.predict_long(
-            ctx.states[0], ctx.questions, window=self.window, stride=self.stride,
-            aggregate=self.aggregate, batch_size=self.batch_size, lang=lang, **extra)]
+            lang = ((ctx.decision or {}).get("detection") or {}).get("language")
+        kwargs = {"window": self.window, "stride": self.stride, "aggregate": self.aggregate,
+                  "batch_size": self.batch_size}
+        # Asked for only when the caller asked: an agent attached via `attach()` may
+        # predate the argument, so the common path must not pass it. Unlike `lang` above
+        # this is not withheld on a signature that lacks it -- a caller who asked for
+        # exact counts is better served by the TypeError than by counts silently absent
+        # from `usage`.
+        if self.state_token_counts:
+            kwargs["state_token_counts"] = True
+        # `lang` is passed only to an entry point whose signature takes it -- the check
+        # `laya.evals` already makes for the arguments it forwards. Deciding this from the
+        # signature rather than from a `TypeError` matters here: catching the error cannot tell
+        # `predict_long` refusing `lang` from something deeper inside it refusing `lang`, so a
+        # retry would re-run the whole scan, drop the caller's language, and answer as if nothing
+        # had happened. Nothing is caught, so every error the scan raises is the caller's to see.
+        if _takes_lang(scan):
+            kwargs["lang"] = lang
+        elif lang is not None:
+            # What reaches the log line is bounded, and so is the work of building it, because
+            # `lang` is caller data: `serve.py` type-checks it but does not cap its length, and the
+            # library entry point does not even do that. So an exact `str` is sliced to 32
+            # characters BEFORE it is rendered -- slicing the value rather than the rendered text,
+            # because a `str` subclass can report `len() == 2` with a megabyte of `__repr__`, and
+            # because slicing a subclass would run the subclass's `__getitem__` -- and anything
+            # else is a constant. Not even its type name: `__name__` is a writable slot on any heap
+            # type and a metaclass can make it a property that returns a megabyte, returns an
+            # object whose `__str__` then runs, or simply raises. A constant has no such reach.
+            # `repr` on the `str` branch is not decoration -- it is what escapes NUL and
+            # ANSI escapes out of the value, so a terminal-injection payload in `lang` reaches a
+            # log inert. Simplifying it to `%s` would be a regression, not a tidy-up.
+            if type(lang) is str:
+                shown = repr(lang[:32]) + ("..." if len(lang) > 32 else "")
+            else:
+                shown = "<not a string>"
+            warnings.warn(
+                "laya: Router.predict_long: %s.predict_long has no `lang` parameter, so the %s "
+                "language %s is not reaching it and the scan runs without it"
+                % (type(agent).__name__,
+                   "requested" if self.lang is not None else "detected", shown),
+                # 4, not 2: the frames from here are `run` -> `predict` -> `predict_long` -> the
+                # caller, so 2 points inside this file. That is not only the wrong attribution --
+                # the default "once per location" filter keys its registry on the frame this picks,
+                # so at 2 a process that drops the same language at twenty call sites would warn
+                # once and stay silent for the rest of its life.
+                RuntimeWarning, stacklevel=4)
+        return scan(ctx.states[0], ctx.questions, **kwargs)
+
+
+# How `predict_long` reaches `predict` without widening `predict`'s signature: a parameter there is
+# public API -- `tests/test_serve.py` asserts `predict`'s parameter list equals serve's
+# `BODY_CONTROLS | BODY_REFUSALS`, so a new one has to be forwarded from or refused on the HTTP body
+# -- and this is internal plumbing with no wire meaning. It travels the way `_SKIP_DEFAULTS` does.
+# `predict` clears it on read, so a hook that calls back into `predict` cannot inherit a scan that
+# was not meant for it.
+_SCAN: "contextvars.ContextVar[Optional[_ScanLong]]" = contextvars.ContextVar(
+    "laya_router_scan", default=None)
 
 
 # Checkpoint options a Router will not accept through `agent_kwargs`: the ones it sets for itself
@@ -264,7 +377,7 @@ def check_agent_kwargs(agent_kwargs: Dict[str, Any]) -> None:
             % (", ".join(repr(n) for n in unknown), sorted(accepted - _ROUTER_OWNED_AGENT_ARGS)))
 
 
-def _digests_from_env(models: Dict[str, Any]) -> Dict[str, Optional[Dict[str, str]]]:
+def _digests_from_env(models: Dict[str, Any], resolve=normalise_name) -> Dict[str, Optional[Dict[str, str]]]:
     """Turn `LAYA_SHA256_DIGESTS` into per-checkpoint digest maps when it names models.
 
     The variable has two shapes, and the value types say which. A flat
@@ -301,9 +414,9 @@ def _digests_from_env(models: Dict[str, Any]) -> Dict[str, Optional[Dict[str, st
         raise ValueError("LAYA_SHA256_DIGESTS must be either {artifact: digest} for every "
                          "checkpoint or {model: {artifact: digest}} per checkpoint; %s mixes "
                          "the two or holds a value that is neither" % sorted(data))
-    per_model = {normalise_name(k): dict(v) for k, v in data.items()}
+    per_model = {resolve(k): dict(v) for k, v in data.items()}
     for name in models:
-        per_model.setdefault(normalise_name(name), {})
+        per_model.setdefault(resolve(name), {})
     return per_model
 
 
@@ -534,7 +647,17 @@ class Router(HookRegistry):
         revision: Optional[str] = None,
         revisions: Optional[Dict[str, Optional[str]]] = None,
         max_loaded: int = 2,
-        default: str = "english",
+        # The fallback for text whose language detection abstains, not for all traffic:
+        # detected non-Latin script already routes to `multilingual` whatever this says.
+        # `multilingual` since 0.4.0, on the refreshed 51-language sweep: it leads on 50 of
+        # the 51, the one exception being English itself (0.820 against 0.710), and by 0.180
+        # macro accuracy excluding English. The break-even is about 62% English traffic, so a
+        # mostly-English deployment should set `default="english"` back. The asymmetry that
+        # settles it for undecided text is the failure mode rather than the mean: off English
+        # the English checkpoint collapses while staying confident (Khmer 0.000 accuracy at
+        # 0.952 mean confidence), so no `min_confidence` gate downstream can catch it, while
+        # the multilingual checkpoint gives up 0.110 on English and stays gateable.
+        default: str = "multilingual",
         auto_task_detection: bool = False,
         standalone_repos: bool = False,
         preload: bool = False,
@@ -554,9 +677,16 @@ class Router(HookRegistry):
         self.hooks_timeout = None if hooks_timeout is None else validate_timeout(hooks_timeout)
         self._hooks_lock = threading.RLock() if not hooks_concurrent else None
         self._hooks_mutex = threading.Lock()
-        self.models = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
-        if models:
-            self.models.update({normalise_name(k): v for k, v in models.items()})
+        # The registry: built-in names first, then whatever the caller adds. A key that is a
+        # built-in name re-points that checkpoint (a fine-tune standing in for `english`); any
+        # other key registers a checkpoint of the caller's own, served beside the built-ins and
+        # named in `model=` like one of them.
+        self.models: Dict[str, Any] = dict(STANDALONE_MODELS if standalone_repos else DEFAULT_MODELS)
+        # Free text per registered checkpoint, reported by `registered`; a public mutable attribute
+        # like `sha256_digests`, filled by `register`.
+        self.descriptions: Dict[str, str] = {}
+        for k, v in (models or {}).items():
+            self._add(k, v)
         self.device = device
         self.token = token or os.environ.get("HF_TOKEN")
         # Optional Hub revision (commit SHA/branch/tag) applied to every checkpoint load.
@@ -564,7 +694,7 @@ class Router(HookRegistry):
         # reviewed commits differ.
         self.revision = revision
         self.revisions: Dict[str, Optional[str]] = {
-            normalise_name(k): v for k, v in (revisions or {}).items()
+            self.resolve(k): v for k, v in (revisions or {}).items()
         }
         # Options forwarded to every `Agent` this Router builds, checked now so a bad name fails on
         # this line rather than the first request that happens to load a checkpoint.
@@ -575,11 +705,11 @@ class Router(HookRegistry):
         # overridden checkpoint by checkpoint by the argument. Keyed and normalised exactly like
         # `revisions`, so a misspelled model name fails here rather than leaving that checkpoint
         # unverified.
-        self.sha256_digests: Dict[str, Optional[Dict[str, str]]] = _digests_from_env(self.models)
-        argument = {normalise_name(k): v for k, v in (sha256_digests or {}).items()}
+        self.sha256_digests: Dict[str, Optional[Dict[str, str]]] = _digests_from_env(self.models, self.resolve)
+        argument = {self.resolve(k): v for k, v in (sha256_digests or {}).items()}
         self.sha256_digests.update(argument)
         self.max_loaded = max(1, int(max_loaded))
-        self.default = normalise_name(default)
+        self.default = self.resolve(default)
         self.auto_task_detection = bool(auto_task_detection)
         # An opt-in language hint installed for every request: a code, or a callable taking the
         # state and returning one (or None to abstain). Checked before the built-in detection,
@@ -606,13 +736,132 @@ class Router(HookRegistry):
         if preload:
             self.preload()
 
+    # ------------------------------------------------------------------ registry
+    def resolve(self, name: Any) -> str:
+        """Canonical key of a checkpoint this Router knows: built-in, aliased, or registered.
+
+        The instance counterpart of :func:`normalise_name`. Everything on the Router that takes a
+        checkpoint name goes through here, so a checkpoint registered under `papers` is accepted
+        wherever `english` is: `model=`, `task=`, `load`, `unload`, `preload`, `revisions`.
+        """
+        key = canonical_name(name)
+        if key in self.models:
+            return key
+        raise ValueError("unknown model %r; choose one of %s (or an alias: %s)"
+                         % (name, sorted(self.models), sorted(_ALIASES)))
+
+    def register(self, name: str, source: Any, description: Optional[str] = None) -> str:
+        """Add a checkpoint under `name`, to be served beside the built-in ones.
+
+        `source` is what `laya.load` accepts: a Hub repo id, a `(repo, subfolder)` pair, or a local
+        directory holding `model.safetensors` and `rl_agent_config.json` -- a fine-tune exported by
+        the training recipe, for instance. Nothing is downloaded or built here; the checkpoint loads
+        on first use like the built-ins, is evicted and unloaded like them, and counts toward
+        `max_loaded` like them.
+
+        `description` is free text about the checkpoint for whoever reads `registered`.
+
+        A nested `LAYA_SHA256_DIGESTS` entry for this name is picked up here; an entry for a name the
+        constructor did not know still fails at construction, as before.
+
+        Returns the canonical name. Registering an existing name replaces its source and unloads the
+        resident Agent, so the next load builds from the new source.
+        """
+        with self._lock:
+            key = canonical_name(name)
+            missing = object()      # a present None (an opted-out digest entry) is not an absent key
+            before = (self.models.get(key, missing), self.sha256_digests.get(key, missing),
+                      self.descriptions.get(key, missing))
+            try:
+                key = self._add(name, source)
+                if key not in self.sha256_digests:
+                    # A nested LAYA_SHA256_DIGESTS names no file of this checkpoint: the `{}` placeholder
+                    # the constructor gives every model keeps `verify_digests` off the nested map.
+                    from_env = _digests_from_env([key], canonical_name).get(key)
+                    if from_env is not None:
+                        self.sha256_digests[key] = from_env
+                if description is not None:
+                    self.descriptions[key] = str(description)
+            except BaseException:       # a refused register() leaves the router as it was
+                for table, old in ((self.models, before[0]), (self.sha256_digests, before[1]),
+                                   (self.descriptions, before[2])):
+                    if old is missing:
+                        table.pop(key, None)
+                    else:
+                        table[key] = old
+                raise
+            replaced = before[0] is not missing and before[0] != self.models[key]
+        if replaced:
+            freed = self._unload_key(key)       # outside the lock, waiting for a build of the old source
+            if freed:
+                self._dispatch_lifecycle("on_evict", freed)
+        return key
+
+    def unregister(self, name: str) -> None:
+        """Remove a registered checkpoint: its source, description, revision and digest entries, and resident Agent.
+
+        A built-in name is refused (re-point it with `register`, it cannot be removed), and so is a
+        name the router does not know. A resident Agent is unloaded first, waiting for an in-flight
+        build of it, so a request that already holds it finishes; a request that names it afterwards
+        gets the usual unknown-model error.
+        """
+        key = self.resolve(name)
+        if key in DEFAULT_MODELS:
+            raise ValueError("%r is a built-in checkpoint and cannot be unregistered" % key)
+        if key == self.default:
+            raise ValueError("%r is this Router's default checkpoint; set another default before "
+                             "unregistering it" % key)
+        with self._lock:
+            self.models.pop(key, None)      # first, so no new load can start a build of it
+        freed = self._unload_key(key)       # waits for a build that had already read its source
+        with self._lock:
+            for table in (self.descriptions, self.sha256_digests, self.revisions):
+                table.pop(key, None)
+            self._agents.pop(key, None)
+            if key in self._order:
+                self._order.remove(key)
+        self._dispatch_lifecycle("on_evict", freed)
+
+    @property
+    def registered(self) -> Dict[str, Dict[str, Any]]:
+        """The checkpoints registered beside the built-ins: name -> source and description.
+
+        Serialisable as it is.
+        """
+        with self._lock:
+            return {
+                name: {
+                    "source": _repo_str(spec),
+                    "description": self.descriptions.get(name),
+                }
+                for name, spec in self.models.items() if name not in DEFAULT_MODELS
+            }
+
+    def _add(self, name: Any, source: Any) -> str:
+        """`register` without the lock, for the constructor."""
+        key = canonical_name(name)
+        if key not in DEFAULT_MODELS:
+            if not isinstance(name, str) or not _NAME_RE.match(key):
+                raise ValueError("invalid checkpoint name %r: use lowercase letters, digits, '.', '_' or '-', "
+                                 "starting with a letter or digit" % (name,))
+            if key == "auto":
+                raise ValueError("invalid checkpoint name %r: 'auto' means automatic routing in every "
+                                 "model= argument" % (name,))
+        if source is not None and not isinstance(source, (str, tuple, list)):
+            raise TypeError("checkpoint source for %r must be a repo id, a local path or a (repo, subfolder) "
+                            "pair, got %s" % (name, type(source).__name__))
+        if isinstance(source, str) and source.startswith("~"):
+            source = os.path.expanduser(source)     # a local path, never a Hub repo id
+        self.models[key] = source
+        return key
+
     # ------------------------------------------------------------------ loading
     def load(self, name: str):
         """Return the Agent for `name`, downloading and building it on first use.
 
         Concurrent callers share a single Agent instead of building duplicates.
         """
-        key = normalise_name(name)
+        key = self.resolve(name)
         while True:
             with self._lock:
                 if key in self._agents:
@@ -672,6 +921,9 @@ class Router(HookRegistry):
         """Construct the Agent for `key`: config is read under `_lock`, the build runs outside it."""
         from .agent import Agent
         with self._lock:
+            if self.models.get(key) is None:
+                raise ValueError("checkpoint %r has no source to load from: it was attached as a built Agent "
+                                 "and is no longer resident; attach it again, or register a path or repo" % key)
             repo, sub = _split(self.models[key])
             kwargs = {"device": self.device, "token": self.token, "subfolder": sub}
             # A None or blank entry in `revisions` is "no pin of its own", so the checkpoint
@@ -719,6 +971,8 @@ class Router(HookRegistry):
                 import torch
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
+                if hasattr(torch, "mps") and torch.backends.mps.is_available():
+                    torch.mps.empty_cache()
             except Exception:
                 pass
         return evicted
@@ -739,9 +993,16 @@ class Router(HookRegistry):
         Useful when the process has a checkpoint loaded for other reasons: a demo that already
         built `convaiinnovations/laya` can hand it to the router rather than pay for -- and hold
         in memory -- a duplicate 421M parameters.
+
+        A name the Router does not know yet is registered on the spot, with no source: the agent
+        serves under that name while resident, and loading it again after an unload needs
+        `register(name, source)` first.
         """
-        key = normalise_name(name)
         with self._lock:
+            try:
+                key = self.resolve(name)
+            except ValueError:
+                key = self._add(name, None)
             self._agents[key] = agent
             self._touch(key)
             self.max_loaded = max(self.max_loaded, len(self._agents))
@@ -755,7 +1016,12 @@ class Router(HookRegistry):
         server or a demo. `max_loaded` is raised to fit both the requested checkpoints and
         all already-resident agents, so incremental preloading does not evict either.
         """
-        names = [normalise_name(n) for n in (list(self.models) if names is None else names)]
+        if names is None:
+            # Every checkpoint that has a source to build from; an `attach`ed agent registered
+            # without one is resident already and would raise here once evicted.
+            with self._lock:
+                names = [n for n, source in self.models.items() if source is not None]
+        names = [self.resolve(n) for n in names]
         with self._lock:
             self.max_loaded = max(self.max_loaded, len(set(names) | set(self._agents)))
         for n in names:
@@ -766,6 +1032,33 @@ class Router(HookRegistry):
                 self.load(n)
         return self
 
+    def _unload_key(self, key: str) -> List[str]:
+        """`unload` for a canonical key that may already be gone from `models`; returns what it freed."""
+        freed: List[str] = []
+        while True:
+            with self._lock:
+                inflight = self._loading.get(key)
+                if inflight is None:
+                    agent = self._agents.pop(key, None)
+                    if key in self._order:
+                        self._order.remove(key)
+                    freed = [key] if agent is not None else []
+                    del agent
+                    gc.collect()
+                    try:
+                        import torch
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                        if hasattr(torch, "xpu") and torch.xpu.is_available():
+                            torch.xpu.empty_cache()
+                        if hasattr(torch, "mps") and torch.backends.mps.is_available():
+                            torch.mps.empty_cache()
+                    except Exception:
+                        pass
+                    break
+            inflight.done.wait()
+        return freed
+
     def unload(self, name: Optional[str] = None):
         """Free one model, or all of them."""
         # When unloading a specific checkpoint, wait only for an in-flight build of THAT
@@ -773,27 +1066,7 @@ class Router(HookRegistry):
         # When unloading all checkpoints (`name is None`), wait for all in-flight builds.
         freed: List[str] = []
         if name is not None:
-            key = normalise_name(name)
-            while True:
-                with self._lock:
-                    inflight = self._loading.get(key)
-                    if inflight is None:
-                        agent = self._agents.pop(key, None)
-                        if key in self._order:
-                            self._order.remove(key)
-                        freed = [key] if agent is not None else []
-                        del agent
-                        gc.collect()
-                        try:
-                            import torch
-                            if torch.cuda.is_available():
-                                torch.cuda.empty_cache()
-                            if hasattr(torch, "xpu") and torch.xpu.is_available():
-                                torch.xpu.empty_cache()
-                        except Exception:
-                            pass
-                        break
-                inflight.done.wait()
+            freed = self._unload_key(self.resolve(name))
         else:
             while True:
                 with self._lock:
@@ -809,6 +1082,8 @@ class Router(HookRegistry):
                                 torch.cuda.empty_cache()
                             if hasattr(torch, "xpu") and torch.xpu.is_available():
                                 torch.xpu.empty_cache()
+                            if hasattr(torch, "mps") and torch.backends.mps.is_available():
+                                torch.mps.empty_cache()
                         except Exception:
                             pass
                         break
@@ -891,14 +1166,16 @@ class Router(HookRegistry):
         which lets a language-identification model abstain. Pass one here, or set
         `Router(lang_guess=...)` to apply it to every request.
         """
+        # `.get`, not `[]`: a concurrent `unregister` can remove the name between `resolve` and this
+        # lookup, and the decision then reports no repo rather than raising.
         if model is not None:
-            key = normalise_name(model)
-            return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit model=%r" % model,
+            key = self.resolve(model)
+            return RouteDecision(model=key, repo=_repo_str(self.models.get(key)), reason="explicit model=%r" % model,
                                  detection=None, workflow=None)
 
         if task is not None:
-            key = normalise_name("typed-decisions" if str(task).lower().replace("-", "_") == "typed_decisions" else task)
-            return RouteDecision(model=key, repo=_repo_str(self.models[key]), reason="explicit task=%r" % task,
+            key = self.resolve("typed-decisions" if str(task).lower().replace("-", "_") == "typed_decisions" else task)
+            return RouteDecision(model=key, repo=_repo_str(self.models.get(key)), reason="explicit task=%r" % task,
                                  detection=None, workflow=None)
 
         workflow = match_typed_decisions_workflow(questions or {})
@@ -952,8 +1229,11 @@ class Router(HookRegistry):
         elif det["language_undecided"]:
             # Nothing identifies the language: too short, or only content words ("Quero cancelar",
             # "Esqueci minha senha"). That is no evidence of English either, so it takes the same
-            # `default` as a state with no letters. A deployment that serves mostly non-English
-            # traffic sets `Router(default="multilingual")`; the stock default keeps it English.
+            # `default` as a state with no letters, which is `multilingual` since 0.4.0.
+            # #54 measured the cost of the old English default here: 128 of 200 German
+            # utterances reached this branch and lost 20 accuracy points against
+            # `model="multilingual"` on the same rows. A mostly-English deployment sets
+            # `Router(default="english")`.
             key = self.default
             reason = ("Latin script, language not identified and no non-English letters; "
                       "using default (%s)" % key)
@@ -1011,6 +1291,11 @@ class Router(HookRegistry):
             max_len=max_len,
             head_max_len=head_max_len,
         )
+        # Read and clear: this call owns the scan, and a hook that calls back into `predict` must
+        # not inherit it. `predict_long` restores the previous value when it returns.
+        scan = _SCAN.get()
+        if scan is not None:
+            _SCAN.set(None)
         try:
             # Per-call hooks apply to the whole call, including on_route inside route().
             decision = self.route(state, questions, model=model, task=task, lang=lang,
@@ -1029,29 +1314,46 @@ class Router(HookRegistry):
             ctx.started_at = time.perf_counter()
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             if ctx.results is None:
-                # Pass token-budget overrides only when set, so any Agent-like object that does
-                # not accept them still works on the default path.
-                overrides = {}
-                if ctx.max_len is not None:
-                    overrides["max_len"] = ctx.max_len
-                if ctx.head_max_len is not None:
-                    overrides["head_max_len"] = ctx.head_max_len
-                if state_token_counts:
-                    # Only when asked, exactly as the token budgets are: an agent attached via
-                    # `attach()` may predate the argument, and the common path must not pass it.
-                    overrides["state_token_counts"] = True
-
                 skip = _SKIP_DEFAULTS.set(True)
                 try:
-                    result = agent.system_one(ctx.states[0], ctx.questions, lang=effective_lang, **overrides)
-                except TypeError as e:
-                    if "unexpected keyword argument 'lang'" in str(e):
-                        result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
+                    if scan is not None:
+                        # After the start chain, not inside it: the scan is laya's own forward pass,
+                        # so it is not bounded by `hooks_timeout`, does not hold the hooks lock, and
+                        # runs under `_SKIP_DEFAULTS` like every other inference this method does.
+                        # It sizes its windows from `window`/`stride` and the agent's own config, so
+                        # `ctx.max_len`/`ctx.head_max_len` do not reach it -- as has always been the
+                        # case, and as `predict_long` documents by not accepting them.
+                        result = scan.run(ctx)
                     else:
-                        raise
+                        # Pass token-budget overrides only when set, so any Agent-like object that
+                        # does not accept them still works on the default path.
+                        overrides = {}
+                        if ctx.max_len is not None:
+                            overrides["max_len"] = ctx.max_len
+                        if ctx.head_max_len is not None:
+                            overrides["head_max_len"] = ctx.head_max_len
+                        if state_token_counts:
+                            # Only when asked, exactly as the token budgets are: an agent
+                            # attached via `attach()` may predate the argument, and the
+                            # common path must not pass it.
+                            overrides["state_token_counts"] = True
+                        try:
+                            result = agent.system_one(ctx.states[0], ctx.questions,
+                                                      lang=effective_lang, **overrides)
+                        except TypeError as e:
+                            if "unexpected keyword argument 'lang'" in str(e):
+                                result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
+                            else:
+                                raise
                 finally:
                     _SKIP_DEFAULTS.reset(skip)
-                result["routing"] = dict(decision)
+                if scan is not None:
+                    # `setdefault`, because the scan used to set `ctx.results` from inside the
+                    # hook chain and reach the branch below: an agent whose `predict_long` returns
+                    # its own `routing` kept it, and that stays true.
+                    result.setdefault("routing", dict(decision))
+                else:
+                    result["routing"] = dict(decision)
                 ctx.results = [result]
             else:
                 # A cache hit short-circuits inference, but Router.predict still promises a
@@ -1107,9 +1409,9 @@ class Router(HookRegistry):
 
         Args:
             window: state tokens per window. Defaults to the routed checkpoint's budget
-                    (`max_len - head_max_len - 8`), capped at the room the questions leave for the
-                    state so no window is truncated again on the way in; a smaller window isolates
-                    a localized span.
+                    (`max(64, max_len - head_max_len - 8)`; the 64 is a floor), capped at the room
+                    the questions leave for the state so no window is truncated again on the way
+                    in; a smaller window isolates a localized span.
             stride: token step between windows; defaults to half the effective window (50%
                     overlap). A stride past that window is a `ValueError`, since the tokens between
                     windows would reach no model.
@@ -1120,19 +1422,29 @@ class Router(HookRegistry):
             The usual `predict` payload, with `usage["windows"]` counting the windows scored.
 
         Raises:
-            TypeError: the routed agent has no `predict_long` (an ONNX agent, or one attached by
-                    hand), so there is nothing to scan with. Raised under the router's
-                    `hooks_raise` policy, which defaults to raising.
+            TypeError: the routed agent has no `predict_long` -- one attached by hand, since both
+                    `Agent` and `ONNXAgent` implement it -- so there is nothing to scan with.
+                    Always raised, whatever `hooks_raise` is, and so is every other error the scan
+                    itself raises -- none are caught: the scan is this method's own work, not a
+                    caller's hook, so the hook error policy does not decide whether it may be
+                    skipped. It previously ran as a start hook, where `hooks_raise=False` swallowed
+                    this and returned one window scored by `system_one` -- a different question than
+                    the one asked. An agent whose `predict_long` has no `lang` parameter is scanned
+                    without one and warned about, not failed; that is a signature check, not a
+                    swallowed error.
         """
-        per_call = normalise_hooks(hooks, on_predict_start, on_predict_end)
-        # `state_token_counts` goes to the scan hook, not to `predict`: `_ScanLong` sets
-        # `ctx.results`, so `predict` never reaches `system_one` on this path.
-        per_call.append(_ScanLong(window=window, stride=stride, aggregate=aggregate,
-                                  batch_size=batch_size, lang=lang,
-                                  state_token_counts=state_token_counts))
-        return self.predict(state, questions, model=model, task=task, lang=lang,
-                            lang_guess=lang_guess, hooks=per_call,
-                            hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
+        # `state_token_counts` rides on the scan object, not on `predict`: the scan answers
+        # this call, so `predict` never reaches `system_one` on this path.
+        token = _SCAN.set(_ScanLong(window=window, stride=stride, aggregate=aggregate,
+                                    batch_size=batch_size, lang=lang,
+                                    state_token_counts=state_token_counts))
+        try:
+            return self.predict(state, questions, model=model, task=task, lang=lang,
+                                lang_guess=lang_guess,
+                                hooks=normalise_hooks(hooks, on_predict_start, on_predict_end),
+                                hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
+        finally:
+            _SCAN.reset(token)
 
     def decide(self, state: Union[str, dict, list], schema: Any = None, *,
                questions: Optional[Dict[str, Any]] = None, return_details: bool = False,
@@ -1177,6 +1489,9 @@ class Router(HookRegistry):
         self,
         requests: Sequence[Dict[str, Any]],
         hooks_timeout: Optional[float] = None,
+        *,
+        hooks=None,
+        hooks_raise: Optional[bool] = None,
     ) -> List[RouteDecision]:
         """Route a heterogeneous request batch without loading any checkpoints.
 
@@ -1192,6 +1507,8 @@ class Router(HookRegistry):
                 ``questions``.
             hooks_timeout: Override the Router's ``hooks_timeout`` for this call, applied to
                 every request's ``on_route`` dispatch, as on :meth:`route`.
+            hooks (HookArg): Per-call hook or sequence of hooks for this call.
+            hooks_raise: Override the Router's ``hooks_raise`` policy for this call.
         """
         if not isinstance(requests, SequenceABC) or isinstance(requests, (str, bytes)):
             raise TypeError("requests must be a sequence of request dictionaries")
@@ -1220,6 +1537,8 @@ class Router(HookRegistry):
                     task=request.get("task"),
                     lang=request.get("lang"),
                     lang_guess=request.get("lang_guess"),
+                    hooks=hooks,
+                    hooks_raise=hooks_raise,
                     hooks_timeout=hooks_timeout,
                 )
             )
@@ -1233,7 +1552,15 @@ class Router(HookRegistry):
         hooks_timeout: Optional[float] = None,
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
+        *,
+        # Keyword-only, behind the `*`: a positional slot here would widen the positional
+        # prefix and `tests/test_hooks.py` pins that a sixth positional argument is refused,
+        # which is what keeps `hooks` from being passed by position.
         state_token_counts: bool = False,
+        hooks=None,
+        on_predict_start=None,
+        on_predict_end=None,
+        hooks_raise: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
         """Route and execute a heterogeneous request batch with minimal model churn.
 
@@ -1267,16 +1594,21 @@ class Router(HookRegistry):
                 overrides.
             batch_size: Optional maximum number of states per Agent forward-pass batch.
             hooks_timeout: Override the Router's ``hooks_timeout`` for this call.
+            min_confidence: Optional float or per-bucket mapping for confidence gating.
             sort_by_length: Forwarded to every ``Agent.predict_batch`` call, so each question
                 group pads to a shorter maximum; see ``Agent.predict_batch``. Results retain the
                 input order either way. Silently dropped for an attached agent whose
                 ``predict_batch`` predates the knob (#294).
+            hooks (HookArg): Per-call hook or sequence of hooks for this call.
+            on_predict_start (PredictHookArg): Plain callable or sequence of callables for start events.
+            on_predict_end (PredictHookArg): Plain callable or sequence of callables for end events.
+            hooks_raise: Override the Router's ``hooks_raise`` policy for this call.
 
         Returns:
             One normal Router prediction result per request, in the same order as the input.
         """
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
-        decisions = self.route_batch(requests, hooks_timeout=hooks_timeout)
+        decisions = self.route_batch(requests, hooks=hooks, hooks_raise=hooks_raise, hooks_timeout=hooks_timeout)
         if not decisions:
             return []
 
@@ -1288,19 +1620,20 @@ class Router(HookRegistry):
             # Indexed, not `.model`: an on_route hook may replace the decision with a plain dict,
             # which `predict` accepts too. Normalised, because such a hook may name the checkpoint
             # by an alias ("ml"), and that request must share its checkpoint's forward pass.
-            groups.setdefault(normalise_name(decision["model"]), []).append(i)
+            groups.setdefault(self.resolve(decision["model"]), []).append(i)
 
         # Counted rather than marked with None: an end hook may leave a None result, which
         # `predict` returns as it is.
         results: List[Any] = [None] * len(requests)
         answered = 0
-        # `compose_hooks`, not `list(self.hooks)`: this is the composition `predict` uses at its
-        # own dispatch site, and it is what merges in `set_default_hooks`. Reading the instance
-        # list alone silently dropped every process-wide default from the batched path while
-        # keeping them on `predict`, so a default audit or metrics hook saw no Router-level event
-        # for a request that arrived through `predict_batch`.
-        active = compose_hooks(self.hooks)
-        raise_errors = self.hooks_raise
+        # `compose_hooks`, not `list(self.hooks)`: the composition `predict` uses. It merges
+        # `set_default_hooks` defaults, then installed hooks, then this call's `hooks`,
+        # `on_predict_start` and `on_predict_end`. Reading the instance list alone silently
+        # dropped every `set_default_hooks` default from the batched path while `predict`
+        # kept them, which was the bug behind #909: a default audit or metrics hook saw no
+        # Router-level event for a request that arrived through `predict_batch`.
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
+        raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
 
         for model_name, indices in groups.items():

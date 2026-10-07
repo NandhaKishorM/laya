@@ -1,0 +1,67 @@
+{
+  "generator": "tools/dump_golden.py",
+  "onnx_dir": "multilingual",
+  "laya_version": "0.3.24",
+  "onnxruntime_version": "1.30.0",
+  "transformers_version": "5.17.0",
+  "config": {
+    "encoder": "jhu-clsp/mmBERT-base",
+    "head_layers": 2,
+    "max_len": 1024,
+    "head_max_len": 256,
+    "max_prefixes": 6,
+    "act_costs": {
+      "escalate": 0.5
+    },
+    "cost_wrong_act": 3.0,
+    "amp_dtype": "bf16",
+    "model_name": "rl-agent",
+    "temperature": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "temperature_by_options": {},
+    "training": {
+      "updates": 15987,
+      "epochs_completed": 4,
+      "hours": 4.97,
+      "world_size": 1,
+      "fine_tuned_from_checkpoint": false
+    }
+  },
+  "max_len": 1024,
+  "head_max_len": 256,
+  "temperature": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "temperature_by_options": {},
+  "qtypes": {
+    "choice": 0,
+    "score": 1,
+    "noul": 2
+  },
+  "special_tokens": {
+    "pad_id": 0,
+    "cls_id": 2,
+    "sep_id": 1,
+    "mask_id": 4,
+    "unk_id": 3,
+    "mask_token": "<mask>",
+    "cls_token": "<bos>",
+    "sep_token": "<eos>",
+    "pad_token": "<pad>"
+  },
+  "onnx_self_check": {
+    "single_noul": {
+      "logits_maxdiff": 5.245208740234375e-06,
+      "act_maxdiff": 0.0003662109375
+    },
+    "triage_4q": {
+      "logits_maxdiff": 8.821487426757812e-06,
+      "act_maxdiff": 0.0006103515625
+    }
+  }
+}

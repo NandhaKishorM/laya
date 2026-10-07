@@ -20,6 +20,7 @@
  */
 import type { QuestionDef } from "./agent.js";
 import { checkMinConfidence, flagLowConfidence } from "./common.js";
+import type { MinConfidence } from "./common.js";
 
 export const MAX_PROPERTIES = 32;
 export const MAX_OPTIONS = 32;
@@ -72,10 +73,10 @@ export interface DecideOptions {
   questions?: Record<string, QuestionDef>;
   /** Return a DecisionResult with confidence, probabilities and raw answers. */
   returnDetails?: boolean;
-  /** Minimum confidence threshold in [0.0, 1.0]. Low confidence answers project to null. */
-  minConfidence?: number | null;
+  /** Minimum confidence threshold in [0.0, 1.0] or per-bucket map. Low confidence answers project to null. */
+  minConfidence?: MinConfidence | null;
   /** Python parity alias for minConfidence. */
-  min_confidence?: number | null;
+  min_confidence?: MinConfidence | null;
   /** Anything else is forwarded to runner.predict (hooks, model, ...). */
   [k: string]: unknown;
 }

@@ -1,0 +1,1747 @@
+{
+  "bundle_repo": "convaiinnovations/laya",
+  "default_models": {
+    "english": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "multilingual": [
+      "convaiinnovations/laya",
+      "multilingual"
+    ],
+    "typed-decisions": [
+      "convaiinnovations/laya",
+      "typed-decisions"
+    ]
+  },
+  "standalone_models": {
+    "english": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "multilingual": [
+      "convaiinnovations/laya-multilingual",
+      null
+    ],
+    "typed-decisions": [
+      "convaiinnovations/laya-typed-decisions",
+      null
+    ]
+  },
+  "aliases": {
+    "en": "english",
+    "laya": "english",
+    "default": "english",
+    "multi": "multilingual",
+    "ml": "multilingual",
+    "laya-multilingual": "multilingual",
+    "typed": "typed-decisions",
+    "typed_decisions": "typed-decisions",
+    "laya-typed-decisions": "typed-decisions",
+    "decisions": "typed-decisions"
+  },
+  "repo_strings": {
+    "english": "convaiinnovations/laya",
+    "multilingual": "convaiinnovations/laya/multilingual",
+    "typed-decisions": "convaiinnovations/laya/typed-decisions"
+  },
+  "standalone_repo_strings": {
+    "english": "convaiinnovations/laya",
+    "multilingual": "convaiinnovations/laya-multilingual",
+    "typed-decisions": "convaiinnovations/laya-typed-decisions"
+  },
+  "max_loaded_default": 2,
+  "normalise_name": {
+    "english": {
+      "ok": "english"
+    },
+    "multilingual": {
+      "ok": "multilingual"
+    },
+    "typed-decisions": {
+      "ok": "typed-decisions"
+    },
+    "decisions": {
+      "ok": "typed-decisions"
+    },
+    "default": {
+      "ok": "english"
+    },
+    "en": {
+      "ok": "english"
+    },
+    "laya": {
+      "ok": "english"
+    },
+    "laya-multilingual": {
+      "ok": "multilingual"
+    },
+    "laya-typed-decisions": {
+      "ok": "typed-decisions"
+    },
+    "ml": {
+      "ok": "multilingual"
+    },
+    "multi": {
+      "ok": "multilingual"
+    },
+    "typed": {
+      "ok": "typed-decisions"
+    },
+    "typed_decisions": {
+      "ok": "typed-decisions"
+    },
+    "": {
+      "error": "unknown model ''; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+    },
+    "  ": {
+      "error": "unknown model '  '; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+    },
+    "ENGLISH": {
+      "ok": "english"
+    },
+    " english ": {
+      "ok": "english"
+    },
+    "English": {
+      "ok": "english"
+    },
+    "nope": {
+      "error": "unknown model 'nope'; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+    },
+    "laya-x": {
+      "error": "unknown model 'laya-x'; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+    },
+    "en-US": {
+      "error": "unknown model 'en-US'; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+    },
+    "typed decisions": {
+      "error": "unknown model 'typed decisions'; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+    },
+    "multilingual2": {
+      "error": "unknown model 'multilingual2'; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+    },
+    " english": {
+      "ok": "english"
+    },
+    "english ": {
+      "ok": "english"
+    },
+    "　multilingual": {
+      "ok": "multilingual"
+    },
+    "typed-decisions ": {
+      "ok": "typed-decisions"
+    },
+    "en": {
+      "ok": "english"
+    }
+  },
+  "resolve_model_spec": {
+    "english": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "multilingual": [
+      "convaiinnovations/laya",
+      "multilingual"
+    ],
+    "typed-decisions": [
+      "convaiinnovations/laya",
+      "typed-decisions"
+    ],
+    "decisions": [
+      "convaiinnovations/laya",
+      "typed-decisions"
+    ],
+    "default": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "en": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "laya": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "laya-multilingual": [
+      "convaiinnovations/laya",
+      "multilingual"
+    ],
+    "laya-typed-decisions": [
+      "convaiinnovations/laya",
+      "typed-decisions"
+    ],
+    "ml": [
+      "convaiinnovations/laya",
+      "multilingual"
+    ],
+    "multi": [
+      "convaiinnovations/laya",
+      "multilingual"
+    ],
+    "typed": [
+      "convaiinnovations/laya",
+      "typed-decisions"
+    ],
+    "typed_decisions": [
+      "convaiinnovations/laya",
+      "typed-decisions"
+    ],
+    "": null,
+    "  ": null,
+    "ENGLISH": [
+      "convaiinnovations/laya",
+      null
+    ],
+    " english ": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "English": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "nope": null,
+    "laya-x": null,
+    "en-US": null,
+    "typed decisions": null,
+    "multilingual2": null,
+    " english": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "english ": [
+      "convaiinnovations/laya",
+      null
+    ],
+    "　multilingual": [
+      "convaiinnovations/laya",
+      "multilingual"
+    ],
+    "typed-decisions ": [
+      "convaiinnovations/laya",
+      "typed-decisions"
+    ],
+    "en": [
+      "convaiinnovations/laya",
+      null
+    ]
+  },
+  "typed_decision_workflows": {
+    "agent_trace_observability": [
+      "action",
+      "needs_review",
+      "outcome",
+      "risk",
+      "urgency"
+    ],
+    "customer_service": [
+      "action",
+      "category",
+      "churn_risk",
+      "needs_human",
+      "urgency"
+    ],
+    "invoice_processing": [
+      "discrepancy_severity",
+      "disposition",
+      "duplicate",
+      "matches_order",
+      "urgency"
+    ],
+    "security_incidents": [
+      "credential_compromise",
+      "disposition",
+      "severity",
+      "true_positive",
+      "urgency"
+    ]
+  },
+  "match_workflow": [
+    [
+      [
+        "action",
+        "needs_review",
+        "outcome",
+        "risk",
+        "urgency"
+      ],
+      "agent_trace_observability"
+    ],
+    [
+      [
+        "action",
+        "category",
+        "churn_risk",
+        "needs_human",
+        "urgency"
+      ],
+      "customer_service"
+    ],
+    [
+      [
+        "discrepancy_severity",
+        "disposition",
+        "duplicate",
+        "matches_order",
+        "urgency"
+      ],
+      "invoice_processing"
+    ],
+    [
+      [
+        "credential_compromise",
+        "disposition",
+        "severity",
+        "true_positive",
+        "urgency"
+      ],
+      "security_incidents"
+    ],
+    [
+      [
+        "action",
+        "category",
+        "churn_risk",
+        "extra",
+        "needs_human",
+        "urgency"
+      ],
+      null
+    ],
+    [
+      [
+        "action",
+        "category",
+        "churn_risk",
+        "needs_human"
+      ],
+      null
+    ],
+    [
+      [
+        "urgency"
+      ],
+      null
+    ],
+    [
+      [],
+      null
+    ],
+    [
+      [
+        "action",
+        "action",
+        "category",
+        "churn_risk",
+        "needs_human",
+        "urgency"
+      ],
+      "customer_service"
+    ]
+  ],
+  "english_from_code": [
+    [
+      null,
+      null
+    ],
+    [
+      "",
+      null
+    ],
+    [
+      "   ",
+      null
+    ],
+    [
+      "en",
+      true
+    ],
+    [
+      "EN",
+      true
+    ],
+    [
+      "En",
+      true
+    ],
+    [
+      "eng",
+      true
+    ],
+    [
+      "english",
+      true
+    ],
+    [
+      "ENGLISH",
+      true
+    ],
+    [
+      "en-US",
+      true
+    ],
+    [
+      "en_US",
+      true
+    ],
+    [
+      "en_US.UTF-8",
+      true
+    ],
+    [
+      "en-GB",
+      true
+    ],
+    [
+      "engx",
+      false
+    ],
+    [
+      "enx",
+      false
+    ],
+    [
+      "fr",
+      false
+    ],
+    [
+      "FR",
+      false
+    ],
+    [
+      "pt-BR",
+      false
+    ],
+    [
+      "pt_BR.UTF-8",
+      false
+    ],
+    [
+      "zh-Hans",
+      false
+    ],
+    [
+      "de",
+      false
+    ],
+    [
+      "x",
+      false
+    ],
+    [
+      "c",
+      null
+    ],
+    [
+      "C",
+      null
+    ],
+    [
+      "POSIX",
+      null
+    ],
+    [
+      "C.UTF-8",
+      null
+    ],
+    [
+      "und",
+      null
+    ],
+    [
+      "zxx",
+      null
+    ],
+    [
+      "mul",
+      null
+    ],
+    [
+      "UND",
+      null
+    ],
+    [
+      ".",
+      null
+    ],
+    [
+      "-",
+      null
+    ],
+    [
+      "_",
+      null
+    ],
+    [
+      ".UTF-8",
+      null
+    ],
+    [
+      "-US",
+      null
+    ],
+    [
+      1,
+      false
+    ],
+    [
+      true,
+      false
+    ],
+    [
+      0,
+      false
+    ],
+    [
+      " en",
+      true
+    ],
+    [
+      "en ",
+      true
+    ],
+    [
+      "en　",
+      true
+    ],
+    [
+      "　en-US",
+      true
+    ],
+    [
+      "C ",
+      null
+    ],
+    [
+      " und",
+      null
+    ],
+    [
+      "fr",
+      false
+    ]
+  ],
+  "question_schema": [
+    [
+      {},
+      "{}"
+    ],
+    [
+      {
+        "a": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      },
+      "{\"a\": {\"type\": \"noul\", \"instructions\": \"x\"}}"
+    ],
+    [
+      {
+        "q": {
+          "type": "choice",
+          "instructions": "x",
+          "criteria": {
+            "a": "1",
+            "b": "2"
+          }
+        }
+      },
+      "{\"q\": {\"type\": \"choice\", \"instructions\": \"x\", \"criteria\": {\"a\": \"1\", \"b\": \"2\"}}}"
+    ],
+    [
+      {
+        "q": {
+          "type": "choice",
+          "instructions": "x",
+          "criteria": {
+            "b": "2",
+            "a": "1"
+          }
+        }
+      },
+      "{\"q\": {\"type\": \"choice\", \"instructions\": \"x\", \"criteria\": {\"b\": \"2\", \"a\": \"1\"}}}"
+    ],
+    [
+      {
+        "q": {
+          "type": "score",
+          "instructions": "x",
+          "criteria": [
+            "low",
+            "high"
+          ]
+        }
+      },
+      "{\"q\": {\"type\": \"score\", \"instructions\": \"x\", \"criteria\": [\"low\", \"high\"]}}"
+    ],
+    [
+      {
+        "b": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "a": {
+          "type": "noul",
+          "instructions": "y"
+        }
+      },
+      "{\"b\": {\"type\": \"noul\", \"instructions\": \"x\"}, \"a\": {\"type\": \"noul\", \"instructions\": \"y\"}}"
+    ],
+    [
+      {
+        "q": {
+          "type": "noul",
+          "instructions": "café 中文"
+        }
+      },
+      "{\"q\": {\"type\": \"noul\", \"instructions\": \"café 中文\"}}"
+    ]
+  ],
+  "routes": [
+    {
+      "options": {
+        "model": "english"
+      },
+      "state": {
+        "kind": "string",
+        "value": "अपने खाते"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "explicit model='english'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-model-english"
+    },
+    {
+      "options": {
+        "model": "en"
+      },
+      "state": {
+        "kind": "string",
+        "value": "अपने"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "explicit model='en'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-model-alias-en"
+    },
+    {
+      "options": {
+        "model": "multi"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english here"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "explicit model='multi'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-model-alias-multi"
+    },
+    {
+      "options": {
+        "model": "typed"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english here"
+      },
+      "decision": {
+        "model": "typed-decisions",
+        "repo": "convaiinnovations/laya/typed-decisions",
+        "reason": "explicit model='typed'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-model-alias-typed"
+    },
+    {
+      "options": {
+        "model": "MULTILINGUAL"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english here"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "explicit model='MULTILINGUAL'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-model-uppercase"
+    },
+    {
+      "options": {
+        "model": "  english  "
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english here"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "explicit model='  english  '",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-model-padded"
+    },
+    {
+      "options": {
+        "task": "typed_decisions"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "typed-decisions",
+        "repo": "convaiinnovations/laya/typed-decisions",
+        "reason": "explicit task='typed_decisions'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-task-typed-underscore"
+    },
+    {
+      "options": {
+        "task": "typed-decisions"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "typed-decisions",
+        "repo": "convaiinnovations/laya/typed-decisions",
+        "reason": "explicit task='typed-decisions'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-task-typed-hyphen"
+    },
+    {
+      "options": {
+        "task": "english"
+      },
+      "state": {
+        "kind": "string",
+        "value": "अपने"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "explicit task='english'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "explicit-task-english"
+    },
+    {
+      "options": {
+        "questions": {
+          "action": {
+            "type": "noul",
+            "instructions": "Is `message` about action?"
+          },
+          "category": {
+            "type": "noul",
+            "instructions": "Is `message` about category?"
+          },
+          "churn_risk": {
+            "type": "noul",
+            "instructions": "Is `message` about churn_risk?"
+          },
+          "needs_human": {
+            "type": "noul",
+            "instructions": "Is `message` about needs_human?"
+          },
+          "urgency": {
+            "type": "noul",
+            "instructions": "Is `message` about urgency?"
+          }
+        }
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+        "workflow": "customer_service",
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "workflow-detected-off"
+    },
+    {
+      "options": {
+        "questions": {
+          "action": {
+            "type": "noul",
+            "instructions": "Is `message` about action?"
+          },
+          "category": {
+            "type": "noul",
+            "instructions": "Is `message` about category?"
+          },
+          "churn_risk": {
+            "type": "noul",
+            "instructions": "Is `message` about churn_risk?"
+          },
+          "needs_human": {
+            "type": "noul",
+            "instructions": "Is `message` about needs_human?"
+          },
+          "urgency": {
+            "type": "noul",
+            "instructions": "Is `message` about urgency?"
+          }
+        },
+        "auto_task_detection": true
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "typed-decisions",
+        "repo": "convaiinnovations/laya/typed-decisions",
+        "reason": "question ids match the 'customer_service' typed-decisions workflow",
+        "workflow": "customer_service",
+        "detection": null
+      },
+      "name": "workflow-detected-on"
+    },
+    {
+      "options": {
+        "questions": {
+          "discrepancy_severity": {
+            "type": "noul",
+            "instructions": "Is `message` about discrepancy_severity?"
+          },
+          "disposition": {
+            "type": "noul",
+            "instructions": "Is `message` about disposition?"
+          },
+          "duplicate": {
+            "type": "noul",
+            "instructions": "Is `message` about duplicate?"
+          },
+          "matches_order": {
+            "type": "noul",
+            "instructions": "Is `message` about matches_order?"
+          },
+          "urgency": {
+            "type": "noul",
+            "instructions": "Is `message` about urgency?"
+          }
+        },
+        "auto_task_detection": true
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "typed-decisions",
+        "repo": "convaiinnovations/laya/typed-decisions",
+        "reason": "question ids match the 'invoice_processing' typed-decisions workflow",
+        "workflow": "invoice_processing",
+        "detection": null
+      },
+      "name": "workflow-invoice-on"
+    },
+    {
+      "options": {
+        "questions": {
+          "credential_compromise": {
+            "type": "noul",
+            "instructions": "Is `message` about credential_compromise?"
+          },
+          "disposition": {
+            "type": "noul",
+            "instructions": "Is `message` about disposition?"
+          },
+          "severity": {
+            "type": "noul",
+            "instructions": "Is `message` about severity?"
+          },
+          "true_positive": {
+            "type": "noul",
+            "instructions": "Is `message` about true_positive?"
+          },
+          "urgency": {
+            "type": "noul",
+            "instructions": "Is `message` about urgency?"
+          }
+        },
+        "auto_task_detection": true
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "typed-decisions",
+        "repo": "convaiinnovations/laya/typed-decisions",
+        "reason": "question ids match the 'security_incidents' typed-decisions workflow",
+        "workflow": "security_incidents",
+        "detection": null
+      },
+      "name": "workflow-security-on"
+    },
+    {
+      "options": {
+        "questions": {
+          "action": {
+            "type": "noul",
+            "instructions": "Is `message` about action?"
+          },
+          "needs_review": {
+            "type": "noul",
+            "instructions": "Is `message` about needs_review?"
+          },
+          "outcome": {
+            "type": "noul",
+            "instructions": "Is `message` about outcome?"
+          },
+          "risk": {
+            "type": "noul",
+            "instructions": "Is `message` about risk?"
+          },
+          "urgency": {
+            "type": "noul",
+            "instructions": "Is `message` about urgency?"
+          }
+        },
+        "auto_task_detection": true
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "typed-decisions",
+        "repo": "convaiinnovations/laya/typed-decisions",
+        "reason": "question ids match the 'agent_trace_observability' typed-decisions workflow",
+        "workflow": "agent_trace_observability",
+        "detection": null
+      },
+      "name": "workflow-trace-on"
+    },
+    {
+      "options": {
+        "questions": {
+          "action": {
+            "type": "noul",
+            "instructions": "Is `message` about action?"
+          },
+          "category": {
+            "type": "noul",
+            "instructions": "Is `message` about category?"
+          },
+          "churn_risk": {
+            "type": "noul",
+            "instructions": "Is `message` about churn_risk?"
+          },
+          "needs_human": {
+            "type": "noul",
+            "instructions": "Is `message` about needs_human?"
+          },
+          "urgency": {
+            "type": "noul",
+            "instructions": "Is `message` about urgency?"
+          },
+          "extra": {
+            "type": "noul",
+            "instructions": "Is `message` about extra?"
+          }
+        },
+        "auto_task_detection": true
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "workflow-superset-on"
+    },
+    {
+      "options": {
+        "questions": {
+          "action": {
+            "type": "noul",
+            "instructions": "Is `message` about action?"
+          },
+          "category": {
+            "type": "noul",
+            "instructions": "Is `message` about category?"
+          },
+          "churn_risk": {
+            "type": "noul",
+            "instructions": "Is `message` about churn_risk?"
+          },
+          "needs_human": {
+            "type": "noul",
+            "instructions": "Is `message` about needs_human?"
+          }
+        },
+        "auto_task_detection": true
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "workflow-subset-on"
+    },
+    {
+      "options": {
+        "questions": {
+          "action": {
+            "type": "noul",
+            "instructions": "Is `message` about action?"
+          },
+          "category": {
+            "type": "noul",
+            "instructions": "Is `message` about category?"
+          },
+          "churn_risk": {
+            "type": "noul",
+            "instructions": "Is `message` about churn_risk?"
+          },
+          "needs_human": {
+            "type": "noul",
+            "instructions": "Is `message` about needs_human?"
+          },
+          "urgency": {
+            "type": "noul",
+            "instructions": "Is `message` about urgency?"
+          }
+        },
+        "lang": "fr"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "explicit lang='fr'",
+        "workflow": "customer_service",
+        "detection": null
+      },
+      "name": "workflow-reported-with-lang"
+    },
+    {
+      "options": {
+        "lang": "en"
+      },
+      "state": {
+        "kind": "string",
+        "value": "अपने खाते"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "explicit lang='en'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "lang-en"
+    },
+    {
+      "options": {
+        "lang": "en-US"
+      },
+      "state": {
+        "kind": "string",
+        "value": "अपने"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "explicit lang='en-US'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "lang-en-us"
+    },
+    {
+      "options": {
+        "lang": "en_US.UTF-8"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english words here now"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "explicit lang='en_US.UTF-8'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "lang-posix"
+    },
+    {
+      "options": {
+        "lang": "fr"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english words here now"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "explicit lang='fr'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "lang-fr"
+    },
+    {
+      "options": {
+        "lang": "   "
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english words here now"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "lang-blank-falls-through"
+    },
+    {
+      "options": {
+        "lang": "C"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english words here now"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "lang-agnostic-C-falls-through"
+    },
+    {
+      "options": {
+        "lang": "und"
+      },
+      "state": {
+        "kind": "string",
+        "value": "अपने खाते"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+        "workflow": null,
+        "detection": {
+          "script": "devanagari",
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "non_latin_fraction": 1.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "lang-und-falls-through"
+    },
+    {
+      "options": {
+        "lang_guess": "pt"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english words here now"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "lang_guess: the caller identified this as non-English text",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "guess-per-call-pt"
+    },
+    {
+      "options": {
+        "lang_guess": "en"
+      },
+      "state": {
+        "kind": "string",
+        "value": "अपने"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "lang_guess: the caller identified this as English text",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "guess-per-call-en"
+    },
+    {
+      "options": {
+        "router_lang_guess": "pt"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english words here now"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "Router(lang_guess=...): the caller identified this as non-English text",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "guess-installed-pt"
+    },
+    {
+      "options": {
+        "lang_guess": "en",
+        "router_lang_guess": "pt"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english words here now"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "lang_guess: the caller identified this as English text",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "guess-per-call-beats-installed"
+    },
+    {
+      "options": {
+        "lang_guess": "C"
+      },
+      "state": {
+        "kind": "string",
+        "value": "अपने"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+        "workflow": null,
+        "detection": {
+          "script": "devanagari",
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "non_latin_fraction": 1.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "guess-abstains-falls-through"
+    },
+    {
+      "options": {
+        "lang": "fr",
+        "lang_guess": "en"
+      },
+      "state": {
+        "kind": "string",
+        "value": "plain english words here now"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "explicit lang='fr'",
+        "workflow": null,
+        "detection": null
+      },
+      "name": "guess-after-lang"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "12345 !!! ---"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "no letters detected in state; using default (english)",
+        "workflow": null,
+        "detection": {
+          "script": "unknown",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-no-letters"
+    },
+    {
+      "options": {
+        "default": "multilingual"
+      },
+      "state": {
+        "kind": "string",
+        "value": "12345 !!! ---"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "no letters detected in state; using default (multilingual)",
+        "workflow": null,
+        "detection": {
+          "script": "unknown",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-no-letters-default-multi"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "मैं अपने खाते में"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+        "workflow": null,
+        "detection": {
+          "script": "devanagari",
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "non_latin_fraction": 1.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-non-latin-hindi"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "계정에 로그인할 수 없어요"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "non-Latin script (hangul, 100% of letters); the English checkpoint cannot read it",
+        "workflow": null,
+        "detection": {
+          "script": "hangul",
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "non_latin_fraction": 1.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-non-latin-korean"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "Order ACME-99281 shipped but the label is wrong 注文番号が違いますよ"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "non-Latin script (han, 23% of letters); the English checkpoint cannot read it",
+        "workflow": null,
+        "detection": {
+          "script": "han",
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "non_latin_fraction": 0.2273,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-non-latin-partial"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "Você pode me mandar a nota fiscal do pedido que eu fiz ontem?"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "Latin script but language looks like 'pt', not English",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": "pt",
+          "is_english": false,
+          "language_undecided": false,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0164,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-identified-language"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "The customer opened this ticket yesterday and we have asked for a screenshot. The browser console shows no errors. \nNao consigo entrar na minha conta e a senha nao funciona"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "Latin script, mostly English, but a line or field reads as 'pt' ('Nao consigo entrar na minha conta e a senha nao funciona'); the English checkpoint cannot read it",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": "pt",
+          "is_english": false,
+          "language_undecided": false,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": "Nao consigo entrar na minha conta e a senha nao funciona"
+        }
+      },
+      "name": "detect-mixed-segment"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "Nie mogę się zalogować na swoje konto, hasło nie działa"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "Latin script, language not identified but 9% non-English letters; not safe for the English checkpoint",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0909,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-undecided-with-diacritics"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "Quero cancelar"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-undecided-no-diacritics"
+    },
+    {
+      "options": {
+        "default": "multilingual"
+      },
+      "state": {
+        "kind": "string",
+        "value": "Quero cancelar"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-undecided-default-multi"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "I cannot log in to my account and the password reset email never arrives."
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "English Latin text",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": "en",
+          "is_english": true,
+          "language_undecided": false,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-english"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "json",
+        "value": null
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "no letters detected in state; using default (english)",
+        "workflow": null,
+        "detection": {
+          "script": "unknown",
+          "language": null,
+          "is_english": true,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-none-state"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "json",
+        "value": {
+          "id": "T-1",
+          "msg": "Ich kann mich nicht in mein Konto einloggen und das Passwort"
+        }
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "Latin script but language looks like 'de', not English",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": "de",
+          "is_english": false,
+          "language_undecided": false,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-structured-state"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "Set the threshold values to Α and rerun"
+      },
+      "decision": {
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "English Latin text",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": "en",
+          "is_english": true,
+          "language_undecided": false,
+          "non_latin_fraction": 0.0312,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-percent-halfway"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg αβγδε ζηθικ"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "non-Latin script (greek, 12% of letters); the English checkpoint cannot read it",
+        "workflow": null,
+        "detection": {
+          "script": "greek",
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "non_latin_fraction": 0.125,
+          "diacritic_rate": 0.0,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-percent-halfway-non-latin"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "ééééé zz ww qq vv bb nn mm hh kk ll jjxx"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "Latin script, language not identified but 12% non-English letters; not safe for the English checkpoint",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": null,
+          "is_english": false,
+          "language_undecided": true,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.125,
+          "mixed_segment": null
+        }
+      },
+      "name": "detect-percent-halfway-diacritics"
+    },
+    {
+      "options": {},
+      "state": {
+        "kind": "string",
+        "value": "The customer opened this ticket yesterday and we have asked for a screenshot. The browser console shows no errors. \nNao consigo entrar na 'minha' conta e a senha nao funciona de jeito nenhum"
+      },
+      "decision": {
+        "model": "multilingual",
+        "repo": "convaiinnovations/laya/multilingual",
+        "reason": "Latin script, mostly English, but a line or field reads as 'pt' (\"Nao\\xa0consigo entrar na 'minha' conta e a senha nao funciona d\"); the English checkpoint cannot read it",
+        "workflow": null,
+        "detection": {
+          "script": "latin",
+          "language": "pt",
+          "is_english": false,
+          "language_undecided": false,
+          "non_latin_fraction": 0.0,
+          "diacritic_rate": 0.0,
+          "mixed_segment": "Nao consigo entrar na 'minha' conta e a senha nao funciona de jeito nenhum"
+        }
+      },
+      "name": "detect-mixed-segment-hostile"
+    }
+  ]
+}

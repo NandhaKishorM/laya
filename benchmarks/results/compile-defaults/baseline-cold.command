@@ -1,0 +1,1 @@
+TORCHINDUCTOR_CACHE_DIR=/tmp/laya-compile-defaults-baseline-20261003 HF_HUB_OFFLINE=1 /home/ckl/projects/S/laya/.venv/bin/python benchmarks/bench_compile_defaults.py --model /home/ckl/.cache/huggingface/hub/models--convaiinnovations--laya/snapshots/$(cat /home/ckl/.cache/huggingface/hub/models--convaiinnovations--laya/refs/main)

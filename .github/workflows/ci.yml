@@ -247,7 +247,7 @@ jobs:
                    test_empty_questions test_router_memory test_shortlist_cosine \
                    test_temperature_loading test_confidence test_cli test_mcp \
                    test_mcp_device \
-                   test_langchain test_portability test_training \
+                   test_langchain test_portability test_training test_train \
                    test_example_server_limits test_blank_lang_routing \
                    test_export_onnx_safety test_load_errors test_revision_pinning; do
             if [ -f "tests/$t.py" ]; then python "tests/$t.py"; fi

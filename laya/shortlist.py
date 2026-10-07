@@ -1,13 +1,16 @@
-"""Opt-in embedding shortlist for high-cardinality choice questions.
+"""Opt-in embedding shortlist and tournament for high-cardinality choice questions.
 
 Choice options share one ``head_max_len`` budget, so a large label set leaves only a few
 tokens per label. ``predict_shortlist`` embeds the state and each option with a
 caller-supplied ``embed_fn``, keeps the top ``k``, and runs a single ``predict`` (or
-``system_one``) on that reduced criteria set.
+``system_one``) on that reduced criteria set. ``predict_tournament`` needs no embedder: the
+decision model answers the labels in groups small enough to keep their tokens, and the group
+winners meet in one more ``predict``.
 
 ``Agent.predict`` and ``Agent.system_one`` are separate: they still score every criterion
-they are given. This module does not change ``DecisionModel.forward`` and does not add a
-second decision-model pass.
+they are given. This module does not change ``DecisionModel.forward``.
+``predict_shortlist`` adds no second decision-model pass; ``predict_tournament`` adds one
+per elimination round.
 
 The coarse-to-fine pattern is the one the README recommends and the one reported in
 https://github.com/NandhaKishorM/laya/issues/102. Ranking here is cosine similarity on
@@ -24,6 +27,7 @@ import numpy as np
 from .common import encode_text, render_options, serialize_state
 
 DEFAULT_SHORTLIST_K = 20
+DEFAULT_TOURNAMENT_GROUP = 16
 
 
 def shortlist_choice(
@@ -120,6 +124,84 @@ def predict_shortlist(
         )
     out = dict(result)
     out["shortlist"] = meta
+    return out
+
+
+def predict_tournament(
+    agent: Any,
+    state: Any,
+    questions: Dict[str, Dict[str, Any]],
+    group_size: int = DEFAULT_TOURNAMENT_GROUP,
+    **predict_kwargs: Any,
+) -> Dict[str, Any]:
+    """Narrow each large choice question by elimination, then call ``predict`` once more.
+
+    A choice with more than ``group_size`` labels is cut, in criteria order, into groups of
+    near-equal size and at most ``group_size``. One ``predict`` call answers every group of
+    every such question -- the groups go in as separate questions, so they share one forward
+    pass -- and each group's answer goes through to the next round. Rounds repeat until no
+    choice has more than ``group_size`` labels left; at the default 16, up to 256 labels take
+    one round. Unlike ``predict_shortlist`` this needs no embedder, and each label is read
+    with the option budget of a ``group_size``-label question, not of the whole label set.
+
+    The final call answers every question of the request, with each choice that went through
+    a round cut to its finalists. Non-choice questions and choices of at most ``group_size``
+    labels go to it unchanged, so when nothing needs a round it is the only call. The
+    caller's ``questions`` dict is not mutated.
+
+    The returned dict is the final call's result plus a ``tournament`` entry.
+    ``tournament[qid]`` holds ``labels`` (the finalists, in criteria order), ``n`` (the
+    label count) and ``rounds`` for each choice question. Probabilities, confidences and
+    ``usage`` come from the final call, so a tournament choice's probabilities are over its
+    finalists only.
+
+    Extra keyword arguments are forwarded to every call (for example ``model=`` on a ``Router``).
+    """
+    if not isinstance(questions, dict):
+        raise TypeError("questions must be a dict of question id -> definition")
+    if isinstance(group_size, bool) or not isinstance(group_size, int) or group_size < 2:
+        raise ValueError("group_size must be an integer of at least 2, got %r" % (group_size,))
+    meta: Dict[str, Dict[str, Any]] = {}
+    for qid, qdef in questions.items():
+        if isinstance(qdef, dict) and qdef.get("type") == "choice":
+            if "criteria" not in qdef:
+                raise ValueError("question %r is a choice but has no criteria" % (qid,))
+            labels = [key for key, _value in _criteria_items(qdef["criteria"])]
+            meta[qid] = {"labels": labels, "n": len(labels), "rounds": 0}
+
+    def cut(qid, labels):
+        return dict(questions[qid], criteria=_subset_criteria(questions[qid]["criteria"], labels))
+
+    while True:
+        groups = []
+        for qid, entry in meta.items():
+            labels = entry["labels"]
+            parts = -(-len(labels) // group_size)
+            if parts > 1:
+                groups += [(qid, labels[i * len(labels) // parts:(i + 1) * len(labels) // parts])
+                           for i in range(parts)]
+        if not groups:
+            break
+        round_questions = {str(i): cut(qid, labels) for i, (qid, labels) in enumerate(groups)}
+        answers = _call_predict(agent, state, round_questions, **predict_kwargs)["answers"]
+        winners: Dict[str, List[Any]] = {}
+        for i, (qid, _labels) in enumerate(groups):
+            winners.setdefault(qid, []).append(answers[str(i)]["choice"])
+        for qid, labels in winners.items():
+            meta[qid]["labels"] = labels
+            meta[qid]["rounds"] += 1
+
+    final = dict(questions)
+    for qid, entry in meta.items():
+        if entry["rounds"]:
+            final[qid] = cut(qid, entry["labels"])
+    result = _call_predict(agent, state, final, **predict_kwargs)
+    if not isinstance(result, dict):
+        raise TypeError(
+            "predict/system_one must return a dict, got %s" % type(result).__name__
+        )
+    out = dict(result)
+    out["tournament"] = meta
     return out
 
 

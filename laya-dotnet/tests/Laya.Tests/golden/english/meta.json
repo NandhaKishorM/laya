@@ -1,0 +1,81 @@
+{
+  "generator": "tools/dump_golden.py",
+  "onnx_dir": "english",
+  "laya_version": "0.3.24",
+  "onnxruntime_version": "1.30.0",
+  "transformers_version": "5.17.0",
+  "config": {
+    "encoder": "answerdotai/ModernBERT-large",
+    "head_layers": 2,
+    "max_len": 512,
+    "head_max_len": 192,
+    "max_prefixes": 6,
+    "act_costs": {
+      "escalate": 0.5
+    },
+    "cost_wrong_act": 3.0,
+    "amp_dtype": "bf16",
+    "model_name": "rl-agent",
+    "temperature": [
+      1.6369030475616455,
+      1.2514300346374512,
+      1.983399510383606
+    ],
+    "temperature_by_options": {
+      "choice:3-5": 1.7601518630981445,
+      "choice:6-10": 1.0000158548355103,
+      "score:3-5": 1.2514300346374512,
+      "noul:2": 1.983399510383606,
+      "choice:11+": 0.10058280825614929,
+      "choice:2": 1.9063563346862793
+    },
+    "training": {
+      "updates": 7313,
+      "epochs_completed": 1,
+      "hours": 1.96,
+      "world_size": 1,
+      "fine_tuned_from_checkpoint": true
+    }
+  },
+  "max_len": 512,
+  "head_max_len": 192,
+  "temperature": [
+    1.6369030475616455,
+    1.2514300346374512,
+    1.983399510383606
+  ],
+  "temperature_by_options": {
+    "choice:3-5": 1.7601518630981445,
+    "choice:6-10": 1.0000158548355103,
+    "score:3-5": 1.2514300346374512,
+    "noul:2": 1.983399510383606,
+    "choice:11+": 0.5,
+    "choice:2": 1.9063563346862793
+  },
+  "qtypes": {
+    "choice": 0,
+    "score": 1,
+    "noul": 2
+  },
+  "special_tokens": {
+    "pad_id": 50283,
+    "cls_id": 50281,
+    "sep_id": 50282,
+    "mask_id": 50284,
+    "unk_id": 50280,
+    "mask_token": "[MASK]",
+    "cls_token": "[CLS]",
+    "sep_token": "[SEP]",
+    "pad_token": "[PAD]"
+  },
+  "onnx_self_check": {
+    "single_noul": {
+      "logits_maxdiff": 9.953975677490234e-06,
+      "act_maxdiff": 0.0009765625
+    },
+    "triage_4q": {
+      "logits_maxdiff": 1.946091651916504e-05,
+      "act_maxdiff": 0.00146484375
+    }
+  }
+}

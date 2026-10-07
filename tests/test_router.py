@@ -134,7 +134,9 @@ check("latin_lang/long english stays en",
 # `github` + `com`, so every domain in a state scored a Portuguese hit: two of them crossed the
 # margin and sent an English state with links in it to the multilingual checkpoint, reported as
 # Portuguese. A token whose dot or @ joins word characters is an identifier, not prose.
-_r_dotted = Router()
+# `default="english"` because this block is about identifiers not reading as foreign prose, not
+# about what the stock default is: a state of bare identifiers is language-undecided either way.
+_r_dotted = Router(default="english")
 for label, state in [
     ("url and email fields", {"url": "github.com", "email": "user@acme.com"}),
     ("two bare domains", "github.com acme.com"),
@@ -394,8 +396,9 @@ cases = [
     ("explicit lang en", {"body": "मुझसे दो बार"}, Q_GENERIC, {"lang": "en"}, "english"),
     ("explicit lang de", {"body": "hello there"}, Q_GENERIC, {"lang": "de"}, "multilingual"),
     ("td workflow, auto OFF", {"body": "I was charged twice"}, Q_TD, {}, "english"),
-    ("empty state", {}, Q_GENERIC, {}, "english"),
-    ("none state", None, Q_GENERIC, {}, "english"),
+    # letterless, so these follow `default`, which is multilingual since 0.4.0
+    ("empty state", {}, Q_GENERIC, {}, "multilingual"),
+    ("none state", None, Q_GENERIC, {}, "multilingual"),
 ]
 for label, state, qs, kw, want in cases:
     check("route/" + label, r.route(state, qs, **kw)["model"], want)
@@ -447,17 +450,23 @@ check("route/undecided reason mentions letters",
       "not identified" in _r_lat.route("Müşteriden iki kez ücret alındı ve para iadesi istiyor").reason, True)
 check("route/english still english",
       _r_lat.route("Please refund the duplicate charge on invoice 4411 today.").model, "english")
-check("route/short english still english", _r_lat.route("refund me").model, "english")
+# "refund me" names no language, so it follows `default` like any other undecided text rather
+# than being hard-coded English. With an English default it still reaches the English checkpoint.
+check("route/short english follows default",
+      Router(default="english").route("refund me").model, "english")
 
 # Undecided Latin text follows `default`, as a state with no letters already did. Short messages made
 # only of content words carry nothing that names their language, and hard-coding English for them
 # sent every short Portuguese message to the checkpoint that is 0.97 confident at 0.47 accuracy on
-# `pt`, whatever the router was configured with.
+# `pt`, whatever the router was configured with. Since 0.4.0 the stock default is `multilingual`,
+# so both arms below are exercised: the stock one and an explicit English override.
 _r_ml = Router(default="multilingual")
+_r_en = Router(default="english")
 for text in ["Quero cancelar", "Esqueci minha senha", "Fui cobrado duas vezes",
              "Produto veio quebrado, quero trocar", "refund me"]:
     check("route/undecided follows default " + text[:24], _r_ml.route(text).model, "multilingual")
-    check("route/undecided stock default " + text[:24], _r_lat.route(text).model, "english")
+    check("route/undecided stock default " + text[:24], _r_lat.route(text).model, "multilingual")
+    check("route/undecided english override " + text[:24], _r_en.route(text).model, "english")
 check("route/undecided reason names the default",
       "using default (multilingual)" in _r_ml.route("Esqueci minha senha").reason, True)
 # identified English is not undecided, so a non-English default leaves it alone
@@ -606,7 +615,8 @@ for text in [
     "The son of the director filed a complaint about the duplicate invoice",
 ]:
     check("is_english/romance control " + text[:32], is_english(text), True)
-    check("route/romance control " + text[:32], _r_lat.route(text).model, "english")
+    check("route/romance control " + text[:32],
+          Router(default="english").route(text).model, "english")
 
 # A word several lists claim (`la`, `e`, `o`) says "not English" without saying *which* language, so
 # it may not name one on its own -- the same rule as the 0-0 tie above, which is why the sample
@@ -1547,12 +1557,15 @@ for label, text in (
 # Fullwidth Latin is Latin, not an unlisted script.
 check("unlisted/fullwidth latin is latin", detect_script("ＨＥＬＬＯ"), "latin")
 
-# A state with no letters at all must keep behaving exactly as before.
+# A state with no letters at all takes `default`, whatever that is, which is the behaviour that
+# must not change. Both arms are checked so this cannot pass by agreeing with one constant.
 for label, text in (("empty", ""), ("digits only", "12345 67890"), ("emoji only", "😀😀😀")):
     check("unlisted/letterless " + label + " is still unknown",
           analyse(text)["script"], "unknown")
-    check("unlisted/letterless " + label + " keeps the default",
-          Router().route(text)["model"], "english")
+    check("unlisted/letterless " + label + " keeps the stock default",
+          Router().route(text)["model"], "multilingual")
+    check("unlisted/letterless " + label + " keeps an english default",
+          Router(default="english").route(text)["model"], "english")
 
 # The scripts the table does name must be untouched.
 for label, text, script in (
@@ -1606,6 +1619,334 @@ for code in ("de", "fr", "zh", "ja", "pt-BR", "de_DE.UTF-8"):
 # as a language by accident.
 check("lang-code/agnostic primary wins over its subtag", _english_from_code("C.UTF-8"), None)
 check("lang-code/posix with a modifier abstains", _english_from_code("POSIX-1"), None)
+
+
+# --------------------------------------------------------------------- registered checkpoints
+# A Router serves the checkpoints a caller registers beside the built-in three: named in `model=`
+# or `task=` like them, and loaded, evicted and unloaded like them.
+from laya.router import canonical_name  # noqa: E402
+
+check("registry/canonical lowercases and aliases", canonical_name(" ML "), "multilingual")
+check("registry/canonical leaves an unknown name as typed", canonical_name("Papers"), "papers")
+
+_SECTION_Q = {"section": {"type": "choice", "instructions": "Which section?", "criteria": {"a": "A", "b": "B"}}}
+_CLAIM = "Transparency improved operator performance in 11 of 17 studies."
+r = Router(models={"papers": "/tmp/laya-papers", "tone": ("acme/laya-tone", None)})
+check("registry/registered names resolve", r.resolve("papers"), "papers")
+check("registry/registered names resolve case-insensitively", r.resolve(" PAPERS "), "papers")
+check("registry/built-ins still resolve", r.resolve("ml"), "multilingual")
+check("registry/models holds built-ins plus registered", sorted(r.models),
+      ["english", "multilingual", "papers", "tone", "typed-decisions"])
+try:
+    r.resolve("nope")
+    check("registry/unknown name raises", False, True)
+except ValueError as e:
+    check("registry/unknown name lists the registered ones too", "'papers'" in str(e), True)
+check("registry/normalise_name still knows only the built-ins", resolve_model_spec("papers"), None)
+
+d = r.route(_CLAIM, _SECTION_Q, model="papers")
+check("route/model= names a registered checkpoint", d.model, "papers")
+check("route/repo is the registered source", d["repo"], "/tmp/laya-papers")
+check("route/model= accepts a registered (repo, subfolder) pair", r.route(_CLAIM, _SECTION_Q, model="tone")["repo"],
+      "acme/laya-tone")
+check("route/task= names a registered checkpoint", r.route(_CLAIM, _SECTION_Q, task="tone").model, "tone")
+check("route/a registered checkpoint is never chosen automatically", r.route(_CLAIM, _SECTION_Q).model, "english")
+check("route/route_batch keeps the mix in order",
+      [x.model for x in r.route_batch([{"state": _CLAIM, "questions": _SECTION_Q, "model": "papers"},
+                                       {"state": _CLAIM, "questions": _SECTION_Q},
+                                       {"state": _CLAIM, "questions": _SECTION_Q, "model": "tone"}])],
+      ["papers", "english", "tone"])
+check("registered/reports source and description", Router(models={"papers": "/tmp/laya-papers"}).registered,
+      {"papers": {"source": "/tmp/laya-papers", "description": None}})
+check("registered/built-ins are not listed", Router().registered, {})
+
+# The built-in typed-decisions workflows are unchanged: opt-in, and still routed to the built-in.
+_CS = {q: _SECTION_Q["section"] for q in ("action", "category", "churn_risk", "needs_human", "urgency")}
+check("workflow/still needs auto_task_detection", r.route(_CLAIM, _CS).model, "english")
+check("workflow/with auto_task_detection",
+      Router(auto_task_detection=True).route(_CLAIM, _CS)["workflow"], "customer_service")
+
+# a checkpoint registered after construction is not read as an artifact map of a nested env.
+_old_env = os.environ.get("LAYA_SHA256_DIGESTS")
+os.environ["LAYA_SHA256_DIGESTS"] = '{"english": {"model.safetensors": "%s"}}' % ("c" * 64)
+try:
+    _r_late = Router()
+    _r_late.register("mine", "/tmp/laya-mine")
+    check("register/nested LAYA_SHA256_DIGESTS gives a later checkpoint the empty placeholder",
+          _r_late.sha256_digests["mine"], {})
+finally:
+    if _old_env is None:
+        os.environ.pop("LAYA_SHA256_DIGESTS", None)
+    else:
+        os.environ["LAYA_SHA256_DIGESTS"] = _old_env
+
+# a source starting with ~ is a local path.
+check("register/~ in a source is expanded", Router(models={"mine": "~/laya-mine"}).models["mine"],
+      os.path.expanduser("~/laya-mine"))
+
+# `auto` is the routing word everywhere, so it cannot name a checkpoint.
+try:
+    Router().register("auto", "/tmp/laya-auto")
+    check("register/auto is refused", True, False)
+except ValueError as _e:
+    check("register/auto is refused", "auto" in str(_e), True)
+
+# an attach()ed agent with no source is not part of a whole-router preload.
+with patch("laya.agent.Agent", side_effect=lambda repo, **kw: _Stub(repo)) as _build_att:
+    _r_att = Router()
+    _r_att.attach("mine", _Stub("mine"))
+    _r_att.unload("mine")
+    _r_att.preload()
+    check("preload/skips a name with no source", sorted(_r_att.loaded),
+          ["english", "multilingual", "typed-decisions"])
+
+# register(): the same thing after construction.
+r2 = Router()
+check("register/returns the canonical name", r2.register("Tone", "acme/laya-tone", description="tone"), "tone")
+check("register/description is reported", r2.registered["tone"], {"source": "acme/laya-tone", "description": "tone"})
+check("register/a second call replaces the source", (r2.register("tone", "/tmp/tone-v2"), r2.models["tone"])[1], "/tmp/tone-v2")
+check("register/replacing the source keeps the description", r2.registered["tone"]["description"], "tone")
+check("register/a built-in name re-points that checkpoint",
+      Router(models={"english": "/tmp/my-english"}).models["english"], "/tmp/my-english")
+check("register/an alias re-points its built-in", Router(models={"en": "/tmp/mine"}).models["english"], "/tmp/mine")
+for bad, why in (("Bad/Name", "slash"), ("", "empty"), ("-dash", "leading dash"), ("a b", "space")):
+    try:
+        Router().register(bad, "/tmp/x")
+        check("register/refuses %s" % why, False, True)
+    except ValueError:
+        check("register/refuses %s" % why, True, True)
+try:
+    Router(models={"papers": 42})
+    check("register/a source must be a path, repo or pair", False, True)
+except TypeError:
+    check("register/a source must be a path, repo or pair", True, True)
+
+# Every name-taking option accepts a registered name, the way it accepts a built-in one.
+r3 = Router(models={"papers": "/tmp/laya-papers"}, revisions={"papers": "abc123"}, default="papers",
+            sha256_digests={"papers": {"model.safetensors": "a" * 64}})
+check("register/default may be a registered name", r3.default, "papers")
+check("register/revisions keyed by a registered name", r3.revisions, {"papers": "abc123"})
+check("register/sha256_digests keyed by a registered name", r3.sha256_digests["papers"], {"model.safetensors": "a" * 64})
+check("register/undecided text falls back to the registered default",
+      r3.route("Quero cancelar", {"q": _SECTION_Q["section"]}).model, "papers")
+_old_env = os.environ.get("LAYA_SHA256_DIGESTS")
+os.environ["LAYA_SHA256_DIGESTS"] = '{"papers": {"model.safetensors": "%s"}}' % ("b" * 64)
+try:
+    check("register/LAYA_SHA256_DIGESTS may name a registered checkpoint",
+          Router(models={"papers": "/tmp/laya-papers"}).sha256_digests["papers"], {"model.safetensors": "b" * 64})
+finally:
+    if _old_env is None:
+        os.environ.pop("LAYA_SHA256_DIGESTS", None)
+    else:
+        os.environ["LAYA_SHA256_DIGESTS"] = _old_env
+
+# attach() under a new name registers it with no source: resident now, not reloadable later.
+r4 = Router()
+r4.attach("adhoc", _Stub("adhoc"))
+check("attach/new name becomes resident", "adhoc" in r4.loaded, True)
+check("attach/new name is routable", r4.route(_CLAIM, _SECTION_Q, model="adhoc").model, "adhoc")
+check("attach/new name has no source", r4.models["adhoc"], None)
+r4.unload("adhoc")
+try:
+    r4.load("adhoc")
+    check("attach/reload without a source is refused", False, True)
+except ValueError as e:
+    check("attach/reload without a source is refused", "no source" in str(e), True)
+
+# load() hands a registered local path or repo to Agent as a source, not as a registry name.
+import laya.agent as _agent_for_registry
+_built = []
+
+
+class _RecordingAgent:
+    def __init__(self, repo, **kwargs):
+        _built.append((repo, kwargs.get("subfolder")))
+
+
+_prev_agent = _agent_for_registry.Agent
+_agent_for_registry.Agent = _RecordingAgent
+try:
+    r5 = Router(models={"papers": "/tmp/laya-papers", "tone": ("acme/laya-tone", "v2")}, max_loaded=3)
+    r5.load("papers")
+    r5.load("tone")
+    check("load/a registered path reaches Agent unchanged", _built[0], ("/tmp/laya-papers", None))
+    check("load/a registered (repo, subfolder) pair reaches Agent", _built[1], ("acme/laya-tone", "v2"))
+    check("load/registered checkpoints are resident like built-ins", r5.loaded, ["papers", "tone"])
+    r5.preload(["papers", "english"])
+    check("load/preload accepts registered names", "english" in r5.loaded and "papers" in r5.loaded, True)
+    r5.unload("papers")
+    check("load/unload accepts registered names", "papers" in r5.loaded, False)
+finally:
+    _agent_for_registry.Agent = _prev_agent
+
+
+# A refused register() leaves the router as it was.
+_at = Router(models={"a": "/a", "b": "/b"})
+try:
+    _at.register("Bad/Name", "/x", description="x")
+    _at_raised = False
+except ValueError:
+    _at_raised = True
+check("register/refused call raises", _at_raised, True)
+check("register/refused call leaves no checkpoint", ("bad/name" in _at.models, "bad/name" in _at.descriptions), (False, False))
+_at2 = Router(models={"a": "/a"})
+try:
+    _at2.register("a", 42)
+except TypeError:
+    pass
+check("register/refused call keeps the old source", _at2.registered["a"]["source"], "/a")
+
+# An explicit `sha256_digests[name] = None` is a present entry that opts that checkpoint out of
+# digest checks; a refused register() must restore it, not drop it (dropping it would hand the
+# checkpoint back to the environment's digest map).
+_at3 = Router(models={"a": "/a"}, sha256_digests={"a": None})
+try:
+    _at3.register("a", 42)
+    check("register/refused call raises on a bad source", False, True)
+except TypeError:
+    check("register/refused call raises on a bad source", True, True)
+check("register/refused call keeps an opted-out digest entry", ("a" in _at3.sha256_digests, _at3.sha256_digests.get("a", "gone")),
+      (True, None))
+check("register/refused call keeps the old source after a digest opt-out", _at3.models["a"], "/a")
+
+# unregister() removes a registered name everywhere.
+_rp = Router(models={"a": "/a", "b": "/b"})
+_rp.descriptions["a"] = "A"
+_rp.sha256_digests["a"] = None
+_rp.revisions["a"] = "main"
+_rp.attach("a", object())
+_rp.unregister("a")
+check("unregister/removes the name everywhere",
+      ("a" in _rp.models, "a" in _rp.descriptions, "a" in _rp.sha256_digests,
+       "a" in _rp.revisions, "a" in _rp.loaded, "a" in _rp.registered), (False,) * 6)
+check("unregister/others are untouched", sorted(_rp.registered), ["b"])
+for _bad in ("english", "ml", "never-registered"):
+    try:
+        _rp.unregister(_bad)
+        check("unregister/%s refused" % _bad, False, True)
+    except ValueError:
+        check("unregister/%s refused" % _bad, True, True)
+_rp.register("a", "/a")
+check("unregister/the name can be registered again", "a" in _rp.registered, True)
+
+# Routing while another thread re-registers and unregisters never fails or answers from a torn state.
+_rc = Router(models={"a": "/a"})
+_bad = []
+
+
+def _churn():
+    for _ in range(40):
+        _rc.register("a", "/a")
+        _rc.register("c", "/c")
+        _rc.unregister("c")
+
+
+def _route():
+    for _ in range(200):
+        try:
+            _got = _rc.route(_CLAIM, model="a").model
+            if _got != "a":
+                _bad.append(_got)
+            _rc.registered
+            try:
+                _rc.route(_CLAIM, model="c")
+            except ValueError:      # unregistered at that instant
+                pass
+        except Exception as exc:  # noqa: BLE001
+            _bad.append(exc)
+
+
+_th = [threading.Thread(target=_churn)] + [threading.Thread(target=_route) for _ in range(3)]
+for _t in _th:
+    _t.start()
+for _t in _th[1:]:
+    _t.join()
+_th[0].join()
+check("register+unregister while routing stay consistent", _bad[:3], [])
+
+
+def _swallow(fn, *args):
+    try:
+        fn(*args)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _test_unregister_during_build_leaves_no_zombie():
+    """unregister waits for a build already in flight and leaves nothing under the dropped name."""
+    import laya.agent as _agent_mod
+    started, release = threading.Event(), threading.Event()
+
+    class _Slow:
+        def __init__(self, *args, **kwargs):
+            started.set()
+            release.wait(5)
+
+    old = _agent_mod.Agent
+    _agent_mod.Agent = _Slow
+    try:
+        r = Router(models={"tone": "/tone"})
+        outcome = []
+
+        def _load():
+            try:
+                outcome.append(r.load("tone"))
+            except ValueError as e:
+                outcome.append(e)
+
+        loader = threading.Thread(target=_load, daemon=True)
+        loader.start()
+        started.wait(2)
+        _timer = threading.Timer(0.3, release.set)
+        _timer.start()
+        t0 = _time.perf_counter()
+        r.unregister("tone")
+        waited = _time.perf_counter() - t0
+        loader.join(2)
+        _timer.cancel()
+        return (waited >= 0.2, loader.is_alive(), len(outcome) == 1,
+                "tone" in r.loaded, "tone" in r.models, "tone" in r._agents, "tone" in r._order,
+                "tone" in r._loading)
+    finally:
+        release.set()
+        _agent_mod.Agent = old
+
+
+check("unregister/a build in flight is waited for and leaves nothing behind",
+      _test_unregister_during_build_leaves_no_zombie(),
+      (True, False, True, False, False, False, False, False))
+
+# The default checkpoint cannot be unregistered, and the router keeps routing.
+_rd = Router(models={"papers": "/x"}, default="papers")
+try:
+    _rd.unregister("papers")
+    check("unregister/the default is refused", False, True)
+except ValueError as _e:
+    check("unregister/the default is refused", "default" in str(_e), True)
+check("unregister/a refused default still routes", _rd.route("12345").model, "papers")
+
+
+# Re-registering a name with a new source unloads the resident Agent; the same source does not.
+class _EvictLog:
+    def __init__(self):
+        self.evicts = []
+
+    def on_evict(self, ctx):
+        self.evicts.append(ctx.model)
+
+
+_log = _EvictLog()
+_rr = Router(hooks=[_log])
+_rr.attach("papers", _Stub("papers"))
+_rr.register("papers", "/y")
+check("register/a new source unloads the resident agent", "papers" in _rr.loaded, False)
+check("register/a new source fires on_evict", _log.evicts, ["papers"])
+_rr.attach("papers", _Stub("papers"))
+_rr.register("papers", "/y")
+check("register/the same source keeps the resident agent", "papers" in _rr.loaded, True)
+check("register/the same source fires no on_evict", _log.evicts, ["papers"])
+_rr.register("fresh", "/z")
+check("register/a new name unloads nothing", _log.evicts, ["papers"])
 
 
 # --------------------------------------------------------------------- report

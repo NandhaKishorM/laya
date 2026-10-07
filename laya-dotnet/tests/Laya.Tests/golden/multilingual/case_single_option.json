@@ -1,0 +1,163 @@
+{
+  "name": "single_option",
+  "state": "Anything at all.",
+  "serialized_state": "Anything at all.",
+  "questions": {
+    "only": {
+      "type": "choice",
+      "instructions": "There is exactly one option.",
+      "criteria": {
+        "solo": "the only choice"
+      }
+    }
+  },
+  "per_question": [
+    {
+      "id": "only",
+      "type": "choice",
+      "qtype": 0,
+      "instructions": "There is exactly one option.",
+      "head_text": "choice question: There is exactly one option.",
+      "options": [
+        "solo: the only choice"
+      ],
+      "input_ids": [
+        2,
+        6241,
+        2872,
+        235292,
+        2456,
+        603,
+        7880,
+        974,
+        4984,
+        235265,
+        1,
+        4,
+        7212,
+        235292,
+        573,
+        1297,
+        6241,
+        1,
+        50256,
+        696,
+        832,
+        235265,
+        1
+      ],
+      "markers": [
+        11
+      ]
+    }
+  ],
+  "batch": {
+    "input_ids": [
+      [
+        2,
+        6241,
+        2872,
+        235292,
+        2456,
+        603,
+        7880,
+        974,
+        4984,
+        235265,
+        1,
+        4,
+        7212,
+        235292,
+        573,
+        1297,
+        6241,
+        1,
+        50256,
+        696,
+        832,
+        235265,
+        1
+      ]
+    ],
+    "attention_mask": [
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    "marker_pos": [
+      [
+        11,
+        0
+      ]
+    ],
+    "marker_mask": [
+      [
+        true,
+        false
+      ]
+    ],
+    "qtype": [
+      0
+    ]
+  },
+  "marker_axis_padded": true,
+  "logits": [
+    [
+      -0.9127780199050903,
+      -10000.0
+    ]
+  ],
+  "act_logits": [
+    [
+      1366.2135009765625,
+      -1624.6650390625
+    ]
+  ],
+  "result": {
+    "model": "laya-rl-agent",
+    "answers": {
+      "only": {
+        "type": "choice",
+        "choice": "solo",
+        "probabilities": {
+          "solo": 1.0
+        },
+        "confidence": 1.0,
+        "answer_confidence": 1.0,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 23,
+      "output_tokens": 0,
+      "state_tokens": 4,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": []
+    }
+  }
+}

@@ -1,16 +1,25 @@
 """Example 18 -- confidence gating for automated routing.
 
-Answers a batch of support emails and branches on Laya's calibrated confidence: act
-automatically at 0.85 or above, hand the rest to a human.
+Answers a batch of support emails and branches on the probability Laya reports for its answer:
+act automatically at 0.85 or above, hand the rest to a human -- reading back, per question, the
+temperature that probability was actually scaled by.
 """
 from _common import banner, describe, device_line, heading, load
+from laya.common import QTYPES, temp_bucket
 
 banner("18", "Confidence gating", """
-    The production pattern from the README. Gate on `answer_confidence`: the calibrated
-    probability Laya puts on the answer it reports, defined the same way on every question
-    type. `confidence` is a different number on `choice` and `score` -- 1 minus normalised
-    entropy, a measure of how concentrated the distribution is -- and the README warns against
-    carrying a threshold over from it.
+    The production pattern from the README. Gate on `answer_confidence`: the probability Laya
+    puts on the answer it reports, `max(p)`, defined the same way on every question type.
+    `confidence` is a different number on `choice` and `score` -- 1 minus normalised entropy, a
+    measure of how concentrated the distribution is -- and the README warns against carrying a
+    threshold over from it.
+
+    Whether `answer_confidence` is a *calibrated* probability is a claim about the temperatures
+    rather than about the field. The README's Calibration section puts mean ECE on `laya` at
+    0.466 as shipped, 0.081 after refitting one temperature per (question type, option-count)
+    bucket on held-out data, and warns that both checkpoints are over-confident out of the box.
+    The 0.85 threshold below is our policy on the shipped distribution, not a cutoff a
+    measurement on this checkpoint's held-out data earned.
 
     We route at >= 0.85 automatically and escalate everything below that to a human. The gate
     is about certainty, not correctness: a ticket can come back with the label you expect and
@@ -55,6 +64,41 @@ EMAILS = [
 
 agent = load("english")
 device_line(agent)
+
+
+def option_count(question):
+    """k: the number of options the answer is scored over, the other half of the bucket key."""
+    if question["type"] == "noul":
+        return 2
+    return len(question["criteria"])
+
+
+def scale_for(agent, qtype, k):
+    """(bucket, temperature really applied, from the bucket map) -- core's own lookup, replayed.
+
+    `Agent.predict_batch` reads `temperature_by_options.get(temp_bucket(...), temperature[QTYPES[...]])`;
+    this is that line run against the loaded agent so the page cannot describe a scaling the
+    checkpoint does not perform.
+    """
+    name = temp_bucket(QTYPES[qtype], k)
+    if name in agent.temperature_by_options:
+        return name, agent.temperature_by_options[name], True
+    return name, agent.temperature[QTYPES[qtype]], False
+
+
+heading("what each question's number was actually scaled by")
+print("   %-22s %-7s %-3s %-12s %-10s %s"
+      % ("question", "type", "k", "bucket", "T applied", "source"))
+for qid, q in QUESTIONS.items():
+    k = option_count(q)
+    name, applied, in_map = scale_for(agent, q["type"], k)
+    print("   %-22s %-7s %-3d %-12s %-10.4f %s"
+          % (qid, q["type"], k, name, applied, "bucket map" if in_map else "per-type default"))
+print("   a temperature above 1.0 softens the logits before the softmax, which is what a fitted")
+print("   scale is for; 1.0 leaves the number the raw softmax. Neither by itself makes the shipped")
+print("   probability a calibrated one -- the README's Calibration loop is what closes that gap,")
+print("   and until it has run on your held-out data the 0.85 cutoff above is a policy on the")
+print("   shipped distribution rather than a measured accuracy.")
 
 heading("the full typed answer for the first email")
 first = agent.predict({"body": EMAILS[0][1]}, QUESTIONS)

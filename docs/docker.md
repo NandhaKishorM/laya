@@ -82,7 +82,7 @@ work with `docker run -e`; Compose-only settings are identified below.
 | `HF_HOME` | `/home/laya/.cache/huggingface` | Cache path; see mount requirement below |
 | `LAYA_CACHE_VOLUME` | project model cache | **Compose only:** named cache volume |
 | `LAYA_GPU_ID` | `0` | **Compose only:** NVIDIA device index or UUID |
-| `LAYA_TORCH_INDEX` | `cpu` / `cu128` / `cu130` | **Compose build:** PyTorch wheel index |
+| `LAYA_TORCH_INDEX` | `cu130` (CUDA) / `cpu` | **Compose build:** PyTorch wheel index. `cu126` also carries the pinned torch; `cu128` does not |
 | `LAYA_TORCH_VERSION` | `2.14.0` | **Compose build:** pinned PyTorch version |
 
 Compose forwards the runtime variables except `HF_HOME`, which stays aligned
@@ -90,7 +90,7 @@ with its fixed cache mount, and except `LAYA_MPS_AMP_MIN_ROWS`, the MPS row gate
 which no image here can reach because no container here can select MPS.
 If overriding `HF_HOME` in `docker run` or your own
 Compose file, provide a matching mount writable by UID 10001. Direct Docker
-builds select PyTorch with `--build-arg TORCH_INDEX=cu128`; runtime `-e` cannot
+builds select PyTorch with `--build-arg TORCH_INDEX=cu130`; runtime `-e` cannot
 change the installed wheel.
 
 ```bash
@@ -338,7 +338,7 @@ These apply to the `laya-serve` service only.
 | `LAYA_MODELS` | (all) | comma list to preload: `english,multilingual,typed-decisions` |
 | `LAYA_THREADS` | `OMP_NUM_THREADS` | caps torch intra-op threads; keep at or below physical cores |
 | `LAYA_AUTO_TASK` | `0` | `1` lets the router reach `typed-decisions` automatically |
-| `LAYA_DEFAULT_MODEL` | `english` | Checkpoint a state with no language evidence falls back to (no letters, or Latin text too short to identify). Set `multilingual` for mostly non-English traffic; an unresolvable name stops the container at startup instead of serving a configuration nobody asked for |
+| `LAYA_DEFAULT_MODEL` | `multilingual` | Checkpoint a state with no language evidence falls back to (no letters, or Latin text too short to identify). Set `english` for mostly English traffic; an unresolvable name stops the container at startup instead of serving a configuration nobody asked for |
 | `LAYA_MAX_LOADED` | `2` | Checkpoints kept resident; `LAYA_AUTO_TASK` makes a third reachable on demand, and a cap below what routing chooses rebuilds one per switch |
 | `LAYA_MAX_CONCURRENT` | `16` | requests admitted at once; later ones get `503` (a value that does not parse, or is not positive, falls back to `16`) |
 | `LAYA_LOG_LEVEL` | `info` | uvicorn log level |

@@ -1,0 +1,2 @@
+benchmarks/results/compile-defaults/mode-cold.log: categorical parity passed; max numerical delta 0
+benchmarks/results/compile-defaults/mode-restart.log: categorical parity passed; max numerical delta 0

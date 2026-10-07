@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from laya.router import Router, _english_from_code  # noqa: E402
-from laya.lang import analyse  # noqa: E402
+from laya.lang import analyse, _named_prose_language  # noqa: E402
 
 PASS, FAIL = [], []
 
@@ -171,8 +171,9 @@ check("standalone/hint still uses the standalone repo",
 BEFORE = [("plain english", "I was charged twice and want a refund", "english"),
           ("German with umlauts", "Mein Konto wurde zweimal belastet, bitte erstatten Sie", "multilingual"),
           ("Hindi", "यह एक हिंदी वाक्य है", "multilingual"),
-          ("empty", "", "english"),
-          ("digits", "12345", "english")]
+          # letterless, so these follow `default`, which is multilingual since 0.4.0
+          ("empty", "", "multilingual"),
+          ("digits", "12345", "multilingual")]
 for label, s, want in BEFORE:
     check("unchanged/" + label, r0.route(s, GENERIC)["model"], want)
 
@@ -401,6 +402,179 @@ STILL_FOREIGN = [
 for want, s in STILL_FOREIGN:
     check("repeat/genuine %s still foreign" % want, analyse(s)["is_english"], False)
 
+
+# An all-caps line is exempt from the acronym blanking -- a customer shouting in Portuguese is
+# still Portuguese -- but a line of bare acronyms has no lowercase either, so it took the same
+# exemption and was read as prose. `MON DES EST LA` is a hockey team, a state, a time zone and an
+# airport, and it was named French.
+#
+# The bar is on the tokens that actually scored, not on the line: one long word anywhere is no
+# evidence of anything, because `ANGELES` and `VEGAS` are long and `LOS`/`LAS`/`EL` are what name
+# Spanish. An all-caps line must hold a *matched stopword* of `_SHOUTED_MIN_STOPWORD` letters, or
+# non-English diacritics, and one word of `_SHOUTED_MIN_WORD` letters.
+ACRONYM_RUNS_NAME_NOTHING = [
+    "MON DES EST LA",                               # hockey/state/time-zone/airport -> was 'fr'
+    "QUE MON LES DES",                              # four French stopwords, none a word here
+    "COM DOS LAN WAN VPN",                          # networking
+    "UNO DOS TRES LAS",
+    "ESA UN NASA ISS",
+    # a long token in the run is not evidence: it is not what named the language
+    "COM DOS LAN WAN VPN ROUTER",                   # 'pt' on com/dos, ROUTER is incidental
+    "SERVER LOG COM DOS LAN WAN VPN TIMEOUT",       # 'pt' on com/dos
+    # all-caps US address and signage blocks, the commonest real instance of this shape
+    "STORES LOS ANGELES LAS VEGAS EL PASO CLOSED",  # 'es' on los/las/el
+    "SHIP TO EL SEGUNDO LA HABRA LOS BANOS CA",
+    "WAREHOUSE LA PORTE SAN DIEGO EL PASO TX",
+]
+for line in ACRONYM_RUNS_NAME_NOTHING:
+    check("shouted/acronym run names nothing: %s" % line, _named_prose_language(line), None)
+
+# the mixed-case path is untouched: acronyms inside ordinary prose were already blanked. These
+# two pass with the guard reverted as well -- they pin the pre-existing blanking, not this change.
+MIXED_CASE_STILL_NONE = [
+    "The MON DES EST LA codes were sent today",
+    "Please confirm the COM DOS LAN WAN VPN settings before Friday",
+]
+for line in MIXED_CASE_STILL_NONE:
+    check("shouted/mixed case still names nothing: %s" % line[:28], _named_prose_language(line), None)
+
+# and the case the exemption exists for keeps working: genuine prose, shouted, is still named,
+# whether by a long matched stopword or by its diacritics.
+SHOUTED_PROSE_STILL_NAMED = [
+    ("pt", "ESTA MENSAGEM E CONFIDENCIAL E NAO DEVE SER COMPARTILHADA"),   # esta, deve
+    ("pt", "QUERO MEU DINHEIRO DE VOLTA AGORA"),                           # quero, agora
+    ("pt", "COMO ESTA O TEMPO HOJE"),                                      # como, esta, hoje
+    ("es", "NECESITO CANCELAR MI PEDIDO POR FAVOR AHORA MISMO"),           # necesito
+    ("de", "DIE VERBINDUNG ZUM SERVER WURDE UNTERBROCHEN BITTE VERSUCHEN SIE ES SPAETER"),
+    ("de", "WIE SPÄT IST ES IN KÖLN HEUTE ABEND"),                         # named on diacritics
+]
+for want, line in SHOUTED_PROSE_STILL_NAMED:
+    check("shouted/%s prose still named: %s" % (want, line[:24]), _named_prose_language(line), want)
+
+# Routing, which is the thing the caller sees. `_named_prose_language` is reached only from the
+# mixed-segment scan, and that scan runs only once a state already reads English overall, so a
+# unit assertion on it proves nothing about a *short* state: `MON DES EST LA` on its own, and
+# under one or two lines of English, tipped the whole-state verdict before the scan could run and
+# routed multilingual. Only at three English lines did the scan take over. Assert every dilution.
+_COMPLAINT = ("I ordered a blender on the 3rd of March and it arrived broken.\n"
+              "I asked for a refund the same week and nobody has replied to me since.\n"
+              "%s\n"
+              "Please tell me when the money will be back on my card.")
+_route = Router(preload=False, default="english")   # see the note below
+# `default="english"` deliberately: a bare acronym line is language-undecided, so under the
+# stock 0.4.0 default it routes multilingual for want of evidence rather than because it was
+# named French. Pinning the default keeps these rows testing #1013 (the acronym must not be
+# named as foreign prose) instead of re-testing the default, which test_router.py covers.
+check("shouted/bare acronym state routes english",
+      _route.route("MON DES EST LA")["model"], "english")
+for _n in (1, 2, 3):
+    _state = "Refund please.\n" * _n + "MON DES EST LA"
+    check("shouted/acronym line under %d english line(s) routes english" % _n,
+          _route.route(_state)["model"], "english")
+check("shouted/english doc with an acronym line stays english",
+      _route.route(_COMPLAINT % "MON DES EST LA")["model"], "english")
+check("shouted/english doc with an acronym line reports no segment",
+      analyse(_COMPLAINT % "MON DES EST LA")["mixed_segment"], None)
+check("shouted/english doc with an address block stays english",
+      _route.route(_COMPLAINT % "STORES LOS ANGELES LAS VEGAS EL PASO CLOSED")["model"], "english")
+check("shouted/address block as a field stays english",
+      _route.route({"subject": "Please check this ticket for the customer today",
+                    "note": "STORES LOS ANGELES LAS VEGAS EL PASO CLOSED"})["model"], "english")
+# the other direction must not move
+check("shouted/english doc with shouted portuguese still routes multilingual",
+      _route.route(_COMPLAINT % "QUERO MEU DINHEIRO DE VOLTA AGORA")["model"], "multilingual")
+check("shouted/bare shouted portuguese still routes multilingual",
+      _route.route("QUERO MEU DINHEIRO DE VOLTA AGORA")["model"], "multilingual")
+
+# A vetoed line is not a verdict of English. `_leaf_non_english` dropped it outright, which
+# skipped the diacritic branch that exists for exactly this: text carrying non-English letters
+# that no stopword list can name. These three are real MASSIVE rows. Each is named by
+# `_analyse_text` but vetoed by `_named_prose_language` for holding only one stopword of that
+# language where two are required, and each carries diacritics above NON_EN_DIACRITIC_RATE --
+# so each was thrown away, and the field routed english. 114 MASSIVE rows move on this.
+_VETOED_BUT_ACCENTED = [
+    ("af", "vertel my van my vergaderings van môre oggend"),
+    ("af", "sê hardop die skedules van die lys"),
+    ("af", "wat is die koördinate van die ewenaar"),
+]
+for _loc, _line in _VETOED_BUT_ACCENTED:
+    check("veto/%s accented field falls through to the diacritic branch: %s" % (_loc, _line[:26]),
+          _route.route({"subject": "Please take a look at this ticket for the customer today",
+                        "note": _line})["model"], "multilingual")
+    check("veto/%s accented line is not named outright: %s" % (_loc, _line[:26]),
+          _named_prose_language(_line), None)
+# a shouted line with umlauts needs no fall-through -- its diacritics clear the bar directly
+check("veto/shouted german with umlauts routes multilingual",
+      _route.route("WIE SPÄT IST ES IN KÖLN")["model"], "multilingual")
+
+
+# Emphasis capitals, which the mixed-case half of the guard got wrong. The whole-state verdict
+# re-takes itself with the all-caps runs blanked, so an acronym run cannot outvote the English
+# prose around it -- but blanking *every* all-caps run deleted ordinary emphasis too, and
+# emphasis falls on the words that carry the sentence, so the words that named the language were
+# exactly the ones removed. No test covered this branch for genuine foreign prose, and all of
+# these routed english. A run of `_SHOUTED_MIN_WORD` letters is a word, not an acronym, and is
+# not blanked out of its own sentence. Eight of the ten are real MASSIVE test rows, shouted
+# where a person would shout them; the other two are hand-written, one of them the Spanish case
+# the review reported.
+EMPHASIS_STILL_FOREIGN = [
+    ("de", "sag mir das HEUTIGE DATUM"),
+    ("de", "welche wecker habe ICH GESTELLT"),
+    ("es", "quiero cancelar mi PEDIDO POR FAVOR"),
+    ("es", "QUIERO EL ESTADO DEL brillo de mi pantalla"),
+    ("pt", "quero o meu DINHEIRO DE VOLTA"),
+    ("pt", "DIZ ME O TEMPO EM barcelona daqui a dois dias"),
+    ("nl", "VERTEL ME HET weer deze week"),
+    ("fr", "passer l'aspirateur dans LE COULOIR"),
+    ("it", "CANCELLA LA MIA sveglia delle sette"),
+    ("ro", "SPUNE-MI VREMEA pentru saptamana aceasta"),
+]
+for _want, _line in EMPHASIS_STILL_FOREIGN:
+    check("emphasis/%s prose routes multilingual: %s" % (_want, _line[:30]),
+          _route.route(_line)["model"], "multilingual")
+    check("emphasis/%s prose keeps its language: %s" % (_want, _line[:30]),
+          analyse(_line)["language"], _want)
+
+# Monotonicity: adding one lowercase English token must not make foreign detection worse. The
+# fully upper-cased form is held to the shouted bar and clears it; the same text with `ok ` in
+# front used to fall into the mixed-case branch instead, which had no bar at all, and routed
+# english. 4,285 MASSIVE rows moved that way; 316 still do, against 279 at the parent.
+_SHOUT = "QUIERO CANCELAR MI PEDIDO POR FAVOR"
+check("emphasis/upper-cased spanish routes multilingual",
+      _route.route(_SHOUT)["model"], "multilingual")
+check("emphasis/one lowercase token does not undo it",
+      _route.route("ok " + _SHOUT)["model"], "multilingual")
+
+# and the acronym side the blanking exists for is still closed, which is what keeps the bar on
+# the length of the run rather than on nothing at all.
+check("emphasis/acronym run inside english prose still routes english",
+      _route.route("The MON DES EST LA codes were sent today")["model"], "english")
+check("emphasis/acronym settings line inside english prose still routes english",
+      _route.route("Please confirm the COM DOS LAN WAN VPN settings before Friday")["model"],
+      "english")
+check("emphasis/acronym run after one lowercase token still routes english",
+      _route.route("ok MON DES EST LA")["model"], "english")
+
+# Mixed cased and caseless script. Both caps bars answer by taking evidence *away* from the
+# Latin letters, and `looks_non_english`, which decides what is left, reads Latin diacritics
+# only -- so on a state that is 35% Cyrillic letters there was nothing left and an acronym run
+# with a Russian greeting in front of it went to the English checkpoint. The script promotion
+# cannot catch that fall: it needs `_non_latin_words`, which drops any run starting with a
+# capital, and in a shouted line every run does. Neither bar applies once the caseless letters
+# carry the state -- a wrong language name costs nothing there, because the checkpoint is
+# chosen on `is_english`.
+MIXED_SCRIPT_NOT_ENGLISH = [
+    "\u041f\u0420\u0418\u0412\u0415\u0422 MON DES EST LA",   # all caps: the shouted bar
+    "\u041f\u0440\u0438\u0432\u0435\u0442 MON DES EST LA",   # mixed case: the blanking
+]
+for _line in MIXED_SCRIPT_NOT_ENGLISH:
+    check("mixed-script/routes multilingual: %s" % _line[:12],
+          _route.route(_line)["model"], "multilingual")
+    check("mixed-script/is not english: %s" % _line[:12],
+          analyse(_line)["is_english"], False)
+# with no caseless letters to carry it, the same run is vetoed as before
+check("mixed-script/latin-only acronym run is still english",
+      _route.route("MON DES EST LA")["model"], "english")
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

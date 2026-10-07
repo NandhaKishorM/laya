@@ -4,6 +4,7 @@ nav:
   - agent.md
   - router.md
   - helpers.md
+  - train.md
   - langchain.md
   - glob: "*"
     ignore_no_matches: true

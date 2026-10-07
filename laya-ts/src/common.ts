@@ -229,33 +229,101 @@ function pyRepr(v: unknown): string {
   }
   if (typeof v === "string") return JSON.stringify(v);
   if (Array.isArray(v)) return `[${v.map(pyRepr).join(", ")}]`;
+  if (typeof v === "object") {
+    const entries = Object.entries(v as Record<string, unknown>).map(
+      ([k, val]) => `${pyRepr(k)}: ${pyRepr(val)}`
+    );
+    return `{${entries.join(", ")}}`;
+  }
   return String(v);
 }
 
+export type MinConfidenceMap = Record<string, number>;
+export type MinConfidence = number | MinConfidenceMap;
+
+const BUCKET_KEY = /^(choice|score|noul):(2|3-5|6-10|11\+)$/;
+
 /**
- * Validate opt-in abstention threshold `min_confidence` (#361).
+ * Validate a per-bucket abstention-threshold map (#394).
  *
- * Must be a real number in [0.0, 1.0]. Booleans are rejected.
+ * Keys are option-count bucket strings like "choice:2", "choice:3-5", "score:6-10", "noul:2",
+ * plus an optional "default". Values are numbers in [0.0, 1.0].
  */
-export function checkMinConfidence(v: unknown): number {
+export function checkMinConfidenceMap(m: unknown): MinConfidenceMap {
+  if (!m || typeof m !== "object" || Array.isArray(m) || Object.keys(m).length === 0) {
+    throw new Error(`a min_confidence map must be a non-empty dict of bucket -> float, got ${pyRepr(m)}`);
+  }
+  const out: MinConfidenceMap = {};
+  for (const [key, val] of Object.entries(m as Record<string, unknown>)) {
+    if (key !== "default" && !BUCKET_KEY.test(key)) {
+      throw new Error(`min_confidence map keys must be strings like 'choice:3-5', got ${pyRepr(key)}`);
+    }
+    if (typeof val === "boolean" || typeof val !== "number" || !Number.isFinite(val) || val < 0.0 || val > 1.0) {
+      throw new Error(`min_confidence must be a float in [0.0, 1.0], got ${pyRepr(val)}`);
+    }
+    out[key] = val;
+  }
+  return out;
+}
+
+/**
+ * Validate opt-in abstention threshold `min_confidence` (#361, #394).
+ *
+ * Either a real number in [0.0, 1.0] or a per-bucket mapping. Booleans are rejected.
+ */
+export function checkMinConfidence(v: unknown): MinConfidence {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    return checkMinConfidenceMap(v);
+  }
   if (typeof v === "boolean" || typeof v !== "number" || !Number.isFinite(v) || v < 0.0 || v > 1.0) {
     throw new Error(`min_confidence must be a float in [0.0, 1.0], got ${pyRepr(v)}`);
   }
   return v;
 }
 
+export function optionBucket(answer: Record<string, unknown>): string | null {
+  const qt = answer.type;
+  if (qt !== "choice" && qt !== "score" && qt !== "noul") return null;
+  const probs = answer.probabilities;
+  let k: number;
+  if (probs && typeof probs === "object" && !Array.isArray(probs)) {
+    k = Object.keys(probs).length;
+  } else if (qt === "noul") {
+    k = 2;
+  } else {
+    return null;
+  }
+  const size = k <= 2 ? "2" : k <= 5 ? "3-5" : k <= 10 ? "6-10" : "11+";
+  return `${qt}:${size}`;
+}
+
+export function resolveMinConfidence(
+  answer: Record<string, unknown>,
+  thresholds: MinConfidenceMap,
+  defaultVal: number = 0.0,
+): number {
+  const key = optionBucket(answer);
+  if (key !== null && key in thresholds) {
+    return thresholds[key];
+  }
+  return thresholds.default ?? defaultVal;
+}
+
 /**
- * Opt-in abstention marker (#361): flag answers whose confidence falls below `min_confidence`.
+ * Opt-in abstention marker (#361, #394): flag answers whose confidence falls below `min_confidence`.
  *
  * Reads `answer_confidence` (the calibrated max(p) confidence, invariant to label count k),
  * falling back to `confidence` if `answer_confidence` is absent.
  * The raw answer and confidence stay intact; `low_confidence: true` is added.
+ *
+ * Supports both a scalar number in [0.0, 1.0] and a per-bucket mapping of thresholds.
  */
 export function flagLowConfidence(
   results: Array<Record<string, unknown>> | Record<string, unknown>,
-  minConfidence: number,
+  minConfidence: MinConfidence,
 ): void {
-  if (minConfidence === 0.0) return;
+  const isMap = typeof minConfidence === "object" && minConfidence !== null;
+  if (!isMap && minConfidence === 0.0) return;
   const list = Array.isArray(results) ? results : [results];
   for (const res of list) {
     const answers = res && typeof res === "object" ? (res as Record<string, unknown>).answers : null;
@@ -267,8 +335,11 @@ export function flagLowConfidence(
       if (conf === undefined || conf === null) {
         conf = ansObj.confidence;
       }
-      if (typeof conf === "number" && !Number.isNaN(conf) && conf < minConfidence) {
-        ansObj.low_confidence = true;
+      if (typeof conf === "number" && !Number.isNaN(conf)) {
+        const thr = isMap ? resolveMinConfidence(ansObj, minConfidence) : minConfidence;
+        if (conf < thr) {
+          ansObj.low_confidence = true;
+        }
       }
     }
   }
@@ -283,6 +354,74 @@ export function clampTemperature(t: unknown): number {
 export function tempBucket(qtype: number, k: number): string {
   const size = k <= 2 ? "2" : k <= 5 ? "3-5" : k <= 10 ? "6-10" : "11+";
   return `${["choice", "score", "noul"][qtype]}:${size}`;
+}
+
+export interface BinningEntry {
+  bins: number;
+  values: number[];
+}
+
+export type BinningMap = Record<string, BinningEntry>;
+
+/**
+ * Validate a histogram-binning recalibration map.
+ *
+ * Keys are option-count bucket strings like "choice:2", "choice:3-5", "score:6-10", "noul:2".
+ * Values are objects with an integer `bins >= 1` and a `values` array of length `bins`
+ * where each number is in [0.0, 1.0].
+ */
+export function checkBinningMap(m: unknown): BinningMap {
+  if (!m || typeof m !== "object" || Array.isArray(m)) {
+    throw new Error(`binning_map must be an object of bucket -> {bins, values}, got ${pyRepr(m)}`);
+  }
+  const out: BinningMap = {};
+  for (const [name, entry] of Object.entries(m as Record<string, unknown>)) {
+    if (!BUCKET_KEY.test(name)) {
+      throw new Error(`binning_map key ${pyRepr(name)} is not a bucket like "choice:2" or "score:3-5"`);
+    }
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(`binning_map[${pyRepr(name)}] must be an object with "bins" and "values", got ${pyRepr(entry)}`);
+    }
+    const rec = entry as Record<string, unknown>;
+    const nBins = rec.bins;
+    const values = rec.values;
+    if (typeof nBins === "boolean" || typeof nBins !== "number" || !Number.isInteger(nBins) || nBins < 1) {
+      throw new Error(`binning_map[${pyRepr(name)}] must have an integer "bins" >= 1, got ${pyRepr(nBins)}`);
+    }
+    if (!Array.isArray(values) || values.length !== nBins) {
+      throw new Error(`binning_map[${pyRepr(name)}] must have "values" of length "bins" (${nBins})`);
+    }
+    const parsedValues: number[] = [];
+    for (const v of values) {
+      if (typeof v === "boolean" || typeof v !== "number" || !Number.isFinite(v) || v < 0.0 || v > 1.0) {
+        throw new Error(`binning_map[${pyRepr(name)}] values must be numbers in [0, 1], got ${pyRepr(v)}`);
+      }
+      parsedValues.push(v);
+    }
+    out[name] = { bins: nBins, values: parsedValues };
+  }
+  return out;
+}
+
+/**
+ * Recalibrate one `answer_confidence` for its option-count `bucket` (tempBucket).
+ *
+ * Returns the confidence unchanged when the map has no entry for the bucket, so a bucket the map
+ * was not fit for passes through rather than being forced to a wrong value.
+ */
+export function applyBinningMap(
+  confidence: number,
+  bucket: string,
+  binningMap?: BinningMap | null,
+): number {
+  if (!Number.isFinite(confidence)) return confidence;
+  const entry = binningMap?.[bucket];
+  if (!entry) {
+    return confidence;
+  }
+  const bins = entry.bins;
+  const b = Math.min(bins - 1, Math.max(0, Math.floor(confidence * bins)));
+  return entry.values[b];
 }
 /** Max of a length list without spread (Math.max(...arr) throws RangeError past ~100k args). */
 export function maxOf(values: ArrayLike<number>, fallback = 0): number {

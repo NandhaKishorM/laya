@@ -131,13 +131,81 @@ Each metric is computed per answer where it applies and aggregated over the data
 | `noul_accuracy` | `noul` | fraction whose boolean (probability >= 0.5) matches |
 | `score_mae` | `score` | mean absolute error |
 | `score_within_<tol>` | `score` | fraction within an absolute tolerance |
-| `ece` | any answer with a confidence | expected calibration error, 15 bins, computed on `answer["answer_confidence"]`, the calibrated probability Laya reports on every answer type |
+| `ece` | any answer with a confidence | expected calibration error, 15 bins, computed on the column `laya.evals._answer_confidence` reads -- `answer["answer_confidence"]` where the answer carries it, and a fallback where it does not; see [which confidence a metric reads](#which-confidence-a-metric-reads) |
 | `brier` | any answer with a confidence and a known label | Brier score of confidence as P(correct), `mean((confidence - correct)**2)`; lower is better |
-| `aurc` | any answer with a confidence and a known label | area under the risk--coverage curve (mean selective risk over every coverage); lower is better, and rewards a confidence that *ranks* right from wrong rather than just being calibrated |
-| `selective_accuracy@50`, `selective_accuracy@80` | any answer with a confidence and a known label | accuracy over the most-confident 50% / 80% of answers -- what abstaining on the least-confident tail buys |
-| `mean_confidence` | any answer with a confidence | mean reported `answer["answer_confidence"]` |
+| `aurc` | any answer with a confidence and a known label | area under the risk--coverage curve: one risk value per distinct confidence level, each weighted by the answers that level spans; lower is better, and rewards a confidence that *ranks* right from wrong rather than just being calibrated |
+| `selective_accuracy@50`, `selective_accuracy@80` | any answer with a confidence and a known label | accuracy over the answers a confidence threshold at the 50% / 80% coverage point accepts -- what abstaining on the least-confident tail buys. A threshold cannot split a group of equal confidences, so this can cover more than the named fraction; see [coverage cuts](#coverage-cuts-and-ties) |
+| `mean_confidence` | any answer with a confidence | mean of the same column -- `answer["answer_confidence"]` where the answer carries it |
 | `latency_p50_ms`, `latency_p95_ms` | per request | wall time each request waited, informational -- see [batching](#batching-and-timing) |
 | `cost_per_decision_p50_ms`, `cost_per_decision_p95_ms` | per decision | a call's wall time divided by the rows it carried, informational |
+
+### Which confidence a metric reads
+
+Every row above that takes a confidence (`ece`, `brier`, `aurc`, both `selective_accuracy@*`,
+`mean_confidence`) gets its column from `laya.evals._answer_confidence`, which prefers
+`answer["answer_confidence"]` -- the probability of the answer being reported, the quantity temperature
+scaling fits. It is not a claim that the number is right as shipped: both base checkpoints are
+over-confident and `laya-multilingual` ships no fitted temperatures at all -- see the README's
+[Calibration](https://github.com/NandhaKishorM/laya#calibration) -- which is what `ece` measures
+rather than assumes.
+
+An answer that carries no `answer_confidence` falls through, in order, to `confidence`, then
+`max(p, 1 - p)` for a `noul`, then `max(probabilities)`. Those are different quantities. On `choice`
+and `score` the `confidence` field is normalized entropy, which moves with the option count (#394)
+rather than with how right the answer is; `max(probabilities)` is the mass on the top option, equal to
+the reported answer's probability only when the reported answer is the argmax.
+
+The shape that actually arrives without the field is the strict Jev wire contract: `LAYA_JEV_STRICT`
+drops `answer_confidence` from every answer (`laya/serve.py::_project_jev_strict`, and the flag's row
+in [the HTTP API page](http-api.md)), so a report run over recorded strict responses calibrates the
+entropy number. Measured on three labelled rows -- `choice` carrying `answer_confidence` 0.95 against
+an entropy `confidence` of 0.7887, `score` 0.90 against 0.6410, `noul` 0.87 -- the same dataset scores
+`mean_confidence` 0.9067 and `ece` 0.0900 over the full payloads and 0.7666 and 0.1707 over the strict
+projection. Two reports are comparable only when their answers carry the same field;
+`tests/test_evals.py` pins both paths so a change to that fallback order has to be made deliberately.
+
+### Coverage cuts and ties
+
+Both coverage metrics cut on a confidence **threshold**, and a threshold accepts every answer at its
+own confidence. So a cut never splits a group of answers that share one: when `coverage * n` falls
+inside such a group, every member of the group is accepted. The number of answers behind the figure
+is therefore the group's upper edge rather than the named fraction -- `selective_accuracy@50` over a
+slice whose confidences are all equal is that slice's own accuracy, not the better half of it. The
+count the gate prints (`n=` in a rule's failure message) is the slice's size, not the accepted size,
+so a very wide group is not visible from the message alone.
+
+Ties are the normal case rather than a corner: a fitted temperature can leave a bucket reporting a
+point mass, which `laya.common.answer_confidence` records of the shipped `choice:11+`, and a real
+checkpoint produced a six-row group at exactly 1.0 out of twelve answers. Cutting at a row index
+instead made both metrics depend on the order the dataset arrived in -- the same rows, shuffled,
+moved `selective_accuracy@50` between 0.000 and 1.000.
+
+`aurc` integrates one risk value per distinct level, weighted by the answers that level spans, so it
+remains an area under the risk--coverage curve rather than an average of unevenly sized points.
+
+Two consequences worth planning for:
+
+* **A number can move in either direction, by more than a reordering could.** Where a group
+  straddles the cut, the threshold reading differs from every row-index reading of the same data:
+  measured over 400,001 tie-shaped datasets, up to 0.500 for `selective_accuracy@50` and 0.351
+  for `aurc`. On the twelve-answer shape above -- six correct, all at confidence 1.0 -- `aurc` moves
+  0.327 (0.173 to 0.500). A gate that was passing may fail, and one that was failing may pass; the
+  previous verdict depended on row order, including for an absolute `min` or `max` limit, which is
+  refused by nothing because it reads a single run.
+* **Regenerate committed baselines.** `config.coverage_metric_definition` records which definition
+  produced a report. Comparing a coverage metric across two definitions is refused on **both** the
+  gates that subtract a baseline -- `--baseline --tolerance` (`EvalReport.compare`) and a relative
+  rule (`max_drop` / `max_increase`) under `--gate-policy` -- and on **either** side being stale,
+  not just the baseline: a candidate produced by an older `laya` carries a row-order artifact that
+  can read *better* than the truth, so gating it against a correctly regenerated baseline would
+  pass a regression that the correctly scored report fails. Without that refusal a
+  stale baseline hides a real regression: a slice recorded at 0.033 under the old definition reads
+  0.517 under this one, so a candidate that genuinely dropped 0.217 would clear a `max_drop` of
+  0.05. `ece` and `brier` do not cut and stay comparable.
+
+With no ties in the data there is one level per answer, and both metrics are exactly what they have
+always been -- bit-identical, not merely close.
+
 
 Add `ScoreWithin(0.25)` to the evaluator list for a tolerance metric; the default set is
 `choice_accuracy`, `noul_accuracy`, `score_mae`, `mean_confidence`, plus `ece`. From the CLI the
@@ -186,21 +254,26 @@ raising `TypeError` halfway through a long run.
 
 `--min-confidence T` forwards core's opt-in abstention threshold (#361) to every call the run
 makes, so `Router` and `ONNXAgent` mark answers whose `answer_confidence` falls below `T` with
-`low_confidence: True` before the harness sees them. Unlike grouping, this changes the answers
-that score: the same run at `T=0` and `T=0.7` is a different experiment, and a `precision@coverage`
-sweep is a series of these, not a single baseline drifting.
+`low_confidence: True` and `abstention: "abstained"` before the harness sees them. The gate is a
+*reporting* control, not a scoring one: `apply_confidence_gate` leaves
+`answer["choice"] / ["noul"] / ["score"]` as the raw argmax and `_aggregate` reads only those
+keys, so every accuracy, calibration and coverage number -- `ece`, `brier`, `aurc`,
+`selective_accuracy@NN` -- is the same at `T=0` and `T=0.7`. What changes is the report's
+`config.timing.min_confidence` and `config.timing.min_confidence_sent`, and any caller who acts
+on the flag downstream of the harness.
 
 The accepted range is core's `laya.confidence.check_min_confidence` -- `[0.0, 1.0]`, finite, not
 a bool -- rather than a copy here, so a value the gate itself would reject fails as a usage error
-(exit 2) before any checkpoint loads. `0.0` is a legal ask: it is the control arm for a
-`precision@coverage` sweep, and a check that dropped it would hide the sweep's own floor.
+(exit 2) before any checkpoint loads. `0.0` is a legal ask: it is the control arm for an
+abstention sweep and the value `flag_low_confidence` treats as a no-op, so a check that dropped
+it would hide which arm actually ran.
 
 A runner whose `predict` or (for a batched run) whose `predict_batch` predates the gate is
-**refused with a named `EvalError`**, not scored without the threshold. Silently dropping a
-scoring control is the class of lie this harness exists to prevent: the report would publish a
-`precision@coverage` figure for a policy that never ran. `config.timing` records both the ask and
-the fact: `min_confidence` is the threshold that was requested, `min_confidence_sent` says whether
-any call this run made actually carried it.
+**refused with a named `EvalError`**, not run without the threshold. Silently dropping it would
+let `report.config["timing"]["min_confidence"]` name a threshold the harness never applied -- the
+class of lie this harness exists to prevent, even though the metric numbers stay identical.
+`config.timing` records both the ask and the fact: `min_confidence` is the threshold that was
+requested, `min_confidence_sent` says whether any call this run made actually carried it.
 
 ## Slices
 
@@ -263,6 +336,7 @@ is reviewable on its own:
 | `dataset_sha256` | the sha256 of the dataset bytes that were parsed |
 | `questions_sha256` | a fingerprint of the question schema: every question's id, type, `instructions` and `criteria`, over the whole dataset |
 | `laya_version` | the `laya` that computed the numbers |
+| `coverage_metric_definition` | which definition of `aurc` / `selective_accuracy@*` produced this report (see [coverage cuts](#coverage-cuts-and-ties)). A relative gate rule on either refuses a baseline recorded under a different one, rather than subtracting numbers that do not mean the same thing |
 | `thresholds` | the gate this run applied: `min`, `max` and `baseline_tolerance` |
 | `gate_policy` | the optional slice gate policy applied by `run --gate-policy` |
 | `revisions` | the commit each checkpoint that answered was loaded from (see [below](#baseline-and-ci-gate)) |
@@ -348,3 +422,26 @@ opt in. With `--onnx`, only a bare `--revision <SHA>` applies, to the config and
 Drop a JSONL in `research/evals/` and a reviewed baseline beside it, then point a workflow (or
 `research/evals/check_regression.py`) at both. The format is the same as the fixture; nothing in
 the harness knows about MASSIVE.
+
+## Evidence inspection
+
+`evidence` reads — never writes — the artifacts a fine-tune/eval run already persists and says
+what evidence exists, what is missing, and what is insufficient. It loads no model weights and
+does not require torch.
+
+```bash
+laya-evals evidence --checkpoint ./my-checkpoint [--report report.json]
+```
+
+A checkpoint directory must contain `rl_agent_config.json`. Calibration evidence is derived from
+the persisted `training.laya_train_calibration` block: a legacy checkpoint with no training
+metadata is `UNKNOWN`; a question type with zero items is `MISSING`; a type whose entry records
+any upstream `issues` text (not fitted, below `MIN_TYPE_N`/`CALIB_WARN_N`, clamped, unchanged
+fit) is `INSUFFICIENT`; a clean fit is `PRESENT`. The helper trusts the persisted `issues`
+written by #933 instead of keeping a second numeric threshold source.
+
+The eval report's identity fields (`schema`, `dataset_sha256`, `questions_sha256`, `laya_version`)
+are reported with the same semantics as `run`. The checkpoint↔report relationship is claimed only
+as a deterministic conflict: if both artifacts expose the same `dataset_sha256`/`questions_sha256`
+with different values, it is `INCOMPARABLE`. Everything else is `UNKNOWN` — matching `laya_version`
+alone never proves a match, and differing `laya_version` alone never proves a conflict.

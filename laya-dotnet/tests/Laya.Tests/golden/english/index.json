@@ -1,0 +1,88 @@
+[
+  {
+    "name": "quickstart",
+    "file": "case_quickstart.json",
+    "expects_error": false
+  },
+  {
+    "name": "dict_state",
+    "file": "case_dict_state.json",
+    "expects_error": false
+  },
+  {
+    "name": "list_state",
+    "file": "case_list_state.json",
+    "expects_error": false
+  },
+  {
+    "name": "criterion_shapes",
+    "file": "case_criterion_shapes.json",
+    "expects_error": false
+  },
+  {
+    "name": "choice_criteria_list",
+    "file": "case_choice_criteria_list.json",
+    "expects_error": false
+  },
+  {
+    "name": "cjk",
+    "file": "case_cjk.json",
+    "expects_error": false
+  },
+  {
+    "name": "arabic",
+    "file": "case_arabic.json",
+    "expects_error": false
+  },
+  {
+    "name": "json_escaping",
+    "file": "case_json_escaping.json",
+    "expects_error": false
+  },
+  {
+    "name": "nonstring_instructions",
+    "file": "case_nonstring_instructions.json",
+    "expects_error": false
+  },
+  {
+    "name": "single_option",
+    "file": "case_single_option.json",
+    "expects_error": false
+  },
+  {
+    "name": "many_options",
+    "file": "case_many_options.json",
+    "expects_error": false
+  },
+  {
+    "name": "long_state",
+    "file": "case_long_state.json",
+    "expects_error": false
+  },
+  {
+    "name": "mask_injection",
+    "file": "case_mask_injection.json",
+    "expects_error": false
+  },
+  {
+    "name": "sample_app_english",
+    "file": "case_sample_app_english.json",
+    "expects_error": false
+  },
+  {
+    "name": "sample_app_hindi",
+    "file": "case_sample_app_hindi.json",
+    "expects_error": false
+  },
+  {
+    "name": "options_exceed_head",
+    "file": "case_options_exceed_head.json",
+    "expects_error": true
+  },
+  {
+    "name": "shortlist_many_options",
+    "file": "case_shortlist_many_options.json",
+    "expects_error": false,
+    "kind": "shortlist"
+  }
+]

@@ -83,7 +83,7 @@ print("   -> same verdict, %d fewer input tokens: cleaning buys headroom, not ac
 
 PHISH_BODY = """URGENT: Your account has been locked for security reasons.
 
-Verify immediately at http://wellsfargo--verify.tj49.wsipv6.com or it will be closed
+Verify immediately at http://secure-bank--verify.account-check.example or it will be closed
 permanently.
 
 Best regards,
@@ -100,9 +100,9 @@ On Mon, 11 Mar 2024 at 09:12, Billing Support <billing@vendor.example> wrote:
 
 heading("a phishing lure with an innocent quoted tail")
 phish_clean = laya.email_state("Urgent: your account is locked", PHISH_BODY,
-                               "security@wells-fargo-verify.com")
+                               "security@secure-bank-verify.example")
 phish_raw = laya.email_state("Urgent: your account is locked", PHISH_BODY,
-                             "security@wells-fargo-verify.com", clean=False)
+                             "security@secure-bank-verify.example", clean=False)
 print("   cleaned state:")
 describe(agent.predict(phish_clean, EMAIL_QUESTIONS)["answers"], indent="   ")
 print("   raw state:")

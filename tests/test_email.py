@@ -37,6 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import laya  # noqa: E402
 from laya import email as email_module  # noqa: E402
 from laya import presets  # noqa: E402
+from laya.common import serialize_state  # noqa: E402
 from laya.email import clean_email_body, email_state  # noqa: E402
 
 PASS, FAIL = [], []
@@ -293,6 +294,23 @@ check(
     "Bonjour,\n\nJ'ai été facturé deux fois sur la facture de mars. "
     "Merci de rembourser le double paiement aujourd'hui.",
 )
+for footer in [
+    "Envoyé depuis mon iPhone",
+    "Envoyé de mon iPad.",
+    "Envoyé depuis iPhone",
+    "Envoyé de iPad",
+    "ENVOYÉ DEPUIS MON IPHONE",
+]:
+    body = "Merci de rembourser la facture."
+    check("fr/device footer cut/" + footer, clean_email_body(body + "\n\n" + footer), body)
+
+for sentence in [
+    "Envoyé depuis mon iPhone par erreur.",
+    "Envoyé de mon iPad hier.",
+]:
+    body = "Bonjour,\n%s\nMerci de rembourser la facture." % sentence
+    check("fr/device sentence kept/" + sentence, clean_email_body(body), body)
+
 check(
     "fr/outlook original-message block is cut",
     clean_email_body(
@@ -754,6 +772,85 @@ check(
     "budget/email_state cuts where clean_email_body promises",
     email_state("Billing", LONG_BODY)["body"],
     clean_email_body(LONG_BODY),
+)
+
+# `email_state`'s `**extra` paragraph said "any other keyword becomes a field of the state", and
+# the body underneath it reads `if v is not None` -- a keyword carrying None never becomes a field.
+# The paragraph now names the filter, and these checks tie the two halves together: the live calls
+# pin what the code really does, and the docstring checks pin the prose to it. `sender` is the same
+# shape of silence on a different rule (falsy, not None), so it is checked separately rather than
+# folded into the same claim.
+extra_paragraph = [
+    p for p in (inspect.getdoc(email_state) or "").split("\n\n") if "becomes a field" in p
+]
+check_true(
+    "state doc/exactly one paragraph describes **extra",
+    len(extra_paragraph) == 1,
+    "found %d paragraph(s) mentioning 'becomes a field'" % len(extra_paragraph),
+)
+if len(extra_paragraph) == 1:
+    # Flatten so the prose wrapping mid-sentence cannot hide a token from the match.
+    flat = " ".join(extra_paragraph[0].split())
+    check_true(
+        "state doc/the keyword rule names the None filter",
+        "None" in flat and ("dropped" in flat or "omitted" in flat),
+        "the paragraph still claims every keyword becomes a field without naming the None case: %r"
+        % flat,
+    )
+    check_true(
+        "state/doc names sender's own drop rule",
+        "from" in flat or "sender" in flat,
+        "the paragraph says nothing about how `sender` is dropped: %r" % flat,
+    )
+    check_true(
+        "state/the null claim names the serializer behind it",
+        ("null" not in flat.lower()) or ("serialize_state" in flat),
+        "the paragraph claims a null would reach the prompt without naming what renders it: %r" % flat,
+    )
+    check_true(
+        "state/doc and code agree on the filter",
+        ("is not None" in inspect.getsource(email_state)) == ("None" in flat),
+        "doc names the None filter=%s, code filters on `is not None`=%s"
+        % ("None" in flat, "is not None" in inspect.getsource(email_state)),
+    )
+
+check(
+    "state/a None-valued keyword is dropped, not added",
+    "thread_id" in email_state("Billing", "Short body", thread_id=None),
+    False,
+)
+check(
+    "state/a keyword with a value becomes a field",
+    email_state("Billing", "Short body", thread_id="t-9").get("thread_id"),
+    "t-9",
+)
+check(
+    "state/a falsy sender is dropped while None extras are",
+    "from" in email_state("Billing", "Short body", sender=""),
+    False,
+)
+check(
+    "state/the dropped keys are absent, not null",
+    sorted(email_state("Billing", "Short body", sender=None, thread_id=None)),
+    ["body", "subject"],
+)
+# The rewritten paragraph claims the drop matters because the state reaches the model as JSON, so
+# that mechanism is checked against `serialize_state` rather than left as prose: a dropped key must
+# leave no `null` in the serialized prompt, and a retained one must.
+check_true(
+    "state/the mechanism the doc names really renders JSON",
+    "json.dumps" in inspect.getsource(serialize_state),
+    "`serialize_state` no longer serializes with JSON, so the paragraph's prompt claim is stale",
+)
+check(
+    "state/a dropped key leaves no null in the serialized state",
+    "null" in serialize_state(email_state("Billing", "Short body", sender=None, thread_id=None)),
+    False,
+)
+check(
+    "state/a keyword with a value does reach the serialized state",
+    '"thread_id": "t-9"' in serialize_state(email_state("Billing", "Short body", thread_id="t-9")),
+    True,
 )
 
 

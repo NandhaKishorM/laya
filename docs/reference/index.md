@@ -1,8 +1,8 @@
 # Python API
 
 These pages are generated from the docstrings in `laya/`, so they change with the code. Apart
-from `ONNXAgent`, every name below can be imported from the top-level package, for example
-`from laya import Router`.
+from `ONNXAgent` and `laya.train`, every name below can be imported from the top-level package,
+for example `from laya import Router`.
 
 - [Agent](agent.md): `Agent` and `load` run one checkpoint; `ONNXAgent` runs an exported ONNX
   model.
@@ -10,6 +10,8 @@ from `ONNXAgent`, every name below can be imported from the top-level package, f
   the choice.
 - [Helpers](helpers.md): language detection, email cleaning, question presets, shortlisting
   and calibration utilities.
+- [Fine-tuning](train.md): `finetune` and `TrainConfig` from `laya.train`, imported from that
+  module rather than the top-level package, and the pieces they are built from.
 - [LangChain components](langchain.md): `LayaRouter`, `LayaGuardrail`, `LayaTriage` and
   `LayaEvaluator`.
 

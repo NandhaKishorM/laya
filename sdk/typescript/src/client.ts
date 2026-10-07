@@ -6,6 +6,21 @@ import type { Health, Prediction, PredictOptions, Questions, RequestOptions, Sta
 import { isRecord, validateJson, validateQuestions, validateTimeout } from './validation.js';
 import { validateHealth, validatePrediction } from './response.js';
 
+/** One threshold in `[0, 1]`: booleans are not thresholds even though they read as 0/1. */
+function isThreshold(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+/** Mirror core's `check_min_confidence`: one threshold for every answer, or a non-empty
+ *  per-bucket map whose values are all thresholds. Anything else is refused before the
+ *  request goes out, so a caller cannot pay for inference with a gate the server would 422. */
+function validateMinConfidence(value: unknown): asserts value is number | Record<string, number> {
+  if (isThreshold(value)) return;
+  if (isRecord(value) && Object.keys(value).length > 0 && Object.values(value).every(isThreshold)) return;
+  throw new LayaValidationError(
+    'minConfidence must be a number between 0 and 1, or a non-empty map of bucket to threshold');
+}
+
 export interface LayaOptions {
   /** Server root URL, optionally including a reverse-proxy path prefix. */
   baseURL?: string;
@@ -81,10 +96,7 @@ export class Laya {
         throw new LayaValidationError(`${key} must be a positive integer`);
       }
     }
-    if (options.minConfidence !== undefined &&
-        (!Number.isFinite(options.minConfidence) || options.minConfidence < 0 || options.minConfidence > 1)) {
-      throw new LayaValidationError('minConfidence must be a number between 0 and 1');
-    }
+    if (options.minConfidence !== undefined) validateMinConfidence(options.minConfidence);
     const model = options.model ?? this.model;
     if (model !== undefined && (typeof model !== 'string' || !model.trim())) {
       throw new LayaValidationError('model must be a nonempty string');
@@ -97,7 +109,7 @@ export class Laya {
     const body: {
       state: State; questions: typeof wireQuestions; model?: string; task?: string;
       lang?: string; lang_guess?: string; max_len?: number; head_max_len?: number;
-      min_confidence?: number;
+      min_confidence?: number | Record<string, number>;
     } = { state, questions: wireQuestions };
     if (model !== undefined) body.model = model;
     // The per-request controls `/v1/systemone` forwards when the request sends them (see

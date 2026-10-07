@@ -474,6 +474,149 @@ check_raises("nullable/two real branches rejected", SchemaError,
                    "properties": {"a": {"anyOf": [{"type": "boolean"}, {"type": "integer"}]}}}))
 
 
+# --------------------------------------------------------------- local $ref (pydantic Enum)
+# Pydantic renders every `Enum` field as `{"$ref": "#/$defs/<Name>"}` (v1 and draft-07 use
+# `#/definitions/`, and wrap a described ref in a one-item `allOf`), so a local ref to an enum
+# definition must plan as the enum it points at, with the property's own keys kept on top.
+def _schema_with_defs(props, key="$defs"):
+    return {"type": "object", "properties": props, key: {
+        "Dept": {"enum": ["billing", "support"], "type": "string", "title": "Dept",
+                 "description": "The team that owns it."},
+        "Prio": {"enum": [0, 1, 2], "type": "integer", "title": "Prio"},
+        "Alias": {"$ref": "#/%s/Prio" % key},
+        "Node": {"type": "object", "properties": {"next": {"$ref": "#/%s/Node" % key}}},
+        "Loop": {"$ref": "#/%s/Loop" % key},
+        "Maybe": {"anyOf": [{"$ref": "#/%s/Maybe" % key}, {"type": "null"}]},
+    }}
+
+
+def _ref_error(prop, key="$defs"):
+    try:
+        plan_from_json_schema(_schema_with_defs({"a": prop}, key))
+    except SchemaError as exc:
+        return str(exc)
+    return None
+
+
+REFS = _schema_with_defs({
+    "dept": {"$ref": "#/$defs/Dept"},
+    "described": {"$ref": "#/$defs/Dept", "description": "Which team?"},
+    "optional": {"anyOf": [{"$ref": "#/$defs/Dept"}, {"type": "null"}], "default": None,
+                 "description": "Which team, if any?"},
+    "wrapped": {"allOf": [{"$ref": "#/$defs/Dept"}], "description": "Which team (v1)?"},
+    "prio": {"$ref": "#/$defs/Prio", "default": 0},
+    "alias": {"$ref": "#/$defs/Alias"},
+})
+rq = questions_from_json_schema(REFS)
+check("ref/enum definition is a choice", rq["dept"]["type"], "choice")
+check("ref/enum labels come from the definition", list(rq["dept"]["criteria"]), ["billing", "support"])
+# The definition's description is pydantic's copy of the enum docstring ("An enumeration." on v1
+# when there is none): it describes the type, not this field, so it is not the question wording.
+check("ref/definition's own description is not the wording", rq["dept"]["instructions"],
+      "What is `dept`?")
+check("ref/sibling description is the wording", rq["described"]["instructions"], "Which team?")
+check("ref/Optional ref is a choice", rq["optional"]["type"], "choice")
+check("ref/Optional ref carries the outer description", rq["optional"]["instructions"], "Which team, if any?")
+check("ref/allOf-wrapped ref is a choice", rq["wrapped"]["type"], "choice")
+check("ref/allOf-wrapped ref keeps the sibling description", rq["wrapped"]["instructions"], "Which team (v1)?")
+check("ref/integer enum labels", list(rq["prio"]["criteria"]), ["0", "1", "2"])
+check("ref/a ref to a ref resolves", list(rq["alias"]["criteria"]), ["0", "1", "2"])
+check("ref/draft-07 #/definitions/ resolves",
+      questions_from_json_schema(_schema_with_defs({"a": {"$ref": "#/definitions/Dept"}}, "definitions"))
+      ["a"]["type"], "choice")
+check("ref/allOf wraps an inline schema too",
+      questions_from_json_schema({"type": "object", "properties": {"a": {"allOf": [{"type": "boolean"}]}}})
+      ["a"]["type"], "noul")
+rv = answers_to_json({"dept": {"choice": "support"}, "prio": {"choice": "2"}, "alias": {"choice": "1"}}, REFS)
+check("ref/projects the definition's values", rv, {"dept": "support", "prio": 2, "alias": 1})
+_before = repr(REFS)
+plan_from_json_schema(REFS)
+check("ref/planning does not mutate the schema", repr(REFS), _before)
+
+check("ref/missing definition is rejected", _ref_error({"$ref": "#/$defs/Nope"}),
+      "properties.a: $ref '#/$defs/Nope' does not resolve to an entry of this schema's '$defs' or 'definitions'")
+check("ref/wrong definitions key is rejected", _ref_error({"$ref": "#/definitions/Dept"}),
+      "properties.a: $ref '#/definitions/Dept' does not resolve to an entry of this schema's '$defs' or "
+      "'definitions'")
+check("ref/non-local ref is rejected", _ref_error({"$ref": "other.json#/$defs/Dept"}),
+      "properties.a: $ref 'other.json#/$defs/Dept' does not resolve to an entry of this schema's '$defs' or "
+      "'definitions'")
+check("ref/a ref with no definitions at all is rejected", _ref_error({"$ref": "#/$defs/X"}, "unused"),
+      "properties.a: $ref '#/$defs/X' does not resolve to an entry of this schema's '$defs' or 'definitions'")
+check("ref/self-reference is rejected", _ref_error({"$ref": "#/$defs/Loop"}),
+      "properties.a: $ref '#/$defs/Loop' is recursive; flatten the schema")
+check("ref/recursion through Optional is rejected", _ref_error({"$ref": "#/$defs/Maybe"}),
+      "properties.a: $ref '#/$defs/Maybe' is recursive; flatten the schema")
+check("ref/an object definition is a nested object", _ref_error({"$ref": "#/$defs/Node"}),
+      "properties.a: nested objects are not supported; flatten the schema")
+
+try:
+    import enum
+    from typing import Optional
+
+    import pydantic
+
+    class Dept(str, enum.Enum):
+        billing = "billing"
+        support = "support"
+        sales = "sales"
+
+    class Prio(enum.IntEnum):
+        low = 0
+        high = 1
+
+    class Colour(enum.Enum):
+        red = "red"
+        blue = "blue"
+
+    class EnumTicket(pydantic.BaseModel):
+        department: Dept = pydantic.Field(description="Which team should handle this?")
+        prio: Prio
+        colour: Colour
+        backup: Optional[Dept] = None
+
+    eq = questions_from_pydantic(EnumTicket)
+    check("pydantic-enum/str Enum is a choice", eq["department"]["type"], "choice")
+    check("pydantic-enum/Field description is the wording", eq["department"]["instructions"],
+          "Which team should handle this?")
+    check("pydantic-enum/labels are the member values", list(eq["department"]["criteria"]),
+          ["billing", "support", "sales"])
+    check("pydantic-enum/IntEnum is a choice", (eq["prio"]["type"], list(eq["prio"]["criteria"])),
+          ("choice", ["0", "1"]))
+    check("pydantic-enum/plain Enum is a choice", eq["colour"]["type"], "choice")
+    check("pydantic-enum/Optional[Enum] is a choice", eq["backup"]["type"], "choice")
+
+    enum_answers = {
+        "department": {"type": "choice", "choice": "support", "confidence": 0.9, "probabilities": {}},
+        "prio": {"type": "choice", "choice": "1", "confidence": 0.8, "probabilities": {}},
+        "colour": {"type": "choice", "choice": "blue", "confidence": 0.8, "probabilities": {}},
+    }
+    et = answer_to_pydantic(EnumTicket, enum_answers)
+    check("pydantic-enum/round trip to members", (et.department, et.prio, et.colour, et.backup),
+          (Dept.support, Prio.high, Colour.blue, None))
+    check_true("pydantic-enum/IntEnum comes back as the member", et.prio is Prio.high)
+    et = answer_to_pydantic(EnumTicket, dict(enum_answers, backup={"type": "choice", "choice": "sales"}))
+    check("pydantic-enum/Optional[Enum] answered", et.backup, Dept.sales)
+    check("pydantic-enum/decide projects values",
+          decide(FakeRunner(enum_answers), "s", schema=EnumTicket),
+          {"department": "support", "prio": 1, "colour": "blue"})
+
+    class Inner(pydantic.BaseModel):
+        flag: bool
+
+    class Outer(pydantic.BaseModel):
+        inner: Inner
+
+    try:
+        questions_from_pydantic(Outer)
+        FAIL.append("pydantic-enum/nested model: did not raise")
+    except SchemaError as exc:
+        check("pydantic-enum/nested model is still a nested object", str(exc),
+              "properties.inner: nested objects are not supported; flatten the schema")
+except ImportError:
+    PASS.append("pydantic-enum/skipped (not installed)")
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL", f)

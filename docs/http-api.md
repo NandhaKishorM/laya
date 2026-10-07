@@ -33,10 +33,12 @@ Everything is environment variables, so one image serves a laptop dev run and a 
 | `LAYA_MODELS` | comma list to preload (`english,multilingual,typed-decisions`); empty = all | all |
 | `LAYA_THREADS` | cap torch intra-op threads on CPU; keep it <= physical cores -- oversubscribing logical cores is a large regression | torch default |
 | `LAYA_AUTO_TASK` | auto-route to the typed-decisions checkpoint | `0` |
+| `LAYA_IDLE_UNLOAD_SECONDS` | unload resident checkpoints after this many idle seconds; the next request loads its checkpoint again. Zero disables unloading | `0` |
 | `LAYA_DEFAULT_MODEL` | checkpoint a state with no language evidence falls back to; aliases such as `ml` resolve the way core resolves them, and an unresolvable name stops the server at startup | `english` |
 | `LAYA_API_KEY` | if set, require `Authorization: Bearer <key>` | none |
 | `LAYA_LOG_LEVEL` | uvicorn log level | `info` |
 | `LAYA_MAX_CONCURRENT` | requests admitted past auth at once; excess gets `503` | `16` |
+| `LAYA_MAX_BATCH_TOKENS` | tokens one `/v1/systemone/batch` FORWARD PASS may collate (`states` x questions x row width); a larger batch is split into several passes, not refused | `131072` |
 | `LAYA_JEV_STRICT` | serve the strict Jev wire contract: no root `routing`, no per-answer `action` / `answer_confidence`, no `confidence` on noul answers, and `usage` reduced to `input_tokens` + `output_tokens`. For clients that validate the response against the Jev contract with no extra fields | `0` |
 
 For a deployment published under a prefix such as `/laya`, set `LAYA_ROOT_PATH=/laya`.
@@ -45,6 +47,12 @@ strip `/laya` before forwarding requests to Laya; the app's routes remain `/heal
 `/v1/systemone` internally.
 
 For containers, including CUDA and ARM64 images, see [Docker quickstart](docker.md).
+
+For bursty local use, set `LAYA_IDLE_UNLOAD_SECONDS=300`. Inference and unload run on the same
+worker, and the idle window starts again when a single or batch forward pass finishes, including
+failed requests. The next prediction pays a cold load. Unloading releases model references and
+device caches, including Metal; the process allocator may retain RAM pages, so process RSS need
+not fall by the size of the checkpoint.
 
 ## Endpoints
 
@@ -68,6 +76,10 @@ no `LAYA_API_KEY` set, every caller gets the full payload shown here.
 One server's answer, so the blocks agree with each other: every key of `revisions`,
 `checkpoint_devices` and `cpu_fallbacks` is a name in `loaded`. `tests/test_serve.py` holds this
 sample to the handler that produces it, field by field.
+
+With idle unloading enabled, authenticated health responses also include `idle_unload_seconds`
+(the configured window) and `idle_seconds` (time since the last inference request or completion).
+Health probes do not reset that clock. An empty `loaded` list is normal after an idle unload.
 
 - `status` is `ok` whenever the process answers at all. It says nothing about the checkpoints.
 - `loaded` lists the checkpoints resident in memory. It is empty until a request builds one, which is
@@ -109,7 +121,7 @@ curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
 |---|---|---|
 | `state` | yes | text, email, ticket or JSON document to decide on; a missing or `null` state is a `400` |
 | `questions` | yes | object keyed by question id; each question is `choice` / `score` / `noul` with `instructions` and `criteria` |
-| `model` | no | names a checkpoint; anything else is ignored (see below) |
+| `model` | no | names a checkpoint; a path or unpublished Hub id is a `422`, anything else is ignored (see below) |
 | `task` | no | forces a checkpoint by workflow name instead of letting routing decide; an unknown name is a `422` naming it |
 | `lang` | no | a language code (`de`, `en-US`) that skips detection when it names a language; a blank or unrecognised code falls through to detection |
 | `lang_guess` | no | a language code from the client's own identifier, consulted after `lang` and before detection; any non-English code routes to the multilingual checkpoint |
@@ -131,9 +143,14 @@ now get the same answer.
 
 `model` is accepted so a Jev client can keep sending one. The public Hugging Face ids
 (`convaiinnovations/laya-multilingual`, `convaiinnovations/laya-typed-decisions`), the checkpoint
-names (`english`, `multilingual`, `typed-decisions`) and their aliases select a checkpoint; any
-other value -- including a Jev id like `jev-1` -- means "let the router choose", and the response's
-`routing` block records what was chosen and why.
+names (`english`, `multilingual`, `typed-decisions`) and their aliases select a checkpoint.
+`convaiinnovations/laya`, and any other value that is not a path or a Hub repo id -- including a
+Jev id like `jev-1` -- means "let the router choose", and the response's `routing` block records
+what was chosen and why. A value that looks like a filesystem path or an unpublished Hub id
+(`/path/to/checkpoint`, `org/repo`, `~/ckpt`, `.\ckpt`) is a `422` on both `/v1/systemone` and
+`/v1/systemone/batch`: this server cannot load it, and answering with another checkpoint would
+hide that. The detail is the same `unknown model` text core raises, plus the reminder to omit
+`model` to let the router choose.
 
 ### Response
 
@@ -247,9 +264,9 @@ rejects the full payload, so `LAYA_JEV_STRICT=1` projects the response onto the 
 answering, on both `/v1/systemone` and `/v1/systemone/batch`:
 
 - the root keeps `model`, `answers` and `usage` only; `routing` is not sent;
-- a `choice` answer keeps `choice`, `probabilities` and `confidence`;
-- a `score` answer keeps `score`, `probabilities`, `confidence` and `legend`;
-- a `noul` answer keeps `noul` only;
+- a `choice` answer keeps `type`, `choice`, `probabilities` and `confidence`;
+- a `score` answer keeps `type`, `score`, `probabilities`, `confidence` and `legend`;
+- a `noul` answer keeps `type` and `noul`;
 - `usage` keeps `input_tokens` and `output_tokens`; the truncation facts and the collapsed-
   options ceiling are not sent.
 
@@ -274,10 +291,29 @@ nothing but the bytes it read. Every one of them is a `413`; the `detail` says w
 | request body | 2 MiB, enforced while streaming -- a chunked or understated `Content-Length` cannot bypass it |
 | `state` | 50,000 characters of the text the model is given -- the string itself for a string state, `json.dumps(state, ensure_ascii=False)` for an object or array |
 | questions per request | 64 |
+| `states` per batch request | 64 |
 | options per `choice` question | 100 |
 | levels per `score` question | 32 |
 | options across all questions | 512 |
 | concurrent admitted requests | `LAYA_MAX_CONCURRENT` (16) |
+
+`/v1/systemone/batch` is bounded differently, and not by a refusal. It tokenizes each state once per
+question and collates every row into a single tensor, so the field caps multiply: 64 states of 64
+questions is 4096 rows, which every other limit on this page permits. What a row costs is its width,
+and `max_len` is itself a request field, so the cost of a batch is `states x questions x width`.
+
+Rather than refuse a large batch, the endpoint **splits** it: when that product exceeds
+`LAYA_MAX_BATCH_TOKENS` (131,072 by default) it chooses a `batch_size` so each forward pass stays
+inside the budget, and `Router.predict_batch` runs the batch in several passes. Every state is still
+answered and the response is unchanged. A request whose rows already fit is passed no `batch_size` at
+all, so it behaves exactly as before -- which matters because batch shape can move floating-point
+results. A `batch_size` the caller sends always wins: it asked for a shape.
+
+At the default, 256 rows go through in one pass -- 64 states of 4 questions, or 8 of 32. Larger
+batches are split, and raising `max_len` makes each pass narrower rather than costing 16 times the
+work. What this does not bound is how long one request occupies the server; that is
+`LAYA_MAX_CONCURRENT` and the single inference worker, and is already true of one `/v1/systemone`
+request over a 50,000-character state.
 
 The option caps are HTTP-only amplification guards; the model itself fits option tokens into a
 `head_max_len=192` window, so a question inside the HTTP caps can still be refused as a `422` when

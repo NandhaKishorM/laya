@@ -27,9 +27,9 @@ MESSAGES = [
     ("phishing lure",
      "Urgent: your account has been locked",
      "Dear customer,\n\nWe detected unusual activity on your account and locked it for "
-     "security reasons.\n\nVerify immediately at http://wellsfargo--verify.tj49.wsipv6.com "
+     "security reasons.\n\nVerify immediately at http://secure-bank--verify.account-check.example "
      "or the account will be closed permanently.\n\nBest regards,\nAccount Security Team",
-     "security@wells-fargo-verify.com"),
+     "security@secure-bank-verify.example"),
     ("billing request",
      "Invoice 4411 duplicate charge",
      "Hi billing team,\n\nOur finance system shows two separate captures for the same order, "

@@ -1,0 +1,3964 @@
+{
+  "texts": [
+    "Hello world",
+    "",
+    " ",
+    "   ",
+    "\t",
+    "a\tb\nc",
+    "café résumé",
+    "注文をキャンセル",
+    "مرحبا",
+    "क्‌ष",
+    "😀",
+    "emoji 😀 here",
+    "🇬🇧",
+    "▁literal marker",
+    "pre▁fix",
+    " nbsp figure",
+    "<0x41>",
+    "a<0xFF>b",
+    "\u0001\u0002",
+    "",
+    "󰀀",
+    "I cannot log in and need a password reset.",
+    "Esta mensagem e confidencial."
+  ],
+  "by": {
+    "english": {
+      "decoder": {
+        "type": "ByteLevel"
+      },
+      "cases": [
+        {
+          "text": "Hello world",
+          "ids": [
+            12092,
+            1533
+          ],
+          "decoded": "Hello world",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "Hello"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " world"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "Hello world"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "Hello world"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "Hello world"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              12092,
+              1533,
+              50282
+            ],
+            "skipping_specials": "Hello world",
+            "kept": "[CLS]Hello world[SEP]"
+          }
+        },
+        {
+          "text": "",
+          "ids": [],
+          "decoded": "",
+          "slices": [],
+          "with_specials": {
+            "ids": [
+              50281,
+              50282
+            ],
+            "skipping_specials": "",
+            "kept": "[CLS][SEP]"
+          }
+        },
+        {
+          "text": " ",
+          "ids": [
+            209
+          ],
+          "decoded": " ",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " "
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              209,
+              50282
+            ],
+            "skipping_specials": " ",
+            "kept": "[CLS] [SEP]"
+          }
+        },
+        {
+          "text": "   ",
+          "ids": [
+            50275
+          ],
+          "decoded": "   ",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "   "
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "   "
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "   "
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "   "
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              50275,
+              50282
+            ],
+            "skipping_specials": "   ",
+            "kept": "[CLS]   [SEP]"
+          }
+        },
+        {
+          "text": "\t",
+          "ids": [
+            186
+          ],
+          "decoded": "\t",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "\t"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "\t"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "\t"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "\t"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              186,
+              50282
+            ],
+            "skipping_specials": "\t",
+            "kept": "[CLS]\t[SEP]"
+          }
+        },
+        {
+          "text": "a\tb\nc",
+          "ids": [
+            66,
+            186,
+            67,
+            187,
+            68
+          ],
+          "decoded": "a\tb\nc",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "a"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "\t"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "b"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "\n"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "c"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "a\t"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "b\n"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "c"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "a\tb"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "\nc"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "a\tb\nc"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              66,
+              186,
+              67,
+              187,
+              68,
+              50282
+            ],
+            "skipping_specials": "a\tb\nc",
+            "kept": "[CLS]a\tb\nc[SEP]"
+          }
+        },
+        {
+          "text": "café résumé",
+          "ids": [
+            68,
+            2320,
+            860,
+            9568,
+            2204,
+            860
+          ],
+          "decoded": "café résumé",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "c"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "af"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "é"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": " ré"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "sum"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": "é"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "caf"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "é ré"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "sumé"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "café"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": " résumé"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "café résum"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": "é"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              68,
+              2320,
+              860,
+              9568,
+              2204,
+              860,
+              50282
+            ],
+            "skipping_specials": "café résumé",
+            "kept": "[CLS]café résumé[SEP]"
+          }
+        },
+        {
+          "text": "注文をキャンセル",
+          "ids": [
+            44712,
+            20855,
+            6449,
+            33548,
+            41760,
+            9467,
+            41662,
+            16509
+          ],
+          "decoded": "注文をキャンセル",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "注"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "文"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "を"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "キ"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "ャ"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": "ン"
+            },
+            {
+              "start": 6,
+              "size": 1,
+              "decoded": "セ"
+            },
+            {
+              "start": 7,
+              "size": 1,
+              "decoded": "ル"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "注文"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "をキ"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "ャン"
+            },
+            {
+              "start": 6,
+              "size": 2,
+              "decoded": "セル"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "注文を"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "キャン"
+            },
+            {
+              "start": 6,
+              "size": 3,
+              "decoded": "セル"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "注文をキャ"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": "ンセル"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              44712,
+              20855,
+              6449,
+              33548,
+              41760,
+              9467,
+              41662,
+              16509,
+              50282
+            ],
+            "skipping_specials": "注文をキャンセル",
+            "kept": "[CLS]注文をキャンセル[SEP]"
+          }
+        },
+        {
+          "text": "مرحبا",
+          "ids": [
+            5843,
+            6900,
+            21931,
+            13621,
+            3142
+          ],
+          "decoded": "مرحبا",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "م"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "ر"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "ح"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "ب"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "ا"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "مر"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "حب"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "ا"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "مرح"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "با"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "مرحبا"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              5843,
+              6900,
+              21931,
+              13621,
+              3142,
+              50282
+            ],
+            "skipping_specials": "مرحبا",
+            "kept": "[CLS]مرحبا[SEP]"
+          }
+        },
+        {
+          "text": "क्‌ष",
+          "ids": [
+            24381,
+            17665,
+            49003,
+            2483,
+            117
+          ],
+          "decoded": "क्‌ष",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "क"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "्"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "‌"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "क्"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "‌�"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "क्‌"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "ष"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "क्‌ष"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              24381,
+              17665,
+              49003,
+              2483,
+              117,
+              50282
+            ],
+            "skipping_specials": "क्‌ष",
+            "kept": "[CLS]क्‌ष[SEP]"
+          }
+        },
+        {
+          "text": "😀",
+          "ids": [
+            14931,
+            235,
+            211
+          ],
+          "decoded": "😀",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "😀"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "😀"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              14931,
+              235,
+              211,
+              50282
+            ],
+            "skipping_specials": "😀",
+            "kept": "[CLS]😀[SEP]"
+          }
+        },
+        {
+          "text": "emoji 😀 here",
+          "ids": [
+            43208,
+            8020,
+            49042,
+            211,
+            1060
+          ],
+          "decoded": "emoji 😀 here",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "emo"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "ji"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": " �"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": " here"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "emoji"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " 😀"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": " here"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "emoji �"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "� here"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "emoji 😀 here"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              43208,
+              8020,
+              49042,
+              211,
+              1060,
+              50282
+            ],
+            "skipping_specials": "emoji 😀 here",
+            "kept": "[CLS]emoji 😀 here[SEP]"
+          }
+        },
+        {
+          "text": "🇬🇧",
+          "ids": [
+            14931,
+            218,
+            107,
+            14931,
+            218,
+            102
+          ],
+          "decoded": "🇬🇧",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "��"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "��"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "🇬"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "🇧"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "🇬�"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": "�"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              14931,
+              218,
+              107,
+              14931,
+              218,
+              102,
+              50282
+            ],
+            "skipping_specials": "🇬🇧",
+            "kept": "[CLS]🇬🇧[SEP]"
+          }
+        },
+        {
+          "text": "▁literal marker",
+          "ids": [
+            10897,
+            212,
+            34943,
+            10705
+          ],
+          "decoded": "▁literal marker",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "literal"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": " marker"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "▁"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "literal marker"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "▁literal"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": " marker"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "▁literal marker"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              10897,
+              212,
+              34943,
+              10705,
+              50282
+            ],
+            "skipping_specials": "▁literal marker",
+            "kept": "[CLS]▁literal marker[SEP]"
+          }
+        },
+        {
+          "text": "pre▁fix",
+          "ids": [
+            3456,
+            10897,
+            212,
+            11097
+          ],
+          "decoded": "pre▁fix",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "pre"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "fix"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "pre�"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "�fix"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "pre▁"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "fix"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "pre▁fix"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              3456,
+              10897,
+              212,
+              11097,
+              50282
+            ],
+            "skipping_specials": "pre▁fix",
+            "kept": "[CLS]pre▁fix[SEP]"
+          }
+        },
+        {
+          "text": " nbsp figure",
+          "ids": [
+            575,
+            6732,
+            325,
+            218,
+            13206
+          ],
+          "decoded": " nbsp figure",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "nbsp"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "figure"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " nbsp"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " "
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "figure"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " nbsp�"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "�figure"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " nbsp figure"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              575,
+              6732,
+              325,
+              218,
+              13206,
+              50282
+            ],
+            "skipping_specials": " nbsp figure",
+            "kept": "[CLS] nbsp figure[SEP]"
+          }
+        },
+        {
+          "text": "<0x41>",
+          "ids": [
+            29,
+            17,
+            89,
+            3156,
+            31
+          ],
+          "decoded": "<0x41>",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "<"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "0"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "x"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "41"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": ">"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "<0"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "x41"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": ">"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "<0x"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "41>"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "<0x41>"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              29,
+              17,
+              89,
+              3156,
+              31,
+              50282
+            ],
+            "skipping_specials": "<0x41>",
+            "kept": "[CLS]<0x41>[SEP]"
+          }
+        },
+        {
+          "text": "a<0xFF>b",
+          "ids": [
+            66,
+            29,
+            17,
+            30962,
+            31,
+            67
+          ],
+          "decoded": "a<0xFF>b",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "a"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "<"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "0"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "xFF"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": ">"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": "b"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "a<"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "0xFF"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": ">b"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "a<0"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "xFF>b"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "a<0xFF>"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": "b"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              66,
+              29,
+              17,
+              30962,
+              31,
+              67,
+              50282
+            ],
+            "skipping_specials": "a<0xFF>b",
+            "kept": "[CLS]a<0xFF>b[SEP]"
+          }
+        },
+        {
+          "text": "\u0001\u0002",
+          "ids": [
+            178,
+            179
+          ],
+          "decoded": "\u0001\u0002",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "\u0001"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "\u0002"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "\u0001\u0002"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "\u0001\u0002"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "\u0001\u0002"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              178,
+              179,
+              50282
+            ],
+            "skipping_specials": "\u0001\u0002",
+            "kept": "[CLS]\u0001\u0002[SEP]"
+          }
+        },
+        {
+          "text": "",
+          "ids": [
+            170,
+            211,
+            211
+          ],
+          "decoded": "",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": ""
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": ""
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              170,
+              211,
+              211,
+              50282
+            ],
+            "skipping_specials": "",
+            "kept": "[CLS][SEP]"
+          }
+        },
+        {
+          "text": "󰀀",
+          "ids": [
+            175,
+            110,
+            211,
+            211
+          ],
+          "decoded": "󰀀",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "��"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "�"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "󰀀"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              175,
+              110,
+              211,
+              211,
+              50282
+            ],
+            "skipping_specials": "󰀀",
+            "kept": "[CLS]󰀀[SEP]"
+          }
+        },
+        {
+          "text": "I cannot log in and need a password reset.",
+          "ids": [
+            42,
+            2550,
+            2412,
+            275,
+            285,
+            878,
+            247,
+            9868,
+            14932,
+            15
+          ],
+          "decoded": "I cannot log in and need a password reset.",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "I"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " cannot"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": " log"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": " in"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": " and"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": " need"
+            },
+            {
+              "start": 6,
+              "size": 1,
+              "decoded": " a"
+            },
+            {
+              "start": 7,
+              "size": 1,
+              "decoded": " password"
+            },
+            {
+              "start": 8,
+              "size": 1,
+              "decoded": " reset"
+            },
+            {
+              "start": 9,
+              "size": 1,
+              "decoded": "."
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "I cannot"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " log in"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": " and need"
+            },
+            {
+              "start": 6,
+              "size": 2,
+              "decoded": " a password"
+            },
+            {
+              "start": 8,
+              "size": 2,
+              "decoded": " reset."
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "I cannot log"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": " in and need"
+            },
+            {
+              "start": 6,
+              "size": 3,
+              "decoded": " a password reset"
+            },
+            {
+              "start": 9,
+              "size": 3,
+              "decoded": "."
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "I cannot log in and"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": " need a password reset."
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              42,
+              2550,
+              2412,
+              275,
+              285,
+              878,
+              247,
+              9868,
+              14932,
+              15,
+              50282
+            ],
+            "skipping_specials": "I cannot log in and need a password reset.",
+            "kept": "[CLS]I cannot log in and need a password reset.[SEP]"
+          }
+        },
+        {
+          "text": "Esta mensagem e confidencial.",
+          "ids": [
+            38,
+            18233,
+            34939,
+            31646,
+            299,
+            1461,
+            301,
+            49016,
+            15
+          ],
+          "decoded": "Esta mensagem e confidencial.",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "E"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "sta"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": " mens"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "agem"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": " e"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": " conf"
+            },
+            {
+              "start": 6,
+              "size": 1,
+              "decoded": "id"
+            },
+            {
+              "start": 7,
+              "size": 1,
+              "decoded": "encial"
+            },
+            {
+              "start": 8,
+              "size": 1,
+              "decoded": "."
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "Esta"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " mensagem"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": " e conf"
+            },
+            {
+              "start": 6,
+              "size": 2,
+              "decoded": "idencial"
+            },
+            {
+              "start": 8,
+              "size": 2,
+              "decoded": "."
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "Esta mens"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "agem e conf"
+            },
+            {
+              "start": 6,
+              "size": 3,
+              "decoded": "idencial."
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "Esta mensagem e"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": " confidencial."
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              50281,
+              38,
+              18233,
+              34939,
+              31646,
+              299,
+              1461,
+              301,
+              49016,
+              15,
+              50282
+            ],
+            "skipping_specials": "Esta mensagem e confidencial.",
+            "kept": "[CLS]Esta mensagem e confidencial.[SEP]"
+          }
+        }
+      ]
+    },
+    "multilingual": {
+      "decoder": {
+        "type": "Sequence",
+        "decoders": [
+          {
+            "type": "Replace"
+          },
+          {
+            "type": "ByteFallback"
+          },
+          {
+            "type": "Fuse"
+          }
+        ]
+      },
+      "cases": [
+        {
+          "text": "Hello world",
+          "ids": [
+            25957,
+            2134
+          ],
+          "decoded": " Hello world",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " Hello"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " world"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " Hello world"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " Hello world"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " Hello world"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              25957,
+              2134,
+              1
+            ],
+            "skipping_specials": " Hello world",
+            "kept": "<bos> Hello world<eos>"
+          }
+        },
+        {
+          "text": "",
+          "ids": [],
+          "decoded": "",
+          "slices": [],
+          "with_specials": {
+            "ids": [
+              2,
+              1
+            ],
+            "skipping_specials": "",
+            "kept": "<bos><eos>"
+          }
+        },
+        {
+          "text": " ",
+          "ids": [
+            235248
+          ],
+          "decoded": " ",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " "
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              235248,
+              1
+            ],
+            "skipping_specials": " ",
+            "kept": "<bos> <eos>"
+          }
+        },
+        {
+          "text": "   ",
+          "ids": [
+            235248,
+            235248,
+            235248
+          ],
+          "decoded": "   ",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "  "
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "   "
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "   "
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              235248,
+              235248,
+              235248,
+              1
+            ],
+            "skipping_specials": "   ",
+            "kept": "<bos>   <eos>"
+          }
+        },
+        {
+          "text": "\t",
+          "ids": [
+            235248,
+            226
+          ],
+          "decoded": " \t",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "\t"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " \t"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " \t"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " \t"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              235248,
+              226,
+              1
+            ],
+            "skipping_specials": " \t",
+            "kept": "<bos> \t<eos>"
+          }
+        },
+        {
+          "text": "a\tb\nc",
+          "ids": [
+            476,
+            226,
+            235268,
+            108,
+            498
+          ],
+          "decoded": " a\tb\n c",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " a"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "\t"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "b"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "\n"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": " c"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " a\t"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "b\n"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": " c"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " a\tb"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "\n c"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " a\tb\n c"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              476,
+              226,
+              235268,
+              108,
+              498,
+              1
+            ],
+            "skipping_specials": " a\tb\n c",
+            "kept": "<bos> a\tb\n c<eos>"
+          }
+        },
+        {
+          "text": "café résumé",
+          "ids": [
+            18688,
+            96537
+          ],
+          "decoded": " café résumé",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " café"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " résumé"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " café résumé"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " café résumé"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " café résumé"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              18688,
+              96537,
+              1
+            ],
+            "skipping_specials": " café résumé",
+            "kept": "<bos> café résumé<eos>"
+          }
+        },
+        {
+          "text": "注文をキャンセル",
+          "ids": [
+            231293,
+            235432,
+            182129
+          ],
+          "decoded": " 注文をキャンセル",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " 注文"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "を"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "キャンセル"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " 注文を"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "キャンセル"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " 注文をキャンセル"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " 注文をキャンセル"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              231293,
+              235432,
+              182129,
+              1
+            ],
+            "skipping_specials": " 注文をキャンセル",
+            "kept": "<bos> 注文をキャンセル<eos>"
+          }
+        },
+        {
+          "text": "مرحبا",
+          "ids": [
+            89187,
+            19833
+          ],
+          "decoded": " مرحبا",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " مرح"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "با"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " مرحبا"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " مرحبا"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " مرحبا"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              89187,
+              19833,
+              1
+            ],
+            "skipping_specials": " مرحبا",
+            "kept": "<bos> مرحبا<eos>"
+          }
+        },
+        {
+          "text": "क्‌ष",
+          "ids": [
+            2280,
+            235485,
+            235762,
+            236355
+          ],
+          "decoded": " क्‌ष",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " क"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "्"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "‌"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "ष"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " क्"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "‌ष"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " क्‌"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "ष"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " क्‌ष"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              2280,
+              235485,
+              235762,
+              236355,
+              1
+            ],
+            "skipping_specials": " क्‌ष",
+            "kept": "<bos> क्‌ष<eos>"
+          }
+        },
+        {
+          "text": "😀",
+          "ids": [
+            79937
+          ],
+          "decoded": " 😀",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " 😀"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " 😀"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " 😀"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " 😀"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              79937,
+              1
+            ],
+            "skipping_specials": " 😀",
+            "kept": "<bos> 😀<eos>"
+          }
+        },
+        {
+          "text": "emoji 😀 here",
+          "ids": [
+            52810,
+            79937,
+            1517
+          ],
+          "decoded": " emoji 😀 here",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " emoji"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " 😀"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": " here"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " emoji 😀"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " here"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " emoji 😀 here"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " emoji 😀 here"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              52810,
+              79937,
+              1517,
+              1
+            ],
+            "skipping_specials": " emoji 😀 here",
+            "kept": "<bos> emoji 😀 here<eos>"
+          }
+        },
+        {
+          "text": "🇬🇧",
+          "ids": [
+            235248,
+            242330,
+            241461
+          ],
+          "decoded": " 🇬🇧",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "🇬"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "🇧"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " 🇬"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "🇧"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " 🇬🇧"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " 🇬🇧"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              235248,
+              242330,
+              241461,
+              1
+            ],
+            "skipping_specials": " 🇬🇧",
+            "kept": "<bos> 🇬🇧<eos>"
+          }
+        },
+        {
+          "text": "▁literal marker",
+          "ids": [
+            36414,
+            24416
+          ],
+          "decoded": " literal marker",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " literal"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " marker"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " literal marker"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " literal marker"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " literal marker"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              36414,
+              24416,
+              1
+            ],
+            "skipping_specials": " literal marker",
+            "kept": "<bos> literal marker<eos>"
+          }
+        },
+        {
+          "text": "pre▁fix",
+          "ids": [
+            953,
+            6530
+          ],
+          "decoded": " pre fix",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " pre"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " fix"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " pre fix"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " pre fix"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " pre fix"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              953,
+              6530,
+              1
+            ],
+            "skipping_specials": " pre fix",
+            "kept": "<bos> pre fix<eos>"
+          }
+        },
+        {
+          "text": " nbsp figure",
+          "ids": [
+            84306,
+            11450,
+            243499,
+            6270
+          ],
+          "decoded": "  nbsp figure",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": "  "
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "nbsp"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "figure"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": "  nbsp"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " figure"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": "  nbsp "
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "figure"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": "  nbsp figure"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              84306,
+              11450,
+              243499,
+              6270,
+              1
+            ],
+            "skipping_specials": "  nbsp figure",
+            "kept": "<bos>  nbsp figure<eos>"
+          }
+        },
+        {
+          "text": "<0x41>",
+          "ids": [
+            968,
+            235276,
+            235297,
+            235310,
+            235274,
+            235313
+          ],
+          "decoded": " <0x41>",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " <"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "0"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "x"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "4"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "1"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": ">"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " <0"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "x4"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "1>"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " <0x"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "41>"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " <0x41"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": ">"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              968,
+              235276,
+              235297,
+              235310,
+              235274,
+              235313,
+              1
+            ],
+            "skipping_specials": " <0x41>",
+            "kept": "<bos> <0x41><eos>"
+          }
+        },
+        {
+          "text": "a<0xFF>b",
+          "ids": [
+            476,
+            235322,
+            235276,
+            16663,
+            235313,
+            235268
+          ],
+          "decoded": " a<0xFF>b",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " a"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "<"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "0"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "xFF"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": ">"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": "b"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " a<"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "0xFF"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": ">b"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " a<0"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "xFF>b"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " a<0xFF>"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": "b"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              476,
+              235322,
+              235276,
+              16663,
+              235313,
+              235268,
+              1
+            ],
+            "skipping_specials": " a<0xFF>b",
+            "kept": "<bos> a<0xFF>b<eos>"
+          }
+        },
+        {
+          "text": "\u0001\u0002",
+          "ids": [
+            235248,
+            238213,
+            247977
+          ],
+          "decoded": " \u0001\u0002",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "\u0001"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "\u0002"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " \u0001"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "\u0002"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " \u0001\u0002"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " \u0001\u0002"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              235248,
+              238213,
+              247977,
+              1
+            ],
+            "skipping_specials": " \u0001\u0002",
+            "kept": "<bos> \u0001\u0002<eos>"
+          }
+        },
+        {
+          "text": "",
+          "ids": [
+            235248,
+            240539
+          ],
+          "decoded": " ",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": ""
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " "
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " "
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              235248,
+              240539,
+              1
+            ],
+            "skipping_specials": " ",
+            "kept": "<bos> <eos>"
+          }
+        },
+        {
+          "text": "󰀀",
+          "ids": [
+            235248,
+            460,
+            393,
+            345,
+            345
+          ],
+          "decoded": " 󰀀",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " "
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " �"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": "��"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "�"
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " ��"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": "��"
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " 󰀀"
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              235248,
+              460,
+              393,
+              345,
+              345,
+              1
+            ],
+            "skipping_specials": " 󰀀",
+            "kept": "<bos> 󰀀<eos>"
+          }
+        },
+        {
+          "text": "I cannot log in and need a password reset.",
+          "ids": [
+            590,
+            2952,
+            3846,
+            575,
+            578,
+            1476,
+            476,
+            8003,
+            13846,
+            235265
+          ],
+          "decoded": " I cannot log in and need a password reset.",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " I"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " cannot"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": " log"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": " in"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": " and"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": " need"
+            },
+            {
+              "start": 6,
+              "size": 1,
+              "decoded": " a"
+            },
+            {
+              "start": 7,
+              "size": 1,
+              "decoded": " password"
+            },
+            {
+              "start": 8,
+              "size": 1,
+              "decoded": " reset"
+            },
+            {
+              "start": 9,
+              "size": 1,
+              "decoded": "."
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " I cannot"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " log in"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": " and need"
+            },
+            {
+              "start": 6,
+              "size": 2,
+              "decoded": " a password"
+            },
+            {
+              "start": 8,
+              "size": 2,
+              "decoded": " reset."
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " I cannot log"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": " in and need"
+            },
+            {
+              "start": 6,
+              "size": 3,
+              "decoded": " a password reset"
+            },
+            {
+              "start": 9,
+              "size": 3,
+              "decoded": "."
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " I cannot log in and"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": " need a password reset."
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              590,
+              2952,
+              3846,
+              575,
+              578,
+              1476,
+              476,
+              8003,
+              13846,
+              235265,
+              1
+            ],
+            "skipping_specials": " I cannot log in and need a password reset.",
+            "kept": "<bos> I cannot log in and need a password reset.<eos>"
+          }
+        },
+        {
+          "text": "Esta mensagem e confidencial.",
+          "ids": [
+            22974,
+            70816,
+            526,
+            2103,
+            45972,
+            235265
+          ],
+          "decoded": " Esta mensagem e confidencial.",
+          "slices": [
+            {
+              "start": 0,
+              "size": 1,
+              "decoded": " Esta"
+            },
+            {
+              "start": 1,
+              "size": 1,
+              "decoded": " mensagem"
+            },
+            {
+              "start": 2,
+              "size": 1,
+              "decoded": " e"
+            },
+            {
+              "start": 3,
+              "size": 1,
+              "decoded": " conf"
+            },
+            {
+              "start": 4,
+              "size": 1,
+              "decoded": "idencial"
+            },
+            {
+              "start": 5,
+              "size": 1,
+              "decoded": "."
+            },
+            {
+              "start": 0,
+              "size": 2,
+              "decoded": " Esta mensagem"
+            },
+            {
+              "start": 2,
+              "size": 2,
+              "decoded": " e conf"
+            },
+            {
+              "start": 4,
+              "size": 2,
+              "decoded": "idencial."
+            },
+            {
+              "start": 0,
+              "size": 3,
+              "decoded": " Esta mensagem e"
+            },
+            {
+              "start": 3,
+              "size": 3,
+              "decoded": " confidencial."
+            },
+            {
+              "start": 0,
+              "size": 5,
+              "decoded": " Esta mensagem e confidencial"
+            },
+            {
+              "start": 5,
+              "size": 5,
+              "decoded": "."
+            }
+          ],
+          "with_specials": {
+            "ids": [
+              2,
+              22974,
+              70816,
+              526,
+              2103,
+              45972,
+              235265,
+              1
+            ],
+            "skipping_specials": " Esta mensagem e confidencial.",
+            "kept": "<bos> Esta mensagem e confidencial.<eos>"
+          }
+        }
+      ]
+    }
+  },
+  "mixed_token": {
+    "spec": {
+      "version": "1.0",
+      "truncation": null,
+      "padding": null,
+      "added_tokens": [],
+      "normalizer": null,
+      "pre_tokenizer": {
+        "type": "ByteLevel",
+        "add_prefix_space": true,
+        "trim_offsets": true,
+        "use_regex": true
+      },
+      "post_processor": null,
+      "decoder": {
+        "type": "ByteLevel",
+        "add_prefix_space": true,
+        "trim_offsets": true,
+        "use_regex": true
+      },
+      "model": {
+        "type": "BPE",
+        "dropout": null,
+        "unk_token": null,
+        "continuing_subword_prefix": null,
+        "end_of_word_suffix": null,
+        "fuse_unk": false,
+        "byte_fallback": false,
+        "ignore_merges": true,
+        "vocab": {
+          "!": 0,
+          "\"": 1,
+          "#": 2,
+          "$": 3,
+          "%": 4,
+          "&": 5,
+          "'": 6,
+          "(": 7,
+          ")": 8,
+          "*": 9,
+          "+": 10,
+          ",": 11,
+          "-": 12,
+          ".": 13,
+          "/": 14,
+          "0": 15,
+          "1": 16,
+          "2": 17,
+          "3": 18,
+          "4": 19,
+          "5": 20,
+          "6": 21,
+          "7": 22,
+          "8": 23,
+          "9": 24,
+          ":": 25,
+          ";": 26,
+          "<": 27,
+          "=": 28,
+          ">": 29,
+          "?": 30,
+          "@": 31,
+          "A": 32,
+          "B": 33,
+          "C": 34,
+          "D": 35,
+          "E": 36,
+          "F": 37,
+          "G": 38,
+          "H": 39,
+          "I": 40,
+          "J": 41,
+          "K": 42,
+          "L": 43,
+          "M": 44,
+          "N": 45,
+          "O": 46,
+          "P": 47,
+          "Q": 48,
+          "R": 49,
+          "S": 50,
+          "T": 51,
+          "U": 52,
+          "V": 53,
+          "W": 54,
+          "X": 55,
+          "Y": 56,
+          "Z": 57,
+          "[": 58,
+          "\\": 59,
+          "]": 60,
+          "^": 61,
+          "_": 62,
+          "`": 63,
+          "a": 64,
+          "b": 65,
+          "c": 66,
+          "d": 67,
+          "e": 68,
+          "f": 69,
+          "g": 70,
+          "h": 71,
+          "i": 72,
+          "j": 73,
+          "k": 74,
+          "l": 75,
+          "m": 76,
+          "n": 77,
+          "o": 78,
+          "p": 79,
+          "q": 80,
+          "r": 81,
+          "s": 82,
+          "t": 83,
+          "u": 84,
+          "v": 85,
+          "w": 86,
+          "x": 87,
+          "y": 88,
+          "z": 89,
+          "{": 90,
+          "|": 91,
+          "}": 92,
+          "~": 93,
+          "¡": 94,
+          "¢": 95,
+          "£": 96,
+          "¤": 97,
+          "¥": 98,
+          "¦": 99,
+          "§": 100,
+          "¨": 101,
+          "©": 102,
+          "ª": 103,
+          "«": 104,
+          "¬": 105,
+          "®": 106,
+          "¯": 107,
+          "°": 108,
+          "±": 109,
+          "²": 110,
+          "³": 111,
+          "´": 112,
+          "µ": 113,
+          "¶": 114,
+          "·": 115,
+          "¸": 116,
+          "¹": 117,
+          "º": 118,
+          "»": 119,
+          "¼": 120,
+          "½": 121,
+          "¾": 122,
+          "¿": 123,
+          "À": 124,
+          "Á": 125,
+          "Â": 126,
+          "Ã": 127,
+          "Ä": 128,
+          "Å": 129,
+          "Æ": 130,
+          "Ç": 131,
+          "È": 132,
+          "É": 133,
+          "Ê": 134,
+          "Ë": 135,
+          "Ì": 136,
+          "Í": 137,
+          "Î": 138,
+          "Ï": 139,
+          "Ð": 140,
+          "Ñ": 141,
+          "Ò": 142,
+          "Ó": 143,
+          "Ô": 144,
+          "Õ": 145,
+          "Ö": 146,
+          "×": 147,
+          "Ø": 148,
+          "Ù": 149,
+          "Ú": 150,
+          "Û": 151,
+          "Ü": 152,
+          "Ý": 153,
+          "Þ": 154,
+          "ß": 155,
+          "à": 156,
+          "á": 157,
+          "â": 158,
+          "ã": 159,
+          "ä": 160,
+          "å": 161,
+          "æ": 162,
+          "ç": 163,
+          "è": 164,
+          "é": 165,
+          "ê": 166,
+          "ë": 167,
+          "ì": 168,
+          "í": 169,
+          "î": 170,
+          "ï": 171,
+          "ð": 172,
+          "ñ": 173,
+          "ò": 174,
+          "ó": 175,
+          "ô": 176,
+          "õ": 177,
+          "ö": 178,
+          "÷": 179,
+          "ø": 180,
+          "ù": 181,
+          "ú": 182,
+          "û": 183,
+          "ü": 184,
+          "ý": 185,
+          "þ": 186,
+          "ÿ": 187,
+          "Ā": 188,
+          "ā": 189,
+          "Ă": 190,
+          "ă": 191,
+          "Ą": 192,
+          "ą": 193,
+          "Ć": 194,
+          "ć": 195,
+          "Ĉ": 196,
+          "ĉ": 197,
+          "Ċ": 198,
+          "ċ": 199,
+          "Č": 200,
+          "č": 201,
+          "Ď": 202,
+          "ď": 203,
+          "Đ": 204,
+          "đ": 205,
+          "Ē": 206,
+          "ē": 207,
+          "Ĕ": 208,
+          "ĕ": 209,
+          "Ė": 210,
+          "ė": 211,
+          "Ę": 212,
+          "ę": 213,
+          "Ě": 214,
+          "ě": 215,
+          "Ĝ": 216,
+          "ĝ": 217,
+          "Ğ": 218,
+          "ğ": 219,
+          "Ġ": 220,
+          "ġ": 221,
+          "Ģ": 222,
+          "ģ": 223,
+          "Ĥ": 224,
+          "ĥ": 225,
+          "Ħ": 226,
+          "ħ": 227,
+          "Ĩ": 228,
+          "ĩ": 229,
+          "Ī": 230,
+          "ī": 231,
+          "Ĭ": 232,
+          "ĭ": 233,
+          "Į": 234,
+          "į": 235,
+          "İ": 236,
+          "ı": 237,
+          "Ĳ": 238,
+          "ĳ": 239,
+          "Ĵ": 240,
+          "ĵ": 241,
+          "Ķ": 242,
+          "ķ": 243,
+          "ĸ": 244,
+          "Ĺ": 245,
+          "ĺ": 246,
+          "Ļ": 247,
+          "ļ": 248,
+          "Ľ": 249,
+          "ľ": 250,
+          "Ŀ": 251,
+          "ŀ": 252,
+          "Ł": 253,
+          "ł": 254,
+          "Ń": 255,
+          "Ġ ": 256,
+          "Ġhi": 257,
+          "   ": 258
+        },
+        "merges": []
+      }
+    },
+    "separating_token": "Ġ ",
+    "scope": "token",
+    "cases": [
+      {
+        "why": "the mixed token alone: the whole point",
+        "ids": [
+          256
+        ],
+        "decoded": "Ġ "
+      },
+      {
+        "why": "entirely in the alphabet",
+        "ids": [
+          257
+        ],
+        "decoded": " hi"
+      },
+      {
+        "why": "entirely literal",
+        "ids": [
+          258
+        ],
+        "decoded": "   "
+      },
+      {
+        "why": "a mixed token beside a plain one",
+        "ids": [
+          256,
+          257
+        ],
+        "decoded": "Ġ  hi"
+      }
+    ]
+  },
+  "synthetic_decoders": {
+    "strip": {
+      "why": "Strip, which no shipped checkpoint declares",
+      "spec": {
+        "version": "1.0",
+        "truncation": null,
+        "padding": null,
+        "added_tokens": [],
+        "normalizer": null,
+        "pre_tokenizer": null,
+        "post_processor": null,
+        "model": {
+          "type": "BPE",
+          "dropout": null,
+          "unk_token": null,
+          "continuing_subword_prefix": null,
+          "end_of_word_suffix": null,
+          "fuse_unk": false,
+          "byte_fallback": true,
+          "ignore_merges": true,
+          "vocab": {
+            "  hello ": 0,
+            " x": 1,
+            "  ": 2,
+            "no": 3
+          },
+          "merges": []
+        },
+        "decoder": {
+          "type": "Strip",
+          "content": " ",
+          "start": 2,
+          "stop": 1
+        }
+      },
+      "crate_panics": [
+        [
+          2
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "cases": [
+        {
+          "ids": [
+            0
+          ],
+          "decoded": "hello"
+        },
+        {
+          "ids": [
+            1
+          ],
+          "decoded": "x"
+        },
+        {
+          "ids": [
+            3
+          ],
+          "decoded": "no"
+        },
+        {
+          "ids": [
+            0,
+            3
+          ],
+          "decoded": "hellono"
+        }
+      ]
+    },
+    "bytefallback_hex_case": {
+      "why": "which byte-token spellings the crate reads as a byte",
+      "spec": {
+        "version": "1.0",
+        "truncation": null,
+        "padding": null,
+        "added_tokens": [],
+        "normalizer": null,
+        "pre_tokenizer": null,
+        "post_processor": null,
+        "model": {
+          "type": "BPE",
+          "dropout": null,
+          "unk_token": null,
+          "continuing_subword_prefix": null,
+          "end_of_word_suffix": null,
+          "fuse_unk": false,
+          "byte_fallback": true,
+          "ignore_merges": true,
+          "vocab": {
+            "<0xFF>": 0,
+            "<0xff>": 1,
+            "<0x41>": 2,
+            "<0x61>": 3,
+            "a": 4,
+            "<0x+5>": 5,
+            "<0x 5>": 6,
+            "<0XFF>": 7,
+            "<0xfF>": 8,
+            "<0xF3>": 9,
+            "<0xB0>": 10,
+            "<0x80>": 11
+          },
+          "merges": []
+        },
+        "decoder": {
+          "type": "ByteFallback"
+        }
+      },
+      "cases": [
+        {
+          "ids": [
+            2
+          ],
+          "decoded": "A"
+        },
+        {
+          "ids": [
+            3
+          ],
+          "decoded": "a"
+        },
+        {
+          "ids": [
+            1
+          ],
+          "decoded": "�"
+        },
+        {
+          "ids": [
+            0
+          ],
+          "decoded": "�"
+        },
+        {
+          "ids": [
+            2,
+            3
+          ],
+          "decoded": "Aa"
+        },
+        {
+          "ids": [
+            0,
+            0
+          ],
+          "decoded": "��"
+        },
+        {
+          "ids": [
+            1,
+            4
+          ],
+          "decoded": "�a"
+        },
+        {
+          "ids": [
+            5
+          ],
+          "decoded": "\u0005"
+        },
+        {
+          "ids": [
+            6
+          ],
+          "decoded": "<0x 5>"
+        },
+        {
+          "ids": [
+            7
+          ],
+          "decoded": "<0XFF>"
+        },
+        {
+          "ids": [
+            8
+          ],
+          "decoded": "�"
+        },
+        {
+          "ids": [
+            5,
+            4
+          ],
+          "decoded": "\u0005a"
+        },
+        {
+          "ids": [
+            6,
+            4
+          ],
+          "decoded": "<0x 5>a"
+        },
+        {
+          "ids": [
+            7,
+            4
+          ],
+          "decoded": "<0XFF>a"
+        },
+        {
+          "ids": [
+            9,
+            10
+          ],
+          "decoded": "��"
+        },
+        {
+          "ids": [
+            9,
+            10,
+            11
+          ],
+          "decoded": "���"
+        },
+        {
+          "ids": [
+            9,
+            10,
+            11,
+            11
+          ],
+          "decoded": "󰀀"
+        },
+        {
+          "ids": [
+            4,
+            9,
+            10,
+            4
+          ],
+          "decoded": "a��a"
+        }
+      ]
+    },
+    "no_decoder": {
+      "why": "no decoder section: the separator the crate falls back to",
+      "spec": {
+        "version": "1.0",
+        "truncation": null,
+        "padding": null,
+        "added_tokens": [],
+        "normalizer": null,
+        "pre_tokenizer": null,
+        "post_processor": null,
+        "model": {
+          "type": "BPE",
+          "dropout": null,
+          "unk_token": null,
+          "continuing_subword_prefix": null,
+          "end_of_word_suffix": null,
+          "fuse_unk": false,
+          "byte_fallback": true,
+          "ignore_merges": true,
+          "vocab": {
+            "ab": 0,
+            "cd": 1,
+            "ef": 2,
+            " ": 3
+          },
+          "merges": []
+        }
+      },
+      "cases": [
+        {
+          "ids": [
+            0
+          ],
+          "decoded": "ab"
+        },
+        {
+          "ids": [
+            0,
+            1
+          ],
+          "decoded": "ab cd"
+        },
+        {
+          "ids": [
+            0,
+            1,
+            2
+          ],
+          "decoded": "ab cd ef"
+        },
+        {
+          "ids": [
+            0,
+            3,
+            1
+          ],
+          "decoded": "ab   cd"
+        },
+        {
+          "ids": [
+            3,
+            3
+          ],
+          "decoded": "   "
+        }
+      ]
+    },
+    "nested_sequence": {
+      "why": "a Sequence nested in a Sequence keeps its pieces",
+      "spec": {
+        "version": "1.0",
+        "truncation": null,
+        "padding": null,
+        "added_tokens": [],
+        "normalizer": null,
+        "pre_tokenizer": null,
+        "post_processor": null,
+        "model": {
+          "type": "BPE",
+          "dropout": null,
+          "unk_token": null,
+          "continuing_subword_prefix": null,
+          "end_of_word_suffix": null,
+          "fuse_unk": false,
+          "byte_fallback": true,
+          "ignore_merges": true,
+          "vocab": {
+            "▁Hello": 0,
+            "▁world": 1,
+            "▁": 2,
+            "▁a": 3
+          },
+          "merges": []
+        },
+        "decoder": {
+          "type": "Sequence",
+          "decoders": [
+            {
+              "type": "Sequence",
+              "decoders": [
+                {
+                  "type": "Replace",
+                  "pattern": {
+                    "String": "▁"
+                  },
+                  "content": " "
+                },
+                {
+                  "type": "ByteFallback"
+                }
+              ]
+            },
+            {
+              "type": "Strip",
+              "content": " ",
+              "start": 1,
+              "stop": 0
+            }
+          ]
+        }
+      },
+      "cases": [
+        {
+          "ids": [
+            0,
+            1
+          ],
+          "decoded": "Helloworld"
+        },
+        {
+          "ids": [
+            2,
+            2,
+            0
+          ],
+          "decoded": "Hello"
+        },
+        {
+          "ids": [
+            2,
+            3,
+            2
+          ],
+          "decoded": "a"
+        },
+        {
+          "ids": [
+            0
+          ],
+          "decoded": "Hello"
+        },
+        {
+          "ids": [
+            3
+          ],
+          "decoded": "a"
+        }
+      ]
+    },
+    "bytefallback_piece_boundaries": {
+      "why": "a failed byte run is one piece per byte, not one piece of N",
+      "spec": {
+        "version": "1.0",
+        "truncation": null,
+        "padding": null,
+        "added_tokens": [],
+        "normalizer": null,
+        "pre_tokenizer": null,
+        "post_processor": null,
+        "model": {
+          "type": "BPE",
+          "dropout": null,
+          "unk_token": null,
+          "continuing_subword_prefix": null,
+          "end_of_word_suffix": null,
+          "fuse_unk": false,
+          "byte_fallback": true,
+          "ignore_merges": true,
+          "vocab": {
+            "<0xF3>": 0,
+            "<0xB0>": 1,
+            "<0x80>": 2,
+            "hi": 3
+          },
+          "merges": []
+        },
+        "decoder": {
+          "type": "Sequence",
+          "decoders": [
+            {
+              "type": "ByteFallback"
+            },
+            {
+              "type": "Replace",
+              "pattern": {
+                "String": "��"
+              },
+              "content": "X"
+            }
+          ]
+        }
+      },
+      "cases": [
+        {
+          "ids": [
+            0,
+            1
+          ],
+          "decoded": "��"
+        },
+        {
+          "ids": [
+            0,
+            1,
+            2
+          ],
+          "decoded": "���"
+        },
+        {
+          "ids": [
+            3,
+            0,
+            1,
+            3
+          ],
+          "decoded": "hi��hi"
+        },
+        {
+          "ids": [
+            0,
+            1,
+            2,
+            2
+          ],
+          "decoded": "󰀀"
+        },
+        {
+          "ids": [
+            3
+          ],
+          "decoded": "hi"
+        }
+      ]
+    }
+  }
+}

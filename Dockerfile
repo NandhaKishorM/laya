@@ -1,5 +1,5 @@
 # Build and runtime share one base so the copied virtualenv matches its interpreter.
-ARG PYTHON_IMAGE=python:3.11-slim-bookworm
+ARG PYTHON_IMAGE=python:3.11-slim-trixie
 
 FROM ${PYTHON_IMAGE} AS build
 

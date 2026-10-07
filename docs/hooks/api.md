@@ -286,15 +286,19 @@ Router(
     models=None, device=None, token=None, max_loaded=2, default="english",
     auto_task_detection=False, standalone_repos=False, preload=False, lang_guess=None,
     hooks=None, on_predict_start=None, on_predict_end=None,
-    hooks_raise=True, hooks_concurrent=True,
+    hooks_raise=True, hooks_concurrent=True, hooks_timeout=None,
 )
 
 router.route(state, questions=None, model=None, task=None, lang=None, lang_guess=None,
-             hooks=None, hooks_raise=None)
+             hooks=None, hooks_raise=None, hooks_timeout=None)
 
 router.predict(state, questions, model=None, task=None, lang=None, lang_guess=None,
                hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,
                hooks_timeout=None, max_len=None, head_max_len=None)
+
+router.predict_batch(requests, batch_size=None, hooks_timeout=None, min_confidence=None,
+                     sort_by_length=False, hooks=None, on_predict_start=None, on_predict_end=None,
+                     hooks_raise=None)
 
 router.system_one(...)      # alias of predict
 router.load(name)           # builds on first use; fires on_load
@@ -304,7 +308,7 @@ router.attach(name, agent)  # registers an existing agent; does not fire on_load
 router.loaded               # list of resident checkpoint names
 ```
 
-- Per-call `hooks=` on `route` and `predict` apply to the whole call, including `on_route`.
+- Per-call `hooks=` on `route`, `route_batch`, `predict` and `predict_batch` apply to the whole call, including `on_route`. On `predict_batch` the list is composed the same way as on `predict` (installed hooks first, then the per-call list; `None` and `[]` add nothing) and runs once per request.
 - `route()` is public: calling it dispatches `on_route` with the installed hooks plus any
   per-call `hooks`.
 
@@ -313,7 +317,7 @@ router.loaded               # list of resident checkpoint names
 ```python
 ONNXAgent(model_id_or_path, onnx_path="laya.onnx", subfolder=None,
           hooks=None, on_predict_start=None, on_predict_end=None,
-          hooks_raise=True, hooks_concurrent=True)
+          hooks_raise=True, hooks_concurrent=True, hooks_timeout=None)
 
 onnx_agent.system_one(state, questions,
                       hooks=None, on_predict_start=None, on_predict_end=None, hooks_raise=None,

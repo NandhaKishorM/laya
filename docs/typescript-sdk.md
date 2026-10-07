@@ -63,8 +63,11 @@ sent only when the caller supplied the option -- an absent option leaves the dep
 | `minConfidence` | `min_confidence` |
 
 An option that cannot mean anything is refused locally, before the request goes out: a blank `task`, a
-budget that is not a positive integer, a threshold outside `[0, 1]`. Nothing is silently ignored. Laya's
-public `/health` returns `status`, `loaded`, and `device`. Prediction never probes health first.
+budget that is not a positive integer, a threshold outside `[0, 1]`, or a threshold map that is empty
+or holds a value outside `[0, 1]`. Nothing is silently ignored. Laya's
+public `/health` returns `status`, `loaded`, `revisions`, `device`, `device_is_preference`,
+`checkpoint_devices`, and `cpu_fallbacks` -- the same seven keys the laya-serve deployment
+page documents; see [HTTP API](http-api.md). Prediction never probes health first.
 
 FastAPI detail strings and validation arrays are preserved as `LayaAPIError`
 messages/details. Structured error envelopes from compatible backends are also

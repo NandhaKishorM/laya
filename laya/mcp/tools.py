@@ -112,6 +112,26 @@ def _check_noul_labels(name: str, labels: Any) -> None:
         )
 
 
+def _check_option_order(name: str, order: Any, n: int) -> list:
+    """The agent's `option_order` rule: slot s shows option `order[s]`.
+
+    Anything but a permutation of the option indices would drop an option or show one twice, and
+    the agent rejects it with a ValueError -- which, past this layer, reaches the client as
+    internal_error. A bool, a float or a numeric string is not an index; the agent does not
+    coerce them, so neither does this.
+    """
+    if (not isinstance(order, (list, tuple))
+            or len(order) != n
+            or not all(isinstance(i, int) and not isinstance(i, bool) for i in order)
+            or sorted(order) != list(range(n))):
+        raise ToolError(
+            "invalid_questions",
+            f"questions[{name}].option_order must be a permutation of range({n}) -- one slot per "
+            f"option, each option once -- got {order!r}",
+        )
+    return list(order)
+
+
 def validate_questions(questions: Any) -> dict:
     if not isinstance(questions, dict) or not questions:
         raise ToolError(
@@ -189,6 +209,11 @@ def validate_questions(questions: Any) -> dict:
                 )
             _check_noul_labels(name, spec["labels"])
             entry["labels"] = spec["labels"]
+        if "option_order" in spec:
+            # Documented for every type; rebuilding the entry from the keys above dropped it, so
+            # the order a caller asked for never reached the model.
+            n_options = 2 if qtype == "noul" else len(entry["criteria"])
+            entry["option_order"] = _check_option_order(name, spec["option_order"], n_options)
         cleaned[name] = entry
     return cleaned
 
@@ -342,6 +367,14 @@ def _overrides(task: Any, lang: Any, max_len: Any, head_max_len: Any) -> dict:
     return {name: value for name, value in values.items() if value is not None}
 
 
+def _raise_if_remote_error(exc: BaseException) -> None:
+    """Turn transport failures into the ToolError the client can read."""
+    from .remote import RemoteError
+
+    if isinstance(exc, RemoteError):
+        raise ToolError(exc.code, exc.message) from exc
+
+
 def _normalize_answers(raw: Any) -> dict:
     if not isinstance(raw, dict):
         raise ToolError("internal_error", "predict returned non-object answers")
@@ -457,7 +490,11 @@ def laya_predict(
         return router.predict(state_d, questions_d, model=model_name, **budget)
 
     started = time.perf_counter()
-    result = _run()
+    try:
+        result = _run()
+    except Exception as exc:
+        _raise_if_remote_error(exc)
+        raise
     latency_ms = (time.perf_counter() - started) * 1000.0
 
     norm = _normalize_result(result)
@@ -589,6 +626,13 @@ def _resident_or_load(router: Any, name: str) -> Any:
     resident = router_agent(router, name)
     if resident is not None:
         return resident
+    if hasattr(router, "base_url") and hasattr(router, "health"):
+        raise ToolError(
+            "unsupported_remote",
+            "laya_shortlist embeds options with the answering checkpoint in-process; it is not "
+            "available when LAYA_BASE_URL points the MCP server at a remote laya-serve. Use "
+            "laya_predict with head_max_len raised, or run the MCP server without LAYA_BASE_URL.",
+        )
     load = getattr(router, "load", None)
     if load is None:
         raise ToolError("models_not_ready", f"checkpoint {name!r} is not loaded")
@@ -657,6 +701,15 @@ def laya_shortlist(
     (``lang_guess`` only routes, so like ``task`` it is stripped before the answering pass);
     ``min_confidence`` flags a kept-label answer the checkpoint is unsure of.
     """
+    # Before the heavy imports below: a remote router has no in-process encoder to embed with,
+    # and the refusal should not cost the MCP process a torch import on the way to saying so.
+    if router is not None and agent is None and hasattr(router, "base_url") and hasattr(router, "health"):
+        raise ToolError(
+            "unsupported_remote",
+            "laya_shortlist embeds options with the answering checkpoint in-process; it is not "
+            "available when LAYA_BASE_URL points the MCP server at a remote laya-serve. Use "
+            "laya_predict with head_max_len raised, or run the MCP server without LAYA_BASE_URL.",
+        )
     # Lazy: keeps numpy/shortlist out of module import for laya.mcp.tools.
     from laya.shortlist import (
         DEFAULT_SHORTLIST_K,
@@ -700,6 +753,17 @@ def laya_shortlist(
         k = DEFAULT_SHORTLIST_K
     if isinstance(k, bool) or not isinstance(k, int) or k < 1:
         raise ToolError("invalid_k", f"k must be a positive integer, got {k!r}")
+    # A choice with more than k labels is answered over the k it keeps, in rank order, so an
+    # `option_order` over all of its options no longer describes the question -- the agent
+    # rejects the stale order. A choice of at most k labels is answered as given and keeps it.
+    for name, spec in questions_d.items():
+        if spec["type"] == "choice" and "option_order" in spec and len(spec["criteria"]) > k:
+            raise ToolError(
+                "invalid_questions",
+                f"questions[{name}].option_order orders all {len(spec['criteria'])} options, but "
+                f"laya_shortlist answers it over the {k} it keeps, in rank order; omit option_order, "
+                f"or raise k to at least {len(spec['criteria'])}",
+            )
 
     routing: dict[str, Any]
     if model_name == "auto":
@@ -822,7 +886,39 @@ def laya_preset(
     )
 
 
+def _remote_status(router: Any, preload: bool) -> dict:
+    """``laya_status`` for a remote router: the server's own /health, no torch import here."""
+    versions: dict[str, str | None] = {"laya": None}
+    try:
+        versions["laya"] = getattr(__import__("laya"), "__version__", "unknown")
+    except Exception:
+        pass
+    out: dict[str, Any] = {
+        "mode": "remote",
+        "base_url": router.base_url,
+        "router_preload": False,
+        "router_ready": True,
+        "package_versions": versions,
+    }
+    try:
+        health = router.health()
+    except Exception as exc:  # noqa: BLE001 -- the status tool reports, it never raises
+        out["server"] = None
+        out["server_error"] = f"{type(exc).__name__}: {exc}"
+        out["loaded"] = []
+        return out
+    out["server"] = health
+    loaded = health.get("loaded")
+    out["loaded"] = [v for v in loaded if isinstance(v, str)] if isinstance(loaded, list) else []
+    for key in ("device", "device_is_preference", "checkpoint_devices"):
+        if key in health:
+            out[key] = health[key]
+    return out
+
+
 def laya_status(*, router: Any = None, loaded: list[str] | None = None, preload: bool = True) -> dict:
+    if router is not None and hasattr(router, "base_url") and hasattr(router, "health"):
+        return _remote_status(router, preload)
     report = device_report()
     versions: dict[str, str | None] = {
         "laya": None,
@@ -1038,7 +1134,11 @@ def laya_predict_batch(
         if sort_by_length:
             kwargs["sort_by_length"] = True
         results = router.predict_batch(items, **kwargs)
-    except TypeError as exc:
+    except Exception as exc:
+        _raise_if_remote_error(exc)
+        if not isinstance(exc, TypeError):
+            raise
+
         # A Router without batch support raises at the call itself; anything
         # else is a real bug and must surface unchanged.
         raise ToolError(
@@ -1161,6 +1261,9 @@ def laya_decide(
                             model=model_name, min_confidence=min_conf)
     except SchemaError as exc:
         raise ToolError("invalid_schema", str(exc)) from exc
+    except Exception as exc:
+        _raise_if_remote_error(exc)
+        raise
     latency_ms = (time.perf_counter() - started) * 1000.0
 
     answers = _normalize_answers(details.answers)

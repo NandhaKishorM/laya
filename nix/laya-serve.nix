@@ -157,6 +157,18 @@ in
       description = "Build the checkpoints at startup rather than lazily on first request.";
     };
 
+    idleUnloadSeconds = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.unsigned;
+      default = null;
+      example = 300;
+      description = ''
+        Unload resident checkpoints after this many idle seconds (sets
+        `LAYA_IDLE_UNLOAD_SECONDS`). The next request pays a cold load.
+        Zero disables unloading; null leaves the server's default, also off.
+        Device caches are released, but the process allocator may retain RAM pages.
+      '';
+    };
+
     threads = lib.mkOption {
       type = lib.types.nullOr lib.types.ints.positive;
       default = null;
@@ -224,6 +236,18 @@ in
         Ceiling on the per-request `max_len` / `head_max_len` a client may ask
         for (sets `LAYA_MAX_TOKEN_BUDGET`); a larger value is refused with 422.
         null leaves the server's own default.
+      '';
+    };
+
+    maxBatchTokens = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.positive;
+      default = null;
+      example = 262144;
+      description = ''
+        Tokens one /v1/systemone/batch FORWARD PASS may collate -- states x
+        questions x the row width (sets `LAYA_MAX_BATCH_TOKENS`). A larger batch
+        is split across several passes, not refused. null leaves the server's own
+        default.
       '';
     };
 
@@ -319,6 +343,8 @@ in
       } // lib.optionalAttrs (cfg.threads != null) {
         LAYA_THREADS = toString cfg.threads;
         OMP_NUM_THREADS = toString cfg.threads;
+      } // lib.optionalAttrs (cfg.idleUnloadSeconds != null) {
+        LAYA_IDLE_UNLOAD_SECONDS = toString cfg.idleUnloadSeconds;
       } // lib.optionalAttrs (cfg.rootPath != null) {
         LAYA_ROOT_PATH = cfg.rootPath;
       } // lib.optionalAttrs (cfg.logLevel != null) {
@@ -335,6 +361,8 @@ in
         LAYA_MAX_LOADED = toString cfg.maxLoaded;
       } // lib.optionalAttrs (cfg.maxTokenBudget != null) {
         LAYA_MAX_TOKEN_BUDGET = toString cfg.maxTokenBudget;
+      } // lib.optionalAttrs (cfg.maxBatchTokens != null) {
+        LAYA_MAX_BATCH_TOKENS = toString cfg.maxBatchTokens;
       } // lib.optionalAttrs (cfg.revision != null) {
         LAYA_REVISION = cfg.revision;
       } // lib.optionalAttrs (cfg.defaultModel != null) {

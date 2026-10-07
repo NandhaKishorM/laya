@@ -151,6 +151,14 @@ const SHARED_WORDS: Set<string> = (() => {
 const NORDIC_OVERLAP_WORDS = new Set(["hej", "ja", "nej", "jo", "tack", "mig", "min", "om", "kommer", "får", "skulle", "vi"]);
 for (const word of NORDIC_OVERLAP_WORDS) SHARED_WORDS.add(word);
 const EN_ONLY_WORDS = new Set([...STOP["en"]].filter((w) => !SHARED_WORDS.has(w)));
+// Foreign function words that are also ordinary English words (`im` is also `I'm` without the
+// apostrophe). Each counts once however often it repeats, so "do more, do less" cannot clear the
+// `best >= 2` bar on one word. Every other word keeps counting occurrences: `der` twice is still
+// German, and Dutch `van` is deliberately left out. See _EN_COLLISION_WORDS in laya/lang.py.
+const EN_COLLISION_WORDS = new Set(
+  ["come", "son", "do", "care", "todo", "im", "per", "plus"].filter((w) =>
+    Object.entries(STOP).some(([lg, sw]) => lg !== "en" && sw.has(w))),
+);
 
 // Short support fragments need a narrower vocabulary than the general four-word language guess.
 // Generic words such as "fel" and "hjälp" are deliberately omitted from this subset.
@@ -327,10 +335,13 @@ export function latinProfile(text: string): LatinProfile {
   if (words.length < 4) {
     return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap };
   }
+  // A collision word counts once however often it repeats; every other word counts its hits.
+  const counts = new Map<string, number>();
+  for (const w of words) counts.set(w, (counts.get(w) ?? 0) + 1);
   const scores: Record<string, number> = {};
   for (const [lg, sw] of Object.entries(STOP)) {
     let s = 0;
-    for (const w of words) if (sw.has(w)) s += 1;
+    for (const [w, n] of counts) if (sw.has(w)) s += EN_COLLISION_WORDS.has(w) ? 1 : n;
     scores[lg] = s;
   }
   const en = scores["en"] ?? 0;

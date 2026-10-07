@@ -214,4 +214,39 @@ describe("lang", () => {
     expect(guessLatinLanguage(text)).toBe(language);
     expect(isEnglish(text)).toBe(false);
   });
+
+  // A foreign function word that is also an ordinary English word (`come` it, `son` es, `do` pt,
+  // `care` ro, `todo`/`im`/`per`/`plus`) named that language when it merely appeared twice, so
+  // plain English routed to the multilingual checkpoint. Such a word now counts once however often
+  // it repeats. Ported from tests/test_lang_guess.py; expectations from Python's laya.lang.analyse.
+  it.each([
+    "Come one, come all",
+    "My son, your son",
+    "Do more, do less",
+    "Care more, care less",
+    "Add a todo, then another todo item",
+    "im not able to log in, im stuck",
+    "add 45 to 87 plus 54 plus 43 plus 22",
+  ])("plain english with a repeated collision word stays english: %s", (text) => {
+    expect(analyse(text).isEnglish).toBe(true);
+  });
+
+  // The dedupe is limited to those words: `der`, `des`, `di`, `sa` are nobody's English and still
+  // count every occurrence, Dutch `van` is deliberately left off the list, and genuine requests
+  // with several different function words are still foreign.
+  it.each([
+    "reduzieren der helligkeit der lichter",
+    "enumerar todos los horarios de los tren a nueva york",
+    "jouer des chansons des beatles",
+    "numero di telefono di giacomo",
+    "pede um pacote de massa chinesa faz um pedido takeaway",
+    "ar trebui sa port o pelerina de ploaie inainte sa ies afara",
+    "herinner me eraan dat ik dat liedje leuk vind",
+    "hey olly ik hou van muziek van frans bauer",
+    "Hola, necesito cancelar mi pedido por favor ahora mismo gracias",
+    "Eu quero cancelar o meu pedido por favor agora mesmo obrigado",
+    "Vorrei annullare il mio ordine per favore adesso grazie mille",
+  ])("a repeated non-collision function word is still foreign: %s", (text) => {
+    expect(analyse(text).isEnglish).toBe(false);
+  });
 });

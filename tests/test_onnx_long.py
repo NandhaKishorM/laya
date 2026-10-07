@@ -139,6 +139,28 @@ check("short/lang forwards to system_one",
       _with_one_window(_bare_onnx().system_one("aa", QUESTIONS, lang="de")))
 
 
+# ---------------------------------------------------------------- a state the questions leave room for
+# "Fits" is the room the questions leave, not the default window: system_one reads a state up to that
+# room whole, so windowing one between the two re-read it in pieces and moved the answer.
+def _roomy_onnx():
+    a = _bare_onnx()
+    a.cfg = {"max_len": 256, "head_max_len": 96}     # default window 152
+    return a
+
+
+_win, _, _room_q = window_budget(_FakeTok(), [Agent._to_internal(q) for q in QUESTIONS.values()], 256, 96)
+check_true("room/these questions leave more room than the default window", _room_q > _win, (_win, _room_q))
+_at_room = "".join(chr(65 + (k % 11)) for k in range(_room_q))
+roomy = _roomy_onnx()
+check("room/a state at the room delegates byte-for-byte to system_one",
+      roomy.predict_long(_at_room, QUESTIONS), _with_one_window(_roomy_onnx().system_one(_at_room, QUESTIONS)))
+check("room/in one session run", roomy.session.calls, [2])
+check_true("room/one token past the room is still scanned",
+           _roomy_onnx().predict_long(_at_room + "A", QUESTIONS)["usage"]["windows"] > 1)
+check_true("room/an explicit window still scans a state wider than it",
+           _roomy_onnx().predict_long(_at_room, QUESTIONS, window=_win)["usage"]["windows"] > 1)
+
+
 # ---------------------------------------------------------------- long state windows and aggregates
 # Record the windows predict_long feeds predict_batch, then score the same windows directly so
 # every aggregation claim is checked against real per-window answers, not a re-implementation.
@@ -331,6 +353,38 @@ for name, rewritten_questions in question_rewrites:
 check("questions/no-op preserves the unhooked result",
       _bare_onnx().predict_long(LONG_STATE, QUESTIONS, on_predict_start=lambda ctx: None),
       _bare_onnx().predict_long(LONG_STATE, QUESTIONS))
+
+
+# A hook that widens a question IN PLACE must be refused here exactly as on the torch agent
+# (tests/test_predict_long.py, "an in-place question rewrite is refused"). Compared against the
+# caller's own mapping it cannot be seen: the hook mutates the same nested dict, so
+# `questions == asked` stays True and the scan proceeds with windows `build_sequence` re-truncates.
+# Measured on this fixture, 8 added options cut the room from 28 to 12 state tokens: all 14 windows
+# were truncated and 32 of 200 tokens reached no model, and a 24-token state that fit one window
+# lost 12 while reporting `windows: 1`. The guard's own message is asserted, because too many
+# options for max_len raise a different ValueError from `_encode_state` that would pass a bare
+# `check_raises`. Fresh mappings per call, because the hook mutates what it is handed.
+def _inplace_questions():
+    return {"dept": {"type": "choice", "instructions": "?", "criteria": {"a": "x", "b": "y"}},
+            "urgent": dict(QUESTIONS["urgent"])}
+
+
+def _widen_in_place(ctx):
+    ctx.questions["dept"]["criteria"].update({"opt%02d" % i: "d" * 20 for i in range(8)})
+
+
+for name, inplace_state in (("a windowed state", LONG_STATE),
+                            ("a one-window state", LONG_STATE[:24])):
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            _bare_onnx().predict_long(inplace_state, _inplace_questions(),
+                                      on_predict_start=_widen_in_place)
+    except ValueError as exc:
+        check_true("questions/an in-place widening rewrite is refused on %s" % name,
+                   "after the start hooks ran" in str(exc), repr(exc))
+    else:
+        FAIL.append("questions/an in-place widening rewrite is refused on %s: did not raise" % name)
 
 
 def _annotate_first_window(ctx):

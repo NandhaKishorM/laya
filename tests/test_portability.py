@@ -1,7 +1,7 @@
 """Portability regressions: checkpoints saved by transformers 5, and non-CUDA devices.
 
-Two failures found while getting Laya to run on a macOS/Intel box, both silent or fatal depending
-on the machine:
+Three failures found while getting Laya to run on a machine that is not the one it was written
+on, all silent or fatal depending on the platform:
 
 1. transformers 5 records ModernBERT's RoPE bases as
    `rope_parameters = {"full_attention": {...}, "sliding_attention": {...}}`. transformers 4.x
@@ -14,7 +14,17 @@ on the machine:
    autocast backend for, even when disabled: 'User specified an unsupported autocast device_type
    mps'. Laya only ever enables autocast on CUDA, but it still entered the context on every call,
    so `predict()` died outright on the MPS device torch selects on Apple/AMD machines.
+
+3. `open(path)` and `Path.read_text()` with no `encoding=` take `locale.getpreferredencoding()`,
+   which is cp1252 on the `tests (windows)` runner. The pages the suites police -- README.md, the
+   docs, the examples -- are UTF-8 and carry characters cp1252 has no mapping for, so a test that
+   reads one of them dies at the read with `UnicodeDecodeError: 'charmap' codec can't decode byte
+   0x81` instead of failing one assertion. It has cost the runner twice: once at a metadata gate
+   that read README.md, and once before that at the batch-shape gate, whose fix is recorded in
+   tests/test_mcp.py's comment at its README read. Section 4 below gates the convention.
 """
+import ast
+import glob
 import os
 import sys
 from contextlib import nullcontext
@@ -294,6 +304,95 @@ with mock.patch.object(torch.Tensor, "to", _to_that_ignores_mps):
         check("autocast/later request is one forward", agent.model.calls, 7)
     except Exception as e:  # noqa: BLE001
         FAIL.append("autocast/streak was not survived: %s: %s" % (type(e).__name__, e))
+
+
+# ------------------------------------------------ 4. a repo read must pin its encoding, not take the
+# locale's. See the module docstring: on `tests (windows)` the locale codec is cp1252, so reading a
+# UTF-8 page raises at the read and the whole suite exits 1 rather than failing one assertion.
+TEXT_SUFFIXES = (".md", ".py", ".nix", ".txt", ".yml", ".yaml", ".json", ".toml")
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _repo_reads(src):
+    """The reads of a repo file `src` carries, as `(lineno, call name, path expression, pinned)`.
+
+    Writes are out of scope: this is about decoding, which only a read does. A read is in scope when
+    its path expression names a file that exists in the repo, or builds from the module's own repo
+    root (`ROOT`, `parents[`, `dirname(`, `__file__`). The second arm is deliberately blunt --
+    `open(os.path.join(ROOT, rel))` is how both crashes were written, and `rel` cannot be resolved
+    without running the module, so a read of that shape is asked to pin its encoding rather than
+    proven dangerous.
+    """
+    out = []
+    for node in ast.walk(ast.parse(src)):
+        if not isinstance(node, ast.Call):
+            continue
+        fn = node.func
+        name = fn.attr if isinstance(fn, ast.Attribute) else (fn.id if isinstance(fn, ast.Name) else "")
+        if name == "open" and node.args:
+            target = node.args[0]
+        elif name == "read_text" and isinstance(fn, ast.Attribute):
+            # `Path.read_text()` carries its path on the object, not in `args`.
+            target = fn.value
+        else:
+            continue
+        modes = [ast.unparse(k.value) for k in node.keywords if k.arg == "mode"]
+        if name == "open" and len(node.args) > 1:
+            modes.append(ast.unparse(node.args[1]))
+        if any("w" in m or "a" in m or "b" in m for m in modes):
+            continue
+        arg = ast.unparse(target)
+        literals = [n.value for n in ast.walk(target)
+                    if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+        names_repo_file = any(l.endswith(TEXT_SUFFIXES) and os.path.exists(os.path.join(REPO, l))
+                              for l in literals)
+        from_root = any(tok in arg for tok in ("ROOT", "parents[", "dirname(", "__file__"))
+        if names_repo_file or from_root:
+            out.append((node.lineno, name, arg, any(k.arg == "encoding" for k in node.keywords)))
+    return out
+
+
+reads_by_suite = {}
+for _path in sorted(glob.glob(os.path.join(REPO, "tests", "*.py"))):
+    with open(_path, encoding="utf-8") as _fh:
+        reads_by_suite["tests/" + os.path.basename(_path)] = _repo_reads(_fh.read())
+
+unpinned = ["%s:%d %s" % (_rel, _lineno, _arg)
+            for _rel, _reads in sorted(reads_by_suite.items())
+            for _lineno, _name, _arg, _pinned in _reads if not _pinned]
+check("encoding/no repo read in tests/ leaves the codec to the locale", unpinned, [])
+
+# The rule must not pass by finding nothing: it has to see the reads that already pin the encoding.
+pinned_seen = sum(1 for _reads in reads_by_suite.values() for _, _, _, _p in _reads if _p)
+check_true("encoding/the scan sees the reads that already pin it", pinned_seen >= 10,
+           "only %d pinned repo reads found, so the scan is not reaching the suites" % pinned_seen)
+
+# And it has to see both call shapes. The first version of this scanner read `node.args`, which a
+# `Path.read_text()` does not use -- it carries its path on the object -- so it reported a clean repo
+# while tests/test_evals.py still decoded docs/evals.md with the locale codec. A scan that reaches one
+# shape only passes the half of the convention it can still see.
+shapes_seen = {_name for _reads in reads_by_suite.values() for _, _name, _, _ in _reads}
+check_true("encoding/the scan sees both open() and Path.read_text()",
+           shapes_seen >= {"open", "read_text"},
+           "the scan reached %s only" % sorted(shapes_seen))
+
+# And the premise has to hold: pages the suites read really are UTF-8 that cp1252 cannot decode.
+# Without one such page the rule is a style preference, not a crash guard.
+_repo_text = []
+for _pattern in ("README.md", os.path.join("docs", "**", "*.md"),
+                 os.path.join("examples", "*.py"), os.path.join("laya", "*.py")):
+    _repo_text.extend(glob.glob(os.path.join(REPO, _pattern), recursive=True))
+_undecodable = []
+for _page in _repo_text:
+    try:
+        with open(_page, encoding="cp1252") as _fh:
+            _fh.read()
+    except UnicodeDecodeError:
+        _undecodable.append(os.path.relpath(_page, REPO).replace(os.sep, "/"))
+check_true("encoding/some repo page is UTF-8 the Windows locale cannot decode", bool(_undecodable),
+           "every repo page decodes as cp1252, so the crash this gate guards has nothing to crash on")
+print("encoding: %d repo pages cp1252 cannot decode, %d repo reads in tests/ all pinned"
+      % (len(_undecodable), pinned_seen))
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

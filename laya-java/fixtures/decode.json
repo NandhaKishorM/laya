@@ -1,0 +1,1709 @@
+{
+  "english": {
+    "config": {
+      "temperature": [
+        1.6369030475616455,
+        1.2514300346374512,
+        1.983399510383606
+      ],
+      "temperature_by_options": {
+        "choice:3-5": 1.7601518630981445,
+        "choice:6-10": 1.0000158548355103,
+        "score:3-5": 1.2514300346374512,
+        "noul:2": 1.983399510383606,
+        "choice:11+": 0.5,
+        "choice:2": 1.9063563346862793
+      },
+      "lang_temperatures_raw": {
+        "zh": {
+          "temperature": [
+            2.0,
+            1.5,
+            3.0
+          ],
+          "temperature_by_options": {
+            "choice:2": 2.5
+          }
+        }
+      }
+    },
+    "qtypes": {
+      "choice": 0,
+      "score": 1,
+      "noul": 2
+    },
+    "cases": {
+      "choice-2": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "x",
+            "b": "y"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          2.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.6282,
+            "b": 0.3718
+          },
+          "confidence": 0.048,
+          "answer_confidence": 0.6282,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-2-tied": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "x",
+            "b": "y"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          1.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.5,
+            "b": 0.5
+          },
+          "confidence": 0.0,
+          "answer_confidence": 0.5,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-4": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2",
+            "c": "3",
+            "d": "4"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.5,
+          2.5,
+          -1.0,
+          2.5
+        ],
+        "logits_block_width": 7,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "b",
+          "probabilities": {
+            "a": 0.1306,
+            "b": 0.4068,
+            "c": 0.0557,
+            "d": 0.4068
+          },
+          "confidence": 0.1643,
+          "answer_confidence": 0.4068,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-4-permuted": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2",
+            "c": "3",
+            "d": "4"
+          }
+        },
+        "option_order": [
+          2,
+          0,
+          3,
+          1
+        ],
+        "lang": null,
+        "logits": [
+          0.5,
+          2.5,
+          -1.0,
+          2.5
+        ],
+        "logits_block_width": 7,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.4068,
+            "b": 0.4068,
+            "c": 0.1306,
+            "d": 0.0557
+          },
+          "confidence": 0.1643,
+          "answer_confidence": 0.4068,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-7": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "o0": "0",
+            "o1": "1",
+            "o2": "2",
+            "o3": "3",
+            "o4": "4",
+            "o5": "5",
+            "o6": "6"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001
+        ],
+        "logits_block_width": 10,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "o6",
+          "probabilities": {
+            "o0": 0.1037,
+            "o1": 0.1147,
+            "o2": 0.1267,
+            "o3": 0.14,
+            "o4": 0.1548,
+            "o5": 0.171,
+            "o6": 0.189
+          },
+          "confidence": 0.0102,
+          "answer_confidence": 0.189,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-12": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "o0": "0",
+            "o1": "1",
+            "o2": "2",
+            "o3": "3",
+            "o4": "4",
+            "o5": "5",
+            "o6": "6",
+            "o7": "7",
+            "o8": "8",
+            "o9": "9",
+            "o10": "10",
+            "o11": "11"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.0,
+          -0.3,
+          0.6,
+          -0.8999999999999999,
+          1.2,
+          -1.5,
+          1.7999999999999998,
+          -2.1,
+          2.4,
+          -2.6999999999999997,
+          3.0,
+          -3.3
+        ],
+        "logits_block_width": 15,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "o10",
+          "probabilities": {
+            "o0": 0.0017,
+            "o1": 0.001,
+            "o2": 0.0057,
+            "o3": 0.0003,
+            "o4": 0.0191,
+            "o5": 0.0001,
+            "o6": 0.0634,
+            "o7": 0.0,
+            "o8": 0.2103,
+            "o9": 0.0,
+            "o10": 0.6984,
+            "o11": 0.0
+          },
+          "confidence": 0.6459,
+          "answer_confidence": 0.6984,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-20-uniform": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "o0": "0",
+            "o1": "1",
+            "o2": "2",
+            "o3": "3",
+            "o4": "4",
+            "o5": "5",
+            "o6": "6",
+            "o7": "7",
+            "o8": "8",
+            "o9": "9",
+            "o10": "10",
+            "o11": "11",
+            "o12": "12",
+            "o13": "13",
+            "o14": "14",
+            "o15": "15",
+            "o16": "16",
+            "o17": "17",
+            "o18": "18",
+            "o19": "19"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "logits_block_width": 23,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "o0",
+          "probabilities": {
+            "o0": 0.05,
+            "o1": 0.05,
+            "o2": 0.05,
+            "o3": 0.05,
+            "o4": 0.05,
+            "o5": 0.05,
+            "o6": 0.05,
+            "o7": 0.05,
+            "o8": 0.05,
+            "o9": 0.05,
+            "o10": 0.05,
+            "o11": 0.05,
+            "o12": 0.05,
+            "o13": 0.05,
+            "o14": 0.05,
+            "o15": 0.05,
+            "o16": 0.05,
+            "o17": 0.05,
+            "o18": 0.05,
+            "o19": 0.05
+          },
+          "confidence": 0.0,
+          "answer_confidence": 0.05,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-huge-magnitude": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2",
+            "c": "3"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          700.0,
+          699.0,
+          -700.0
+        ],
+        "logits_block_width": 6,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.6383,
+            "b": 0.3617,
+            "c": 0.0
+          },
+          "confidence": 0.4044,
+          "answer_confidence": 0.6383,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-tiny-spread": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          1.0,
+          1.0000001
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "b",
+          "probabilities": {
+            "a": 0.5,
+            "b": 0.5
+          },
+          "confidence": 0.0,
+          "answer_confidence": 0.5,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-lang-override": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "option_order": null,
+        "lang": "zh-Hans",
+        "logits": [
+          2.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.5987,
+            "b": 0.4013
+          },
+          "confidence": 0.0283,
+          "answer_confidence": 0.5987,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-lang-override-prefix": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "option_order": null,
+        "lang": "ZH",
+        "logits": [
+          2.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.5987,
+            "b": 0.4013
+          },
+          "confidence": 0.0283,
+          "answer_confidence": 0.5987,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-lang-unknown": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "option_order": null,
+        "lang": "xx",
+        "logits": [
+          2.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.6282,
+            "b": 0.3718
+          },
+          "confidence": 0.048,
+          "answer_confidence": 0.6282,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "score-3": {
+        "question": {
+          "t": "score",
+          "ins": "i",
+          "crit": [
+            "bad",
+            "ok",
+            "good"
+          ]
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.2,
+          1.4,
+          0.9
+        ],
+        "logits_block_width": 6,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "score",
+          "score": 1.1399,
+          "legend": {
+            "0": "bad",
+            "1": "ok",
+            "2": "good"
+          },
+          "probabilities": {
+            "0": 0.1866,
+            "1": 0.4869,
+            "2": 0.3265
+          },
+          "confidence": 0.0632,
+          "answer_confidence": 0.4869,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "score-6": {
+        "question": {
+          "t": "score",
+          "ins": "i",
+          "crit": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.0,
+          1.0,
+          2.0,
+          1.0,
+          0.0,
+          -1.0
+        ],
+        "logits_block_width": 9,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "score",
+          "score": 2.1139,
+          "legend": {
+            "0": "0",
+            "1": "1",
+            "2": "2",
+            "3": "3",
+            "4": "4",
+            "5": "5"
+          },
+          "probabilities": {
+            "0": 0.0845,
+            "1": 0.1878,
+            "2": 0.4175,
+            "3": 0.1878,
+            "4": 0.0845,
+            "5": 0.038
+          },
+          "confidence": 0.1436,
+          "answer_confidence": 0.4175,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "score-structured-legend": {
+        "question": {
+          "t": "score",
+          "ins": "i",
+          "crit": [
+            {
+              "d": 1
+            },
+            "ok",
+            3
+          ]
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.4,
+          0.4,
+          0.4
+        ],
+        "logits_block_width": 6,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "score",
+          "score": 1.0,
+          "legend": {
+            "0": "{\"d\": 1}",
+            "1": "ok",
+            "2": "3"
+          },
+          "probabilities": {
+            "0": 0.3333,
+            "1": 0.3333,
+            "2": 0.3333
+          },
+          "confidence": 0.0,
+          "answer_confidence": 0.3333,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "score-permuted": {
+        "question": {
+          "t": "score",
+          "ins": "i",
+          "crit": [
+            "bad",
+            "ok",
+            "good"
+          ]
+        },
+        "option_order": [
+          1,
+          2,
+          0
+        ],
+        "lang": null,
+        "logits": [
+          0.2,
+          1.4,
+          0.9
+        ],
+        "logits_block_width": 6,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "score",
+          "score": 1.1604,
+          "legend": {
+            "0": "bad",
+            "1": "ok",
+            "2": "good"
+          },
+          "probabilities": {
+            "0": 0.3265,
+            "1": 0.1866,
+            "2": 0.4869
+          },
+          "confidence": 0.0632,
+          "answer_confidence": 0.4869,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "noul-true": {
+        "question": {
+          "t": "noul",
+          "ins": "i"
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.3,
+          1.9
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "noul",
+          "noul": 0.6914,
+          "confidence": 0.6914,
+          "answer_confidence": 0.6914,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "noul-false": {
+        "question": {
+          "t": "noul",
+          "ins": "i"
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          2.4,
+          0.1
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "noul",
+          "noul": 0.2387,
+          "confidence": 0.7613,
+          "answer_confidence": 0.7613,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "noul-balanced": {
+        "question": {
+          "t": "noul",
+          "ins": "i"
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          1.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "noul",
+          "noul": 0.5,
+          "confidence": 0.5,
+          "answer_confidence": 0.5,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "noul-labels": {
+        "question": {
+          "t": "noul",
+          "ins": "i",
+          "labels": {
+            "false": "nope",
+            "true": "yep"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.3,
+          1.9
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "noul",
+          "noul": 0.6914,
+          "confidence": 0.6914,
+          "answer_confidence": 0.6914,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      }
+    }
+  },
+  "multilingual": {
+    "config": {
+      "temperature": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "temperature_by_options": {},
+      "lang_temperatures_raw": {
+        "zh": {
+          "temperature": [
+            2.0,
+            1.5,
+            3.0
+          ],
+          "temperature_by_options": {
+            "choice:2": 2.5
+          }
+        }
+      }
+    },
+    "qtypes": {
+      "choice": 0,
+      "score": 1,
+      "noul": 2
+    },
+    "cases": {
+      "choice-2": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "x",
+            "b": "y"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          2.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.7311,
+            "b": 0.2689
+          },
+          "confidence": 0.1601,
+          "answer_confidence": 0.7311,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-2-tied": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "x",
+            "b": "y"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          1.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.5,
+            "b": 0.5
+          },
+          "confidence": 0.0,
+          "answer_confidence": 0.5,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-4": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2",
+            "c": "3",
+            "d": "4"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.5,
+          2.5,
+          -1.0,
+          2.5
+        ],
+        "logits_block_width": 7,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "b",
+          "probabilities": {
+            "a": 0.0625,
+            "b": 0.4618,
+            "c": 0.0139,
+            "d": 0.4618
+          },
+          "confidence": 0.3173,
+          "answer_confidence": 0.4618,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-4-permuted": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2",
+            "c": "3",
+            "d": "4"
+          }
+        },
+        "option_order": [
+          2,
+          0,
+          3,
+          1
+        ],
+        "lang": null,
+        "logits": [
+          0.5,
+          2.5,
+          -1.0,
+          2.5
+        ],
+        "logits_block_width": 7,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.4618,
+            "b": 0.4618,
+            "c": 0.0625,
+            "d": 0.0139
+          },
+          "confidence": 0.3173,
+          "answer_confidence": 0.4618,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-7": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "o0": "0",
+            "o1": "1",
+            "o2": "2",
+            "o3": "3",
+            "o4": "4",
+            "o5": "5",
+            "o6": "6"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001
+        ],
+        "logits_block_width": 10,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "o6",
+          "probabilities": {
+            "o0": 0.1037,
+            "o1": 0.1147,
+            "o2": 0.1267,
+            "o3": 0.14,
+            "o4": 0.1548,
+            "o5": 0.171,
+            "o6": 0.189
+          },
+          "confidence": 0.0102,
+          "answer_confidence": 0.189,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-12": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "o0": "0",
+            "o1": "1",
+            "o2": "2",
+            "o3": "3",
+            "o4": "4",
+            "o5": "5",
+            "o6": "6",
+            "o7": "7",
+            "o8": "8",
+            "o9": "9",
+            "o10": "10",
+            "o11": "11"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.0,
+          -0.3,
+          0.6,
+          -0.8999999999999999,
+          1.2,
+          -1.5,
+          1.7999999999999998,
+          -2.1,
+          2.4,
+          -2.6999999999999997,
+          3.0,
+          -3.3
+        ],
+        "logits_block_width": 15,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "o10",
+          "probabilities": {
+            "o0": 0.0223,
+            "o1": 0.0165,
+            "o2": 0.0406,
+            "o3": 0.0091,
+            "o4": 0.0739,
+            "o5": 0.005,
+            "o6": 0.1347,
+            "o7": 0.0027,
+            "o8": 0.2455,
+            "o9": 0.0015,
+            "o10": 0.4474,
+            "o11": 0.0008
+          },
+          "confidence": 0.376,
+          "answer_confidence": 0.4474,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-20-uniform": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "o0": "0",
+            "o1": "1",
+            "o2": "2",
+            "o3": "3",
+            "o4": "4",
+            "o5": "5",
+            "o6": "6",
+            "o7": "7",
+            "o8": "8",
+            "o9": "9",
+            "o10": "10",
+            "o11": "11",
+            "o12": "12",
+            "o13": "13",
+            "o14": "14",
+            "o15": "15",
+            "o16": "16",
+            "o17": "17",
+            "o18": "18",
+            "o19": "19"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "logits_block_width": 23,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "o0",
+          "probabilities": {
+            "o0": 0.05,
+            "o1": 0.05,
+            "o2": 0.05,
+            "o3": 0.05,
+            "o4": 0.05,
+            "o5": 0.05,
+            "o6": 0.05,
+            "o7": 0.05,
+            "o8": 0.05,
+            "o9": 0.05,
+            "o10": 0.05,
+            "o11": 0.05,
+            "o12": 0.05,
+            "o13": 0.05,
+            "o14": 0.05,
+            "o15": 0.05,
+            "o16": 0.05,
+            "o17": 0.05,
+            "o18": 0.05,
+            "o19": 0.05
+          },
+          "confidence": 0.0,
+          "answer_confidence": 0.05,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-huge-magnitude": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2",
+            "c": "3"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          700.0,
+          699.0,
+          -700.0
+        ],
+        "logits_block_width": 6,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.7311,
+            "b": 0.2689,
+            "c": 0.0
+          },
+          "confidence": 0.4701,
+          "answer_confidence": 0.7311,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-tiny-spread": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          1.0,
+          1.0000001
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "b",
+          "probabilities": {
+            "a": 0.5,
+            "b": 0.5
+          },
+          "confidence": 0.0,
+          "answer_confidence": 0.5,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-lang-override": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "option_order": null,
+        "lang": "zh-Hans",
+        "logits": [
+          2.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.5987,
+            "b": 0.4013
+          },
+          "confidence": 0.0283,
+          "answer_confidence": 0.5987,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-lang-override-prefix": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "option_order": null,
+        "lang": "ZH",
+        "logits": [
+          2.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.5987,
+            "b": 0.4013
+          },
+          "confidence": 0.0283,
+          "answer_confidence": 0.5987,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "choice-lang-unknown": {
+        "question": {
+          "t": "choice",
+          "ins": "i",
+          "crit": {
+            "a": "1",
+            "b": "2"
+          }
+        },
+        "option_order": null,
+        "lang": "xx",
+        "logits": [
+          2.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "choice",
+          "choice": "a",
+          "probabilities": {
+            "a": 0.7311,
+            "b": 0.2689
+          },
+          "confidence": 0.1601,
+          "answer_confidence": 0.7311,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "score-3": {
+        "question": {
+          "t": "score",
+          "ins": "i",
+          "crit": [
+            "bad",
+            "ok",
+            "good"
+          ]
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.2,
+          1.4,
+          0.9
+        ],
+        "logits_block_width": 6,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "score",
+          "score": 1.1601,
+          "legend": {
+            "0": "bad",
+            "1": "ok",
+            "2": "good"
+          },
+          "probabilities": {
+            "0": 0.1579,
+            "1": 0.5242,
+            "2": 0.3179
+          },
+          "confidence": 0.0949,
+          "answer_confidence": 0.5242,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "score-6": {
+        "question": {
+          "t": "score",
+          "ins": "i",
+          "crit": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.0,
+          1.0,
+          2.0,
+          1.0,
+          0.0,
+          -1.0
+        ],
+        "logits_block_width": 9,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "score",
+          "score": 2.0726,
+          "legend": {
+            "0": "0",
+            "1": "1",
+            "2": "2",
+            "3": "3",
+            "4": "4",
+            "5": "5"
+          },
+          "probabilities": {
+            "0": 0.0658,
+            "1": 0.1789,
+            "2": 0.4863,
+            "3": 0.1789,
+            "4": 0.0658,
+            "5": 0.0242
+          },
+          "confidence": 0.2105,
+          "answer_confidence": 0.4863,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "score-structured-legend": {
+        "question": {
+          "t": "score",
+          "ins": "i",
+          "crit": [
+            {
+              "d": 1
+            },
+            "ok",
+            3
+          ]
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.4,
+          0.4,
+          0.4
+        ],
+        "logits_block_width": 6,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "score",
+          "score": 1.0,
+          "legend": {
+            "0": "{\"d\": 1}",
+            "1": "ok",
+            "2": "3"
+          },
+          "probabilities": {
+            "0": 0.3333,
+            "1": 0.3333,
+            "2": 0.3333
+          },
+          "confidence": 0.0,
+          "answer_confidence": 0.3333,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "score-permuted": {
+        "question": {
+          "t": "score",
+          "ins": "i",
+          "crit": [
+            "bad",
+            "ok",
+            "good"
+          ]
+        },
+        "option_order": [
+          1,
+          2,
+          0
+        ],
+        "lang": null,
+        "logits": [
+          0.2,
+          1.4,
+          0.9
+        ],
+        "logits_block_width": 6,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "score",
+          "score": 1.2063,
+          "legend": {
+            "0": "bad",
+            "1": "ok",
+            "2": "good"
+          },
+          "probabilities": {
+            "0": 0.3179,
+            "1": 0.1579,
+            "2": 0.5242
+          },
+          "confidence": 0.0949,
+          "answer_confidence": 0.5242,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "noul-true": {
+        "question": {
+          "t": "noul",
+          "ins": "i"
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.3,
+          1.9
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "noul",
+          "noul": 0.832,
+          "confidence": 0.832,
+          "answer_confidence": 0.832,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "noul-false": {
+        "question": {
+          "t": "noul",
+          "ins": "i"
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          2.4,
+          0.1
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "noul",
+          "noul": 0.0911,
+          "confidence": 0.9089,
+          "answer_confidence": 0.9089,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "noul-balanced": {
+        "question": {
+          "t": "noul",
+          "ins": "i"
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          1.0,
+          1.0
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "noul",
+          "noul": 0.5,
+          "confidence": 0.5,
+          "answer_confidence": 0.5,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      },
+      "noul-labels": {
+        "question": {
+          "t": "noul",
+          "ins": "i",
+          "labels": {
+            "false": "nope",
+            "true": "yep"
+          }
+        },
+        "option_order": null,
+        "lang": null,
+        "logits": [
+          0.3,
+          1.9
+        ],
+        "logits_block_width": 5,
+        "act": [
+          0.25,
+          -0.5
+        ],
+        "answer": {
+          "type": "noul",
+          "noul": 0.832,
+          "confidence": 0.832,
+          "answer_confidence": 0.832,
+          "action": {
+            "act_probability": 0.25
+          }
+        }
+      }
+    }
+  }
+}

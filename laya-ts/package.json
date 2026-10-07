@@ -35,6 +35,6 @@
     "url": "https://github.com/NandhaKishorM/laya/issues"
   },
   "homepage": "https://nandhakishorm.github.io/laya/",
-  "devDependencies": { "@types/node": "^24.19.0", "typescript": "^7.0.2", "vitest": "^5.0.1" },
+  "devDependencies": { "@types/node": "^26.6.3", "typescript": "^7.0.2", "vitest": "^5.0.1" },
   "optionalDependencies": { "onnxruntime-node": "^1.20.0", "onnxruntime-web": "^1.20.0" }
 }

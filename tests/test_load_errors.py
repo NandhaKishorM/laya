@@ -452,6 +452,44 @@ check_true("device fallback/warns instead",
 del _fallback
 
 
+# ------------------------------------------- 9. unusable ordinals and "auto"
+# `is_available` only says a GPU exists: on a one-GPU box `cuda:99` sails through it
+# and dies later in `.to()` with a bare CUDA error. The ordinal is validated up front
+# instead, with the same warn-and-CPU shape as section 8. "auto" (any case or
+# surrounding whitespace) means "decide yourself", the way the serve layer already
+# treats LAYA_DEVICE. A driver that reports CUDA but cannot answer the capability
+# query gets safe fp16 defaults rather than a crash in the amp policy.
+with warnings.catch_warnings(record=True) as caught, \
+        patch("torch.cuda.is_available", return_value=True), \
+        patch("torch.cuda.device_count", return_value=1):
+    warnings.simplefilter("always")
+    _bad_ordinal = load(str(REPO), device="cuda:99")
+check("bad ordinal/lands on CPU", _bad_ordinal.device.type, "cpu")
+check_true("bad ordinal/names the ordinal",
+           any("cuda:99" in str(w.message) for w in caught),
+           str([str(w.message) for w in caught]))
+del _bad_ordinal
+
+_auto = load(str(REPO), device="AUTO")
+check_true("auto/resolves without crashing",
+           _auto.device.type in ("cpu", "cuda", "mps", "xpu"), str(_auto.device))
+del _auto
+
+with warnings.catch_warnings(record=True) as caught, \
+        patch("torch.cuda.is_available", return_value=True), \
+        patch("torch.cuda.device_count", return_value=1), \
+        patch("torch.cuda.get_device_capability", side_effect=RuntimeError("no driver")), \
+        patch.object(torch.nn.Module, "to", lambda self, *a, **k: self):
+    warnings.simplefilter("always")
+    _no_probe = load(str(REPO), device="cuda:0")
+check("unprobed GPU/stays on the requested device", _no_probe.device.type, "cuda")
+check("unprobed GPU/falls back to safe fp16", _no_probe.dtype, torch.float16)
+check_true("unprobed GPU/warns about the probe",
+           any("capability" in str(w.message) for w in caught),
+           str([str(w.message) for w in caught]))
+del _no_probe
+
+
 TMP.cleanup()
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

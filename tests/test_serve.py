@@ -9,6 +9,7 @@ import inspect
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -33,6 +34,7 @@ from laya.serve import (  # noqa: E402
     _env_bool,
     _LONE_SURROGATE_DETAIL,
     _resolve_max_token_budget,
+    _resolve_idle_unload_seconds,
     _resolve_max_loaded,
     _resolve_model,
     create_app,
@@ -574,6 +576,65 @@ def test_resolve_model_follows_the_router_registry(monkeypatch):
     assert _resolve_model("jev-1") is None
 
 
+def test_path_or_unpublished_hub_id_is_refused_on_both_endpoints(monkeypatch):
+    """A path or Hub id this server cannot load must not be answered by another checkpoint.
+
+    ``jev-1`` and ``convaiinnovations/laya`` stay "let the router choose", and so does a
+    plain unknown name: only a path or an unpublished repo id is a wrong answer (#919).
+    Both ``/v1/systemone`` and ``/v1/systemone/batch`` resolve ``model`` through the same
+    helper, so a miss has to be a 422 on each, before any inference.
+    """
+    from fastapi import HTTPException
+
+    passthrough = ("jev-1", "JEV-1", "convaiinnovations/laya", "Convaiinnovations/Laya",
+                   "  convaiinnovations/laya  ", "not-a-checkpoint", None, "")
+    for kept in passthrough:
+        assert _resolve_model(kept) is None, kept
+
+    refused = (
+        "/path/to/checkpoint",
+        "  /path/to/checkpoint  ",
+        "org/repo",
+        "someone/my-checkpoint",
+        "~/models/ckpt",
+        "./checkpoint",
+        ".\\checkpoint",
+        "C:\\models\\ckpt",
+    )
+    for raw in refused:
+        with pytest.raises(HTTPException) as caught:
+            _resolve_model(raw)
+        err = caught.value
+        assert err.status_code == 422, raw
+        assert "unknown model" in err.detail, err.detail
+        assert "choose one of" in err.detail, err.detail
+        assert "omit model to let the router choose" in err.detail, err.detail
+        assert repr(raw) in err.detail, err.detail
+
+    client, fake = _client(monkeypatch)
+    questions = REQ["questions"]
+    for raw in ("/path/to/checkpoint", "org/repo", "~/models/ckpt", ".\\checkpoint"):
+        single = client.post("/v1/systemone", json={**REQ, "model": raw})
+        assert single.status_code == 422, (raw, single.text)
+        assert "unknown model" in single.json()["detail"]
+        assert repr(raw) in single.json()["detail"]
+        batch = client.post("/v1/systemone/batch", json={
+            "states": ["one", "two"], "questions": questions, "model": raw})
+        assert batch.status_code == 422, (raw, batch.text)
+        assert "unknown model" in batch.json()["detail"]
+        assert repr(raw) in batch.json()["detail"]
+    assert fake.calls == [], fake.calls
+
+    for kept in ("jev-1", "convaiinnovations/laya", "not-a-checkpoint"):
+        single = client.post("/v1/systemone", json={**REQ, "model": kept})
+        assert single.status_code == 200, (kept, single.text)
+        assert fake.calls[-1]["model"] is None, (kept, fake.calls[-1])
+        batch = client.post("/v1/systemone/batch", json={
+            "states": ["one"], "questions": questions, "model": kept})
+        assert batch.status_code == 200, (kept, batch.text)
+        assert fake.calls[-1]["model"] is None, (kept, fake.calls[-1])
+
+
 def test_thread_limit(monkeypatch):
     pytest.importorskip("torch")
     monkeypatch.delenv("LAYA_THREADS", raising=False)
@@ -731,7 +792,7 @@ def test_default_model_reaches_the_router_the_server_builds(monkeypatch):
     # docs/docker.md quote, so moving Router's default has to move those too.
     router, _ = _server_router(monkeypatch)
     assert router.default == Router().default
-    assert router.default == "english"
+    assert router.default == "multilingual"
     for raw, want in (("multilingual", "multilingual"), ("ml", "multilingual"),
                       (" MULTI ", "multilingual"), ("typed-decisions", "typed-decisions")):
         router, _ = _server_router(monkeypatch, LAYA_DEFAULT_MODEL=raw)
@@ -742,10 +803,14 @@ def test_default_model_reaches_the_router_the_server_builds(monkeypatch):
     # this costs no weights.
     ambiguous = ("12345 !!!", "Quero cancelar", "Esqueci minha senha")
     stock, _ = _server_router(monkeypatch)
+    english, _ = _server_router(monkeypatch, LAYA_DEFAULT_MODEL="english")
     portuguese, _ = _server_router(monkeypatch, LAYA_DEFAULT_MODEL="multilingual")
     for state in ambiguous:
-        assert stock.route(state).model == "english", state
-        assert "using default (english)" in stock.route(state).reason, state
+        # the stock default since 0.4.0, and an explicit override in each direction
+        assert stock.route(state).model == "multilingual", state
+        assert "using default (multilingual)" in stock.route(state).reason, state
+        assert english.route(state).model == "english", state
+        assert "using default (english)" in english.route(state).reason, state
         assert portuguese.route(state).model == "multilingual", state
         assert "using default (multilingual)" in portuguese.route(state).reason, state
     # A fallback, not a pin: text the detector can place routes on what it detects.
@@ -1388,6 +1453,237 @@ def test_batch_too_many_states_returns_413(monkeypatch):
     r = client.post("/v1/systemone/batch", json=oversized)
     assert r.status_code == 413
     assert "too many states" in r.json()["detail"]
+
+
+def _noul_questions(n):
+    """`n` minimal questions, so a batch's row count is `len(states) * n` and nothing else."""
+    return {("q%03d" % i): {"type": "noul", "instructions": "is it urgent?"} for i in range(n)}
+
+
+def _batch_env_client(monkeypatch, **env):
+    """A batch client with the batch-token knob explicitly set, or explicitly unset.
+
+    Every test below states the budget it measures against. Without this an exported
+    `LAYA_MAX_BATCH_TOKENS` silently changes the chunk and these pass or fail for a reason that is not
+    in the file -- there is no `conftest.py` in this repo to isolate the environment, and
+    `_batch_client` clears only `LAYA_API_KEY`.
+    """
+    if "LAYA_MAX_BATCH_TOKENS" in env:
+        monkeypatch.setenv("LAYA_MAX_BATCH_TOKENS", env["LAYA_MAX_BATCH_TOKENS"])
+    else:
+        monkeypatch.delenv("LAYA_MAX_BATCH_TOKENS", raising=False)
+    return _batch_client(monkeypatch)
+
+
+def _sent_batch_size(fake):
+    """The `batch_size` the route handed `predict_batch`, or the sentinel when it passed none."""
+    _, kwargs = fake.batch_calls[0]
+    return kwargs["batch_size"] if "batch_size" in kwargs else "<absent>"
+
+
+# --------------------------------------------------------------------- the batch token budget
+#
+# `/v1/systemone/batch` collates `states x questions` rows into one tensor and `batch_size` defaults to
+# `None` -- "all in one pass" -- so the two field caps multiply: 64 states of 64 questions is 4096 rows
+# from a 4.1 KB body. The budget SPLITS the work rather than refusing it, because a refusal would have
+# to be right about hardware this process cannot see: measured on english, peak RSS did not move
+# between 32, 64 and 128 rows. So the contract under test is "one pass stays inside the budget, and a
+# request that already fits is passed no `batch_size` at all".
+
+def test_batch_within_the_budget_is_passed_no_batch_size(monkeypatch):
+    """A request that fits must behave byte-identically, which means not passing `batch_size`.
+
+    `predict_batch` warns that changing batch shapes can move floating-point results, so a request
+    that works today must not start answering differently. Not-passing is the only way to guarantee
+    that: it leaves `predict_batch` on its own default.
+    """
+    import laya.serve as serve_mod
+
+    client, fake = _batch_env_client(monkeypatch)
+    rows = serve_mod.DEFAULT_MAX_BATCH_TOKENS // serve_mod._BATCH_ROW_TOKENS_ASSUMED
+    r = client.post("/v1/systemone/batch",
+                    json={"states": ["hi"] * 8, "questions": _noul_questions(rows // 8)})
+    assert r.status_code == 200, r.text
+    requests, kwargs = fake.batch_calls[0]
+    assert len(requests) * len(requests[0]["questions"]) == rows, "exactly at the budget"
+    assert "batch_size" not in kwargs, kwargs
+
+
+def test_batch_over_the_budget_is_split_not_refused(monkeypatch):
+    """The 4096-row shape still answers; it is chunked so one pass stays inside the budget."""
+    import laya.serve as serve_mod
+
+    client, fake = _batch_env_client(monkeypatch)
+    r = client.post("/v1/systemone/batch",
+                    json={"states": ["hi"] * serve_mod.MAX_BATCH_STATES,
+                          "questions": _noul_questions(serve_mod.MAX_QUESTIONS)})
+    assert r.status_code == 200, r.text
+    rows_per_pass = serve_mod.DEFAULT_MAX_BATCH_TOKENS // serve_mod._BATCH_ROW_TOKENS_ASSUMED
+    expected = max(1, rows_per_pass // serve_mod.MAX_QUESTIONS)
+    assert _sent_batch_size(fake) == expected
+    requests, _ = fake.batch_calls[0]
+    assert len(requests) == serve_mod.MAX_BATCH_STATES, "every state is still sent"
+    assert expected * serve_mod.MAX_QUESTIONS * serve_mod._BATCH_ROW_TOKENS_ASSUMED \
+        <= serve_mod.DEFAULT_MAX_BATCH_TOKENS, "one pass must fit the budget"
+
+
+def test_batch_one_row_over_the_budget_is_split(monkeypatch):
+    """One row over, with both factors inside their own caps, so the comparison cannot be off by one."""
+    import laya.serve as serve_mod
+
+    client, fake = _batch_env_client(monkeypatch)
+    rows = serve_mod.DEFAULT_MAX_BATCH_TOKENS // serve_mod._BATCH_ROW_TOKENS_ASSUMED
+    states, questions = 9, rows // 8
+    assert states <= serve_mod.MAX_BATCH_STATES and questions <= serve_mod.MAX_QUESTIONS
+    assert states * questions > rows, "must be over by at least one row"
+    r = client.post("/v1/systemone/batch",
+                    json={"states": ["hi"] * states, "questions": _noul_questions(questions)})
+    assert r.status_code == 200, r.text
+    assert _sent_batch_size(fake) == max(1, rows // questions)
+
+
+def test_batch_a_raised_max_len_chunks_harder(monkeypatch):
+    """A row cap would be the wrong bound, because `max_len` is a request field.
+
+    `max_len` is capped only by `DEFAULT_MAX_TOKEN_BUDGET` (8192), 16x the english checkpoint's own
+    512, so 256 rows at 8192 is the same token count as 4096 rows at 512 and collates the same tensor.
+    Counting tokens means a wider row buys proportionally fewer rows per pass.
+    """
+    import laya.serve as serve_mod
+
+    wide = serve_mod.DEFAULT_MAX_TOKEN_BUDGET
+    assert wide > serve_mod._BATCH_ROW_TOKENS_ASSUMED
+    rows = serve_mod.DEFAULT_MAX_BATCH_TOKENS // serve_mod._BATCH_ROW_TOKENS_ASSUMED
+
+    narrow_client, narrow = _batch_env_client(monkeypatch)
+    narrow_client.post("/v1/systemone/batch",
+                       json={"states": ["hi"] * 8, "questions": _noul_questions(rows // 8)})
+    assert "batch_size" not in narrow.batch_calls[0][1], "fits at the default width"
+
+    wide_client, wide_fake = _batch_env_client(monkeypatch)
+    r = wide_client.post("/v1/systemone/batch",
+                         json={"states": ["hi"] * 8, "questions": _noul_questions(rows // 8),
+                               "max_len": wide})
+    assert r.status_code == 200, r.text
+    rows_per_pass = serve_mod.DEFAULT_MAX_BATCH_TOKENS // wide
+    assert _sent_batch_size(wide_fake) == max(1, rows_per_pass // (rows // 8))
+
+
+def test_batch_an_explicit_batch_size_is_never_overridden(monkeypatch):
+    """The caller asked for a shape. Planning one on top would silently change what they requested."""
+    import laya.serve as serve_mod
+
+    client, fake = _batch_env_client(monkeypatch)
+    r = client.post("/v1/systemone/batch",
+                    json={"states": ["hi"] * serve_mod.MAX_BATCH_STATES,
+                          "questions": _noul_questions(serve_mod.MAX_QUESTIONS),
+                          "batch_size": 7})
+    assert r.status_code == 200, r.text
+    assert _sent_batch_size(fake) == 7
+
+
+def test_batch_chunking_follows_a_raised_budget(monkeypatch):
+    """A deployment whose hardware can take more stops being chunked."""
+    import laya.serve as serve_mod
+
+    client, fake = _batch_env_client(monkeypatch, LAYA_MAX_BATCH_TOKENS="2097152")
+    r = client.post("/v1/systemone/batch",
+                    json={"states": ["hi"] * serve_mod.MAX_BATCH_STATES,
+                          "questions": _noul_questions(serve_mod.MAX_QUESTIONS)})
+    assert r.status_code == 200, r.text
+    assert "batch_size" not in fake.batch_calls[0][1], "4096 rows x 512 fits a 2 097 152 budget"
+
+
+def test_batch_chunking_follows_a_lowered_budget(monkeypatch):
+    """And a LOWERED one -- the regime an operator on small hardware actually uses."""
+    import laya.serve as serve_mod
+
+    assert 2048 < serve_mod.DEFAULT_MAX_BATCH_TOKENS, "2048 must be the lowered regime"
+    client, fake = _batch_env_client(monkeypatch, LAYA_MAX_BATCH_TOKENS="2048")
+    r = client.post("/v1/systemone/batch",
+                    json={"states": ["hi"] * 8, "questions": _noul_questions(2)})
+    assert r.status_code == 200, r.text
+    # 2048 / 512 = 4 rows per pass, / 2 questions = 2 states per pass
+    assert _sent_batch_size(fake) == 2
+
+
+@pytest.mark.parametrize("raw", ["nonsense", "0", "-5", "3.5"])
+def test_batch_budget_warns_and_falls_back_on_an_unusable_value(monkeypatch, caplog, raw):
+    """A bad knob must not disable the chunking, and must say so in the log."""
+    import laya.serve as serve_mod
+
+    monkeypatch.setenv("LAYA_MAX_BATCH_TOKENS", raw)
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        assert serve_mod._resolve_max_batch_tokens() == serve_mod.DEFAULT_MAX_BATCH_TOKENS
+    assert "LAYA_MAX_BATCH_TOKENS" in caplog.text, caplog.text
+    assert ("invalid" in caplog.text or "must be positive" in caplog.text), caplog.text
+
+    client, fake = _batch_client(monkeypatch)
+    r = client.post("/v1/systemone/batch",
+                    json={"states": ["hi"] * serve_mod.MAX_BATCH_STATES,
+                          "questions": _noul_questions(serve_mod.MAX_QUESTIONS)})
+    assert r.status_code == 200, r.text
+    assert _sent_batch_size(fake) != "<absent>", "the fallback budget must still chunk"
+
+
+def test_batch_an_empty_environment_value_falls_back_silently(monkeypatch):
+    """Unset and empty both mean "not configured", which is not worth a warning."""
+    import laya.serve as serve_mod
+
+    monkeypatch.setenv("LAYA_MAX_BATCH_TOKENS", "")
+    assert serve_mod._resolve_max_batch_tokens() == serve_mod.DEFAULT_MAX_BATCH_TOKENS
+
+
+def test_batch_chunk_plan_floors_at_one_state(monkeypatch):
+    """A single state cannot be split, so the plan stops at one state per pass and never 0.
+
+    At that floor one pass carries `len(questions)` rows, which is exactly what one `/v1/systemone`
+    request can already ask for -- so the batch route's worst pass is the single route's worst pass.
+    """
+    import laya.serve as serve_mod
+
+    monkeypatch.delenv("LAYA_MAX_BATCH_TOKENS", raising=False)
+    plan = serve_mod._batch_chunk_size(serve_mod.MAX_BATCH_STATES, serve_mod.MAX_QUESTIONS,
+                                       serve_mod.DEFAULT_MAX_TOKEN_BUDGET)
+    assert plan == 1, plan
+    assert serve_mod._batch_chunk_size(1, serve_mod.MAX_QUESTIONS,
+                                       serve_mod.DEFAULT_MAX_TOKEN_BUDGET) == 1
+
+
+@pytest.mark.parametrize("states,questions", [(0, 4), (4, 0), (0, 0)])
+def test_batch_chunk_plan_is_none_for_a_degenerate_shape(monkeypatch, states, questions):
+    """Nothing to split, and no division by the question count."""
+    import laya.serve as serve_mod
+
+    monkeypatch.delenv("LAYA_MAX_BATCH_TOKENS", raising=False)
+    assert serve_mod._batch_chunk_size(states, questions) is None
+
+
+def test_batch_an_empty_questions_body_is_not_chunked(monkeypatch):
+    """Zero rows: no plan, no crash, and `predict_batch` short-circuits on its own."""
+    client, fake = _batch_env_client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json={"states": ["hi"] * 8, "questions": {}})
+    assert r.status_code == 200, r.text
+    assert "batch_size" not in fake.batch_calls[0][1]
+
+
+def test_batch_a_non_object_questions_body_keeps_its_own_400(monkeypatch):
+    """The planner must not turn a 400 into something else by calling len() on a list."""
+    client, _ = _batch_env_client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json={"states": ["hi"] * 8, "questions": ["nope"] * 300})
+    assert r.status_code == 400, r.text
+    assert "'questions' must be an object" in r.json()["detail"], r.json()["detail"]
+
+
+def test_batch_too_many_questions_still_gets_its_own_413(monkeypatch):
+    """Chunking does not replace the per-question cap: 300 questions is still refused, by name."""
+    import laya.serve as serve_mod
+
+    client, _ = _batch_env_client(monkeypatch)
+    r = client.post("/v1/systemone/batch",
+                    json={"states": ["hi"], "questions": _noul_questions(serve_mod.MAX_QUESTIONS + 1)})
+    assert r.status_code == 413, r.text
+    assert "too many questions" in r.json()["detail"], r.json()["detail"]
 
 
 def test_batch_individual_oversized_state_returns_413(monkeypatch):
@@ -2224,7 +2520,7 @@ def test_batch_call_controls_are_exactly_predict_batch_kwargs_or_refusal():
     from laya.router import Router
 
     taken = set(inspect.signature(Router.predict_batch).parameters) - {"self", "requests"}
-    declared = set(BATCH_BODY_CALL_CONTROLS) | {"hooks_timeout"}
+    declared = set(BATCH_BODY_CALL_CONTROLS) | set(BODY_REFUSALS)
     assert taken == declared, "predict_batch() takes %s; serve declares %s" % (
         sorted(taken), sorted(declared))
 
@@ -2487,10 +2783,12 @@ def test_health_liveness_is_open_but_the_detail_needs_the_bearer(monkeypatch):
         assert leaked not in anonymous.json()
 
 
-def test_health_without_an_api_key_is_unchanged():
+def test_health_without_an_api_key_is_unchanged(monkeypatch):
     """A deployment that set no key never asked to be gated, so it gets the whole payload."""
     from fastapi.testclient import TestClient
 
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_IDLE_UNLOAD_SECONDS", raising=False)
     client = TestClient(create_app(router=FakeRouter()))
     _, returned = _health_return_keys()
     assert sorted(client.get("/health").json()) == sorted(returned)
@@ -2569,7 +2867,7 @@ def test_http_api_page_documents_exactly_the_health_fields():
         "device_is_preference says %r with checkpoint_devices %r" % (
             sample["device_is_preference"], sample["checkpoint_devices"]))
     if sample["checkpoint_devices"]:
-        assert sample["device"] == next(iter(sample["checkpoint_devices"].values())), (
+        assert sample["device"] == sample["checkpoint_devices"][sample["loaded"][0]], (
             "device must be the first resident checkpoint's device, as serve.py computes it")
 
     # And the shape of a fallback entry, which no page has ever spelled out: read from the dict the
@@ -2584,6 +2882,55 @@ def test_http_api_page_documents_exactly_the_health_fields():
         assert sorted(sample["cpu_fallbacks"][name]) == sorted(counters), (
             "cpu_fallbacks entries say %s, the handler builds %s" % (
                 sorted(sample["cpu_fallbacks"][name]), sorted(counters)))
+
+
+def test_security_page_health_sample_matches_handler_shape():
+    """docs/security.md's `/health` snippet has to be what the handler really answers.
+
+    #811 pinned docs/http-api.md to `health()`'s own `return` dict. The same payload was
+    quoted on docs/security.md as a four-key line ending in `"device":"auto"`; the handler
+    returns seven keys, and `"auto"` is what `LAYA_DEVICE` defaults to, not a value the
+    handler emits (see the docstring on `test_http_api_page_documents_exactly_the_health_fields`).
+    A reader following that snippet's shape -- to check an SDK, a shell probe, or the shape
+    their own healthcheck parses -- would find their code silently ignores three fields.
+
+    The page's purpose here is to show the checkpoint revision, not the whole payload, so the
+    fix is a `jq` filter rather than a longer literal. The gate accepts either: a filtered
+    curl line, or a raw sample that carries exactly the seven keys the handler returns.
+    """
+    health, returned = _health_return_keys()
+    assert returned, "health() returns no literal keys; retarget this"
+
+    page = open(os.path.join(ROOT, "docs", "security.md"), encoding="utf-8").read()
+
+    # The pre-fix wording, banned verbatim.
+    assert '"status":"ok","loaded":["english"],"revisions":{"english":"55cf4c4e…"},' \
+           '"device":"auto"' not in page, (
+        "docs/security.md restored the pre-fix 4-key /health sample; either filter the "
+        "curl line as the fix does, or list every key health() returns")
+
+    # Find the ```bash code block that runs curl against /health.
+    blocks = re.findall(r"```bash\n(.*?)\n```", page, re.DOTALL)
+    health_blocks = [b for b in blocks if "curl -s localhost:8000/health" in b]
+    assert len(health_blocks) == 1, (
+        "expected exactly one /health curl snippet on docs/security.md, found %d"
+        % len(health_blocks))
+    block = health_blocks[0]
+
+    # Either the curl is filtered (the current fix), or the raw sample enumerates the
+    # handler's keys. A comment-only line without either is a stale quote.
+    filtered = "| jq" in block or "| python" in block or "| grep" in block
+    if filtered:
+        assert re.search(r"#\s*\{", block), (
+            "docs/security.md filters /health with a pipe but shows no example of the "
+            "filtered shape; the block is not useful to a reader")
+    else:
+        # No filter: the raw sample must contain every key health() returns.
+        sample_line = next((ln for ln in block.splitlines() if ln.strip().startswith("#")), "")
+        payload = json.loads(sample_line.lstrip("# ").strip())
+        assert sorted(payload) == sorted(returned), (
+            "docs/security.md's unfiltered /health sample says %s, health() returns %s"
+            % (sorted(payload), sorted(returned)))
 
 
 def _decision_response_site(rel):
@@ -2879,3 +3226,327 @@ def test_http_api_page_documents_the_gate_report_on_an_answer():
         assert set(answer) == discriminator | rows[answer["type"]] | rows["all"], (
             "the sample's %s answer says %s, its table row plus the shared row say %s" % (
                 qid, sorted(answer), sorted(discriminator | rows[answer["type"]] | rows["all"])))
+
+
+class IdleRouter(FakeRouter):
+    def __init__(self):
+        import threading
+        super().__init__()
+        self.loaded = ["english"]
+        self.unloaded = threading.Event()
+        self.unload_threads = []
+
+    def unload(self):
+        import threading
+        self.unload_threads.append(threading.current_thread().name)
+        self.loaded = []
+        self.unloaded.set()
+
+    def predict(self, *args, **kwargs):
+        self.loaded = ["english"]
+        return super().predict(*args, **kwargs)
+
+
+@pytest.mark.parametrize("raw, expected", [
+    (None, 0.0), ("", 0.0), ("  ", 0.0), ("0", 0.0), ("-5", 0.0), ("abc", 0.0),
+    ("nan", 0.0), ("inf", 0.0), ("-inf", 0.0), ("1e999", 0.0),
+    ("300", 300.0), (" 0.5 ", 0.5), ("1e2", 100.0),
+])
+def test_idle_unload_setting_is_finite_and_opt_in(monkeypatch, raw, expected):
+    if raw is None:
+        monkeypatch.delenv("LAYA_IDLE_UNLOAD_SECONDS", raising=False)
+    else:
+        monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", raw)
+    assert _resolve_idle_unload_seconds() == expected
+
+
+def test_idle_unload_is_off_by_default(monkeypatch):
+    monkeypatch.delenv("LAYA_IDLE_UNLOAD_SECONDS", raising=False)
+    router = IdleRouter()
+    with TestClient(create_app(router)) as client:
+        assert not router.unloaded.wait(0.15)
+        assert router.loaded == ["english"]
+        assert "idle_seconds" not in client.get("/health").json()
+
+
+def test_idle_unload_reloads_on_the_next_request(monkeypatch):
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "0.1")
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = IdleRouter()
+    with TestClient(create_app(router)) as client:
+        first = client.post("/v1/systemone", json=REQ).json()
+        assert router.unloaded.wait(2.0)
+        health = client.get("/health").json()
+        assert health["loaded"] == [] and health["idle_unload_seconds"] == 0.1
+        assert health["idle_seconds"] >= 0.1
+        assert client.post("/v1/systemone", json=REQ).json() == first
+        assert router.loaded == ["english"]
+    assert all(name.startswith("laya-infer") for name in router.unload_threads)
+
+
+def test_idle_details_stay_authenticated(monkeypatch):
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "300")
+    monkeypatch.setenv("LAYA_API_KEY", "key")
+    with TestClient(create_app(IdleRouter())) as client:
+        assert client.get("/health").json() == {"status": "ok"}
+        assert client.get("/health", headers={"Authorization": "Bearer key"}).json()["idle_unload_seconds"] == 300
+
+
+@pytest.mark.parametrize("batch", [False, True])
+@pytest.mark.parametrize("cancel", [False, True])
+@pytest.mark.parametrize("fail", [False, True])
+def test_idle_window_starts_after_worker_finishes_even_on_cancel_or_failure(monkeypatch, batch, cancel, fail):
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "0.2")
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+
+    class BlockingRouter(IdleRouter):
+        def __init__(self):
+            super().__init__()
+            self.started = threading.Event()
+            self.release = threading.Event()
+            self.finished = threading.Event()
+            self.active = False
+
+        def predict(self, *args, **kwargs):
+            self.active = True
+            self.started.set()
+            try:
+                assert self.release.wait(3.0)
+                if fail:
+                    raise ValueError("test failure")
+                return super().predict(*args, **kwargs)
+            finally:
+                self.active = False
+                self.finished.set()
+
+        def unload(self):
+            assert not self.active, "unload overlapped inference"
+            super().unload()
+
+    router = BlockingRouter()
+    path = "/v1/systemone/batch" if batch else "/v1/systemone"
+    body = {"states": [REQ["state"]], "questions": REQ["questions"]} if batch else REQ
+    app = create_app(router)
+    if cancel:
+        import httpx
+
+        async def exercise():
+            async with app.router.lifespan_context(app):
+                async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                    task = asyncio.create_task(client.post(path, json=body))
+                    try:
+                        assert await asyncio.to_thread(router.started.wait, 2.0)
+                        task.cancel()
+                        with pytest.raises(asyncio.CancelledError):
+                            await task
+                        # A reaper can now queue behind the still-running forward pass.
+                        await asyncio.sleep(0.3)
+                        assert not router.unloaded.is_set()
+                        router.release.set()
+                        assert await asyncio.to_thread(router.finished.wait, 2.0)
+                        assert not await asyncio.to_thread(router.unloaded.wait, 0.1)
+                        assert await asyncio.to_thread(router.unloaded.wait, 2.0)
+                    finally:
+                        router.release.set()
+        asyncio.run(exercise())
+    else:
+        with TestClient(app) as client, ThreadPoolExecutor(max_workers=1) as callers:
+            request = callers.submit(client.post, path, json=body)
+            try:
+                assert router.started.wait(2.0)
+                time.sleep(0.3)
+                assert not router.unloaded.is_set()
+                router.release.set()
+                assert request.result(timeout=2.0).status_code == (422 if fail else 200)
+                assert not router.unloaded.wait(0.1)
+                assert router.unloaded.wait(2.0)
+            finally:
+                router.release.set()
+
+
+def test_idle_unload_retries_failure_and_stops_at_shutdown(monkeypatch):
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "0.05")
+
+    class RetryRouter(IdleRouter):
+        attempts = 0
+
+        def unload(self):
+            self.attempts += 1
+            if self.attempts == 1:
+                raise RuntimeError("test unload failure")
+            super().unload()
+
+    router = RetryRouter()
+    with TestClient(create_app(router)):
+        assert router.unloaded.wait(2.0)
+    assert router.attempts == 2
+    router.loaded = ["english"]
+    router.unloaded.clear()
+    assert not router.unloaded.wait(0.15)
+
+
+# -------------------------------- docs/typescript-sdk.md must list the keys the /health handler returns
+# The SDK page's contract sentence used to say "public `/health` returns `status`, `loaded`,
+# and `device`" while `laya/serve.py`'s authorized branch returns seven keys -- `status`,
+# `loaded`, `revisions`, `device`, `device_is_preference`, `checkpoint_devices`, and
+# `cpu_fallbacks` -- and the unauthenticated branch returns only `LIVENESS_ONLY = {"status":
+# "ok"}`. Two docs (#811 gated `docs/http-api.md`, and README:103 advertises the CPU-fallback
+# reporting) describe the full shape, so the SDK page contradicted them. The gate AST-parses the
+# handler's returns so the doc's key set has to match the code's -- any new /health field added
+# to the return dict must be named on this page too, or the test fails with the exact mismatch.
+TS_SDK_PAGE = os.path.join(ROOT, "docs", "typescript-sdk.md")
+TS_SDK_OLD_CLAIM = (
+    "Laya's public `/health` returns `status`, `loaded`, and `device`. "
+    "Prediction never probes health first."
+)
+
+
+def _serve_health_return_keys():
+    """Every literal dict key the `health` handler returns across all branches.
+
+    `LIVENESS_ONLY` is a module-level dict, so the `return LIVENESS_ONLY` branch resolves via
+    the module scope; the authorized `return {...}` branch contributes its own keys directly.
+    """
+    with open(os.path.join(ROOT, "laya", "serve.py"), encoding="utf-8") as handle:
+        tree = ast.parse(handle.read(), filename="laya/serve.py")
+    module_dicts = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    module_dicts[target.id] = {
+                        k.value for k in node.value.keys if isinstance(k, ast.Constant)
+                    }
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "health":
+            keys = set()
+            for ret in ast.walk(node):
+                if not isinstance(ret, ast.Return) or ret.value is None:
+                    continue
+                value = ret.value
+                if isinstance(value, ast.Dict):
+                    keys.update(k.value for k in value.keys if isinstance(k, ast.Constant))
+                elif isinstance(value, ast.Name) and value.id in module_dicts:
+                    keys.update(module_dicts[value.id])
+            return keys
+    raise AssertionError("no `health` handler found in laya/serve.py -- gate is checking a moved symbol")
+
+
+def _ts_sdk_health_claim_keys():
+    r"""The backticked key names in the sentence that opens 'public `/health` returns'.
+
+    The claim spans two lines on this page, so read from "public \`/health\` returns" up to the
+    sentence-ending "Prediction never probes health first" before collecting backticked names;
+    that stops the scan from picking up later backticked references.
+    """
+    with open(TS_SDK_PAGE, encoding="utf-8") as handle:
+        page = handle.read()
+    start = page.find("public `/health` returns")
+    assert start != -1, "the /health claim was removed from docs/typescript-sdk.md -- gate has nothing to read"
+    tail = page[start:]
+    end = tail.find("Prediction never probes health first")
+    assert end != -1, "the /health claim's tail sentence is gone -- the gate cannot bound its scan"
+    sentence = tail[:end]
+    return set(re.findall(r"`([A-Za-z_][A-Za-z_0-9]*)`", sentence)) - {"health"}
+
+
+def test_ts_sdk_health_claim_matches_the_handler():
+    """The SDK page must name exactly the keys `laya/serve.py`'s `health` handler returns."""
+    assert "returns `status`, `loaded`, and `device`" in TS_SDK_OLD_CLAIM, (
+        "the pre-fix literal must itself carry the wrong key set, otherwise this ban is vacuous")
+    # Sanity-check the AST extraction: the shipped code returns seven keys on the authorized
+    # branch, so a future PR that reshapes /health without updating this page fails below.
+    handler_keys = _serve_health_return_keys()
+    assert "status" in handler_keys, "the LIVENESS_ONLY short-circuit disappeared; the AST reader missed it"
+    for key in ("loaded", "revisions", "device", "device_is_preference",
+                "checkpoint_devices", "cpu_fallbacks"):
+        assert key in handler_keys, "%s is not in the /health handler's return set -- did the " \
+                                    "shape change without this test being updated?" % key
+    documented = _ts_sdk_health_claim_keys()
+    assert documented == handler_keys, (
+        "docs/typescript-sdk.md's /health sentence names %s, but `laya/serve.py`'s `health` "
+        "handler returns %s. Any drift here misleads a caller who reads only the SDK page." % (
+            sorted(documented), sorted(handler_keys)))
+
+
+def test_ts_sdk_health_claim_drops_the_three_key_version():
+    """Ban the pre-fix wording directly so a plain revert fails with an explicit message.
+
+    Independent of the set-equality test above; a numeric or word change in the handler still
+    trips the AST path, but a straight "put the sentence back the way it was" fails here with
+    a pointer to the actual shape.
+    """
+    with open(TS_SDK_PAGE, encoding="utf-8") as handle:
+        page = handle.read()
+    banned = "returns `status`, `loaded`, and `device`"
+    assert banned not in page, (
+        "docs/typescript-sdk.md again says `/health` returns only `status`, `loaded`, and "
+        "`device`. `laya/serve.py`'s authorized branch has seven keys and the unauthenticated "
+        "branch has one; if either shape has since changed, update this ban's literal too.")
+
+
+# `re` is not imported at the top of this file; import here so the helper above can use it
+# without changing the module's existing import order.
+import re  # noqa: E402
+def test_jev_strict_projection_page_names_the_projected_keys():
+    """docs/http-api.md's four strict bullets must be the key sets `_project_jev_strict` returns.
+
+    The page is the second copy of the contract, after the handler's docstring. Both used to
+    claim ``noul = `noul` only``, but the projection emits ``{"type": "noul", "noul": ...}``,
+    and the pre-existing ``test_jev_strict_projects_the_full_payload`` asserts that two-key
+    shape verbatim -- so the prose and the pinned test disagreed, and a client that validated
+    the "no fields other than `noul`" sentence rejected every strict noul answer the flag
+    exists to sanitize.
+
+    The gate calls the real projection on a fixture that carries all three answer types plus
+    the additions a strict client must not see, then reads the four bullet lines from
+    `docs/http-api.md` and asserts each bullet's backticked key set equals the corresponding
+    projected key set. The pre-fix wording is banned as a direct substring so the gate fails
+    if the page reverts.
+    """
+    import re
+    from pathlib import Path
+
+    from laya.serve import _project_jev_strict
+
+    fixture = {
+        "model": "laya-rl-agent",
+        "answers": {
+            "queue": {"type": "choice", "choice": "billing",
+                      "probabilities": {"billing": 0.95, "tech": 0.05},
+                      "confidence": 0.80, "action": "answer",
+                      "answer_confidence": 0.75},
+            "urgency": {"type": "score", "score": 1.70, "confidence": 0.19,
+                        "probabilities": {"0": 0.02, "1": 0.65, "2": 0.33},
+                        "legend": {"0": "calm", "1": "firm", "2": "angry"},
+                        "action": "answer"},
+            "threat": {"type": "noul", "noul": 0.9148, "confidence": 0.85,
+                       "answer_confidence": 0.70, "action": "answer"},
+        },
+        "usage": {"input_tokens": 83, "output_tokens": 0,
+                  "windows": 1, "collapsed_options": 0},
+        "routing": {"model": "typed-decisions", "reason": "typed workflow"},
+    }
+    projected = _project_jev_strict(fixture)
+
+    page = (Path(__file__).resolve().parents[1] / "docs" / "http-api.md").read_text(encoding="utf-8")
+
+    def bullet_keys(label):
+        for line in page.splitlines():
+            if line.startswith("- a `%s` answer keeps" % label):
+                back = line.split("keeps", 1)[1]
+                return set(re.findall(r"`([A-Za-z_][A-Za-z_0-9]*)`", back))
+        raise AssertionError("bullet for %r not found" % label)
+
+    assert set(projected["answers"]["queue"]) == bullet_keys("choice"), \
+        "doc says %r, handler emits %r" % (sorted(bullet_keys("choice")),
+                                            sorted(projected["answers"]["queue"]))
+    assert set(projected["answers"]["urgency"]) == bullet_keys("score")
+    assert set(projected["answers"]["threat"]) == bullet_keys("noul")
+
+    # The noul bullet must not shrink the discriminator away.
+    assert "noul only" not in page, "pre-fix 'noul only' wording is still on the page"

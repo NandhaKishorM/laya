@@ -232,10 +232,26 @@ def _library_version() -> Optional[str]:
     return getattr(laya, "__version__", None)
 
 
+#: Which definition of the coverage metrics (`aurc`, `selective_accuracy@*`) produced a report.
+#: Bumped when a cut's meaning changes, which is not a schema change -- the keys and their types
+#: are identical, only the arithmetic behind two of them moves. Version 2 cuts on a confidence
+#: THRESHOLD, so a cut never splits a group of equal confidences; version 1 (every report written
+#: before this existed, and recognised by the key's ABSENCE) cut at a row index and therefore
+#: depended on the order the dataset happened to arrive in.
+#:
+#: A relative gate rule subtracts a baseline's number from this run's. Across definitions that
+#: subtraction is meaningless, and it is unsafe in the PASS direction: a baseline recorded at 0.0333
+#: by version 1 -- a value version 2 reports as 0.5167 for the same rows -- lets a candidate that
+#: truly regressed by 0.2167 clear a `max_drop` of 0.05. `_eval_policy` refuses that comparison
+#: rather than performing the arithmetic; see `check_policy`.
+COVERAGE_METRIC_DEFINITION = 2
+
+
 def _run_identity(dataset: "Dataset") -> Dict[str, Any]:
     """The `config` keys this module can fill in on its own, with no knowledge of the CLI."""
     identity: Dict[str, Any] = {"schema": REPORT_SCHEMA,
-                                "questions_sha256": questions_fingerprint(dataset)}
+                                "questions_sha256": questions_fingerprint(dataset),
+                                "coverage_metric_definition": COVERAGE_METRIC_DEFINITION}
     version = _library_version()
     if version is not None:
         identity["laya_version"] = version
@@ -307,11 +323,27 @@ def default_evaluators() -> List[Evaluator]:
 
 
 def _answer_confidence(answer: Dict[str, Any]) -> Optional[float]:
-    """The calibrated confidence Laya reports: `answer_confidence`, not the entropy score.
+    """The column the calibration metrics read: `answer_confidence` when the answer carries one.
 
-    `answer["confidence"]` is entropy-based for choice and score, so calibration metrics must use
-    `answer_confidence`, which Laya reports on every answer type. The other keys are fallbacks for
-    a stripped-down result.
+    `answer_confidence` is the probability of the answer being reported -- the quantity temperature
+    scaling fits and the quantity this repository's calibration figures are computed on. It is not
+    *calibrated* as shipped: both base checkpoints are over-confident and `laya-multilingual` ships no
+    fitted temperatures at all (README, Calibration), which is why `ece` measures this column instead
+    of assuming it.
+
+    An answer carrying no `answer_confidence` falls through three more reads, in order: the
+    `confidence` field, then `max(p, 1 - p)` for a `noul`, then `max(probabilities)`. Those are not
+    the same quantity, and the first is the one this function otherwise exists to avoid: `confidence`
+    is normalized entropy on `choice` and `score`, which moves with the option count (#394) rather
+    than with how right the answer is, and `laya.confidence.answer_confidence_value` refuses to fall
+    back to it for the abstention gate on exactly that reasoning. `max(probabilities)` is the mass on
+    the top option, which is the reported answer's probability only when the answer *is* the argmax.
+
+    The stripped-down shape is not hypothetical. `LAYA_JEV_STRICT` projects the served response onto
+    the Jev wire contract, which carries no `answer_confidence` (`laya/serve.py`, and the flag's row
+    in docs/http-api.md), so a report run over recorded strict responses calibrates the entropy
+    number and is not comparable to one run over full payloads. `tests/test_evals.py` pins both paths
+    and the gap between them; `docs/evals.md` says so where an operator reads the metrics.
     """
     confidence = answer.get("answer_confidence")
     if isinstance(confidence, (int, float)):
@@ -359,18 +391,105 @@ def brier(confidences: Sequence[float], corrects: Sequence[bool]) -> Optional[fl
     return float(np.mean((c - y) ** 2))
 
 
-def _risk_coverage(confidences: Sequence[float], corrects: Sequence[bool]):
-    """(coverage, risk) over the most-confident-first ordering; coverage k/n, risk = error@top-k."""
-    order = np.argsort(-np.asarray(confidences, dtype=float), kind="mergesort")  # desc, stable
-    y = np.asarray(corrects, dtype=bool)[order].astype(float)
+def _accepted_at_cut(sorted_desc, k: int) -> int:
+    """How many answers a confidence threshold placed at `sorted_desc[k - 1]` accepts.
+
+    The end of the tie group the cut landed in, which is what makes a coverage number independent
+    of the order a dataset happened to arrive in.
+
+    This is the single-cut answer; `_levels` computes the same group boundaries for *every* level,
+    which is what `aurc` integrates over. Two routes to one rule, so they are not merely asserted
+    to agree -- `test_a_single_cut_agrees_with_the_risk_coverage_curve` sweeps them against each
+    other, including over NaN and infinities, so an edit to either side fails a test rather than
+    diverging quietly. Computing one cut from the full scan instead cost 19% to 58% on
+    `selective_accuracy` for no change in any value.
+
+    NaN is handled explicitly rather than left to the comparison. Every comparison against a NaN
+    is false, so `sorted_desc >= nan` accepts nothing and the cut would fall back to "whichever
+    rows came first" -- the exact order-dependence this exists to remove, for the input a custom
+    runner is most likely to hand over by accident. NaNs sort last and form one group, so a cut
+    inside them accepts all of them.
+
+    The NaN branch is kept although `searchsorted` happens to answer the same thing -- numpy ranks
+    NaN last for a binary search too, verified over 63,697 NaN cuts without a disagreement. Leaving
+    it implicit would make a correct answer depend on an undocumented ordering convention, so the
+    branch stays and its mutant is reported as equivalent rather than as a test gap.
+    """
+    cut = sorted_desc[k - 1]
+    if cut != cut:                                     # NaN
+        return len(sorted_desc)
+    # `sorted_desc` descends, so its negation ascends and a binary search finds the end of the tie
+    # group in O(log n) rather than a full pass per call. NaNs rank above every number in numpy's
+    # sort order, so they sit at the end of the negated array and a finite cut never counts them.
+    return int(np.searchsorted(-sorted_desc, -cut, side="right"))
+
+
+def _levels(confidences: Sequence[float], corrects: Sequence[bool]):
+    """`(accepted, hits, n)` at each distinct confidence level, most confident first.
+
+    One row per LEVEL, not per answer. A coverage cut is bought with a confidence threshold, and a
+    threshold accepts every answer at its own confidence -- `calibrate._select_abstention_threshold`
+    already says exactly this about the error it judges ("a tie group's errors must all be counted
+    before the level is judged"), and it is the same rule here.
+
+    Cutting at a row index instead reports whichever tie members the dataset happened to list
+    first. A stable sort makes that reproducible, not order-independent, and ties are the normal
+    case rather than a corner: `answer_confidence`'s own docstring records that the shipped
+    `choice:11+` bucket "returns a point mass at 1.0". Permuting a JSONL of 8 rows, all tied, 4
+    correct, moved `aurc` from 0.1827 to 0.8173 and `selective_accuracy@50` from 1.000 to 0.000.
+
+    `accepted[i]` is how many answers a threshold at level `i` accepts, which is what lets `aurc`
+    weight a level by the answers it spans rather than counting a 1-answer level and a 999-answer
+    level alike. `hits[i]` is how many of those are correct.
+
+    Counts, not a risk already divided: `corrects` is 0.0/1.0, so every partial sum is an exact
+    integer in float64 and `hits / accepted` reproduces `np.mean` of the accepted slice bit for
+    bit. Returning `1 - hits / accepted` and recovering accuracy as `1 - risk` instead costs the
+    last bits of 157,289 values in a 1.2-million-value sweep -- harmless to a gate, but it would
+    make this change move numbers on datasets with no tie in them, which it is not allowed to do.
+    """
+    # `atleast_1d`: a 0-dimensional input (a bare scalar) answered before this change, and indexing
+    # it with an argsort result raises.
+    c = np.atleast_1d(np.asarray(confidences, dtype=float))
+    # `corrects` stays boolean here: `cumsum` of a boolean array counts in int64, which is exact,
+    # and skipping the float conversion saves a pass over the whole column.
+    y = np.atleast_1d(np.asarray(corrects, dtype=bool))
     n = len(y)
-    k = np.arange(1, n + 1)
-    risk = 1.0 - np.cumsum(y) / k
-    return k / n, risk
+    if n == 0:
+        return np.empty(0), np.empty(0), 0
+    order = np.argsort(-c, kind="mergesort")            # desc, stable; NaN sorts last
+    c, y = c[order], y[order]
+    # The last answer of each tie group: where the next confidence differs, plus the final one.
+    boundary = c[1:] != c[:-1]
+    # NaN needs `isnan` on both sides as well as `!=`, because NaN != NaN is true: without it every
+    # NaN confidence becomes a level of its own, the running total walks them in dataset order, and
+    # the order-dependence this exists to remove survives for exactly the input a custom runner is
+    # most likely to hand over by accident. All NaNs are one group, ranked last.
+    #
+    # Guarded by one scalar test rather than paid for always: NaN sorts to the end, so if the last
+    # confidence is not NaN then none are, and two full `isnan` passes over the column can be
+    # skipped. That is the common case, and the two passes were a third of this function's cost at
+    # a million rows.
+    if np.isnan(c[-1]):
+        boundary &= ~(np.isnan(c[1:]) & np.isnan(c[:-1]))
+    last = np.flatnonzero(np.concatenate((boundary, [True])))
+    accepted = last.astype(float) + 1.0
+    return accepted, np.cumsum(y)[last], n
+
+
+def _risk_coverage(confidences: Sequence[float], corrects: Sequence[bool]):
+    """`(coverage, risk)` at each distinct confidence level.
+
+    `_levels` with coverage as the x axis, for callers that want the curve rather than its area.
+    """
+    accepted, hits, n = _levels(confidences, corrects)
+    if n == 0:
+        return np.empty(0), np.empty(0)
+    return accepted / n, 1.0 - hits / accepted
 
 
 def aurc(confidences: Sequence[float], corrects: Sequence[bool]) -> Optional[float]:
-    """Area Under the Risk-Coverage curve (mean selective risk over every coverage). Lower is better.
+    """Area Under the Risk-Coverage curve: selective risk integrated over coverage. Lower is better.
 
     A classifier whose confidence perfectly ranks right from wrong drives AURC toward the overall
     error rate's area under the ideal curve; a confidence no better than random leaves it at the
@@ -378,24 +497,120 @@ def aurc(confidences: Sequence[float], corrects: Sequence[bool]) -> Optional[flo
     """
     if not confidences:
         return None
-    _coverage, risk = _risk_coverage(confidences, corrects)
-    return float(np.mean(risk))
+    accepted, hits, n = _levels(confidences, corrects)
+    if n == 0:
+        return None
+    risk = 1.0 - hits / accepted
+    # Each level's risk weighted by the ANSWERS it spans, which is what keeps this an area rather
+    # than an average of unevenly sized points: with 999 answers at one confidence and 1 at another,
+    # an unweighted mean of the two risks reports 5e-4 where the area is 1e-6.
+    #
+    # `sum(risk * rows) / n`, not `sum(risk * width)`: with no ties every level holds one answer, so
+    # this reduces to the same pairwise sum over the same denominator and is bit-identical to the
+    # per-answer mean it replaces. Dividing inside the sum instead loses that in the last bits.
+    rows_per_level = np.diff(np.concatenate(([0.0], accepted)))
+    return float(np.sum(risk * rows_per_level) / n)
 
 
 def selective_accuracy(confidences: Sequence[float], corrects: Sequence[bool],
                        coverage: float) -> Optional[float]:
-    """Accuracy over the most-confident `coverage` fraction of answers (0 < coverage <= 1)."""
+    """Accuracy over the most-confident `coverage` fraction of answers (0 < coverage <= 1).
+
+    The cut is a confidence threshold, so it cannot land inside a group of equal confidences: when
+    `coverage * n` falls within one, every member of that group is included and the reported
+    coverage is the group's upper edge rather than the fraction asked for. That is the only
+    order-independent reading -- see `_risk_coverage` -- and it is what makes this comparable
+    across two permutations of the same dataset. Without ties, `k` is unchanged.
+
+    The group this cut lands in comes from `_accepted_at_cut`, which answers for one cut what
+    `_levels` answers for every level. The two are swept against each other by
+    `test_a_single_cut_agrees_with_the_risk_coverage_curve`, so they cannot drift apart silently;
+    deriving this from the full scan instead was measured at 19% to 58% slower here for no change
+    in any value.
+    """
     if not confidences or not 0.0 < coverage <= 1.0:
         return None
     import math as _math
-    order = np.argsort(-np.asarray(confidences, dtype=float), kind="mergesort")
-    y = np.asarray(corrects, dtype=bool)[order].astype(float)
+    c = np.atleast_1d(np.asarray(confidences, dtype=float))
+    order = np.argsort(-c, kind="mergesort")
+    c = c[order]
+    y = np.atleast_1d(np.asarray(corrects, dtype=bool))[order]
     k = max(1, int(_math.ceil(coverage * len(y))))
-    return float(np.mean(y[:k]))
+    # Extend through the tie group the cut fell in, so the cut is a confidence threshold rather
+    # than a row index and cannot report whichever tie members arrived first.
+    accepted = _accepted_at_cut(c, k)
+    # `count_nonzero / accepted` rather than `mean`: both are exact for a boolean column, and this
+    # skips the float conversion of the accepted slice.
+    return float(np.count_nonzero(y[:accepted]) / accepted)
 
 
 #: Coverage points reported as `selective_accuracy@NN`.
 SELECTIVE_COVERAGES = (0.5, 0.8)
+
+
+def is_coverage_metric(name: str) -> bool:
+    """True for a metric whose value depends on where a coverage cut falls.
+
+    `ece` and `brier` read the same `(confidence, correct)` pairs but do not cut, so a change to
+    what a cut accepts cannot move them and a baseline that predates it stays comparable.
+    """
+    return name == "aurc" or name.startswith("selective_accuracy@")
+
+
+def coverage_definition_conflict(candidate_config: Any, baseline: Any) -> Optional[str]:
+    """Why a coverage metric must not be compared across these two documents, or None.
+
+    Comparing `aurc` or `selective_accuracy@*` between two reports subtracts one number from the
+    other, which is only meaningful if the same definition of a coverage cut produced both.
+    Definition 2 cuts on a confidence threshold, so a cut never splits a group of equal
+    confidences; definition 1 cut at a row index and depended on the order the dataset arrived in.
+    Measured over 400,001 tie-shaped datasets the two disagree by up to 0.35 on `aurc` and 0.50 on
+    `selective_accuracy@50`, so the subtraction is not merely noisy -- it is unsafe in the PASS
+    direction, letting a real regression through.
+
+    **Both sides are checked, not just the baseline.** A stale CANDIDATE is the more dangerous
+    case and the easier one to arrive at by accident: a report produced by a pinned older `laya`
+    in a container, or an archived artifact re-checked later, carries definition-1 numbers whose
+    row-order artifact can read BETTER than the truth. Gating that against a correctly regenerated
+    baseline passes a regression that the correctly scored report fails.
+
+    The absence of the key IS definition 1: every report written since it existed carries it. That
+    is why this refuses instead of following `comparable_to`'s "a key missing on either side is
+    unknown rather than a conflict" rule, which exists so a patch release cannot invalidate a
+    committed baseline. A definition change is not a patch release.
+
+    `ece` and `brier` read the same pairs but do not cut, so they stay comparable; callers gate
+    this behind `is_coverage_metric`.
+    """
+    here = _recorded_coverage_definition(candidate_config)
+    there = _recorded_coverage_definition(
+        baseline.get("config") if isinstance(baseline, dict) else None)
+    if here == COVERAGE_METRIC_DEFINITION and there == COVERAGE_METRIC_DEFINITION:
+        return None
+    stale = []
+    if here != COVERAGE_METRIC_DEFINITION:
+        stale.append("this report says %s" % _shown_definition(here))
+    if there != COVERAGE_METRIC_DEFINITION:
+        stale.append("the baseline says %s" % _shown_definition(there))
+    return ("%s, but a coverage cut here is definition %s -- regenerate it before comparing a "
+            "coverage metric" % (" and ".join(stale), COVERAGE_METRIC_DEFINITION))
+
+
+def _recorded_coverage_definition(config: Any) -> Any:
+    return config.get("coverage_metric_definition") if isinstance(config, dict) else None
+
+
+def _shown_definition(recorded: Any) -> str:
+    """A recorded definition, rendered for a message, with attacker-supplied content bounded.
+
+    The value comes from a report file, which on a pull-request gate is content the author
+    controls, and the message it lands in is printed to a CI log. A five-megabyte string in that
+    field produced a five-megabyte failure line; 40 characters is enough to diagnose a real one.
+    """
+    if recorded is None:
+        return "1 (unrecorded)"
+    shown = repr(recorded)
+    return shown if len(shown) <= 40 else shown[:40] + "... (truncated)"
 
 
 def is_confidence_metric(name: str) -> bool:
@@ -501,6 +716,19 @@ class EvalReport:
             if metric.endswith("_ms") and metric not in tolerances:
                 continue
             allowed = float(tolerances.get(metric, 0.0))
+            # A coverage metric is only comparable when both documents were produced by the same
+            # definition of a cut. This path is the one `docs/evals.md` leads with, and
+            # `--gate-policy` is opt-in, so without this check the default gate performs exactly
+            # the cross-definition subtraction the policy gate refuses.
+            if is_coverage_metric(metric):
+                conflict = coverage_definition_conflict(self.config, baseline)
+                if conflict is not None:
+                    deltas[metric] = {
+                        "baseline": float(base_value),
+                        "value": float(self.overall.get(metric, float("nan"))),
+                        "diff": float("nan"), "tolerance": allowed, "incomparable": conflict}
+                    ok = False
+                    continue
             if metric not in self.overall:
                 deltas[metric] = {"baseline": float(base_value), "value": float("nan"),
                                   "diff": float("nan"), "tolerance": allowed, "missing": True}
@@ -619,12 +847,14 @@ def _takes_min_confidence(runner: Any, fn_name: str = "predict_batch") -> bool:
     """Whether `runner`'s entry point accepts an abstention threshold on the call.
 
     The same signature check `_takes_sort_by_length` makes, applied to whichever entry point the
-    harness is about to call: `min_confidence` changes the answer (an abstention overwrites a
-    low-confidence choice), so it is a scoring control, not an optimisation. A runner that predates
-    the gate (#361) must still be scoreable -- silently dropping the threshold and reporting the
-    same run would give a `precision@coverage` number for a policy that never ran -- so when the
-    guard is false the harness raises rather than lies. The CLI catches the raise into a
-    pre-flight message before any checkpoint loads.
+    harness is about to call. The gate is a *reporting* control, not a scoring one: it writes
+    `low_confidence: True` and `abstention: "abstained"` on answers whose `answer_confidence`
+    falls below the threshold, and leaves `answer["choice"] / ["noul"] / ["score"]` as the raw
+    argmax -- so every metric in `_aggregate` reads the same numbers at every threshold. What
+    changes is `report.config["timing"]["min_confidence"]` and `["min_confidence_sent"]`: those
+    keys claim the gate ran. A runner that predates it cannot honour that claim, so when the
+    guard is false the harness raises rather than publish a threshold it never applied. The CLI
+    catches the raise into a pre-flight message before any checkpoint loads.
     """
     fn = getattr(runner, fn_name, None)
     if fn is None:
@@ -655,13 +885,16 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
     runner that predates the knob is unaffected by a run that does not ask. Nothing about the
     scored answers changes -- the results come back in chunk order either way.
 
-    `min_confidence` is the abstention threshold `Router` and `ONNXAgent` apply to
-    `answer_confidence` (#361): answers below it come back abstained, so the run scores the
-    policy at that threshold, not the raw argmax. Unlike `sort_by_length` this changes the
-    answers, so a runner whose batch entry point (or whose single ``predict``, on the fallback
-    path) predates the gate is refused rather than silently scored without it -- the report
-    would otherwise publish a `precision@coverage` figure for an abstention policy that never
-    ran.
+    `min_confidence` is the opt-in abstention threshold `Router` and `ONNXAgent` apply to
+    `answer_confidence` (#361). `laya.confidence.apply_confidence_gate` marks every answer below
+    it with `low_confidence: True` and `abstention: "abstained"`, and the raw argmax stays on
+    `answer["choice"] / ["noul"] / ["score"]` -- so `_aggregate` publishes the same accuracy,
+    calibration and coverage numbers at every threshold. Like `sort_by_length`, nothing about the
+    scored answers changes. Unlike `sort_by_length`, the report itself names the threshold under
+    `report.config["timing"]["min_confidence"]` and asserts it was sent under
+    `["min_confidence_sent"]`, so a runner whose batch entry point (or whose single ``predict``,
+    on the fallback path) predates the gate is refused: the harness will not publish a
+    `min_confidence` it did not apply.
 
     `on_error` is ``"fail"`` (re-raise a runner error) or ``"skip"`` (record it and continue),
     the latter for evaluating a flaky fleet without aborting the whole run.
@@ -677,11 +910,14 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
     if on_error not in ("fail", "skip"):
         raise EvalError("on_error must be 'fail' or 'skip', got %r" % on_error)
     # `min_confidence` is validated here -- and, unlike `sort_by_length`, a run that asks for it
-    # on a runner that does not accept it is refused -- because an abstention threshold changes
-    # which answers score as correct. Silently dropping it would publish a `precision@coverage`
-    # number for a policy that never ran, which is exactly the class of lie a baseline report is
-    # supposed to prevent. `laya.confidence.check_min_confidence` is the same validator the Router
-    # uses, so the accepted range cannot drift from what the gate itself enforces.
+    # on a runner that does not accept it is refused. The gate does not change which answers score
+    # as correct: `apply_confidence_gate` writes `low_confidence` and `abstention` state fields
+    # while leaving `answer["choice"] / ["noul"] / ["score"]` as the raw argmax, so `_aggregate`
+    # publishes the same numbers at every threshold. What would be a lie is
+    # `report.config["timing"]["min_confidence"]`: it names the threshold as if the run applied
+    # it. A runner that predates the gate (#361) cannot honour that claim, so the guard raises.
+    # `laya.confidence.check_min_confidence` is the same validator the Router uses, so the
+    # accepted range cannot drift from what the abstention gate itself enforces.
     try:
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
     except ValueError as exc:
@@ -703,7 +939,7 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
                     "evaluate(min_confidence=%r) refused: this runner's %s does not accept the "
                     "abstention threshold. Either use a Router/ONNXAgent that gates on "
                     "answer_confidence (#361), or drop the threshold -- the report would "
-                    "otherwise score a policy that never ran." % (min_confidence, target))
+                    "otherwise name a `min_confidence` it never applied." % (min_confidence, target))
     evaluators = list(evaluators) if evaluators is not None else default_evaluators()
     cases: List[Dict[str, Any]] = []
     waits: List[float] = []          # what each request actually waited: its chunk's whole call

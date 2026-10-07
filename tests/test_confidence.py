@@ -260,6 +260,54 @@ apply_confidence_gate([None, {"answers": None}, {"answers": [1, 2]}], 0.5)
 apply_confidence_gate([], None)
 PASS.append("gate/non-dict results are skipped without raising")
 
+# --------------------------------------------------------------- BUG-005 regression: stale low_confidence across reuse (#910)
+# `flag_low_confidence` and `apply_confidence_gate` used to only set `low_confidence: True` and
+# never clear it. When a result dict was re-evaluated with a more permissive threshold (or 0.0),
+# the stale flag remained, causing downstream callers to treat the answer as permanently abstained.
+
+# 1. flag_low_confidence clears stale flag on re-evaluation
+reuse_res = [{
+    "answers": {
+        "intent": {"choice": "refund", "answer_confidence": 0.8},
+    }
+}]
+reuse_ans = reuse_res[0]["answers"]["intent"]
+flag_low_confidence(reuse_res, 0.9)
+check_true("stale/flag strict threshold sets flag", reuse_ans.get("low_confidence") is True)
+flag_low_confidence(reuse_res, 0.5)
+check_true("stale/flag permissive threshold clears flag", "low_confidence" not in reuse_ans)
+
+clean_res = [{"answers": {"q": {"answer_confidence": 0.95}}}]
+flag_low_confidence(clean_res, 0.5)
+check_true("stale/unflagged answer stays clean", "low_confidence" not in clean_res[0]["answers"]["q"])
+
+# 2. apply_confidence_gate clears stale flag and updates abstention state on re-evaluation
+gate_reuse = [{
+    "answers": {
+        "intent": {"choice": "refund", "answer_confidence": 0.8},
+    }
+}]
+g_ans = gate_reuse[0]["answers"]["intent"]
+apply_confidence_gate(gate_reuse, 0.9)
+check("stale/gate strict threshold abstains", g_ans["abstention"], GATE_ABSTAINED)
+check_true("stale/gate strict threshold sets low_conf", g_ans.get("low_confidence") is True)
+
+apply_confidence_gate(gate_reuse, 0.5)
+check("stale/gate permissive threshold passes", g_ans["abstention"], GATE_PASSED)
+check_true("stale/gate permissive threshold clears low_conf", "low_confidence" not in g_ans)
+check("stale/gate echoes updated threshold", g_ans["abstention_threshold"], 0.5)
+
+apply_confidence_gate(gate_reuse, 0.0)
+check("stale/gate 0.0 passes", g_ans["abstention"], GATE_PASSED)
+check_true("stale/gate 0.0 clears low_conf", "low_confidence" not in g_ans)
+
+# 3. unusable confidence clears stale low_confidence and marks unevaluated
+odd_reuse = [{"answers": {"q": {"choice": "x", "answer_confidence": 0.2, "low_confidence": True}}}]
+odd_reuse[0]["answers"]["q"]["answer_confidence"] = float("nan")
+apply_confidence_gate(odd_reuse, 0.5)
+check("stale/unusable conf marks unevaluated", odd_reuse[0]["answers"]["q"]["abstention"], GATE_UNEVALUATED)
+check_true("stale/unusable conf clears stale low_conf", "low_confidence" not in odd_reuse[0]["answers"]["q"])
+
 # --------------------------------------------------------------- the operator's three questions
 # End to end through a real call site, weight-free. `decide` forwards to any runner with a
 # `predict`, so this exercises `laya/structured.py`'s own gate call site rather than the helper
@@ -349,6 +397,324 @@ import laya.confidence as _confidence  # noqa: E402
 check("export/GATE_STATES is the vocabulary a caller iterates", list(GATE_STATES),
       [_confidence.GATE_PASSED, _confidence.GATE_ABSTAINED, _confidence.GATE_UNEVALUATED])
 check("export/laya re-exports the same tuple", laya.GATE_STATES, _confidence.GATE_STATES)
+
+# --------------------------------- the two doc pages must attribute confidence per question type
+# `docs/structured.md` and `docs/questions-and-answers.md` each opened their confidence section with
+# "`confidence` is normalized entropy". Neither agent writes that for every type:
+# `Agent._decode_answers` (`laya/agent.py:1367-1404`) and `OnnxAgent._decode_answers`
+# (`laya/onnx_agent.py:682-727`) put `confidence_from_probs(p, k)` = `1 - H(p) / log(k)` in the
+# `choice` and `score` answers and `max(p_true, 1 - p_true)` in the `noul` one. Each page printed a
+# `noul` in the very block its sentence introduces, so the sentence was falsifiable from the page
+# alone: the Q&A page's sample answer is `{"type": "noul", "noul": 0.8727, "confidence": 0.8727}`,
+# where entropy over two options reads 0.45, and structured.md's `Ticket` carries `needs_human: bool`
+# beside the `department` choice. structured.md also quoted `0.71` for the field whose probabilities it
+# prints one line below as `{"billing": 0.94, "support": 0.06, "sales": 0.0}` -- 0.79 under the formula
+# the page names. So both pages are read as data here: every number they print is recomputed from the
+# distribution printed beside it, the option count from the schema's own labels, and each formula has
+# to appear in a sentence naming exactly the types the code uses it for. No weights, no pydantic.
+import ast as _ast  # noqa: E402  (`ast` itself is imported again further down)
+import re as _re  # noqa: E402  (same reason: this section must not rebind `re`)
+
+from laya.structured import questions_from_json_schema  # noqa: E402
+
+DOC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DOC_STRUCTURED = os.path.join(DOC_ROOT, "docs", "structured.md")
+DOC_QA = os.path.join(DOC_ROOT, "docs", "questions-and-answers.md")
+DOC_AGENT_PY = os.path.join(DOC_ROOT, "laya", "agent.py")
+DOC_ONNX_PY = os.path.join(DOC_ROOT, "laya", "onnx_agent.py")
+
+ATTRIBUTED = {"entropy": ["choice", "score"], "maxp": ["noul"]}
+
+# A type has to be named in the same sentence as the formula, so `choice`/`score` cannot inherit the
+# `noul` formula and back. Only backticked type tokens count: the pages use "the choice is explicit" as
+# English, and a gate that read that as a question type would pass the wrong page.
+ENTROPY_MENTION = _re.compile(r"normalized\s+entropy")
+MAXP_MENTION = _re.compile(r"max\(\s*p(?:_true)?\s*,\s*1\s*-\s*p(?:_true)?\s*\)")
+TYPE_TOKEN = _re.compile(r"`(choice|score|noul)`")
+
+# The blanket claims, and the one number that was simply wrong.
+BLANKET_ENTROPY = _re.compile(r"`?confidence`?\s+is\s+normalized\s+entropy", _re.I)
+BLANKET_SAMPLE_NOTE = _re.compile(r"normalized\s+entropy,\s+which\s+depends\s+on\s+label\s+count")
+MAXP_IN_CODE = _re.compile(r"max\(\s*float\(\s*p\[1\]\s*\)\s*,\s*1\.0\s*-\s*float\(\s*p\[1\]\s*\)\s*\)")
+
+# The pages as they ship on main, sentence for sentence. Every ban below fires on this text and every
+# attribution rule below shows this text failing it, so no rule here is a guess about what changed.
+OLD_BLANKETS = (
+    ("docs/structured.md",
+     "`confidence`. `confidence` is normalized entropy, which depends on how many options the "
+     "question had: `tests/test_confidence.py` pins that a two-option distribution comes back as "
+     "0.90 on a `noul` and 0.53 on an equivalent `choice`, so it does not compare against a "
+     "threshold."),
+    ("docs/questions-and-answers.md",
+     "`confidence` is normalized entropy: high when the distribution is peaked, low when it is "
+     "spread out, regardless of whether the top answer is correct."),
+)
+OLD_SAMPLE_LINE = ('result.confidence["department"]        '
+                   '# 0.71  normalized entropy, which depends on label count')
+
+
+def _read_page(path):
+    # newline="" plus an explicit encoding: the pages carry em-dashes, and a CRLF checkout or a
+    # non-UTF-8 locale must not change what the rules below see.
+    with open(path, encoding="utf-8", newline="") as fh:
+        return fh.read().replace("\r\n", "\n")
+
+
+def _flatten(text):
+    return " ".join(text.split())
+
+
+def _fenced_blocks(text):
+    """Every fenced block on a page, in order, as (language, body)."""
+    blocks, lang, body = [], None, []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if lang is None and stripped.startswith("```"):
+            lang = stripped[3:].strip()
+            body = []
+        elif lang is not None and stripped.startswith("```"):
+            blocks.append((lang, "\n".join(body)))
+            lang = None
+        elif lang is not None:
+            body.append(line)
+    assert lang is None, "unbalanced fence in %s" % text[:40]
+    return blocks
+
+
+def _prose(text):
+    """The page's prose: fenced blocks dropped, line wraps undone, whitespace collapsed."""
+    out, in_fence = [], False
+    for line in text.split("\n"):
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            out.append(line)
+    return _flatten("\n".join(out))
+
+
+def _attributions(prose):
+    """{formula: sorted question types named in the same sentence as it}."""
+    got = {}
+    for sentence in _re.split(r"(?<=[.!?])\s+", prose):
+        types = set(TYPE_TOKEN.findall(sentence))
+        if not types:
+            continue
+        if ENTROPY_MENTION.search(sentence):
+            got.setdefault("entropy", set()).update(types)
+        if MAXP_MENTION.search(sentence):
+            got.setdefault("maxp", set()).update(types)
+    return {key: sorted(value) for key, value in sorted(got.items())}
+
+
+def _decode_conf_formulas(path):
+    """{question type: the formula its `confidence` is built from}, read out of that agent's own
+    `_decode_answers` with `ast`: `entropy` where the answer dict calls `confidence_from_probs`,
+    `maxp` where it takes `max(float(p[1]), 1.0 - float(p[1]))`. A bare name resolves one hop to its
+    assignment in the same function, because the ONNX builder binds `conf_score` once and uses it for
+    both of its entropy types."""
+    src = _read_page(path)
+    fn = next((node for node in _ast.walk(_ast.parse(src))
+               if isinstance(node, _ast.FunctionDef) and node.name == "_decode_answers"), None)
+    assert fn is not None, "%s no longer defines _decode_answers" % path
+    bound = {}
+    for node in _ast.walk(fn):
+        if (isinstance(node, _ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], _ast.Name)):
+            bound[node.targets[0].id] = _ast.get_source_segment(src, node.value) or ""
+    got = {}
+    for node in _ast.walk(fn):
+        if not isinstance(node, _ast.Dict):
+            continue
+        pairs = {}
+        for key, value in zip(node.keys, node.values):
+            if isinstance(key, _ast.Constant) and isinstance(key.value, str):
+                pairs[key.value] = value
+        if "confidence" not in pairs or "type" not in pairs:
+            continue
+        qtype = pairs["type"].value
+        expr = pairs["confidence"]
+        text = bound.get(expr.id, "") if isinstance(expr, _ast.Name) else (
+            _ast.get_source_segment(src, expr) or "")
+        if "confidence_from_probs" in text:
+            formula = "entropy"
+        elif MAXP_IN_CODE.search(text):
+            formula = "maxp"
+        else:
+            raise AssertionError("%s builds `%s`'s confidence from %r" % (path, qtype, text))
+        assert qtype not in got, "%s decodes `%s` twice" % (path, qtype)
+        got[qtype] = formula
+    return got
+
+
+def _structured_sample():
+    """The `return_details=True` block as data: the number printed for each field, the probabilities
+    printed for the same field, and the option count named beside the confidence number."""
+    src = _read_page(DOC_STRUCTURED)
+
+    def printed(key):
+        m = _re.search(r'result\.' + key + r'\["department"\]\s*#\s*([0-9.]+)', src)
+        assert m, 'the sample block no longer prints result.%s["department"]' % key
+        return float(m.group(1))
+
+    m = _re.search(r'result\.probabilities\["department"\]\s*#\s*(\{[^}]*\})', src)
+    assert m, "the sample block no longer prints the probabilities the two numbers come from"
+    probs = _ast.literal_eval(m.group(1))
+    note = _re.search(r'result\.confidence\["department"\]\s*#\s*[0-9.]+\s+([^\n]*)', src)
+    assert note, "the confidence line lost its note"
+    k = _re.search(r"(\d+)-option", note.group(1))
+    assert k, "the confidence line must name the option count its formula depends on: %r" % note.group(1)
+    return printed("confidence"), printed("answer_confidence"), probs, int(k.group(1)), note.group(1)
+
+
+def test_no_page_calls_confidence_one_formula():
+    for path in (DOC_STRUCTURED, DOC_QA):
+        prose = _prose(_read_page(path))
+        assert not BLANKET_ENTROPY.search(prose), "%s still says `confidence` is entropy" % path
+    src = _read_page(DOC_STRUCTURED)
+    assert not BLANKET_SAMPLE_NOTE.search(src), "the sample note still blames the label count alone"
+    for name, old in OLD_BLANKETS:
+        assert BLANKET_ENTROPY.search(_flatten(old)), "the ban does not fire on %s's old sentence" % name
+    assert BLANKET_SAMPLE_NOTE.search(OLD_SAMPLE_LINE), "the sample-note ban does not fire on main's line"
+
+
+def test_each_page_attributes_both_formulas_to_named_types():
+    for path in (DOC_STRUCTURED, DOC_QA):
+        got = _attributions(_prose(_read_page(path)))
+        assert got == ATTRIBUTED, "%s attributes %s, want %s" % (path, got, ATTRIBUTED)
+    # main's prose satisfies neither half, so the rule could not have passed before the fix.
+    assert _attributions(_flatten(OLD_BLANKETS[1][1])) == {}, "main's Q&A sentence passes the rule"
+    assert _attributions(_flatten(OLD_BLANKETS[0][1])) == {"entropy": ["choice", "noul"]}, (
+        "main's structured.md sentence passes the rule")
+
+
+def test_the_agents_build_what_the_pages_attribute():
+    want = {}
+    for path in (DOC_AGENT_PY, DOC_ONNX_PY):
+        got = _decode_conf_formulas(path)
+        assert sorted(got) == ["choice", "noul", "score"], "%s decodes %s" % (path, sorted(got))
+        assert got == {"choice": "entropy", "score": "entropy", "noul": "maxp"}, got
+        want = got
+    derived = {"entropy": sorted(t for t, f in want.items() if f == "entropy"),
+               "maxp": sorted(t for t, f in want.items() if f == "maxp")}
+    assert derived == ATTRIBUTED, "the pages are held to a transcription, not to the agents: %s" % derived
+    for path in (DOC_STRUCTURED, DOC_QA):
+        got = _attributions(_prose(_read_page(path)))
+        assert got == derived, "%s attributes %s; the agents build %s" % (path, got, derived)
+
+
+def test_structured_page_sample_numbers_recompute():
+    conf, answer_conf, probs, k, note = _structured_sample()
+    p = np.array([probs[label] for label in probs])
+    assert k == len(p), "the page says %d-option and prints %d labels" % (k, len(p))
+    assert conf == round(confidence_from_probs(p, k), 2), (
+        "the page prints confidence %s for %s over %d options; that formula gives %s"
+        % (conf, probs, k, round(confidence_from_probs(p, k), 2)))
+    assert abs(answer_conf - float(p.max())) < 5e-3, (
+        "answer_confidence %s is not max(p)=%s of the probabilities printed beside it"
+        % (answer_conf, round(float(p.max()), 4)))
+    assert "`choice`" in note, "the confidence line must say which type the field is: %r" % note
+    # and main's number was not this formula's either way: the witness stays true while the
+    # probabilities on the page stay these.
+    assert abs(0.71 - round(confidence_from_probs(p, k), 2)) > 5e-3, (
+        "0.71 now recomputes, so this witness has gone stale: %s" % probs)
+
+
+def test_structured_page_claims_a_schema_that_mixes_the_two_types():
+    """The page says its own `Ticket` holds one `choice` field and one `noul` field, which is what
+    makes one `confidence` dict carry two scales. The compiler that builds those questions has to
+    agree, and the probabilities in the sample have to be that field's labels."""
+    src = _read_page(DOC_STRUCTURED)
+    ticket = next((body for _lang, body in _fenced_blocks(src) if "class Ticket" in body), None)
+    assert ticket is not None, "the page lost the Ticket schema the confidence sample reads"
+    fields = dict(_re.findall(r"^\s*(\w+)\s*:\s*([^\n]+?)\s*$", ticket, _re.M))
+    assert sorted(fields) == ["department", "needs_human", "urgency"], fields
+    labels = [s.strip().strip("'\"")
+              for s in _re.search(r"Literal\[(.*?)\]", fields["department"]).group(1).split(",")]
+    assert fields["needs_human"] == "bool", fields
+    _conf, _ac, probs, _k, _note = _structured_sample()
+    assert labels == list(probs), "the sample's probabilities are not the schema's labels"
+    compiled = questions_from_json_schema({
+        "type": "object",
+        "properties": {
+            "department": {"enum": labels},
+            "needs_human": {"type": "boolean"},
+        },
+    })
+    got = {qid: q["type"] for qid, q in compiled.items()}
+    assert got == {"department": "choice", "needs_human": "noul"}, got
+
+
+def _qa_answers():
+    """{question type: the sample answer the page prints for it}. Each block is a dict literal, so the
+    numbers are read as data and not matched as prose."""
+    out = {}
+    for _lang, body in _fenced_blocks(_read_page(DOC_QA)):
+        try:
+            node = _ast.literal_eval(body.strip())
+        except (SyntaxError, ValueError):
+            continue
+        if isinstance(node, dict) and "confidence" in node and "answer_confidence" in node:
+            out[node["type"]] = node
+    return out
+
+
+def test_questions_page_sample_answers_recompute():
+    answers = _qa_answers()
+    assert sorted(answers) == ["choice", "noul", "score"], (
+        "the page must show one sample answer per question type, it shows %s" % sorted(answers))
+    for qtype in ("choice", "score"):
+        ans = answers[qtype]
+        p = np.array(list(ans["probabilities"].values()))
+        entropy = confidence_from_probs(p, len(p))
+        assert abs(ans["confidence"] - entropy) <= 1e-3, (
+            "%s: printed confidence %s, entropy of %s is %s"
+            % (qtype, ans["confidence"], list(ans["probabilities"]), round(entropy, 4)))
+        assert ans["answer_confidence"] == round(float(p.max()), 4), (
+            qtype, ans["answer_confidence"], round(float(p.max()), 4))
+    ans = answers["noul"]
+    p_true = ans["noul"]
+    assert ans["confidence"] == round(max(p_true, 1.0 - p_true), 4), ans
+    assert ans["confidence"] == ans["answer_confidence"], (
+        "over two options the two are the same number, so a mismatch means the sample changed shape")
+    entropy2 = round(confidence_from_probs(np.array([1.0 - p_true, p_true]), 2), 4)
+    assert ans["confidence"] != entropy2, (
+        "the noul sample now reads as entropy, so the blanket sentence would be defensible")
+    m = _re.search(r"rather than the ([0-9.]+)", _prose(_read_page(DOC_QA)))
+    assert m, "the page must keep the counterfactual that proves its noul row is not entropy"
+    assert abs(float(m.group(1)) - entropy2) < 0.005, (m.group(1), entropy2)
+
+
+def test_questions_page_row_table_matches_its_samples():
+    body = next((b for _l, b in _fenced_blocks(_read_page(DOC_QA)) if "confidence 0." in b), None)
+    assert body is not None, "the page lost the three-row confidence/answer_confidence comparison"
+    rows = _re.findall(r"^(\w+)\s+confidence\s+([0-9.]+)\s+answer_confidence\s+([0-9.]+)", body, _re.M)
+    answers = _qa_answers()
+    named = {"dept": "choice", "urgent": "noul", "severity": "score"}
+    assert [row[0] for row in rows] == list(named), rows
+    for field, conf, ac in rows:
+        ans = answers[named[field]]
+        assert abs(float(conf) - ans["confidence"]) <= 1e-3, (field, conf, ans["confidence"])
+        assert abs(float(ac) - ans["answer_confidence"]) <= 1e-3, (field, ac, ans["answer_confidence"])
+    assert sorted(named.values()) == sorted(_decode_conf_formulas(DOC_AGENT_PY)), (
+        "the rows do not cover the three types the agents build `confidence` for")
+
+
+for _fn in (test_no_page_calls_confidence_one_formula,
+            test_each_page_attributes_both_formulas_to_named_types,
+            test_the_agents_build_what_the_pages_attribute,
+            test_structured_page_sample_numbers_recompute,
+            test_structured_page_claims_a_schema_that_mixes_the_two_types,
+            test_questions_page_sample_answers_recompute,
+            test_questions_page_row_table_matches_its_samples):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("doc-pages/%s: %s" % (_fn.__name__, e))
+    except Exception as e:                      # a crash is a failure, never a silent pass
+        FAIL.append("doc-pages/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("doc-pages/%s" % _fn.__name__)
 
 # ------------------------------------------------- a preset page's conclusions follow their numbers
 # `examples/28_presets_moderation.py` prints a summary over `laya.moderation_questions()` answers,
@@ -541,6 +907,205 @@ def test_page_qualifies_the_banner_and_derives_its_numbers():
     assert not DERIVED_FLAGS.search(OLD_PAGE) and not DERIVED_CEILING.search(OLD_PAGE)
 
 
+# ------------------------------- example 03 must give `confidence` separately per question type
+# `examples/03_reading_the_result.py` is the page a reader comes back to "when writing your own
+# glue code", and its field tour closed with "`confidence` is 1 minus normalised entropy -- a scale
+# that moves with the option count on the same answer". `Agent._decode_answers` runs two formulas
+# and picks by question type (`laya/agent.py:1366-1402`):
+#   * `choice` and `score`  ->  `round(confidence_from_probs(p, k), 4)` = `1 - H(p) / log(k)`
+#   * `noul`                ->  `round(max(float(p[1]), 1.0 - float(p[1])), 4)`
+# The page calls all three types in one `predict()`, so no single sentence covers `confidence` --
+# and the proof is in the run the page itself prints: a `noul` answer reports the same number in
+# `confidence` and `answer_confidence`, which a normalized entropy of a two-option distribution
+# never equals (0.9/0.1 reads 0.531 as entropy, 0.900 as max(p)). Same defect class as examples
+# 40/18/30 and as `DecisionResult`'s docstring, on the page a beginner reads first. The two pages
+# that still carry the blanket sentence (`docs/structured.md`, `docs/questions-and-answers.md`) are
+# left for a follow-up.
+EXAMPLE_03 = os.path.join(ROOT, "examples", "03_reading_the_result.py")
+AGENT_PY = os.path.join(ROOT, "laya", "agent.py")
+ONNX_PY = os.path.join(ROOT, "laya", "onnx_agent.py")
+
+# The wording this section bans, as it ships on main. Every ban below is witnessed against it, and
+# every positive rule below is witnessed by showing that it does not satisfy the rule.
+OLD_PAGE_03 = """
+   `confidence` is 1 minus normalised entropy -- a scale that moves with the option
+   count on the same answer. `answer_confidence` is max(p), the probability mass on
+   the answer being reported, and it is the field to gate on (example 18 routes at a
+   threshold on it).
+"""
+
+BAN_UNIFORM_ENTROPY = re.compile(r"`confidence` is 1 minus normalised entropy -- a scale", re.I)
+NAMES_ENTROPY_TYPES = re.compile(r"normalised entropy on a `choice` or `score` answer", re.I)
+NAMES_NOUL_FORMULA = re.compile(r"max\(p\[1\],\s*1\s*-\s*p\[1\]\)")
+ATTRIBUTES_NOUL = re.compile(r"-- on a `noul`\.")
+CALLS_SCALES_INCOMPARABLE = re.compile(r"scales are not comparable", re.I)
+NAMES_ANSWER_MAXP = re.compile(r"`answer_confidence` is max\(p\),")
+GATES_ON_ANSWER = re.compile(r"field to gate on \(example 18", re.I)
+NAMES_BINNING_SCOPE = re.compile(
+    r"`binning_map` remaps `answer_confidence` and leaves `confidence` alone", re.I)
+
+
+def _src03(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _printed_text(path):
+    """The page's output as one flattened string.
+
+    Every string literal handed to `print()` anywhere in the file, joined and whitespace-collapsed,
+    so a sentence the page wraps across four `print()` calls is still one sentence to the rules
+    below -- and a claim that survives only because it is split across lines cannot hide from them.
+    """
+    parts = []
+    for node in ast.walk(ast.parse(_src03(path))):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "print"):
+            parts.extend(a.value for a in ast.walk(node)
+                         if isinstance(a, ast.Constant) and isinstance(a.value, str))
+    return " ".join(" ".join(parts).split())
+
+
+def _confidence_exprs(path):
+    """{answer type: source of the expression that becomes its `confidence`}.
+
+    Read off `_decode_answers` through AST, one entry per answer dict the builder constructs, so
+    the page is held to the code that produces the field rather than to a comment about it. A value
+    that is a local name (the ONNX path pre-computes `conf_score`) is resolved to what it is bound
+    to inside the same function.
+    """
+    src = _src03(path)
+    func = next(n for n in ast.walk(ast.parse(src))
+                if isinstance(n, ast.FunctionDef) and n.name == "_decode_answers")
+    bound = {}
+    for node in ast.walk(func):
+        if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)):
+            bound[node.targets[0].id] = ast.get_source_segment(src, node.value)
+    found = {}
+    for node in ast.walk(func):
+        if not isinstance(node, ast.Dict):
+            continue
+        literal = {k.value: v for k, v in zip(node.keys, node.values)
+                   if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+        if "type" not in literal or "confidence" not in literal:
+            continue
+        if not isinstance(literal["type"], ast.Constant):
+            continue
+        expr = ast.get_source_segment(src, literal["confidence"])
+        found[literal["type"].value] = bound.get(expr, expr)
+    return found
+
+
+def test_page_drops_the_single_entropy_formula():
+    text = _printed_text(EXAMPLE_03)
+    assert BAN_UNIFORM_ENTROPY.search(OLD_PAGE_03), "the ban does not fire on the wording it bans"
+    assert not BAN_UNIFORM_ENTROPY.search(
+        text), "example 03 again gives `confidence` one formula for all three question types"
+    for name, rule in (("the entropy formula is attributed to `choice` and `score`",
+                        NAMES_ENTROPY_TYPES),
+                       ("the `noul` formula is written out", NAMES_NOUL_FORMULA),
+                       ("that formula is attributed to `noul`", ATTRIBUTES_NOUL),
+                       ("the two scales are called incomparable", CALLS_SCALES_INCOMPARABLE),
+                       ("`answer_confidence` is max(p)", NAMES_ANSWER_MAXP),
+                       ("the gate field is named with its page", GATES_ON_ANSWER),
+                       ("the binning map remaps only `answer_confidence`", NAMES_BINNING_SCOPE)):
+        assert rule.search(text), "example 03 no longer states that %s" % name
+    # and main's page satisfies none of the new rules, so they could not have passed before.
+    old = " ".join(OLD_PAGE_03.split())
+    assert not NAMES_ENTROPY_TYPES.search(old) and not NAMES_NOUL_FORMULA.search(old)
+    assert not CALLS_SCALES_INCOMPARABLE.search(old) and not NAMES_BINNING_SCOPE.search(old)
+
+
+def test_page_names_the_formulas_the_agents_build():
+    exprs = _confidence_exprs(AGENT_PY)
+    assert set(exprs) == {"choice", "score", "noul"}, (
+        "the scan reached %s, not all three answer dicts" % sorted(exprs))
+    assert all(exprs.values()), "a `confidence` value could not be read: %s" % exprs
+    assert "confidence_from_probs" in exprs["choice"], exprs["choice"]
+    assert "confidence_from_probs" in exprs["score"], exprs["score"]
+    assert "1.0 - float(p[1])" in exprs["noul"], exprs["noul"]
+    assert "confidence_from_probs" not in exprs["noul"], (
+        "`noul` has switched to entropy -- the page's per-type split is now the stale claim: %s"
+        % exprs["noul"])
+    text = _printed_text(EXAMPLE_03)
+    assert NAMES_ENTROPY_TYPES.search(text) and NAMES_NOUL_FORMULA.search(text), (
+        "the page must name both expressions the builder uses")
+
+
+def test_page_cites_the_numbers_the_repo_functions_produce():
+    """The earned-numbers arm: the pairs the page prints must be what `laya.common` returns."""
+    text = _printed_text(EXAMPLE_03)
+    for p_true in (0.60, 0.90):
+        p = np.array([1.0 - p_true, p_true])
+        noul = "%.3f" % max(float(p[1]), 1.0 - float(p[1]))
+        entropy = "%.3f" % round(float(confidence_from_probs(p, 2)), 3)
+        rule = re.compile(r"%s reads %s[^.]*%s" % (re.escape(noul), re.escape(noul),
+                                                   re.escape(entropy)))
+        assert rule.search(text), (
+            "the page must cite p(true)=%s as %s on a `noul` and %s as entropy; both come from "
+            "confidence_from_probs above, so a number that drifts fails here" % (noul, noul,
+                                                                                entropy))
+    # the reason one sentence could not work: on a `noul` the shipped `confidence` *is* max(p), the
+    # same quantity `answer_confidence` reports, which an entropy cannot be.
+    for p_true in (0.60, 0.90):
+        p = np.array([1.0 - p_true, p_true])
+        assert close(max(float(p[1]), 1.0 - float(p[1])), answer_confidence(p, 2)), (
+            "the page's `noul` answer would no longer carry the same number in both fields")
+
+
+def _binning_targets(path):
+    """What the installed binning map is applied to inside `_decode_answers`.
+
+    The page closes its tour with "`binning_map` remaps `answer_confidence` and leaves `confidence`
+    alone", which is a claim about the builder, not about prose: the map's input is the raw
+    `answer_confidence`, and the two `confidence` expressions sit outside that branch.
+    """
+    src = _src03(path)
+    func = next(n for n in ast.walk(ast.parse(src))
+                if isinstance(n, ast.FunctionDef) and n.name == "_decode_answers")
+    return [ast.get_source_segment(src, node.args[0]) for node in ast.walk(func)
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "apply_binning_map" and node.args)]
+
+
+def test_the_remap_reaches_only_answer_confidence():
+    for path in (AGENT_PY, ONNX_PY):
+        targets = _binning_targets(path)
+        assert targets, "%s no longer applies a binning map inside the answer builder" % path
+        assert all(t == "ans_raw" for t in targets), (
+            "the page says a calibration payload remaps `answer_confidence` and leaves "
+            "`confidence` alone, but %s remaps %s" % (path, sorted(set(targets))))
+
+
+def test_the_two_agents_answer_the_same_way():
+    """Parity arm: the ONNX path builds the same two expressions, so one page can be true of both."""
+    agent_exprs = _confidence_exprs(AGENT_PY)
+    onnx_exprs = _confidence_exprs(ONNX_PY)
+    assert set(onnx_exprs) == {"choice", "score", "noul"}, (
+        "the ONNX answer builder no longer yields all three types: %s" % sorted(onnx_exprs))
+    assert "confidence_from_probs" in onnx_exprs["choice"], onnx_exprs["choice"]
+    assert "confidence_from_probs" in onnx_exprs["score"], onnx_exprs["score"]
+    assert onnx_exprs["noul"] == agent_exprs["noul"], (
+        "the two agents now disagree on what a `noul` confidence is (%r vs %r), and the page "
+        "describes only one of them" % (onnx_exprs["noul"], agent_exprs["noul"]))
+
+
+for _fn in (test_page_drops_the_single_entropy_formula,
+            test_page_names_the_formulas_the_agents_build,
+            test_page_cites_the_numbers_the_repo_functions_produce,
+            test_the_remap_reaches_only_answer_confidence,
+            test_the_two_agents_answer_the_same_way):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("page-03/%s: %s" % (_fn.__name__, e))
+    except Exception as e:                      # a crash is a failure, never a silent pass
+        FAIL.append("page-03/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("page-03/%s" % _fn.__name__)
+
+
 for _fn in (test_preset_is_four_flags_and_one_rubric, test_helpers_are_live_and_pure,
             test_flag_line_prints_every_flag, test_past_half_uses_describes_cut,
             test_gaps_names_the_widest_separators, test_rank_cannot_assert_its_own_order,
@@ -554,6 +1119,1127 @@ for _fn in (test_preset_is_four_flags_and_one_rubric, test_helpers_are_live_and_
         FAIL.append("page-28/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
     else:
         PASS.append("page-28/%s" % _fn.__name__)
+
+
+# --------------------------------------------- example 40 must not call a raw softmax calibrated
+# `examples/40_caching_and_monitoring.py` gates 15 tickets on `answer_confidence`. On main it calls
+# that field "the calibrated probability of the answer Laya reports" in both its banner and its
+# closing paragraph, and its `bucket()` docstring reads "application policy over a calibrated
+# number". `answer_confidence` is max(p) -- the quantity temperature scaling fits and ECE measures
+# -- but the README's own Calibration section says that reading holds *only* after temperatures are
+# fitted and validated, the shipped checkpoints are over-confident, and the loader emits at load
+# time `RuntimeWarning: ... choice:11+=0.10058... -> 0.5. Treat confidence from the affected
+# entries as uncalibrated.` The page now reads the temperature each shape was actually scaled by off
+# the loaded agent and states the calibration as conditional.
+#
+# No weights are loaded here: the four helpers are pulled from the example's AST and exec'd against
+# a fabricated agent, and `scale_for`'s lookup is checked against core's own `temp_bucket`, so the
+# gate drives the code the page runs instead of re-reading its prose.
+from laya.common import QTYPES as _QTYPES40, temp_bucket as _temp_bucket  # noqa: E402
+
+EXAMPLE_40 = os.path.join(ROOT, "examples", "40_caching_and_monitoring.py")
+HELPERS_40 = ("option_count", "scale_for", "clamped_buckets", "entropy_confidence")
+# Names a helper may read from the page's world: the two core symbols it must defer to, and `math`
+# for the entropy. Any other non-builtin free name means this gate cannot drive that helper.
+CORE_GLOBALS_40 = {"temp_bucket", "QTYPES", "math"}
+
+# main's page, as literal source lines. Every ban is witnessed against this text; every positive
+# rule below is witnessed by showing this text does NOT satisfy it.
+OLD_PAGE_40 = '''
+    the triage preset and gates on `answer_confidence`, the calibrated probability of the
+    """Our thresholds, not the model's: application policy over a calibrated number."""
+   The monitor gates on `answer_confidence`: the calibrated probability of the answer Laya
+   distribution has H/log(k) = %.2f, so `confidence` is %.2f while
+   """ % (entropy, 1 - entropy, vague["intent"]["answer_confidence"]))
+'''
+
+UNCONDITIONAL_CALIBRATION = re.compile(r"the calibrated probability", re.I)
+POLICY_OVER_CALIBRATED = re.compile(r"over a calibrated number", re.I)
+SUBSTITUTED_CONFIDENCE = re.compile(r"1\s*-\s*entropy")
+DERIVES_SCALING = re.compile(r"temp_bucket\(")
+READS_REPORTED_CONFIDENCE = re.compile(r"\[[\"']confidence[\"']\]")
+HARDCODED_BUCKET = re.compile(r"[\"'](choice|score|noul):[0-9]")
+
+
+def _src40():
+    with open(EXAMPLE_40, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _helpers40():
+    """Exec only the example's top-level helpers -- its `load()` call needs weights."""
+    tree = ast.parse(_src40())
+    nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in HELPERS_40]
+    ns = {"temp_bucket": _temp_bucket, "QTYPES": _QTYPES40, "math": math}
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), EXAMPLE_40, "exec"), ns)  # noqa: S102
+    return ns
+
+
+def _called40():
+    tree = ast.parse(_src40())
+    top = [n for n in tree.body if not isinstance(
+        n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Import, ast.ImportFrom))]
+    return {node.id for stmt in top for node in ast.walk(stmt)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+
+
+def _fn40(name):
+    for n in ast.parse(_src40()).body:
+        if isinstance(n, ast.FunctionDef) and n.name == name:
+            return n
+    raise KeyError(name)
+
+
+class _FakeAgent(object):
+    """Only the three temperature attributes `scale_for` and `clamped_buckets` read."""
+
+    def __init__(self, by_options, per_type, raw=None):
+        self.temperature_by_options = by_options
+        self.temperature = per_type
+        self.temperature_by_options_raw = dict(by_options) if raw is None else raw
+
+
+def test_page40_helpers_are_live_defer_to_core():
+    defined = sorted(n.name for n in ast.parse(_src40()).body
+                     if isinstance(n, ast.FunctionDef) and n.name in HELPERS_40)
+    assert defined == sorted(HELPERS_40), "example 40 lost a helper: %s" % defined
+    ns = _helpers40()
+    unused = set(HELPERS_40) - _called40()
+    assert not unused, "defined but never called at module level: %s" % sorted(unused)
+    for name in HELPERS_40:
+        node = _fn40(name)
+        outside = sorted(n for n in _free_names(node)
+                         if not hasattr(builtins, n) and n not in CORE_GLOBALS_40)
+        assert not outside, "%s reads %s from the page, so this gate cannot drive it" % (name, outside)
+        prints = [c for c in ast.walk(node)
+                  if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == "print"]
+        assert not prints, "%s prints instead of returning" % name
+    # `scale_for` must resolve the bucket through core, not carry a typed-in table.
+    assert not HARDCODED_BUCKET.search(ast.dump(_fn40("scale_for"))), (
+        "scale_for hardcodes a bucket name instead of calling temp_bucket")
+
+
+def test_scale_for_replays_core_lookup():
+    """For every shape, scale_for returns exactly `temperature_by_options.get(bucket, per_type)`."""
+    ns = _helpers40()
+    per_type = [7.0, 8.0, 9.0]                       # choice, score, noul fallbacks
+    by_options = {"choice:6-10": 1.0, "noul:2": 1.9834, "score:3-5": 1.2514}
+    fake = _FakeAgent(by_options, per_type)
+    for qtype, k in (("choice", 6), ("noul", 2), ("score", 4), ("noul", 2)):
+        name, applied, in_map = ns["scale_for"](fake, qtype, k)
+        bucket = _temp_bucket(_QTYPES40[qtype], k)
+        assert name == bucket, (qtype, k, name, bucket)
+        assert in_map == (bucket in by_options), (bucket, in_map)
+        assert abs(applied - by_options.get(bucket, per_type[_QTYPES40[qtype]])) < 1e-9, (
+            "%s: %r not core's get(...)" % (bucket, applied))
+    # the fallback arm: an unmapped shape must fall to the per-type temperature, flagged not-in-map.
+    name, applied, in_map = ns["scale_for"](_FakeAgent({}, [0.5, 0.6, 0.7]), "choice", 12)
+    assert (name, applied, in_map) == ("choice:11+", 0.5, False), (name, applied, in_map)
+    # a mapped temperature of exactly 1.0 must be reported as 1.0, not nudged.
+    assert ns["scale_for"](_FakeAgent({"choice:6-10": 1.0}, [1.0, 1.0, 1.0]), "choice", 6) == (
+        "choice:6-10", 1.0, True)
+
+
+def test_option_count_matches_the_shipped_preset():
+    ns = _helpers40()
+    counts = {qid: ns["option_count"](q) for qid, q in laya.triage_questions().items()}
+    assert counts == {"intent": 6, "is_urgent": 2, "frustration": 4,
+                      "refund_requested": 2, "churn_risk": 2}, counts
+
+
+def test_clamped_buckets_names_only_a_shipped_value_the_runtime_refused():
+    ns = _helpers40()
+    # `choice:11+` ships below TEMP_MIN and is clamped to 0.5; everything else ships unchanged.
+    applied = {"choice:11+": 0.5, "noul:2": 1.9834}
+    raw = {"choice:11+": 0.10058280825614929, "noul:2": 1.9834}
+    out = ns["clamped_buckets"](_FakeAgent(applied, [0.5, 0.5, 0.5], raw))
+    assert out == ["choice:11+=0.1006 -> 0.5000"], out
+    # and an honest checkpoint reports nothing.
+    same = {"noul:2": 1.9834}
+    assert ns["clamped_buckets"](_FakeAgent(same, [0.5, 0.5, 0.5], dict(same))) == []
+
+
+def test_entropy_confidence_recomputes_core_exactly():
+    ns = _helpers40()
+    for dist in ([0.5, 0.3, 0.2], [0.9, 0.1], [0.25, 0.25, 0.25, 0.25], [1.0, 0.0, 0.0]):
+        p = np.array(dist, dtype=float)
+        got = ns["entropy_confidence"](dist)
+        want = confidence_from_probs(p, len(dist))
+        assert close(got, want, 1e-9), (dist, got, want)
+    assert ns["entropy_confidence"]([1.0]) == 1.0, "k<2 is 1.0 by definition"
+
+
+def test_page40_drops_the_unconditional_calibration_claim():
+    """Each ban fires on main's page and not on this one -- a ban with no witness is a guess."""
+    src = _src40()
+    for name, rule in (("'the calibrated probability'", UNCONDITIONAL_CALIBRATION),
+                       ("'over a calibrated number'", POLICY_OVER_CALIBRATED),
+                       ("prints `1 - entropy` as the confidence", SUBSTITUTED_CONFIDENCE)):
+        assert rule.search(OLD_PAGE_40), "%s does not fire on the wording it bans" % name
+        assert not rule.search(src), "%s is still in example 40" % name
+
+
+def test_page40_reads_the_scaling_and_the_reported_field():
+    """The positive half: the page must derive the temperature and print the reported field."""
+    src = _src40()
+    assert DERIVES_SCALING.search(src), "the bucket must be resolved through core's temp_bucket"
+    assert READS_REPORTED_CONFIDENCE.search(src), "the page must read the reported `confidence`"
+    # and main's page satisfies none of that, so these rules could not have passed before.
+    assert not DERIVES_SCALING.search(OLD_PAGE_40)
+    assert not READS_REPORTED_CONFIDENCE.search(OLD_PAGE_40)
+
+
+for _fn in (test_page40_helpers_are_live_defer_to_core, test_scale_for_replays_core_lookup,
+            test_option_count_matches_the_shipped_preset,
+            test_clamped_buckets_names_only_a_shipped_value_the_runtime_refused,
+            test_entropy_confidence_recomputes_core_exactly,
+            test_page40_drops_the_unconditional_calibration_claim,
+            test_page40_reads_the_scaling_and_the_reported_field):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("page-40/%s: %s" % (_fn.__name__, e))
+    except Exception as e:                      # a crash is a failure, never a silent pass
+        FAIL.append("page-40/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("page-40/%s" % _fn.__name__)
+# Gate: the two predict_long call sites' comments must describe the None-min_confidence
+# contract truthfully. The pre-fix wording claimed every answer "reports that it ran ungated"
+# / "say so on every answer"; confidence.py:196-197 documents and :211-212 implements the
+# opposite -- the gate writes nothing at all, so the payload carries no `abstention` field.
+import ast as _gate_ast  # noqa: E402
+
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _gate_gate_comment(rel_path):
+    """Return the run of comment lines that immediately precede the
+    apply_confidence_gate([result], None) call inside predict_long."""
+    with open(os.path.join(_REPO, rel_path)) as f:
+        lines = f.readlines()
+    tree = _gate_ast.parse("".join(lines))
+    for node in _gate_ast.walk(tree):
+        if isinstance(node, _gate_ast.FunctionDef) and node.name == "predict_long":
+            call_line = None
+            for sub in _gate_ast.walk(node):
+                if (isinstance(sub, _gate_ast.Call)
+                        and getattr(sub.func, "id", getattr(sub.func, "attr", None)) == "apply_confidence_gate"
+                        and len(sub.args) == 2
+                        and isinstance(sub.args[1], _gate_ast.Constant)
+                        and sub.args[1].value is None):
+                    call_line = sub.lineno - 1
+                    break
+            if call_line is None:
+                continue
+            out = []
+            i = call_line - 1
+            while i >= 0 and lines[i].lstrip().startswith("#"):
+                out.insert(0, lines[i].strip().lstrip("#").strip())
+                i -= 1
+            return " ".join(out)
+    return ""
+
+
+_agent_comment = _gate_gate_comment(os.path.join("laya", "agent.py"))
+_onnx_comment = _gate_gate_comment(os.path.join("laya", "onnx_agent.py"))
+
+for _label, _comment in (("agent.py", _agent_comment), ("onnx_agent.py", _onnx_comment)):
+    check_true("gate/comment/%s exists" % _label, len(_comment) > 0, "no comment found")
+    check_true("gate/comment/%s drops the ungated-reports claim" % _label,
+               "reports that it ran ungated" not in _comment
+               and "say so on every answer" not in _comment,
+               "pre-fix wording still on the call site: %r" % _comment)
+    check_true("gate/comment/%s names writes nothing" % _label,
+               "writes nothing" in _comment,
+               "gate comment must name the None-contract: %r" % _comment)
+    check_true("gate/comment/%s names the min_confidence argument" % _label,
+               "min_confidence" in _comment,
+               "gate comment must refer to the argument it is about: %r" % _comment)
+
+# Live witness: apply_confidence_gate([payload], None) leaves the payload byte-identical,
+# so the corrected comment is not itself a claim the code contradicts.
+_witness = {"model": "w", "answers": {"q": {"choice": "a", "confidence": 0.42}}, "usage": {}}
+_witness_before = copy.deepcopy(_witness)
+apply_confidence_gate([_witness], None)
+check("gate/live None writes nothing", _witness, _witness_before)
+check("gate/live None adds no abstention key", "abstention" in _witness["answers"]["q"], False)
+
+
+# --------------------------------------------- example 18 must not call the threshold a measurement
+# `examples/18_confidence_gating.py` is the intro-level gating pattern: it picks a 0.85 cutoff on
+# `answer_confidence` and acts on it. On main it calls the field "the calibrated probability Laya
+# puts on the answer it reports" and its module docstring says it "branches on Laya's calibrated
+# confidence". The README's Calibration section (line 1586) says the opposite about the shipped
+# state: mean ECE on `laya` is 0.466 as shipped, dropping to 0.081 only after refitting one
+# temperature per (question type, option-count) bucket on held-out data, and both shipped
+# checkpoints are over-confident. `answer_confidence` is the field temperature scaling fits and
+# the abstention gate reads -- but "calibrated" is a property a fit earns, not a property of the
+# field, and the loader emits `RuntimeWarning: ... Treat confidence from the affected entries as
+# uncalibrated.` on this very checkpoint. The page now reads back the temperature it actually
+# applies to each of its two questions and states the calibration claim as conditional.
+from laya.common import QTYPES as _QTYPES18, temp_bucket as _temp_bucket18  # noqa: E402
+
+EXAMPLE_18 = os.path.join(ROOT, "examples", "18_confidence_gating.py")
+HELPERS_18 = ("option_count", "scale_for")
+CORE_GLOBALS_18 = {"temp_bucket", "QTYPES", "math"}
+
+OLD_PAGE_18 = '''
+Answers a batch of support emails and branches on Laya\'s calibrated confidence: act
+    The production pattern from the README. Gate on `answer_confidence`: the calibrated
+    probability Laya puts on the answer it reports, defined the same way on every question
+'''
+
+UNQUALIFIED_CALIBRATION_18 = re.compile(
+    r"the\s+calibrated\s+probability|Laya['’]s\s+calibrated\s+confidence", re.I)
+DERIVES_SCALING_18 = re.compile(r"temp_bucket\(")
+NAMES_CONDITION_18 = re.compile(r"over-confident", re.I)
+HARDCODED_BUCKET_18 = re.compile(r"[\"'](choice|score|noul):[0-9]")
+
+
+def _src18():
+    with open(EXAMPLE_18, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _helpers18():
+    tree = ast.parse(_src18())
+    nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in HELPERS_18]
+    ns = {"temp_bucket": _temp_bucket18, "QTYPES": _QTYPES18, "math": math}
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), EXAMPLE_18, "exec"), ns)  # noqa: S102
+    return ns
+
+
+class _FakeAgent18(object):
+    """Only the two temperature attributes `scale_for` reads."""
+
+    def __init__(self, by_options, per_type):
+        self.temperature_by_options = by_options
+        self.temperature = per_type
+
+
+def _top_literal18(name):
+    for n in ast.parse(_src18()).body:
+        if isinstance(n, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == name for t in n.targets):
+            return ast.literal_eval(n.value)
+    raise KeyError(name)
+
+
+def _fn18(name):
+    for n in ast.parse(_src18()).body:
+        if isinstance(n, ast.FunctionDef) and n.name == name:
+            return n
+    raise KeyError(name)
+
+
+def test_page18_helpers_are_live_and_defer_to_core():
+    defined = sorted(n.name for n in ast.parse(_src18()).body
+                     if isinstance(n, ast.FunctionDef) and n.name in HELPERS_18)
+    assert defined == sorted(HELPERS_18), "example 18 lost a helper: %s" % defined
+    tree = ast.parse(_src18())
+    top_loads = {node.id for stmt in tree.body if not isinstance(
+        stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Import, ast.ImportFrom))
+        for node in ast.walk(stmt)
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+    unused = set(HELPERS_18) - top_loads
+    assert not unused, "defined but never called at module level: %s" % sorted(unused)
+    for name in HELPERS_18:
+        node = _fn18(name)
+        outside = sorted(n for n in _free_names(node)
+                         if not hasattr(builtins, n) and n not in CORE_GLOBALS_18)
+        assert not outside, "%s reads %s from the page" % (name, outside)
+        prints = [c for c in ast.walk(node)
+                  if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == "print"]
+        assert not prints, "%s prints instead of returning" % name
+    assert not HARDCODED_BUCKET_18.search(ast.dump(_fn18("scale_for"))), (
+        "scale_for hardcodes a bucket name instead of calling temp_bucket")
+
+
+def test_page18_questions_reach_core_bucket_names():
+    """Replay the page's own QUESTIONS through core's temp_bucket and through the example's helper."""
+    ns = _helpers18()
+    questions = _top_literal18("QUESTIONS")
+    per_type = [7.0, 8.0, 9.0]
+    by_options = {"choice:3-5": 1.7601518630981445, "noul:2": 1.983399510383606}
+    fake = _FakeAgent18(by_options, per_type)
+    shapes = {}
+    for qid, q in questions.items():
+        k = ns["option_count"](q)
+        name, applied, in_map = ns["scale_for"](fake, q["type"], k)
+        assert name == _temp_bucket18(_QTYPES18[q["type"]], k), (qid, name)
+        assert abs(applied - by_options[name]) < 1e-9, (qid, applied)
+        assert in_map is True, "%s: %s missing from map" % (qid, name)
+        shapes[qid] = (q["type"], k, name, applied)
+    assert shapes == {
+        "department": ("choice", 4, "choice:3-5", 1.7601518630981445),
+        "refund_requested": ("noul", 2, "noul:2", 1.983399510383606),
+    }, shapes
+
+
+def test_page18_drops_the_unconditional_calibration_claim():
+    """The two phrases main uses fire on the ban and are gone here; main has no temp_bucket call."""
+    src = _src18()
+    assert UNQUALIFIED_CALIBRATION_18.search(OLD_PAGE_18), "the ban must fire on main's wording"
+    assert not UNQUALIFIED_CALIBRATION_18.search(src), (
+        "the page still calls `answer_confidence` calibrated without condition")
+    assert not DERIVES_SCALING_18.search(OLD_PAGE_18), "main's page has no scaling lookup"
+    assert not NAMES_CONDITION_18.search(OLD_PAGE_18), "main's page states no calibration condition"
+    assert DERIVES_SCALING_18.search(src), "the page must resolve the bucket via core's temp_bucket"
+    assert NAMES_CONDITION_18.search(src), (
+        "the page must carry the README's Calibration condition (mean ECE 0.466 -> 0.081, "
+        "both shipped checkpoints over-confident)")
+    # The README's exact language lives at line 1586; the page must not misquote it.
+    readme = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
+    assert "Both checkpoints are over-confident as shipped" in readme
+    assert "0.466 -> 0.081" in readme
+
+
+for _fn in (test_page18_helpers_are_live_and_defer_to_core,
+            test_page18_questions_reach_core_bucket_names,
+            test_page18_drops_the_unconditional_calibration_claim):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("page-18/%s: %s" % (_fn.__name__, e))
+    except Exception as e:
+        FAIL.append("page-18/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("page-18/%s" % _fn.__name__)
+
+# ------------------------------------------ example 30's score confidence recomputation
+# `examples/30_custom_schema_design.py` teaches the `score` answer type on the page. Main's
+# version asserted -- in prose, with nothing to check it against -- that "`confidence` on a
+# score is normalised entropy, so a wide-but-ordered distribution looks unconfident". That is
+# the inverse of the repo's own definition: `laya.common.confidence_from_probs` returns
+# `1 - H(p) / log(k)`, examples 18/28/40 all describe it as "1 minus normalised entropy", and
+# the sentence was self-contradictory in place -- if confidence were the entropy itself, a wide
+# distribution would read as HIGH confidence, not "unconfident".
+#
+# The fix rewrites the sentence to the correct definition AND recomputes the field on the spot:
+# `entropy_confidence(list(probabilities.values()))` is printed next to
+# `answer["severity"]["confidence"]` for both records, so the reader sees 1 - H/log(k) produce
+# the reported 0.2314 / 0.2019 to within rounding. No weights are loaded here; the gate execs
+# the helper from the example's own AST and drives it against `confidence_from_probs`.
+EXAMPLE_30 = os.path.join(ROOT, "examples", "30_custom_schema_design.py")
+HELPERS_30 = ("entropy_confidence",)
+
+# The page as it ships on main: the sentence this PR replaces, verbatim. The ban below must
+# fire on this text and not on the current example; the positive rules must fire on the
+# current example and not on this text.
+OLD_PAGE_30 = '''
+print("   them, and a choice when the labels are unordered. Read the score itself: `confidence`")
+print("   on a score is normalised entropy, so a wide-but-ordered distribution looks")
+print("   unconfident even when the expected level is informative.")
+'''
+
+# The definition stated as the entropy itself rather than 1 - H/log(k).
+INVERTED_SCORE_DEF = re.compile(
+    r"`confidence`[^.]{0,120}?\bon a score is (?:the )?normali[sz]ed entropy", re.I | re.S)
+# The correct shape, either symbolic or spelled out.
+SCORE_DEFINES_1_MINUS_H = re.compile(
+    r"1\s*-\s*H\s*/\s*log\(k\)|one\s+minus\s+the\s+normali[sz]ed\s+entropy", re.I)
+# The recomputation call must be in the source, not just asserted. Two parts: the page must
+# read the reported probabilities off the answer, and it must feed them into the helper.
+PROBS_READ = re.compile(
+    r"list\(\s*ans\[\"severity\"\]\[\"probabilities\"\]\s*\.\s*values\(\)\s*\)")
+HELPER_CALLED = re.compile(r"entropy_confidence\(")
+# Reported and recomputed values printed side by side (either literal digits or a %.Nf
+# conversion the page formats them with).
+PRINTS_REPORTED_AND_RECOMPUTED = re.compile(
+    r"reported\s+(?:%?\.\d+f|[\d.]+)\s*,\s*recomputed", re.I)
+
+
+def _src30():
+    with open(EXAMPLE_30, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _helpers30():
+    """Exec the example's pure top-level helpers. `entropy_confidence` reads `math`."""
+    tree = ast.parse(_src30())
+    nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in HELPERS_30]
+    ns = {"math": math}
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), EXAMPLE_30, "exec"), ns)  # noqa: S102
+    return ns, {n.name for n in nodes}
+
+
+def _called30():
+    """Names the example's top-level *statements* use, so a helper cannot pass by being dead."""
+    tree = ast.parse(_src30())
+    top = [n for n in tree.body if not isinstance(
+        n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Import, ast.ImportFrom))]
+    return {node.id for stmt in top for node in ast.walk(stmt)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+
+
+def test_page30_helpers_are_live_and_pure():
+    """`entropy_confidence` is defined, called at top level, and returns rather than prints."""
+    _, defined = _helpers30()
+    assert defined == set(HELPERS_30), "example 30 lost a helper: %s" % sorted(defined)
+    unused = set(HELPERS_30) - _called30()
+    assert not unused, "defined but never called at module level: %s" % sorted(unused)
+    tree = ast.parse(_src30())
+    for name in HELPERS_30:
+        node = next(n for n in tree.body
+                    if isinstance(n, ast.FunctionDef) and n.name == name)
+        prints = [c for c in ast.walk(node)
+                  if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
+                  and c.func.id == "print"]
+        assert not prints, "%s prints instead of returning" % name
+
+
+def test_entropy_confidence_matches_core():
+    """Recomputing 1 - H/log(k) by hand must equal `confidence_from_probs` on the same list."""
+    ns = _helpers30()[0]
+    for probs in ([0.5, 0.5], [0.1, 0.9], [0.25, 0.25, 0.25, 0.25],
+                  [0.7, 0.2, 0.05, 0.05], [1e-9, 0.999999999, 0.0],
+                  [0.4, 0.3, 0.2, 0.1], [0.05, 0.15, 0.3, 0.35, 0.1, 0.05]):
+        got = ns["entropy_confidence"](list(probs))
+        want = confidence_from_probs(np.array(probs, dtype=float), len(probs))
+        assert abs(got - want) < 1e-9, (probs, got, want)
+    assert ns["entropy_confidence"]([1.0]) == 1.0, "k=1 is certain"
+    assert ns["entropy_confidence"]([]) == 1.0, "k=0 does not crash"
+
+
+def test_page30_drops_the_inverted_definition():
+    """The ban fires on main's sentence and not on this one; the positive rule inverts."""
+    src = _src30()
+    assert INVERTED_SCORE_DEF.search(OLD_PAGE_30), \
+        "the ban does not fire on main's wording"
+    assert not INVERTED_SCORE_DEF.search(src), \
+        "the inverted definition is still in example 30"
+    assert SCORE_DEFINES_1_MINUS_H.search(src), \
+        "the correct 1 - H/log(k) definition is missing"
+    assert not SCORE_DEFINES_1_MINUS_H.search(OLD_PAGE_30), \
+        "the positive rule passes on main's page too"
+
+
+def test_page30_recomputes_in_place():
+    """The reader sees the field cross-checked against the probabilities that produced it."""
+    src = _src30()
+    assert PROBS_READ.search(src), \
+        "the score section no longer reads the reported `probabilities` list"
+    assert HELPER_CALLED.search(src), \
+        "the score section no longer calls `entropy_confidence`"
+    assert PRINTS_REPORTED_AND_RECOMPUTED.search(src), \
+        "reported and recomputed values are not printed side by side"
+    assert not PROBS_READ.search(OLD_PAGE_30)
+    assert not HELPER_CALLED.search(OLD_PAGE_30)
+    assert not PRINTS_REPORTED_AND_RECOMPUTED.search(OLD_PAGE_30)
+
+
+for _fn in (test_page30_helpers_are_live_and_pure,
+            test_entropy_confidence_matches_core,
+            test_page30_drops_the_inverted_definition,
+            test_page30_recomputes_in_place):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("page-30/%s: %s" % (_fn.__name__, e))
+    except Exception as e:
+        FAIL.append("page-30/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("page-30/%s" % _fn.__name__)
+
+
+# -------------------------------- evals' --min-confidence wording must match the gate's effect
+#
+# `laya/evals_cli.py`, `laya/evals.py`, `docs/evals.md`, `tests/test_evals.py` and
+# `tests/test_evals_api.py` each describe the abstention gate's role in a scored run. Their
+# previous wording claimed the threshold changes what scores: "answers below it come back
+# abstained", "an abstention overwrites a low-confidence choice", "the run scores the policy
+# at that threshold, not the raw argmax", "a `precision@coverage` figure for a policy that
+# never ran". But `apply_confidence_gate` in this module writes `low_confidence` and
+# `abstention` state fields and leaves `answer["choice"]/["noul"]/["score"]` untouched, and
+# every `Evaluator.score` and `_correct` in `laya/evals.py` reads only those value keys. So the
+# metrics -- accuracy, ece, brier, aurc, selective_accuracy@NN -- are identical at every
+# threshold; what changes is `report.config["timing"]["min_confidence"]` and `min_confidence_sent`,
+# which the wording below must describe as claims about the run, not claims about the answers.
+
+_EVALS_CLI_PATH = os.path.join(ROOT, "laya", "evals_cli.py")
+_EVALS_PY_PATH = os.path.join(ROOT, "laya", "evals.py")
+_EVALS_MD_PATH = os.path.join(ROOT, "docs", "evals.md")
+_TEST_EVALS_PATH = os.path.join(ROOT, "tests", "test_evals.py")
+_TEST_EVALS_API_PATH = os.path.join(ROOT, "tests", "test_evals_api.py")
+
+
+def _read_text(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def _docstring_of(path, func_name):
+    """A function's docstring pulled out of the file, so a ban can point at one site not the file."""
+    tree = ast.parse(_read_text(path))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == func_name:
+            return ast.get_docstring(node) or ""
+    return ""
+
+
+def _cli_help_of(path, flag):
+    """The concatenated `help=` literal on a `parser.add_argument(flag, ...)` call."""
+    tree = ast.parse(_read_text(path))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and node.args \
+                and isinstance(node.args[0], ast.Constant) and node.args[0].value == flag:
+            for kw in node.keywords:
+                if kw.arg == "help":
+                    try:
+                        return ast.literal_eval(kw.value) or ""
+                    except (ValueError, SyntaxError):
+                        return ""
+    return ""
+
+
+# The wrong-language patterns: each is a claim that the threshold changes the scored numbers.
+_BAN_COME_BACK_ABSTAINED = re.compile(r"come back\s+abstained", re.I)
+_BAN_OVERWRITES_A_LOW = re.compile(r"abstention\s+overwrites\s+a\s+low", re.I)
+_BAN_SCORES_POLICY = re.compile(r"scores the policy at (?:the|that) threshold", re.I)
+_BAN_VS_RAW_ARGMAX = re.compile(r"(?:rather than|not)\s+the\s+raw\s+argmax", re.I)
+_BAN_MINCONFIDENCE_CHANGES_ANSWER = re.compile(
+    r"`min_confidence`[^.\n]{0,80}?changes the answ", re.I)
+_BAN_UNLIKE_GROUPING_CHANGES = re.compile(
+    r"[Uu]nlike\s+`?grouping`?[^.]{0,40}?changes the answ", re.I)
+_BAN_PRECISION_NUMBER_FOR_POLICY = re.compile(
+    r"precision@coverage`?\s+(?:number|figure)\s+for a policy that never ran", re.I)
+_BAN_WOULD_REPORT_PRECISION = re.compile(
+    r"would report `?precision@coverage`?", re.I)
+_BAN_OTHERWISE_SCORE_POLICY = re.compile(
+    r"otherwise score a policy that never ran", re.I)
+_BAN_NO_WAY_TO_MEASURE_PATCOV = re.compile(
+    r"no way to measure `?precision@coverage", re.I)
+_BAN_A_SCORING_CONTROL = re.compile(r"(?:it is|that is|dropping) a\b[^.\n]{0,10}scoring control", re.I)
+_BAN_ANSWER_NOT_SAME_DECISION = re.compile(
+    r"an answer below the threshold is not the same decision", re.I)
+_BAN_T0_T07_DIFFERENT_EXPERIMENT = re.compile(
+    r"same run at `T=0` and `T=0\.7` is a different experiment", re.I)
+_BAN_SWEEP_IS_SERIES = re.compile(
+    r"`precision@coverage`\s+sweep is a series of these", re.I)
+_BAN_CHANGES_WHICH_ANSWERS_SCORE = re.compile(
+    r"(?:abstention threshold|min_confidence).{0,30}?changes which answers score", re.I | re.S)
+
+_EVALS_BANS = (
+    _BAN_COME_BACK_ABSTAINED, _BAN_OVERWRITES_A_LOW, _BAN_SCORES_POLICY,
+    _BAN_VS_RAW_ARGMAX, _BAN_MINCONFIDENCE_CHANGES_ANSWER,
+    _BAN_UNLIKE_GROUPING_CHANGES, _BAN_PRECISION_NUMBER_FOR_POLICY,
+    _BAN_WOULD_REPORT_PRECISION, _BAN_OTHERWISE_SCORE_POLICY,
+    _BAN_NO_WAY_TO_MEASURE_PATCOV, _BAN_A_SCORING_CONTROL,
+    _BAN_ANSWER_NOT_SAME_DECISION, _BAN_T0_T07_DIFFERENT_EXPERIMENT,
+    _BAN_SWEEP_IS_SERIES, _BAN_CHANGES_WHICH_ANSWERS_SCORE,
+)
+
+# Positive claims the wording must make: name the two state fields `apply_confidence_gate`
+# writes. A wording that only says what the gate does NOT do is a diff, not a fix.
+_SAYS_LOW_CONFIDENCE = re.compile(r"low_confidence")
+_SAYS_ABSTENTION_FIELD = re.compile(
+    r"abstention[^a-zA-Z]{0,3}[:=]?[^a-zA-Z]{0,3}[\"']abstained[^a-zA-Z]{0,3}[\"']")
+
+# The pre-fix wording at each of the ten sites we touched, so every ban above has a witness
+# it fires on. A ban that never fires is a rule the code cannot check.
+_OLD_E1 = ("abstention threshold on `answer_confidence` (#361): answers below it come back "
+           "abstained, so the run scores the policy at that threshold rather than the raw "
+           "argmax.")
+_OLD_E2 = ("`min_confidence` changes the answer (an abstention overwrites a low-confidence "
+           "choice), so it is a scoring control, not an optimisation. silently dropping the "
+           "threshold and reporting the same run would give a `precision@coverage` number for "
+           "a policy that never ran")
+_OLD_E3 = ("answers below it come back abstained, so the run scores the policy at that "
+           "threshold, not the raw argmax. Unlike `sort_by_length` this changes the answers")
+_OLD_E4 = ("because an abstention threshold changes which answers score as correct. Silently "
+           "dropping it would publish a `precision@coverage` number for a policy that never ran")
+_OLD_E5 = ("or drop the threshold -- the report would otherwise score a policy that never ran")
+_OLD_MD1 = ("Unlike grouping, this changes the answers that score: the same run at `T=0` and "
+            "`T=0.7` is a different experiment, and a `precision@coverage` sweep is a series "
+            "of these, not a single baseline drifting.")
+_OLD_MD2 = ("Silently dropping a scoring control is the class of lie this harness exists to "
+            "prevent: the report would publish a `precision@coverage` figure for a policy "
+            "that never ran.")
+_OLD_T1 = ("That is a scoring control: an answer below the threshold is not the same decision "
+           "as one above. A `laya-evals run` that could not pass it through had no way to "
+           "measure `precision@coverage` at any threshold")
+_OLD_T2 = ("Silently dropping a scoring control would report `precision@coverage` for a "
+           "policy that never ran.")
+_OLD_T3 = ("a `--min-confidence` run that silently dropped the argument would publish a "
+           "`precision@coverage` figure for a policy that never ran")
+
+_OLD_EVALS_SITES = (_OLD_E1, _OLD_E2, _OLD_E3, _OLD_E4, _OLD_E5,
+                    _OLD_MD1, _OLD_MD2, _OLD_T1, _OLD_T2, _OLD_T3)
+
+
+def test_abstention_wording_bans_have_teeth():
+    """Every ban fires on a pre-fix site, and every pre-fix site is caught by at least one ban."""
+    matched = [[bool(rule.search(old)) for rule in _EVALS_BANS] for old in _OLD_EVALS_SITES]
+    for i, old in enumerate(_OLD_EVALS_SITES):
+        assert any(matched[i]), "site %d's pre-fix wording is not caught by any ban:\n%s" % (i, old)
+    for j, rule in enumerate(_EVALS_BANS):
+        assert any(matched[i][j] for i in range(len(_OLD_EVALS_SITES))), \
+            "ban /%s/ never fires on any pre-fix wording: a rule without a witness" % rule.pattern
+
+
+def test_abstention_wording_is_gone_from_every_site():
+    """None of the scoring-change claims may appear in the sources they were removed from."""
+    for path in (_EVALS_CLI_PATH, _EVALS_PY_PATH, _EVALS_MD_PATH,
+                 _TEST_EVALS_PATH, _TEST_EVALS_API_PATH):
+        src = _read_text(path)
+        for rule in _EVALS_BANS:
+            assert not rule.search(src), \
+                "%s still carries the scoring-change claim: /%s/" % (path, rule.pattern)
+
+
+def test_abstention_wording_names_the_state_fields():
+    """Each site individually must name what the gate writes, not just somewhere in the file.
+
+    Per-docstring rather than per-file, so a mutation that drops `low_confidence` from the
+    `evaluate()` docstring alone is caught even though the sibling `_takes_min_confidence`
+    docstring above it still names the field.
+    """
+    help_text = _cli_help_of(_EVALS_CLI_PATH, "--min-confidence")
+    assert help_text, "no `help=` string on the --min-confidence argument in laya/evals_cli.py"
+    assert _SAYS_LOW_CONFIDENCE.search(help_text), \
+        "evals_cli's --min-confidence help does not name the `low_confidence` field"
+    assert _SAYS_ABSTENTION_FIELD.search(help_text), \
+        "evals_cli's --min-confidence help does not name `abstention: \"abstained\"`"
+
+    for func_name in ("_takes_min_confidence", "evaluate"):
+        doc = _docstring_of(_EVALS_PY_PATH, func_name)
+        assert doc, "no docstring on laya/evals.py::%s" % func_name
+        assert _SAYS_LOW_CONFIDENCE.search(doc), \
+            "laya/evals.py::%s docstring does not name the `low_confidence` field" % func_name
+        assert _SAYS_ABSTENTION_FIELD.search(doc), \
+            "laya/evals.py::%s docstring does not name `abstention: \"abstained\"`" % func_name
+
+    md = _read_text(_EVALS_MD_PATH)
+    assert _SAYS_LOW_CONFIDENCE.search(md), \
+        "docs/evals.md does not name the `low_confidence` field"
+    assert _SAYS_ABSTENTION_FIELD.search(md), \
+        "docs/evals.md does not name `abstention: \"abstained\"`"
+
+
+def test_gate_writes_the_fields_the_docs_name():
+    """The witness that ties the wording above to `apply_confidence_gate`'s actual effect.
+
+    Drive the gate at 0.7 over one high-confidence and one low-confidence `choice` answer, both
+    carrying `choice: "keep"`. The low one must come back flagged; both must keep their raw
+    argmax in `answer["choice"]`. If the gate ever starts overwriting the value, this assertion
+    breaks and the wording claim breaks with it.
+    """
+    results = [{"answers": {
+        "q_high": {"type": "choice", "choice": "keep",
+                    "answer_confidence": 0.90,
+                    "probabilities": {"keep": 0.90, "drop": 0.10}},
+        "q_low": {"type": "choice", "choice": "keep",
+                   "answer_confidence": 0.40,
+                   "probabilities": {"keep": 0.40, "drop": 0.60}},
+    }}]
+    apply_confidence_gate(results, 0.7)
+    high = results[0]["answers"]["q_high"]
+    low = results[0]["answers"]["q_low"]
+    check("evals-wording/high clears the gate", high["abstention"], GATE_PASSED)
+    check("evals-wording/low falls below", low["abstention"], GATE_ABSTAINED)
+    check_true("evals-wording/low is flagged", low.get("low_confidence") is True)
+    check_true("evals-wording/high is not flagged", "low_confidence" not in high)
+    # The claim the wording makes about the gate: the value key stays at the raw argmax.
+    check("evals-wording/high's choice is unchanged", high["choice"], "keep")
+    check("evals-wording/low's choice is unchanged even when abstained", low["choice"], "keep")
+    # Both thresholds echoed onto the answer, so `abstention_threshold` matches the wording.
+    check("evals-wording/high echoes the threshold", high["abstention_threshold"], 0.7)
+    check("evals-wording/low echoes the threshold", low["abstention_threshold"], 0.7)
+
+
+for _fn in (test_abstention_wording_bans_have_teeth,
+            test_abstention_wording_is_gone_from_every_site,
+            test_abstention_wording_names_the_state_fields,
+            test_gate_writes_the_fields_the_docs_name):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("evals-abstention/%s: %s" % (_fn.__name__, e))
+    except Exception as e:
+        FAIL.append("evals-abstention/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("evals-abstention/%s" % _fn.__name__)
+
+# ------------------------------------------ example 26's banner must count the primitives triage_questions() returns
+# `examples/26_presets_triage.py` opened with "`triage_questions()` is a ready-made schema for
+# inbound support: five questions ... a multi-way choice, two yes/no probabilities, and an ordinal
+# score". `laya.triage_questions()` ships three `noul` fields -- `is_urgent`, `refund_requested`,
+# `churn_risk` -- plus the choice and the score, so the banner's own arithmetic read 1 + 2 + 1 = 4
+# against its stated "five questions", and the example's own print block already prints all three
+# `noul` values two paragraphs later. A reader counting primitives against the schema could not
+# reconcile them.
+EXAMPLE_26 = os.path.join(ROOT, "examples", "26_presets_triage.py")
+OLD_BANNER_26 = '''
+    `triage_questions()` is a ready-made schema for inbound support: five questions, one
+    forward pass. It mixes all three primitives -- a multi-way choice, two yes/no
+    probabilities, and an ordinal score -- so a single call fills a whole triage record.
+'''
+_BAN_TWO_YESNO = re.compile(r"\btwo\s+yes/no\s+probabilit", re.I)
+# The banner's own stated counts. `_WORDS` maps each spelling that could stand for one primitive.
+_STATED_TOTAL_26 = re.compile(r"\b(one|two|three|four|five|six)\s+questions", re.I)
+_STATED_YESNO_26 = re.compile(r"\b(one|two|three|four|five|six)\s+yes/no\s+probabilit", re.I)
+_STATED_CHOICE_26 = re.compile(r"\b(a|one)\s+multi-way\s+choice", re.I)
+_STATED_SCORE_26 = re.compile(r"\b(a|an)\s+ordinal\s+score", re.I)
+_WORDS = {"one": 1, "a": 1, "an": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
+
+
+def _src26():
+    with open(EXAMPLE_26, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _triage_type_counts():
+    from laya.presets import triage_questions
+    q = triage_questions()
+    by_type = {}
+    for spec in q.values():
+        by_type[spec["type"]] = by_type.get(spec["type"], 0) + 1
+    return len(q), by_type
+
+
+def test_triage_preset_is_one_choice_three_noul_one_score():
+    # The gate's positive anchor: this is the schema the banner must describe. If `triage_questions()`
+    # ever moves, the banner test fails here first, and the drift is loud rather than silent.
+    n_total, by_type = _triage_type_counts()
+    assert n_total == 5, "triage_questions() no longer returns five fields: %r" % (by_type,)
+    assert by_type == {"choice": 1, "noul": 3, "score": 1}, \
+        "triage_questions()'s type mix moved: %r" % (by_type,)
+
+
+def test_example_26_banner_counts_match_the_preset():
+    n_total, by_type = _triage_type_counts()
+    src = _src26()
+    m_total = _STATED_TOTAL_26.search(src)
+    m_yesno = _STATED_YESNO_26.search(src)
+    m_choice = _STATED_CHOICE_26.search(src)
+    m_score = _STATED_SCORE_26.search(src)
+    assert m_total and m_yesno and m_choice and m_score, (
+        "the banner no longer spells out its primitive counts; the gate needs them readable")
+    assert _WORDS[m_total.group(1).lower()] == n_total, \
+        "banner says %r questions, triage_questions() returns %d" % (m_total.group(1), n_total)
+    assert _WORDS[m_yesno.group(1).lower()] == by_type["noul"], \
+        "banner says %r yes/no probabilities, triage_questions() returns %d noul fields" % \
+        (m_yesno.group(1), by_type["noul"])
+    assert _WORDS[m_choice.group(1).lower()] == by_type["choice"]
+    assert _WORDS[m_score.group(1).lower()] == by_type["score"]
+    # Parts must add up to the whole the same paragraph asserts.
+    parts = (_WORDS[m_choice.group(1).lower()] + _WORDS[m_yesno.group(1).lower()]
+             + _WORDS[m_score.group(1).lower()])
+    assert parts == _WORDS[m_total.group(1).lower()], (
+        "banner arithmetic is wrong: %d + %d + %d = %d but it says %d questions" % (
+            _WORDS[m_choice.group(1).lower()], _WORDS[m_yesno.group(1).lower()],
+            _WORDS[m_score.group(1).lower()], parts, _WORDS[m_total.group(1).lower()]))
+
+
+def test_example_26_drops_the_wrong_yes_no_count():
+    # The ban has teeth: it fires on the pre-fix wording shipped on main.
+    assert _BAN_TWO_YESNO.search(OLD_BANNER_26), "the ban must fire on the pre-fix wording"
+    # ...and every count regex still reads the OLD banner as its pre-fix numbers, so the positive
+    # rule was genuinely falsifiable.
+    m = _STATED_YESNO_26.search(OLD_BANNER_26)
+    assert m is not None and _WORDS[m.group(1).lower()] == 2
+    # The current example satisfies the ban.
+    assert not _BAN_TWO_YESNO.search(_src26()), "the wrong yes/no count is back in the shipped example"
+
+
+for _fn in (test_triage_preset_is_one_choice_three_noul_one_score,
+            test_example_26_banner_counts_match_the_preset,
+            test_example_26_drops_the_wrong_yes_no_count):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("page-26/%s: %s" % (_fn.__name__, e))
+    except Exception as e:                      # a crash is a failure, never a silent pass
+        FAIL.append("page-26/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("page-26/%s" % _fn.__name__)
+
+# ------------------------------------------- tl_kernels' docstring must name the caller's real padding policy
+# `laya/tl_kernels.py`'s module docstring said "M must be a multiple of 16 (the caller pads);
+# out-of-bounds rows are predicated by TileLang". The caller pads two dimensions, not one:
+# `laya/backends/base.py::bucket_rows` pads the batch dim to the next power of two (1, 2, 4, 8,
+# 16, 32, ...) and `bucket_tokens` pads the sequence dim to a 16-token bucket up to
+# `DYNAMIC_MAX_L` and a 64-token bucket beyond. M is the flattened `rows * tokens`, so the
+# multiple-of-16 came from the token dim, never from the row dim. A reader who took the
+# docstring as a row constraint would add `assert M % 16 == 0` at the call site and break
+# every batch of 1, 2, 4, or 8 questions -- and the shipped `pad_batch` tests already pin those
+# shapes: `tests/test_backends.py:86` "pad_batch/one row stays one row" is (1, 16), and
+# `:89` "pad_batch/five rows pad to eight" is (8, 16).
+TL_KERNELS = os.path.join(ROOT, "laya", "tl_kernels.py")
+OLD_TL_DOCSTRING = (
+    "GPU kernels take 16-bit activations (bf16 by default, fp16 with dtype=\"float16\"), accumulate in fp32.  Row count M is a runtime\n"
+    "symbol so one compiled kernel serves every batch/sequence bucket; M must be a\n"
+    "multiple of 16 (the caller pads); out-of-bounds rows are predicated by TileLang.\n"
+    "Use compile_cpu for an explicit fp32 CPU specialization; the GPU defaults are unchanged."
+)
+_BAN_ROW_MULT_16 = re.compile(r"M must be a\s*\n?\s*multiple of 16 \(the caller pads\)", re.I)
+_BAN_MULT_16_FROM_ROW = re.compile(r"multiple[- ]of[- ]16[^.\n]{0,80}from the row dim", re.I)
+_NAMED_POWER_OF_TWO = re.compile(r"power of two", re.I)
+_NAMED_16_TOKEN_BUCKET = re.compile(r"16[- ]token bucket", re.I)
+_NAMED_NOT_ROW_DIM = re.compile(r"not the row dim", re.I)
+_NAMED_BUCKET_ROWS = re.compile(r"\bbucket_rows\b")
+_NAMED_BUCKET_TOKENS = re.compile(r"\bbucket_tokens\b")
+
+
+def _tl_docstring():
+    """Return `laya/tl_kernels.py`'s module docstring via `ast`, so the gate reads what a
+    reader reads -- not whatever happens to appear in a comment."""
+    with open(TL_KERNELS, encoding="utf-8") as fh:
+        src = fh.read()
+    return ast.get_docstring(ast.parse(src)) or ""
+
+
+def test_tl_kernels_drops_the_wrong_row_claim():
+    # The ban fires on the pre-fix docstring...
+    assert _BAN_ROW_MULT_16.search(OLD_TL_DOCSTRING), "the ban must fire on the pre-fix wording"
+    # ...and does not fire on the shipped one.
+    doc = _tl_docstring()
+    assert doc, "the tl_kernels module docstring was removed -- the gate has nothing to read"
+    assert not _BAN_ROW_MULT_16.search(doc), (
+        "`laya/tl_kernels.py` again says M must be a multiple of 16 because the caller pads; "
+        "the caller pads rows to a power of two (1, 2, 4, 8, ...). A reader who trusts the "
+        "claim asserts `M % 16 == 0` at the call site and breaks every small batch.")
+    # The second ban catches the mis-attribution (claiming the 16-multiple comes from rows).
+    assert not _BAN_MULT_16_FROM_ROW.search(doc), (
+        "the docstring attributes the multiple-of-16 to the row dim; `bucket_rows` pads to a "
+        "power of two, so the 16-multiple is a token-dim artefact.")
+
+
+def test_tl_kernels_names_the_real_padding_policy():
+    doc = _tl_docstring()
+    assert _NAMED_POWER_OF_TWO.search(doc), (
+        "the docstring must name the row pad as a power of two, matching `bucket_rows`")
+    assert _NAMED_16_TOKEN_BUCKET.search(doc), (
+        "the docstring must name the token pad as a 16-token bucket, matching `bucket_tokens`")
+    assert _NAMED_BUCKET_ROWS.search(doc), (
+        "the docstring must attribute the row pad to `bucket_rows`, the function that does it")
+    assert _NAMED_BUCKET_TOKENS.search(doc), (
+        "the docstring must attribute the token pad to `bucket_tokens`, the function that does it")
+    assert _NAMED_NOT_ROW_DIM.search(doc), (
+        "the docstring must name the row dim as the wrong source of the 16-multiple, so a "
+        "reader cannot re-attribute it back")
+
+
+def test_bucket_rows_stays_a_power_of_two_below_16():
+    # The witness: rows below 16 really do stay at 1, 2, 4, 8, so the pre-fix claim
+    # ("M must be a multiple of 16 (the caller pads)") was false for them. If `bucket_rows`
+    # ever starts rounding to 16, the docstring fix needs review and this test says so.
+    from laya.backends.base import bucket_rows
+    for n, want in ((1, 1), (2, 2), (3, 4), (4, 4), (5, 8), (7, 8), (8, 8), (9, 16),
+                    (15, 16), (17, 32), (24, 32), (33, 64)):
+        got = bucket_rows(n)
+        assert got == want, (
+            "bucket_rows(%d) returned %d, expected %d -- the docstring's row contract needs "
+            "review" % (n, got, want))
+        assert got & (got - 1) == 0, (
+            "bucket_rows(%d) = %d is not a power of two; the docstring's `power of two` claim "
+            "is stale" % (n, got))
+    # Rows below 16 must stay below 16 -- that is the case the pre-fix docstring got wrong.
+    for n in (1, 2, 4, 8):
+        assert bucket_rows(n) == n, (
+            "bucket_rows(%d) = %d; a caller that trusts the old multiple-of-16 claim would "
+            "expect 16 here" % (n, bucket_rows(n)))
+
+
+for _fn in (test_tl_kernels_drops_the_wrong_row_claim,
+            test_tl_kernels_names_the_real_padding_policy,
+            test_bucket_rows_stays_a_power_of_two_below_16):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("tl-kernels/%s: %s" % (_fn.__name__, e))
+    except Exception as e:                      # a crash is a failure, never a silent pass
+        FAIL.append("tl-kernels/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("tl-kernels/%s" % _fn.__name__)
+
+# --------------------------------------- DecisionResult's docstring must split confidence by question type
+# `laya/structured.py`'s `DecisionResult` closed with "confidence keeps the **normalized-entropy
+# value** it has always had, because that is a different quantity on a scale that depends on the
+# label count". `Agent._decode_answers` (`laya/agent.py:1349-1402`) uses two different formulas:
+#   * `choice` and `score`  ->  `confidence_from_probs(p, k)` = `1 - H(p) / log(k)`
+#   * `noul`                ->  `max(p_true, 1 - p_true)`  (its own comment: "identical here:
+#                               over two options `max(p_true, 1 - p_true)` is `max(p)`")
+# The `noul` branch is deliberately not entropy: with k=2, entropy 1 - H/log(2) hits its floor
+# (0.0) exactly when the answer is a coin flip, which is inverted from what a boolean reporter
+# wants. `structured._details` (`:303`) copies `answer["confidence"]` verbatim, so
+# `DecisionResult.confidence` is per-type -- the docstring's blanket "normalized-entropy"
+# claim is false for every boolean field a caller projects. Same defect class as examples 18/40
+# (#972, #973) but in the public docstring rather than in an example banner.
+STRUCTURED = os.path.join(ROOT, "laya", "structured.py")
+OLD_DECISIONRESULT_DOC = """The detailed result of `decide(..., return_details=True)`.
+
+    `confidence` keeps the normalized-entropy value it has always had, because that is a
+    different quantity on a scale that depends on the label count. A field that reported no
+    usable `answer_confidence` maps to `None`, which is not the same as a reported `0.0`.
+"""
+_BAN_ENTROPY_UNIFORM = re.compile(r"`confidence` keeps the normalized-entropy value", re.I)
+_NAMED_MAX_PT = re.compile(r"max\(p_true,\s*1 - p_true\)")
+_NAMED_ENTROPY_FORMULA = re.compile(r"1 - H\(p\) / log\(k\)")
+_NAMED_CHOICE_SCORE = re.compile(r"`choice` and\s+`score`", re.I)
+_NAMED_NOUL = re.compile(r"for\s+`noul`", re.I)
+_NAMED_NOT_ENTROPY = re.compile(r"not an\s+entropy", re.I)
+
+
+def _decisionresult_doc():
+    """Return the `DecisionResult` class docstring via `ast`, so the gate reads what a caller
+    reads at `help(laya.structured.DecisionResult)` time."""
+    with open(STRUCTURED, encoding="utf-8") as fh:
+        src = fh.read()
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.ClassDef) and node.name == "DecisionResult":
+            return ast.get_docstring(node) or ""
+    return ""
+
+
+def test_decisionresult_drops_the_uniform_entropy_claim():
+    assert _BAN_ENTROPY_UNIFORM.search(OLD_DECISIONRESULT_DOC), (
+        "the ban must fire on the pre-fix wording")
+    doc = _decisionresult_doc()
+    assert doc, "the DecisionResult class docstring was removed -- the gate has nothing to read"
+    assert not _BAN_ENTROPY_UNIFORM.search(doc), (
+        "`laya/structured.py`'s `DecisionResult` again claims `confidence` is uniformly the "
+        "normalized entropy. `noul` fields carry `max(p_true, 1 - p_true)`, a probability, "
+        "which is not an entropy and does not scale with the label count.")
+
+
+def test_decisionresult_names_both_confidence_formulas():
+    doc = _decisionresult_doc()
+    assert _NAMED_ENTROPY_FORMULA.search(doc), (
+        "the docstring must name the entropy formula `1 - H(p) / log(k)`")
+    assert _NAMED_MAX_PT.search(doc), (
+        "the docstring must name `max(p_true, 1 - p_true)` for the noul branch")
+    assert _NAMED_CHOICE_SCORE.search(doc), (
+        "the docstring must attribute the entropy formula specifically to `choice` and `score`")
+    assert _NAMED_NOUL.search(doc), (
+        "the docstring must attribute the probability formula specifically to `noul`")
+    assert _NAMED_NOT_ENTROPY.search(doc), (
+        "the docstring must state that the `noul` value is not an entropy, so a caller cannot "
+        "silently re-collapse the two again")
+
+
+def test_noul_and_entropy_confidence_are_different_quantities():
+    # The witness: on the same 2-class distribution `confidence_from_probs` and the shipped
+    # `noul` formula disagree sharply, so a docstring that says "confidence is normalized
+    # entropy" and cites label count is wrong by construction. If they ever converge (say,
+    # if `noul` switched to entropy), the docstring fix would need review and this test
+    # tells the reader.
+    uniform = np.array([0.5, 0.5])
+    entropy_val = confidence_from_probs(uniform, 2)
+    noul_val = max(float(uniform[1]), 1.0 - float(uniform[1]))
+    assert entropy_val == 0.0 and noul_val == 0.5, (
+        "the two formulas must disagree at the uniform 2-class: entropy=%r, noul=%r; if "
+        "they've converged, the docstring's per-type split is stale" % (entropy_val, noul_val))
+    # And on a peaked 2-class, entropy-confidence stays near 1 but is not the reported probability.
+    peak = np.array([0.01, 0.99])
+    entropy_peak = confidence_from_probs(peak, 2)
+    noul_peak = max(float(peak[1]), 1.0 - float(peak[1]))
+    assert abs(noul_peak - 0.99) < 1e-6 and abs(entropy_peak - 0.9192) < 1e-3, (
+        "at (0.01, 0.99): entropy=%r (expect ~0.919) noul=%r (expect 0.99) -- if the values "
+        "moved, the docstring's formula names need re-checking" % (entropy_peak, noul_peak))
+
+
+for _fn in (test_decisionresult_drops_the_uniform_entropy_claim,
+            test_decisionresult_names_both_confidence_formulas,
+            test_noul_and_entropy_confidence_are_different_quantities):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("structured-doc/%s: %s" % (_fn.__name__, e))
+    except Exception as e:                      # a crash is a failure, never a silent pass
+        FAIL.append("structured-doc/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("structured-doc/%s" % _fn.__name__)
+
+# --------------------------------------- `docs/questions-and-answers.md` must count what `laya` exports
+# The Presets section opens with "Three ready-made question sets" and its example imports three
+# names, but `laya/__init__.py` re-exports five `*_questions` helpers -- `triage_questions`,
+# `email_questions`, `guard_questions`, `moderation_questions`, `router_questions` -- and every one
+# is in `laya.__all__`. A caller who reads "three" and picks from the shipped list misses two of
+# the five; the doc drifts silently as presets get added because nothing ties the number to the
+# exports. This gate reads the actual `laya.__all__` inventory so any future preset -- e.g. the
+# Swedish sets on #729 -- fails the doc until the doc is updated alongside the export.
+DOC_QA = os.path.join(ROOT, "docs", "questions-and-answers.md")
+OLD_PRESET_INTRO = "Three ready-made question sets, so the common cases do not need hand-written criteria:"
+_NUMBER_WORDS = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five",
+                 6: "Six", 7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten"}
+
+
+def _preset_exports():
+    """The names `laya` publicly exports that end in `_questions`.
+
+    Read via `laya.__all__`, not `dir(laya)` -- a helper that exists but is not in the export
+    tuple is an internal name and does not need a doc mention.
+    """
+    import laya
+    return sorted(n for n in laya.__all__ if n.endswith("_questions"))
+
+
+def _doc_preset_section():
+    with open(DOC_QA, encoding="utf-8") as fh:
+        src = fh.read()
+    idx = src.find("## Presets")
+    if idx == -1:
+        return ""
+    nxt = src.find("\n## ", idx + len("## Presets"))
+    return src[idx:] if nxt == -1 else src[idx:nxt]
+
+
+def _doc_stated_count_word(section):
+    m = re.search(r"\b(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)\s+ready-made\s+question", section, re.I)
+    return m.group(1) if m else None
+
+
+def test_presets_page_drops_the_three_set_claim():
+    # The witness: the pre-fix wording is banned, so if the doc ever regresses to "Three"
+    # while the exports are still five, the gate fires.
+    assert "Three ready-made" in OLD_PRESET_INTRO, (
+        "the ban's literal must itself carry the wrong count, otherwise the ban is vacuous")
+    section = _doc_preset_section()
+    assert section, "the Presets section was removed -- the gate has nothing to read"
+    word = _doc_stated_count_word(section)
+    actual = len(_preset_exports())
+    expected_word = _NUMBER_WORDS.get(actual)
+    assert word == expected_word, (
+        "docs/questions-and-answers.md's Presets section says %r but `laya.__all__` exports "
+        "%d `*_questions` helpers (%s). Update the doc's number word to %r (or, if it has "
+        "grown past the mapped words, extend `_NUMBER_WORDS`)." %
+        (word, actual, ", ".join(_preset_exports()), expected_word))
+
+
+def test_presets_page_names_every_exported_preset():
+    section = _doc_preset_section()
+    exports = _preset_exports()
+    assert exports, "`laya.__all__` has no `*_questions` names -- either the exports moved or " \
+                    "this gate is checking the wrong thing"
+    missing = [n for n in exports if ("`" + n + "`") not in section]
+    assert not missing, (
+        "docs/questions-and-answers.md's Presets section does not name these exported helpers "
+        "in backticks: %s. A caller who reads only this page cannot discover them." % missing)
+
+
+def test_presets_page_no_three_claim_witness():
+    # Direct ban on the pre-fix wording, independent of the count-regex, so a future PR that
+    # quietly reverts to "Three" fails with an explicit "this phrase is banned" message rather
+    # than a numeric-mismatch one.
+    section = _doc_preset_section()
+    assert "Three ready-made question sets" not in section, (
+        "`docs/questions-and-answers.md` again says \"Three ready-made question sets\". As of "
+        "this PR `laya.__all__` exports five `*_questions` helpers; if the number has since "
+        "changed, update the doc's number word AND this ban's literal together.")
+
+
+for _fn in (test_presets_page_drops_the_three_set_claim,
+            test_presets_page_names_every_exported_preset,
+            test_presets_page_no_three_claim_witness):
+    try:
+        _fn()
+    except AssertionError as e:
+        FAIL.append("docs-presets/%s: %s" % (_fn.__name__, e))
+    except Exception as e:                      # a crash is a failure, never a silent pass
+        FAIL.append("docs-presets/%s raised %s: %s" % (_fn.__name__, type(e).__name__, e))
+    else:
+        PASS.append("docs-presets/%s" % _fn.__name__)
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

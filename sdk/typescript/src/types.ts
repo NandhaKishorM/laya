@@ -23,6 +23,15 @@ export type ModelName = 'english' | 'multilingual' | 'typed-decisions';
 export type ModelAlias = ModelName | 'en' | 'laya' | 'default' | 'multi' | 'ml' | 'laya-multilingual'
   | 'typed' | 'typed_decisions' | 'laya-typed-decisions' | 'decisions';
 
+/** Per-option-count abstention thresholds: `bucket -> threshold`, keyed by core's `temp_bucket`
+ *  spelling (`"choice:2"`, `"choice:3-5"`, `"score:6-10"`, `"noul:2"`, ...) plus an optional
+ *  `"default"` for buckets the map does not name. One threshold does not transfer across option
+ *  counts, so each bucket is gated at the level its own calibration earns; fit one with
+ *  `laya.calibrate.fit_abstention_thresholds`. Every value is a threshold in `[0, 1]`. */
+export type MinConfidenceMap = Record<string, number>;
+/** The abstention gate: one threshold for every answer, or a per-bucket map. */
+export type MinConfidence = number | MinConfidenceMap;
+
 export interface RequestOptions {
   /** Abort waiting for the response. Running inference may still finish on the server. */
   signal?: AbortSignal;
@@ -45,9 +54,11 @@ export interface PredictOptions extends RequestOptions {
   maxLen?: number;
   /** Token window the option prompt shares, same cap. */
   headMaxLen?: number;
-  /** Abstention threshold in `[0, 1]`; an answer whose `answer_confidence` falls below
-   *  it comes back marked `low_confidence`, with the answer itself kept. */
-  minConfidence?: number;
+  /** Abstention gate: either one threshold in `[0, 1]` for every answer, or a
+   *  per-bucket map so each option count is gated at the level its own calibration earns.
+   *  An answer whose `answer_confidence` falls below its threshold comes back marked
+   *  `low_confidence`, with the answer itself kept. */
+  minConfidence?: MinConfidence;
 }
 
 interface AnswerBase {

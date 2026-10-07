@@ -256,7 +256,11 @@ describe("bpe merging: parity with the previous algorithm", () => {
     }
   });
 
-  it("agrees with the previous algorithm on 20 000 randomised strings", () => {
+  // 20 000 iterations of two encoders is a second of work on an idle machine and several on a
+  // loaded one, so vitest's 5 s default makes this test fail for how many OTHER files the suite
+  // happens to have rather than for anything it checks: adding a 33rd test file was enough to
+  // tip it. The bound is generous on purpose -- it is here to catch a hang, not to time the loop.
+  it("agrees with the previous algorithm on 20 000 randomised strings", { timeout: 60_000 }, () => {
     let seed = 12345;
     // Math.imul, not `*`: the product of two 32-bit values exceeds 2^53, so a plain multiply
     // rounds the low bits away and the generator collapses -- this same line written with `*`

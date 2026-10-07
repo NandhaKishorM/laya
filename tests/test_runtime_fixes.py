@@ -426,8 +426,11 @@ def _branch(device):
 
 
 def _strings(rel):
-    """Every string the example carries: the module docstring, the banner, each printed line."""
-    with open(os.path.join(ROOT, rel)) as fh:
+    """Every string the example carries: the module docstring, the banner, each printed line.
+
+    UTF-8 explicitly, for the reason recorded at the `EX35` read below.
+    """
+    with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
         tree = ast.parse(fh.read(), filename=rel)
     nodes = [n for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
     nodes.sort(key=lambda n: (n.lineno, n.col_offset))
@@ -502,7 +505,9 @@ check("35/the MPS threshold it states is the module default",
 # Read from the agent, and observed in a real forward: the page may not hand-copy the threshold, nor
 # relabel `dtype` as though it were the precision a call ran in. That relabeling is how the old
 # sentence got printed with a straight face -- `dtype` said float16 while the call ran fp32.
-with open(os.path.join(ROOT, EX35)) as fh:
+# `encoding="utf-8"` because `open()` otherwise takes the runner's locale codec, which is cp1252 on
+# `tests (windows)` and cannot decode the UTF-8 these pages carry (tests/test_portability.py gates it).
+with open(os.path.join(ROOT, EX35), encoding="utf-8") as fh:
     example = ast.parse(fh.read(), filename=EX35)
 attrs = {n.attr for n in ast.walk(example) if isinstance(n, ast.Attribute)}
 calls = {n.func.attr for n in ast.walk(example)

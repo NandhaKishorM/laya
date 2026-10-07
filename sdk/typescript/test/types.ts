@@ -64,11 +64,15 @@ client.route('hello');
 client.predict('hello', questions, { task: 12 });
 // @ts-expect-error maxLen must be a number.
 client.predict('hello', questions, { maxLen: '1024' });
-// @ts-expect-error minConfidence must be a number.
+// @ts-expect-error minConfidence must be a threshold or a threshold map.
 client.predict('hello', questions, { minConfidence: '0.9' });
 client.predict('hello', questions, { model: 'multilingual' });
 client.predict('hello', questions, { task: 'typed', lang: 'de', langGuess: 'fr',
   maxLen: 2048, headMaxLen: 256, minConfidence: 0.8 });
+// A per-bucket map gates each option count at the level its own calibration earns (#394).
+client.predict('hello', questions, { minConfidence: { 'choice:2': 0.9, default: 0.3 } });
+// @ts-expect-error A threshold map with a non-threshold value is not a gate.
+client.predict('hello', questions, { minConfidence: { 'choice:2': 'high' } });
 new Laya({ model: 'english' });
 // @ts-expect-error A score answer has no choice field.
 result.answers.priority.choice;

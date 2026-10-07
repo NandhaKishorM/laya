@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.3.24"
+version = "0.4.0"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,7 +34,7 @@ dependencies = [
 
 [tool.setuptools]
 # assets/, research/ and notebooks/ sit in the root, so auto-discovery bails out.
-packages = ["laya", "laya.mcp", "laya.integrations"]
+packages = ["laya", "laya.backends", "laya.mcp", "laya.integrations"]
 
 [project.optional-dependencies]
 # `pip install laya[serve]` adds the HTTP server (laya.serve / the laya-serve CLI).
@@ -54,7 +54,21 @@ structured = ["pydantic>=2.0.0"]
 
 # `pip install laya[onnx]` adds ONNX Runtime for `laya.onnx_agent` and `onnxscript`, which
 # `torch.onnx.export` requires (`scripts/export_onnx.py`, `tests/test_onnx.py`).
-onnx = ["onnx", "onnxruntime", "onnxscript"]
+#
+# The NumPy cap is not about ONNX: the extra's own resolution (onnx -> ml-dtypes) otherwise
+# pulls NumPy 2, and torch below 2.3 is built against NumPy 1.x and raises "Numpy is not
+# available" when it converts a tensor against 2.x, which `predict()` needs for its final
+# `.numpy()`. This package declares `torch>=2.0.0`, so the extra must not force a NumPy the
+# declared floor cannot use.
+#
+# It is scoped by marker rather than written as a blanket `numpy<2`, because a hard upper cap
+# binds every `laya[onnx]` install -- including the many on a current torch -- and makes the
+# extra unresolvable next to anything else requiring `numpy>=2`. The marker names the stack this
+# actually affects: the macOS/Intel checkout (#948), where torch tops out at 2.2.2 and NumPy 1.26
+# satisfies onnx, onnxruntime and onnxscript. Every other platform resolves what `onnx` wants,
+# so none of those three is quietly pinned to NumPy 1.x on its behalf.
+onnx = ["onnx", "onnxruntime", "onnxscript",
+        "numpy<2; platform_system == 'Darwin' and platform_machine == 'x86_64'"]
 
 # `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
 langchain = [
@@ -81,6 +95,7 @@ laya = "laya.cli:main"
 laya-serve = "laya.serve:main"
 laya-evals = "laya.evals_cli:main"
 laya-mcp-server = "laya.mcp.server:main"
+laya-train = "laya.train_cli:main"
 
 [project.urls]
 Homepage = "https://huggingface.co/convaiinnovations/laya"

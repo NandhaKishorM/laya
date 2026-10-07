@@ -1,0 +1,16 @@
+{
+  "id": "yuyi722333/laya-step4-gate-d",
+  "title": "Laya Step 4 Gate D",
+  "code_file": "step4_gate_d.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

@@ -5,6 +5,36 @@ come from measurements taken while working on #472, #576 and #718, on an RTX 407
 torch 2.11 and tilelang 0.1.14. They are here so the next person does not have to measure them
 again.
 
+## Backend selection
+
+`Agent(..., backend="auto")` and `laya.load(..., backend="auto")` opt into the backend
+class layer. The default remains eager. Explicit `backend=` takes precedence over `compile`
+and `fast`; omitting it preserves both flags' existing behaviour.
+
+- `eager`: the stock PyTorch forward, on any supported device.
+- `compile`: CUDA-only `torch.compile` with dynamic shapes and `reduce-overhead` mode,
+  bucket padding, persistent inductor cache, and warmup at installation. It reuses the same
+  independent-dimension scope as `compile=True`, which keeps its existing default mode and
+  CPU support. Set `LAYA_COMPILE_WARMUP=0` to defer backend warmup and `LAYA_INDUCTOR_CACHE_DIR`
+  to choose its cache directory (default `~/.cache/laya/inductor`).
+- `tilelang`: an adapter around the current fast path, using the agent's bf16 or fp16 dtype.
+- `auto`: TileLang on CUDA with a supported ModernBERT encoder and dtype when TileLang is
+  installed, otherwise compile on CUDA; eager on other devices.
+- `onnx`: `laya.load(..., backend="onnx", onnx_path="model.onnx")` returns the existing
+  `ONNXAgent`. Without `onnx_path`, it uses `laya.onnx`.
+
+An unavailable backend emits a `RuntimeWarning` naming the resolved backend and falls back to
+eager. To require a backend, use `agent.set_backend("tilelang", strict=True)`. Switching waits
+for active inference; `agent.backend` reports the active name and `agent.backend_object`
+exposes the installed object. `agent.set_backend("compile", warmup=False)` defers compilation
+until inference, so compilation errors then surface on the request. `agent.warmup()` remains
+available. `agent.deaccelerate()` removes a backend installed through the class layer.
+
+Routers forward an explicit selection through `Router(agent_kwargs={"backend": "auto"})`.
+They pass no backend argument by default, preserving compatibility with existing Agent-like
+constructors. Scoped CPU OOM retries detach the backend and restore it when the model returns
+to its original device.
+
 ## `compile=True` materialises the attention mask
 
 Eager SDPA takes ModernBERT's `(rows, 1, L, L)` attention mask as a broadcast view. Under the
@@ -22,13 +52,59 @@ by sequence length, so it has no such buffer.
 ## Cold start
 
 - **First compile.** It takes tens of seconds per graph. `compile=True` needs two graphs: one for
-  batches and one for a single row, which torch specialises. `agent.warmup()` (#718) builds both
-  before traffic arrives.
+  batches and one for a single row, which torch specialises. `compile=True` now calls `agent.warmup()`
+  during load. `compile_warmup=False` restores lazy compilation, and `agent.warmup(shapes=...)`
+  remains available manually. Eager and TileLang loads do not warm automatically. These shapes
+  cover common requests, not every possible shape guard.
+- **Warm-up failure.** Automatic warm-up is best effort: a failure emits a `RuntimeWarning`
+  naming the error (including the underlying compiler error) and load returns with the
+  `torch.compile` wrapper and compile settings intact. For example, Windows without MSVC can
+  load with `compile=True` even though warm-up fails. Later requests still use the compiled
+  model and surface compilation failures; Laya does not switch them to eager execution.
+  Explicit `agent.warmup()` calls also propagate failures, including after a failed automatic
+  warm-up. A successful load therefore does not guarantee that compiled inference is ready.
 - **Across restarts.** Inductor's FX-graph cache keeps compiled graphs under
   `TORCHINDUCTOR_CACHE_DIR`. The default is under `/tmp`, which does not survive a reboot or a
   container restart. Set it to a persistent directory, or a volume in a container, and a second
   process loads the graphs instead of compiling them. In #472's measurement that took warm-up from
   about 120 s to about 50 s.
+- **Laya cache opt-in.** `laya.load(..., compile=True, compile_cache=True)` sets the process-wide
+  `TORCHINDUCTOR_CACHE_DIR` only when absent, to `$XDG_CACHE_HOME/laya/torchinductor` or
+  `~/.cache/laya/torchinductor` when XDG is unset or not absolute. An existing setting, including
+  one set by an earlier PyTorch compile, wins. The directory is created at load; filesystem
+  errors propagate. `compile_cache=False` (default), eager, and TileLang loads leave the
+  environment alone. This does not move or delete old caches. Containers still need a persistent
+  home/volume. Cache compatibility and invalidation are managed by PyTorch; a GPU, torch,
+  compiler, model, or input guard change can require compilation again.
+
+## Opt-in CUDA graphs
+
+```python
+agent = laya.load("convaiinnovations/laya", compile=True,
+                  compile_cache=True, compile_mode="reduce-overhead")
+```
+
+`compile_mode` defaults to `"default"`; only `"default"` and `"reduce-overhead"` are accepted
+on the active compiled path. Eager and TileLang loads ignore the compile options. CPU compilation
+still works, but CUDA graph recording only applies on CUDA. The CUDA mode requires PyTorch's
+`torch.compiler.cudagraph_mark_step_begin` API; older builds without it raise an explicit error.
+
+Dynamic Dynamo graphs do not imply shape-independent CUDA graphs: new concrete shapes may
+require warm-up and recording again, without a new Dynamo graph. The two default synthetic
+warm-up shapes do not pre-record every request shape. Repeated shapes can benefit, but varying
+shapes can pay extra latency and retain graph pools. PyTorch may skip CUDA graphs for unsupported
+operations or configurations; setting this mode is not a guarantee of capture.
+
+Laya marks each compiled CUDA forward as a new step, serializes these forwards across its agents,
+and clones both output tensors outside the compiled graph before releasing the lock. This keeps
+retained outputs valid across replays, at the cost of two copies and serialized forward execution.
+The lock does not coordinate unrelated application-owned compiled models; callers sharing CUDA
+graph iterations or using custom streams must manage their own coordination. Disk caches reuse
+compiled code, not live CUDA graph recordings or their device memory, across processes.
+
+Reproduce cold/restart timings, memory, and cache counters with
+`benchmarks/bench_compile_defaults.py`; see
+[the recorded measurements](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/results/compile-defaults/README.md).
 
 ## AOTInductor: not yet
 

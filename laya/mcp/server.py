@@ -18,6 +18,8 @@ Environment (same meaning as laya.serve where it exists):
   LAYA_DEFAULT_MODEL  the checkpoint a state with no language evidence falls back to
                   (same as laya.serve, including its aliases); an unset value leaves
                   it to Router, an unresolvable one is a tool error.
+  LAYA_BASE_URL  answer from a running laya-serve over HTTP; unset keeps models local
+  LAYA_REMOTE_TIMEOUT  HTTP timeout in seconds for remote mode (default 300)
 """
 
 from __future__ import annotations
@@ -126,6 +128,20 @@ def _models_from_env() -> list[str]:
     return names or list(_DEFAULT_MODELS)
 
 
+def _remote_base_url() -> str | None:
+    """``LAYA_BASE_URL``: a running laya-serve to answer from instead of loading checkpoints here.
+
+    Set it to the server origin (``http://127.0.0.1:8000``). Blank or unset means the default,
+    in-process router. Scheme-less values are accepted as http so a bare ``host:port`` works.
+    """
+    raw = os.environ.get("LAYA_BASE_URL", "").strip()
+    if not raw:
+        return None
+    if "://" not in raw:
+        raw = "http://" + raw
+    return raw.rstrip("/")
+
+
 def _ensure_router() -> Any:
     """Build the Router from the environment, following the laya.serve contract.
 
@@ -145,6 +161,19 @@ def _ensure_router() -> Any:
     with _ROUTER_LOCK:
         if _ROUTER is not None:
             return _ROUTER
+        base_url = _remote_base_url()
+        if base_url:
+            # Remote mode: no checkpoint is built here, no torch is imported. The RemoteRouter
+            # routes locally (pure Python) and answers over HTTP from a running laya-serve.
+            try:
+                from .remote import RemoteRouter
+                router = RemoteRouter(base_url, api_key=os.environ.get("LAYA_API_KEY") or None,
+                                      auto_task_detection=_env_bool("LAYA_AUTO_TASK", False),
+                                      **_default_model_option())
+            except Exception as exc:
+                raise ToolError("internal_error", f"remote router construction failed: {exc}") from exc
+            _ROUTER = router
+            return router
         try:
             from laya import Router
         except Exception as exc:
@@ -205,7 +234,11 @@ def _wrap(fn, **kwargs) -> str:
 @server.tool(name="laya_status")
 def laya_status_tool() -> str:
     """Report the device actually in use per loaded checkpoint (or the configured preference, flagged as such, when nothing is loaded), torch CUDA availability, loaded checkpoints, and package versions."""
-    return _wrap(laya_status, router=_ROUTER, preload=_env_bool("LAYA_PRELOAD", True))
+    # In remote mode the router is cheap (no checkpoint, no torch), so build it here if a status
+    # call comes first: the remote report then describes the server instead of a torch probe of
+    # this process, and `device_report()`'s torch import never happens in a remote MCP process.
+    router = _ROUTER if (_ROUTER is not None or not _remote_base_url()) else _router_or_error()
+    return _wrap(laya_status, router=router, preload=_env_bool("LAYA_PRELOAD", True))
 
 
 @server.tool(
@@ -248,6 +281,8 @@ def laya_route_tool(
         "Answer typed questions (choice/score/noul) over any state in one forward pass. "
         "questions: {name: {type: 'choice'|'score'|'noul', instructions: str, criteria?: object|array}}. "
         "For noul, optional labels: {false: str, true: str} changes the model-facing option text. "
+        "Any type takes an optional option_order: a permutation of the option indices, slot s showing "
+        "option option_order[s]; answers stay keyed in the caller's own order. "
         "Returns answers with confidence, routing metadata and, when it can be read, the real "
         "device of the checkpoint that answered. "
         + _GUARDRAILS
@@ -351,7 +386,7 @@ def laya_route_batch_tool(requests: list, hooks_timeout: float = 0) -> str:
         "model is downloaded), then answer in one forward pass. Use this instead of "
         "laya_predict whenever a choice question has more options than the guardrails allow. "
         "Returns the answers plus per-question shortlist metadata (kept labels, cosine "
-        "scores, k, option count). "
+        "scores, k, option count, and whether the question passed through unshortlisted). "
         "Shortlisting narrows the label set; head_max_len decides how many tokens each kept label "
         "is read with, so the two together are the fix for a large-criteria question. "
         + _GUARDRAILS
@@ -478,7 +513,11 @@ def main() -> None:
     if os.name == "nt":
         os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
         os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
-    if _env_bool("LAYA_PRELOAD", True):
+    if _remote_base_url():
+        # Nothing to preload: the server at LAYA_BASE_URL owns the checkpoints. Say so once, so a
+        # reader of the client's stderr knows which process is answering.
+        print(f"[laya-mcp] remote mode: answering from laya-serve at {_remote_base_url()}", file=sys.stderr)
+    elif _env_bool("LAYA_PRELOAD", True):
         try:
             _ensure_router()
         except Exception as exc:

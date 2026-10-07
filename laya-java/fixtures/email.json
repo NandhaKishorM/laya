@@ -1,0 +1,661 @@
+{
+  "cleaned": [
+    {
+      "name": "empty",
+      "body": "",
+      "result": ""
+    },
+    {
+      "name": "plain",
+      "body": "I cannot log in and need a password reset.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "crlf",
+      "body": "line one\r\nline two\r\rline three",
+      "result": "line one\nline two\n\nline three"
+    },
+    {
+      "name": "literal-backslash-n",
+      "body": "first\\nsecond",
+      "result": "first\nsecond"
+    },
+    {
+      "name": "collapses-runs",
+      "body": "a    b\t\tc",
+      "result": "a b c"
+    },
+    {
+      "name": "blank-paragraphs",
+      "body": "first\n\n\n\nsecond\n   \n\nthird",
+      "result": "first\n\nsecond\n\nthird"
+    },
+    {
+      "name": "on-wrote",
+      "body": "I cannot log in and need a password reset.\n\nOn Tue, 3 Sep 2025 at 10:04, Ana <ana@x.com> wrote:\n> older text",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "em-escreveu",
+      "body": "I cannot log in and need a password reset.\n\nEm ter., 3 de set. de 2025, Ana escreveu:\n> antigo",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "el-escribio",
+      "body": "I cannot log in and need a password reset.\n\nEl mar, 3 sept 2025 a las 10:04, Ana escribió:\n> viejo",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "le-a-ecrit",
+      "body": "I cannot log in and need a password reset.\n\nLe mar. 3 sept. 2025 a écrit :\n> ancien",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "original-message",
+      "body": "I cannot log in and need a password reset.\n\n-----Original Message-----\nolder",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "mensagem-original",
+      "body": "I cannot log in and need a password reset.\n\n-----Mensagem original-----\nantigo",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "message-d-origine",
+      "body": "I cannot log in and need a password reset.\n\n-----Message d'origine-----\nancien",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "underscore-rule",
+      "body": "I cannot log in and need a password reset.\n\n________________\nolder",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "from-with-address",
+      "body": "I cannot log in and need a password reset.\n\nFrom: Ana <ana@x.com>\nolder",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "de-with-address",
+      "body": "I cannot log in and need a password reset.\n\nDe: Ana <ana@x.com>\nantigo",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "de-spaced-colon",
+      "body": "I cannot log in and need a password reset.\n\nDe : Marie <marie@x.com>\nancien",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "em-without-date",
+      "body": "I cannot log in and need a password reset.\n\nEm resposta ao que você escreveu:\nmais detalhes",
+      "result": "I cannot log in and need a password reset.\n\nEm resposta ao que você escreveu:\nmais detalhes"
+    },
+    {
+      "name": "le-without-date",
+      "body": "I cannot log in and need a password reset.\n\nLe rapport que vous avez écrit :\nplus de détails",
+      "result": "I cannot log in and need a password reset.\n\nLe rapport que vous avez écrit :\nplus de détails"
+    },
+    {
+      "name": "from-as-prose",
+      "body": "From: my side the integration works, but please refund the charge.",
+      "result": "From: my side the integration works, but please refund the charge."
+    },
+    {
+      "name": "de-as-date-range",
+      "body": "De: 10/09 a 15/09 estarei fora, por favor adie a cobranca.",
+      "result": "De: 10/09 a 15/09 estarei fora, por favor adie a cobranca."
+    },
+    {
+      "name": "quote-header-first-line",
+      "body": "On Tue, 3 Sep 2025, Ana <ana@x.com> wrote:\nstill the body",
+      "result": "On Tue, 3 Sep 2025, Ana <ana@x.com> wrote:\nstill the body"
+    },
+    {
+      "name": "from-name-then-sent",
+      "body": "I cannot log in and need a password reset.\n\nFrom: Maria Souza\nSent: Tuesday\nolder",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "de-name-then-enviado",
+      "body": "I cannot log in and need a password reset.\n\nDe: Maria Souza\nEnviado: terca\nantigo",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "de-name-then-envoye",
+      "body": "I cannot log in and need a password reset.\n\nDe : Marie Dupont\nEnvoyé : mardi\nancien",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "from-name-then-date-year",
+      "body": "I cannot log in and need a password reset.\n\nFrom: Maria Souza\nDate: 3 Sep 2025\nolder",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "de-name-no-neighbour",
+      "body": "I cannot log in and need a password reset.\n\nDe: Maria Souza\nPara: 15/09\nstill body",
+      "result": "I cannot log in and need a password reset.\n\nDe: Maria Souza\nPara: 15/09\nstill body"
+    },
+    {
+      "name": "wrapped-attribution",
+      "body": "I cannot log in and need a password reset.\n\nEm ter., 3 de set. de 2025,\nfulano@x.com> escreveu:\n> antigo",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "wrapped-attribution-fr",
+      "body": "I cannot log in and need a password reset.\n\nLe mar. 3 sept. 2025,\nsupport@x.com> a écrit :\n> ancien",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "attribution-tail-no-head",
+      "body": "I cannot log in and need a password reset.\n\nfulano@x.com> escreveu:\n> antigo",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "angle-quoted",
+      "body": "I cannot log in and need a password reset.\n> quoted\n  > indented quote\nmore of my message",
+      "result": "I cannot log in and need a password reset.\nmore of my message"
+    },
+    {
+      "name": "signoff-regards-name",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Ana\nx@y.com",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-latin-ext-name",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Łukasz\nx@y.com",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-caseless-name",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, 山田\nx@y.com",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "not-signoff-pt-with-name",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nObrigado, 山田\nx@y.com",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nObrigado, 山田\nx@y.com"
+    },
+    {
+      "name": "signoff-titlecase-name",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, ǅarko\nx@y.com",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-combining-name",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, José\nx@y.com",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-dashes",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\n--\nAna",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-warmest",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nWarmest regards, Ana",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-and-regards",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks and regards, Ana",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-many-thanks",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nMany thanks, Ana",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "not-signoff-sentence",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks for the quick reply.",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks for the quick reply."
+    },
+    {
+      "name": "not-signoff-lowercase-other-script",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks, żaneta",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks, żaneta"
+    },
+    {
+      "name": "not-signoff-symbol-name",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks, Ⓐ",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks, Ⓐ"
+    },
+    {
+      "name": "not-signoff-zwnj",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks, क्‌ष",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nThanks, क्‌ष"
+    },
+    {
+      "name": "signoff-atenciosamente",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nAtenciosamente,\nAna",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-cordialement",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nCordialement,\nMarie",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "signoff-saudacoes",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nSaudações!",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "not-signoff-obrigado-mas",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nObrigado pelo retorno, mas preciso do estorno.",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nObrigado pelo retorno, mas preciso do estorno."
+    },
+    {
+      "name": "not-signoff-merci-mais",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nMerci pour votre aide, mais le probleme persiste.",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nMerci pour votre aide, mais le probleme persiste."
+    },
+    {
+      "name": "signoff-too-early",
+      "body": "Regards, Ana\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.",
+      "result": "Regards, Ana\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "footer-iphone",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nSent from my iPhone",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "footer-samsung",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nEnviado do meu smartphone Samsung Galaxy.",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "footer-envoye-iphone",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nEnvoyé depuis mon iPhone",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "footer-get-outlook",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nGet Outlook for iOS",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "not-footer-with-request",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nEnviado do meu celular o comprovante ontem.",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nEnviado do meu celular o comprovante ontem."
+    },
+    {
+      "name": "disclaimer-en",
+      "body": "I cannot log in and need a password reset.\n\nThis email and its contents are confidential and intended solely for the addressee.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "disclaimer-en-wrapped",
+      "body": "I cannot log in and need a password reset.\n\nThis email and its contents are\nconfidential and intended solely for the addressee.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "disclaimer-received-in-error",
+      "body": "I cannot log in and need a password reset.\n\nIf you have received this email in error please delete it.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "disclaimer-pt",
+      "body": "I cannot log in and need a password reset.\n\nEsta mensagem e seus anexos sao confidenciais e de uso exclusivo do destinatario.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "disclaimer-es",
+      "body": "I cannot log in and need a password reset.\n\nEste mensaje es confidencial y para uso exclusivo del destinatario.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "disclaimer-fr",
+      "body": "I cannot log in and need a password reset.\n\nCe message est confidentiel et destiné uniquement au destinataire.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "disclaimer-print",
+      "body": "I cannot log in and need a password reset.\n\nAntes de imprimir pense no meio ambiente.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "disclaimer-mixed-paragraph",
+      "body": "Please refund the charge. This email and its contents are confidential and intended solely for the addressee.",
+      "result": "Please refund the charge."
+    },
+    {
+      "name": "disclaimer-fused-line",
+      "body": "The account is locked\nThis email and its contents are confidential and intended solely for the addressee.",
+      "result": "The account is locked"
+    },
+    {
+      "name": "not-disclaimer-question",
+      "body": "Is this confidential?",
+      "result": "Is this confidential?"
+    },
+    {
+      "name": "not-disclaimer-colon",
+      "body": "Confidential: I need a refund.",
+      "result": "Confidential: I need a refund."
+    },
+    {
+      "name": "not-disclaimer-print",
+      "body": "Antes de imprimir o boleto, confira o valor.",
+      "result": "Antes de imprimir o boleto, confira o valor."
+    },
+    {
+      "name": "not-disclaimer-contract",
+      "body": "Preciso do contrato confidencial assinado.",
+      "result": "Preciso do contrato confidencial assinado."
+    },
+    {
+      "name": "not-disclaimer-fr-contract",
+      "body": "Je voudrais le contrat confidentiel signé.",
+      "result": "Je voudrais le contrat confidentiel signé."
+    },
+    {
+      "name": "signoff-class-zero-mark",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Jo͏se",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "not-signoff-baseless-mark",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, ́Ana",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, ́Ana"
+    },
+    {
+      "name": "not-signoff-too-wide",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Anastasia Konstantinopolitanopoulos",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Anastasia Konstantinopolitanopoulos"
+    },
+    {
+      "name": "not-signoff-four-tokens",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Ana Maria Souza Lima",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Ana Maria Souza Lima"
+    },
+    {
+      "name": "attribution-tail-keeps-prose",
+      "body": "I cannot log in and need a password reset.\nSee the details below.\nfulano@x.com> escreveu:\n> antigo",
+      "result": "I cannot log in and need a password reset.\nSee the details below."
+    },
+    {
+      "name": "quote-header-across-u0085",
+      "body": "I cannot log in and need a password reset.\n\nOn Tue, 3 Sep 2025Ana wrote:\n> older",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "quote-header-nbsp-indent",
+      "body": "I cannot log in and need a password reset.\n\n On Tue, 3 Sep 2025, Ana wrote:\n> older",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "quote-header-u001c-indent",
+      "body": "I cannot log in and need a password reset.\n\n\u001cOn Tue, 3 Sep 2025, Ana wrote:\n> older",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "quote-header-arabic-indic-date",
+      "body": "I cannot log in and need a password reset.\n\nEm ter., ٣ de set. de ٢٠٢٥, Ana escreveu:\n> antigo",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "header-next-devanagari-year",
+      "body": "I cannot log in and need a password reset.\n\nFrom: Maria Souza\nDate: 3 Sep २०२५\nolder",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "window-floor-of-one",
+      "body": "I cannot log in and need a password reset.\nRegards, Ana",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "window-offset-dominates",
+      "body": "I cannot log in and need a password reset.\nRegards, Ana\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.",
+      "result": "I cannot log in and need a password reset."
+    },
+    {
+      "name": "window-offset-excludes",
+      "body": "I cannot log in and need a password reset.\nRegards, Ana\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.",
+      "result": "I cannot log in and need a password reset.\nRegards, Ana\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "window-ratio-excludes",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Ana\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Ana\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "window-ratio-includes",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, Ana\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "footer-at-the-width-limit",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nSent from my iphone using aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "footer-just-over-the-limit",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nSent from my iphone using aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nSent from my iphone using aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "body-strip-is-pythons",
+      "body": " Refund please ",
+      "result": "Refund please"
+    },
+    {
+      "name": "body-strip-both-ends",
+      "body": "  Please refund ",
+      "result": "Please refund"
+    },
+    {
+      "name": "astral-word-char-breaks-no-boundary",
+      "body": "Esta mensagem𒐲 e confidencial.",
+      "result": "Esta mensagem𒐲 e confidencial."
+    },
+    {
+      "name": "astral-elsewhere-still-matches",
+      "body": "Esta mensagem e confidencial e de uso exclusivo do destinatario𒐲.",
+      "result": ""
+    },
+    {
+      "name": "astral-signoff-at-the-width-limit",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, 𝐀AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    },
+    {
+      "name": "astral-signoff-just-over-the-limit",
+      "body": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, 𝐀AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "result": "I cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nRegards, 𝐀AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "name": "astral-mark-in-a-disclaimer",
+      "body": "Esta mensagem e confidencial𑀁 e de uso exclusivo do destinatario.",
+      "result": ""
+    },
+    {
+      "name": "full-stack",
+      "body": "I cannot log in and need a password reset.\nPlease check the attached receipt.\n\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nAtenciosamente,\nAna Souza\nEnviado do meu iPhone\n\nEsta mensagem e confidencial e de uso exclusivo do destinatario.\n\nEm ter., 3 de set. de 2025, Bruno <bruno@x.com> escreveu:\n> mensagem antiga",
+      "result": "I cannot log in and need a password reset.\nPlease check the attached receipt.\n\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset.\nI cannot log in and need a password reset."
+    }
+  ],
+  "budgets": [
+    {
+      "name": "budget-default",
+      "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx I cannot log in and need a password reset.",
+      "max_chars": 3000,
+      "result": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx I cannot log in and need a password reset."
+    },
+    {
+      "name": "budget-tiny",
+      "body": "I cannot log in and need a password reset.",
+      "max_chars": 12,
+      "result": "I cannot log"
+    },
+    {
+      "name": "budget-cut-mid-word",
+      "body": "abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij ",
+      "max_chars": 25,
+      "result": "abcdefghij abcdefghij abc"
+    },
+    {
+      "name": "budget-four-x-bound",
+      "body": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word This email is confidential and intended solely for the addressee.",
+      "max_chars": 100,
+      "result": "word word word word word word word word word word word word word word word word word word word word "
+    },
+    {
+      "name": "budget-zero",
+      "body": "I cannot log in and need a password reset.",
+      "max_chars": 0,
+      "result": ""
+    },
+    {
+      "name": "budget-negative-small",
+      "body": "I cannot log in and need a password reset.",
+      "max_chars": -5,
+      "result": "I cannot log in a"
+    },
+    {
+      "name": "budget-negative-one",
+      "body": "I cannot log in and need a password reset.",
+      "max_chars": -1,
+      "result": "I cannot log in and need a password r"
+    },
+    {
+      "name": "budget-negative-astral",
+      "body": "𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀",
+      "max_chars": -2,
+      "result": "𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀"
+    },
+    {
+      "name": "budget-negative-empties",
+      "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "max_chars": -12,
+      "result": ""
+    },
+    {
+      "name": "budget-splits-a-surrogate-pair",
+      "body": "ab𝐀cd𝐀ef",
+      "max_chars": 3,
+      "result": "ab𝐀"
+    },
+    {
+      "name": "budget-ends-on-a-surrogate-pair",
+      "body": "ab𝐀cd",
+      "max_chars": 4,
+      "result": "ab𝐀c"
+    },
+    {
+      "name": "budget-all-astral",
+      "body": "𝐀𝐁𝐂𝐃",
+      "max_chars": 2,
+      "result": "𝐀𝐁"
+    },
+    {
+      "name": "budget-four-x-bound-astral",
+      "body": "𝐀𝐀𝐀 This email is confidential and intended solely for the addressee.",
+      "max_chars": 11,
+      "result": ""
+    }
+  ],
+  "states": [
+    {
+      "name": "state-plain",
+      "subject": "Refund request",
+      "body": "I cannot log in and need a password reset.",
+      "sender": null,
+      "clean": true,
+      "max_chars": 3000,
+      "extra": {},
+      "result": {
+        "subject": "Refund request",
+        "body": "I cannot log in and need a password reset."
+      }
+    },
+    {
+      "name": "state-with-sender",
+      "subject": "Refund request",
+      "body": "I cannot log in and need a password reset.",
+      "sender": "ana@x.com",
+      "clean": true,
+      "max_chars": 3000,
+      "extra": {},
+      "result": {
+        "subject": "Refund request",
+        "body": "I cannot log in and need a password reset.",
+        "from": "ana@x.com"
+      }
+    },
+    {
+      "name": "state-unclean",
+      "subject": "Refund request",
+      "body": "I cannot log in and need a password reset.\n\nSent from my iPhone",
+      "sender": null,
+      "clean": false,
+      "max_chars": 3000,
+      "extra": {},
+      "result": {
+        "subject": "Refund request",
+        "body": "I cannot log in and need a password reset.\n\nSent from my iPhone"
+      }
+    },
+    {
+      "name": "state-extra-fields",
+      "subject": "Refund",
+      "body": "I cannot log in and need a password reset.",
+      "sender": "ana@x.com",
+      "clean": true,
+      "max_chars": 3000,
+      "extra": {
+        "priority": "high",
+        "ticket": 42,
+        "dropped": null
+      },
+      "result": {
+        "subject": "Refund",
+        "body": "I cannot log in and need a password reset.",
+        "from": "ana@x.com",
+        "priority": "high",
+        "ticket": 42
+      }
+    },
+    {
+      "name": "state-blank-subject",
+      "subject": "   ",
+      "body": "I cannot log in and need a password reset.",
+      "sender": null,
+      "clean": true,
+      "max_chars": 3000,
+      "extra": {},
+      "result": {
+        "subject": "",
+        "body": "I cannot log in and need a password reset."
+      }
+    },
+    {
+      "name": "state-none-ish",
+      "subject": "",
+      "body": "",
+      "sender": null,
+      "clean": true,
+      "max_chars": 3000,
+      "extra": {},
+      "result": {
+        "subject": "",
+        "body": ""
+      }
+    },
+    {
+      "name": "state-budget",
+      "subject": "S",
+      "body": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "sender": null,
+      "clean": true,
+      "max_chars": 20,
+      "extra": {},
+      "result": {
+        "subject": "S",
+        "body": "yyyyyyyyyyyyyyyyyyyy"
+      }
+    }
+  ],
+  "questions_match_presets": true
+}

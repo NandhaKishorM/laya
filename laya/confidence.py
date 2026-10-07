@@ -63,22 +63,44 @@ def _check_one_threshold(v: Any) -> float:
     return float(v)
 
 
+# The vocabulary a per-bucket map may be keyed by, reproduced here rather than imported from
+# `laya.common` because this module must import without PyTorch. `tests/test_conformal_abstention.py`
+# holds the copy against `common.temp_bucket` in both directions, so a band added on one side fails
+# there instead of silently rejecting (or accepting) the wrong keys here.
+BUCKET_QTYPES = ("choice", "score", "noul")
+BUCKET_SIZES = ("2", "3-5", "6-10", "11+")
+#: The one non-bucket key a map may carry: the threshold for every bucket the map does not name.
+DEFAULT_BUCKET_KEY = "default"
+
+
+def bucket_keys() -> set:
+    """Every option-count bucket a `min_confidence` map can name -- the answer shapes
+    :func:`_option_bucket` can produce, and the same strings `common.temp_bucket` spells."""
+    return {"%s:%s" % (qt, size) for qt in BUCKET_QTYPES for size in BUCKET_SIZES}
+
+
 def check_min_confidence_map(m: Dict[Any, Any]) -> Dict[str, float]:
     """Validate a per-bucket abstention-threshold map (#394).
 
-    Keys are option-count bucket strings in `common.temp_bucket`'s spelling -- ``"choice:2"``,
-    ``"choice:3-5"``, ``"score:6-10"``, ``"noul:2"`` and so on -- plus an optional ``"default"``
-    used for any bucket the map does not name. Values are floats in [0.0, 1.0]. One confidence
+    Keys are the option-count buckets in `common.temp_bucket`'s spelling -- every
+    :func:`bucket_keys` member (``"choice:2"``, ``"choice:3-5"``, ``"score:6-10"``, ``"noul:2"``
+    and so on) -- plus the optional ``"default"`` used for any bucket the map does not name.
+    Anything else raises: a key no answer can produce is not an unused entry, it is a bucket the
+    caller believes is gated and is not, because :func:`resolve_min_confidence` falls past it to
+    ``"default"`` and then to 0.0 -- gate nothing. Values are floats in [0.0, 1.0]. One confidence
     threshold does not transfer across option counts (#394); this lets a caller gate each bucket
     at the level its calibration actually earns. Fit one with
-    :func:`laya.calibrate.fit_abstention_thresholds`.
+    :func:`laya.calibrate.fit_abstention_thresholds`, whose keys are this vocabulary by
+    construction.
     """
     if not isinstance(m, dict) or not m:
         raise ValueError("a min_confidence map must be a non-empty dict of bucket -> float, got %r" % (m,))
+    allowed = bucket_keys() | {DEFAULT_BUCKET_KEY}
     out: Dict[str, float] = {}
     for key, val in m.items():
-        if not isinstance(key, str):
-            raise ValueError("min_confidence map keys must be strings like 'choice:3-5', got %r" % (key,))
+        if not isinstance(key, str) or key not in allowed:
+            raise ValueError("min_confidence map keys must be a bucket like 'choice:3-5' or "
+                             "'default', got %r" % (key,))
         out[key] = _check_one_threshold(val)
     return out
 
@@ -99,10 +121,12 @@ def check_min_confidence(v: Any):
 
 # Bucket spelling mirrors `common.temp_bucket` but is reproduced here so this module stays
 # torch-free (it must import without PyTorch). The answer already carries its type name and, via
-# `probabilities`, its option count, so no checkpoint config is needed.
+# `probabilities`, its option count, so no checkpoint config is needed. `BUCKET_QTYPES` is the one
+# list of types it reads, and `tests/test_conformal_abstention.py` compares what this returns to
+# `common.temp_bucket` for every option count, so the two bands cannot drift apart unnoticed.
 def _option_bucket(answer: Dict[str, Any]) -> Optional[str]:
     qt = answer.get("type")
-    if qt not in ("choice", "score", "noul"):
+    if qt not in BUCKET_QTYPES:
         return None
     probs = answer.get("probabilities")
     if isinstance(probs, dict) and probs:
@@ -120,7 +144,11 @@ def resolve_min_confidence(answer: Dict[str, Any], thresholds: Dict[str, float],
     """The threshold this answer's option-count bucket is gated at, under a per-bucket map.
 
     Falls back to the map's ``"default"`` entry, then to `default` (0.0 -- gate nothing), for a
-    bucket the map does not name, so an unconfigured bucket never abstains by surprise.
+    bucket the map does not name, so an unconfigured bucket never abstains by surprise. A map that
+    went through :func:`check_min_confidence_map` can only miss here by omitting a bucket: a key
+    mis-spelled well enough that no answer produces it is refused at validation, because it would
+    otherwise reach this fall-through and leave that bucket gated at nothing while its caller
+    believes it is gated.
     """
     key = _option_bucket(answer)
     if key is not None and key in thresholds:
@@ -134,7 +162,9 @@ def flag_low_confidence(results: List[Dict[str, Any]], min_confidence: float) ->
     Reads `answer_confidence` (`max(p)`, the quantity the calibration figures describe and the one
     that does not drift with the number of options), falling back to `confidence` if
     `answer_confidence` is absent.
-    The raw answer and confidence stay intact; `low_confidence: True` is added.
+    The raw answer and confidence stay intact; `low_confidence: True` is added when the answer
+    falls below the threshold, and removed if a previously-flagged answer now clears it (e.g.
+    when a result dict is reused or re-evaluated with a different threshold).
 
     `min_confidence` is either a float (one threshold for every answer) or a per-bucket mapping
     (#394), in which case each answer is gated at the threshold of its own option-count bucket via
@@ -152,10 +182,13 @@ def flag_low_confidence(results: List[Dict[str, Any]], min_confidence: float) ->
                 continue
             conf = _gate_confidence(a)
             if conf is None:
+                a.pop("low_confidence", None)
                 continue
             thr = resolve_min_confidence(a, min_confidence) if is_map else min_confidence
             if conf < thr:
                 a["low_confidence"] = True
+            else:
+                a.pop("low_confidence", None)
 
 
 #: The states :func:`apply_confidence_gate` reports, and the only ones. There is deliberately no
@@ -214,6 +247,8 @@ def apply_confidence_gate(results: List[Dict[str, Any]], min_confidence: Optiona
         for a in answers.values():
             if not isinstance(a, dict):
                 continue
+            if not is_map and min_confidence == 0.0:
+                a.pop("low_confidence", None)
             if a.get("low_confidence"):
                 a["abstention"] = GATE_ABSTAINED
             elif _gate_confidence(a) is None:

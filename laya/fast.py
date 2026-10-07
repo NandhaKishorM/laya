@@ -8,6 +8,7 @@ import sys
 import threading
 import torch
 from . import tl_kernels as K
+from .backends.base import bucket_rows
 
 _KERNEL_DTYPES = {torch.bfloat16: "bfloat16", torch.float16: "float16"}
 
@@ -21,7 +22,7 @@ def _top_two(probs):
 
 
 def _bucket_n(n):
-    return 1 << max(0, (n - 1).bit_length())
+    return bucket_rows(n)
 
 
 class FastLaya:

@@ -228,7 +228,10 @@ agent = laya.load("convaiinnovations/laya", on_predict_end=make_audit("acme"))
 
 ### Composition
 
-Several hooks of different kinds compose naturally; installed hooks run first, in order.
+Several hooks of different kinds compose naturally. Within one scope, `hooks=[...]` entries run in
+list order and the `on_predict_start=` / `on_predict_end=` convenience callables follow. Across
+scopes, process-wide default hooks come before an instance's hooks, and an instance's hooks before
+per-call hooks.
 
 ```python
 agent = laya.load(

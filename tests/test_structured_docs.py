@@ -288,13 +288,13 @@ def main() -> int:
     api = parse_table(text, API_HEADER)
 
     # ------------------------------------------------------------------ the tables parsed at all
-    check_true("subset table/parsed rows", len(subset) == 9, "got %d" % len(subset))
+    check_true("subset table/parsed rows", len(subset) == 11, "got %d" % len(subset))
     check_true("subset table/every row has three cells",
                all(len(r) == 3 for r in subset), [len(r) for r in subset])
     check_true("rejections table/parsed rows", len(props) == 13, "got %d" % len(props))
     check_true("rejections table/every row has two cells",
                all(len(r) == 2 for r in props), [len(r) for r in props])
-    check_true("entry point table/parsed rows", len(calls) == 6, "got %d" % len(calls))
+    check_true("entry point table/parsed rows", len(calls) == 7, "got %d" % len(calls))
     check_true("api table/parsed rows", len(api) >= 6, "got %d" % len(api))
 
     # ----------------------------------------------------------- the subset table, row by row
@@ -311,10 +311,14 @@ def main() -> int:
             FAIL.append("subset row/%s: a schema cell must be an object, got %s"
                         % (row[0], type(prop).__name__))
             continue
+        # a `$ref` row is a whole schema, because what it points at lives in the schema's `$defs`
+        if "properties" in prop:
+            schema, prop = prop, prop["properties"]["field"]
+        else:
+            schema = {"type": "object", "properties": {"field": prop}}
         documented_keys.update(prop.keys())
         try:
-            field = S.plan_from_json_schema(
-                {"type": "object", "properties": {"field": prop}})[0]
+            field = S.plan_from_json_schema(schema)[0]
         except Exception as exc:
             FAIL.append("subset row/%s: the documented schema raises %s: %s"
                         % (row[0], type(exc).__name__, exc))

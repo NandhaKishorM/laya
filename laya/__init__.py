@@ -1,5 +1,26 @@
 """Laya: Fast, non-autoregressive System 1 decision engine with calibrated probabilities."""
 
+import os as _os
+
+# Tell transformers not to import TensorFlow, before anything can import transformers.
+#
+# Laya's model path is torch-only, but on transformers 4.x `build_model` reaches
+# `transformers.modeling_utils` for `no_init_weights`, and importing that module pulls a chain
+# (`loss_utils` -> `loss_d_fine` -> `loss_for_object_detection` -> `image_transforms`) that ends in
+# `import tensorflow`. In an environment where TensorFlow is installed but cannot load, that is a
+# native crash rather than an exception -- `Fatal Python error: Bus error` -- from a library Laya
+# never uses (#915).
+#
+# `setdefault`, not assignment: a caller who set `USE_TF` to something deliberate keeps it, and one
+# who wants TensorFlow in the same process can still have it by setting the variable themselves. CI,
+# the Dockerfile and the test suite already set `USE_TF=0` for exactly this reason; this makes the
+# package behave the same way without the caller having to know.
+#
+# It has to be here, above the imports below, because transformers decides TensorFlow's
+# availability when it is first imported -- and `import laya` deliberately imports no transformers
+# (the torch-backed names are lazy, see `_LAZY_ATTRS`), so this runs first in the normal case.
+_os.environ.setdefault("USE_TF", "0")
+
 from .email import clean_email_body, email_state
 from .hooks import AsyncHook, BaseHook, Hook, PredictContext, PredictHook
 from .lang import analyse as detect_language
@@ -14,7 +35,7 @@ from .presets import (
 from .router import DEFAULT_MODELS, RouteDecision, Router
 from .structured import DecisionResult, decide, decide_batch
 
-__version__ = "0.3.24"
+__version__ = "0.4.0"
 
 # Routing, language detection and email cleaning are pure Python. The torch-backed names are
 # resolved lazily so that `import laya` -- and therefore `from laya import Router` or
@@ -47,6 +68,7 @@ _LAZY_ATTRS = {
     "QTYPE_NAMES": (".common", "QTYPE_NAMES"),
     "shortlist_choice": (".shortlist", "shortlist_choice"),
     "predict_shortlist": (".shortlist", "predict_shortlist"),
+    "predict_tournament": (".shortlist", "predict_tournament"),
     "embed_fn_from_agent": (".shortlist", "embed_fn_from_agent"),
     "cached_embed_fn": (".shortlist", "cached_embed_fn"),
     "LayaRouter": (".integrations", "LayaRouter"),
@@ -89,6 +111,7 @@ __all__ = [
     "DEFAULT_MODELS",
     "shortlist_choice",
     "predict_shortlist",
+    "predict_tournament",
     "embed_fn_from_agent",
     "cached_embed_fn",
     "detect_language",

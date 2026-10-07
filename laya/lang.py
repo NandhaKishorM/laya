@@ -16,6 +16,8 @@ from collections import Counter
 from collections.abc import Mapping
 from typing import Dict, List, Optional, Union
 
+from .english_lexicon import ENGLISH_LEXICON
+
 # Unicode blocks that the English (ModernBERT-large, 50k English BPE) checkpoint cannot read.
 _SCRIPT_RANGES = [
     ("greek", ((0x0370, 0x03FF), (0x1F00, 0x1FFF))),
@@ -430,11 +432,36 @@ def _english_rescued_by_words(words: List[str], diac_rate: float) -> bool:
     return sum(1 for w in set(words) if any(ch in _NON_EN_DIACRITICS for ch in w)) <= 1
 
 
+def _english_lexicon_word(word: str) -> bool:
+    """Whether `word` is English vocabulary, including a trailing plural ``s``.
+
+    ``s`` alone is the possessive the word splitter leaves of ``today's``. One-letter
+    tokens other than ``a`` and ``i`` are not vocabulary: ``c. n. n.`` is initials.
+    """
+    if word == "s" or word in _STOP["en"] or word in ENGLISH_LEXICON:
+        return True
+    stem = word[:-1]
+    return len(word) > 3 and word.endswith("s") and (stem in ENGLISH_LEXICON or stem in _STOP["en"])
+
+
+def _all_english_lexicon(words: List[str]) -> bool:
+    """True when every token is English vocabulary.
+
+    One English function word already names the language, so the undecided path has
+    none. This is the other direction: a command can still be English when it is made
+    only of content words (``cancel my seven am alarm``). One word from outside the
+    vocabulary keeps it off the English checkpoint.
+    """
+    return bool(words) and all(_english_lexicon_word(w) for w in words)
+
+
 def latin_profile(text: str) -> Dict[str, object]:
     """Evidence behind the Latin-script language guess.
 
-    Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate` and
-    `looks_non_english`. The latter can be true for non-English diacritics or an overlapping
+    Returns `language` (may be None when undecided), `english_hits`, `diacritic_rate`,
+    `looks_non_english`, `n_words` (tokens left after identifiers are stripped; under four
+    the guess is skipped) and `all_english_lexicon` (every token is English vocabulary).
+    `looks_non_english` can be true for non-English diacritics or an overlapping
     Swedish-Danish marker even when this heuristic cannot name the language. `analyse` needs the
     evidence and not just the verdict, because "undecided" and "English" are different answers
     and only one of them is safe to send to the English checkpoint.
@@ -448,13 +475,16 @@ def latin_profile(text: str) -> Dict[str, object]:
     diac = sum(1 for ch in lowered if ch in _NON_EN_DIACRITICS)
     diac_rate = diac / max(1, len(lowered))
     non_english = diac_rate >= NON_EN_DIACRITIC_RATE
+    all_english = _all_english_lexicon(words)
     nordic_overlap = bool(set(words) & _NORDIC_OVERLAP_WORDS) and not bool(set(words) & _EN_ONLY_WORDS)
     if 1 < len(words) < 4 and set(words) & _SHORT_SWEDISH_WORDS:
         return {"language": "sv", "english_hits": 0, "diacritic_rate": diac_rate,
-                "looks_non_english": non_english}
+                "looks_non_english": non_english, "n_words": len(words),
+                "all_english_lexicon": all_english}
     if len(words) < 4:
         return {"language": None, "english_hits": 0, "diacritic_rate": diac_rate,
-                "looks_non_english": non_english or nordic_overlap}
+                "looks_non_english": non_english or nordic_overlap, "n_words": len(words),
+                "all_english_lexicon": all_english}
 
     # A collision word counts once however often it repeats; every other word counts its hits.
     counts = Counter(words)
@@ -487,7 +517,8 @@ def latin_profile(text: str) -> Dict[str, object]:
     elif en and (not non_english or _english_rescued_by_words(words, diac_rate)):
         lang = "en"
     return {"language": lang, "english_hits": en, "diacritic_rate": diac_rate,
-            "looks_non_english": non_english or (lang is None and nordic_overlap)}
+            "looks_non_english": non_english or (lang is None and nordic_overlap),
+            "n_words": len(words), "all_english_lexicon": all_english}
 
 
 def guess_latin_language(text: str) -> Optional[str]:
@@ -737,11 +768,25 @@ def _analyse_text(text: str) -> Dict[str, object]:
     # Undecided is not English. Treating it as English sent every Latin-script language we hold no
     # stopwords for to the checkpoint that cannot read it, silently. When nothing identifies the
     # language, non-English letters or a shared Swedish-Danish marker can still prefer the
-    # multilingual checkpoint; text with neither signal still goes to the English one.
+    # multilingual checkpoint. Plain text with neither signal is the same call once it is long
+    # enough for the stopword heuristic to have tried: four or more words go to the multilingual
+    # checkpoint (#54, the follow-up to #130), unless every word is English vocabulary. That
+    # exception is the commands with no function word ("cancel my seven am alarm"); one word
+    # from outside the vocabulary still goes to multilingual. Shorter text stays on the English
+    # checkpoint.
     undecided = lang is None
-    english = lang == "en" or (undecided and not prof_lat["looks_non_english"])
+    plain_ascii_long = (undecided and float(prof_lat["diacritic_rate"]) == 0.0
+                        and int(prof_lat["n_words"]) >= 4
+                        and not prof_lat["all_english_lexicon"])
+    # Every word is English vocabulary, so this is safe for the English checkpoint even
+    # though no function word named the language. It must not follow `Router.default`:
+    # a multilingual default is for short text, not for "cancel my seven am alarm".
+    lexicon_english = (undecided and float(prof_lat["diacritic_rate"]) == 0.0
+                       and int(prof_lat["n_words"]) >= 4 and bool(prof_lat["all_english_lexicon"])
+                       and not prof_lat["looks_non_english"])
+    english = (lang == "en" or (undecided and not prof_lat["looks_non_english"])) and not plain_ascii_long
     return {"script": "latin", "script_profile": prof, "language": lang,
-            "is_english": english, "language_undecided": undecided,
+            "is_english": english, "language_undecided": undecided and not lexicon_english,
             "diacritic_rate": round(float(prof_lat["diacritic_rate"]), 4),
             "non_latin_fraction": non_latin, "mixed_segment": None}
 

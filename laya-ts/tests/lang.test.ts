@@ -1,6 +1,7 @@
 // laya-ts/tests/lang.test.ts
 import { describe, expect, it } from "vitest";
 import { analyse, detectScript, guessLatinLanguage, isEnglish } from "../src/lang.js";
+import { ENGLISH_LEXICON, ENGLISH_LEXICON_TEXT } from "../src/english-lexicon.js";
 describe("lang", () => {
   it("detects devanagari as non-latin", () => {
     expect(detectScript("मुझसे दो बार शुल्क लिया गया")).toBe("devanagari");
@@ -81,6 +82,72 @@ describe("lang", () => {
   });
   // `es` and `du` are German function words, but Spanish and French claim them, and a word two
   // lists share names neither language. They stay out of the German list.
+  // Undecided plain-ASCII of four or more words is not English (#54). Shorter text still is,
+  // and one English function word is enough to name English so the rule does not apply.
+  it("routes undecided plain-ASCII of four or more words off English", () => {
+    for (const text of [
+      "Fui cobrado duas vezes",
+      "lampen dimmen wohnzimmer abends",
+      "alpha bravo charlie delta",
+      "turn off wohnzimmer lights",
+    ]) {
+      const a = analyse(text);
+      expect(a.language, text).toBe(null);
+      expect(a.languageUndecided, text).toBe(true);
+      expect(a.diacriticRate, text).toBe(0);
+      expect(a.isEnglish, text).toBe(false);
+    }
+  });
+  it("keeps all-English-vocabulary commands on English", () => {
+    for (const text of [
+      "cancel my seven am alarm",
+      "play my rock playlist",
+      "turn off room lights",
+      "no refund no reply",
+      "tell me today's date",
+    ]) {
+      const a = analyse(text);
+      expect(a.language, text).toBe(null);
+      expect(a.isEnglish, text).toBe(true);
+      expect(a.languageUndecided, text).toBe(false);
+    }
+  });
+  it("keeps British-spelling commands on English", () => {
+    for (const text of [
+      "play my favourite playlist",
+      "play my favorite playlist",
+      "show my favourite songs",
+      "set living room colour warm",
+      "change lights colour blue",
+    ]) {
+      const a = analyse(text);
+      expect(a.isEnglish, text).toBe(true);
+      expect(a.languageUndecided, text).toBe(false);
+    }
+    expect(analyse("turn the colour of the lights to blue").language).toBe("en");
+  });
+  it("uses the generated lexicon in frequency order", () => {
+    const words = ENGLISH_LEXICON_TEXT.split(/\s+/).filter((w) => w.length > 0);
+    expect(words.slice(0, 5)).toEqual(["the", "of", "and", "to", "a"]);
+    expect(words.length).toBe(ENGLISH_LEXICON.size);
+    for (const w of ["colour", "favourite", "labour", "behaviour", "harbour", "organised",
+      "recognised", "customise", "analyses", "cox", "jo"]) {
+      expect(ENGLISH_LEXICON.has(w), w).toBe(true);
+    }
+    expect(ENGLISH_LEXICON.has("analyzes")).toBe(false);
+  });
+  it("keeps undecided plain-ASCII under four words on English", () => {
+    for (const text of ["alpha bravo charlie", "Quero cancelar", "refund me"]) {
+      const a = analyse(text);
+      expect(a.language, text).toBe(null);
+      expect(a.isEnglish, text).toBe(true);
+    }
+  });
+  it("keeps identified English on English", () => {
+    const a = analyse("I would like to book a flight to Berlin tomorrow");
+    expect(a.language).toBe("en");
+    expect(a.isEnglish).toBe(true);
+  });
   it("does not pull es or du into German", () => {
     expect(analyse("que hora es en australia").language).toBe("es");
     expect(analyse("baisse le volume du haut-parleur").language).toBe("fr");

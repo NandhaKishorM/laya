@@ -555,6 +555,10 @@ export class Router extends HookRegistry {
           `(${JSON.stringify(det.mixedSegment.slice(0, 60))}); the English checkpoint cannot read it`;
       } else if (det.language) {
         reason = `Latin script but language looks like ${JSON.stringify(det.language)}, not English`;
+      } else if (det.diacriticRate === 0 && det.nonLatinFraction === 0) {
+        reason =
+          "Latin script, language not identified; four or more words and no " +
+          "non-English letters, not safe for the English checkpoint";
       } else {
         reason =
           `Latin script, language not identified but ${Math.round(100 * det.diacriticRate)}% ` +

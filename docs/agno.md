@@ -1,6 +1,6 @@
 # Agno Integration
 
-Laya provides sub-35ms, non-autoregressive decision components for **Agno** multi-agent teams and workflows (single-question latency measured at **32.8 ms** with `laya-multilingual` and **39.5 ms** with `laya` on a Tesla T4 GPU; 193–464 ms on CPU):
+Laya provides sub-35ms, non-autoregressive decision components for **Agno** multi-agent teams and workflows (single-question latency measured at **32.8 ms** with `laya-multilingual` and **39.5 ms** with `laya` on a Tesla T4 GPU; **37.3 ms** on Apple Silicon M5; 193–464 ms on generic x86 CPU):
 
 * **`LayaAgnoRouter`**: Sub-35ms agent router replacing slow leader LLMs in Agno `Team(mode="route")` or standalone multi-agent pipelines.
 * **`LayaAgnoGuardrail`**: Pre-execution message guardrail screening incoming queries for jailbreaks, injections, and policy violations before agents call tools or downstream models.
@@ -8,6 +8,14 @@ Laya provides sub-35ms, non-autoregressive decision components for **Agno** mult
 Both take core's per-call decision controls -- the two token budgets (`max_len`, `head_max_len`), the language and abstention controls (`lang`, `min_confidence`), and the five prediction-hook arguments (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`) -- see [Per-call decision controls](#5-per-call-decision-controls).
 
 Supports both **local in-process inference** (`Agent` or `Router`) and **remote HTTP inference** against your own `laya-serve` instance without requiring PyTorch on edge clients.
+
+### Hardware Latency Observations
+
+| Platform / Accelerator | Architecture | Single-Decision Routing (`route`) | Pre-Execution Guardrail (`screen`) |
+|---|---|---|---|
+| **Tesla T4 GPU** | CUDA (Server) | **32.8 – 39.5 ms** | **35 – 45 ms** |
+| **Apple Silicon M5** | ARM64 (Local CPU) | **37.3 ms** (avg 38.0 ms) | **67.4 ms** (avg 78.8 ms) |
+| **Commodity Server** | Generic x86 CPU | **193 – 464 ms** | **210 – 520 ms** |
 
 ---
 

@@ -34,10 +34,10 @@ fn clamp_temperature_matches_python() {
     let cases = [
         (1.0, 1.0),
         (2.5, 2.5),
-        (0.1006, Calibration::TEMP_MIN), // the shipped choice:11+ value, refused as too sharp
-        (0.0, Calibration::TEMP_MIN),
-        (-3.0, Calibration::TEMP_MIN),
-        (99.0, Calibration::TEMP_MAX),
+        (0.1006, 0.5), // Python's range, not the implementation constants being tested
+        (0.0, 0.5),
+        (-3.0, 0.5),
+        (99.0, 5.0),
         (f64::NAN, 1.0),
         (f64::INFINITY, 1.0),
         (f64::NEG_INFINITY, 1.0),

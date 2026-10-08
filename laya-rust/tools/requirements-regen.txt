@@ -1,0 +1,9 @@
+# Same pinned regeneration toolchain as the upstream .NET lane.
+# Install CPU torch separately: pip install "torch==2.14.0" --index-url https://download.pytorch.org/whl/cpu
+transformers==5.17.0
+safetensors==0.8.0
+huggingface_hub==1.33.0
+numpy==2.5.3
+onnx==1.23.0
+onnxruntime==1.30.0
+onnxscript==0.7.2

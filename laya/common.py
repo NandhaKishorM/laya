@@ -124,6 +124,22 @@ def _resolve_noul_labels(labels=None):
     return false_label, true_label
 
 
+def canonicalize_choice_criteria(criteria: Any) -> Dict[Any, Any]:
+    """Deterministically order choice criteria to ensure permutation invariance.
+
+    Preserves label types, scalar keys, and descriptions exactly while ordering by
+    (type name, string representation) to prevent mixed-type comparison errors.
+    Preserves the existing list -> dict normalization behavior where list items map
+    to None descriptions.
+    """
+    if isinstance(criteria, list):
+        criteria = {c: None for c in criteria}
+    elif not isinstance(criteria, dict):
+        return criteria
+
+    return {k: criteria[k] for k in sorted(criteria.keys(), key=lambda k: (type(k).__name__, str(k)))}
+
+
 def render_options(q: Dict) -> List[str]:
     """Render option texts in label-index order. Noul semantic order is always [false, true]."""
     t, crit = q["t"], q.get("crit")

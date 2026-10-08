@@ -17,6 +17,7 @@ from laya.common import (
     QTYPES,
     answer_confidence,
     build_sequence,
+    canonicalize_choice_criteria,
     collapsed_options,
     collate_items,
     confidence_from_probs,
@@ -232,8 +233,8 @@ class ONNXAgent(HookRegistry):
     def _to_internal(qdef: Dict) -> Dict:
         t = qdef["type"]
         crit = qdef.get("criteria")
-        if t == "choice" and isinstance(crit, list):
-            crit = {c: None for c in crit}
+        if t == "choice":
+            crit = canonicalize_choice_criteria(crit)
         elif t == "noul" and isinstance(crit, dict):
             # Normalize boolean literal keys to string keys ("true"/"false")
             crit = {str(k).lower(): v for k, v in crit.items()}

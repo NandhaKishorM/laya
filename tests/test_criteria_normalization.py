@@ -24,7 +24,8 @@ class CriteriaTests(unittest.TestCase):
             "criteria": ["low", "medium", "high"]
         }
         internal = Agent._to_internal(qdef)
-        self.assertEqual(list(internal["crit"].keys()), ["low", "medium", "high"])
+        self.assertEqual(list(internal["crit"].keys()), ["high", "low", "medium"])
+        self.assertEqual(internal["crit"], {"high": None, "low": None, "medium": None})
 
 if __name__ == "__main__":
     unittest.main()

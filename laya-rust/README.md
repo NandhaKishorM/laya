@@ -561,6 +561,7 @@ improvements unblocked; Rust drift needs a follow-up port. This workflow never p
 Engine results expose Python 0.4.0's state-budget diagnostics via `LayaResult::state_usage()`:
 original state tokens, worst-case dropped tokens, whether truncation occurred, and the affected
 question ids. The existing `Usage` totals and result constructor remain source-compatible.
+`state_usage().options` additionally identifies questions whose clipped option spans collide.
 
 To reproduce it, install CPU torch and [`tools/requirements-regen.txt`](tools/requirements-regen.txt),
 then run from the repository root:

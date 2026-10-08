@@ -20,6 +20,7 @@ pub struct SequenceBuilder;
 pub(crate) struct StateTokenStats {
     pub tokens: usize,
     pub dropped: usize,
+    pub options: Option<crate::answers::OptionUsage>,
 }
 
 impl SequenceBuilder {
@@ -168,11 +169,13 @@ impl SequenceBuilder {
             |opts: &[Vec<u32>]| -> i64 { opts.iter().map(|o| o.len() as i64).sum() };
 
         let mut opt_budget = head_max_len as i64 - option_len_sum(&option_ids);
+        let mut tokens_per_option = None;
         if opt_budget < 16 {
             let per = 4i64.max(Self::floor_div(
                 head_max_len as i64 - 16,
                 1i64.max(option_ids.len() as i64),
             )) as usize;
+            tokens_per_option = Some(per);
             for fragment in &mut option_ids {
                 if fragment.len() > per {
                     fragment.truncate(per);
@@ -222,6 +225,14 @@ impl SequenceBuilder {
         let stats = StateTokenStats {
             tokens: state_ids.len(),
             dropped: state_ids.len() - sliced.len(),
+            options: {
+                let distinct = option_ids.iter().collect::<std::collections::HashSet<_>>().len();
+                (distinct < option_ids.len()).then_some(crate::answers::OptionUsage {
+                    total: option_ids.len(),
+                    distinct,
+                    tokens_per_option,
+                })
+            },
         };
         Ok((ids, markers, stats))
     }

@@ -221,6 +221,17 @@ impl Answer {
     }
 }
 
+/// Option-span collision diagnostics reported only when clipping makes options indistinguishable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OptionUsage {
+    /// Options requested by the question.
+    pub total: usize,
+    /// Distinct token spans remaining after per-option clipping.
+    pub distinct: usize,
+    /// Applied token cap, including the marker, or `None` when no cap was applied.
+    pub tokens_per_option: Option<usize>,
+}
+
 /// State-budget diagnostics reported by Python's `usage` since 0.4.0.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StateUsage {
@@ -232,6 +243,8 @@ pub struct StateUsage {
     pub truncated: bool,
     /// Ids of questions that lost state tokens, in question order.
     pub truncated_questions: Vec<String>,
+    /// Questions whose options collapsed to identical token spans.
+    pub options: IndexMap<String, OptionUsage>,
 }
 
 /// The result of one `predict` call: one answer per question, plus token usage.

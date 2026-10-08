@@ -180,6 +180,7 @@ impl LayaEngine {
             state_tokens_dropped: 0,
             truncated: false,
             truncated_questions: Vec::new(),
+            options: IndexMap::new(),
         };
 
         // A conversation-turn list is serialized newest-last (see `PythonJson::state`), so the
@@ -205,6 +206,9 @@ impl LayaEngine {
             if stats.dropped > 0 {
                 state_usage.truncated = true;
                 state_usage.truncated_questions.push(id.clone());
+            }
+            if let Some(options) = stats.options {
+                state_usage.options.insert(id.clone(), options);
             }
 
             // A marker dropped for landing past max_len means an option is not in the sequence at

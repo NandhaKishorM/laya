@@ -18,6 +18,7 @@ goldens for the supported paths (see the known gaps below).
 - Engine score legends render structured criteria as strings, matching Python 0.4.0.
 - `NoMarkers` errors include actual/requested marker counts and the total sequence budget,
   matching Python's actionable truncation diagnostic.
+- State usage also reports option-span collisions after clipping, including the applied cap.
 - `LayaEngine`: `choice`, `score` and `noul` predictions over the exported ONNX checkpoints
   (english, multilingual, typed-decisions); all questions for a state run in one batched forward pass.
 - Loads both ONNX layouts: the fused `model.onnx` and the split `encoder.onnx` + `head.onnx`.

@@ -10,6 +10,8 @@ First release: a port of the Laya Python SDK, tested against laya (Python) 0.3.2
 
 ### Added
 
+- Advisory parity CI on every push and PR: regenerate fixtures from the current Python checkout,
+  test all checkpoints, and reject skipped tests. No golden cache or crate publication.
 - `LayaEngine`: `choice`, `score` and `noul` predictions over the exported ONNX checkpoints
   (english, multilingual, typed-decisions); all questions for a state run in one batched forward pass.
 - Loads both ONNX layouts: the fused `model.onnx` and the split `encoder.onnx` + `head.onnx`.

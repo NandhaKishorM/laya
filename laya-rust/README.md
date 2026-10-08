@@ -551,10 +551,34 @@ Golden vectors are read from `tests/golden/<checkpoint>/` (recorded from Python 
 root looking for `onnx/<checkpoint>/`. Tests whose artifacts are missing print a `skip:` line and
 return, rather than failing — a machine with no exported checkpoints still gets a green Tier-1 run.
 
-Model loads are ~1.3–1.7 GB each; the heavier tiers should be run with `--release`:
+The advisory [Rust parity lane](../.github/workflows/rust.yml) runs on **every push and PR**,
+with no path filter. It regenerates fixtures from the Python `laya/` at that commit using
+[`tools/regen_golden.py`](tools/regen_golden.py), then runs the whole Cargo workspace.
+Goldens are never cached. A `skip:` diagnostic or ignored test makes the lane red, even when
+Cargo counts a missing-model early return as a pass. Job-level `continue-on-error` keeps Python
+improvements unblocked; Rust drift needs a follow-up port. This workflow never publishes crates.
+
+To reproduce it, install CPU torch and [`tools/requirements-regen.txt`](tools/requirements-regen.txt),
+then run from the repository root:
 
 ```bash
-LAYA_ONNX_ROOT=/path/to/onnx cargo test --release
+python laya-rust/tools/test_ci_tools.py
+python laya-rust/tools/regen_golden.py
+cd laya-rust
+cargo test --workspace --locked -- --nocapture --test-threads=1 2>&1 | tee cargo-test.log
+python tools/check_test_skips.py cargo-test.log --min-passed 200
+```
+
+Use `--artifacts-root` for exports outside the checkout, with `LAYA_ONNX_ROOT=<root>/onnx`
+and `LAYA_ONNX_SPLIT_ROOT=<root>/onnx-split`. Regeneration reuses only complete exports whose
+stamp matches the pinned checkpoint, exporters, toolchain and Python model definition.
+The fused exporter is shared with `laya-dotnet/tools/export_onnx.py`; split exports use
+`laya-ts/scripts/export_onnx.py`.
+
+Model loads are ~1.3–1.7 GB each; run model-backed tests serially (optionally with `--release`):
+
+```bash
+LAYA_ONNX_ROOT=/path/to/onnx cargo test --release -- --test-threads=1
 ```
 
 `ModelArtifacts`'s own download-path unit tests (404 / 401 / 403 handling, the `.part`-then-rename

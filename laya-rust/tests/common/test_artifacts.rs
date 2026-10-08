@@ -58,13 +58,17 @@ pub fn has_model(checkpoint: LayaCheckpoint) -> bool {
 /// Resolve the split-layout artifact directory for `checkpoint`, or `None` if it cannot be
 /// found.
 ///
-/// Unlike [`locate`], the split layout (laya-ts's exporter output) has no env-var override — per
-/// the task brief, tests for it look only in a fixed location relative to the crate: walking up
-/// from `CARGO_MANIFEST_DIR` looking for `onnx-split/<checkpoint>/`. Absence is expected on most
-/// machines and every split-layout test skips rather than fails when this returns `None`, exactly
-/// like the fused ones do via [`locate`].
+/// `LAYA_ONNX_SPLIT_ROOT` selects the parent of the checkpoint directories when exports live
+/// outside the checkout. Otherwise walk up from `CARGO_MANIFEST_DIR` for `onnx-split/<checkpoint>`.
+/// Missing exports skip locally; the CI output guard rejects every such skip.
 pub fn locate_split(checkpoint: LayaCheckpoint) -> Option<PathBuf> {
     let subfolder = checkpoint.subdir();
+    if let Ok(root) = std::env::var("LAYA_ONNX_SPLIT_ROOT")
+        && !root.trim().is_empty()
+    {
+        let candidate = PathBuf::from(root).join(subfolder);
+        return candidate.join("rl_agent_config.json").is_file().then_some(candidate);
+    }
     let mut dir = Some(Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf());
     while let Some(d) = dir {
         let candidate = d.join("onnx-split").join(subfolder);

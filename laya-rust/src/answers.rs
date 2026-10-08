@@ -67,7 +67,8 @@ pub struct ScoreAnswer {
     /// Expected level: the probability-weighted mean of the level indices, a fractional value
     /// between 0 and `legend.len() - 1`. Rounded to 4 decimals.
     pub score: f64,
-    /// What each level index means, as supplied on the question.
+    /// What each level index means. Engine-produced legends render each criterion as a string,
+    /// matching Python 0.4.0, including structured dict/list levels.
     pub legend: Vec<Value>,
     /// Probability per level index. Rounded to 4 decimals.
     pub probabilities: Vec<f64>,
@@ -220,6 +221,19 @@ impl Answer {
     }
 }
 
+/// State-budget diagnostics reported by Python's `usage` since 0.4.0.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StateUsage {
+    /// Tokens in the untruncated state, counted once rather than once per question.
+    pub state_tokens: usize,
+    /// The largest state-token loss across all question heads.
+    pub state_tokens_dropped: usize,
+    /// Whether at least one question lost state tokens.
+    pub truncated: bool,
+    /// Ids of questions that lost state tokens, in question order.
+    pub truncated_questions: Vec<String>,
+}
+
 /// The result of one `predict` call: one answer per question, plus token usage.
 #[derive(Debug, Clone)]
 pub struct LayaResult {
@@ -229,6 +243,7 @@ pub struct LayaResult {
     by_id: HashMap<String, Answer>,
     routing: Option<RouteDecision>,
     shortlist: Option<IndexMap<String, ShortlistInfo>>,
+    state_usage: Option<StateUsage>,
 }
 
 impl LayaResult {
@@ -250,6 +265,7 @@ impl LayaResult {
             by_id,
             routing: None,
             shortlist: None,
+            state_usage: None,
         }
     }
 
@@ -288,6 +304,17 @@ impl LayaResult {
     /// Token accounting for the call.
     pub fn usage(&self) -> Usage {
         self.usage
+    }
+
+    /// State-budget diagnostics for engine-produced answers. Manually constructed results
+    /// retain `None`, preserving the existing constructor and the `Copy` token-total `Usage`.
+    pub fn state_usage(&self) -> Option<&StateUsage> {
+        self.state_usage.as_ref()
+    }
+
+    pub(crate) fn with_state_usage(mut self, usage: StateUsage) -> Self {
+        self.state_usage = Some(usage);
+        self
     }
 
     /// The question ids, in the order they were asked.

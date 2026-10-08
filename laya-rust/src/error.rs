@@ -84,11 +84,44 @@ pub enum LayaError {
     /// Ports the "silently answering a truncated question" failure mode called out in
     /// `sequence-construction.md`, and matches Python's wording exactly (parity tests compare
     /// this text against golden `error_message` values byte-for-byte).
-    #[error("question '{id}' options exceed head_max_len={head_max_len}")]
+    #[error(
+        "question {}: only {actual_markers} of its {expected_markers} option markers fit in \
+         max_len={max_len} with head_max_len={head_max_len} spent on the question; \
+         lower head_max_len, raise max_len, or use fewer options",
+        crate::laya_router::python_repr_str(.id)
+    )]
     NoMarkers {
         /// The question id that lost one or more markers.
         id: String,
         /// The configured head budget the question's options did not fit within.
         head_max_len: usize,
+        /// Markers that survived the total sequence budget.
+        actual_markers: usize,
+        /// Markers requested by the question.
+        expected_markers: usize,
+        /// The configured total sequence budget.
+        max_len: usize,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LayaError;
+
+    #[test]
+    fn marker_truncation_error_matches_python_and_quotes_question_ids() {
+        let error = LayaError::NoMarkers {
+            id: "user's question".to_string(),
+            head_max_len: 192,
+            actual_markers: 125,
+            expected_markers: 300,
+            max_len: 512,
+        };
+        assert_eq!(
+            error.to_string(),
+            "question \"user's question\": only 125 of its 300 option markers fit in max_len=512 \
+             with head_max_len=192 spent on the question; lower head_max_len, raise max_len, or \
+             use fewer options"
+        );
+    }
 }

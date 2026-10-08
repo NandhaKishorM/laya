@@ -558,6 +558,10 @@ Goldens are never cached. A `skip:` diagnostic or ignored test makes the lane re
 Cargo counts a missing-model early return as a pass. Job-level `continue-on-error` keeps Python
 improvements unblocked; Rust drift needs a follow-up port. This workflow never publishes crates.
 
+Engine results expose Python 0.4.0's state-budget diagnostics via `LayaResult::state_usage()`:
+original state tokens, worst-case dropped tokens, whether truncation occurred, and the affected
+question ids. The existing `Usage` totals and result constructor remain source-compatible.
+
 To reproduce it, install CPU torch and [`tools/requirements-regen.txt`](tools/requirements-regen.txt),
 then run from the repository root:
 
@@ -651,6 +655,7 @@ Rust port groups the corresponding functions into a unit struct with associated 
   and checked against freshly regenerated probes. New mixed-field language heuristics remain
   a follow-up; these probes are not a claim of full coverage of every new Python feature.
 
-- **Opt-in features added in Python 0.3.21 are not ported yet:** abstention (`min_confidence`),
-  `predict_long`, and per-language temperatures (`lang_temperatures`). They are off by default in
+- **Opt-in features are not ported yet:** abstention (`min_confidence`, including per-bucket
+  thresholds), histogram-binning calibration, `predict_long`, and per-language temperatures
+  (`lang_temperatures`). They are off by default in
   Python, so default predictions are unaffected. They are planned as follow-ups.

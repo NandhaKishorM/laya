@@ -6,12 +6,18 @@ All notable changes to the `laya-onnx` crate are documented here. The format fol
 
 ## [0.1.0] - unreleased
 
-First release: a port of the Laya Python SDK, tested against laya (Python) 0.3.21.
+First release: a port of the Laya Python SDK, checked against regenerated laya (Python) 0.4.0
+goldens for the supported paths (see the known gaps below).
 
 ### Added
 
 - Advisory parity CI on every push and PR: regenerate fixtures from the current Python checkout,
   test all checkpoints, and reject skipped tests. No golden cache or crate publication.
+- `LayaResult::state_usage()` reports state-token truncation across question budgets, matching
+  Python 0.4.0 without changing the existing `Usage` totals or result constructor.
+- Engine score legends render structured criteria as strings, matching Python 0.4.0.
+- `NoMarkers` errors include actual/requested marker counts and the total sequence budget,
+  matching Python's actionable truncation diagnostic.
 - `LayaEngine`: `choice`, `score` and `noul` predictions over the exported ONNX checkpoints
   (english, multilingual, typed-decisions); all questions for a state run in one batched forward pass.
 - Loads both ONNX layouts: the fused `model.onnx` and the split `encoder.onnx` + `head.onnx`.
@@ -26,5 +32,5 @@ First release: a port of the Laya Python SDK, tested against laya (Python) 0.3.2
 
 - Routing, script counting and fused-line email disclaimers follow the regenerated Python 0.4.0
   probes. New mixed-field language heuristics are not yet ported.
-- Not yet ported from Python 0.3.21: abstention (`min_confidence`), `predict_long` and
-  `lang_temperatures`.
+- Not yet ported: abstention (`min_confidence`, including per-bucket thresholds),
+  histogram-binning calibration, `predict_long` and `lang_temperatures`.

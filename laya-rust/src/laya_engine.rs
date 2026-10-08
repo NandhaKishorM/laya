@@ -13,7 +13,7 @@
 //! Tokenization needs no such lock: `tokenizers::Tokenizer::encode` takes `&self`.
 
 use crate::answers::{
-    ActionInfo, Answer, ChoiceAnswer, LayaResult, NoulAnswer, ScoreAnswer, Usage,
+    ActionInfo, Answer, ChoiceAnswer, LayaResult, NoulAnswer, ScoreAnswer, StateUsage, Usage,
 };
 use crate::calibration::Calibration;
 use crate::collator::{CollatedBatch, Collator, SequenceItem};
@@ -175,6 +175,12 @@ impl LayaEngine {
 
         let ids: Vec<String> = questions.ids().map(str::to_string).collect();
         let mut items = Vec::with_capacity(ids.len());
+        let mut state_usage = StateUsage {
+            state_tokens: 0,
+            state_tokens_dropped: 0,
+            truncated: false,
+            truncated_questions: Vec::new(),
+        };
 
         // A conversation-turn list is serialized newest-last (see `PythonJson::state`), so the
         // default right-truncation of an over-long state would silently drop the newest turn.
@@ -186,7 +192,7 @@ impl LayaEngine {
         // The tokenizer here needs no lock: tokenizers::Tokenizer::encode takes &self.
         for id in &ids {
             let question = &questions[id.as_str()];
-            let (seq, markers) = SequenceBuilder::build(
+            let (seq, markers, stats) = SequenceBuilder::build_with_stats(
                 self.tokenizer.as_ref(),
                 &state,
                 question,
@@ -194,13 +200,23 @@ impl LayaEngine {
                 self.config.head_max_len,
                 truncate_left,
             )?;
+            state_usage.state_tokens = stats.tokens;
+            state_usage.state_tokens_dropped = state_usage.state_tokens_dropped.max(stats.dropped);
+            if stats.dropped > 0 {
+                state_usage.truncated = true;
+                state_usage.truncated_questions.push(id.clone());
+            }
 
             // A marker dropped for landing past max_len means an option is not in the sequence at
             // all, so its logit would score whatever token happens to sit at position 0.
-            if markers.len() != SequenceBuilder::render_options(question).len() {
+            let expected_markers = SequenceBuilder::render_options(question).len();
+            if markers.len() != expected_markers {
                 return Err(LayaError::NoMarkers {
                     id: id.clone(),
                     head_max_len: self.config.head_max_len,
+                    actual_markers: markers.len(),
+                    expected_markers,
+                    max_len: self.config.max_len,
                 });
             }
 
@@ -241,7 +257,8 @@ impl LayaEngine {
                 input_tokens: batch.input_tokens as u32,
                 output_tokens: 0,
             },
-        ))
+        )
+        .with_state_usage(state_usage))
     }
 
     /// One forward pass over a collated batch, returning the raw graph outputs. See the
@@ -526,7 +543,9 @@ fn build_answer(question: &Question, p: &[f64], action: ActionInfo) -> Answer {
             let expected = Calibration::round4(Calibration::expected_score(p));
             Answer::Score(ScoreAnswer::new(
                 expected,
-                score.levels().to_vec(),
+                score.levels().iter()
+                    .map(|level| Value::String(crate::python_json::PythonJson::criterion(level)))
+                    .collect(),
                 probabilities,
                 confidence,
                 answer_confidence,
@@ -660,6 +679,28 @@ fn onnx_err(e: impl std::fmt::Display) -> LayaError {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn score_legends_render_structured_levels_as_strings() {
+        let question = Question::score(
+            "severity",
+            [json!({"label": "info", "cvss": 0.0}), json!({"label": "high", "cvss": 7.5})],
+        ).unwrap();
+        let Answer::Score(answer) = build_answer(
+            &question,
+            &[0.25, 0.75],
+            ActionInfo { act_probability: 1.0 },
+        ) else {
+            panic!("score question must produce a score answer");
+        };
+        assert_eq!(
+            answer.legend,
+            vec![
+                json!("{\"label\": \"info\", \"cvss\": 0.0}"),
+                json!("{\"label\": \"high\", \"cvss\": 7.5}"),
+            ],
+        );
+    }
 
     /// A tiny two-row batch, just enough shape/data to exercise `value_for_input` without a real
     /// ONNX session.

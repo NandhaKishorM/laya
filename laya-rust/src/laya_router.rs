@@ -569,7 +569,7 @@ impl LayaPredictor for LayaRouter {
 /// the common control characters are escaped. Every model/task/lang name recorded in the routing
 /// golden vectors is plain ASCII, so this covers the cases that matter without attempting a full
 /// `repr()` (which would also need to classify every Unicode character as printable or not).
-fn python_repr_str(s: &str) -> String {
+pub(crate) fn python_repr_str(s: &str) -> String {
     let quote = if s.contains('\'') && !s.contains('"') {
         '"'
     } else {

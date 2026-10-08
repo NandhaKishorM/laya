@@ -5,7 +5,6 @@
 
 use laya::LayaResult;
 use laya::answers::{Answer, ChoiceAnswer, NoulAnswer, ScoreAnswer};
-use laya::python_json::PythonJson;
 use laya::sequence_builder::SequenceBuilder;
 use serde_json::Value;
 
@@ -26,6 +25,7 @@ fn assert_close(expected: f64, actual: f64, tolerance: f64, what: &str) {
 /// action/choice/score) matches the recorded golden `expected` (a case's `"result"` field) within
 /// the standard parity tolerances. `where_case` prefixes every assertion message.
 pub fn assert_result_matches(where_case: &str, expected: &Value, result: &LayaResult) {
+    assert_state_usage_matches(where_case, expected, result);
     assert_eq!(
         expected["model"].as_str().unwrap(),
         result.model(),
@@ -35,6 +35,11 @@ pub fn assert_result_matches(where_case: &str, expected: &Value, result: &LayaRe
         expected["usage"]["input_tokens"].as_u64().unwrap() as u32,
         result.usage().input_tokens,
         "{where_case}: usage.input_tokens"
+    );
+    assert_eq!(
+        expected["usage"]["output_tokens"].as_u64().unwrap() as u32,
+        result.usage().output_tokens,
+        "{where_case}: usage.output_tokens"
     );
 
     let answers = expected["answers"].as_object().unwrap();
@@ -63,6 +68,12 @@ pub fn assert_result_matches(where_case: &str, expected: &Value, result: &LayaRe
             &format!("{where_q}.confidence"),
         );
         assert_close(
+            want["answer_confidence"].as_f64().unwrap(),
+            got.answer_confidence(),
+            PROB_TOLERANCE,
+            &format!("{where_q}.answer_confidence"),
+        );
+        assert_close(
             want["action"]["act_probability"].as_f64().unwrap(),
             got.action().act_probability,
             PROB_TOLERANCE,
@@ -75,6 +86,29 @@ pub fn assert_result_matches(where_case: &str, expected: &Value, result: &LayaRe
             Answer::Noul(noul) => assert_noul(want, noul, &where_q),
         }
     }
+}
+
+pub fn assert_state_usage_matches(where_case: &str, expected: &Value, result: &LayaResult) {
+    let usage = result.state_usage().expect("engine result must report state usage");
+    let want = &expected["usage"];
+    assert_eq!(want.as_object().unwrap().len(), 6,
+               "{where_case}: new Python usage fields need a Rust port");
+    assert_eq!(
+        want["state_tokens"].as_u64().unwrap() as usize, usage.state_tokens,
+        "{where_case}: usage.state_tokens"
+    );
+    assert_eq!(
+        want["state_tokens_dropped"].as_u64().unwrap() as usize, usage.state_tokens_dropped,
+        "{where_case}: usage.state_tokens_dropped"
+    );
+    assert_eq!(
+        want["truncated"].as_bool().unwrap(), usage.truncated,
+        "{where_case}: usage.truncated"
+    );
+    let ids: Vec<&str> = want["truncated_questions"].as_array().unwrap()
+        .iter().map(|id| id.as_str().unwrap()).collect();
+    let got: Vec<&str> = usage.truncated_questions.iter().map(String::as_str).collect();
+    assert_eq!(ids, got, "{where_case}: usage.truncated_questions");
 }
 
 fn assert_choice(want: &Value, got: &ChoiceAnswer, where_q: &str) {
@@ -106,8 +140,8 @@ fn assert_score(want: &Value, got: &ScoreAnswer, where_q: &str) {
     for i in 0..got.legend.len() {
         let expected_level = &legend[&i.to_string()];
         assert_eq!(
-            PythonJson::criterion(expected_level),
-            PythonJson::criterion(&got.legend[i]),
+            expected_level,
+            &got.legend[i],
             "{where_q}: legend[{i}]"
         );
     }

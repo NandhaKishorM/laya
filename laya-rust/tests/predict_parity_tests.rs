@@ -18,7 +18,6 @@ use common::golden_data::{self, CheckpointGoldenData};
 use laya::answers::{Answer, ChoiceAnswer, NoulAnswer, ScoreAnswer};
 use laya::error::LayaError;
 use laya::laya_options::LayaCheckpoint;
-use laya::python_json::PythonJson;
 use laya::questions::QuestionSet;
 use laya::sequence_builder::SequenceBuilder;
 use serde_json::Value;
@@ -74,6 +73,7 @@ fn reproduces_the_recorded_answers() {
                 .unwrap_or_else(|e| panic!("{}/{case}: predict failed: {e}", checkpoint.subdir()));
             let expected = &root["result"];
             let where_case = format!("{}/{case}", checkpoint.subdir());
+            common::result_compare::assert_state_usage_matches(&where_case, expected, &result);
 
             assert_eq!(
                 expected["model"].as_str().unwrap(),
@@ -118,6 +118,12 @@ fn reproduces_the_recorded_answers() {
                     got.confidence(),
                     PROB_TOLERANCE,
                     &format!("{where_q}.confidence"),
+                );
+                assert_close(
+                    want["answer_confidence"].as_f64().unwrap(),
+                    got.answer_confidence(),
+                    PROB_TOLERANCE,
+                    &format!("{where_q}.answer_confidence"),
                 );
                 assert_close(
                     want["action"]["act_probability"].as_f64().unwrap(),
@@ -176,6 +182,7 @@ fn reproduces_the_recorded_answers_for_the_split_layout() {
                 .unwrap_or_else(|e| panic!("{}/{case}: predict failed: {e}", checkpoint.subdir()));
             let expected = &root["result"];
             let where_case = format!("{}/{case} (split layout)", checkpoint.subdir());
+            common::result_compare::assert_state_usage_matches(&where_case, expected, &result);
 
             assert_eq!(
                 expected["model"].as_str().unwrap(),
@@ -204,6 +211,12 @@ fn reproduces_the_recorded_answers_for_the_split_layout() {
                     &format!("{where_q}.confidence"),
                 );
 
+                assert_close(
+                    want["answer_confidence"].as_f64().unwrap(),
+                    got.answer_confidence(),
+                    PROB_TOLERANCE,
+                    &format!("{where_q}.answer_confidence"),
+                );
                 match got {
                     Answer::Choice(choice) => assert_choice(want, choice, &where_q),
                     Answer::Score(score) => assert_score(want, score, &where_q),
@@ -428,8 +441,8 @@ fn assert_score(want: &Value, got: &ScoreAnswer, where_q: &str) {
     for i in 0..got.legend.len() {
         let expected_level = &legend[&i.to_string()];
         assert_eq!(
-            PythonJson::criterion(expected_level),
-            PythonJson::criterion(&got.legend[i]),
+            expected_level,
+            &got.legend[i],
             "{where_q}: legend[{i}]"
         );
     }

@@ -16,6 +16,12 @@ use serde_json::Value;
 /// Namespace for sequence construction. See the module docs for the source this ports.
 pub struct SequenceBuilder;
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct StateTokenStats {
+    pub tokens: usize,
+    pub dropped: usize,
+}
+
 impl SequenceBuilder {
     /// One option fragment is capped at this many tokens, before the marker is prepended.
     const MAX_OPTION_TOKENS: usize = 48;
@@ -125,6 +131,18 @@ impl SequenceBuilder {
         head_max_len: usize,
         truncate_left: bool,
     ) -> Result<(Vec<u32>, Vec<usize>)> {
+        Self::build_with_stats(tokenizer, state, question, max_len, head_max_len, truncate_left)
+            .map(|(ids, markers, _)| (ids, markers))
+    }
+
+    pub(crate) fn build_with_stats(
+        tokenizer: &dyn LayaTokenizer,
+        state: &Value,
+        question: &Question,
+        max_len: usize,
+        head_max_len: usize,
+        truncate_left: bool,
+    ) -> Result<(Vec<u32>, Vec<usize>, StateTokenStats)> {
         let special = tokenizer.special();
         let mask_token = special.mask_token.as_str();
 
@@ -201,6 +219,10 @@ impl SequenceBuilder {
         }
         markers.retain(|&m| m < max_len);
 
-        Ok((ids, markers))
+        let stats = StateTokenStats {
+            tokens: state_ids.len(),
+            dropped: state_ids.len() - sliced.len(),
+        };
+        Ok((ids, markers, stats))
     }
 }

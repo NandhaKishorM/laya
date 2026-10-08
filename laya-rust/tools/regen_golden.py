@@ -6,6 +6,7 @@ goldens are ALWAYS rewritten, never read as an input or cached.
 
     python laya-rust/tools/regen_golden.py
     python laya-rust/tools/regen_golden.py --checkpoint routing
+    python laya-rust/tools/regen_golden.py --checkpoint repr
     python laya-rust/tools/regen_golden.py --checkpoint english --artifacts-root D:/laya-artifacts
 
 Install requirements-regen.txt and CPU torch first. The tests discover fused
@@ -134,7 +135,7 @@ def regen_checkpoint(name, root, revision, force):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--checkpoint", action="append", choices=CHECKPOINTS + ["routing", "all"])
+    ap.add_argument("--checkpoint", action="append", choices=CHECKPOINTS + ["routing", "repr", "all"])
     ap.add_argument("--artifacts-root", default=REPO)
     ap.add_argument("--revision", default=HF_REVISION)
     ap.add_argument("--force-export", action="store_true")
@@ -150,6 +151,8 @@ def main():
                 regen_checkpoint(name, root, args.revision, args.force_export)
         if "routing" in selected:
             run([sys.executable, os.path.join(TOOLS, "dump_routing_golden.py"), "--force"])
+        if "repr" in selected:
+            run([sys.executable, os.path.join(TOOLS, "repr_cases.py")])
     except subprocess.CalledProcessError as e:
         print("FAILED: %s" % " ".join(e.cmd), file=sys.stderr)
         return e.returncode or 1

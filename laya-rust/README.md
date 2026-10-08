@@ -574,6 +574,10 @@ cargo test --workspace --locked -- --nocapture --test-threads=1 2>&1 | tee cargo
 python tools/check_test_skips.py cargo-test.log --min-passed 200
 ```
 
+Float-formatting probes can also be regenerated without models:
+`python laya-rust/tools/regen_golden.py --checkpoint repr`. Their IEEE-754 bit patterns cover
+half-even ties, subnormals, notation boundaries and 2,000 deterministic random finite values.
+
 Use `--artifacts-root` for exports outside the checkout, with `LAYA_ONNX_ROOT=<root>/onnx`
 and `LAYA_ONNX_SPLIT_ROOT=<root>/onnx-split`. Regeneration reuses only complete exports whose
 stamp matches the pinned checkpoint, exporters, toolchain and Python model definition.

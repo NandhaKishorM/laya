@@ -112,6 +112,8 @@ fn repr_matches_python() {
         (123456789012345.6, "123456789012345.6"),
         (1.7976931348623157e308, "1.7976931348623157e+308"),
         (5e-324, "5e-324"),
+        (f64::from_bits(0x43179085685d83c9), "1658206780088562.2"),
+        (-f64::from_bits(0x43179085685d83c9), "-1658206780088562.2"),
     ];
     for &(input, expected) in cases {
         assert_eq!(expected, PythonJson::repr(input), "repr({input})");
@@ -122,6 +124,44 @@ fn repr_matches_python() {
 fn repr_negative_zero() {
     // -0.0 needs a separate test because a float literal cannot distinguish it from 0.0 in a table.
     assert_eq!("-0.0", PythonJson::repr(-0.0));
+}
+
+#[test]
+fn repr_matches_python_bit_pattern_sweep() {
+    let mut comparisons = 0;
+    let mut mismatches = 0;
+    let mut reference = None;
+    for checkpoint in CHECKPOINTS {
+        let data = CheckpointGoldenData::for_checkpoint(checkpoint);
+        if !data.available() {
+            eprintln!("skip: no golden data for '{checkpoint}'");
+            continue;
+        }
+        let probe = data.load("repr_probe.json");
+        if let Some(expected) = &reference {
+            assert_eq!(expected, &probe, "repr probes must agree across checkpoints");
+        } else {
+            reference = Some(probe.clone());
+        }
+        let entries = probe.as_array().expect("repr_probe.json must be an array");
+        assert!(entries.len() >= 2000, "the differential sweep must not shrink");
+        for entry in entries {
+            let bits = u64::from_str_radix(entry["bits"].as_str().unwrap(), 16).unwrap();
+            let value = f64::from_bits(bits);
+            let expected = entry["repr"].as_str().unwrap();
+            let actual = PythonJson::repr(value);
+            comparisons += 1;
+            if actual != expected {
+                mismatches += 1;
+                if mismatches <= 10 {
+                    eprintln!("{checkpoint} {bits:016x}: Python {expected}, Rust {actual}");
+                }
+            }
+        }
+    }
+    eprintln!("repr differential sweep: {comparisons} comparisons, {mismatches} mismatches");
+    assert!(comparisons >= 6000, "all three checkpoint probes must be checked");
+    assert_eq!(0, mismatches, "float repr must match Python byte-for-byte");
 }
 
 // ── Escaping unit tests ────────────────────────────────────────────────────────

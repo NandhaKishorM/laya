@@ -13,6 +13,7 @@ goldens for the supported paths (see the known gaps below).
 
 - Advisory parity CI on every push and PR: regenerate fixtures from the current Python checkout,
   test all checkpoints, and reject skipped tests. No golden cache or crate publication.
+- Python float-repr parity probes, including exact half-even decimal ties and random bit patterns.
 - `LayaResult::state_usage()` reports state-token truncation across question budgets, matching
   Python 0.4.0 without changing the existing `Usage` totals or result constructor.
 - Engine score legends render structured criteria as strings, matching Python 0.4.0.

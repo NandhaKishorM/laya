@@ -171,7 +171,18 @@ impl PythonJson {
         // "3.333e-1", "1e0", "5e-324". That single-leading-digit form is exactly what the
         // reformatting below assumes, so there is no need to search for the decimal point or
         // exponent marker location separately.
-        let raw = format!("{abs:e}");
+        let shortest = format!("{abs:e}");
+        let mantissa = shortest.split('e').next().unwrap();
+        let n = mantissa.chars().filter(|&c| c != '.').count();
+        // The shortest formatter can choose the other decimal on an exact tie.
+        // Explicit precision rounds half-even like Python; keep it only if it
+        // still round-trips, so subnormals and exponent-boundary carries stay exact.
+        let rounded = format!("{:.*e}", n - 1, abs);
+        let raw = if rounded.parse::<f64>() == Ok(abs) {
+            rounded
+        } else {
+            shortest
+        };
         let e_pos = raw.find('e').expect("LowerExp output always contains 'e'");
         let mantissa = &raw[..e_pos];
         let exp10: i32 = raw[e_pos + 1..]

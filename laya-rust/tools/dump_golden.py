@@ -37,6 +37,7 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, TOOLS)
 
 from golden_cases import CASES, ERROR_CASES, SHORTLIST_E2E_CASES  # noqa: E402
+from repr_cases import build_repr_probe  # noqa: E402
 
 import hashing_embedder  # noqa: E402
 
@@ -476,6 +477,7 @@ def run_checkpoint(onnx_dir: str, out_dir: str) -> int:
         })
 
     dump(index, os.path.join(out_dir, "index.json"))
+    dump(build_repr_probe(), os.path.join(out_dir, "repr_probe.json"))
     print("done: %d cases -> %s" % (len(index), out_dir))
     return 0
 

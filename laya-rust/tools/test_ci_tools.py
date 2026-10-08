@@ -10,6 +10,7 @@ from google.protobuf.message import DecodeError
 
 import check_test_skips as guard
 import regen_golden as regen
+from repr_cases import build_repr_probe
 
 
 def summary(passed=10, failed=0, ignored=0, filtered=0):
@@ -116,6 +117,34 @@ class ExportCacheTests(unittest.TestCase):
             self.assertEqual(0, regen.main())
         self.assertIn("dump_routing_golden.py", run.call_args.args[0][1])
         self.assertIn("--force", run.call_args.args[0])
+
+    def test_repr_regeneration_needs_no_models(self):
+        with patch("sys.argv", ["regen", "--checkpoint", "repr"]), patch.object(
+            regen, "run"
+        ) as run, patch.object(regen, "regen_checkpoint") as model, patch.object(regen.shutil, "rmtree"):
+            self.assertEqual(0, regen.main())
+        model.assert_not_called()
+        run.assert_called_once()
+        self.assertIn("repr_cases.py", run.call_args.args[0][1])
+
+
+class FloatProbeTests(unittest.TestCase):
+    def test_sweep_is_reproducible_and_preserves_bit_patterns(self):
+        import math
+        import struct
+
+        probe = build_repr_probe()
+        self.assertEqual(probe, build_repr_probe())
+        self.assertEqual(2261, len(probe))
+        self.assertEqual(len(probe), len({entry["bits"] for entry in probe}))
+        for entry in probe:
+            value = struct.unpack(">d", bytes.fromhex(entry["bits"]))[0]
+            self.assertTrue(math.isfinite(value))
+            self.assertEqual(repr(value), entry["repr"])
+        self.assertEqual(
+            "1658206780088562.2",
+            next(entry["repr"] for entry in probe if entry["bits"] == "43179085685d83c9"),
+        )
 
 
 if __name__ == "__main__":

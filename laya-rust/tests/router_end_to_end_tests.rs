@@ -101,13 +101,30 @@ fn router_predict_routes_and_matches_the_recorded_checkpoint_result() {
         &hindi_case["result"],
         &result,
     );
+}
 
-    // Both `sample_inputs.json` (Phase A's combined-sample fixture) and the recorded cases must
-    // agree that these are the states the sample uses, as a light cross-check that nothing has
-    // drifted between the two.
-    if let Some(sample_inputs) = routing_golden::load("sample_inputs.json") {
-        let _ = sample_inputs; // presence-only check: the file loads and parses.
-    }
+#[test]
+fn sample_inputs_match_recorded_model_case_inputs() {
+    let sample_inputs = routing_golden::load("sample_inputs.json")
+        .expect("the routing sample fixture must be present");
+    let support = &sample_inputs["support_email"];
+    let english_case = CheckpointGoldenData::for_checkpoint("english")
+        .load("case_sample_app_english.json");
+    let hindi_case = CheckpointGoldenData::for_checkpoint("multilingual")
+        .load("case_sample_app_hindi.json");
+
+    assert_eq!(support["english_state"], english_case["state"], "English sample state");
+    assert_eq!(support["questions"], english_case["questions"], "English sample questions");
+    assert_eq!(support["questions"], hindi_case["questions"], "Hindi sample questions");
+
+    // The routing sample includes Hindi sender/subject headers; the quickstart
+    // recording deliberately uses only its body. Compare that exact projection.
+    assert!(support["hindi_state"]["body"].is_string(), "Hindi sample body must exist");
+    assert_eq!(
+        serde_json::json!({"body": support["hindi_state"]["body"]}),
+        hindi_case["state"],
+        "Hindi sample body-only state"
+    );
 }
 
 #[test]

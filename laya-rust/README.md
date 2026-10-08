@@ -557,6 +557,9 @@ with no path filter. It regenerates fixtures from the Python `laya/` at that com
 Goldens are never cached. A `skip:` diagnostic or ignored test makes the lane red, even when
 Cargo counts a missing-model early return as a pass. Job-level `continue-on-error` keeps Python
 improvements unblocked; Rust drift needs a follow-up port. This workflow never publishes crates.
+The skip guard runs only after successful Cargo tests; regeneration/build failures retain their
+own diagnostics instead of producing a secondary missing-log error.
+
 The regeneration self-check compares option logits within `1e-3` and every **unrounded action
 softmax probability** within `1e-4`, matching the signal Python and Rust predict consume.
 Action classes are not padded option slots and none are excluded. Raw action logits remain

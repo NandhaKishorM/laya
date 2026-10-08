@@ -24,6 +24,7 @@ First release: a port of the Laya Python SDK, tested against laya (Python) 0.3.2
 
 ### Known gaps
 
-- Language detection and email handling follow Python 0.3.6 (`lang.py`, `email.py`).
+- Routing, script counting and fused-line email disclaimers follow the regenerated Python 0.4.0
+  probes. New mixed-field language heuristics are not yet ported.
 - Not yet ported from Python 0.3.21: abstention (`min_confidence`), `predict_long` and
   `lang_temperatures`.

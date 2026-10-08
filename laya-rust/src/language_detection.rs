@@ -221,7 +221,7 @@ impl LanguageDetection {
     /// Whether `ch` is alphabetic under Python's `str.isalpha()` rule: Unicode general category
     /// `Lu`, `Ll`, `Lt`, `Lm` or `Lo`. Unlike `char::is_alphabetic`, this excludes combining
     /// marks.
-    fn is_alpha(ch: char) -> bool {
+    pub(crate) fn is_alpha(ch: char) -> bool {
         matches!(
             get_general_category(ch),
             GeneralCategory::UppercaseLetter
@@ -322,14 +322,11 @@ impl LanguageDetection {
                 latin += 1;
                 continue;
             }
-            if let Some(name) = Self::script_for_codepoint(cp) {
-                match counts.iter_mut().find(|(n, _)| *n == name) {
-                    Some(entry) => entry.1 += 1,
-                    None => counts.push((name, 1)),
-                }
+            let name = Self::script_for_codepoint(cp).unwrap_or("other");
+            match counts.iter_mut().find(|(n, _)| *n == name) {
+                Some(entry) => entry.1 += 1,
+                None => counts.push((name, 1)),
             }
-            // A letter outside every range and outside Latin (Deseret, astral scripts, ...)
-            // counts toward nothing, matching Python exactly.
         }
         counts.push(("latin", latin));
 
@@ -359,9 +356,8 @@ impl LanguageDetection {
                 *counts.get_mut("latin").unwrap() += 1;
                 continue;
             }
-            if let Some(name) = Self::script_for_codepoint(cp) {
-                *counts.entry(name).or_insert(0) += 1;
-            }
+            let name = Self::script_for_codepoint(cp).unwrap_or("other");
+            *counts.entry(name).or_insert(0) += 1;
         }
         let total: i64 = counts.values().sum();
         if total == 0 {
@@ -501,16 +497,70 @@ impl LanguageDetection {
         Self::latin_profile(text).language
     }
 
+    /// Non-Latin words, excluding one-letter symbols and capitalised proper names.
+    fn has_non_latin_words(text: &str) -> bool {
+        let mut current = String::new();
+        let mut script = None;
+        let is_word = |word: &str| {
+            word.chars().count() >= 2
+                && word.chars().next().is_some_and(|c| !c.is_uppercase())
+        };
+        for ch in text.chars() {
+            if matches!(get_general_category(ch), GeneralCategory::NonspacingMark
+                | GeneralCategory::SpacingMark | GeneralCategory::EnclosingMark)
+            {
+                continue;
+            }
+            let next = if Self::is_alpha(ch) && !Self::is_latin_codepoint(ch as u32) {
+                Self::script_for_codepoint(ch as u32)
+            } else {
+                None
+            };
+            if next.is_some() && next == script {
+                current.push(ch);
+                continue;
+            }
+            if is_word(&current) {
+                return true;
+            }
+            current.clear();
+            script = next;
+            if next.is_some() {
+                current.push(ch);
+            }
+        }
+        is_word(&current)
+    }
+
     /// Full detection result for a state. See [`LanguageAnalysis`].
     pub fn analyse(state: &serde_json::Value) -> LanguageAnalysis {
         let text = Self::state_text_default(state);
         let prof = Self::script_profile(&text);
-        let script = Self::detect_script(&text);
+        let mut script = Self::detect_script(&text);
         let non_latin = if prof.is_empty() {
             0.0
         } else {
             crate::calibration::Calibration::round4(1.0 - prof.get("latin").copied().unwrap_or(0.0))
         };
+        let n_non_latin = (non_latin * text.chars().filter(|&c| Self::is_alpha(c)).count() as f64)
+            .round_ties_even();
+        if script == "latin" && Self::has_non_latin_words(&text)
+            && (non_latin >= 0.2 || (non_latin >= 0.1 && n_non_latin >= 10.0))
+        {
+            // Preserve Python's first-seen tie order, rather than HashMap iteration order.
+            let mut best = 0.0;
+            for ch in text.chars().filter(|&c| Self::is_alpha(c)) {
+                if Self::is_latin_codepoint(ch as u32) {
+                    continue;
+                }
+                let name = Self::script_for_codepoint(ch as u32).unwrap_or("other");
+                let fraction = prof.get(name).copied().unwrap_or(0.0);
+                if fraction > best {
+                    script = name.to_string();
+                    best = fraction;
+                }
+            }
+        }
 
         if script == "unknown" {
             return LanguageAnalysis {

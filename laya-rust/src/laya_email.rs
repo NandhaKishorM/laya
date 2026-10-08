@@ -143,6 +143,29 @@ impl LayaEmail {
             .into_iter()
             .map(|p| p.trim().to_string())
             .filter(|p| !p.is_empty())
+            .flat_map(|part| {
+                if !DISCLAIMER.is_match(&part) || !part.contains('\n') {
+                    return vec![part];
+                }
+                let mut pieces = Vec::new();
+                let mut buf = String::new();
+                for line in part.lines().map(str::trim).filter(|l| !l.is_empty()) {
+                    let starts_sentence = line.chars().find(|&c| {
+                        crate::language_detection::LanguageDetection::is_alpha(c)
+                    }).is_some_and(char::is_uppercase);
+                    if !buf.is_empty() && starts_sentence {
+                        pieces.push(std::mem::take(&mut buf));
+                    }
+                    if !buf.is_empty() {
+                        buf.push(' ');
+                    }
+                    buf.push_str(line);
+                }
+                if !buf.is_empty() {
+                    pieces.push(buf);
+                }
+                pieces
+            })
             .collect();
         parts
             .into_iter()

@@ -25,7 +25,7 @@ fn inline_footer_keeps_the_request() {
             &format!("My account is locked\n{DISCLAIMER}\nPlease unlock it."),
             3000
         ),
-        "Please unlock it."
+        "My account is locked Please unlock it."
     );
     assert_eq!(
         LayaEmail::clean_body(&format!("My account is locked. {DISCLAIMER}"), 3000),

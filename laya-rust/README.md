@@ -647,12 +647,9 @@ Rust port groups the corresponding functions into a unit struct with associated 
 
 ## Known gaps
 
-- **Language detection and email handling still follow Python 0.3.6, not 0.3.21.**
-  `src/language_detection.rs` (ports `lang.py`) and `src/laya_email.rs` (ports `email.py`) were
-  deliberately left untouched when the rest of this crate was brought up to 0.3.21, so
-  `LanguageDetection` and `LayaEmail` reproduce the 0.3.6 behavior of those two Python modules.
-  Everything else in this crate — sequence building, calibration, and the answer types — tracks
-  laya 0.3.21. Porting `lang.py` and `email.py` forward is planned as a follow-up.
+- **Python 0.4.0's routing defaults, script counting and fused-line disclaimer fixes are ported**
+  and checked against freshly regenerated probes. New mixed-field language heuristics remain
+  a follow-up; these probes are not a claim of full coverage of every new Python feature.
 
 - **Opt-in features added in Python 0.3.21 are not ported yet:** abstention (`min_confidence`),
   `predict_long`, and per-language temperatures (`lang_temperatures`). They are off by default in

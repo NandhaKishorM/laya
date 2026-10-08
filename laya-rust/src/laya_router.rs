@@ -146,8 +146,8 @@ pub struct LayaRouterOptions {
     /// evicted. Always at least 1.
     pub max_loaded: usize,
     /// Checkpoint used when [`LayaRouter::route`] cannot find any letters in the state at all.
-    /// Python's own default is English, kept here for parity even though it means an empty state
-    /// is sent to the checkpoint that cannot read non-Latin scripts.
+    /// Also used for undecided Latin text. Multilingual by default, matching Python 0.4.0;
+    /// mostly-English deployments may explicitly select English.
     pub default: LayaCheckpoint,
     /// Whether a question-id set that exactly matches one of the four typed-decisions workflow
     /// signatures should automatically route to `TypedDecisions`. Off by default: that checkpoint
@@ -163,7 +163,7 @@ impl Default for LayaRouterOptions {
         Self {
             engine_options: LayaOptions::default(),
             max_loaded: 1,
-            default: LayaCheckpoint::English,
+            default: LayaCheckpoint::Multilingual,
             auto_task_detection: false,
             preload: false,
         }
@@ -513,6 +513,15 @@ impl LayaRouter {
                     ),
                 )
             }
+        } else if det.language_undecided {
+            (
+                self.default,
+                format!(
+                    "Latin script, language not identified and no non-English letters; \
+                     using default ({})",
+                    self.default.subdir()
+                ),
+            )
         } else {
             (LayaCheckpoint::English, "English Latin text".to_string())
         };

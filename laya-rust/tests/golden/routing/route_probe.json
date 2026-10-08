@@ -29,7 +29,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -64,7 +65,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -125,7 +127,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -161,7 +164,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -196,7 +200,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -231,7 +236,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -266,7 +272,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -547,7 +554,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": "customer_service"
     }
@@ -569,8 +577,8 @@
       }
     },
     "decision": {
-      "model": "english",
-      "reason": "no letters detected in state; using default (english)",
+      "model": "multilingual",
+      "reason": "no letters detected in state; using default (multilingual)",
       "detection": {
         "script": "unknown",
         "script_profile": {},
@@ -578,7 +586,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -600,8 +609,8 @@
       }
     },
     "decision": {
-      "model": "english",
-      "reason": "no letters detected in state; using default (english)",
+      "model": "multilingual",
+      "reason": "no letters detected in state; using default (multilingual)",
       "detection": {
         "script": "unknown",
         "script_profile": {},
@@ -609,7 +618,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -635,7 +645,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -828,7 +839,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -894,8 +906,8 @@
       }
     },
     "decision": {
-      "model": "english",
-      "reason": "English Latin text",
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
       "detection": {
         "script": "latin",
         "script_profile": {
@@ -905,7 +917,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -947,8 +960,8 @@
       }
     },
     "decision": {
-      "model": "english",
-      "reason": "English Latin text",
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
       "detection": {
         "script": "latin",
         "script_profile": {
@@ -958,7 +971,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -992,8 +1006,8 @@
       }
     },
     "decision": {
-      "model": "english",
-      "reason": "English Latin text",
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
       "detection": {
         "script": "latin",
         "script_profile": {
@@ -1003,7 +1017,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1041,8 +1056,8 @@
       }
     },
     "decision": {
-      "model": "english",
-      "reason": "English Latin text",
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
       "detection": {
         "script": "latin",
         "script_profile": {
@@ -1052,7 +1067,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1075,7 +1091,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0962,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1098,7 +1115,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0455,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1121,7 +1139,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0735,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1144,7 +1163,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.1029,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1167,7 +1187,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0926,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1190,7 +1211,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1202,8 +1224,8 @@
       "state": "refund me"
     },
     "decision": {
-      "model": "english",
-      "reason": "English Latin text",
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
       "detection": {
         "script": "latin",
         "script_profile": {
@@ -1213,7 +1235,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1236,7 +1259,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1259,7 +1283,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1282,7 +1307,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1305,7 +1331,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1328,7 +1355,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0317,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1351,7 +1379,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0159,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1374,7 +1403,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0476,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1397,7 +1427,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1420,7 +1451,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1443,7 +1475,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0435,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1466,7 +1499,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1489,7 +1523,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1512,7 +1547,8 @@
         "is_english": true,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1547,7 +1583,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1584,7 +1621,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1621,7 +1659,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1661,7 +1700,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1892,7 +1932,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1916,7 +1957,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.7
+        "non_latin_fraction": 0.7,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -1939,7 +1981,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0926,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }

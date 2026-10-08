@@ -1,6 +1,6 @@
 {
   "generator": "tools/dump_routing_golden.py",
-  "laya_version": "0.3.6",
+  "laya_version": "0.4.0",
   "default_shortlist_k": 20,
   "notes": {
     "route_probe": "RouteDecision is serialized as {model, reason, detection, workflow}; 'repo' is intentionally omitted (not part of the ported RouteDecision).",

@@ -10,7 +10,7 @@
       "label": "inline_footer_no_terminal_punctuation",
       "body": "My account is locked\nThis email is confidential and intended solely for the named addressee.\nPlease unlock it.",
       "max_chars": 3000,
-      "result": "Please unlock it."
+      "result": "My account is locked Please unlock it."
     },
     {
       "label": "inline_footer_body_never_emptied",

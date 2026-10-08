@@ -6238,7 +6238,7 @@
   "logits": [
     [
       1.9772350788116455,
-      -0.25270819664001465
+      -0.25270816683769226
     ],
     [
       0.011878401041030884,
@@ -6283,7 +6283,14 @@
     },
     "usage": {
       "input_tokens": 2048,
-      "output_tokens": 0
+      "output_tokens": 0,
+      "state_tokens": 6804,
+      "state_tokens_dropped": 5811,
+      "truncated": true,
+      "truncated_questions": [
+        "frustrated",
+        "topic"
+      ]
     }
   }
 }

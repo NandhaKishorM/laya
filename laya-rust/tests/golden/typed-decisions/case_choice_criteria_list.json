@@ -195,7 +195,11 @@
     },
     "usage": {
       "input_tokens": 31,
-      "output_tokens": 0
+      "output_tokens": 0,
+      "state_tokens": 10,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": []
     }
   }
 }

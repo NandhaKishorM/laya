@@ -204,13 +204,13 @@
   "logits": [
     [
       0.7911447882652283,
-      -0.21168416738510132
+      -0.21168413758277893
     ]
   ],
   "act_logits": [
     [
       4881.5341796875,
-      -3982.474609375
+      -3982.47509765625
     ]
   ],
   "result": {
@@ -232,7 +232,11 @@
     },
     "usage": {
       "input_tokens": 48,
-      "output_tokens": 0
+      "output_tokens": 0,
+      "state_tokens": 14,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": []
     }
   }
 }

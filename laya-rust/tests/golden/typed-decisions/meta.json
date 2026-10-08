@@ -1,7 +1,7 @@
 {
   "generator": "tools/dump_golden.py",
   "onnx_dir": "typed-decisions",
-  "laya_version": "0.3.21",
+  "laya_version": "0.4.0",
   "onnxruntime_version": "1.30.0",
   "transformers_version": "5.17.0",
   "config": {
@@ -73,8 +73,8 @@
   },
   "onnx_self_check": {
     "single_noul": {
-      "logits_maxdiff": 1.8477439880371094e-06,
-      "act_maxdiff": 0.0009765625
+      "logits_maxdiff": 4.470348358154297e-07,
+      "act_maxdiff": 0.00146484375
     },
     "triage_4q": {
       "logits_maxdiff": 2.6226043701171875e-06,

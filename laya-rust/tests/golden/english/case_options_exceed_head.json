@@ -310,5 +310,5 @@
     }
   },
   "error_type": "ValueError",
-  "error_message": "question 'too_wide' options exceed head_max_len=192"
+  "error_message": "question 'too_wide': only 126 of its 300 option markers fit in max_len=512 with head_max_len=192 spent on the question; lower head_max_len, raise max_len, or use fewer options"
 }

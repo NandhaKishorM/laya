@@ -1,7 +1,7 @@
 {
   "generator": "tools/dump_golden.py",
   "onnx_dir": "english",
-  "laya_version": "0.3.21",
+  "laya_version": "0.4.0",
   "onnxruntime_version": "1.30.0",
   "transformers_version": "5.17.0",
   "config": {
@@ -70,12 +70,12 @@
   },
   "onnx_self_check": {
     "single_noul": {
-      "logits_maxdiff": 1.9073486328125e-06,
-      "act_maxdiff": 0.001220703125
+      "logits_maxdiff": 9.953975677490234e-06,
+      "act_maxdiff": 0.0009765625
     },
     "triage_4q": {
-      "logits_maxdiff": 2.288818359375e-05,
-      "act_maxdiff": 0.00390625
+      "logits_maxdiff": 1.946091651916504e-05,
+      "act_maxdiff": 0.00146484375
     }
   }
 }

@@ -22,7 +22,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -48,7 +49,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -74,7 +76,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -96,7 +99,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -122,7 +126,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0484,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -148,7 +153,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -176,7 +182,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -202,7 +209,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -228,7 +236,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -254,7 +263,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -280,7 +290,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -306,7 +317,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -332,7 +344,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -358,7 +371,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -384,7 +398,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -406,7 +421,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -428,7 +444,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -454,7 +471,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -480,7 +498,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -506,7 +525,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -532,7 +552,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -560,7 +581,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -586,7 +608,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -612,7 +635,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0515,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -638,7 +662,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0229,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -664,7 +689,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0962,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -690,7 +716,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0282,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -716,7 +743,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0735,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -742,7 +770,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.2222,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -768,7 +797,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.1029,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -794,7 +824,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.1333,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -820,7 +851,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -846,7 +878,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0926,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -872,7 +905,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -898,7 +932,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.1333,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -924,7 +959,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -950,7 +986,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0435,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -976,7 +1013,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1002,7 +1040,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1028,7 +1067,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1054,7 +1094,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1080,7 +1121,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1106,7 +1148,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1132,7 +1175,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1161,7 +1205,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1193,7 +1238,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1224,7 +1270,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1246,7 +1293,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1275,7 +1323,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1301,7 +1350,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1329,7 +1379,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.7
+      "non_latin_fraction": 0.7,
+      "mixed_segment": null
     }
   },
   {
@@ -1355,7 +1406,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1381,7 +1433,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1407,7 +1460,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1433,7 +1487,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1459,7 +1514,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1485,7 +1541,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1511,7 +1568,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1537,7 +1595,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1563,7 +1622,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1589,7 +1649,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1615,7 +1676,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0317,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1641,7 +1703,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0159,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1667,7 +1730,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0476,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1693,7 +1757,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1719,7 +1784,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1745,7 +1811,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1771,7 +1838,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1797,7 +1865,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1823,7 +1892,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1849,7 +1919,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1875,7 +1946,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0435,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1901,7 +1973,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1927,7 +2000,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1953,7 +2027,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -1979,7 +2054,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2005,7 +2081,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2031,7 +2108,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2057,7 +2135,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2083,7 +2162,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2109,7 +2189,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2135,7 +2216,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2161,7 +2243,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2187,7 +2270,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2213,7 +2297,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2239,7 +2324,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2265,7 +2351,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2291,7 +2378,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2317,7 +2405,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2343,7 +2432,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2369,7 +2459,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2395,7 +2486,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2421,7 +2513,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2447,7 +2540,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2473,7 +2567,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2499,7 +2594,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2525,7 +2621,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2553,7 +2650,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2579,7 +2677,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2605,7 +2704,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2633,7 +2733,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2661,7 +2762,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2689,7 +2791,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.5
+      "non_latin_fraction": 0.5,
+      "mixed_segment": null
     }
   },
   {
@@ -2717,7 +2820,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.5
+      "non_latin_fraction": 0.5,
+      "mixed_segment": null
     }
   },
   {
@@ -2747,7 +2851,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2767,17 +2872,18 @@
       "looks_non_english": false
     },
     "analyse": {
-      "script": "latin",
+      "script": "arabic",
       "script_profile": {
         "latin": 0.6190476190476191,
         "han": 0.09523809523809523,
         "arabic": 0.2857142857142857
       },
       "language": null,
-      "is_english": true,
+      "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.381
+      "non_latin_fraction": 0.381,
+      "mixed_segment": null
     }
   },
   {
@@ -2805,7 +2911,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.7143
+      "non_latin_fraction": 0.7143,
+      "mixed_segment": null
     }
   },
   {
@@ -2833,7 +2940,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.125
+      "non_latin_fraction": 0.125,
+      "mixed_segment": null
     }
   },
   {
@@ -2859,7 +2967,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0476,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2885,7 +2994,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2911,7 +3021,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.1071,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2937,7 +3048,8 @@
       "is_english": false,
       "language_undecided": false,
       "diacritic_rate": 0.0952,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2959,7 +3071,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -2985,15 +3098,18 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
     "label": "astral/deseret_letter_alone",
     "state": "𐐀𐐁𐐂",
     "state_text": "𐐀𐐁𐐂",
-    "detect_script": "unknown",
-    "script_profile": {},
+    "detect_script": "other",
+    "script_profile": {
+      "other": 1.0
+    },
     "latin_profile": {
       "language": null,
       "english_hits": 0,
@@ -3001,13 +3117,16 @@
       "looks_non_english": false
     },
     "analyse": {
-      "script": "unknown",
-      "script_profile": {},
+      "script": "other",
+      "script_profile": {
+        "other": 1.0
+      },
       "language": null,
-      "is_english": true,
+      "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3016,7 +3135,8 @@
     "state_text": "refund 𐐀 today",
     "detect_script": "latin",
     "script_profile": {
-      "latin": 1.0
+      "latin": 0.9166666666666666,
+      "other": 0.08333333333333333
     },
     "latin_profile": {
       "language": null,
@@ -3027,21 +3147,25 @@
     "analyse": {
       "script": "latin",
       "script_profile": {
-        "latin": 1.0
+        "latin": 0.9166666666666666,
+        "other": 0.08333333333333333
       },
       "language": null,
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0833,
+      "mixed_segment": null
     }
   },
   {
     "label": "astral/mathematical_bold_letters",
     "state": "𝐀𝐁𝐂",
     "state_text": "𝐀𝐁𝐂",
-    "detect_script": "unknown",
-    "script_profile": {},
+    "detect_script": "other",
+    "script_profile": {
+      "other": 1.0
+    },
     "latin_profile": {
       "language": null,
       "english_hits": 0,
@@ -3049,13 +3173,16 @@
       "looks_non_english": false
     },
     "analyse": {
-      "script": "unknown",
-      "script_profile": {},
+      "script": "other",
+      "script_profile": {
+        "other": 1.0
+      },
       "language": null,
-      "is_english": true,
+      "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3081,7 +3208,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3107,7 +3235,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3133,7 +3262,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3159,7 +3289,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.04,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3185,7 +3316,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.125,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3207,7 +3339,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3233,7 +3366,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3259,7 +3393,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3285,7 +3420,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3323,7 +3459,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3359,7 +3496,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3395,7 +3533,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3436,7 +3575,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3462,7 +3602,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3488,7 +3629,8 @@
       "is_english": false,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 1.0
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
     }
   },
   {
@@ -3516,7 +3658,8 @@
       "is_english": true,
       "language_undecided": true,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0025
+      "non_latin_fraction": 0.0025,
+      "mixed_segment": null
     }
   },
   {
@@ -3542,7 +3685,8 @@
       "is_english": true,
       "language_undecided": false,
       "diacritic_rate": 0.0,
-      "non_latin_fraction": 0.0
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
     }
   }
 ]

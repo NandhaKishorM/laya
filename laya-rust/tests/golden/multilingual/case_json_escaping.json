@@ -515,14 +515,14 @@
   "marker_axis_padded": false,
   "logits": [
     [
-      -2.1366453170776367,
-      17.42098617553711
+      -2.1366775035858154,
+      17.420978546142578
     ]
   ],
   "act_logits": [
     [
-      1012.655517578125,
-      -1208.8387451171875
+      1012.65576171875,
+      -1208.8389892578125
     ]
   ],
   "result": {
@@ -540,7 +540,11 @@
     },
     "usage": {
       "input_tokens": 150,
-      "output_tokens": 0
+      "output_tokens": 0,
+      "state_tokens": 119,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": []
     }
   }
 }

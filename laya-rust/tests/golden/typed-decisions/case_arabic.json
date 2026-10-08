@@ -889,12 +889,12 @@
   "marker_axis_padded": false,
   "logits": [
     [
-      0.4124017059803009,
+      0.4124016761779785,
       0.09562945365905762
     ],
     [
-      0.9585608839988708,
-      -0.012332737445831299
+      0.95856112241745,
+      -0.012332618236541748
     ]
   ],
   "act_logits": [
@@ -935,7 +935,11 @@
     },
     "usage": {
       "input_tokens": 252,
-      "output_tokens": 0
+      "output_tokens": 0,
+      "state_tokens": 69,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": []
     }
   }
 }

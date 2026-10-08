@@ -12,7 +12,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       }
     },
     {
@@ -27,7 +28,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       }
     },
     {
@@ -42,7 +44,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0484,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       }
     },
     {
@@ -57,7 +60,8 @@
         "is_english": false,
         "language_undecided": false,
         "diacritic_rate": 0.0282,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       }
     },
     {
@@ -72,7 +76,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       }
     },
     {
@@ -87,7 +92,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       }
     },
     {
@@ -103,7 +109,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 1.0
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
       }
     },
     {
@@ -122,7 +129,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.52
+        "non_latin_fraction": 0.52,
+        "mixed_segment": null
       }
     }
   ],
@@ -145,7 +153,8 @@
           "is_english": true,
           "language_undecided": false,
           "diacritic_rate": 0.0,
-          "non_latin_fraction": 0.0
+          "non_latin_fraction": 0.0,
+          "mixed_segment": null
         },
         "workflow": null
       }
@@ -168,7 +177,8 @@
           "is_english": false,
           "language_undecided": true,
           "diacritic_rate": 0.0,
-          "non_latin_fraction": 1.0
+          "non_latin_fraction": 1.0,
+          "mixed_segment": null
         },
         "workflow": null
       }
@@ -191,7 +201,8 @@
           "is_english": false,
           "language_undecided": false,
           "diacritic_rate": 0.0962,
-          "non_latin_fraction": 0.0
+          "non_latin_fraction": 0.0,
+          "mixed_segment": null
         },
         "workflow": null
       }
@@ -305,7 +316,8 @@
           "is_english": true,
           "language_undecided": false,
           "diacritic_rate": 0.0,
-          "non_latin_fraction": 0.0
+          "non_latin_fraction": 0.0,
+          "mixed_segment": null
         },
         "workflow": "customer_service"
       }
@@ -363,7 +375,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     },
@@ -380,7 +393,8 @@
         "is_english": false,
         "language_undecided": true,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.7381
+        "non_latin_fraction": 0.7381,
+        "mixed_segment": null
       },
       "workflow": null
     }
@@ -407,7 +421,8 @@
         "is_english": true,
         "language_undecided": false,
         "diacritic_rate": 0.0,
-        "non_latin_fraction": 0.0
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
       },
       "workflow": null
     }

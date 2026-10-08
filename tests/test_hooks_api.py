@@ -26,6 +26,7 @@ import laya  # noqa: E402
 from laya import Agent, BaseHook, PredictContext, PredictHook, Router, load  # noqa: E402
 from laya.hooks import HOOK_EVENTS, Hook  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
+from laya.presets import state_field  # noqa: E402
 from laya.router import _question_schema  # noqa: E402
 
 PASS, FAIL = [], []
@@ -235,6 +236,45 @@ check_true("PredictHook is callable-typed", callable(PredictHook))
 for name in ("PredictContext", "PredictHook", "Hook", "BaseHook", "AsyncHook"):
     check_true("__all__/%s" % name, name in laya.__all__)
     check_true("laya.%s exists" % name, hasattr(laya, name))
+check_true("__all__/triage_labels", "triage_labels" in laya.__all__)
+check_true("__all__/preset_labels", "preset_labels" in laya.__all__)
+check_param("triage_questions", laya.triage_questions, "language", "en")
+check_param("triage_labels", laya.triage_labels, "language", "en")
+check_param("preset_labels", laya.preset_labels, "preset", inspect.Parameter.empty)
+check_param("preset_labels", laya.preset_labels, "language", "en")
+check_param("email_questions", laya.email_questions, "language", "en")
+for _preset_name in ("guard_questions", "moderation_questions", "router_questions"):
+    check_param(_preset_name, getattr(laya, _preset_name), "language", "en")
+check("triage_questions/default remains English",
+      laya.triage_questions(), laya.triage_questions("en"))
+sv_triage = laya.triage_questions("sv-SE")
+check("triage_questions/Swedish keys remain stable", sorted(sv_triage),
+      ["churn_risk", "frustration", "intent", "is_urgent", "refund_requested"])
+check("triage_questions/Swedish instruction is localized",
+      sv_triage["intent"]["instructions"], "Vad vill kunden få hjälp med i `message`?")
+check("triage_questions/Swedish choice keys remain stable",
+      sorted(sv_triage["intent"]["criteria"]),
+      ["billing_question", "cancellation", "information", "other", "refund", "technical_help"])
+check("triage_questions/Swedish billing includes plans",
+      sv_triage["intent"]["criteria"]["billing_question"],
+      "fråga om faktura, abonnemangsplan eller betalningssätt")
+check("triage_questions/Swedish keeps the message state field", state_field(sv_triage), "message")
+check_true("triage_questions/Swedish urgency names message",
+           "`message`" in sv_triage["is_urgent"]["instructions"])
+check_true("triage_questions/Swedish urgency asks about urgency and deadlines",
+           "tidsfrist" in sv_triage["is_urgent"]["instructions"] and
+           "hanteras skyndsamt" in sv_triage["is_urgent"]["instructions"])
+check_true("triage_questions/Swedish urgency has a positive yes polarity",
+           sv_triage["is_urgent"]["instructions"].startswith("Finns det en tidsfrist") and
+           "Kan ärendet vänta" not in sv_triage["is_urgent"]["instructions"])
+check_true("triage_questions/Swedish refund question names message",
+           "`message`" in sv_triage["refund_requested"]["instructions"])
+try:
+    laya.triage_questions("de")
+except ValueError:
+    check_true("triage_questions/unsupported language rejected", True)
+else:
+    check_true("triage_questions/unsupported language rejected", False)
 check_true("laya.hooks/run_coroutine_sync exists",
            callable(getattr(__import__("laya.hooks", fromlist=["run_coroutine_sync"]),
                             "run_coroutine_sync", None)))

@@ -28,6 +28,17 @@
 
 ::: laya.presets.router_questions
 
+## Preset display labels
+
+`laya.preset_labels("triage", "sv")` returns Swedish display names for the stable
+question and answer keys. `laya.triage_labels("sv")` is the triage convenience
+helper. Both return fresh dictionaries and accept regional tags such as `sv-SE`.
+They change display labels only; prediction results keep their machine-readable keys.
+
+::: laya.presets.preset_labels
+
+::: laya.presets.triage_labels
+
 ## Shortlisting
 
 ::: laya.shortlist.shortlist_choice

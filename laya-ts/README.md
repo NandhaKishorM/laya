@@ -229,3 +229,23 @@ browser for WASM.
 ## Packaging
 
 ponytail: CJS/browser-field dual build + tsconfig tests-include deferred — Task 7 verified ESM-only; CJS needs second tsc config + export-map change, untested. Add when a CJS consumer or browser-field swap is requested.
+
+### Swedish question presets
+
+Select Swedish prompt text explicitly; the default is English. Question IDs and
+answer keys remain stable, so existing result-handling code can use either locale.
+
+```ts
+import { triageQuestions, presetLabels, emailQuestions } from "laya-ts";
+
+const questions = triageQuestions("sv-SE");
+const labels = presetLabels("triage", "sv");
+console.log(labels.refund); // Återbetalning
+const email = emailQuestions(undefined, "sv");
+```
+
+`guardQuestions`, `moderationQuestions`, and `routerQuestions` also accept a language
+argument. `presetLabels` returns a fresh display-label mapping; it does not change
+model answers. Caller-supplied email categories are preserved as supplied. Choosing
+Swedish question text does not itself select a model checkpoint or establish answer
+quality on Swedish support data.

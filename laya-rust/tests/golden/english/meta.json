@@ -70,12 +70,14 @@
   },
   "onnx_self_check": {
     "single_noul": {
-      "logits_maxdiff": 9.953975677490234e-06,
-      "act_maxdiff": 0.0009765625
+      "logits_maxdiff": 2.3871660232543945e-05,
+      "act_maxdiff": 0.001953125,
+      "act_probs_maxdiff": 0.0
     },
     "triage_4q": {
-      "logits_maxdiff": 1.946091651916504e-05,
-      "act_maxdiff": 0.00146484375
+      "logits_maxdiff": 1.823902130126953e-05,
+      "act_maxdiff": 0.00146484375,
+      "act_probs_maxdiff": 0.0
     }
   }
 }

@@ -147,5 +147,65 @@ class FloatProbeTests(unittest.TestCase):
         )
 
 
+class SelfCheckTests(unittest.TestCase):
+    def check(self, actual_act, reference_act, actual_logits=None):
+        import numpy as np
+        import torch
+        import dump_golden as dump
+
+        arrays = {f"single_noul/{n}": np.zeros((1, 2), dtype=np.int64)
+                  for n in ["input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"]}
+        arrays["single_noul/ref_logits"] = np.array([[0.1, 0.2]], dtype=np.float32)
+        arrays["single_noul/ref_act"] = np.array([reference_act], dtype=np.float32)
+
+        class Fixture:
+            files = list(arrays)
+
+            def __getitem__(self, key):
+                return arrays[key]
+
+        logits = arrays["single_noul/ref_logits"] if actual_logits is None else np.array(
+            [actual_logits], dtype=np.float32
+        )
+        agent = types.SimpleNamespace(model=lambda *args: (
+            torch.from_numpy(logits), torch.tensor([actual_act], dtype=torch.float32)
+        ))
+        with patch.object(dump.os.path, "exists", return_value=True), patch.object(
+            dump.np, "load", return_value=Fixture()
+        ), contextlib.redirect_stdout(io.StringIO()):
+            return dump.self_check(agent, "artifacts")
+
+    def test_saturated_act_logits_may_drift_without_changing_signal(self):
+        report = self.check([4807.878, -3937.442], [4807.720, -3937.599])
+        self.assertGreater(report["single_noul"]["act_maxdiff"], 0.15)
+        self.assertEqual(0.0, report["single_noul"]["act_probs_maxdiff"])
+
+    def test_real_probability_drift_is_rejected_even_below_old_logit_tolerance(self):
+        with self.assertRaisesRegex(SystemExit, "act_probs.*refusing"):
+            self.check([0.005, 0.0], [0.0, 0.0])
+
+    def test_saturated_action_flip_is_rejected(self):
+        with self.assertRaises(SystemExit):
+            self.check([-3937.599, 4807.720], [4807.720, -3937.599])
+
+    def test_small_unsaturated_probability_drift_is_accepted(self):
+        report = self.check([0.0002, 0.0], [0.0, 0.0])
+        self.assertLess(report["single_noul"]["act_probs_maxdiff"], 1e-4)
+
+    def test_option_logit_drift_remains_rejected(self):
+        with self.assertRaises(SystemExit):
+            self.check([0.0, 0.0], [0.0, 0.0], [0.102, 0.2])
+
+    def test_nonfinite_or_wrong_shape_outputs_fail_closed(self):
+        for actual, reference in [
+            ([float("nan"), 0.0], [0.0, 0.0]),
+            ([float("inf"), 0.0], [0.0, 0.0]),
+            ([0.0, 0.0], [float("nan"), 0.0]),
+            ([0.0], [0.0, 0.0]),
+        ]:
+            with self.subTest(actual=actual, reference=reference), self.assertRaises(SystemExit):
+                self.check(actual, reference)
+
+
 if __name__ == "__main__":
     unittest.main()

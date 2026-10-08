@@ -1,4 +1,4 @@
-//! Tier 2: the exported graph's dynamic axes and its raw outputs, driven directly through
+//! Tier 2: the exported graph's dynamic axes, option logits and action probabilities, driven through
 //! [`laya::LayaEngine::run`].
 //!
 //! The export was traced at one shape, so every axis being genuinely dynamic is a property of the
@@ -14,6 +14,7 @@ mod common;
 
 use common::engines;
 use common::golden_data::{self, CheckpointGoldenData};
+use laya::calibration::Calibration;
 use laya::collator::{CollatedBatch, Collator, SequenceItem};
 use laya::laya_config::LayaConfig;
 use laya::laya_options::LayaCheckpoint;
@@ -163,6 +164,10 @@ fn assert_close_slices(expected: &[f32], actual: &[f32], tolerance: f64, what: &
     let mut worst = 0.0f64;
     let mut at = 0usize;
     for (i, (&e, &a)) in expected.iter().zip(actual.iter()).enumerate() {
+        assert!(
+            e.is_finite() && a.is_finite(),
+            "{what}: nonfinite value at index {i}"
+        );
         let diff = (f64::from(e) - f64::from(a)).abs();
         if diff > worst {
             worst = diff;
@@ -176,6 +181,53 @@ fn assert_close_slices(expected: &[f32], actual: &[f32], tolerance: f64, what: &
         expected.get(at).copied().unwrap_or(f32::NAN),
         actual.get(at).copied().unwrap_or(f32::NAN)
     );
+}
+
+fn assert_act_probabilities(expected: &[f32], actual: &[f32], classes: usize, what: &str) {
+    assert!(classes > 0, "{what}: no action classes");
+    assert_eq!(expected.len(), actual.len(), "{what}: length mismatch");
+    assert_eq!(expected.len() % classes, 0, "{what}: incomplete action row");
+    assert!(
+        expected.iter().chain(actual).all(|v| v.is_finite()),
+        "{what}: nonfinite logits"
+    );
+    for (row, (e, a)) in expected
+        .chunks_exact(classes)
+        .zip(actual.chunks_exact(classes))
+        .enumerate()
+    {
+        let e: Vec<f32> = Calibration::softmax(e)
+            .into_iter()
+            .map(|v| v as f32)
+            .collect();
+        let a: Vec<f32> = Calibration::softmax(a)
+            .into_iter()
+            .map(|v| v as f32)
+            .collect();
+        assert_close_slices(&e, &a, 1e-4, &format!("{what} row {row}"));
+    }
+}
+
+#[test]
+fn saturated_act_logit_drift_preserves_probabilities() {
+    assert_act_probabilities(
+        &[4807.720, -3937.599],
+        &[4807.878, -3937.442],
+        2,
+        "saturated",
+    );
+}
+
+#[test]
+#[should_panic(expected = "worst difference")]
+fn small_act_logit_drift_with_real_signal_is_rejected() {
+    assert_act_probabilities(&[0.0, 0.0], &[0.005, 0.0], 2, "signal");
+}
+
+#[test]
+#[should_panic(expected = "nonfinite logits")]
+fn nonfinite_act_logits_are_rejected() {
+    assert_act_probabilities(&[0.0, 0.0], &[f32::NAN, 0.0], 2, "invalid");
 }
 
 // ── multilingual-only shape tests ────────────────────────────────────────────
@@ -250,13 +302,15 @@ fn reproduces_the_recorded_graph_outputs() {
             &format!("{case}: logits"),
         );
 
-        // act_logits reach +/-1600, where float32 spacing alone is ~1e-4; 0.05 is ~3e-5 relative.
+        // Match the unrounded action signal predict consumes, not CPU-kernel drift
+        // in large saturated logits. Keep the raw logits in the goldens for diagnostics.
         let expected_act = golden_data::matrix(&root["act_logits"], &mut rows, &mut cols);
-        assert_close_slices(
+        assert_eq!(batch.count, rows, "{case}: action row count");
+        assert_act_probabilities(
             &expected_act,
             &output.act_logits,
-            0.05,
-            &format!("{case}: act_logits"),
+            cols,
+            &format!("{case}: act_probs"),
         );
     }
 }

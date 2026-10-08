@@ -8,8 +8,9 @@ unmodified, so every number written here is what Python actually answers -- not 
 paraphrase of it. It also means no 1.3 GB safetensors checkpoint is needed: the exported
 ONNX graph supplies the forward pass.
 
-Before writing anything the script checks its ONNX session against the PyTorch reference
-vectors bundled in `fixtures.npz`, so a bad session can never silently poison the goldens.
+Before writing anything the script checks option logits and unrounded action probabilities
+against the PyTorch reference vectors bundled in `fixtures.npz`. Raw action logits are
+retained in the goldens and the self-check report for diagnostics.
 
 Usage:
     # Explicit paths (original interface, still works):
@@ -250,17 +251,32 @@ def self_check(agent: Agent, onnx_dir: str) -> dict:
         if not all("%s/%s" % (g, n) in z.files for n in need):
             continue
         logits, act = agent.model(*[torch.from_numpy(z["%s/%s" % (g, n)]) for n in need])
-        d_logits = float(np.abs(logits.numpy() - z["%s/ref_logits" % g]).max())
-        d_act = float(np.abs(act.numpy() - z["%s/ref_act" % g]).max())
-        report[g] = {"logits_maxdiff": d_logits, "act_maxdiff": d_act}
-        # fp32 ONNX vs the fp32 torch reference: 1e-3 is loose enough for kernel
-        # reassociation and tight enough that a wrong graph cannot pass.
-        if d_logits > 1e-3 or d_act > 1e-2:
+        ref_logits = z["%s/ref_logits" % g]
+        ref_act = z["%s/ref_act" % g]
+        for actual, reference in [(logits.numpy(), ref_logits), (act.numpy(), ref_act)]:
+            if actual.shape != reference.shape or not (
+                np.isfinite(actual).all() and np.isfinite(reference).all()
+            ):
+                raise SystemExit("invalid ONNX/reference outputs for %r -- refusing to emit goldens" % g)
+        d_logits = float(np.abs(logits.numpy() - ref_logits).max())
+        d_act = float(np.abs(act.numpy() - ref_act).max())
+        # Agent._forward consumes softmax(act), not raw act logits. Check every
+        # action probability before rounding: saturated logits in the thousands
+        # can drift across CPU kernels without changing that signal at all.
+        # Do not mask action columns: they are classes, not padded option slots.
+        act_probs = torch.softmax(act.float(), -1).numpy()
+        ref_probs = torch.softmax(torch.from_numpy(ref_act).float(), -1).numpy()
+        d_act_probs = float(np.abs(act_probs - ref_probs).max())
+        report[g] = {"logits_maxdiff": d_logits, "act_maxdiff": d_act,
+                     "act_probs_maxdiff": d_act_probs}
+        if d_logits > 1e-3 or d_act_probs > 1e-4:
             raise SystemExit(
                 "ONNX session does not match the PyTorch reference for %r "
-                "(logits %.3e, act %.3e) -- refusing to emit goldens" % (g, d_logits, d_act)
+                "(logits %.3e, act %.3e, act_probs %.3e) -- refusing to emit goldens"
+                % (g, d_logits, d_act, d_act_probs)
             )
-        print("  self-check %-14s logits %.3e  act %.3e  OK" % (g, d_logits, d_act))
+        print("  self-check %-14s logits %.3e  act %.3e  act_probs %.3e  OK"
+              % (g, d_logits, d_act, d_act_probs))
     if not report:
         raise SystemExit("fixtures.npz contained no usable reference groups")
     return report

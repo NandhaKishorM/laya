@@ -557,6 +557,12 @@ with no path filter. It regenerates fixtures from the Python `laya/` at that com
 Goldens are never cached. A `skip:` diagnostic or ignored test makes the lane red, even when
 Cargo counts a missing-model early return as a pass. Job-level `continue-on-error` keeps Python
 improvements unblocked; Rust drift needs a follow-up port. This workflow never publishes crates.
+The regeneration self-check compares option logits within `1e-3` and every **unrounded action
+softmax probability** within `1e-4`, matching the signal Python and Rust predict consume.
+Action classes are not padded option slots and none are excluded. Raw action logits remain
+recorded (and their max difference reported) for diagnostics, but large saturated logits can
+vary across CPU kernels without changing action probabilities. Nonfinite or mismatched-shaped
+outputs are rejected. The recorded-graph Rust test uses the same action probability bound.
 
 Engine results expose Python 0.4.0's state-budget diagnostics via `LayaResult::state_usage()`:
 original state tokens, worst-case dropped tokens, whether truncation occurred, and the affected

@@ -110,6 +110,31 @@ jobs:
           python tests/test_langchain.py
           python tests/test_portability.py
           python tests/test_training.py
+          python -m unittest discover -s tests -p 'test_zh_*.py' -v
+          python tests/test_example_server_limits.py
+          python tests/test_blank_lang_routing.py
+          python tests/test_export_onnx_safety.py
+          python tests/test_load_errors.py
+          python tests/test_predict_batch.py
+          python tests/test_revision_pinning.py
+          python tests/test_example_server_errors.py
+          python tests/test_example_server_per_call_controls.py
+          python tests/test_crewai.py
+          python tests/test_llamaindex.py
+
+      - name: LangChain integration runs on the real base class
+        run: |
+          # The install above is what makes tests/test_langchain.py run on real Runnables, and
+          # nothing proves it took: with langchain-core missing, the eight checks inside that
+          # file's `if _RUNNABLE_AVAILABLE:` block vanish instead of failing, and it still
+          # prints FAIL: 0 -- measured here: PASS: 87 with the extra, PASS: 80 without, exit 0
+          # both ways. This step asserts the install took, then checks what only a real install
+          # can check.
+          python -c "from laya.integrations.langchain import RunnableSerializable; \
+            assert RunnableSerializable is not object, \
+            'langchain-core is missing: laya.integrations.langchain fell back to a plain object, ' \
+            'so the LangChain suites in this job test a shape no install produces'"
+          python tests/test_langchain_real_mode.py
 
       - name: Email cleaning tests
         run: python tests/test_email.py
@@ -191,9 +216,9 @@ jobs:
           python-version: "3.11"
       - run: pip install ruff
       - name: Ruff
-        run: ruff check laya/ --select=E9,F63,F7,F82,F401,F811 --line-length=120
+        run: ruff check laya/ research/benchmarks/zh_reliability tests/test_zh_*.py --select=E9,F63,F7,F82,F401,F811 --line-length=120
       - name: Byte-compile every module
-        run: python -m compileall -q laya/ tests/
+        run: python -m compileall -q laya/ tests/ research/benchmarks/zh_reliability
 
   build:
     name: package

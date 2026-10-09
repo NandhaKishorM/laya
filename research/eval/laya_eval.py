@@ -159,24 +159,25 @@ def softmax_t(z, temperature: float = 1.0):
     return e / e.sum()
 
 
-def temperature_for(agent, qtype: int, k: int, unclamped: bool = False, *, lang: str = None) -> float:
+def temperature_for(agent, qtype: int, k: int, unclamped: bool = False, *, lang: Optional[str] = None) -> float:
     """The temperature to score this bucket with.
 
     By default this is what ``Agent`` applies, i.e. the checkpoint's bucket clamped
     to ``[TEMP_MIN, TEMP_MAX]``. With ``unclamped=True`` it is the checkpoint's raw
     value, which is what the committed pre-#42 sweep was produced with.
     """
-    from laya.common import temp_bucket
+    from laya.common import temp_bucket, clamp_temperature
     bucket = temp_bucket(qtype, k)
-    if unclamped:
-        return float(agent.temperature_by_options_raw.get(
-            bucket, agent.temperature_raw[qtype]))
     
-    if lang and hasattr(agent, "lang_temperatures") and lang.split("-")[0].lower() in agent.lang_temperatures:
+    if lang and getattr(agent, "lang_temperatures", None) and lang.split("-")[0].lower() in agent.lang_temperatures:
         l_cfg = agent.lang_temperatures[lang.split("-")[0].lower()]
-        return float(l_cfg["temperature_by_options"].get(bucket, l_cfg["temperature"][qtype]))
+        t = l_cfg.get("temperature_by_options", {}).get(bucket, l_cfg["temperature"][qtype])
+    else:
+        t = agent.temperature_by_options_raw.get(bucket, agent.temperature_raw[qtype])
 
-    return float(agent.temperature_by_options.get(bucket, agent.temperature[qtype]))
+    if unclamped:
+        return float(t)
+    return float(clamp_temperature(t))
 
 
 def ece(confidence, correct, bins: int = ECE_BINS) -> float:

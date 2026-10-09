@@ -295,6 +295,8 @@ class Agent(HookRegistry):
                 f"Incompatible model: 'model.safetensors' not found in {model_id_or_path!r}."
             )
 
+        self.cpu_fallback_count = 0
+
         # 1. Device resolution with automatic fallback
         if device is not None:
             target_device = torch.device(device)
@@ -630,6 +632,7 @@ class Agent(HookRegistry):
                 # the model first without that replacement, or the retry would still
                 # execute on the failed CUDA fast path.
                 self.deaccelerate()
+                self.cpu_fallback_count += 1
                 self.device = torch.device("cpu")
                 self.dtype = torch.float32
                 self.amp_enabled = False

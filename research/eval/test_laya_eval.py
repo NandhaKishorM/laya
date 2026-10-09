@@ -156,8 +156,10 @@ check("temp/falls back to the per-type list",
       temperature_for(_fa, QTYPES["choice"], 3), 1.0)
 check("temp/raw falls back too",
       temperature_for(_fa, QTYPES["choice"], 3, unclamped=True), 1.0)
-check("temp/lang_temperatures takes precedence if available",
-      temperature_for(_fa, QTYPES["choice"], 20, lang="fr-FR"), 0.25)
+check("temp/lang_temperatures takes precedence if available and clamps",
+      temperature_for(_fa, QTYPES["choice"], 20, lang="fr-FR"), 0.5)
+check("temp/lang_temperatures returns raw if unclamped",
+      temperature_for(_fa, QTYPES["choice"], 20, unclamped=True, lang="fr-FR"), 0.25)
 check("temp/lang_temperatures falls back for other languages",
       temperature_for(_fa, QTYPES["choice"], 20, lang="de"), 0.5)
 

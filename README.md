@@ -1637,6 +1637,12 @@ Shortlisting the same option set on every request re-embeds option texts that do
 * **`action.act_probability` carries no usable signal yet** (#185). It reads 1.0 for almost every input, and its raw logits run against correctness (AUROC 0.30 on 396 labelled decisions). Gate on `confidence` instead, which reaches an AUROC of 0.77 on the same items.
 * `laya` collapses outside English; `laya-multilingual` is weaker on English. Route, or pick
   deliberately.
+* **`laya` (English) can score math-formula prompts as coding (#622).** The English checkpoint
+  conflates formula-like syntax (f(x), superscripts, Greek letters) with code, so a calculus
+  prompt can score ~0.88 on a user-defined `is_coding` noul. `laya-multilingual` is not
+  affected. Workaround: use `router_questions()` — its `domain` choice names `code` and
+  `math_or_logic` as distinct criteria. See
+  `examples/known_limits/math_formula_misclassified_as_code.py`.
 
 ---
 

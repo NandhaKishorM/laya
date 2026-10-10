@@ -695,13 +695,10 @@ def main() -> int:
                 continue
             check("defaults/%s's %s cell says what the code does" % (surface, name),
                   default_cell(table[name]), default_text(value))
-    # Non-vacuity by name. Without these the whole section could be standing on nothing: a table
-    # that stopped parsing returns {}, every `continue` above fires, and the file is green.
-    check_true("defaults/the drifted cell is derived from Router, not asserted from a copy",
-               derived.get("LAYA_DEFAULT_MODEL") == "multilingual",
-               "got %r -- if the routing fallback moved again, the two pages this was written for "
-               "moved with it or are now stale; check them before changing this line"
-               % derived.get("LAYA_DEFAULT_MODEL"))
+    # Non-vacuity. A table that stopped parsing returns {}, every `continue` above fires, and the
+    # section reads green while checking nothing -- which is how a default column that reads fine
+    # can sit stale for a release. Two kinds of anchor: the surfaces have to still be there to
+    # compare, and each derivation rule has to still be contributing a name.
     counts = {s: len(surfaces[s]) for s in PACKAGE_DEFAULT_SURFACES}
     check_true("defaults/both package surfaces still carry a default column",
                all(count >= 12 and "LAYA_PRELOAD" in surfaces[s]
@@ -709,20 +706,31 @@ def main() -> int:
     check_true("defaults/LAYA_DEFAULT_MODEL is a row on both package surfaces",
                all("LAYA_DEFAULT_MODEL" in surfaces[s] for s in PACKAGE_DEFAULT_SURFACES),
                {s: sorted(surfaces[s]) for s in PACKAGE_DEFAULT_SURFACES})
-    check_true("defaults/at least eight defaults were derived, not skipped",
-               len(derived) >= 8, sorted(derived))
+    check_true("defaults/the drifted cell is derived from Router, not asserted from a copy",
+               derived.get("LAYA_DEFAULT_MODEL") == "multilingual",
+               "got %r -- if the routing fallback moved again, the two pages this was written for "
+               "moved with it or are now stale; check them before changing this line"
+               % derived.get("LAYA_DEFAULT_MODEL"))
     documented = {name for surface in PACKAGE_DEFAULT_SURFACES for name in surfaces[surface]}
     for name in sorted(documented - set(derived)):
         # A name the server never reads has no unset path here to follow, so it joins the reported
-        # set rather than passing quietly -- but only if nothing more specific already explains it,
-        # which is why this cannot turn a failed derivation into a silent skip.
+        # set rather than passing quietly. This is a report, not an assertion: every documented
+        # name ends up with a reason, so "derived or reported" cannot fail by construction.
         unchecked.setdefault(name, "laya/serve.py does not read it, so this file has no unset "
                                    "path to follow for it")
-    unaccounted = sorted(name for surface in PACKAGE_DEFAULT_SURFACES
-                         for name in surfaces[surface]
-                         if name not in derived and name not in unchecked)
-    check_true("defaults/every documented default is derived or named as unchecked",
-               not unaccounted, unaccounted)
+    # Asserted as membership only: naming the value here would be the transcription the section
+    # exists to avoid. A resolver that stops matching its rule drops its name out of `derived`.
+    for path, required in (("a literal default at the read site", "LAYA_HOST"),
+                           ("_env_bool's second argument", "LAYA_PRELOAD"),
+                           ("a resolver's unset guard", "LAYA_MAX_CONCURRENT"),
+                           ("Router's own cap", "LAYA_MAX_LOADED"),
+                           ("Router's own fallback", "LAYA_DEFAULT_MODEL")):
+        check_true("defaults/the %s path still derives %s" % (path, required),
+                   required in derived, sorted(derived))
+    check_true("defaults/the two package tables cover the same names",
+               set(surfaces[PACKAGE_DEFAULT_SURFACES[0]])
+               == set(surfaces[PACKAGE_DEFAULT_SURFACES[1]]),
+               {s: sorted(surfaces[s]) for s in PACKAGE_DEFAULT_SURFACES})
 
     # ------------------------------------------------- what this cannot check
     unbacked = [

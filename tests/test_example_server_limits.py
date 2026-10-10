@@ -575,6 +575,8 @@ def main():
            repr(started))
         ok("and without --reload the flag is not pushed as a name",
            start_default(["--default-model", "english"]) == "(absent)", repr(started))
+        ok("--default-model '' is the same as not passing it",
+           start_default(["--reload", "--default-model", ""]) == "(absent)", repr(started))
     finally:
         sys.argv = argv
         if real_uvicorn is not None:

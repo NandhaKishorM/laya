@@ -252,6 +252,10 @@ before the question ids are read.
   and `score` answers only (a Jev `noul` answer has no confidence). It uses TypeSafe's own
   formulas: `(p_max - 1/n)/(1 - 1/n)` for `choice`, and for `score` one minus the probability-weighted
   distance from the most likely level, scaled by the same distance for a uniform distribution.
+  The formula is the library's own, not the server's: `laya.jev_confidence(answer)` takes one
+  answer dict -- the shape this route returns and the shape `Agent.predict` returns -- and gives
+  the unrounded number, so a caller running Laya in-process filters on the same quantity the
+  served field carries without an HTTP round trip.
 
 Never compare them against one threshold. When porting from Jev, a threshold carried over from a
 Jev deployment gates differently on Laya's entropy `confidence` (#302); read it against

@@ -244,6 +244,13 @@ check_true("laya.hooks/run_coroutine_sync exists",
 check_true("__all__/PINNED_REVISIONS", "PINNED_REVISIONS" in laya.__all__)
 check_true("laya.PINNED_REVISIONS exists", hasattr(laya, "PINNED_REVISIONS"))
 
+# The three confidence quantities are one family, and `x_jev_confidence` is only half of it: the
+# server publishes the third (#302), so a caller running Laya in-process has to be able to compute
+# it from the library. Pin all three as attributes, not just as `__all__` entries.
+for _confidence_name in ("answer_confidence", "confidence_from_probs", "jev_confidence"):
+    check_true("__all__/%s" % _confidence_name, _confidence_name in laya.__all__)
+    check_true("laya.%s exists" % _confidence_name, hasattr(laya, _confidence_name))
+
 # BaseHook is the concrete no-op base class; all six events exist and are callable.
 for event in HOOK_EVENTS:
     check_true("BaseHook/%s callable" % event, callable(getattr(BaseHook, event, None)))

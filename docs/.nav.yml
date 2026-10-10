@@ -5,6 +5,7 @@ nav:
   - Guides:
       - use-cases.md
       - structured.md
+      - comparison.md
       - hooks
       - langchain.md
       - llamaindex.md

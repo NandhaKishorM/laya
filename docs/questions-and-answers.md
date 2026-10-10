@@ -168,9 +168,9 @@ the library thresholds it for you.
 
 ## Presets
 
-Five ready-made question sets, so the common cases do not need hand-written criteria:
-`triage_questions`, `email_questions`, `guard_questions`, `moderation_questions` and
-`router_questions`. Each returns the same `{field: question}` dict shape the SDK takes.
+Six ready-made question sets, so the common cases do not need hand-written criteria:
+`triage_questions`, `email_questions`, `guard_questions`, `moderation_questions`,
+`router_questions` and `comparison_questions`. Each returns the same `{field: question}` dict shape the SDK takes.
 
 ```python
 from laya import triage_questions, guard_questions, moderation_questions

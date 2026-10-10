@@ -414,19 +414,25 @@ ROUTER: Optional[Router] = None
 _CFG: Dict[str, Any] = {
     "preload": os.getenv("LAYA_PRELOAD", "1") not in ("0", "false", "False"),
     "device": os.getenv("LAYA_DEVICE") or None,
-    "default": os.getenv("LAYA_DEFAULT_MODEL", "english"),
-    # None means "not asked for", so Router keeps its own default instead of this file
-    # carrying a copy of it. The copy here said 1, the number #172 measured at one
-    # checkpoint rebuild per alternating-language request, and #180 retired it in the
-    # library without this line following.
+    # None means "not asked for", so Router keeps its own default instead of this file carrying
+    # a copy of it. The copy below said 1, the number #172 measured at one checkpoint rebuild per
+    # alternating-language request, and #180 retired it in the library without this line
+    # following. `default` was the same mistake about a checkpoint: 3cf26cb moved Router's own
+    # default to `multilingual` in 0.4.0 while this file went on answering a state with no
+    # language evidence from the English arm, whereas laya-serve and the MCP server -- which send
+    # neither key when the variable is unset -- moved with it.
+    "default": (os.environ["LAYA_DEFAULT_MODEL"].strip()
+                if os.getenv("LAYA_DEFAULT_MODEL", "").strip() else None),
     "max_loaded": (int(os.environ["LAYA_MAX_LOADED"])
                    if os.getenv("LAYA_MAX_LOADED", "").strip() else None),
 }
 
 
 def _router_kwargs(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Constructor arguments for the app's Router, with the resident cap only when asked for."""
-    kwargs = {"preload": cfg["preload"], "device": cfg["device"], "default": cfg["default"]}
+    """Constructor arguments for the app's Router, with the two opt-in knobs only when asked for."""
+    kwargs = {"preload": cfg["preload"], "device": cfg["device"]}
+    if cfg["default"] is not None:
+        kwargs["default"] = cfg["default"]
     if cfg["max_loaded"] is not None:
         kwargs["max_loaded"] = cfg["max_loaded"]
     return kwargs
@@ -493,7 +499,11 @@ def health(request: Request):
 @app.get("/models")
 def models(request: Request):
     payload = {
-        "default": _CFG["default"],
+        # Which checkpoint answers a state with no language evidence -- the built Router's answer
+        # rather than this file's copy of it, for the same reason `/health` prints the cap the
+        # Router holds. Until a Router exists the requested value is all there is, and it says
+        # None when nothing was asked for.
+        "default": getattr(ROUTER, "default", _CFG["default"]),
         "allowed": sorted(MODELS),
         # `allowed` alone would under-report the endpoint: a checkpoint may also be named by any
         # alias core resolves, in any casing. Both lists come from laya.router, not from this file.
@@ -3808,7 +3818,8 @@ def main() -> None:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--device", default=_CFG["device"], help="cuda, cpu, mps ...")
-    p.add_argument("--default-model", default=_CFG["default"])
+    p.add_argument("--default-model", default=_CFG["default"],
+                   help="routing fallback (default: LAYA_DEFAULT_MODEL, else laya's own)")
     p.add_argument("--max-loaded", type=int, default=_CFG["max_loaded"],
                    help="checkpoints kept resident (default: LAYA_MAX_LOADED, else laya's own)")
     p.add_argument("--no-preload", action="store_true", help="load checkpoints lazily")
@@ -3818,7 +3829,8 @@ def main() -> None:
     _CFG.update(
         preload=not args.no_preload,
         device=args.device,
-        default=args.default_model,
+        # A blank name means the same thing here as an unset variable does above.
+        default=(args.default_model or "").strip() or None,
         max_loaded=args.max_loaded,
     )
 
@@ -3828,7 +3840,13 @@ def main() -> None:
         # os.getenv() defaults do. Push the resolved config through those same env vars so the
         # reimport picks up what was actually asked for on the command line.
         os.environ["LAYA_PRELOAD"] = "1" if _CFG["preload"] else "0"
-        os.environ["LAYA_DEFAULT_MODEL"] = _CFG["default"]
+        if _CFG["default"] is None:
+            # "not asked for" has to stay unpushed here too: str(None) would name a checkpoint
+            # called "None" for the reimported process, which stops it at the same name
+            # resolution the operator was trying to leave to laya.
+            os.environ.pop("LAYA_DEFAULT_MODEL", None)
+        else:
+            os.environ["LAYA_DEFAULT_MODEL"] = _CFG["default"]
         if _CFG["max_loaded"] is None:
             # "not asked for" has to stay unpushed: writing str(None) here would land on the
             # int() above in the reimported process and stop the server at import.

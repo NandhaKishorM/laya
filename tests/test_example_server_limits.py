@@ -440,11 +440,107 @@ def main():
        == build_router().max_loaded,
        "%r vs %r" % (fresh._router_kwargs(fresh._CFG), build_router().max_loaded))
 
+    # --- the routing fallback: derived, not copied --------------------------
+    # The copy retired above said a number. The one beside it named a checkpoint: 3cf26cb moved
+    # `Router(default=...)` from `english` to `multilingual` in 0.4.0, and `laya.serve` followed
+    # by sending no `default` keyword at all when LAYA_DEFAULT_MODEL is unset
+    # (`_default_model_option`), which `laya/mcp/server.py::_ensure_router` reuses rather than
+    # duplicates. This file went on constructing `Router(default="english")`, so one environment
+    # answered three ways: a bare `laya-serve` and a bare `laya mcp` took a state with no language
+    # evidence to the multilingual checkpoint, a bare `python examples/server.py` took it to the
+    # English arm. 3cf26cb's own migration note is that the old fallback is now something you ask
+    # for by name, so the pin here was not a demo of the old default -- it was the demo ignoring
+    # the change. `Router.route` decides without loading or running anything, so none of this
+    # needs weights.
+    def with_default(value):
+        """Re-import the demo the way uvicorn starts it, with LAYA_DEFAULT_MODEL set to `value`."""
+        if value is None:
+            os.environ.pop("LAYA_DEFAULT_MODEL", None)
+        else:
+            os.environ["LAYA_DEFAULT_MODEL"] = value
+        return importlib.reload(demo)
+
+    fresh = with_default(None)
+    ok("an unset LAYA_DEFAULT_MODEL means 'not asked for', not a checkpoint of this file's own",
+       fresh._CFG["default"] is None, repr(fresh._CFG["default"]))
+    ok("so the key never reaches the constructor",
+       "default" not in fresh._router_kwargs(fresh._CFG),
+       repr(fresh._router_kwargs(fresh._CFG)))
+
+    # Blank has to mean the same thing at both surfaces. laya.serve treats "", "   " and "\n" as
+    # unset (tests/test_serve.py pins all three against `_default_model_option`); a demo that read
+    # them as a name would raise at `Router(default="")` where the packaged server starts.
+    from laya.serve import _default_model_option
+
+    for blank in ("", "   ", "\n"):
+        os.environ["LAYA_DEFAULT_MODEL"] = blank
+        ok("LAYA_DEFAULT_MODEL=%r is unset for laya.serve" % blank,
+           _default_model_option() == {}, repr(_default_model_option()))
+        fresh = with_default(blank)
+        ok("LAYA_DEFAULT_MODEL=%r is unset for the demo too" % blank,
+           "default" not in fresh._router_kwargs(fresh._CFG),
+           repr(fresh._router_kwargs(fresh._CFG)))
+
+    fresh = with_default(None)
+    with TestClient(fresh.app) as c:
+        ok("the Router the demo builds holds laya's own fallback",
+           fresh.ROUTER.default == Router().default,
+           "demo %r vs laya %r" % (fresh.ROUTER.default, Router().default))
+        ok("and laya's own fallback is the multilingual checkpoint",
+           fresh.ROUTER.default == "multilingual", repr(fresh.ROUTER.default))
+        # The decision, not the attribute: this is the branch 3cf26cb moved and #54 measured.
+        for state in ("12345 !!!", "Quero cancelar", "Esqueci minha senha"):
+            d = fresh.ROUTER.route(state)
+            ok("the demo routes %r off the fallback, from multilingual" % state,
+               d.model == "multilingual" and "using default (multilingual)" in d.reason,
+               "%r %r" % (d.model, d.reason))
+        ok("/models reports the fallback the running Router holds",
+           c.get("/models").json()["default"] == fresh.ROUTER.default,
+           repr(c.get("/models").json()["default"]))
+        # One badge, on the card the Router actually falls back to. The badge is rendered from
+        # `payload["default"]`, so this is the HTML half of the line above.
+        badged = [chunk.split("</h2>")[0] for chunk in
+                  c.get("/models", headers={"accept": "text/html"}).text
+                  .split("<section class='panel'>") if "data-s='ok'>default</span>" in chunk]
+        ok("and the page badges exactly one checkpoint, the multilingual one",
+           len(badged) == 1 and "<h2>multilingual" in badged[0], repr(badged)[:160])
+
+    # Before the lifespan has built anything, the page has no Router to ask, and must not guess.
+    fresh = with_default(None)
+    loading = TestClient(fresh.app)        # entered without a lifespan, so ROUTER stays None
+    ok("while the app is loading, /models claims no fallback",
+       fresh.ROUTER is None and loading.get("/models").json()["default"] is None,
+       repr(fresh.ROUTER))
+
+    # The default moving must not take the operator's own answer away with it -- and an alias or
+    # a padded spelling resolves to the same checkpoint it resolves to in laya.serve.
+    for raw, want in (("english", "english"), ("ml", "multilingual"),
+                      (" MULTI ", "multilingual"), ("typed-decisions", "typed-decisions")):
+        fresh = with_default(raw)
+        with TestClient(fresh.app) as cc:
+            ok("LAYA_DEFAULT_MODEL=%r still reaches the Router" % raw,
+               fresh.ROUTER.default == want, repr(fresh.ROUTER.default))
+            ok("LAYA_DEFAULT_MODEL=%r still shows up in /models" % raw,
+               cc.get("/models").json()["default"] == want,
+               repr(cc.get("/models").json()["default"]))
+            d = fresh.ROUTER.route("Quero cancelar")
+            ok("and %r decides that state from that checkpoint" % raw,
+               d.model == want and "using default (%s)" % want in d.reason,
+               "%r %r" % (d.model, d.reason))
+
+    fresh = with_default(None)
+    ok("the demo and laya.serve leave the fallback to the same place",
+       fresh._router_kwargs(fresh._CFG).get("default", Router().default) == build_router().default,
+       "%r vs %r" % (fresh._router_kwargs(fresh._CFG), build_router().default))
+
     # --- the --reload env push has to survive the round trip ----------------
     # With reload=True uvicorn re-imports `server:app` in a child process and only the
     # environment crosses over. Writing str(None) for "not asked for" would land on the
     # int() that reads LAYA_MAX_LOADED in that child and stop the server at import, so the
     # unset case must push nothing at all. uvicorn is replaced so main() never binds a port.
+    # The same round trip now carries the fallback, where str(None) is worse than a bad number:
+    # the child reads it as a checkpoint literally named "None" and refuses to start over a
+    # configuration nobody asked for.
     real_uvicorn = sys.modules.get("uvicorn")
     started = {}
     fake = types.ModuleType("uvicorn")
@@ -458,6 +554,13 @@ def main():
         demo.main()
         return os.environ.get("LAYA_MAX_LOADED", "(absent)")
 
+    def start_default(args):
+        """The same run, reporting what crossed over as the fallback."""
+        with_default(None)
+        sys.argv = ["server.py"] + args
+        demo.main()
+        return os.environ.get("LAYA_DEFAULT_MODEL", "(absent)")
+
     try:
         ok("--reload with no flag pushes no cap, so the reimport can read it",
            start(["--reload"]) == "(absent)", repr(started))
@@ -465,6 +568,15 @@ def main():
            start(["--reload", "--max-loaded", "3"]) == "3", repr(started))
         ok("without --reload nothing is pushed at all",
            start([]) == "(absent)", repr(started))
+        ok("--reload with no flag pushes no fallback either, so the child inherits laya's",
+           start_default(["--reload"]) == "(absent)", repr(started))
+        ok("--reload --default-model english pushes english",
+           start_default(["--reload", "--default-model", "english"]) == "english",
+           repr(started))
+        ok("and without --reload the flag is not pushed as a name",
+           start_default(["--default-model", "english"]) == "(absent)", repr(started))
+        ok("--default-model '' is the same as not passing it",
+           start_default(["--reload", "--default-model", ""]) == "(absent)", repr(started))
     finally:
         sys.argv = argv
         if real_uvicorn is not None:
@@ -472,6 +584,7 @@ def main():
         else:
             sys.modules.pop("uvicorn", None)
     with_cap(None)                     # leave the module as the rest of the file found it
+    with_default(None)                 # ... including the fallback the arms above pushed
 
     # --- /predict/batch must make ONE Router call, not one per state ---------
     #

@@ -171,7 +171,7 @@ def _canonical(value: Any) -> str:
 
 
 def _as_tokenized_instructions(body: Dict[str, Any]) -> Any:
-    """`instructions` exactly as `Agent._to_internal` (`laya/agent.py:736-748`) hands it over.
+    """`instructions` exactly as `laya/agent.py::Agent._to_internal` hands it over.
 
     A non-string becomes ``json.dumps(ins, ensure_ascii=False)``, and that step is not cosmetic:
     ``tests/test_criteria.py:229-251`` pins that the default ``ensure_ascii=True`` escaped
@@ -198,10 +198,10 @@ def questions_fingerprint(dataset: "Dataset") -> str:
 
     It covers every field the answer depends on, which is the same rule `examples/hooks/cache.py`
     states for a cache key ("has to cover everything the answer depends on") and the same one
-    Laya already applies to its own question identity: `Router._question_schema`
-    (`laya/router.py:141`) and this module's batch grouping (`laya/evals.py`) both hash the whole
-    questions dict. `tests/test_router_batch.py:543` pins that rewording `instructions` alone
-    moves a row into its own batch group.
+    Laya already applies to its own question identity: `laya/router.py::_question_schema` and this
+    module's batch grouping (`laya/evals.py::evaluate`) both hash the whole questions dict.
+    `tests/test_router_batch.py:543` pins that rewording `instructions` alone moves a row into its
+    own batch group.
 
     It is a function of the decision space, not of the rows, so scoring more states on the same
     questions leaves it unchanged.
@@ -211,11 +211,12 @@ def questions_fingerprint(dataset: "Dataset") -> str:
     written differently would then be refused, which is the safe direction to be wrong in.
     Normalizing them would widen the change past what the identity needs.
 
-    `labels` is hashed for the same reason `instructions` is: it is validated
-    (`laya/agent.py:722-726` -> `_resolve_noul_labels`) and carried into the internal question
-    (`laya/agent.py:748-749`), and `_resolve_noul_labels` (`laya/common.py:92`) turns it into the
-    option text the model reads. Leaving it out let two question sets with different rendered
-    options hash alike, which is the one thing this function exists to prevent.
+    `labels` is hashed for the same reason `instructions` is:
+    `laya/agent.py::Agent._check_question` validates it through
+    `laya/common.py::_resolve_noul_labels`, `laya/agent.py::Agent._to_internal` carries it into
+    the internal question, and that resolver is what turns it into the option text the model
+    reads. Leaving it out let two question sets with different rendered options hash alike, which
+    is the one thing this function exists to prevent.
     """
     schemas = set()
     for example in dataset.examples:

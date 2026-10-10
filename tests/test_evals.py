@@ -1626,11 +1626,11 @@ def test_questions_fingerprint_covers_the_instructions():
     """`instructions` is the prompt. Excluding it made the fingerprint say "same question" for
     two questions the model answers differently.
 
-    `laya/common.py:158-159` renders `"%s question: %s" % (q["type"], instructions)` into the
-    tokenized head, `laya/agent.py:633-634` makes the field mandatory ("add the text the model
-    should answer"), and Laya's own identity key for sharing forward passes
-    (`Router._question_schema`, `laya/router.py:141`) hashes the whole questions dict,
-    instructions included -- as does this module's own batch grouping at `laya/evals.py:529`.
+    `laya/common.py::build_head` renders `"%s question: %s" % (q["type"], instructions)` into the
+    tokenized head, `laya/agent.py::Agent._check_question` makes the field mandatory ("add the
+    text the model should answer"), and Laya's own identity key for sharing forward passes,
+    `laya/router.py::_question_schema`, hashes the whole questions dict, instructions included --
+    as does this module's own batch grouping at `laya/evals.py::evaluate`.
     `tests/test_router_batch.py:543` pins that rewording alone moves a row to its own batch group.
     Leaving it out made the one field this contract exists to protect the one field it ignored.
     """
@@ -1659,7 +1659,7 @@ def test_questions_fingerprint_covers_the_instructions():
 def test_questions_fingerprint_normalizes_instructions_the_way_the_engine_does():
     """Two questions that render the same text are the same question, whatever their JSON shape.
 
-    `Agent._to_internal` (`laya/agent.py:736-748`) turns a non-string `instructions` into
+    `laya/agent.py::Agent._to_internal` turns a non-string `instructions` into
     `json.dumps(ins, ensure_ascii=False)` before tokenizing, and `tests/test_criteria.py:229-251`
     pins why: the default `ensure_ascii=True` escaped non-ASCII to literal `\\uXXXX` and a German
     question answered noul=0.1652 as a dict against 0.2650 as the identical plain string. The
@@ -2026,9 +2026,10 @@ def test_questions_fingerprint_covers_labels():
     """`labels` decides the option text, so it belongs in the key.
 
     The same argument `test_questions_fingerprint_covers_the_instructions` makes for
-    `instructions`. `labels` is validated (`laya/agent.py:722-726` -> `_resolve_noul_labels`),
-    carried into the internal question (`laya/agent.py:748-749`), and resolved into the option
-    text the model actually reads (`laya/common.py:92`). Two question sets differing only in
+    `instructions`. `laya/agent.py::Agent._check_question` validates `labels` through
+    `laya/common.py::_resolve_noul_labels`, `laya/agent.py::Agent._to_internal` carries it into
+    the internal question, and the resolver is what produces the option text the model actually
+    reads. Two question sets differing only in
     `labels` therefore ask the model different things, and hashing them alike let the gate pass
     a comparison it exists to refuse.
     """
@@ -2053,8 +2054,8 @@ def test_questions_fingerprint_covers_labels():
 def test_questions_fingerprint_keeps_criteria_order():
     """A choice question's criteria order is positional, so two orders are two questions.
 
-    `examples/hooks/cache.py:22-25` states the rule and `Router._question_schema`
-    (`laya/router.py:141`) applies it with `sort_keys=False`. Worth pinning here for the dict
+    `examples/hooks/cache.py:22-25` states the rule and `laya/router.py::_question_schema`
+    applies it with `sort_keys=False`. Worth pinning here for the dict
     form: `json.dumps(sort_keys=True)` reorders *dict keys* and leaves *lists* alone, so a
     list-valued `criteria` -- the shape a dataset row has -- was already safe. The flag only
     mattered for a dict-valued one, where folding is the wrong direction to be wrong in.

@@ -217,11 +217,13 @@ workflow rather than waiting for auto task detection to recognise the question i
 takes a language code -- or a callable of the query being selected against -- from something that
 already knows it, consulted after an explicit `lang` and before core's own script detection; any
 non-English code routes to the multilingual checkpoint. A German-documented index is the case the
-hint is for: measured on sixteen German support queries, detection leaves 6 of the 8 written without
-umlauts and 2 of the 8 carrying them on the `english` checkpoint, while `lang_guess="de"` moves all
-16 to `multilingual`. See the [LangChain
-integration](langchain.md#9-which-checkpoint-answers) for that table and its
-reason strings.
+hint is for, but the gap is narrower than it looks: measured on sixteen German support queries
+through `Router.route` on `6880462`, one of the eight written without umlauts reaches `english`
+(`Was kostet die MwSt?`, read as "English Latin text"), and none of the eight carrying umlauts or
+`ß` does -- diacritics settle it, and an undecided Latin script now abstains to `multilingual`
+rather than to `english`. `lang_guess="de"` takes that last one off `english` too. See the [LangChain
+integration](langchain.md#9-which-checkpoint-answers) for that table, its reason strings, and the
+check that re-runs the sixteen queries.
 
 ```python
 selector = LayaSingleSelector(

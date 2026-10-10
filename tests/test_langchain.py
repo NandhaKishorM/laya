@@ -1627,6 +1627,42 @@ except ValueError as exc:
                "RouteIgnoringHintsRouter.route" in str(exc), str(exc))
 
 
+# The `docs/langchain.md` "What the hint moves, measured" table, re-run against the live router.
+# Routing only: `route` decides without loading a checkpoint, so this costs no weights and no
+# forward pass. The assertion is the guarantee the hint gives -- a caller that says "de" gets the
+# multilingual checkpoint for every one of these. The no-hint column is printed, not pinned: it is
+# the current detection heuristic's behaviour, and a run that fixes #54 should move the print, not
+# turn the suite red.
+from laya.router import Router as _RoutingRouter  # noqa: E402
+
+_DE_NO_DIACRITICS = [
+    "Zahlung fehlgeschlagen", "Wo finde ich meine Rechnung", "Ich kann mich nicht anmelden",
+    "Die App startet nicht", "Wie aendere ich meine Adresse", "Bestellung noch nicht angekommen",
+    "Ich brauche eine Kuendigung", "Was kostet die MwSt?",
+]
+_DE_DIACRITIC = [
+    "Rechnung für die MwSt stimmt nicht", "Paßwort zurücksetzen geht nicht",
+    "Größe des Pakets passt nicht", "Kündigung per E-Mail senden",
+    "Gehälter ohne Umlaute im Profil", "Wie viel kostet der Versand heute",
+    "Ich möchte meine Adresse ändern", "Wo muß ich das Formular einreichen",
+]
+_DE_ALL = _DE_NO_DIACRITICS + _DE_DIACRITIC
+_Q_GUESS = {"a": {"type": "noul", "instructions": "Is `text` a support question?"}}
+_rt = _RoutingRouter()
+
+
+def _on_english(texts, **kw):
+    return [t for t in texts if _rt.route({"text": t}, _Q_GUESS, **kw)["model"] == "english"]
+
+
+print("\n  lang_guess table, this run (queries read as English):")
+for _label, _qs in (("without umlauts or ß", _DE_NO_DIACRITICS), ("with umlauts or ß", _DE_DIACRITIC)):
+    print("    %-24s no hint %d, lang_guess=\"de\" %d   %s"
+          % (_label, len(_on_english(_qs)), len(_on_english(_qs, lang_guess="de")), _on_english(_qs)))
+check("routing/with the de hint no German query is read as English",
+      _on_english(_DE_ALL, lang_guess="de"), [])
+
+
 # --------------------------------------------------------------- Summary
 print(f"PASS: {len(PASS)}")
 print(f"FAIL: {len(FAIL)}")

@@ -501,22 +501,29 @@ Both are per node, like the budgets, and unset means unsent: leave one out and t
 `Router(task=...)` / `Router(lang_guess=...)` stays in charge rather than being overwritten with
 `None`. `batch()` sends them with every request in the batch, `abatch()` on the same path.
 
-**What the hint moves, measured.** Sixteen German support queries through `Router._route` on
-`6d942c9` -- routing only, so no checkpoint is loaded and no answer is taken -- counted by which
-checkpoint the decision lands on:
+**What the hint moves, measured.** Sixteen German support queries through `Router.route` on
+`6880462` (0.4.2) -- routing only, so no checkpoint is loaded and no answer is taken -- counted by
+which checkpoint the decision lands on:
 
 | German queries | no hint | `lang_guess="de"` |
 |---|---|---|
-| 8 written without umlauts or `ß` | 6 answered on `english` | 8 on `multilingual` |
-| 8 carrying umlauts or `ß` | 2 answered on `english` | 8 on `multilingual` |
+| 8 written without umlauts or `ß` | 1 read as English | 0 read as English |
+| 8 carrying umlauts or `ß` | 0 read as English | 0 read as English |
 
-Detection is a good guesser when the text gives it letters to work with; `Zahlung fehlgeschlagen`
-brings it to its stated abstention (`"Latin script, language not identified and no non-English
-letters; using default (english)"`), and `Was kostet die MwSt?` to a wrong read (`"English Latin
-text"`). A caller that knows the language from a user id or an `Accept-Language` header knows better
-than that, which is the whole argument for the hint. What is *not* claimed here is what the two
-checkpoints then score on those queries -- that needs weights and a labelled set, and this table is
-about which one answers, not how well.
+The one miss is `Was kostet die MwSt?`, which detection reads as `"English Latin text"`: an
+abbreviation-heavy short query with no diacritics and no stopword signal. Diacritics settle it on
+their own, so the eight `umlauts or ß` queries all leave `english` without any help from the hint.
+Plain German prose that detection cannot place does not reach the English checkpoint either any
+more -- an undecided Latin script now abstains to the multilingual one (`"Latin script, language
+not identified and no non-English letters; using default (multilingual)"`, asserted in
+`tests/test_router.py`), so the residual gap the hint closes is the false-English read, not the
+undecided one. A caller that knows the language from a user id or an `Accept-Language` header still
+knows better than any guess, which is the argument for the hint. What is *not* claimed here is what
+the two checkpoints then score on those queries -- that needs weights and a labelled set, and this
+table is about which one answers, not how well.
+
+`tests/test_langchain.py` re-runs these sixteen queries against the live router and asserts the
+hint half of the table, so the numbers above cannot quietly go stale behind this paragraph.
 
 **A recorded `before`.** On `6d942c9`, in real (installed `langchain-core`) mode, a node built with
 both hints and a budget, answering through a runner that prints what `predict` received:

@@ -168,7 +168,45 @@ def bound_symbol(text: str, pos: int) -> Optional[str]:
     return matches[-1].group("name")
 
 
+def cites_inside(lo: int, hi: int, named: Sequence["Symbol"]) -> bool:
+    """Whether the cited range falls inside the symbol it names -- a fragment of a function is a
+    legitimate citation, so overlap is the test, not containment."""
+    return any(s.start <= hi and lo <= s.end for s in named)
+
+
+def positive_controls() -> None:
+    """Prove the two detectors fire, against a symbol read from the tree rather than a literal.
+
+    Without this, a checker that always returns "fine" passes exactly as loudly as one that works.
+    The spans come from `laya/agent.py` as it is now, so the fixtures cannot themselves go stale.
+    """
+    fn = [s for s in symbols("laya/agent.py") if s.name == "_to_internal"]
+    check_true("the control has a function to cite", bool(fn),
+               "no `_to_internal` in laya/agent.py")
+    if not fn:
+        return
+    first, last = fn[0].start, fn[0].end
+    check_true("control: a range inside the named function is accepted",
+               cites_inside(first, last, fn), "%d-%d rejected" % (first, last))
+    check_true("control: a range 300 lines below it is rejected",
+               not cites_inside(last + 1, last + 300, fn), "")
+    check_true("control: line 1 of the cited file is rejected", not cites_inside(1, 1, fn), "")
+
+    stale = "`Agent._to_internal` (`laya/agent.py:%d`)" % (last + 300)
+    got = bound_symbol(stale, stale.index("laya/agent.py"))
+    check_true("control: the `symbol` (`file:NNN`) idiom binds",
+               got == "Agent._to_internal", got)
+    far = ("`Agent._to_internal` is the function that normalizes instructions before hashing, "
+           "and it lives at (`laya/agent.py:%d`)" % last)
+    got = bound_symbol(far, far.index("laya/agent.py"))
+    check_true("control: a citation two clauses away does not bind", got is None, got)
+    form = "`laya/agent.py::Agent._to_internal`"
+    got = bound_symbol(form, form.index("Agent._to_internal"))
+    check_true("control: a `::` citation is not read as a line citation", got is None, got)
+
+
 def main() -> int:
+    positive_controls()
     files = text_files()
     check_true("the scan covers the tree", len(files) > 300, "%d text files" % len(files))
 
@@ -230,7 +268,7 @@ def main() -> int:
                                % (where(m.start()), name, tgt, _shown(named)))
                 continue
             lo, hi = int(m.group("a")), int(m.group("b") or m.group("a"))
-            if not any(s.start <= hi and lo <= s.end for s in named):
+            if not cites_inside(lo, hi, named):
                 drifted.append("%s puts %s at %s:%d, but it runs %s"
                                % (where(m.start()), name, tgt, lo, _shown(named)))
 

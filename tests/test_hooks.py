@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import laya.agent as _agent_mod  # noqa: E402
 from laya.agent import Agent  # noqa: E402
-from laya.hooks import normalise_hooks  # noqa: E402
+from laya.hooks import OptionStabilityHook, normalise_hooks  # noqa: E402
 from laya.router import RouteDecision, Router  # noqa: E402
 
 PASS, FAIL = [], []
@@ -1696,6 +1696,45 @@ check_raises("router_batch/route_batch rejects positional hooks", TypeError,
              lambda: r_pos.route_batch([req("pos1")], 1.0, [RouteTrace()]))
 check_raises("router_batch/predict_batch rejects positional hooks", TypeError,
              lambda: r_pos.predict_batch([req("pos2")], 8, 1.0, None, False, [PerCallTrace()]))
+
+# --------------------------------------------------------------- OptionStabilityHook (issue #635)
+check_raises("stability/negative n_shuffles", ValueError, lambda: OptionStabilityHook(n_shuffles=-1))
+check_raises("stability/bool n_shuffles", ValueError, lambda: OptionStabilityHook(n_shuffles=True))
+check_raises("stability/unknown variants", ValueError, lambda: OptionStabilityHook(variants="invalid"))
+check_raises("stability/empty variants", ValueError, lambda: OptionStabilityHook(variants=[]))
+check_raises("stability/escalate > accept", ValueError, lambda: OptionStabilityHook(accept=0.5, escalate=0.8))
+
+stab_hook = OptionStabilityHook(seed="test-seed")
+stab_q = {"choice_q": {"type": "choice", "instructions": "Pick?", "criteria": {"a": "opt 1", "b": "opt 2"}}}
+stab_ctx = PredictContext(states=["state 1"], questions=dict(stab_q))
+stab_hook.on_predict_start(stab_ctx)
+check_true("stability/injects variant questions", any(k.startswith("choice_q::rel") for k in stab_ctx.questions))
+
+sim_answers = {}
+for k, q_def in stab_ctx.questions.items():
+    crit = q_def["criteria"]
+    target = [name for name, desc in crit.items() if desc == "opt 1"][0]
+    sim_answers[k] = {
+        "type": "choice",
+        "choice": target,
+        "probabilities": {name: (0.9 if name == target else 0.1) for name in crit},
+        "answer_confidence": 0.9,
+    }
+
+stab_ctx.results = [{
+    "model": "fake",
+    "answers": sim_answers,
+    "usage": {"truncated_questions": ["choice_q::rel1"]},
+}]
+stab_hook.on_predict_end(stab_ctx)
+stab_ans = stab_ctx.results[0]["answers"]
+check_true("stability/cleans variant keys", not any("::rel" in k for k in stab_ans))
+check("stability/keeps choice", stab_ans["choice_q"]["choice"], "a")
+check_true("stability/adds reliability", "reliability" in stab_ans["choice_q"])
+check("stability/accept decision", stab_ans["choice_q"]["reliability"]["decision"], "ACCEPT")
+check("stability/stability 1.0", stab_ans["choice_q"]["reliability"]["stability"], 1.0)
+check("stability/probes list", stab_ans["choice_q"]["reliability"]["probes"], ["reorder", "rename"])
+check("stability/cleans usage", stab_ctx.results[0]["usage"]["truncated_questions"], [])
 
 
 # --------------------------------------------------------------- docs prose for plain callables

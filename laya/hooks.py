@@ -12,13 +12,16 @@ import asyncio
 import contextvars
 import inspect
 import math
+import random
+import string
 import threading
 import time
 import uuid
 import warnings
+import zlib
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Protocol, Sequence, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Protocol, Sequence, Tuple, Union
 
 
 @dataclass(eq=False)
@@ -545,3 +548,473 @@ def dispatch(
                 RuntimeWarning,
                 stacklevel=2,
             )
+
+
+# Reference cutoffs fitted on the 300-case MASSIVE 20-option benchmark (#635) using
+# `calibrate_reliability(target_accuracy=0.90, max_escalate_accuracy=1/3)`:
+# - accept=0.77: lowest soft_stability threshold achieving >= 90% decision accuracy.
+# - escalate=0.61: highest soft_stability threshold where accuracy drops below 33.3%.
+# Callers should calibrate on their domain distribution via calibrate_reliability().
+DEFAULT_ACCEPT = 0.77
+DEFAULT_ESCALATE = 0.61
+_SEP = "::rel"
+
+ALL_VARIANTS = (
+    "reversed",
+    "shuffle1",
+    "shuffle2",
+    "shuffle3",
+    "letters",
+    "letters_reversed",
+    "letters_shuffle",
+)
+
+VARIANT_PRESETS = {
+    "full": None,
+    "fast": ("reversed", "letters_reversed"),
+}
+
+
+def make_variants(
+    labels: Sequence[str],
+    seed_key: str,
+    n_shuffles: int = 3,
+    relabel: bool = True,
+    include: Optional[Sequence[str]] = None,
+    reorder: bool = True,
+) -> List[Tuple[str, List[str], bool]]:
+    """Meaning-preserving rewrites of choice option order and labels (#635).
+
+    The first variant is always the original question. Shuffles are seeded using a
+    zlib CRC32 hash of `seed_key` so variant selection is reproducible across identical
+    inputs. Note: this provides reproducible variant generation, not a model-level
+    determinism guarantee. Duplicates are dropped because evaluating an identical
+    sequence twice would artificially inflate stability.
+    """
+    labels_list = list(labels)
+    rng = random.Random(zlib.crc32(seed_key.encode("utf-8")))
+    cands: List[Tuple[str, List[str], bool]] = [
+        ("original", labels_list, False),
+    ]
+    if reorder:
+        cands.append(("reversed", labels_list[::-1], False))
+        for i in range(n_shuffles):
+            order = labels_list[:]
+            rng.shuffle(order)
+            cands.append((f"shuffle{i + 1}", order, False))
+    if relabel and len(labels_list) <= 26:
+        cands.append(("letters", labels_list, True))
+        cands.append(("letters_reversed", labels_list[::-1], True))
+        order = labels_list[:]
+        rng.shuffle(order)
+        cands.append(("letters_shuffle", order, True))
+
+    if include is not None:
+        wanted = set(include)
+        cands = [c for c in cands if c[0] == "original" or c[0] in wanted]
+
+    seen = set()
+    out = []
+    for name, order, rel in cands:
+        key = (tuple(order), rel)
+        if key not in seen:
+            seen.add(key)
+            out.append((name, order, rel))
+    return out
+
+
+def decide_reliability(
+    soft_stability: float,
+    accept: Optional[float] = DEFAULT_ACCEPT,
+    escalate: Optional[float] = DEFAULT_ESCALATE,
+) -> Optional[str]:
+    """Classify soft stability into 'ACCEPT', 'VERIFY', or 'ESCALATE'.
+
+    If `accept` is None, returns None (fail-closed uncalibrated signal).
+    """
+    if accept is None:
+        return None
+    if soft_stability >= accept:
+        return "ACCEPT"
+    if escalate is not None and soft_stability < escalate:
+        return "ESCALATE"
+    return "VERIFY"
+
+
+def calibrate_reliability(
+    soft_scores: Sequence[float],
+    correct: Sequence[bool],
+    target_accuracy: float = 0.90,
+    max_escalate_accuracy: float = 1 / 3,
+) -> Tuple[float, float]:
+    """Pick (accept, escalate) thresholds from labelled evaluation examples (#635).
+
+    accept   = lowest cutoff where answers at or above it reach `target_accuracy`.
+    escalate = highest cutoff below `accept` where answers below it are at most
+               `max_escalate_accuracy` accurate.
+    If no cutoff reaches `target_accuracy`, accept is returned as 1.01 (accept nothing).
+    """
+    pairs = sorted(zip(soft_scores, correct))
+    if not pairs:
+        return DEFAULT_ACCEPT, DEFAULT_ESCALATE
+    cuts = sorted({round(s, 4) for s, _ in pairs})
+
+    accept = 1.01
+    for t in cuts:
+        kept = [c for s, c in pairs if s >= t]
+        if kept and sum(kept) / len(kept) >= target_accuracy:
+            accept = t
+            break
+
+    escalate = 0.0
+    for t in cuts:
+        if t >= accept:
+            break
+        below = [c for s, c in pairs if s < t]
+        if below and sum(below) / len(below) <= max_escalate_accuracy:
+            escalate = t
+    return accept, escalate
+
+
+def _seed_of(state: Any) -> str:
+    return state if isinstance(state, str) else repr(state)
+
+
+class OptionStabilityHook(BaseHook):
+    """Opt-in reliability signal via metamorphic option reordering and renaming (#635).
+
+    Generates variant permutations of choice options at `on_predict_start`, scores them
+    in the same batch forward pass, and adds a `reliability` dict to each choice answer
+    at `on_predict_end`.
+
+    Layout-aware (#635, #951):
+    On parallel option layouts (`option_layout="parallel"`), options cannot attend to each
+    other so reordering yields 100% agreement by construction. The hook detects the
+    checkpoint's layout from `ctx.agent.config` and runs rename-only probes on parallel
+    checkpoints, while running both rename and reorder probes on sequential checkpoints.
+    The returned `reliability["probes"]` explicitly names which probes actually ran,
+    returning `None` for stability signals when no probe could run.
+    """
+
+    def __init__(
+        self,
+        *,
+        probes: Optional[Union[str, Sequence[str]]] = None,
+        n_shuffles: int = 3,
+        relabel: bool = True,
+        rename_max_options: int = 20,
+        variants: Union[str, Sequence[str], None] = "full",
+        accept: Optional[float] = DEFAULT_ACCEPT,
+        escalate: Optional[float] = DEFAULT_ESCALATE,
+        seed: Optional[str] = None,
+    ):
+        if probes is not None:
+            if isinstance(probes, str):
+                if probes == "auto":
+                    self.probes = None
+                elif probes in ("reorder", "rename"):
+                    self.probes = (probes,)
+                elif probes == "all":
+                    self.probes = ("reorder", "rename")
+                else:
+                    raise ValueError("unknown probe type %r; choose from 'auto', 'reorder', 'rename', 'all'" % (probes,))
+            elif isinstance(probes, (list, tuple, set)):
+                probes_list = list(probes)
+                if not probes_list:
+                    raise ValueError("probes list must not be empty; choose from 'reorder', 'rename'")
+                bad = [p for p in probes_list if p not in ("reorder", "rename")]
+                if bad:
+                    raise ValueError("unknown probe types %r; choose from 'reorder', 'rename'" % (bad,))
+                self.probes = tuple(dict.fromkeys(probes_list))
+            else:
+                raise TypeError("probes must be a string or sequence of probe names, got %s" % type(probes).__name__)
+        else:
+            self.probes = None
+
+        if isinstance(n_shuffles, bool) or not isinstance(n_shuffles, int) or n_shuffles < 0:
+            raise ValueError("n_shuffles must be a non-negative integer, got %r" % (n_shuffles,))
+        if not isinstance(relabel, bool):
+            raise TypeError("relabel must be a bool, got %r" % (relabel,))
+        if isinstance(rename_max_options, bool) or not isinstance(rename_max_options, int) or rename_max_options < 2:
+            raise ValueError("rename_max_options must be an integer >= 2, got %r" % (rename_max_options,))
+
+        self.n_shuffles = n_shuffles
+        self.relabel = relabel
+        self.rename_max_options = rename_max_options
+        self.variants = variants
+        self._include = self._resolve_variants(variants)
+
+        if accept is not None:
+            if (isinstance(accept, bool) or not isinstance(accept, (int, float))
+                    or not math.isfinite(accept) or not (0.0 <= accept <= 1.01)):
+                raise ValueError("accept must be a float in [0.0, 1.01], got %r" % (accept,))
+            self.accept = float(accept)
+        else:
+            self.accept = None
+
+        if escalate is not None:
+            if (isinstance(escalate, bool) or not isinstance(escalate, (int, float))
+                    or not math.isfinite(escalate) or not (0.0 <= escalate <= 1.0)):
+                raise ValueError("escalate must be a float in [0.0, 1.0], got %r" % (escalate,))
+            self.escalate = float(escalate)
+        else:
+            self.escalate = None
+
+        if self.accept is not None and self.escalate is not None and self.escalate > self.accept:
+            raise ValueError("escalate (%r) must not be greater than accept (%r)" % (escalate, accept))
+
+        self.seed = str(seed) if seed is not None else None
+
+        self._plans: Dict[str, Any] = {}
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _resolve_variants(variants: Union[str, Sequence[str], None]) -> Optional[List[str]]:
+        if variants is None:
+            return None
+        if isinstance(variants, str):
+            if variants not in VARIANT_PRESETS:
+                raise ValueError(
+                    "unknown variants preset %r; use one of %s or a sequence from %s"
+                    % (variants, sorted(VARIANT_PRESETS), list(ALL_VARIANTS))
+                )
+            preset = VARIANT_PRESETS[variants]
+            return list(preset) if preset is not None else None
+        if isinstance(variants, (list, tuple, set)):
+            names = list(variants)
+            bad = [n for n in names if n not in ALL_VARIANTS]
+            if bad:
+                raise ValueError("unknown variant names %r; choose from %s" % (bad, list(ALL_VARIANTS)))
+            if not names:
+                raise ValueError("variants list is empty: nothing to compare the original against")
+            return names
+        raise TypeError("variants must be a string preset or sequence of names, got %s" % type(variants).__name__)
+
+    @staticmethod
+    def _detect_layout(ctx: PredictContext) -> str:
+        agent = getattr(ctx, "agent", None)
+        if agent is not None:
+            cfg = getattr(agent, "config", None)
+            if isinstance(cfg, dict):
+                raw = cfg.get("option_layout")
+                if isinstance(raw, str):
+                    val = raw.strip().lower()
+                    if val in ("parallel", "sequential"):
+                        return val
+                    warnings.warn(
+                        "laya: unknown option_layout %r in agent config; defaulting to 'sequential'" % (raw,),
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+        return "sequential"
+
+    @staticmethod
+    def _variant_question(q: Dict[str, Any], order: List[str], relabel: bool) -> Tuple[Dict[str, Any], Dict[str, str]]:
+        shown = list(string.ascii_uppercase[: len(order)]) if relabel else list(order)
+        new_q = dict(q)
+        crit = q.get("criteria")
+        if isinstance(crit, dict):
+            new_q["criteria"] = {s: crit[orig] for s, orig in zip(shown, order)}
+        elif isinstance(crit, (list, tuple)):
+            if relabel:
+                new_q["criteria"] = {s: orig for s, orig in zip(shown, order)}
+            else:
+                new_q["criteria"] = list(order)
+        return new_q, dict(zip(shown, order))
+
+    def on_predict_start(self, ctx: PredictContext) -> None:
+        if not ctx.questions:
+            return
+
+        for qid in ctx.questions:
+            if _SEP in qid:
+                raise ValueError("question id %r must not contain %r" % (qid, _SEP))
+
+        layout = self._detect_layout(ctx)
+        if self.probes is not None:
+            configured_probes = set(self.probes)
+        else:
+            # Layout-aware probe selection (#635, #951):
+            # Parallel layout makes reordering structurally invariant (100% agreement by construction).
+            # Therefore reorder probes are pure cost and skipped; rename probes remain informative.
+            if layout == "parallel":
+                configured_probes = {"rename"} if self.relabel else set()
+            else:
+                configured_probes = {"reorder"}
+                if self.relabel:
+                    configured_probes.add("rename")
+
+        base_seed = self.seed if self.seed is not None else (
+            _seed_of(ctx.states[0]) if (ctx.states and len(ctx.states) == 1) else "batch"
+        )
+
+        plan: Dict[str, Dict[str, Any]] = {}
+        new_questions = dict(ctx.questions)
+
+        for qid, q in ctx.questions.items():
+            if not isinstance(q, dict) or q.get("type") != "choice":
+                continue
+            crit = q.get("criteria")
+            if isinstance(crit, dict):
+                labels = list(crit.keys())
+            elif isinstance(crit, (list, tuple)):
+                labels = list(crit)
+            else:
+                continue
+            if len(labels) < 2:
+                # Questions with < 2 options cannot be probed
+                plan[qid] = {
+                    "layout": layout,
+                    "variants": [("original", qid, {k: k for k in labels}, False)],
+                    "probes_ran": [],
+                }
+                continue
+
+            can_reorder = "reorder" in configured_probes
+            can_rename = ("rename" in configured_probes) and (len(labels) <= self.rename_max_options)
+
+            if not can_reorder and not can_rename:
+                plan[qid] = {
+                    "layout": layout,
+                    "variants": [("original", qid, {k: k for k in labels}, False)],
+                    "probes_ran": [],
+                }
+                continue
+
+            seed_key = f"{base_seed}|{qid}"
+            variants = make_variants(
+                labels,
+                seed_key,
+                self.n_shuffles,
+                relabel=can_rename,
+                include=self._include,
+                reorder=can_reorder,
+            )
+
+            q_variants = [("original", qid, {k: k for k in labels}, False)]
+            probes_ran = []
+            if any(not rel and name != "original" for name, _, rel in variants[1:]):
+                probes_ran.append("reorder")
+            if any(rel for _, _, rel in variants[1:]):
+                probes_ran.append("rename")
+
+            for i, (name, order, rel) in enumerate(variants[1:], 1):
+                vq, back = self._variant_question(q, order, rel)
+                key = f"{qid}{_SEP}{i}"
+                new_questions[key] = vq
+                q_variants.append((name, key, back, rel))
+
+            plan[qid] = {
+                "layout": layout,
+                "variants": q_variants,
+                "probes_ran": probes_ran,
+            }
+
+        if plan:
+            ctx.questions = new_questions
+            with self._lock:
+                self._plans[ctx.run_id] = plan
+
+    def on_predict_end(self, ctx: PredictContext) -> None:
+        with self._lock:
+            plan = self._plans.pop(ctx.run_id, None)
+        if not plan or not ctx.results:
+            return
+
+        for res in ctx.results:
+            if not isinstance(res, dict):
+                continue
+            answers = res.get("answers")
+            if not isinstance(answers, dict):
+                continue
+
+            all_variant_keys = set()
+            for qid, q_plan in plan.items():
+                variants = q_plan["variants"]
+                layout = q_plan["layout"]
+                probes_ran = q_plan["probes_ran"]
+
+                for _, key, _, _ in variants[1:]:
+                    all_variant_keys.add(key)
+
+                if qid not in answers:
+                    continue
+                ans = answers[qid]
+                if not isinstance(ans, dict) or ans.get("type") != "choice":
+                    continue
+
+                choice = ans.get("choice")
+                seen = []
+                all_present = all(key in answers for _, key, _, _ in variants)
+                if not all_present:
+                    continue
+
+                for name, key, back, rel in variants:
+                    a = answers[key]
+                    raw_probs = a.get("probabilities") or {}
+                    probs = {back.get(k, k): v for k, v in raw_probs.items()}
+                    v_choice = a.get("choice")
+                    mapped_choice = back.get(v_choice, v_choice)
+                    seen.append((name, mapped_choice, probs, rel))
+
+                others = seen[1:]
+                if not others or not probes_ran:
+                    # No probes ran for this question: return None signals so caller
+                    # does not gate on an unprobed question (#635).
+                    ans["reliability"] = {
+                        "probes": [],
+                        "option_layout": layout,
+                        "decision": None,
+                        "soft_stability": None,
+                        "stability": None,
+                        "rename_stability": None,
+                        "reorder_stability": None,
+                        "n_variants": len(seen),
+                        "distinct_choices": sorted({c for _, c, _, _ in seen if c is not None}),
+                        "variant_choices": {name: c for name, c, _, _ in seen},
+                        "variant_support": {name: round(p.get(choice, 0.0), 4) for name, _, p, _ in seen},
+                    }
+                    continue
+
+                reorder_items = [
+                    (name, c, p) for name, c, p, rel in others
+                    if not rel
+                ]
+                rename_items = [
+                    (name, c, p) for name, c, p, rel in others
+                    if rel
+                ]
+
+                stability = (sum(c == choice for _, c, _, _ in others) / len(others)) if others else None
+                soft = (sum(p.get(choice, 0.0) for _, _, p, _ in seen) / len(seen)) if seen else None
+                reorder_stab = (sum(c == choice for _, c, _ in reorder_items) / len(reorder_items)) if reorder_items else None
+                rename_stab = (sum(c == choice for _, c, _ in rename_items) / len(rename_items)) if rename_items else None
+
+                ans["reliability"] = {
+                    "probes": list(probes_ran),
+                    "option_layout": layout,
+                    "decision": decide_reliability(soft, self.accept, self.escalate) if soft is not None else None,
+                    "soft_stability": round(soft, 4) if soft is not None else None,
+                    "stability": round(stability, 4) if stability is not None else None,
+                    "rename_stability": round(rename_stab, 4) if rename_stab is not None else None,
+                    "reorder_stability": round(reorder_stab, 4) if reorder_stab is not None else None,
+                    "n_variants": len(seen),
+                    "distinct_choices": sorted({c for _, c, _, _ in seen if c is not None}),
+                    "variant_choices": {name: c for name, c, _, _ in seen},
+                    "variant_support": {name: round(p.get(choice, 0.0), 4) for name, _, p, _ in seen},
+                }
+
+            for key in all_variant_keys:
+                answers.pop(key, None)
+
+            usage = res.get("usage")
+            if isinstance(usage, dict):
+                if "truncated_questions" in usage and isinstance(usage["truncated_questions"], list):
+                    usage["truncated_questions"] = [q for q in usage["truncated_questions"] if _SEP not in q]
+                if "options" in usage and isinstance(usage["options"], dict):
+                    usage["options"] = {k: v for k, v in usage["options"].items() if _SEP not in k}
+
+    def on_error(self, ctx: PredictContext) -> None:
+        with self._lock:
+            self._plans.pop(ctx.run_id, None)
+

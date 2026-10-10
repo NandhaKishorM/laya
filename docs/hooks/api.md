@@ -4,12 +4,13 @@ Everything on this page is importable from `laya` (the common names) or `laya.ho
 whole surface).
 
 ```python
-from laya import PredictContext, PredictHook, Hook
+from laya import PredictContext, PredictHook, Hook, OptionStabilityHook
 from laya.hooks import HOOK_EVENTS, normalise_hooks, dispatch, aggregate_usage
 ```
 
 - [PredictContext](#predictcontext)
 - [Hook protocol](#hook-protocol)
+- [OptionStabilityHook](#optionstabilityhook)
 - [Convenience types](#convenience-types)
 - [Configuration surface](#configuration-surface)
 - [Event payloads](#event-payloads)
@@ -140,6 +141,30 @@ class Audit(BaseHook):
 
 `Hook` is best when you want structural typing (any object with the right methods); `BaseHook` is
 best when you want an explicit base to subclass and call `super()` on.
+
+## OptionStabilityHook
+
+`OptionStabilityHook` evaluates prediction reliability across meaning-preserving option permutations and letter renamings (addressing issue #635). It executes variants in the same single-forward-pass batch without multiple network calls or serial invocations.
+
+Layout-aware (#635, #951): on checkpoints using parallel option layouts (`option_layout="parallel"`), options cannot attend to each other so reordering cannot move decisions by construction. The hook automatically detects layout from the agent config, executing rename-only probes on parallel checkpoints while running both rename and reorder probes on sequential checkpoints.
+
+```python
+from laya import OptionStabilityHook
+
+stability_hook = OptionStabilityHook(variants="fast", accept=0.77, escalate=0.61)
+agent = laya.load("convaiinnovations/laya", hooks=[stability_hook])
+```
+
+It attaches a `reliability` diagnostic block to each choice question's answer:
+- `probes`: List of probe kinds that executed (e.g. `["rename"]`, `["reorder", "rename"]`, or `[]`).
+- `option_layout`: Checkpoint layout (`"parallel"` or `"sequential"`).
+- `soft_stability`: Mean probability assigned to the chosen option across all evaluated variants (`None` if unprobed).
+- `stability`: Fraction of variants whose argmax choice agrees with the original decision (`None` if unprobed).
+- `rename_stability`: Stability across rename variants (`None` if no rename probe ran).
+- `reorder_stability`: Stability across reorder variants (`None` if no reorder probe ran).
+- `decision`: Categorical classification (`ACCEPT`, `VERIFY`, or `ESCALATE`, or `None` if unprobed).
+- `variant_choices`: Mapping of variant name to decoded choice.
+- `variant_support`: Mapping of variant name to probability mass on the primary choice.
 
 ## Convenience types
 

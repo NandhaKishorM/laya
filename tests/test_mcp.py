@@ -41,6 +41,7 @@ from laya.mcp.tools import (  # noqa: E402
     laya_decide,
     laya_predict,
     laya_predict_batch,
+    laya_predict_long,
     laya_preset,
     laya_route,
     laya_route_batch,
@@ -1450,6 +1451,151 @@ def test_shortlist_embed_cache():
        "calls=%d" % len(calls))
 
 
+# --- long-document scan ----------------------------------------------------
+
+LONG_QUESTIONS = {"refund": {"type": "noul", "instructions": "Does the user ask for a refund?"}}
+
+
+class LongAgent:
+    device = "cpu"
+
+    def __init__(self):
+        self.seen = None
+
+    def predict_long(self, state, questions, window=None, stride=None, aggregate=None,
+                     batch_size=None, lang=None, hooks=None, on_predict_start=None,
+                     on_predict_end=None, hooks_raise=None, hooks_timeout=None):
+        # The exact real `Agent.predict_long` signature, with no `**kwargs` and no `task`:
+        # an Agent answers but never routes, so a forwarded `task` must raise rather than be
+        # silently absorbed. Recording only the non-None controls keeps the "unset stays absent"
+        # assertion while letting a wrongly-forwarded keyword reach the tool as a TypeError.
+        self.seen = {k: v for k, v in (
+            ("window", window), ("stride", stride), ("aggregate", aggregate),
+            ("batch_size", batch_size), ("lang", lang),
+        ) if v is not None}
+        return {"answers": {"refund": {"noul": 0.8, "confidence": 0.7,
+                                       "window": {"index": 0, "token_start": 0,
+                                                  "token_end": 10, "count": 3}}},
+                "usage": {"windows": 3}}
+
+
+class LongRouter:
+    """Fake router with predict_long: records the scan kwargs, answers from window 0."""
+
+    def __init__(self, routed="english"):
+        self.routed = routed
+        self.seen = None
+        self._agents = {"english": LongAgent()}
+
+    def predict_long(self, state, questions, **kwargs):
+        self.seen = kwargs
+        return {"answers": {"refund": {"noul": 0.8, "confidence": 0.7,
+                                       "window": {"index": 0, "token_start": 0,
+                                                  "token_end": 10, "count": 3}}},
+                "routing": {"model": kwargs.get("model", self.routed), "repo": "fake/repo",
+                            "reason": "unit-test scan"},
+                "usage": {"windows": 3}}
+
+
+class NoScanAgent:
+    device = "cpu"
+
+    def predict(self, state, questions, **kwargs):
+        raise AssertionError("predict must not answer a long-document call")
+
+
+def test_predict_long():
+    expect_tool_error("long/state_bad",
+                      lambda: laya_predict_long([], LONG_QUESTIONS, router=LongRouter()),
+                      "invalid_state")
+    expect_tool_error("long/questions_bad",
+                      lambda: laya_predict_long(STATE, {}, router=LongRouter()),
+                      "invalid_questions")
+    expect_tool_error("long/model_bad",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS, model="gpt4",
+                                               router=LongRouter()),
+                      "invalid_model")
+    for bad in (0, -3, True, 2.5, "256"):
+        expect_tool_error("long/window_bad_%r" % (bad,),
+                          lambda b=bad: laya_predict_long(STATE, LONG_QUESTIONS, window=b,
+                                                          router=LongRouter()),
+                          "invalid_window")
+        expect_tool_error("long/stride_bad_%r" % (bad,),
+                          lambda b=bad: laya_predict_long(STATE, LONG_QUESTIONS, stride=b,
+                                                          router=LongRouter()),
+                          "invalid_stride")
+    expect_tool_error("long/task_with_pinned_model",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS, model="english",
+                                               task="triage", router=LongRouter()),
+                      "invalid_task")
+    expect_tool_error("long/auto_needs_router",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS), "models_not_ready")
+    expect_tool_error("long/explicit_not_loaded",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS, model="english"),
+                      "models_not_ready")
+    expect_tool_error("long/no_scan_method",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS, model="english",
+                                               agent=NoScanAgent()),
+                      "internal_error")
+
+    # Auto mode scans through the router: unset scan controls are not forwarded, so a
+    # checkpoint that predates those keywords keeps working.
+    router = LongRouter()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, router=router)
+    ok("long/scan_kwargs_unset_absent", router.seen == {}, repr(router.seen))
+    ok("long/answers", out["answers"]["refund"]["noul"] == 0.8, repr(out["answers"]))
+    ok("long/window_attribution",
+       out["answers"]["refund"]["window"] == {"index": 0, "token_start": 0,
+                                              "token_end": 10, "count": 3},
+       repr(out["answers"]))
+    ok("long/windows", out["windows"] == 3, repr(out))
+    ok("long/routing", out["routing"]["model"] == "english", repr(out["routing"]))
+    ok("long/device", out.get("device") == "cpu", repr(out.get("device")))
+    ok("long/latency", isinstance(out["latency_ms"], float))
+
+    # Set values travel: window/stride size the scan, lang rides for calibration.
+    router = LongRouter()
+    laya_predict_long(STATE, LONG_QUESTIONS, window=256, stride=128, lang="de", router=router)
+    ok("long/scan_kwargs_forwarded", router.seen == {"window": 256, "stride": 128, "lang": "de"},
+       repr(router.seen))
+
+    # Explicit model pins the scan: task would have nothing to route, the model rides along.
+    router = LongRouter()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, model="english", task=None, router=router)
+    ok("long/explicit_model_forwarded", router.seen == {"model": "english"}, repr(router.seen))
+    ok("long/explicit_routing",
+       out["routing"] == {"model": "english", "repo": None, "reason": "explicit model"},
+       repr(out["routing"]))
+
+    # Explicit model with an injected agent answers directly, device read off it.
+    agent = LongAgent()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, model="english", agent=agent)
+    ok("long/agent_answers", out["answers"]["refund"]["noul"] == 0.8, repr(out["answers"]))
+    ok("long/agent_scan_kwargs", agent.seen == {}, repr(agent.seen))
+    ok("long/agent_routing",
+       out["routing"] == {"model": "english", "repo": None, "reason": "explicit model"},
+       repr(out["routing"]))
+    ok("long/agent_device", out.get("device") == "cpu", repr(out.get("device")))
+    ok("long/agent_windows", out["windows"] == 3, repr(out))
+
+    # Auto mode with a bare agent: no routing happened, so no model is named.
+    agent = LongAgent()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, agent=agent)
+    ok("long/bare_agent_routing",
+       out["routing"] == {"model": None, "repo": None, "reason": "auto routing without router"},
+       repr(out["routing"]))
+    ok("long/bare_agent_no_device", "device" not in out, repr(out))
+
+    # Auto + a bare agent + a task: the Agent cannot route between checkpoints, so `task` must be
+    # dropped before the scan. `Agent.predict_long` has no such parameter -- forwarding it surfaces
+    # as a raw TypeError (an opaque internal_error over the tool boundary) instead of an answer.
+    # This is the branch the pinned-model guard at the top of the tool never reaches.
+    agent = LongAgent()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, task="typed_decisions", agent=agent)
+    ok("long/bare_agent_task_dropped", "task" not in agent.seen, repr(agent.seen))
+    ok("long/bare_agent_task_answers", out["answers"]["refund"]["noul"] == 0.8, repr(out))
+
+
 # --- per-call controls: task / lang / max_len / head_max_len -------------------
 
 class ControlRouter:
@@ -1799,7 +1945,10 @@ def test_controls_signature_and_schema():
 
     controls = ["task", "lang", "lang_guess", "max_len", "head_max_len"]
     for fn, want in ((laya_predict, controls), (laya_shortlist, controls),
-                     (laya_preset, controls), (laya_route, ["model", "task", "lang", "lang_guess"])):
+                     (laya_preset, controls), (laya_route, ["model", "task", "lang", "lang_guess"]),
+                     # predict_long sizes the scan by window/stride, not the single-window
+                     # budgets, so only the routing overrides are shared controls here.
+                     (laya_predict_long, ["task", "lang"])):
         params = inspect.signature(fn).parameters
         for name in want:
             ok("signature/%s_has_%s" % (fn.__name__, name), name in params, repr(sorted(params)))
@@ -1813,7 +1962,8 @@ def test_controls_signature_and_schema():
 
     by_name = {t.name: t for t in asyncio.run(mcp_server.list_tools())}
     for name, want in (("laya_predict", controls), ("laya_shortlist", controls),
-                       ("laya_preset", controls), ("laya_route", ["model", "task", "lang"])):
+                       ("laya_preset", controls), ("laya_route", ["model", "task", "lang"]),
+                       ("laya_predict_long", ["task", "lang"])):
         tool = by_name[name]
         schema = tool.input_schema if hasattr(tool, "input_schema") else tool.inputSchema
         props = schema.get("properties", {})
@@ -2280,7 +2430,7 @@ def test_timeout_removed():
     import laya.mcp.tools as tools_mod
 
     for fn in (laya_predict, laya_route, laya_preset, laya_shortlist,
-               laya_predict_batch, laya_route_batch, laya_decide):
+               laya_predict_batch, laya_route_batch, laya_decide, laya_predict_long):
         ok("timeout/param_absent_%s" % fn.__name__, "timeout" not in inspect.signature(fn).parameters)
     ok("timeout/executor_absent", "ThreadPoolExecutor" not in inspect.getsource(tools_mod))
 
@@ -2574,10 +2724,11 @@ def test_server_registration():
     tools = asyncio.run(mcp_server.list_tools())
     names = sorted(t.name for t in tools)
     ok("server/tool_names", names == ["laya_decide", "laya_predict", "laya_predict_batch",
-                                      "laya_preset", "laya_route", "laya_route_batch",
-                                      "laya_shortlist", "laya_status"], repr(names))
+                                      "laya_predict_long", "laya_preset", "laya_route",
+                                      "laya_route_batch", "laya_shortlist", "laya_status"],
+       repr(names))
     decision = {"laya_predict", "laya_route", "laya_preset", "laya_shortlist",
-                "laya_predict_batch", "laya_route_batch", "laya_decide"}
+                "laya_predict_batch", "laya_route_batch", "laya_decide", "laya_predict_long"}
     for t in tools:
         desc = (t.description or "").lower()
         ok("server/desc_%s_nonempty" % t.name, bool(desc.strip()), repr(desc))
@@ -2731,7 +2882,7 @@ def test_cli_mcp_page_tool_argument_rows():
                     return cells[2]
         return None
 
-    for tool in ("laya_status", "laya_route", "laya_predict",
+    for tool in ("laya_status", "laya_route", "laya_predict", "laya_predict_long",
                  "laya_shortlist", "laya_preset", "laya_decide"):
         cell = row_cell(tool)
         ok("docs-mcp/args_row_%s_present" % tool, cell is not None, "row not found")
@@ -2769,6 +2920,7 @@ test_batch_route()
 test_decide()
 test_shortlist_lang_parity()
 test_shortlist_embed_cache()
+test_predict_long()
 test_controls_validation()
 test_controls_predict()
 test_controls_route()

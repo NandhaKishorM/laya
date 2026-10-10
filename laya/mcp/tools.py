@@ -834,6 +834,126 @@ def laya_shortlist(
     return out
 
 
+def laya_predict_long(
+    state: Any,
+    questions: Any,
+    model: Any = "auto",
+    *,
+    window: Any = None,
+    stride: Any = None,
+    task: Any = None,
+    lang: Any = None,
+    router: Any = None,
+    agent: Any = None,
+) -> dict:
+    """Scan a state longer than the context window, then answer.
+
+    The in-process ``predict_long`` pattern over MCP: the state is tokenized once, scored in
+    overlapping windows in shared forward passes, and aggregated per question (strongest window
+    for ``noul``, most-confident window for ``choice``/``score``). Use this instead of
+    ``laya_predict`` when the state does not fit one window -- ``laya_predict`` answers from
+    its first window and never reads the rest.
+
+    ``router`` is used when model == "auto"; ``agent`` for a direct checkpoint. ``task``/``lang``
+    are the router's own overrides (an explicit ``model`` outranks an explicit ``task``, which
+    outranks an explicit ``lang``); ``window``/``stride`` size the scan the way core's
+    ``predict_long`` sizes it, and only set values are forwarded, so a checkpoint that predates
+    those keywords keeps working. ``max_len``/``head_max_len``/``min_confidence`` are not
+    accepted here because core's ``predict_long`` takes none of them: a window is sized by
+    ``window`` or the checkpoint budget, and there is no abstention gate on the scan.
+
+    Each answer carries the deciding window's ``window`` attribution (index and token offsets
+    into the tokenized state), and ``windows`` counts the windows the model scored.
+    """
+    state_d = validate_state(state)
+    questions_d = validate_questions(questions)
+    model_name = validate_model(model)
+    # Only what the caller actually set is forwarded: `_overrides` is not reused because its keys
+    # are the single-window budgets, and `predict_long` rejects those -- the scan is sized by
+    # `window`/`stride` or the checkpoint budget instead.
+    scan = {name: value for name, value in (
+        ("task", validate_task(task)),
+        ("lang", validate_lang(lang)),
+        ("window", validate_budget(window, "window")),
+        ("stride", validate_budget(stride, "stride")),
+    ) if value is not None}
+    # `task` picks a checkpoint by saying what the work is, so it means nothing once one is pinned:
+    # same rule as `laya_predict` -- the router checks an explicit `model` first and never reaches
+    # the task, and a checkpoint's `predict_long` does not accept the keyword at all.
+    if model_name != AUTO and "task" in scan:
+        raise ToolError(
+            "invalid_task",
+            "task routes between checkpoints; with a pinned model there is nothing to route",
+        )
+    auto_without_router = False
+
+    def _run() -> Any:
+        if model_name == "auto":
+            if router is None:
+                if agent is None:
+                    raise ToolError("models_not_ready", "Router is not loaded (auto mode)")
+                # An Agent answers but does not route: run it directly and report
+                # a null model below, instead of echoing 'auto' (#444). `Agent.predict_long`
+                # has no `task` parameter -- only a Router routes between checkpoints -- so the
+                # keyword is dropped here exactly as `laya_predict` drops it (`tools.py:415`);
+                # forwarding it would surface as a raw TypeError, not an actionable refusal.
+                nonlocal auto_without_router
+                auto_without_router = True
+                return _scan(agent, state_d, questions_d,
+                             **{k: v for k, v in scan.items() if k != "task"})
+            return _scan(router, state_d, questions_d, **scan)
+        if agent is not None:
+            return _scan(agent, state_d, questions_d, **scan)
+        if router is None:
+            raise ToolError("models_not_ready", "no agent/router loaded")
+        return _scan(router, state_d, questions_d, model=model_name, **scan)
+
+    started = time.perf_counter()
+    result = _run()
+    latency_ms = (time.perf_counter() - started) * 1000.0
+
+    if not isinstance(result, dict):
+        raise ToolError("internal_error", "predict_long returned non-object")
+    answers = _normalize_answers(result.get("answers"))
+    usage = result.get("usage") or {}
+    windows = usage.get("windows", 0) if isinstance(usage, dict) else 0
+    if auto_without_router:
+        routing = {"model": None, "repo": None, "reason": "auto routing without router"}
+    elif model_name == "auto":
+        # A bare agent's scan carries no 'routing' key because the Agent itself does no
+        # routing; 'auto' is a routing directive, not a checkpoint name (#444). A Router's
+        # scan carries the decision it routed with.
+        routing = (result.get("routing") or {"model": None, "repo": None,
+                                             "reason": "auto routing without router"})
+    else:
+        routing = {"model": model_name, "repo": None, "reason": "explicit model"}
+    device = None if auto_without_router else _reading_device(router, agent, model_name,
+                                                              result.get("routing"))
+    out: dict[str, Any] = {
+        "answers": answers,
+        "routing": routing,
+        "windows": windows,
+        "latency_ms": round(latency_ms, 3),
+    }
+    if device:
+        out["device"] = device
+    return out
+
+
+def _scan(target: Any, state: Any, questions: Any, **kwargs: Any) -> Any:
+    """Call ``predict_long`` on a router or agent, refusing clearly without it.
+
+    A checkpoint old enough to predate the scan (or a hand-rolled stand-in) has no
+    ``predict_long``; falling back to ``predict`` would silently answer from the first
+    window, which is exactly what this tool exists to avoid.
+    """
+    fn = getattr(target, "predict_long", None)
+    if not callable(fn):
+        raise ToolError("internal_error", "%s has no predict_long() method"
+                        % type(target).__name__)
+    return fn(state, questions, **kwargs)
+
+
 def laya_preset(
     preset: Any,
     state: Any,

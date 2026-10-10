@@ -206,9 +206,12 @@ requests = [
 results = router.predict_batch(requests, batch_size=8)
 ```
 
-Each request requires `state` and `questions`; it may also include `model`, `task`, `lang`, or
-`lang_guess`. Requests sharing a checkpoint and question schema can share an Agent batch forward
-pass. Different schemas or checkpoints are handled in separate groups. `batch_size` limits the
+Each request requires `state` and `questions`; it may also include the routing overrides `model`,
+`task`, `lang` and `lang_guess`, or the token budgets `max_len` and `head_max_len`. Those are the
+same arguments `predict()` takes, applied per item, so a wide question does not shrink the batch's
+other states to the same window. Requests sharing a checkpoint, question schema and token budget
+can share an Agent batch forward pass; a different schema, checkpoint or budget is grouped
+separately, since one Agent batch carries one budget for all its states. `batch_size` limits the
 number of states passed together to the Agent; results still correspond to the request order.
 
 ## Choosing an entry point

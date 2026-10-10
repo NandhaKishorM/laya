@@ -33,6 +33,14 @@ runs 64-token windows -- and neither page said that the state's room still binds
 that a head which fills the sequence is refused instead of scanning at the 0 the subtraction leaves.
 The final sections pin those two pages to `window_budget`, and `window_budget` to what they now
 promise.
+
+A fourth surface teaches the budget by naming where it can be set: `docs/routing.md`'s
+`predict_batch()` section listed the four per-request *routing* overrides and stopped, so the two
+token budgets a request can carry -- the per-request form of the very thing this suite measures --
+were missing from the guide that sells heterogeneous batches. The last sections read the keys out of
+`Router.route_batch` and `Router.predict_batch` themselves (indexed for required, `.get()` for
+optional, with the routing delegation verified) and pin the page to them, plus `structured.py`'s
+own declared list of those keys, which is what `decide_batch` builds per-request dicts from.
 """
 import ast
 import inspect
@@ -640,6 +648,138 @@ def test_both_pages_teach_the_floored_default():
             % (page, expr))
 
 
+# ------------------------------------------- the keys a batch request may set, against the page
+
+# The sections above pin the budget's *arithmetic*. This one pins the page that teaches where the
+# budget can be set at all, which is the other half of why a budget is usable: `docs/routing.md`'s
+# `predict_batch()` section listed four per-request keys where `Router` reads six, omitting the two
+# token budgets. So the per-request form of `max_len` -- the reason one wide question does not shrink
+# the rest of the batch, which is this file's whole subject -- was undiscoverable on the page that
+# sells heterogeneous batches, while `Router.predict_batch`'s docstring and
+# `laya/structured.py`'s `_ROUTER_REQUEST_KEYS` both named all six. Nothing compared the guide to the
+# methods, so the omission cost nothing to keep.
+#
+# Scoped to the two sentences that list a request's keys on purpose, the way the window sweep is
+# scoped to the pages that teach the window: `docs/routing.md` is the guide a reader of
+# `predict_batch()` lands on, and the reference page is generated from the docstring, which is
+# already right. A third page, README.md, names all six and passes unchanged.
+
+ROUTING_PAGE = os.path.join("docs", "routing.md")
+
+# Per method: the paragraph's anchor, and the span inside it that is the list of optional keys.
+# Anchored by wording, not by line number, so a rewrite of either sentence fails here with a message
+# instead of checking nothing.
+REQUEST_SECTIONS = {
+    "route_batch": ("Every `route_batch()` item needs",
+                    re.compile(r"optional routing overrides \((?P<list>[^)]*)\)")),
+    "predict_batch": ("Each request requires",
+                      re.compile(r"it may also include (?P<list>.*?)[.;]")),
+}
+BACKTICKED = re.compile(r"`([a-z_]+)`")
+
+
+def _batch_request_keys():
+    """`{method: (required, optional)}` as `Router` actually reads them off a request dict.
+
+    Required are the keys indexed out of a request (`request["state"]`), optional the keys looked up
+    with `.get()`, which is how `Router` distinguishes an unset override from an empty one. Read from
+    the source rather than transcribed here, so a key added to the code and not to the page fails,
+    and a page promising a key the code stopped reading fails too.
+
+    `predict_batch` gets its routing overrides from `route_batch`, which it calls with the requests
+    it was handed; that delegation is checked, not assumed, and the optional set is the union of the
+    two methods only once it is found.
+    """
+    path = os.path.join(DOC_ROOT, "laya", "router.py")
+    with open(path, encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
+    router = next(node for node in tree.body
+                  if isinstance(node, ast.ClassDef) and node.name == "Router")
+    methods = {node.name: node for node in router.body if isinstance(node, ast.FunctionDef)}
+    for name in REQUEST_SECTIONS:
+        assert name in methods, (
+            "`Router.%s` is no longer a method of `laya/router.py`, so nothing here can say what a "
+            "batch request may name" % name)
+
+    def receiver(node):
+        while isinstance(node, ast.Subscript):
+            node = node.value
+        return node.id if isinstance(node, ast.Name) else ""
+
+    def reads(name):
+        required, optional = set(), set()
+        for node in ast.walk(methods[name]):
+            if isinstance(node, ast.Subscript):
+                if receiver(node.value).startswith("request") and isinstance(node.slice, ast.Constant):
+                    required.add(node.slice.value)
+            elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                  and node.func.attr == "get"
+                  and receiver(node.func.value).startswith("request")
+                  and node.args and isinstance(node.args[0], ast.Constant)):
+                optional.add(node.args[0].value)
+        return required, optional
+
+    route = reads("route_batch")
+    predict = reads("predict_batch")
+    delegates = any(
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "route_batch" and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "self" and node.args
+        and receiver(node.args[0]).startswith("request")
+        for node in ast.walk(methods["predict_batch"]))
+    assert delegates, (
+        "`Router.predict_batch` no longer routes its requests through `self.route_batch(requests, ...)`, "
+        "so the routing overrides a batch item may name have to be re-derived before the guide is "
+        "called complete")
+    return {"route_batch": route,
+            "predict_batch": (predict[0], predict[1] | route[1])}
+
+
+def _page_request_sentences():
+    """`{method: paragraph}` for the two sentences in `docs/routing.md` that list a request's keys."""
+    paragraphs = {method: [text for path, _line, text in _markdown_paragraphs()
+                           if path == ROUTING_PAGE and anchor in text]
+                  for method, (anchor, _pattern) in REQUEST_SECTIONS.items()}
+    for method, listed in paragraphs.items():
+        assert len(listed) == 1, (
+            "%s carries %d paragraphs containing %r, and this sweep reads exactly one: the page has "
+            "to keep one sentence per method that lists what a request may name"
+            % (ROUTING_PAGE, len(listed), REQUEST_SECTIONS[method][0]))
+    return {method: listed[0] for method, listed in paragraphs.items()}
+
+
+def test_the_routing_page_lists_every_key_a_batch_request_can_set():
+    """What the guide names as optional is what `Router` reads, key for key."""
+    derived = _batch_request_keys()
+    for method, paragraph in _page_request_sentences().items():
+        match = REQUEST_SECTIONS[method][1].search(paragraph)
+        assert match, (
+            "%s still has the %s paragraph, but no longer in the form that lists the optional keys "
+            "(looked for: %s), so the page has to be re-read against this message"
+            % (ROUTING_PAGE, method, REQUEST_SECTIONS[method][1].pattern))
+        named = set(BACKTICKED.findall(match.group("list")))
+        required, optional = derived[method]
+        assert named == optional, (
+            "`Router.%s` reads %s off a request, but the guide's %s sentence names %s"
+            % (method, sorted(optional), method, sorted(named) or "nothing"))
+        for key in sorted(required):
+            assert "`%s`" % key in paragraph, (
+                "`Router.%s` indexes `request[\"%s\"]`, which raises on a request that omits it, so "
+                "the page has to say the key is required" % (method, key))
+
+
+def test_the_declared_request_key_list_is_the_one_router_reads():
+    """`structured._ROUTER_REQUEST_KEYS` cannot drift from the methods it documents itself."""
+    from laya.structured import _ROUTER_REQUEST_KEYS
+    derived = _batch_request_keys()
+    read = derived["route_batch"][1] | derived["predict_batch"][1]
+    assert set(_ROUTER_REQUEST_KEYS) == read, (
+        "`laya/structured.py` declares the keys `Router.predict_batch` reads off each request as %s, "
+        "while the two methods read %s -- one of the two is stale, and `decide_batch` builds its "
+        "per-request dicts from the declaration"
+        % (sorted(_ROUTER_REQUEST_KEYS), sorted(read)))
+
+
 if __name__ == "__main__":
     for fn in (test_state_budget_is_sized_from_the_actual_head,
                test_dropping_the_minus_one_is_caught,
@@ -655,6 +795,8 @@ if __name__ == "__main__":
                test_the_room_still_binds_below_the_floor,
                test_no_page_states_the_window_budget_without_the_floor,
                test_both_pages_teach_the_floored_default,
+               test_the_routing_page_lists_every_key_a_batch_request_can_set,
+               test_the_declared_request_key_list_is_the_one_router_reads,
                test_readme_quotes_the_measured_figures):
 
         try:

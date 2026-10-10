@@ -61,14 +61,14 @@ structured = ["pydantic>=2.0.0"]
 # `.numpy()`. This package declares `torch>=2.0.0`, so the extra must not force a NumPy the
 # declared floor cannot use.
 #
-# It is scoped by marker rather than written as a blanket `numpy<2`, because a hard upper cap
+# It is scoped by marker rather than written as a blanket `numpy<3`, because a hard upper cap
 # binds every `laya[onnx]` install -- including the many on a current torch -- and makes the
 # extra unresolvable next to anything else requiring `numpy>=2`. The marker names the stack this
 # actually affects: the macOS/Intel checkout (#948), where torch tops out at 2.2.2 and NumPy 1.26
 # satisfies onnx, onnxruntime and onnxscript. Every other platform resolves what `onnx` wants,
 # so none of those three is quietly pinned to NumPy 1.x on its behalf.
 onnx = ["onnx", "onnxruntime", "onnxscript",
-        "numpy<2; platform_system == 'Darwin' and platform_machine == 'x86_64'"]
+        "numpy<3; platform_system == 'Darwin' and platform_machine == 'x86_64'"]
 
 # `pip install laya[langchain]` adds the LangChain / LangGraph integrations (laya.integrations).
 langchain = [

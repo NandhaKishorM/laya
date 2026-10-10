@@ -22,15 +22,22 @@ reads an absent argument as "inherit what the deployment built with" and a null 
 Router's own `lang_guess`/`min_confidence` with the demo's default.
 
 `min_confidence` is the one asymmetry, and it has a reason: `Router.predict_batch` takes it as a
-call argument, not a per-request key (`laya/router.py:961`), so on `/predict/batch` it rides on the
-call shape rather than the request dicts. The per-state fallback in that endpoint goes through
-`Router.predict`, which does take it as an argument, so on the retry the same value rejoins the
-controls -- the fallback is one call per state and each carries the ask.
+call argument, not a per-request key (`laya/router.py::predict_batch`), so on `/predict/batch` it
+rides on the call shape rather than the request dicts. The per-state fallback in that endpoint goes
+through `Router.predict`, which does take it as an argument, so on the retry the same value rejoins
+the controls -- the fallback is one call per state and each carries the ask.
+
+The batch body carries one control set for every state in it, which is worth pinning because the
+README claimed the opposite for a release: `BatchRequest` has no per-state control field, and the
+handler copies the same set into each request dict, so a `/predict/batch` call cannot mix token
+budgets -- even though `Router.predict_batch` does honour a per-request `max_len` when the caller is
+Python and builds the request dicts itself. A `max_len` written inside a state is state content.
 
 Driven over HTTP through TestClient, on a recording stand-in at `demo.ROUTER`. No weights load.
 
 Run: python tests/test_example_server_per_call_controls.py
 """
+import inspect
 import os
 import sys
 
@@ -69,6 +76,7 @@ def main():
         print("SKIP: examples/server.py needs the serve extra -- pip install laya[serve]")
         return 0
 
+    from laya.router import Router
     from laya.serve import BODY_CONTROLS, BODY_REFUSALS
 
     class RecordingRouter:
@@ -270,9 +278,10 @@ def main():
        resp.status_code == 422 and not r.predict_calls)
 
     # --- /predict/batch forwards the same set -------------------------------------
-    # On the batch path the per-request controls ride in each request dict (so `route_batch`
-    # and `predict_batch` read them per state), while `min_confidence` is a call-level
-    # argument to `Router.predict_batch` -- see laya/router.py:961.
+    # On the batch path the controls ride in each request dict, which is how `predict_batch`
+    # reads a per-request budget (`laya/router.py::predict_batch`, where the request's own
+    # `max_len` seeds its `PredictContext`); `route_batch` reads only the routing four.
+    # `min_confidence` is the exception -- a call-level argument, so it goes on the shape.
     r = new_recorder()
     states = ["s1", "s2", "s3"]
     client.post("/predict/batch", json={"states": states, "questions": one,
@@ -302,6 +311,40 @@ def main():
                          "task", "model"))
        and not shape,
        "reqs=%r shape=%r" % (reqs[:1], shape))
+
+    # --- one budget per batch call -------------------------------------------------
+    # `BatchRequest` has no per-state control field, and the handler copies the one control set
+    # into every request dict, so states inside one `/predict/batch` call cannot name different
+    # budgets. `Router.predict_batch` would honour a per-request budget -- but only a Python
+    # caller that builds its own request dicts can express one. Pinning both halves, because the
+    # README said the opposite for a release: the shared value reaching every state, and a
+    # `max_len` written inside a state staying part of the state instead of becoming a control.
+    r = new_recorder()
+    client.post("/predict/batch", json={"states": [{"body": "a", "max_len": 999}, "plain"],
+                                        "questions": one, "max_len": 64, "head_max_len": 32})
+    reqs, shape = r.batch_calls[0] if r.batch_calls else ([], {})
+    ok("the batch body's budget is the one budget every state in the call gets",
+       len(reqs) == 2 and all(rr.get("max_len") == 64 and rr.get("head_max_len") == 32
+                              for rr in reqs),
+       "reqs=%r" % [{k: rr.get(k) for k in ("max_len", "head_max_len")} for rr in reqs])
+    ok("a max_len inside a state dict stays state content, not a per-state override",
+       len(reqs) == 2 and reqs[0]["state"] == {"body": "a", "max_len": 999}
+       and reqs[1]["state"] == "plain",
+       "states=%r" % [rr.get("state") for rr in reqs])
+
+    # The shape of it comes from core, not from a choice the demo made: `predict_batch` takes
+    # `min_confidence` as a call argument while `route_batch` has no such slot, so a request dict
+    # naming it would be dropped -- and neither has a call-level budget that could override the
+    # per-request field the endpoint fills.
+    batch_params = set(inspect.signature(Router.predict_batch).parameters)
+    route_params = set(inspect.signature(Router.route_batch).parameters)
+    ok("Router.predict_batch takes min_confidence as a call argument",
+       "min_confidence" in batch_params, str(sorted(batch_params)))
+    ok("and route_batch has no min_confidence slot for a request dict to carry it in",
+       "min_confidence" not in route_params, str(sorted(route_params)))
+    ok("and neither takes a call-level budget, so the request dict is the only way in",
+       not ({"max_len", "head_max_len"} & (batch_params | route_params)),
+       str(sorted(batch_params | route_params)))
 
     # --- the fallback keeps the ask on every per-state retry ----------------------
     # When Router.predict_batch fails, the endpoint retries each state through Router.predict,

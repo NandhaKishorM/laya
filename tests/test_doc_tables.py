@@ -9,6 +9,10 @@ Re-measuring would not have caught either: the run is not stale, the transcripti
 this reads the published table and the committed JSON and compares them, which is
 deterministic and needs no weights, no GPU and no network.
 
+The headline "English vs the rest" figures were the exception until #776: three tables publish
+them, none named its artifact or its protocol, and no check tied them to the run that produced
+them. They now name it, and the cells are checked here.
+
 Only tables with a committed artifact are checked. Everything that cannot be checked from
 this repository is listed at the end rather than silently skipped, so the gap stays visible.
 """
@@ -195,6 +199,110 @@ def main() -> int:
           rounded(max(v["d_fast_stock"] for v in fp16_rows)), "0.009")
     check("fp16 prose/README's 'within 0.009 of fp32'",
           rounded(max(v["d_fast_fp32"] for v in fp16_rows)), "0.009")
+    # ---------------------------- the published headline: English vs the rest (#776)
+    # Three tables publish these figures -- README.md twice ("Why Route: The Evidence" and the
+    # 51-language section) and BENCHMARKS.md once ("English vs the rest") -- and every one of
+    # them comes from `research/results/t4_colab_benchmark.json`. None of the three said which
+    # artifact or protocol produced it, and none was checked here. #776 re-ran the four README
+    # figures with an independently written harness and landed within 0.0003, which is the
+    # table's own rounding to three places; that is the second opinion. What has to hold
+    # without a GPU is the transcription: each printed cell is recomputed from the run's
+    # per-language suites and compared, and the run's own `*_english_vs_rest` summary is
+    # compared against the same recomputation, so an aggregation change cannot pass silently.
+    # README's `Router` (Routed) column is deliberately not pinned: no routed run is in the
+    # artifact, so a check on it would be arithmetic on the other two columns, not evidence.
+    T4 = os.path.join("research", "results", "t4_colab_benchmark.json")
+    if not os.path.exists(T4):
+        FAIL.append("headline/%s is missing, so three published tables are unbacked" % T4)
+    else:
+        with open(T4, encoding="utf-8") as fh:
+            t4 = json.load(fh)
+        t4_suites, t4_summary, t4_meta = t4["suites"], t4["summary"], t4["meta"]
+        T4_MODELS = ("laya", "laya-multilingual")
+        FAMILIES = ("massive_intent", "massive_scenario", "xnli")
+
+        # the protocol, read out of the run rather than transcribed from prose
+        check("headline/protocol seed", t4_meta["seed"], 13)
+        check("headline/protocol options per choice question", t4_meta["n_opts"], 20)
+        check("headline/protocol cases per language", t4_meta["per_lang"], 300)
+
+        LANG_SUITES = {n: s for n, s in t4_suites.items() if n.split(".")[0] in FAMILIES}
+        # Averaging the languages and pooling the questions are the same number only because
+        # each language contributed exactly `per_lang` cases -- which is what lets the prose
+        # say "average" unqualified, so it is pinned rather than assumed.
+        wrong_size = ["%s/%s=%d" % (n, m, s[m]["calibrated"]["n"])
+                      for n, s in LANG_SUITES.items() for m in T4_MODELS
+                      if s[m]["calibrated"]["n"] != t4_meta["per_lang"]]
+        check("headline/every language suite holds per_lang questions", wrong_size, [])
+
+        def language_group(family: str, model: str, english: bool) -> Tuple[float, int]:
+            names = sorted(n for n in LANG_SUITES
+                           if n.startswith(family + ".") and n.endswith(".en") == english)
+            accs = [t4_suites[n][model]["calibrated"]["accuracy"] for n in names]
+            return sum(accs) / len(accs), len(names)
+
+        for family in FAMILIES:
+            fam_suites = [n for n in LANG_SUITES if n.startswith(family + ".")]
+            for model in T4_MODELS:
+                for english, group in ((True, "english"), (False, "non_english")):
+                    mine, count = language_group(family, model, english)
+                    stored = t4_summary["%s_english_vs_rest" % family][group][model]
+                    check_true("headline/artifact agrees with the per-suite recompute/%s/%s/%s"
+                               % (family, model, group), abs(mine - stored) < 5e-5,
+                               "recomputed %.6f, stored %s" % (mine, stored))
+                check("headline/%s/%s suite count" % (family, model),
+                      t4_summary[family][model]["n_suites"], len(fam_suites))
+                check("headline/%s/%s question count" % (family, model),
+                      t4_summary[family][model]["n_questions"],
+                      sum(t4_suites[n][model]["calibrated"]["n"] for n in fam_suites))
+
+        # The printed tables. `default_family` covers the README 51-language table, whose two
+        # MASSIVE rows are labelled only "English" and "13 other languages"; the section
+        # heading supplies the family there, and no other table shares these headers.
+        HEADLINE_TABLES = [
+            ("README.md", "| Benchmark / Task | English (`laya`) | Multilingual (`laya-multilingual`) | `Router` (Routed) |",
+             (1, 2), None, 4),
+            ("README.md", "| | `laya` | `laya-multilingual` |", (1, 2), "massive_intent", 4),
+            ("BENCHMARKS.md", "| task | laya | laya-multilingual |", (1, 2), None, 6),
+        ]
+        cells_checked = 0
+        for path, header, cols, default_family, want_rows in HEADLINE_TABLES:
+            found = []
+            for row in parse_table(read(path), header):
+                label = unstyled(row[0]).lower()
+                family = default_family
+                for key, name in (("massive scenario", "massive_scenario"),
+                                  ("massive intent", "massive_intent"), ("xnli", "xnli")):
+                    if key in label:
+                        family = name
+                if family is not None:
+                    found.append((label, family, row))
+            where = "%s/%s-family" % (path, default_family or "named")
+            check_true("headline/table %s parsed" % where, len(found) == want_rows,
+                       "got %d figure rows" % len(found))
+            for label, family, row in found:
+                stated = re.search(r"(\d+) other", label)
+                if stated:
+                    _, count = language_group(family, T4_MODELS[0], False)
+                    check("headline/%s %r language count" % (where, label),
+                          int(stated.group(1)), count)
+                for col, model in zip(cols, T4_MODELS):
+                    mine, _ = language_group(family, model, "other" not in label)
+                    check("headline/%s %s/%s" % (where, label, model),
+                          unstyled(row[col]), rounded(mine))
+                    cells_checked += 1
+        check("headline/published cells compared", cells_checked, 28)
+
+        total = {m: sum(s[m]["calibrated"]["n"] for s in t4_suites.values()) for m in T4_MODELS}
+        check_true("headline/both checkpoints answered identical question counts",
+                   total["laya"] == total["laya-multilingual"], total)
+        stated_total = re.search(r"\(([\d,]+) questions, one T4 GPU", read("README.md"))
+        check_true("headline/README states a question denominator", stated_total is not None,
+                   "the '(N questions, one T4 GPU)' caption moved")
+        if stated_total:
+            check("headline/README's denominator equals the run",
+                  int(stated_total.group(1).replace(",", "")), total["laya"])
+
     # ------------------------------------- the 51-language table (#208)
     # The multilingual half of the committed sweep does not reproduce on current code, so the
     # table prints the refreshed re-run instead. That makes `cpu_51_language_sweep_refreshed.json`

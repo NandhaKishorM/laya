@@ -120,6 +120,13 @@ Headline Laya cells for AG News and DAIR Emotion are the Applications-run number
 
 ### English vs the rest
 
+Source: the T4 Colab run (`research/scripts/laya_benchmark_colab.ipynb`, seed 13, 20 options per
+choice question, the first 300 test rows per language) — `research/results/t4_colab_benchmark.json`.
+"Other languages" is the average over the 13 non-English MASSIVE languages and the 14 non-English
+XNLI languages; each language contributed exactly 300 questions, so averaging the languages and
+pooling the questions give the same figure. `tests/test_doc_tables.py` checks every cell of this
+table, and both copies in README.md, against the artifact.
+
 | task | laya | laya-multilingual |
 |---|---|---|
 | MASSIVE intent — English | **0.783** | 0.657 |

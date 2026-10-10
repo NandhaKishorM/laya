@@ -63,6 +63,8 @@ jobs:
       # Standard library only, audit and tests alike, so both run here.
       - run: python research/benchmarks/es_phone_turns/audit.py
       - run: python -m unittest discover -s research/benchmarks/es_phone_turns/tests -v
+      - run: python research/benchmarks/persian_fa/audit.py
+      - run: python -m unittest discover -s research/benchmarks/persian_fa/tests -v
 
   test:
     name: tests (py${{ matrix.python }})

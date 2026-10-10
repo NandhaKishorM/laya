@@ -55,6 +55,7 @@ SCRIPT_SUITES = [
     "tests/test_audit_scope.py",
     "tests/test_doc_tables.py",
     "tests/test_env_docs.py",
+    "tests/test_doc_citations.py",
     "tests/test_tokenizer_cache.py",
     "tests/test_tokenizer_concurrency.py",
     "tests/test_question_token_reuse.py",

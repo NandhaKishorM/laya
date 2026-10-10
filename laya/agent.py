@@ -1464,17 +1464,17 @@ class Agent(HookRegistry):
                 # A start hook may have normalised a bare string/dict into a list; only the value
                 # that survives the hook is validated.
                 if isinstance(states, (str, bytes, dict)):
-                    raise TypeError(
+                    raise ValueError(
                         "predict_batch expects a list of states; pass a single state to predict()/system_one()."
                     )
                 if not isinstance(questions, dict):
-                    raise TypeError(
+                    raise ValueError(
                         "questions must be a dict of question id -> definition, got %s"
                         % type(questions).__name__
                     )
                 states = list(states)
                 if any(state is None for state in states):
-                    raise TypeError(
+                    raise ValueError(
                         "state must not be None; pass a string, dict, or list"
                     )
                 if len(states) == 1:
@@ -1695,10 +1695,10 @@ class Agent(HookRegistry):
         `usage["truncated"] > 0` here, not `is True`.
         """
         if state is None:
-            raise TypeError("state must not be None; pass a string, dict, or list")
+            raise ValueError("state must not be None; pass a string, dict, or list")
         if not isinstance(questions, dict):
-            raise TypeError("questions must be a dict of question id -> definition, got %s"
-                            % type(questions).__name__)
+            raise ValueError("questions must be a dict of question id -> definition, got %s"
+                             % type(questions).__name__)
         if aggregate != "auto":
             raise ValueError("predict_long: only aggregate='auto' is supported")
         hook_kwargs = {"hooks": hooks, "on_predict_start": on_predict_start,

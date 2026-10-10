@@ -1159,7 +1159,7 @@ email = agent.predict({"body": "Your account is locked, verify now"}, laya.email
 
 ## LangChain and LangGraph Integration
 
-Fast System 1 routing and guardrails directly inside LangGraph workflows and LCEL chains. Every node also takes core's per-call prediction hooks (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`):
+Fast System 1 routing and guardrails directly inside LangGraph workflows and LCEL chains. Every node also takes core's per-call prediction hooks (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`) and the two routing hints that pick the checkpoint answering (`task`, `lang_guess`) — see [Which checkpoint answers](https://github.com/NandhaKishorM/laya/blob/main/docs/langchain.md#9-which-checkpoint-answers):
 
 ```python
 from laya.integrations.langchain import LayaDecision, LayaGuardrail, LayaRouter

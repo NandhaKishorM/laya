@@ -5,7 +5,7 @@ Laya provides sub-35ms, non-autoregressive decision components for **CrewAI** mu
 * **`LayaCrewRouter`**: Sub-35ms task delegation router replacing LLM managers in hierarchical crews.
 * **`LayaTaskGuard`**: Pre-execution task guardrail screening prompts and instructions for jailbreaks, injections, and policy violations.
 
-Both take core's per-call decision controls -- the two token budgets (`max_len`, `head_max_len`), the language and abstention controls (`lang`, `min_confidence`) and the five prediction-hook arguments (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`) -- see [Per-call decision controls](#5-per-call-decision-controls).
+Both take core's per-call decision controls -- the two token budgets (`max_len`, `head_max_len`), the language and abstention controls (`lang`, `min_confidence`), the five prediction-hook arguments (`hooks`, `on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`) and the two routing hints (`task`, `lang_guess`) -- see [Per-call decision controls](#5-per-call-decision-controls).
 
 Supports both **local in-process inference** (`Agent` or `Router`) and **remote HTTP inference** against your own `laya-serve` instance without requiring PyTorch on edge clients.
 
@@ -140,10 +140,10 @@ The remote client uses Python's standard library `urllib` with zero heavy depend
 
 `LayaCrewRouter` and `LayaTaskGuard` take the same per-call arguments the core API does: the two
 token budgets (`max_len`, `head_max_len`), the language and abstention controls (`lang`,
-`min_confidence`), and the five prediction-hook arguments (`hooks`,
-`on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`). They are per instance, so a
-crew with a large roster can be given room while the rest of the pipeline keeps the checkpoint's
-defaults.
+`min_confidence`), the five prediction-hook arguments (`hooks`,
+`on_predict_start`, `on_predict_end`, `hooks_raise`, `hooks_timeout`), and the two routing hints
+(`task`, `lang_guess`). They are per instance, so a crew with a large roster can be given room while
+the rest of the pipeline keeps the checkpoint's defaults.
 
 A delegation choice shares the checkpoint's *option* budget -- `head_max_len`, 192 tokens on `laya`
 -- and every candidate contributes its role and goal, so past roughly 20 agents the later goals
@@ -184,8 +184,9 @@ integration](langchain.md#7-widening-the-token-budget-for-many-options) for that
 **Hooks run on the local path only.** A router or guard with a `base_url` and `hooks=[...]` raises
 `ValueError` rather than reporting a success whose hook never ran -- a hook is a Python callable that
 executes inside `predict`, and no wire format carries it. Install hooks in the process that runs
-inference. The two budgets do travel to a remote node, in the request body, up to its
-`LAYA_MAX_TOKEN_BUDGET` ceiling; a larger value comes back as a 422.
+inference. The two budgets, the language and abstention controls and the two routing hints all
+travel to a remote node, in the request body, up to its `LAYA_MAX_TOKEN_BUDGET` ceiling; a larger
+value comes back as a 422.
 
 ### Language and abstention
 
@@ -209,3 +210,29 @@ router = LayaCrewRouter(
     min_confidence=0.3,    # report an abstention below 0.3; the delegation is still made
 )
 ```
+
+### Which checkpoint answers
+
+**The two routing hints choose the checkpoint that decides.** `task="typed-decisions"` pins the
+workflow rather than waiting for auto task detection to recognise the question ids, and `lang_guess`
+takes a language code -- or a callable of the state being screened -- from something that already
+knows it, consulted after an explicit `lang` and before core's own script detection; any non-English
+code routes to the multilingual checkpoint. One naming trap, since both are on the same call:
+`route(task, agents)` delegates a CrewAI *task*, while `task=` is core's selector and takes a
+workflow name such as `"typed-decisions"` -- it does not say which CrewAI task is being delegated.
+
+```python
+guard = LayaTaskGuard(
+    questions=screening_questions,
+    lang_guess="de",           # this crew's tickets arrive in German
+)
+```
+
+A node built on an `Agent` (`agent=Agent(...)`) reads neither, because an `Agent` has no routing step
+to read them in -- it answers on the checkpoint it was built with. The node stores the hint, and its
+first call raises `ValueError` naming the argument before `predict` is reached rather than taking the
+call and dropping it. A callable `lang_guess` on a `base_url` node raises before the request goes out,
+rather than coming back as serve's 422 after it. The same rule lives in
+`laya.integrations._controls`, which the LangChain and LlamaIndex wrappers import; see the [LangChain
+integration](langchain.md#9-which-checkpoint-answers) for the precedence, the measured count of
+German queries detection leaves on the English checkpoint, and the recorded before.

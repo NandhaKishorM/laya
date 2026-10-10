@@ -330,7 +330,8 @@ for label, cls in (("LayaRouter", LayaRouter), ("LayaGuardrail", LayaGuardrail),
 from laya.integrations.langchain import LayaDecision  # noqa: E402
 
 for param, default in (("return_details", False), ("state_key", None), ("agent", None),
-                       ("base_url", None), ("api_key", None), ("model", None)):
+                       ("base_url", None), ("api_key", None), ("model", None),
+                       ("task", None), ("lang_guess", None)):
     check_param("LayaDecision.__init__", LayaDecision.__init__, param, default)
 check_param("LayaDecision.__init__", LayaDecision.__init__, "decision_schema",
             inspect.Parameter.empty, inspect.Parameter.POSITIONAL_OR_KEYWORD)
@@ -961,6 +962,16 @@ check_param("evaluate_shortlist", evaluate_shortlist, "k", 20)
 check_param("evaluate_shortlist", evaluate_shortlist, "dataset_path", None)
 for param in ("checkpoint_id", "embedder_id"):
     check_param("evaluate_shortlist", evaluate_shortlist, param, inspect.Parameter.empty)
+# The framework integrations send the two routing hints (`task`, `lang_guess`) in the same body, so
+# "a chain step and a raw HTTP client get the same answer" has to hold of them too. If serve dropped
+# one from `BODY_CONTROLS`, a wrapper sending it would get a 422 its caller cannot fix from the
+# integrations -- this says so at the shared declaration instead of at a request.
+from laya.integrations._controls import ROUTER_ONLY_CONTROLS as _router_only  # noqa: E402
+
+check("serve accepts every routing hint an integration sends",
+      [key for key in _router_only if key not in _http_controls], [])
+check("routing hints are not among serve's refusals",
+      sorted(set(_router_only) & set(_http_refusals)), [])
 
 
 # docs/hooks/examples.md ## Composition teaches one scope ordering contract; the pre-fix wording

@@ -5,14 +5,19 @@ Every integration wrapper ends at one of two places: a local `runner.predict(sta
 rule, and three independent copies of it drift -- this module is the copy the LangChain, CrewAI
 and LlamaIndex wrappers import.
 
-The names are listed once, in `PREDICT_CONTROLS` and `HOOK_CONTROLS`, and the signatures below
-are checked against them by `tests/test_langchain.py`, `tests/test_crewai.py` and
-`tests/test_llamaindex.py`, which also assert every wrapper's constructor accepts all of them. A
-control added here without reaching a wrapper's `__init__` fails that wrapper's suite rather than
-being dropped silently.
+The names are listed once, in `PREDICT_CONTROLS`, `HOOK_CONTROLS`, `DECISION_CONTROLS` and
+`ROUTER_ONLY_CONTROLS`, and the signatures below are checked against them by
+`tests/test_langchain.py`, `tests/test_crewai.py` and `tests/test_llamaindex.py`, which also assert
+every wrapper's constructor accepts all of them. A control added here without reaching a wrapper's
+`__init__` fails that wrapper's suite rather than being dropped silently.
+
+The last list is the one that needs a rule rather than a splat: two of these controls are read by a
+`Router` and by no `Agent`, and a wrapper's runner can be either, so `require_router_controls` asks
+the signature of the call about to be made.
 """
 from __future__ import annotations
 
+import inspect
 from typing import Any, Dict, Optional
 
 # The token-budget overrides `Agent.predict` / `Router.predict` take per call, and that
@@ -30,6 +35,13 @@ DECISION_CONTROLS = ("lang", "min_confidence")
 # The per-call hook family. These are Python callables and flags that run inside `predict`, so
 # they exist only on the local path -- see `reject_remote_hooks`.
 HOOK_CONTROLS = ("hooks", "on_predict_start", "on_predict_end", "hooks_raise", "hooks_timeout")
+
+# The routing hints. `Router.route` reads both -- `task` names the checkpoint that answers, the way
+# `model` does, and `lang_guess` decides English vs multilingual before core's own script detection
+# runs -- and `Agent.predict` reads neither, because an Agent has no routing step: it answers on the
+# checkpoint it was built with. So these two go to a runner that reads them and are refused by name
+# at one that does not -- see `require_router_controls`.
+ROUTER_ONLY_CONTROLS = ("task", "lang_guess")
 
 
 def budget_kwargs(max_len: Optional[int] = None,
@@ -96,4 +108,77 @@ def reject_remote_hooks(given: Dict[str, Any], base_url: Optional[str]) -> None:
         raise ValueError(
             "%s run in the local runner and cannot be sent to a laya-serve endpoint; "
             "install them where serve runs, or drop them" % ", ".join(sorted(given))
+        )
+
+
+def router_kwargs(task: Optional[str] = None, lang_guess: Optional[Any] = None) -> Dict[str, Any]:
+    """The routing hints, with the unset ones omitted.
+
+    Absent rather than `None`, for the same reason as the budgets: `Router(task=...)` and
+    `Router(lang_guess=...)` are hints a deployment installs for every request, and an explicit
+    `None` here would replace the deployment's own hint with nothing for this one call. A blank
+    `lang_guess` is core's documented "no usable hint, fall through to detection", so it is
+    forwarded rather than treated as an absence.
+    """
+    return {key: value for key, value in (("task", task), ("lang_guess", lang_guess))
+            if value is not None}
+
+
+def _reads(target: Any, name: str) -> bool:
+    """Whether the entry point about to be called can read `name` as a keyword argument."""
+    try:
+        params = inspect.signature(target).parameters
+    except (TypeError, ValueError):
+        # Not introspectable (a C callable, a class with a hand-written __call__ signature): let
+        # core decide. Refusing a call on a guess would block a runner this module cannot see.
+        return True
+    if any(p.kind is p.VAR_KEYWORD for p in params.values()):
+        return True
+    return name in params
+
+
+def require_router_controls(runner: Any, entry_point: str, given: Dict[str, Any]) -> Dict[str, Any]:
+    """Return `given` when the runner's entry point reads it, else raise naming what it does not.
+
+    `task` and `lang_guess` route, and only a Router routes -- `Agent` takes neither, and its two
+    batch entry points do not either. Forwarding them anyway is a `TypeError` from inside core on
+    the way to the answer, and dropping them quietly is the silence this module exists to break: the
+    caller asked for the typed-decisions checkpoint or for German text to be read as German, and got
+    the deployment's defaults instead.
+
+    Read from the signature of the call about to be made (`entry_point`) rather than from a list of
+    runner classes, because `predict`, `predict_batch` and a stand-in each accept a different set,
+    and a wrapper declared `**kwargs` takes everything. A runner with no such method at all -- a
+    duck-typed stand-in that routes somewhere else -- is not refused either: this cannot tell, and
+    guessing wrong would block a call that works.
+    """
+    if not given:
+        return {}
+    target = getattr(runner, entry_point, None)
+    unread = [name for name in ROUTER_ONLY_CONTROLS if name in given and not _reads(target, name)]
+    if unread:
+        raise ValueError(
+            "%s %s a routing hint, and %s.%s does not read it: this runner answers on the checkpoint "
+            "it was built with. Pass a Router as `agent=`, or drop %s."
+            % (", ".join(unread), "is" if len(unread) == 1 else "are",
+               type(runner).__name__, entry_point,
+               "it" if len(unread) == 1 else "them")
+        )
+    return given
+
+
+def reject_remote_lang_guess(given: Dict[str, Any], base_url: Optional[str]) -> None:
+    """Refuse a non-string `lang_guess` on a remote node rather than sending a body serve rejects.
+
+    `Router` reads `lang_guess` as a language code *or* as a callable taking the state, and only the
+    code has a wire form: `laya-serve` validates it as a string and answers 422 to anything else, so
+    a callable would fail as an HTTP status after the request went out. Naming the argument here
+    says what to do instead -- install the callable on the Router where serve runs, or pass a code.
+    """
+    value = given.get("lang_guess")
+    if base_url and value is not None and not isinstance(value, str):
+        raise ValueError(
+            "lang_guess=%r cannot be sent to a laya-serve endpoint: only a language code string "
+            "such as \"de\" crosses HTTP. Install the callable on the Router where serve runs, or "
+            "pass a code" % (value,)
         )

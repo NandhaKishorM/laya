@@ -204,6 +204,13 @@ def positive_controls() -> None:
     got = bound_symbol(form, form.index("Agent._to_internal"))
     check_true("control: a `::` citation is not read as a line citation", got is None, got)
 
+    # The window itself, isolated: a gap of nothing but punctuation is still a gap of 31, and the
+    # arm that only checks words-in-the-gap would bind here and call a distant symbol the subject.
+    padded = "`Agent._to_internal`" + ("-" * 30) + "(`laya/agent.py:%d`)" % last
+    got = bound_symbol(padded, padded.index("laya/agent.py"))
+    check_true("control: a symbol 31 punctuation marks away is not the citation's subject",
+               got is None, got)
+
 
 def main() -> int:
     positive_controls()

@@ -30,7 +30,7 @@ env var                    meaning                                        defaul
                            Keep <= physical cores; oversubscribing the     default)
                            logical/hyperthread count is a large regression.
 ``LAYA_AUTO_TASK``         auto-route to the typed-decisions checkpoint   0
-``LAYA_DEFAULT_MODEL``     fallback checkpoint when a state carries no   (english)
+``LAYA_DEFAULT_MODEL``     fallback checkpoint when a state carries no   (multilingual)
                            language evidence; aliases like ml work
 ``LAYA_MAX_LOADED``        checkpoints kept resident at once. Below what  2
                            routing can choose, one reloads per switch.

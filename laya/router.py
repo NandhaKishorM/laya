@@ -1191,7 +1191,7 @@ class Router(HookRegistry):
         hooks, appended after any installed on the Router.
         """
         if questions is not None and not isinstance(questions, dict):
-            raise TypeError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
+            raise ValueError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
         decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         active = compose_hooks(self.hooks, hooks)
@@ -1324,9 +1324,9 @@ class Router(HookRegistry):
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
         if state is None:
-            raise TypeError("state must not be None; pass a string, dict, or list")
+            raise ValueError("state must not be None; pass a string, dict, or list")
         if not isinstance(questions, dict):
-            raise TypeError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
+            raise ValueError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
@@ -1553,12 +1553,12 @@ class Router(HookRegistry):
             hooks_raise: Override the Router's ``hooks_raise`` policy for this call.
         """
         if not isinstance(requests, SequenceABC) or isinstance(requests, (str, bytes)):
-            raise TypeError("requests must be a sequence of request dictionaries")
+            raise ValueError("requests must be a sequence of request dictionaries")
 
         decisions: List[RouteDecision] = []
         for i, request in enumerate(requests):
             if not isinstance(request, dict):
-                raise TypeError("request %d must be a dict, got %s" % (i, type(request).__name__))
+                raise ValueError("request %d must be a dict, got %s" % (i, type(request).__name__))
             if "state" not in request:
                 raise ValueError("request %d is missing required key 'state'" % i)
             if "questions" not in request:
@@ -1566,7 +1566,7 @@ class Router(HookRegistry):
 
             questions = request["questions"]
             if not isinstance(questions, dict):
-                raise TypeError(
+                raise ValueError(
                     "request %d 'questions' must be a dict, got %s"
                     % (i, type(questions).__name__)
                 )

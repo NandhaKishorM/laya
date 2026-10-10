@@ -562,7 +562,6 @@ for label, state in [
     check("mixed/no segment: " + label, analyse(state)["mixed_segment"], None)
 # a state is user input: one long line with no joiner took 43 s at 40,000 characters when compounds
 # were stripped with an open-ended regex; the segment check now reads at most the 4,000-character cap
-import time as _time
 _t0 = _time.perf_counter()
 analyse({"subject": "The export failed again last night for the whole region", "body": "a" * 200_000})
 check("mixed/long single-line field stays fast", _time.perf_counter() - _t0 < 5.0, True)

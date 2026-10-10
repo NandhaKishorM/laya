@@ -77,13 +77,13 @@ def test_mixed_groups_keep_order_and_lru(fake_agent, capacity, expected):
 
 
 @pytest.mark.parametrize("items,error,fragment", [
-    (None, TypeError, "requests must be a sequence"),
-    ({}, TypeError, "requests must be a sequence"),
-    ("text", TypeError, "requests must be a sequence"),
-    ([None], TypeError, "request 0"),
+    (None, ValueError, "requests must be a sequence"),
+    ({}, ValueError, "requests must be a sequence"),
+    ("text", ValueError, "requests must be a sequence"),
+    ([None], ValueError, "request 0"),
     ([{"questions": Q}], ValueError, "request 0 is missing required key 'state'"),
     ([{"state": "x"}], ValueError, "request 0 is missing required key 'questions'"),
-    ([request("x"), {"state": "y", "questions": None}], TypeError, "request 1 'questions'"),
+    ([request("x"), {"state": "y", "questions": None}], ValueError, "request 1 'questions'"),
     ([request("x"), request("y", model="invalid")], ValueError, "unknown model"),
 ])
 def test_invalid_batch_fails_before_loading(fake_agent, items, error, fragment):

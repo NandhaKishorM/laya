@@ -7,6 +7,70 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { test } from 'node:test';
 import { Laya, LayaAPIError, triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions } from 'laya-client';
 
+function assertPredictionParity(result, expected) {
+  const { routing, ...prediction } = structuredClone(result);
+  for (const [id, answer] of Object.entries(expected.answers)) {
+    const actual = prediction.answers[id];
+    if (answer.type === 'noul') {
+      assert.equal(Object.hasOwn(actual, 'x_jev_confidence'), false, `${id}: noul has no Jev confidence`);
+      continue;
+    }
+    // Derive the HTTP extension independently from the direct model's probabilities,
+    // not from the server's enrichment helper or from the received HTTP probabilities.
+    const keys = Object.keys(answer.probabilities);
+    if (answer.type === 'score') keys.sort((a, b) => Number(a) - Number(b));
+    const values = keys.map(key => answer.probabilities[key]);
+    const n = values.length;
+    const total = values.reduce((a, b) => a + b, 0);
+    const p = values.map(value => total ? value / total : 1 / n);
+    let confidence = 1;
+    if (n > 1 && answer.type === 'choice') {
+      confidence = (Math.max(...p) - 1 / n) / (1 - 1 / n);
+    } else if (n > 1) {
+      const mode = p.indexOf(Math.max(...p));
+      const spread = p.reduce((sum, value, i) => sum + value * Math.abs(i - mode), 0);
+      const uniformSpread = p.reduce((sum, _, i) => sum + Math.abs(i - (n - 1) / 2) / n, 0);
+      confidence = Math.max(0, 1 - spread / uniformSpread);
+    }
+    assert.equal(typeof actual.x_jev_confidence, 'number', `${id}: HTTP Jev confidence missing`);
+    assert.ok(Math.abs(actual.x_jev_confidence - confidence) <= 0.0000500001,
+      `${id}: HTTP Jev confidence must match the formula rounded to four decimals`);
+    delete actual.x_jev_confidence;
+  }
+  assert.deepEqual(prediction, expected, 'SDK core answers must exactly match direct Python inference');
+}
+
+test('parity checks the HTTP extension without weakening core prediction equality', () => {
+  const expected = { model: 'test', usage: { input_tokens: 1, output_tokens: 0 }, answers: {
+    choice: { type: 'choice', probabilities: { a: 0.8, b: 0.2 }, choice: 'a' },
+    score: { type: 'score', probabilities: { '0': 0.1, '1': 0.8, '2': 0.1 }, score: 1 },
+    single: { type: 'choice', probabilities: { only: 1 }, choice: 'only' },
+    singleScore: { type: 'score', probabilities: { '0': 1 }, score: 0 },
+    noul: { type: 'noul', noul: 0.9 },
+  } };
+  const actual = structuredClone(expected);
+  for (const [id, value] of Object.entries({ choice: 0.6, score: 0.7, single: 1, singleScore: 1 })) {
+    actual.answers[id].x_jev_confidence = value;
+  }
+  const before = structuredClone(actual);
+  assertPredictionParity(actual, expected);
+  assert.deepEqual(actual, before, 'parity check must not mutate the response');
+  for (const mutate of [
+    r => { delete r.answers.choice.x_jev_confidence; },
+    r => { r.answers.choice.x_jev_confidence = 0.61; },
+    r => { r.answers.score.x_jev_confidence = 0.8; },
+    r => { r.answers.noul.x_jev_confidence = 0.9; },
+    r => { r.answers.choice.probabilities.a = 0.7; },
+    r => { r.answers.choice.choice = 'b'; },
+    r => { r.usage.input_tokens = 2; },
+    r => { r.answers.score.unexpected = true; },
+  ]) {
+    const broken = structuredClone(actual);
+    mutate(broken);
+    assert.throws(() => assertPredictionParity(broken, expected), assert.AssertionError);
+  }
+});
+
 test('JavaScript → HTTP → Python Router → real offline Agent inference', { timeout: 90_000 }, async t => {
   const script = fileURLToPath(new URL('../../../tests/sdk_server_fixture.py', import.meta.url));
   const server = spawn(process.env.PYTHON ?? 'python3', [script], { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -42,9 +106,8 @@ test('JavaScript → HTTP → Python Router → real offline Agent inference', {
   assert.ok(ready, `Server never became ready: ${stderr}`);
 
   const result = await client.predict(fixture.state, fixture.questions, { model: 'english' });
-  const { routing, ...prediction } = result;
-  assert.deepEqual(prediction, fixture.expected, 'SDK answers must exactly match direct Python inference');
-  assert.equal(routing.model, 'english');
+  assertPredictionParity(result, fixture.expected);
+  assert.equal(result.routing.model, 'english');
   assert.equal(result.answers.single.choice, 'only');
   assert.equal(result.answers.single.probabilities.only, 1);
   assert.ok(result.usage.input_tokens > 0);

@@ -1522,6 +1522,14 @@ check("agreement provenance is required",
       inspect.signature(evaluate_agreement).parameters["student_provenance"].default,
       inspect.Parameter.empty)
 
+# The TypeScript HTTP confidence extension follows this core contract, not entropy confidence.
+from laya.confidence import jev_confidence  # noqa: E402
+
+check("jev_confidence signature", list(inspect.signature(jev_confidence).parameters), ["answer"])
+check("Jev choice confidence", round(jev_confidence({"type": "choice", "probabilities": {"a": 0.8, "b": 0.2}}), 4), 0.6)
+check("Jev score confidence", round(jev_confidence({"type": "score", "probabilities": {"0": 0.1, "1": 0.8, "2": 0.1}}), 4), 0.7)
+check("Jev noul confidence absent", jev_confidence({"type": "noul", "noul": 0.9}), None)
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL", f)

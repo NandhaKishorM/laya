@@ -75,6 +75,12 @@ console.log(result.answers.refund_requested.noul); // P(true)
 console.log(result.routing?.model); // Laya-only metadata
 ```
 
+Choice and score answers may also contain `x_jev_confidence`, the HTTP server's
+Jev-compatible confidence measure. It is distinct from Laya's `confidence` and
+`answer_confidence`, and is absent on older servers, in strict Jev mode, and on
+`noul` answers. The client preserves it and checks that it is a finite number in
+`[0, 1]` when present; it does not compute or substitute it when absent.
+
 CommonJS works too:
 
 ```js

@@ -17,6 +17,14 @@ const noul: number = result.answers.refund.noul;
 const routingModel: string | undefined = result.routing?.model;
 const actionProbability: number | undefined = result.answers.team.action?.act_probability;
 const noulConfidence: number | undefined = result.answers.refund.confidence;
+const choiceJevConfidence: number | undefined = result.answers.team.x_jev_confidence;
+const scoreJevConfidence: number | undefined = result.answers.priority.x_jev_confidence;
+// @ts-expect-error Older and strict-mode servers omit the HTTP confidence extension.
+const requiredJevConfidence: number = result.answers.team.x_jev_confidence;
+// @ts-expect-error Jev defines no confidence extension for noul answers.
+result.answers.refund.x_jev_confidence;
+// @ts-expect-error Jev confidence is numeric when present.
+const textJevConfidence: ChoiceAnswer['x_jev_confidence'] = '0.6';
 const stateTokens: number = result.usage.state_tokens;
 const stateTokensDropped: number = result.usage.state_tokens_dropped;
 const truncated: boolean = result.usage.truncated;

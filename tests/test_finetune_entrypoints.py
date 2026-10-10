@@ -1,6 +1,7 @@
 import argparse
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 from unittest import mock
@@ -151,3 +152,95 @@ def test_no_duplicated_fitter_or_training_loop_remains():
     assert "fit_temperature(" not in mps_text
     assert "def preprocess" not in single_text
     assert "while n_batches % args.grad_accum" not in mps_text
+
+
+# ------------------------------------------------- `laya-train`'s options table, against the parser
+
+# `docs/finetune.md`'s Options table is where a reader learns what `laya-train` accepts and what each
+# flag does to the run; `--help` gives one line per flag and no consequence. Three flags were in
+# neither the table nor any other page under `docs/` or the README -- `--eval`, `--target-error` and
+# `--min-abstain-n` -- although the last two decide the per-bucket abstention map a fine-tuned
+# checkpoint ships with, which is the number `Router` and `laya-serve` later gate answers on.
+#
+# Not a completeness gate over the parser, on purpose: #982 is adding six flags to `build_parser` as
+# this lands, and a check demanding a row for every flag would go red on that PR instead of on the
+# gap it exists to catch. What is checked is derived from the parser and applied to whatever the page
+# claims, in both directions: a flag the table names has to exist, and a default the table prints has
+# to be the parser's. The three flags this table gained stay named by name.
+
+TABLE_ROW = re.compile(r"^\|\s*((?:`--[a-z0-9-]+`)(?:\s*,\s*`--[a-z0-9-]+`)*)\s*\|\s*([^|]*?)\s*\|")
+FLAG_IN_CELL = re.compile(r"`(--[a-z0-9-]+)`")
+FINETUNE_PAGE = ROOT / "docs" / "finetune.md"
+
+
+def _parser_defaults():
+    """`{option string: default}` for every flag `laya-train` accepts, aliases included."""
+    from laya.train_cli import build_parser
+
+    out = {}
+    for action in build_parser()._actions:
+        for option in action.option_strings:
+            out[option] = action.default
+    return out
+
+
+def _option_table():
+    """The Options table's rows as `(flags, default cell)`, read out of `docs/finetune.md`."""
+    lines = FINETUNE_PAGE.read_text(encoding="utf-8").splitlines()
+    start = next((i for i, line in enumerate(lines) if line.strip() == "### Options"), None)
+    assert start is not None, "%s no longer has an `### Options` section" % FINETUNE_PAGE
+    rows = []
+    for line in lines[start:start + 40]:
+        if line.startswith("###") and rows:
+            break
+        match = TABLE_ROW.match(line)
+        if match:
+            rows.append((FLAG_IN_CELL.findall(match.group(1)), match.group(2)))
+    assert rows, "`### Options` in %s holds no table rows this sweep can read" % FINETUNE_PAGE
+    return rows
+
+
+def test_every_flag_in_the_options_table_exists():
+    """The table cannot promise a flag `laya-train` does not take."""
+    defaults = _parser_defaults()
+    rows = _option_table()
+    unknown = sorted({flag for flags, _cell in rows for flag in flags if flag not in defaults})
+    assert not unknown, (
+        "docs/finetune.md's Options table names %s, which `laya-train` does not accept; the flags it "
+        "takes are %s" % (unknown, sorted(defaults)))
+
+
+def test_the_options_table_prints_the_parser_defaults():
+    """Where the table states numbers for a row of flags, they are the parser's, in that order."""
+    defaults = _parser_defaults()
+    checked = 0
+    stale = []
+    for flags, cell in _option_table():
+        parts = [part.strip().strip("`") for part in cell.split(",")]
+        if len(parts) != len(flags):
+            continue        # a shared row stating one thing for several flags, or prose
+        try:
+            stated = [float(part) for part in parts]
+        except ValueError:
+            continue        # `rlcd`, `off`, `auto`: not a number this check can compare
+        for flag, value in zip(flags, stated):
+            got = defaults.get(flag)
+            if isinstance(got, bool) or not isinstance(got, (int, float)):
+                continue        # unknown flags are the other check's business
+            checked += 1
+            if float(got) != value:
+                stale.append("%s: table says %r, `build_parser` defaults to %r" % (flag, value, got))
+    assert not stale, "docs/finetune.md prints a default the parser does not have: %s" % stale
+    assert checked >= 6, (
+        "fixture: this check compared %d defaults, and the table's numeric rows have to keep it "
+        "meaningful -- the rows it reads are no longer the ones it was written against" % checked)
+
+
+def test_the_abstention_and_eval_flags_are_documented():
+    """The three flags that decide what a fine-tuned checkpoint ships with stay in the table."""
+    rows = _option_table()
+    named = {flag for flags, _cell in rows for flag in flags}
+    for flag in ("--eval", "--target-error", "--min-abstain-n"):
+        assert flag in named, (
+            "%s is what decides a fine-tuned checkpoint's held-out numbers and its abstention map, "
+            "and it is no longer in docs/finetune.md's Options table" % flag)

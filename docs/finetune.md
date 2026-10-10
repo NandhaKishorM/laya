@@ -167,6 +167,9 @@ warning the run prints before gating on `min_confidence`.
 | `--epochs`, `--micro-batch`, `--grad-accum` | 4, 8, 8 | the notebook's 4 epochs and effective batch of 64 |
 | `--encoder-lr`, `--head-lr` | 2.5e-5, 1e-4 | learning rates |
 | `--max-len`, `--head-max-len` | the base checkpoint's | token budgets; the notebook uses 1024 and 256 |
+| `--eval`, `--eval-data` | none | a second dataset, answered before and after the fine-tune. Without it the "after" numbers come from the calibration slice; the run's report says which of the two it is (`eval_mode`, `is_held_out`, `note`), and rows whose state and question also occur in the training or calibration inputs count as overlap and stop the metrics being held out (#967) |
+| `--target-error` | `0.10` | the error the run fits the checkpoint's per-bucket abstention thresholds to keep among the answers it accepts |
+| `--min-abstain-n` | `10` | a bucket with fewer items than this is left out of that map, and `resolve_min_confidence` gates that option count at 0.0 -- nothing abstains -- unless the caller sets `min_confidence` itself |
 | `--device`, `--seed` | `auto`, 0 | |
 
 Mixed precision is on for CUDA. On a GPU where fp16 runs slower than fp32 (the GTX 16xx cards, for

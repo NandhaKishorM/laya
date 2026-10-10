@@ -16,6 +16,7 @@ nav:
       - docker-platforms.md
       - security.md
   - Fine-tuning:
+      - numeric-features.md
       - finetune.md
       - finetune_browser_agent.md
   - reference

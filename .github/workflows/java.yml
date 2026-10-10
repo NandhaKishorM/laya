@@ -243,7 +243,7 @@ jobs:
       # The pre-tokenizer's letter/number classes are probed from the reference tokenizer, so this
       # one needs a checkpoint and runs in the parity lane instead -- see that job.
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
         with:
           name: java-build-diagnostics
@@ -363,7 +363,7 @@ jobs:
           python laya-java/scripts/check_test_results.py
           laya-java/laya-java/build/test-results/test --min-tests 1008 --allow-aborted
           --require-passed TestJvmVersionTest
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
         with:
           name: java-jdk${{ matrix.jdk }}-diagnostics
@@ -629,7 +629,7 @@ jobs:
           python laya-java/scripts/check_test_results.py
           laya-java/laya-java/build/test-results/test --min-tests ${{ matrix.min-tests }}
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
         with:
           name: java-parity-${{ matrix.name }}-diagnostics

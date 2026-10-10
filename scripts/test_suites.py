@@ -105,6 +105,7 @@ SCRIPT_SUITES = [
 
 PYTEST_SUITES = [
     "tests/test_evals_agreement.py",
+    "tests/test_residual_adapters.py",
     "tests/test_serve.py",
     "tests/test_mcp_remote.py",
     "tests/test_router_batch.py",

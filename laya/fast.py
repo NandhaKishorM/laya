@@ -30,6 +30,8 @@ class FastLaya:
         """`dtype` is the 16-bit type of the weights and the activations between kernels (the residual stream
         and every accumulation stay fp32).  Pass the agent's autocast dtype so the fast path runs in the same
         precision as the stock forward it replaces: bf16 (the shipped checkpoints' default) or fp16."""
+        from ._residual import reject_unsupported_backend
+        reject_unsupported_backend(model, "the fast path")
         if dtype not in _KERNEL_DTYPES:
             raise ValueError("laya fast path supports torch.bfloat16 and torch.float16, got %s" % (dtype,))
         self.dtype = dt = dtype

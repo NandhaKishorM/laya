@@ -134,6 +134,8 @@ def main(argv=None):
 
     with open(os.path.join(model_dir, "rl_agent_config.json"), encoding="utf-8") as f:
         cfg = json.load(f)
+    if cfg.get("residual_adapters") is not None:
+        raise ValueError("residual_adapters do not support split ONNX export; use eager PyTorch inference")
     # The encoder arch lives in <ckpt>/encoder/config.json (same as Agent:
     # enc_dir = model_dir/"encoder"); the checkpoint root itself has no
     # config.json, so passing model_dir here makes AutoConfig fail with

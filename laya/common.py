@@ -575,7 +575,7 @@ class DecisionModel(nn.Module):
     """Bidirectional transformer encoder backbone + typed decision head."""
 
     def __init__(self, encoder: nn.Module, head_layers: int = 2, n_act: int = 2, dropout: float = 0.1,
-                 no_init: bool = False):
+                 no_init: bool = False, residual_adapters: Optional[Dict] = None):
         super().__init__()
         self.encoder = encoder
         d = encoder.config.hidden_size
@@ -605,6 +605,21 @@ class DecisionModel(nn.Module):
                     module.to_empty(device="cpu")
             self.temperature = torch.empty_like(self.temperature, device="cpu")
         self.head_checkpointing = False
+        self.residual_adapters = None
+        if residual_adapters is not None:
+            from ._residual import ResidualAdapters
+            self.residual_adapters = ResidualAdapters(encoder, residual_adapters, no_init=no_init)
+
+    def set_residual_enabled(self, enabled: bool) -> None:
+        """Enable or bypass the residual branches on the current shared encoder weights.
+
+        This is an ablation control, not restoration of a pre-training checkpoint. Change it
+        only between requests or optimizer steps, never during a forward/backward in flight.
+        Checkpoint reload enables the configured branches again.
+        """
+        if self.residual_adapters is None:
+            raise ValueError("this model has no residual_adapters")
+        self.residual_adapters.set_enabled(enabled)
 
     def forward(self, input_ids, attention_mask, marker_pos, marker_mask, qtype, detach_encoder: bool = False,
                 position_ids=None, option_ids=None):
@@ -707,13 +722,14 @@ def build_model(cfg: Dict, encoder_dir: Optional[str] = None, pretrained: bool =
         _apply_rope_config(ecfg)
         with _no_init_weights():
             enc = AutoModel.from_config(ecfg, attn_implementation="sdpa")
-        return DecisionModel(enc, head_layers, n_act, no_init=True)
+        return DecisionModel(enc, head_layers, n_act, no_init=True,
+                             residual_adapters=cfg.get("residual_adapters"))
     # Training-time Hub load of the base encoder; allow pinning it like the checkpoints.
     kw = {"attn_implementation": "sdpa"}
     if revision:
         kw["revision"] = revision
     enc = AutoModel.from_pretrained(cfg["encoder"], **kw)
-    return DecisionModel(enc, head_layers, n_act)
+    return DecisionModel(enc, head_layers, n_act, residual_adapters=cfg.get("residual_adapters"))
 
 
 def proper_reward(

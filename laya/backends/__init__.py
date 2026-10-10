@@ -46,6 +46,8 @@ def is_modernbert(model) -> bool:
 
 def auto_policy(agent) -> str:
     """The backend `auto` resolves to for this agent (device, dtype, encoder, installed extras)."""
+    if getattr(agent.model, "residual_adapters", None) is not None:
+        return "eager"    # residual adapters are not qualified for the accelerated forwards
     if getattr(agent, "parallel_options", False):
         return "eager"    # the accelerated forwards do not take the parallel layout's masks
     if agent.device.type == "cuda":

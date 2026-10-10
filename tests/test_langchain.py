@@ -894,6 +894,64 @@ LayaDecision(DECISION_SCHEMA, agent=_dmixed, model="laya-multilingual", max_len=
 check("decision/controls alongside model", _dmixed.calls[0]["kwargs"],
       {"model": "laya-multilingual", "max_len": 1024})
 
+# The two routing hints join that family: the node reads them and `decide` forwards them to
+# `predict`, so a schema decision picks its own checkpoint the way its siblings do.
+# `RecordingAgent.predict` is a `**kwargs` sink, so what it records is exactly the set the node
+# sent -- an unset hint has to be absent, not sent as `None`, which would replace the deployment's
+# own `Router(task=...)` hint with nothing for this one call.
+_dhint = RecordingAgent()
+LayaDecision(DECISION_SCHEMA, agent=_dhint).invoke("x")
+check("decision/controls routing default sends nothing", _dhint.calls[0]["kwargs"], {})
+
+_dboth = RecordingAgent()
+LayaDecision(DECISION_SCHEMA, agent=_dboth, task="typed-decisions", lang_guess="de").invoke("x")
+check("decision/controls forwards both hints", _dboth.calls[0]["kwargs"],
+      {"task": "typed-decisions", "lang_guess": "de"})
+
+_done = RecordingAgent()
+LayaDecision(DECISION_SCHEMA, agent=_done, lang_guess="").invoke("x")
+check("decision/controls keeps an empty lang_guess", _done.calls[0]["kwargs"],
+      {"lang_guess": ""})
+
+_dhintmix = RecordingAgent()
+LayaDecision(DECISION_SCHEMA, agent=_dhintmix, max_len=1024, hooks=[],
+             task="typed-decisions").invoke("x")
+check("decision/controls hints beside budget and hooks", _dhintmix.calls[0]["kwargs"],
+      {"max_len": 1024, "hooks": [], "task": "typed-decisions"})
+
+
+class _StrictDecisionAgent:
+    """An `Agent`-shaped runner: the budgets yes, either routing hint never.
+
+    A declared signature rather than `**kwargs`, because what this checks is the *name* a hint
+    arrives under -- a sink records anything, including one this node should have refused.
+    """
+
+    def __init__(self):
+        self.seen = None
+
+    def predict(self, state, questions, max_len=None, head_max_len=None):
+        self.seen = {"max_len": max_len, "head_max_len": head_max_len}
+        return {"model": "mock", "answers": dict(DECISION_ANSWERS)}
+
+
+# Handing a routing hint to a runner with no routing step is the one thing the node must not do
+# silently: core would raise `TypeError` past every hook on the way to an answer that ignores the
+# hint, and dropping it quietly is the silence this whole module exists to break.
+for _hint, _sample in zip(_controls.ROUTER_ONLY_CONTROLS, ("typed-decisions", "de")):
+    _strict = _StrictDecisionAgent()
+    _raised, _message = False, ""
+    try:
+        LayaDecision(DECISION_SCHEMA, agent=_strict, **{_hint: _sample}).invoke("x")
+    except ValueError as _exc:
+        _raised, _message = True, str(_exc)
+    check_true("decision/controls refuses %s at a runner that cannot route" % _hint, _raised)
+    check_true("decision/controls %s names itself" % _hint, _hint in _message)
+    check_true("decision/controls %s names the call that refused" % _hint,
+               "_StrictDecisionAgent.predict" in _message)
+    check_true("decision/controls %s says what to do instead" % _hint, "Router" in _message)
+    check("decision/controls %s refusal happens before the call" % _hint, _strict.seen, None)
+
 # The names it reads out of the shared module are the names it actually forwards -- a control
 # added to `._controls` without reaching this bypass fails here rather than being dropped silently.
 check("decision/controls reads both budgets", set(_controls.PREDICT_CONTROLS),
@@ -924,6 +982,28 @@ try:
           {"model": None, "max_len": 1024, "head_max_len": 384})
     LayaDecision(DECISION_SCHEMA, base_url="http://laya:8000").invoke("x")
     check("decision/remote omits an unset budget", _dremote[-1], {"model": None})
+    # Both routing hints are laya-serve body controls too, so they ride in the same JSON, and a
+    # blank `lang_guess` is core's documented "fall through to detection" rather than an absence.
+    LayaDecision(DECISION_SCHEMA, base_url="http://laya:8000",
+                 task="typed-decisions", lang_guess="de").invoke("x")
+    check("decision/remote body carries both hints", _dremote[-1],
+          {"model": None, "task": "typed-decisions", "lang_guess": "de"})
+    LayaDecision(DECISION_SCHEMA, base_url="http://laya:8000", lang_guess="").invoke("x")
+    check("decision/remote body keeps an empty lang_guess", _dremote[-1],
+          {"model": None, "lang_guess": ""})
+    # Only the code string has a wire form: serve answers 422 to a callable, so refuse the callable
+    # here rather than after the request has already gone out.
+    _dcallable, _dcallable_message = False, ""
+    try:
+        LayaDecision(DECISION_SCHEMA, base_url="http://laya:8000",
+                     lang_guess=lambda state: "de").invoke("x")
+    except ValueError as exc:
+        _dcallable, _dcallable_message = True, str(exc)
+    check_true("decision/remote refuses a callable lang_guess", _dcallable)
+    check_true("decision/remote callable lang_guess names itself",
+               "lang_guess" in _dcallable_message)
+    check_true("decision/remote callable lang_guess names the endpoint",
+               "laya-serve" in _dcallable_message)
     _drefused = False
     try:
         LayaDecision(DECISION_SCHEMA, base_url="http://laya:8000", hooks=[object()]).invoke("x")
@@ -1449,11 +1529,13 @@ for name, build in HOOK_NODES:
         pass
     check("routing/%s refusal happens before the call" % name, strict.seen, {})
 
-# Each constructor has to accept both names, or the two checks above are vacuous: `extra` is
+# Each constructor has to accept both names, or the forwarding checks are vacuous: `extra` is
 # "allow" on these runnables, so a parameter the class forgot is still accepted at construction,
 # still reads back as a normal attribute, and is still dropped at the call. That is the shape of
 # the bug this section closes, and why declaring the field is checked separately from storing it.
-for cls in (LayaRouter, LayaGuardrail, LayaTriage, LayaEvaluator):
+# `LayaDecision` is here for the same reason as the four, and drives the hints through its own
+# bypass in section 6b rather than through the `build(...)` factories below.
+for cls in (LayaRouter, LayaGuardrail, LayaTriage, LayaEvaluator, LayaDecision):
     for _c in ROUTER_HINTS:
         check_true("routing/%s __init__ takes %s" % (cls.__name__, _c),
                    _c in inspect.signature(cls.__init__).parameters)
@@ -1461,8 +1543,8 @@ for cls in (LayaRouter, LayaGuardrail, LayaTriage, LayaEvaluator):
                    _c in cls.__annotations__)
 
 # The remote path: both hints are laya-serve body controls, so they ride in the JSON, and a blank
-# one stays in it. `LayaDecision` is not in this family -- it bypasses `_execute_decision` and calls
-# `laya.decide` against a schema, so it has its own forwarding to make.
+# one stays in it. `LayaDecision` bypasses `_execute_decision` and calls `laya.decide` against a
+# schema, so its own remote body is checked in section 6b.
 remote_routing_calls = []
 _real_remote = langchain_module._call_remote
 

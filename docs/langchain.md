@@ -270,8 +270,8 @@ process; pass `max_concurrency=1` there, or call `invoke()` in a loop.
 ### The per-call controls
 
 The node plans the questions itself, but the call it makes is an ordinary one, so it takes the
-same seven per-call arguments as the other four nodes -- the two token budgets and the five
-prediction hooks:
+same nine per-call arguments as the other four nodes -- the two token budgets, the five prediction
+hooks, and the two routing hints of [section 9](#9-which-checkpoint-answers):
 
 ```python
 decide = LayaDecision(

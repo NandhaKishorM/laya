@@ -1119,6 +1119,8 @@ class LayaDecision(RunnableSerializable):
     model: Optional[str] = None
     max_len: Optional[int] = None
     head_max_len: Optional[int] = None
+    task: Optional[str] = None
+    lang_guess: Optional[Any] = None
     hooks: Optional[Any] = None
     on_predict_start: Optional[Any] = None
     on_predict_end: Optional[Any] = None
@@ -1140,6 +1142,8 @@ class LayaDecision(RunnableSerializable):
         model: Optional[str] = None,
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
+        task: Optional[str] = None,
+        lang_guess: Optional[Any] = None,
         hooks: Optional[Any] = None,
         on_predict_start: Optional[Any] = None,
         on_predict_end: Optional[Any] = None,
@@ -1159,6 +1163,8 @@ class LayaDecision(RunnableSerializable):
                 model=model,
                 max_len=max_len,
                 head_max_len=head_max_len,
+                task=task,
+                lang_guess=lang_guess,
                 hooks=hooks,
                 on_predict_start=on_predict_start,
                 on_predict_end=on_predict_end,
@@ -1176,6 +1182,8 @@ class LayaDecision(RunnableSerializable):
             self.model = model
             self.max_len = max_len
             self.head_max_len = head_max_len
+            self.task = task
+            self.lang_guess = lang_guess
             self.hooks = hooks
             self.on_predict_start = on_predict_start
             self.on_predict_end = on_predict_end
@@ -1190,11 +1198,15 @@ class LayaDecision(RunnableSerializable):
         hook_kwargs = _hook_kwargs(self.hooks, self.on_predict_start, self.on_predict_end,
                                    self.hooks_raise, self.hooks_timeout)
         overrides = _predict_kwargs(self.model, self.max_len, self.head_max_len)
+        router_kwargs = _router_kwargs(self.task, self.lang_guess)
         if self.base_url:
             _reject_remote_hooks(hook_kwargs, self.base_url)
+            _reject_remote_lang_guess(router_kwargs, self.base_url)
             runner: Any = _RemoteDecisionRunner(self.base_url, self.api_key)
+            overrides.update(router_kwargs)
         else:
             runner = self.agent if self.agent is not None else _get_default_router()
+            overrides.update(_require_router_controls(runner, "predict", router_kwargs))
             overrides.update(hook_kwargs)
         return decide(
             runner,

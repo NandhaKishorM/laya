@@ -330,7 +330,8 @@ for label, cls in (("LayaRouter", LayaRouter), ("LayaGuardrail", LayaGuardrail),
 from laya.integrations.langchain import LayaDecision  # noqa: E402
 
 for param, default in (("return_details", False), ("state_key", None), ("agent", None),
-                       ("base_url", None), ("api_key", None), ("model", None)):
+                       ("base_url", None), ("api_key", None), ("model", None),
+                       ("task", None), ("lang_guess", None)):
     check_param("LayaDecision.__init__", LayaDecision.__init__, param, default)
 check_param("LayaDecision.__init__", LayaDecision.__init__, "decision_schema",
             inspect.Parameter.empty, inspect.Parameter.POSITIONAL_OR_KEYWORD)

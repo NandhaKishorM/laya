@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: gradle/actions/wrapper-validation@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
@@ -117,7 +117,7 @@ jobs:
     continue-on-error: true   # advisory: see the header
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # `gradle/wrapper/gradle-wrapper.jar` is a binary that executes at build time, so it is
       # the one file in this tree a reviewer cannot read. This validates it against Gradle's
       # published checksums before anything runs it. The jar in the tree today is the genuine
@@ -286,7 +286,7 @@ jobs:
         # DISAGREES. 17 and 24 passed. A two-version matrix would not have found it.
         jdk: ["17", "21", "24"]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Validate the wrapper jar BEFORE anything can execute it. See this file's
       # header for why every job that runs ./gradlew needs this, not just one.
       - uses: gradle/actions/wrapper-validation@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
@@ -512,7 +512,7 @@ jobs:
             min-tests: 14
             timeout: 75
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Validate the wrapper jar BEFORE anything can execute it. See this file's
       # header for why every job that runs ./gradlew needs this, not just one.
       - uses: gradle/actions/wrapper-validation@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4

@@ -101,6 +101,7 @@ SCRIPT_SUITES = [
     "tests/test_llamaindex.py",
     "tests/test_langchain_real_mode.py",
     "tests/test_email.py",
+    "tests/test_tools.py",
 ]
 
 PYTEST_SUITES = [

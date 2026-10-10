@@ -19,6 +19,10 @@ from .llamaindex import (
     LayaQueryRouter,
     LayaSingleSelector,
 )
+from .tools import (
+    LayaToolSelector,
+    ToolRouteDecision,
+)
 
 __all__ = [
     "LayaRouter",
@@ -34,5 +38,7 @@ __all__ = [
     "LayaTaskGuard",
     "LayaTaskGuardError",
     "CrewRouteDecision",
+    "LayaToolSelector",
+    "ToolRouteDecision",
     "LayaLowConfidenceError",
 ]

@@ -177,7 +177,11 @@ default is `k=20`. It uses mean-pooled embeddings from the answering checkpoint'
 so it does not download a second model, and returns the kept labels, cosine scores, `k`,
 option count, and whether the question passed through unshortlisted for each shortlisted
 question. A question with `k` at or past its option count is passed through unchanged, so
-its cosine scores come back `null` rather than empty.
+its cosine scores come back `null` rather than empty. A question that narrows cannot keep
+a caller-supplied `option_order`: the order covers every option while the answer covers the
+kept labels only, and remapping it onto them would move options between slots, so the order
+is dropped and the question is named under `option_order_dropped` with its old and kept
+option counts.
 
 `state` must be a non-empty JSON object. `questions` must be a non-empty object whose values use
 Laya's typed question schema. `laya_preset` accepts the same five presets the CLI does: `email`,

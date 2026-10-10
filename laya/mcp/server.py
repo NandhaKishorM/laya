@@ -389,6 +389,10 @@ def laya_route_batch_tool(requests: list, hooks_timeout: float = 0) -> str:
         "scores, k, option count, and whether the question passed through unshortlisted). "
         "Shortlisting narrows the label set; head_max_len decides how many tokens each kept label "
         "is read with, so the two together are the fix for a large-criteria question. "
+        "A question that narrows cannot keep a caller-supplied option_order: the order covers "
+        "every option while the answer covers the kept labels only, so it is dropped rather "
+        "than remapped, and each such question is named under option_order_dropped with its "
+        "old and kept option counts. "
         + _GUARDRAILS
         + _MODEL_DOC
         + _CONTROLS_DOC

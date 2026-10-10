@@ -700,6 +700,14 @@ def laya_shortlist(
     ``task``/``lang``/``lang_guess`` reach the route that chose the checkpoint
     (``lang_guess`` only routes, so like ``task`` it is stripped before the answering pass);
     ``min_confidence`` flags a kept-label answer the checkpoint is unsure of.
+
+    A question that actually narrows cannot keep the caller's ``option_order``: the
+    order covers every option, the answer covers the kept labels only, and remapping
+    it onto them would silently move options between slots, so core drops it. An MCP
+    client never sees core's ``RuntimeWarning`` about the drop, so the response
+    reports it itself as ``option_order_dropped``, per question, with the old and kept
+    option counts. A question answered as given (``n <= k``), a non-choice question
+    and a call without an order keep the response they had before.
     """
     # Before the heavy imports below: a remote router has no in-process encoder to embed with,
     # and the refusal should not cost the MCP process a torch import on the way to saying so.
@@ -753,17 +761,6 @@ def laya_shortlist(
         k = DEFAULT_SHORTLIST_K
     if isinstance(k, bool) or not isinstance(k, int) or k < 1:
         raise ToolError("invalid_k", f"k must be a positive integer, got {k!r}")
-    # A choice with more than k labels is answered over the k it keeps, in rank order, so an
-    # `option_order` over all of its options no longer describes the question -- the agent
-    # rejects the stale order. A choice of at most k labels is answered as given and keeps it.
-    for name, spec in questions_d.items():
-        if spec["type"] == "choice" and "option_order" in spec and len(spec["criteria"]) > k:
-            raise ToolError(
-                "invalid_questions",
-                f"questions[{name}].option_order orders all {len(spec['criteria'])} options, but "
-                f"laya_shortlist answers it over the {k} it keeps, in rank order; omit option_order, "
-                f"or raise k to at least {len(spec['criteria'])}",
-            )
 
     routing: dict[str, Any]
     if model_name == "auto":
@@ -821,14 +818,34 @@ def laya_shortlist(
     if not isinstance(result, dict):
         raise ToolError("internal_error", "predict returned non-object")
     answers = _normalize_answers(result["answers"])
+    # A narrowed choice no longer fits the caller's full-length order -- core drops the order
+    # rather than remapping it onto the kept labels, which would silently move options between
+    # slots (#1063), and says so with a RuntimeWarning that stays inside the Python process.
+    # An MCP client reads JSON, so the drop is reported here instead, per question, derived
+    # from the original question and the returned shortlist meta. Capturing core's warning
+    # would be the other route, but warnings are process-global and a concurrent tool call
+    # could supply the drop this call reports. Only a valid order reaches this point:
+    # validate_questions refuses anything that is not a permutation up front.
+    shortlist_meta = result.get("shortlist") or {}
+    dropped_orders: dict[str, Any] = {}
+    for name, spec in questions_d.items():
+        if spec["type"] != "choice" or "option_order" not in spec:
+            continue
+        entry = shortlist_meta.get(name)
+        if not entry or entry.get("passthrough"):
+            continue
+        dropped_orders[name] = {"n": len(spec["criteria"]), "kept": len(entry["labels"])}
     # The answering checkpoint is the embedding checkpoint in every branch.
     device = agent_device(embed_agent)
     out: dict[str, Any] = {
         "answers": answers,
         "routing": routing,
-        "shortlist": result.get("shortlist") or {},
+        "shortlist": shortlist_meta,
         "latency_ms": round(latency_ms, 3),
     }
+    # Present only when an order was actually dropped: every other response is unchanged.
+    if dropped_orders:
+        out["option_order_dropped"] = dropped_orders
     if device:
         out["device"] = device
     return out

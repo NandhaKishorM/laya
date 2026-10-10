@@ -596,27 +596,73 @@ def test_option_order_forwarding():
                       "invalid_questions")
     ok("option_order/batch_invalid_not_called", router.predict_batch_calls == [])
 
-    # Shortlist passthrough (n <= k): the question is answered as given, so the order applies.
+    # Shortlist passthrough (n <= k): the question is answered as given, so the order applies
+    # and nothing was dropped.
     router = ShortlistRouter({"english": ShortlistAgent()})
-    laya_shortlist(STATE, order_q, model="english", k=5, router=router, embed_fn=_raising_embed)
+    out = laya_shortlist(STATE, order_q, model="english", k=5, router=router, embed_fn=_raising_embed)
     ok("option_order/shortlist_passthrough_forwarded",
        router.seen_questions["team"].get("option_order") == [2, 0, 1], repr(router.seen_questions))
-    # A narrowed choice is answered over k ranked labels, so an order over all n options no
-    # longer describes it -- the agent rejects the stale full-length order with a ValueError,
-    # which the wrapper would report as internal_error. Refuse it as a caller error up front.
+    ok("option_order/shortlist_passthrough_no_drop_signal",
+       "option_order_dropped" not in out, repr(out.get("option_order_dropped")))
+    # A narrowed choice is answered over its k ranked labels, so an order over all n options no
+    # longer describes it. Core drops the order rather than remapping it (#1063), so the call
+    # answers over the kept labels and the wrapper reports the drop per question, with the old
+    # and kept option counts: core's RuntimeWarning never reaches an MCP client.
     router = ShortlistRouter({"english": ShortlistAgent()})
     narrowed = {"topic": dict(SHORTLIST_QUESTIONS["topic"], option_order=[4, 3, 2, 1, 0])}
-    expect_tool_error("option_order/shortlist_narrowed_rejected",
-                      lambda: laya_shortlist(STATE, narrowed, model="english", k=2,
+    out = laya_shortlist(STATE, narrowed, model="english", k=2,
+                         router=router, embed_fn=_tie_embed)
+    ok("option_order/shortlist_narrowed_answers",
+       out["answers"]["topic"]["choice"] == "billing", repr(out["answers"]))
+    ok("option_order/shortlist_narrowed_order_dropped",
+       "option_order" not in router.seen_questions["topic"], repr(router.seen_questions["topic"]))
+    ok("option_order/shortlist_narrowed_drop_signal",
+       out.get("option_order_dropped") == {"topic": {"n": 5, "kept": 2}},
+       repr(out.get("option_order_dropped")))
+    ok("option_order/shortlist_narrowed_caller_order_kept",
+       narrowed["topic"]["option_order"] == [4, 3, 2, 1, 0], repr(narrowed["topic"]))
+    # The drop is reported in the response, never printed: the MCP server speaks JSON-RPC
+    # on stdout, and core's RuntimeWarning about the drop belongs on stderr.
+    import contextlib
+    import io
+
+    buf = io.StringIO()
+    router = ShortlistRouter({"english": ShortlistAgent()})
+    with contextlib.redirect_stdout(buf):
+        laya_shortlist(STATE, narrowed, model="english", k=2,
+                       router=router, embed_fn=_tie_embed)
+    ok("option_order/shortlist_narrowed_stdout_clean",
+       buf.getvalue() == "", repr(buf.getvalue()[:100]))
+    # A structurally invalid order (not a permutation) is still refused up front, before any
+    # predict: only a valid order on a narrowed question reaches the drop path.
+    router = ShortlistRouter({"english": ShortlistAgent()})
+    bad = {"topic": dict(SHORTLIST_QUESTIONS["topic"], option_order=[0, 0, 0, 0, 0])}
+    expect_tool_error("option_order/shortlist_invalid_rejected",
+                      lambda: laya_shortlist(STATE, bad, model="english", k=2,
                                              router=router, embed_fn=_tie_embed),
                       "invalid_questions")
-    ok("option_order/shortlist_narrowed_not_called", router.seen_questions is None)
+    ok("option_order/shortlist_invalid_not_called", router.seen_questions is None)
+    # The signal survives the JSON boundary an MCP client reads: _wrap dumps whatever the tool
+    # returns, so the drop has to come back under its real key name after json round-trip.
+    import json
+
+    from laya.mcp import server as server_mod
+
+    router = ShortlistRouter({"english": ShortlistAgent()})
+    payload = json.loads(server_mod._wrap(
+        laya_shortlist, state=STATE, questions=narrowed, model="english", k=2,
+        router=router, embed_fn=_tie_embed))
+    ok("option_order/shortlist_narrowed_mcp_json_drop_signal",
+       payload.get("option_order_dropped") == {"topic": {"n": 5, "kept": 2}},
+       repr(payload.get("option_order_dropped")))
     # Non-choice questions are never narrowed, so their order is forwarded whatever k is.
     router = ShortlistRouter({"english": ShortlistAgent()})
     scored = {"urgency": dict(SHORTLIST_QUESTIONS["urgency"], option_order=[1, 0])}
-    laya_shortlist(STATE, scored, model="english", k=1, router=router, embed_fn=_raising_embed)
+    out = laya_shortlist(STATE, scored, model="english", k=1, router=router, embed_fn=_raising_embed)
     ok("option_order/shortlist_non_choice_forwarded",
        router.seen_questions["urgency"].get("option_order") == [1, 0], repr(router.seen_questions))
+    ok("option_order/shortlist_non_choice_no_drop_signal",
+       "option_order_dropped" not in out, repr(out.get("option_order_dropped")))
 
 
 def test_real_device():
@@ -850,6 +896,9 @@ def test_shortlist():
     ok("shortlist/non_choice_forwarded", router.seen_questions["urgency"] == SHORTLIST_QUESTIONS["urgency"])
     ok("shortlist/non_choice_no_meta", "urgency" not in out["shortlist"], repr(sorted(out["shortlist"])))
     ok("shortlist/input_not_mutated", len(SHORTLIST_QUESTIONS["topic"]["criteria"]) == 5)
+    # No order was supplied, so there is nothing to drop and no signal in the response.
+    ok("shortlist/no_order_no_drop_signal",
+       "option_order_dropped" not in out, repr(out.get("option_order_dropped")))
 
     # Auto mode: route once, then answer with an explicit model= so the forward
     # pass does not re-route; the reported routing is the real route decision.

@@ -93,6 +93,38 @@ test('default request omits model and supports every Laya answer type', async ()
   assert.deepEqual(allAnswerQuestions.team.criteria, ['billing', 'support'], 'normalization must not mutate the schema');
 });
 
+test('HTTP Jev confidence is preserved and remains optional for older servers', async () => {
+  for (const value of [undefined, 0, 0.6, 1]) {
+    const payload = structuredClone(allAnswerPrediction);
+    if (value !== undefined) {
+      payload.answers.team.x_jev_confidence = value;
+      payload.answers.urgency.x_jev_confidence = value;
+    }
+    const client = new Laya({ fetch: async () => json(payload) });
+    const result = await client.predict('hello', allAnswerQuestions);
+    assert.deepEqual(result, payload);
+    assert.equal(Object.hasOwn(result.answers.team, 'x_jev_confidence'), value !== undefined);
+    assert.equal(Object.hasOwn(result.answers.urgency, 'x_jev_confidence'), value !== undefined);
+    assert.equal(Object.hasOwn(result.answers.refund, 'x_jev_confidence'), false);
+  }
+});
+
+test('malformed or noul Jev confidence is rejected', async () => {
+  for (const id of ['team', 'urgency']) {
+    for (const value of [null, false, true, '0.6', [], {}, -0.01, 1.01, NaN, Infinity, -Infinity]) {
+      const payload = structuredClone(allAnswerPrediction);
+      payload.answers[id].x_jev_confidence = value;
+      const client = new Laya({ fetch: async () => json(payload) });
+      await assert.rejects(client.predict('hello', allAnswerQuestions), error =>
+        error instanceof LayaResponseError && error.message.includes(`answers.${id}.x_jev_confidence`));
+    }
+  }
+  const payload = structuredClone(allAnswerPrediction);
+  payload.answers.refund.x_jev_confidence = 0.9;
+  await assert.rejects(new Laya({ fetch: async () => json(payload) }).predict('hello', allAnswerQuestions),
+    LayaResponseError);
+});
+
 test('client model default and prediction overrides select local checkpoints', async () => {
   const models = [];
   const client = new Laya({ model: 'english', fetch: async (_url, init) => {

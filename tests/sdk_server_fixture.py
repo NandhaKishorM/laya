@@ -59,6 +59,8 @@ def main():
         for name in ["english", "multilingual", "typed-decisions"]:
             router.attach(name, agent)
         os.environ["LAYA_API_KEY"] = "integration-test"
+        # This fixture exercises the default HTTP contract, including its confidence extension.
+        os.environ["LAYA_JEV_STRICT"] = "0"
         app = create_app(router)
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))

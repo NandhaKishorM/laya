@@ -88,12 +88,16 @@ interface AnswerBase {
 export interface ChoiceAnswer<Label extends string = string> extends AnswerBase {
   type: 'choice';
   confidence: number;
+  /** Jev-compatible confidence added by HTTP servers; absent on older or strict-mode servers. */
+  x_jev_confidence?: number;
   choice: Label;
   probabilities: Record<Label, number>;
 }
 export interface ScoreAnswer extends AnswerBase {
   type: 'score';
   confidence: number;
+  /** Jev-compatible confidence added by HTTP servers; absent on older or strict-mode servers. */
+  x_jev_confidence?: number;
   /** Expected zero-based rubric index, not a normalized probability. */
   score: number;
   legend: Record<string, JsonValue>;

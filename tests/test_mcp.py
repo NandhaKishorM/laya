@@ -2882,7 +2882,7 @@ def test_cli_mcp_page_tool_argument_rows():
                     return cells[2]
         return None
 
-    for tool in ("laya_status", "laya_route", "laya_predict",
+    for tool in ("laya_status", "laya_route", "laya_predict", "laya_predict_long",
                  "laya_shortlist", "laya_preset", "laya_decide"):
         cell = row_cell(tool)
         ok("docs-mcp/args_row_%s_present" % tool, cell is not None, "row not found")

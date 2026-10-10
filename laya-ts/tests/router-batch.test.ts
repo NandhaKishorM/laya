@@ -529,4 +529,47 @@ describe("Agent.predictBatch", () => {
     expect(results[0].model).toBe("cached");
     expect(encodeCalls).toEqual([]);
   });
+
+  it("router.decideBatch evaluates schema across batch", async () => {
+    const customLoader = () => ({
+      async predictBatch(states: unknown[]) {
+        return states.map(() => ({
+          model: "fake",
+          answers: { flag: { type: "noul", noul: 0.1, confidence: 0.2, answer_confidence: 0.2 } },
+        }));
+      },
+      async systemOne(state: unknown) {
+        return {
+          model: "fake",
+          answers: { flag: { type: "noul", noul: 0.1, confidence: 0.2, answer_confidence: 0.2 } },
+        };
+      },
+    });
+    const router = new Router({ loader: customLoader as never });
+    const schema = {
+      type: "object",
+      properties: {
+        flag: { type: "boolean" },
+      },
+    };
+    const res1 = await router.decideBatch(["alpha", "beta"], schema);
+    expect(res1).toHaveLength(2);
+    expect(res1[0].flag).toBe(false);
+
+    const res2 = await router.decideBatch(["alpha"], schema, { returnDetails: true });
+    expect(res2).toHaveLength(1);
+    expect(res2[0].values).toBeDefined();
+    expect(res2[0].answerConfidence).toBeDefined();
+    expect(res2[0].confidence).toBeDefined();
+
+    // Verify min_confidence alias gates low confidence on the router path
+    const resGated = await router.decideBatch(["alpha"], schema, { min_confidence: 0.99 });
+    expect(resGated).toHaveLength(1);
+    expect(resGated[0].flag).toBeNull();
+
+    // Verify minConfidence also gates low confidence on the router path
+    const resGatedCamel = await router.decideBatch(["alpha"], schema, { minConfidence: 0.99 });
+    expect(resGatedCamel).toHaveLength(1);
+    expect(resGatedCamel[0].flag).toBeNull();
+  });
 });

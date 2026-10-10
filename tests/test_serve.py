@@ -38,6 +38,7 @@ from laya.serve import (  # noqa: E402
     _resolve_idle_unload_seconds,
     _resolve_max_loaded,
     _resolve_model,
+    _resolve_tournament_group,
     create_app,
 )
 
@@ -286,6 +287,141 @@ def test_jev_strict_leaves_out_jev_confidence(monkeypatch):
                                                      "questions": REQ["questions"]}).json()
     for answers in (single["answers"], batch["results"][0]["answers"]):
         assert all("x_jev_confidence" not in answer for answer in answers.values())
+
+
+# --- LAYA_TOURNAMENT_GROUP: large choices answered by elimination (#302) ----------------------
+
+def _queues(n):
+    return {"Queue %03d" % i: "Tickets routed to queue %d" % i for i in range(n)}
+
+
+def _large_req(n, **question):
+    return {"state": "I was charged twice, please refund one.",
+            "questions": {"queue": {"type": "choice", "instructions": "Which queue?",
+                                    "criteria": _queues(n), **question}}}
+
+
+class EliminationRouter:
+    """Answers every choice it is asked: `Queue 077` wins when offered, else the first label.
+
+    Records each call's question set and reports 10 input tokens per question, so a test can count
+    the calls a tournament made and check that their usage was summed.
+    """
+
+    loaded = ["english"]
+
+    def __init__(self):
+        self.calls = []
+
+    def predict(self, state, questions, model=None, **kwargs):
+        self.calls.append(questions)
+        answers = {}
+        for qid, q in questions.items():
+            labels = list(q["criteria"])
+            winner = "Queue 077" if "Queue 077" in labels else labels[0]
+            rest = (0.3 / (len(labels) - 1)) if len(labels) > 1 else 0.0
+            probabilities = {label: (0.7 if label == winner else rest) for label in labels}
+            if len(labels) == 1:
+                probabilities[winner] = 1.0
+            answers[qid] = {"type": "choice", "choice": winner, "probabilities": probabilities,
+                            "confidence": 0.5, "answer_confidence": probabilities[winner]}
+        return {"model": "laya-rl-agent", "answers": answers,
+                "usage": {"input_tokens": 10 * len(questions), "output_tokens": 0},
+                "routing": {"model": "english", "reason": "English Latin text"}}
+
+
+def _tournament_client(monkeypatch, group, strict=False):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    if group is None:
+        monkeypatch.delenv("LAYA_TOURNAMENT_GROUP", raising=False)
+    else:
+        monkeypatch.setenv("LAYA_TOURNAMENT_GROUP", group)
+    if strict:
+        monkeypatch.setenv("LAYA_JEV_STRICT", "1")
+    else:
+        monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    fake = EliminationRouter()
+    return TestClient(create_app(router=fake)), fake
+
+
+def test_large_choice_is_refused_without_a_tournament(monkeypatch):
+    client, fake = _tournament_client(monkeypatch, None)
+    r = client.post("/v1/systemone", json=_large_req(128))
+    assert r.status_code == 413
+    assert "128 > 100" in r.json()["detail"]
+    assert fake.calls == []
+
+
+def test_tournament_answers_a_large_choice_in_the_jev_shape(monkeypatch):
+    client, fake = _tournament_client(monkeypatch, "16")
+    r = client.post("/v1/systemone", json=_large_req(128))
+    assert r.status_code == 200
+    body = r.json()
+    answer = body["answers"]["queue"]
+    # every option is named, in criteria order, and the values are still a distribution
+    assert list(answer["probabilities"]) == list(_queues(128))
+    assert abs(sum(answer["probabilities"].values()) - 1.0) < 1e-9
+    # the choice is still the argmax; eliminated options carry 0.0, finalists the final round's values
+    assert answer["choice"] == "Queue 077"
+    assert max(answer["probabilities"], key=answer["probabilities"].get) == "Queue 077"
+    assert answer["x_tournament"]["rounds"] == 1
+    finalists = answer["x_tournament"]["finalists"]
+    assert len(finalists) == 8 and "Queue 077" in finalists
+    assert all(p == 0.0 for label, p in answer["probabilities"].items() if label not in finalists)
+    assert "tournament" not in body
+    # one round of 8 group questions, then the final call; usage is summed over both
+    assert [len(call) for call in fake.calls] == [8, 1]
+    assert body["usage"]["input_tokens"] == 90
+
+
+def test_tournament_accepts_up_to_255_options(monkeypatch):
+    client, _ = _tournament_client(monkeypatch, "16")
+    assert client.post("/v1/systemone", json=_large_req(255)).status_code == 200
+    r = client.post("/v1/systemone", json=_large_req(256))
+    assert r.status_code == 413
+    assert "256 > 255" in r.json()["detail"]
+
+
+def test_tournament_under_strict_keeps_only_the_contracted_keys(monkeypatch):
+    client, _ = _tournament_client(monkeypatch, "16", strict=True)
+    answer = client.post("/v1/systemone", json=_large_req(128)).json()["answers"]["queue"]
+    assert set(answer) == {"type", "choice", "confidence", "probabilities"}
+    assert len(answer["probabilities"]) == 128
+
+
+def test_small_choice_skips_the_tournament(monkeypatch):
+    client, fake = _tournament_client(monkeypatch, "16")
+    req = _large_req(16)
+    answer = client.post("/v1/systemone", json=req).json()["answers"]["queue"]
+    assert fake.calls == [req["questions"]]
+    assert "x_tournament" not in answer
+
+
+def test_option_order_keeps_the_one_pass_path(monkeypatch):
+    """Narrowing cannot carry an order over the full label set (#1062), so it is not attempted."""
+    client, fake = _tournament_client(monkeypatch, "16")
+    req = _large_req(32, option_order=list(range(32))[::-1])
+    answer = client.post("/v1/systemone", json=req).json()["answers"]["queue"]
+    assert len(fake.calls) == 1 and len(fake.calls[0]["queue"]["criteria"]) == 32
+    assert "x_tournament" not in answer
+
+
+def test_batch_keeps_the_one_pass_cap_with_a_tournament_group(monkeypatch):
+    client, _ = _tournament_client(monkeypatch, "16")
+    req = _large_req(128)
+    r = client.post("/v1/systemone/batch", json={"states": [req["state"]], "questions": req["questions"]})
+    assert r.status_code == 413
+
+
+@pytest.mark.parametrize("raw, want", [(None, 0), ("", 0), ("abc", 0), ("0", 0), ("1", 0), ("-4", 0),
+                                       ("2", 2), ("16", 16), ("255", 255),
+                                       ("256", 0)])
+def test_tournament_group_resolution(monkeypatch, raw, want):
+    if raw is None:
+        monkeypatch.delenv("LAYA_TOURNAMENT_GROUP", raising=False)
+    else:
+        monkeypatch.setenv("LAYA_TOURNAMENT_GROUP", raw)
+    assert _resolve_tournament_group() == want
 
 
 def test_known_model_is_honoured(monkeypatch):

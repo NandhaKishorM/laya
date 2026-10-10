@@ -43,6 +43,7 @@ Everything is environment variables, so one image serves a laptop dev run and a 
 | `LAYA_MAX_CONCURRENT` | requests admitted past auth at once; excess gets `503` | `16` |
 | `LAYA_MAX_BATCH_TOKENS` | tokens one `/v1/systemone/batch` FORWARD PASS may collate (`states` x questions x row width); a larger batch is split into several passes, not refused | `131072` |
 | `LAYA_JEV_STRICT` | serve the strict Jev wire contract: no root `routing`, no per-answer `action` / `answer_confidence`, no `confidence` on noul answers, and `usage` reduced to `input_tokens` + `output_tokens`. For clients that validate the response against the Jev contract with no extra fields | `0` |
+| `LAYA_TOURNAMENT_GROUP` | answer a `choice` with more options than this by elimination, in groups of this size, on `/v1/systemone`, and raise its option cap from 100 to 255. See [Large choices](#large-choices-laya_tournament_group). Unset, or outside 2 to 255, is off | `0` |
 
 For a deployment published under a prefix such as `/laya`, set `LAYA_ROOT_PATH=/laya`.
 FastAPI uses it when generating OpenAPI and Swagger UI URLs. Configure the reverse proxy to
@@ -285,6 +286,37 @@ stringifies its own criteria may not match byte for byte.
 
 Successful responses also carry `Server-Timing: inference;dur=<ms>` and `X-Inference-Time-Ms`.
 
+### Large choices: `LAYA_TOURNAMENT_GROUP`
+
+One pass reads every option of a `choice` inside one option budget, so past a few dozen options
+they stop getting a token span each (`usage.options` reports when that happens), and past about 100
+the request is refused. Jev accepts up to 255. With `LAYA_TOURNAMENT_GROUP=16`, `/v1/systemone`
+answers a choice with more than 16 options the way `laya.predict_tournament` does: the options are
+cut into groups of at most 16, each group is answered in one shared call, and the group winners go
+to a final call. Its option cap becomes 255. A choice of 16 or fewer, and every other question,
+takes the usual path unchanged.
+
+The answer keeps the Jev shape, so the official SDK parses it:
+
+- `probabilities` names every option, in criteria order. The finalists carry the final round's
+  probabilities and an option eliminated in an earlier round carries `0.0`, so `choice` is still
+  the argmax and the values still sum to 1;
+- `x_tournament` lists the `finalists` and the number of `rounds`, so a caller can tell an
+  eliminated option from one the final round scored. Under `LAYA_JEV_STRICT` it is not sent;
+- `confidence` and `answer_confidence` are the final round's, over the finalists;
+- `usage.input_tokens` is summed over every call; the other `usage` keys are the final call's.
+
+A choice that sets `option_order`, or uses a non-string label, keeps the one-pass path, since an order
+over the full label set cannot be carried through a narrowing (#1062). `/v1/systemone/batch` is not
+covered and keeps the 100-option cap.
+
+Measured on the `english` checkpoint (CPU) with one test query per intent from CLINC150 (150
+intents, `random_state=0`), the question listing every intent and the instruction "Which intent does
+this request express?": with the flag off the request is refused (`150 > 100`); with
+`LAYA_TOURNAMENT_GROUP=16` it is answered at 86.7% accuracy (130/150), median 0.77 s per request. On
+50-option subsets of the same queries, the tournament scored 94.0% against 82.7% for one pass. That
+is one dataset and one sample; measure on your own labels before relying on it.
+
 ## Limits
 
 Request guardrails are checked before tokenization, so an oversized request costs the server
@@ -298,7 +330,7 @@ it answers `503` with `Retry-After: 1`.
 | `state` | 50,000 characters of the text the model is given -- the string itself for a string state, `json.dumps(state, ensure_ascii=False)` for an object or array |
 | questions per request | 64 |
 | `states` per batch request | 64 |
-| options per `choice` question | 100 |
+| options per `choice` question | 100; 255 on `/v1/systemone` with `LAYA_TOURNAMENT_GROUP` set |
 | levels per `score` question | 32 |
 | options across all questions | 512 |
 | concurrent admitted requests (`503`, not `413`) | `LAYA_MAX_CONCURRENT` (16) |

@@ -107,6 +107,8 @@ supplies it.
 
 ::: laya.common.confidence_from_probs
 
+::: laya.confidence.jev_confidence
+
 ::: laya.common.ece_score
 
 ::: laya.calibrate.fit_temperatures

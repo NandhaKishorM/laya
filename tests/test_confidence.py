@@ -2296,6 +2296,32 @@ for _name, _answer in (
 ):
     check("jev_confidence/none-for-%s" % _name, jev_confidence(_answer), None)
 
+# --- the public name and the served field must be one computation (#302) --------------------
+# `/v1/systemone` publishes `x_jev_confidence`, but a caller running the checkpoint in-process
+# gets an answer dict and no HTTP layer, and the other two confidence quantities
+# (`answer_confidence`, `confidence_from_probs`) are already public. So the name ships from
+# `laya`, and these checks pin that the served number is this function's number.
+import laya  # noqa: E402
+
+check_true("jev_public/exported", "jev_confidence" in laya.__all__)
+check_true("jev_public/lazy attr resolves to the core function",
+           getattr(laya, "jev_confidence", None) is jev_confidence)
+
+from laya.serve import _add_jev_confidence  # noqa: E402
+
+_answers = {
+    "q": _choice(0.88, 0.12),
+    "r": _choice(2, 1),          # 1/3, so the served rounding is visible
+    "s": _score(0.0, 0.95, 0.05),
+    "n": {"type": "noul", "noul": 0.9},
+}
+_served = _add_jev_confidence({"answers": copy.deepcopy(_answers)})["answers"]
+for _qid in ("q", "r", "s"):
+    check("jev_public/served %s is the public function rounded" % _qid,
+          _served[_qid]["x_jev_confidence"], round(jev_confidence(_answers[_qid]), 4))
+check_true("jev_public/served noul carries no field",
+           "x_jev_confidence" not in _served["n"], _served["n"].keys())
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL", f)

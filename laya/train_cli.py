@@ -161,6 +161,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override maximum question head token budget.",
     )
     parser.add_argument(
+        "--early-stopping",
+        action="store_true",
+        help="Enable early stopping evaluated on the validation slice.",
+    )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=None,
+        help="Number of epochs without validation improvement before stopping (default: 3).",
+    )
+    parser.add_argument(
+        "--lr-schedule",
+        choices=["cosine", "constant", "warmup_constant"],
+        default=None,
+        help="Learning rate schedule ('cosine', 'constant', 'warmup_constant'; default: 'constant' when early stopping, else 'cosine').",
+    )
+    parser.add_argument(
+        "--warmup-steps",
+        type=int,
+        default=0,
+        help="Number of warmup steps for 'warmup_constant' schedule (default: 0).",
+    )
+    parser.add_argument(
+        "--val-frac",
+        type=float,
+        default=None,
+        help="Fraction of items held out for early stopping validation (default: 0.1).",
+    )
+    parser.add_argument(
+        "--sigma-anneal-epochs",
+        type=int,
+        default=None,
+        help="Epoch horizon for exploration noise annealing (default: 4 under early stopping, else epochs).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Inspect dataset, build items, and print stats without loading model weights or training.",
@@ -207,6 +242,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         eval_data=args.eval_data,
         target_error=args.target_error,
         min_abstain_n=args.min_abstain_n,
+        early_stopping=args.early_stopping,
+        patience=args.patience,
+        val_frac=args.val_frac,
+        lr_schedule=args.lr_schedule,
+        warmup_steps=args.warmup_steps,
+        sigma_anneal_epochs=args.sigma_anneal_epochs,
     )
 
     try:

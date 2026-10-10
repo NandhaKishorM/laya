@@ -620,7 +620,7 @@ results = router.predict_batch(requests, batch_size=8, sort_by_length=True)
 
 ### Why Route: The Evidence
 
-On a shared benchmark (17,416 questions, one T4 GPU, identical questions per model):
+On a shared benchmark (17,416 questions, one T4 GPU, identical questions per model — seed 13, 20 options per choice question, the first 300 test rows per language, from `research/results/t4_colab_benchmark.json`; `tests/test_doc_tables.py` checks every cell of this table against that file):
 
 | Benchmark / Task | English (`laya`) | Multilingual (`laya-multilingual`) | `Router` (Routed) |
 |---|---|---|---|

@@ -557,9 +557,9 @@ def _default_model_option(extra_models: Optional[Dict[str, Any]] = None) -> Dict
     """Routing fallback from ``LAYA_DEFAULT_MODEL``, as a ``Router`` keyword; unset sends nothing.
 
     ``Router.default`` answers the two states that carry no language evidence at all: no letters,
-    and Latin script too short to identify ("Quero cancelar", "Esqueci minha senha"). The README
-    tells a deployment whose traffic is mostly non-English to set ``Router(default="multilingual")``,
-    and this is the only way such a deployment can say so without writing its own server. Left out
+    and Latin script too short to identify ("Quero cancelar", "Esqueci minha senha"). ``Router``
+    defaults to ``multilingual`` since 0.4.0, and a deployment whose traffic is mostly English
+    may set ``Router(default="english")`` instead, as the README describes. Left out
     of the constructor when unset, so the value cannot drift from ``Router``'s own default -- the
     same reasoning as ``_resolve_max_loaded`` above.
 

@@ -307,13 +307,13 @@ in
       description = ''
         Checkpoint a state with no language evidence falls back to (sets
         `LAYA_DEFAULT_MODEL`): text with no letters at all, or Latin script too
-        short to identify a language. Set it to `multilingual` when most traffic
-        on this host is not English. Text the detector can place is routed on
+        short to identify a language. Set it to `english` when most traffic
+        on this host is English. Text the detector can place is routed on
         what it detects, so this is a fallback and not a pin. The spellings
         accepted, and the aliases among them, are laya's own -- the server
         checks the value against them at startup and refuses to start on a name
         it does not know, so this module deliberately lists none. null leaves
-        laya's default, which is `english`.
+        laya's default, which is `multilingual`.
       '';
     };
 

@@ -48,7 +48,7 @@ services:
       LAYA_THREADS: "${LAYA_THREADS:-${OMP_NUM_THREADS:-4}}"
       LAYA_AUTO_TASK: "${LAYA_AUTO_TASK:-0}"
       # The checkpoint a state with no language evidence falls back to. Empty keeps Router's own
-      # default (english); set `multilingual` for mostly-non-English traffic. An unresolvable
+      # default (multilingual); set `english` for mostly-English traffic. An unresolvable
       # name stops the container at startup rather than serving a configuration nobody asked for.
       LAYA_DEFAULT_MODEL: "${LAYA_DEFAULT_MODEL:-}"
       # Extra checkpoints beside the bundled ones, as a JSON object {name: source}. Empty registers

@@ -251,6 +251,19 @@ in
       '';
     };
 
+    tournamentGroup = lib.mkOption {
+      type = lib.types.nullOr (lib.types.ints.between 2 255);
+      default = null;
+      example = 16;
+      description = ''
+        Answer a `choice` with more options than this by elimination, in groups
+        of this size, on /v1/systemone (sets `LAYA_TOURNAMENT_GROUP`), and raise
+        its option cap from 100 to 255. Every option still comes back in
+        `probabilities`; one eliminated in an earlier round carries 0.0. null
+        leaves it off, so every choice is read in one pass as before.
+      '';
+    };
+
     revision = lib.mkOption {
       type = lib.types.nullOr (lib.types.strMatching "[A-Za-z0-9._/-]+");
       default = null;
@@ -379,6 +392,8 @@ in
         LAYA_MAX_TOKEN_BUDGET = toString cfg.maxTokenBudget;
       } // lib.optionalAttrs (cfg.maxBatchTokens != null) {
         LAYA_MAX_BATCH_TOKENS = toString cfg.maxBatchTokens;
+      } // lib.optionalAttrs (cfg.tournamentGroup != null) {
+        LAYA_TOURNAMENT_GROUP = toString cfg.tournamentGroup;
       } // lib.optionalAttrs (cfg.revision != null) {
         LAYA_REVISION = cfg.revision;
       } // lib.optionalAttrs (cfg.extraModels != null) {

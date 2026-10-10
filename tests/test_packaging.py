@@ -594,7 +594,8 @@ def option_type(opt):
 # Every new knob is opt-in: unset means the unit exports nothing and the runtime's own default
 # applies, so a host that ignores them gets today's behaviour byte for byte.
 for opt in ("rootPath", "logLevel", "maxConcurrent", "cudaAmp", "cpuAmp", "mpsAmpMinRows",
-            "maxLoaded", "maxTokenBudget", "revision", "defaultModel", "idleUnloadSeconds"):
+            "maxLoaded", "maxTokenBudget", "revision", "defaultModel", "idleUnloadSeconds",
+            "tournamentGroup"):
     _t = option_text(opt)
     check_true("nix/module declares %s" % opt, _t != "", "option not found")
     check_true("nix/%s is opt-in (nullOr, default null)" % opt,

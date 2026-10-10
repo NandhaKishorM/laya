@@ -1,0 +1,933 @@
+"""The ONNX export must stay batch-dynamic: `ONNXAgent` sends one row per question.
+
+`scripts/export_onnx.py` declared `dynamic_axes` for a batch axis but traced the model with a
+single row, and `torch.export` specializes any example dimension of extent 1. The graph it wrote
+ran at batch 1 and failed inside ONNX Runtime at batch 2 ("Attempting to broadcast an axis by a
+dimension other than 1"), so every `predict`/`system_one` call with two questions, and
+`predict_batch`/`predict_long` at any size, was unservable -- while the export printed
+"Successfully exported" and the graph's declared input shape still read `batch_size`. That last
+part is why this suite runs the graph instead of reading its shapes.
+
+No checkpoint and no network: the 322M-parameter encoder is replaced by a tiny embedding, and
+the real `DecisionModel` head (`_DynamicMultiheadAttention`, the marker gather, the typed
+scorer, the act head) is what the exported graph is made of -- the same head that bakes the
+traced batch size in.
+
+Run: python tests/test_onnx_export_batch.py
+"""
+import atexit
+import copy
+import importlib.util
+import inspect
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+import sys
+import types
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import numpy as np  # noqa: E402
+import onnx  # noqa: E402
+import onnxruntime as ort  # noqa: E402
+import torch  # noqa: E402
+from torch import nn  # noqa: E402
+
+from laya.common import QTYPES, DecisionModel  # noqa: E402
+
+_here = os.path.dirname(os.path.abspath(__file__))
+_spec = importlib.util.spec_from_file_location("export_onnx",
+                                               os.path.join(_here, os.pardir, "scripts", "export_onnx.py"))
+export_onnx = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(export_onnx)
+
+PASS, FAIL = [], []
+
+
+def check(name, got, want):
+    if got == want:
+        PASS.append(name)
+    else:
+        FAIL.append("%s:\n     got  %r\n     want %r" % (name, got, want))
+
+
+def check_true(name, cond, detail=""):
+    if cond:
+        PASS.append(name)
+    else:
+        FAIL.append("%s %s" % (name, detail))
+
+
+def _report():
+    """Print the summary. Registered with `atexit` as well as called at the end of the run.
+
+    `attempt()` below promises that "every failure mode has to arrive as a line in the N passed, M
+    failed summary". Wrapping individual blocks is not enough to keep that promise: this file is
+    straight-line module-level code, so any statement outside a handler -- a `SystemExit` from
+    `verify_batch_dynamic`, an ONNX Runtime error from a `session.run` -- ends the module and the
+    summary never prints. Measured on three realistic regressions (TRACE_BATCH=1, a dropped
+    `dynamic_axes`, INT8_ATOL=1e-9): each was correctly RED, and each produced a bare traceback with no
+    summary and 80+ checks unrun.
+    #
+    An `atexit` backstop makes the summary unconditional: an uncaught exception still unwinds to the
+    interpreter, which runs `atexit` handlers before exiting non-zero. `os._exit` in the guard at the
+    bottom skips `atexit`, which is why the normal path calls this directly first -- the flag makes the
+    second call a no-op.
+    """
+    if _REPORTED:
+        return
+    _REPORTED.append(True)
+    print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
+    for f in FAIL:
+        print("  FAIL " + f)
+
+
+_REPORTED = []
+atexit.register(_report)
+
+
+def attempt(name, thunk):
+    """Run `thunk`, recording any exception as a failure and returning None.
+
+    Every failure mode has to arrive as a line in the `N passed, M failed` summary, which is how
+    this repo's script suites are read. Some exporter breakages are hard rather than numerical --
+    drop `dynamic_axes` and ONNX Runtime refuses the graph outright -- and an uncaught error there
+    would end the script on a traceback with no summary at all.
+    """
+    try:
+        return thunk()
+    except (Exception, SystemExit) as error:
+        FAIL.append("%s raised %s: %s" % (name, type(error).__name__,
+                                          str(error).replace("\n", " ")[:200]))
+        return None
+
+
+# ------------------------------------------------- this suite does not run inside pytest, and why
+if __name__ != "__main__":
+    # It is a script-style suite: the checks run at import and `ci.yml` invokes it as
+    # `python tests/test_onnx_export_batch.py`. That is not the reason for this skip, though -- the
+    # reason is that it CANNOT run safely in pytest's process.
+    #
+    # This file is the only place in the repository that puts torch, onnxruntime and onnxruntime's
+    # quantizer in one process. On macOS that combination aborts during C++ static destruction --
+    # `libc++abi: ... recursive_mutex lock failed`, exit 134 -- and the script path escapes it by
+    # calling `os._exit` at the bottom, which skips finalization. pytest owns the exit and cannot use
+    # that escape. Measured on this file with a pytest entry point in place: **9 of 40 runs exited 134
+    # AFTER printing `1 passed`** -- a green test followed by a dead process. Script mode over the same
+    # 40 runs: 0 nonzero.
+    #
+    # So the choice here is between a ~20% flaky-red pytest lane and an explicit skip. An earlier
+    # revision of this file had no `__main__` guard at all, which was worse than either: the hard exit
+    # fired during collection and pytest reported SUCCESS having asserted nothing (0 bytes of output,
+    # exit 0). A skip says what it did and why; that is the property worth keeping.
+    #
+    # To run the checks under pytest anyway, the shape that works is a subprocess -- a test that runs
+    # this file as a child and asserts its exit code, so the native teardown happens where `os._exit`
+    # applies. That is a larger change than the guard and is not made here.
+    import pytest as _pytest
+
+    _pytest.skip("script-style suite -- run `python tests/test_onnx_export_batch.py`; see the comment "
+                 "above for why it cannot run in pytest's own process", allow_module_level=True)
+
+
+# ---------------------------------------------------------------- a tiny stand-in encoder
+HIDDEN, VOCAB = 32, 100
+
+
+class _TinyEncoderConfig:
+    hidden_size = HIDDEN
+
+
+class _TinyEncoder(nn.Module):
+    """Shape-compatible stand-in for the transformers encoder `DecisionModel` wraps.
+
+    It consumes `attention_mask` so padding reaches the hidden states, as the real encoder does;
+    what matters for this suite is that `DecisionModel.forward` and its head run unchanged.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.config = _TinyEncoderConfig()
+        self.embed = nn.Embedding(VOCAB, HIDDEN)
+        self.proj = nn.Linear(HIDDEN, HIDDEN)
+
+    def forward(self, input_ids, attention_mask=None):
+        hidden = self.proj(torch.tanh(self.embed(input_ids)))
+        if attention_mask is not None:
+            hidden = hidden * attention_mask[:, :, None].to(hidden.dtype)
+        return types.SimpleNamespace(last_hidden_state=hidden)
+
+
+class _Skip(Exception):
+    """Raised to skip a block this platform cannot run."""
+
+
+#: Tolerance for the TINY model's PASS cases only, not for a real checkpoint. `verify_batch_dynamic`
+#: defaults to 1e-3, which the 322M checkpoint passes at 6.14e-05; that default is what bounds
+#: quality, it is asserted below (both its value and that it rejects a calibrated error), and an
+#: earlier revision of this comment claimed it was "asserted separately" when nothing asserted it.
+#: 5e-2 is deliberately loose and is NOT a quality bound: measured, it accepts a scorer weight scaled
+#: by 3.0, which the 1e-3 default catches from 1.25 upward. It exists so a cross-machine fp32
+#: difference cannot fail the suite, and nothing else. This 32-dim random model has near-tied logits, and softmax
+#: amplifies the difference between one machine's fp32 kernels and another's: measured 4.69e-04 here
+#: and 1.03e-02 on a GitHub runner, which straddles 1e-3 and made this suite fail by hardware. The
+#: signal it has to separate is enormous by comparison -- a perturbed weight moves probabilities by
+#: 6.4e-01 -- so 5e-2 sits 5x above the worst drift observed and 13x below the thing being detected.
+TINY_ATOL = 5e-2
+
+
+def _build_model():
+    torch.manual_seed(0)
+    # head_layers=2 is the shipped default, and the head is where the traced batch got baked in.
+    model = DecisionModel(_TinyEncoder(), head_layers=2, n_act=2, dropout=0.0)
+    return model.eval()
+
+
+tmp = os.path.join(_here, "_tmp_onnx_export_batch")
+
+# --- findings from an adversarial review -----------------------------------------------------
+
+# The I/O names are a cross-file contract with laya/onnx_agent.py, which builds its feed and calls
+# session.run(["logits", "act_logits"]) from hardcoded strings. Every check here previously built
+# its feed from INPUT_NAMES too, so a permutation was self-consistent and survived: swapping the two
+# OUTPUT_NAMES exported a graph whose `logits` is the act head, and ONNXAgent then reads the act
+# head as the option scores -- silently wrong answers on every request, no error anywhere. Swapping
+# input_ids/attention_mask (same dtype, same shape, so ORT accepts it) gave a max deviation of 5.27
+# from PyTorch. Asserted against literals, and against the strings onnx_agent.py actually uses.
+check("names/inputs are the literal contract", export_onnx.INPUT_NAMES,
+      ["input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"])
+check("names/outputs are the literal contract", export_onnx.OUTPUT_NAMES,
+      ["logits", "act_logits"])
+
+_agent_src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               "laya", "onnx_agent.py")).read()
+check_true("names/onnx_agent runs the same output names in the same order",
+           'session.run(["logits", "act_logits"]' in _agent_src, "")
+for _n in export_onnx.INPUT_NAMES:
+    check_true("names/onnx_agent feeds %s" % _n, '"%s":' % _n in _agent_src, _n)
+
+# And the shapes those names carry, read BY NAME rather than by position, so a permutation is
+# visible: logits is (batch, num_markers) and act_logits is (batch, 2).
+_tmp2 = tempfile.mkdtemp()
+try:
+    _p2 = os.path.join(_tmp2, "names.onnx")
+    _m2 = _build_model()
+    export_onnx.export_module(_m2, _p2)
+    _sess2 = ort.InferenceSession(_p2, providers=["CPUExecutionProvider"])
+    _feed2 = {k: v for k, v in zip(export_onnx.INPUT_NAMES,
+                                   [x.numpy() for x in export_onnx.example_inputs(batch=3, seq_len=16,
+                                                                                  num_markers=4)])}
+    _got = dict(zip(["logits", "act_logits"], _sess2.run(["logits", "act_logits"], _feed2)))
+    check("names/logits is (batch, num_markers)", _got["logits"].shape, (3, 4))
+    check("names/act_logits is (batch, 2)", _got["act_logits"].shape, (3, 2))
+    # Released explicitly: module-level ORT sessions that outlive the block were measured causing
+    # `libc++abi: recursive_mutex lock failed` at interpreter shutdown -- exit 134 AFTER the suite
+    # printed "0 failed", i.e. a red CI job with a green summary.
+    del _sess2, _got
+except (SystemExit, Exception) as _err:
+    # Recorded rather than raised, for the reason `attempt()` documents: this block exports and RUNS a
+    # graph, so the regressions this PR exists to catch -- TRACE_BATCH=1, a dropped `dynamic_axes` --
+    # surface here first, at roughly check 12 of 96, and used to end the file on a bare ONNX Runtime
+    # traceback with no summary and 84 checks never run.
+    FAIL.append("names/the block raised instead of reporting: %s: %s"
+                % (type(_err).__name__, str(_err).replace("\n", " ")[:200]))
+finally:
+    shutil.rmtree(_tmp2, ignore_errors=True)
+
+
+# The --quantize path is what docs/evals.md tells people to deploy, and nothing exercised it on a
+# real torch export: tests/test_onnx_quantize.py builds a one-node MatMul graph with no intermediate
+# value_info at all, so it cannot reach the `del model.graph.value_info[:]` line, and this suite
+# exported a real graph but never quantized it. Deleting that one line leaves both suites green and
+# makes `python scripts/export_onnx.py --quantize` crash outright with
+# `InferenceError: Inferred shape and existing shape differ in dimension 0`.
+# Skipped on Windows: quantizing a graph this size dies there with an illegal instruction inside
+# onnxruntime (exit 132), which no `except` can catch. `tests/test_onnx_quantize.py` passes on
+# Windows because its graph is a single MatMul node. The `onnx export (quantization, weight-free)`
+# job on Linux is where this path is gated, and that is the job the documented `--quantize`
+# invocation has to keep green.
+_tmp3 = None if sys.platform.startswith("win") else tempfile.mkdtemp()
+if _tmp3 is None:
+    check_true("quantize/skipped on Windows (covered by the Linux quantization job)", True, "")
+try:
+    if _tmp3 is None:
+        raise _Skip()
+    _p3 = os.path.join(_tmp3, "q.onnx")
+    _m3 = _build_model()
+    export_onnx.export_module(_m3, _p3)
+    _int8 = export_onnx.quantize_model(_p3, export_onnx.int8_output_path(_p3))
+    check_true("quantize/a real torch export quantizes without a shape-inference error",
+               os.path.exists(_int8), _int8)
+    # and the quantized graph is still batch-dynamic and still within tolerance of PyTorch
+    export_onnx.verify_batch_dynamic(_m3, _int8, atol=export_onnx.INT8_ATOL)
+    check_true("quantize/the INT8 graph verifies at batch 1, 2 and 3", True, "")
+    _s3 = ort.InferenceSession(_int8, providers=["CPUExecutionProvider"])
+    check("quantize/the INT8 graph keeps a symbolic batch axis",
+          _s3.get_inputs()[0].shape[0], "batch_size")
+except _Skip:
+    pass
+except (SystemExit, Exception) as _err:   # SystemExit is not an Exception, so it must be named;
+                                         # BaseException would also swallow Ctrl-C
+    # Recorded, not raised. `attempt()` above promises that "every failure mode has to arrive as a line
+    # in the N passed, M failed summary", and this block broke that: it calls `export_module`,
+    # `quantize_model` and `verify_batch_dynamic` directly, so TRACE_BATCH=1, a dropped `dynamic_axes`
+    # or a too-tight INT8_ATOL each ended the file on a traceback at check ~10 of 96 -- red, but with
+    # 85+ checks unrun and no summary printed at all.
+    FAIL.append("quantize/the block raised instead of reporting: %s: %s"
+                % (type(_err).__name__, str(_err).replace("\n", " ")[:200]))
+finally:
+    shutil.rmtree(_tmp3, ignore_errors=True) if _tmp3 else None
+
+# Every way of turning the new verification OFF survived: the CLI was pinned only by grepping
+# __main__ for substrings, and the stubs recorded THAT a function was called, never with what. So
+# `batches=(1,)` on either call, `--no-verify` flipped to store_false, `verify=False`, and
+# `atol=1e9` on the INT8 check all shipped a success message while checking nothing. The real
+# __main__ now runs against a stubbed Agent and the arguments it passes are asserted.
+_seen = {}
+_tmp4 = None if sys.platform.startswith("win") else tempfile.mkdtemp()
+if _tmp4 is None:
+    check_true("cli/skipped on Windows (it exports and quantizes; see above)", True, "")
+try:
+    if _tmp4 is None:
+        raise _Skip()
+    _p4 = os.path.join(_tmp4, "cli.onnx")
+
+    # `batches=None` as the stub default, deliberately: with `(1, 2, 3)` here the assertion below
+    # read the STUB's default whenever production omitted the argument, so shrinking the real default
+    # could not fail it. A sentinel makes "production did not pass batches" distinguishable from
+    # "production passed (1, 2, 3)".
+    def _fake_verify(model, path, atol=None, batches=None):
+        _seen.setdefault("calls", []).append(
+            {"path": path, "atol": atol,
+             # None records "production did not pass batches"; the assertion below then reads the real
+             # default off `verify_batch_dynamic` instead of off this stub.
+             "batches": None if batches is None else tuple(batches)})
+
+    class _FakeAgent:
+        def __init__(self, *a, **kw):
+            self.model = _build_model()
+
+    _real_agent = export_onnx.Agent
+    _real_verify = export_onnx.verify_batch_dynamic
+    export_onnx.Agent = _FakeAgent
+    export_onnx.verify_batch_dynamic = _fake_verify
+    try:
+        export_onnx.main(["--model", "x", "--output", _p4, "--quantize"])
+    finally:
+        export_onnx.Agent = _real_agent
+        export_onnx.verify_batch_dynamic = _real_verify
+
+    _calls = _seen.get("calls", [])
+    check("cli/both the fp32 and the INT8 graph are verified", len(_calls), 2)
+    # The real call omits `batches=`, so what must be asserted is that the PRODUCTION default sweeps
+    # more than batch 1 -- read from the function itself, not from what the stub happened to default to.
+    _real_batches = tuple(inspect.signature(export_onnx.verify_batch_dynamic)
+                          .parameters["batches"].default)
+    check_true("cli/the fp32 check sweeps more than batch 1",
+               _calls and (set(_calls[0]["batches"] or _real_batches) >= {1, 2, 3}), _calls[:1])
+    check_true("verify/and the production default is what supplies that sweep",
+               set(_real_batches) >= {1, 2, 3}, _real_batches)
+    check_true("cli/the INT8 check sweeps more than batch 1",
+               len(_calls) > 1
+               and set(_calls[1]["batches"] or _real_batches) >= {1, 2, 3}, _calls[1:])
+    check("cli/the INT8 check uses the quantization tolerance",
+          _calls[1]["atol"] if len(_calls) > 1 else None, export_onnx.INT8_ATOL)
+    check_true("cli/the INT8 graph is written beside the fp32 one, not over it",
+               len(_calls) > 1 and _calls[1]["path"] != _calls[0]["path"], _calls)
+except _Skip:
+    pass
+except (SystemExit, Exception) as _err:   # as above, and not BaseException: Ctrl-C must still interrupt
+    FAIL.append("cli/the block raised instead of reporting: %s: %s"
+                % (type(_err).__name__, str(_err).replace("\n", " ")[:200]))
+finally:
+    shutil.rmtree(_tmp4, ignore_errors=True) if _tmp4 else None
+
+
+shutil.rmtree(tmp, ignore_errors=True)
+os.makedirs(tmp, exist_ok=True)
+onnx_path = os.path.join(tmp, "tiny.onnx")
+
+model = _build_model()
+check("export/returns the output path",
+      attempt("export/export_module", lambda: export_onnx.export_module(model, onnx_path)),
+      onnx_path)
+check_true("export/writes the file", os.path.exists(onnx_path))
+
+# ------------------------------------------------- the verifier varies the axes it says it varies
+# `verify_batch_dynamic` claims to check "batch 1, 2 and 3 with 2-4 markers". Sizing every batch
+# with the same `example_inputs(batch=batch)` left the suite green while the sequence and marker
+# axes were never exercised at more than one width -- so the graph could be marker-static and the
+# verification would still pass. Spy on the shapes it actually asks for.
+_asked = []
+_real_example_inputs = export_onnx.example_inputs
+
+
+def _spy_example_inputs(batch=None, seq_len=16, num_markers=2):
+    _asked.append((batch, seq_len, num_markers))
+    return _real_example_inputs(batch=batch, seq_len=seq_len, num_markers=num_markers)
+
+
+export_onnx.example_inputs = _spy_example_inputs
+try:
+    export_onnx.verify_batch_dynamic(_build_model(), onnx_path, batches=(1, 2, 3))
+except (SystemExit, Exception) as _err:
+    FAIL.append("verify/the input-variety spy raised instead of reporting: %s: %s"
+                % (type(_err).__name__, str(_err).replace("\n", " ")[:200]))
+finally:
+    export_onnx.example_inputs = _real_example_inputs
+
+check("verify/asks for one input set per batch", [a[0] for a in _asked], [1, 2, 3])
+# One width per batch, not the same shapes three times: sizing every batch identically left the
+# suite green while the sequence and marker axes were never exercised at more than one width, so a
+# marker-static graph would have verified clean.
+check("verify/varies the sequence width across batches",
+      len({a[1] for a in _asked}), len(_asked))
+check("verify/varies the marker count across batches",
+      len({a[2] for a in _asked}), len(_asked))
+check_true("verify/and every marker count it asks for fits its sequence",
+           all(a[2] < a[1] for a in _asked), _asked)
+
+# ---------------------------------------------------------------- the example inputs are >1 row
+check("tracing batch is greater than one (a single row bakes batch=1 into the head)",
+      export_onnx.TRACE_BATCH > 1, True)
+traced = export_onnx.example_inputs()
+check("example_inputs/one row per batch entry", [tuple(t.shape)[0] for t in traced],
+      [export_onnx.TRACE_BATCH] * 5)
+check_true("example_inputs/carries padding, so the trace sees src_key_padding_mask",
+           int(traced[1].min()) == 0, traced[1])
+check_true("example_inputs/carries a masked-off marker, so the trace sees the masked_fill",
+           bool((~traced[3]).any()), traced[3])
+# Every question type the model branches on must appear in the traced batch. Flattening qtype to a
+# single value left the suite green while tracing only one branch of `DecisionModel.forward`.
+check_true("example_inputs/varies qtype across the batch, so more than one branch is traced",
+           len(set(traced[4].tolist())) == min(export_onnx.TRACE_BATCH, len(QTYPES)),
+           traced[4])
+# `TRACE_BATCH` is read at call time, not bound into the signature default -- otherwise the one
+# experiment a reader of this file will run (set it to 1 and watch the suite fail) silently does
+# nothing and looks like evidence the bug is not real.
+export_onnx.TRACE_BATCH = 1
+check("example_inputs/TRACE_BATCH is read at call time, so it can be overridden",
+      [tuple(t.shape)[0] for t in export_onnx.example_inputs()], [1] * 5)
+export_onnx.TRACE_BATCH = 2
+# Both of these are latent traps for whoever adds the next shape case rather than bugs today:
+# an all-padding row makes torch and ONNX Runtime legitimately disagree (measured 2.76e-01 on
+# `act_logits` and 1.12e-01 on `logits`, against 2.38e-07 / 1.19e-07 clamped),
+# and a marker position outside the sequence makes ONNX Runtime raise from `GatherElements`.
+wide = export_onnx.example_inputs(batch=32, seq_len=16, num_markers=2)
+check_true("example_inputs/no row is entirely padding, even at batch > seq_len",
+           int(wide[1].sum(dim=1).min()) >= 1, wide[1].sum(dim=1))
+try:
+    export_onnx.example_inputs(batch=2, seq_len=8, num_markers=8)
+    FAIL.append("example_inputs/rejects marker positions outside the sequence: it was accepted")
+except ValueError as error:
+    check_true("example_inputs/rejects marker positions outside the sequence",
+               "seq_len" in str(error), str(error)[:200])
+
+# ---------------------------------------------------------------- the graph declares a batch axis
+loaded = attempt("graph/loads as ONNX", lambda: onnx.load(onnx_path))
+
+
+def _dims(value_info):
+    return [d.dim_param if d.HasField("dim_param") else d.dim_value
+            for d in value_info.type.tensor_type.shape.dim]
+
+
+if loaded is not None:
+    graph = loaded.graph
+    declared = {v.name: _dims(v) for v in list(graph.input) + list(graph.output)}
+    check("graph/I/O names are the ones ONNXAgent feeds and reads",
+          ([i.name for i in graph.input], [o.name for o in graph.output]),
+          (export_onnx.INPUT_NAMES, export_onnx.OUTPUT_NAMES))
+    check_true("graph/every input and output declares a symbolic leading axis",
+               all(isinstance(d[0], str) for d in declared.values()), declared)
+    # The axes the graph must declare, written out LITERALLY rather than read from
+    # `export_onnx.DYNAMIC_AXES`. Deriving the expectation from the same constant under test is
+    # what made the first version of this check vacuous: shrinking `DYNAMIC_AXES["logits"]` to the
+    # batch axis shrank the expectation with it and 74 checks stayed green, so the graph could tell
+    # a consumer the option count is fixed at the width it was traced with.
+    _WANT_AXES = {
+        "input_ids": {0: "batch_size", 1: "seq_len"},
+        "attention_mask": {0: "batch_size", 1: "seq_len"},
+        "marker_pos": {0: "batch_size", 1: "num_markers"},
+        "marker_mask": {0: "batch_size", 1: "num_markers"},
+        "qtype": {0: "batch_size"},
+        "logits": {0: "batch_size", 1: "num_markers"},
+        "act_logits": {0: "batch_size"},
+    }
+    check("graph/the declared axes are the ones this suite requires, name by name",
+          export_onnx.DYNAMIC_AXES, _WANT_AXES)
+    # The axis NAMES are the shared-symbol mechanism under `dynamic_axes`: every input that uses
+    # "batch_size" declares the same string, so a feed is only valid when its rows agree. An earlier
+    # revision of this branch built `torch.export.Dim` objects instead and asserted object identity
+    # here; #726 reverted the declaration to `dynamic_axes` for torch compatibility, so that check is
+    # gone with it and the name table above is what carries the property.
+    # Read from DYNAMIC_AXES, not from `_WANT_AXES`: comparing the test's own literal against another
+    # literal made this tautological -- desyncing the batch symbols in production left it green (the
+    # mutation was caught, but by three other checks, never by the one that names the property).
+    _prod_labels = sorted({lbl for n in export_onnx.INPUT_NAMES
+                           for lbl in export_onnx.DYNAMIC_AXES[n].values()})
+    check("graph/the inputs declare exactly three shared symbols, by name",
+          _prod_labels, ["batch_size", "num_markers", "seq_len"])
+    _batch_syms = {export_onnx.DYNAMIC_AXES[n][0] for n in export_onnx.INPUT_NAMES}
+    check("graph/and every input's leading axis is the SAME symbol", sorted(_batch_syms),
+          ["batch_size"])
+    _wrong = []
+    for _name, _axes in _WANT_AXES.items():
+        _got = declared.get(_name, [])
+        for _axis, _label in _axes.items():
+            if _axis >= len(_got) or _got[_axis] != _label:
+                _wrong.append("%s[%d]=%r want %r"
+                              % (_name, _axis, _got[_axis] if _axis < len(_got) else "MISSING",
+                                 _label))
+    check("graph/every axis is symbolic in the graph under the name it was declared with",
+          _wrong, [])
+
+# ---------------------------------------------------------------- it actually runs at batch > 1
+# A declared axis is not a working one: the batch-1-only graph this suite guards against
+# declared "batch_size" too. Running it is the only check that tells them apart.
+session = attempt("graph/opens in ONNX Runtime",
+                  lambda: ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"]))
+worst = 0.0
+_biggest_output = 0.0   # the graph must actually produce something
+for batch, seq_len, num_markers in [(1, 16, 2), (2, 16, 2), (2, 24, 3), (3, 40, 5), (5, 64, 7)]:
+    label = "batch=%d seq_len=%d num_markers=%d" % (batch, seq_len, num_markers)
+    inputs = export_onnx.example_inputs(batch=batch, seq_len=seq_len, num_markers=num_markers)
+    feed = {name: tensor.numpy() for name, tensor in zip(export_onnx.INPUT_NAMES, inputs)}
+    try:
+        got = session.run(export_onnx.OUTPUT_NAMES, feed)
+    except Exception as error:
+        FAIL.append("run/%s: %s: %s" % (label, type(error).__name__, str(error).replace("\n", " ")[:200]))
+        continue
+    PASS.append("run/%s" % label)
+    with torch.no_grad():
+        want = model(*inputs)
+    check(("run/%s: logits shape" % label), tuple(got[0].shape), (batch, num_markers))
+    check(("run/%s: act_logits shape" % label), tuple(got[1].shape), (batch, 2))
+    diff = max(float(np.max(np.abs(a - w.numpy()))) for a, w in zip(got, want))
+    worst = max(worst, diff)
+    _biggest_output = max(_biggest_output, max(float(np.max(np.abs(a))) for a in got))
+    check_true("parity/%s matches PyTorch within 1e-4" % label, diff <= 1e-4, "max abs diff %.2e" % diff)
+
+# ------------------------------------------- the feed #717's own test uses, on a graph traced our way
+# This branch replaces the inline dummies #717 merged with `example_inputs()`, and that trade has to be
+# strictly additive. The new trace carries a padded row, a masked-off marker and a varying `qtype`,
+# which #717's `torch.ones`/`torch.zeros` dummies did not; against that it traces 2 consecutive marker
+# positions where #717 traced 3 spread ones ([1, 5, 9]) at seq_len 17 rather than 16. Marker positions
+# are input VALUES, not shapes, so `torch.export` cannot specialize on them -- but that is an argument,
+# and this file exists to not rely on arguments. So the graph is fed exactly what #717's own test in
+# tests/test_onnx.py feeds: batch 1 and 3, seq_len 53, five markers at [3, 9, 14, 20, 30], a padded row
+# and `qtype` cycling.
+#
+# What this adds, stated precisely rather than generously. The sweep above already reaches
+# (5, 64, 7), which DOMINATES (3, 53, 5) on every axis, so no mutation that breaks a shape can survive
+# to here -- both the batch-1 trace and a static marker axis abort the file before this point. The one
+# thing it covers that nothing else does is marker positions that are not consecutive: `example_inputs`
+# builds them with `arange(1, num_markers + 1)`, so every other case in this file feeds 1, 2, 3, ...,
+# while a real checkpoint's markers land wherever the rendered options put them. It is a regression pin
+# for that, and for the specific feed a reviewer of #717 would think to check -- not a shape check.
+for _b in (1, 3):
+    _rng = np.random.default_rng(_b)
+    _seq = 53
+    _feed717 = {
+        # #717's test draws ids up to 1000 from a real checkpoint's vocabulary; this graph is the
+        # hand-built model, whose vocab is VOCAB, so the range is narrowed and nothing else is.
+        "input_ids": _rng.integers(5, VOCAB, (_b, _seq)).astype(np.int64),
+        "attention_mask": np.ones((_b, _seq), dtype=np.int64),
+        "marker_pos": np.tile(np.array([[3, 9, 14, 20, 30]], dtype=np.int64), (_b, 1)),
+        "marker_mask": np.ones((_b, 5), dtype=bool),
+        "qtype": (np.arange(_b) % 3).astype(np.int64),
+    }
+    _feed717["attention_mask"][0, 40:] = 0
+    _label = "batch=%d seq_len=53 num_markers=5 (the feed #717's test uses)" % _b
+    try:
+        _got717 = session.run(export_onnx.OUTPUT_NAMES, _feed717)
+    except Exception as _err:
+        FAIL.append("run717/%s: %s: %s" % (_label, type(_err).__name__,
+                                           str(_err).replace("\n", " ")[:200]))
+        continue
+    check("run717/%s: logits shape" % _label, tuple(_got717[0].shape), (_b, 5))
+    check("run717/%s: act_logits shape" % _label, tuple(_got717[1].shape), (_b, 2))
+    with torch.no_grad():
+        _want717 = model(*[torch.from_numpy(_feed717[n]) for n in export_onnx.INPUT_NAMES])
+    _d717 = max(float(np.max(np.abs(a - w.numpy()))) for a, w in zip(_got717, _want717))
+    _biggest_output = max(_biggest_output, max(float(np.max(np.abs(a))) for a in _got717))
+    check_true("parity717/%s matches PyTorch within 1e-4" % _label, _d717 <= 1e-4,
+               "max abs diff %.2e" % _d717)
+
+# Non-vacuity belongs on the outputs, not on the disagreement: if a future ORT or opset happens to
+# reproduce this tiny fp32 graph bit-exactly, `worst == 0.0` is the best possible result, not a
+# failure. What must not be true is that the graph returns nothing.
+check_true("parity/the comparison is real, not an all-zero graph", _biggest_output > 0.0,
+           "max abs diff across every shape was exactly 0.0")
+
+# ---------------------------------------------------------------- verify_batch_dynamic accepts it
+try:
+    export_onnx.verify_batch_dynamic(model, onnx_path, atol=TINY_ATOL)
+    PASS.append("verify/accepts a batch-dynamic export")
+except SystemExit as error:
+    FAIL.append("verify/accepts a batch-dynamic export: raised %r" % (str(error),))
+
+# ---------------------------------------------------------------- ...and rejects a batch-1 graph
+# Pin the leading axis of the good graph to 1 and nothing else, which is what an export with a
+# baked batch produces. Without this case the guard above could be vacuous.
+pinned_path = os.path.join(tmp, "tiny.batch1.onnx")
+pinned = attempt("graph/reloads for the pinned-axis check", lambda: onnx.load(onnx_path))
+for value_info in list(pinned.graph.input) + list(pinned.graph.output):
+    leading = value_info.type.tensor_type.shape.dim[0]
+    leading.ClearField("dim_param")
+    leading.dim_value = 1
+onnx.save(pinned, pinned_path)
+try:
+    export_onnx.verify_batch_dynamic(model, pinned_path)
+    FAIL.append("verify/rejects a batch-1-only graph: it was accepted, so the guard is vacuous")
+except SystemExit as error:
+    check_true("verify/rejects a batch-1-only graph", "batch 2" in str(error), str(error)[:200])
+
+# ------------------------------------------------- the verifier compares NUMBERS, not just shapes
+# Rejecting a batch-1-only graph only proves it notices a graph that fails to *run*. The reason this
+# verifier compares probabilities at all is the case where the graph runs fine at every batch and
+# quietly returns different values -- a decomposition or quantization change, say. Exporting one
+# model and verifying a *perturbed* copy against that graph is that case, exactly.
+_perturbed = copy.deepcopy(model)
+with torch.no_grad():
+    # Non-uniform, and on a weight rather than a final bias. A uniform shift of the last bias moves
+    # no probability at all -- softmax is shift-invariant, which is the blind spot
+    # `verify_batch_dynamic`'s own docstring records -- so perturbing that way would make this check
+    # pass for the wrong reason.
+    _w = [q for q in _perturbed.parameters() if q.ndim >= 2][-1]
+    _w.add_(torch.linspace(0.0, 5.0, _w.numel()).reshape(_w.shape))
+try:
+    export_onnx.verify_batch_dynamic(_perturbed, onnx_path, atol=TINY_ATOL)
+    FAIL.append("verify/rejects a graph whose numbers drifted: it was accepted, so the guard is vacuous")
+except SystemExit as error:
+    check_true("verify/rejects a graph whose numbers drifted",
+               "differ" in str(error) or "probabilit" in str(error), str(error)[:160])
+
+# The last 2-D parameter lives in the act head, so the check above only moves `act_logits`.
+# `logits` IS the decision, and skipping it in the comparison loop left the suite green -- a
+# regression that corrupts the option scores and leaves the act head intact would have passed both
+# verification and CI. Perturb the scorer side too, as its own case.
+# BOTH outputs must be compared, asserted on what the verifier reports rather than through a
+# perturbation. `logits` IS the decision, and dropping it from the comparison loop left the suite
+# green: every weight in this model reaches `act_logits` as well (the act head consumes the scorer's
+# output), so no perturbation isolates `logits`, and whichever output the loop still compares
+# catches the drift. What a mutation cannot fake is the verifier naming both.
+import io as _io                                                             # noqa: E402
+import contextlib as _contextlib                                             # noqa: E402
+
+_cap = _io.StringIO()
+try:
+    with _contextlib.redirect_stdout(_cap):
+        export_onnx.verify_batch_dynamic(model, onnx_path, atol=TINY_ATOL)
+except (SystemExit, Exception) as _err:
+    # Recorded, not raised. This block only captures the report text, but a genuinely broken export
+    # makes `verify_batch_dynamic` raise SystemExit here -- and with no handler that ended the file at
+    # roughly check 40 of 96, with no summary. The checks below then fail on an empty report, which is
+    # the diagnosis rather than a traceback.
+    FAIL.append("verify/the report-capture block raised instead of reporting: %s: %s"
+                % (type(_err).__name__, str(_err).replace("\n", " ")[:200]))
+_reported = _cap.getvalue()
+for _name in export_onnx.OUTPUT_NAMES:
+    # Matched on the FIELD COLUMN of each report line, not as a substring anywhere in the text. Two
+    # earlier versions of this check could not fail: `count(_name)` was satisfied by the `act_logits`
+    # rows, because "logits" is a substring of "act_logits"; and `count(" logits ")` was satisfied by
+    # the `(raw logits ...)` suffix that every row carries, act rows included. Only anchoring to
+    # `batch N <field>` distinguishes them.
+    _field_rows = [ln for ln in _reported.splitlines()
+                   if re.match(r"\s*batch \d+\s+%s\s" % re.escape(_name), ln)]
+    check_true("verify/compares %s against PyTorch" % _name, len(_field_rows) >= 3,
+               "%r has %d report row(s) of its own; report was: %s"
+               % (_name, len(_field_rows), _reported[:200]))
+check("verify/compares every output at every batch it sweeps",
+      len([ln for ln in _reported.splitlines() if "max abs prob diff" in ln]),
+      3 * len(export_onnx.OUTPUT_NAMES))
+
+# The tolerance that SHIPS is the default, and it was pinned by nothing: `atol: float = 1e-3` ->
+# `1e9` left all three suites green, while `export_to_onnx` calls `verify_batch_dynamic` with no atol
+# at all. Pin the value, and prove it rejects an error TINY_ATOL is blind to -- a calibrated 1.25x
+# scaling of one scorer weight, not the linspace(0, 5) sledgehammer.
+
+check("verify/the shipping tolerance is 1e-3",
+      inspect.signature(export_onnx.verify_batch_dynamic).parameters["atol"].default, 1e-3)
+
+_calibrated = copy.deepcopy(model)
+with torch.no_grad():
+    dict(_calibrated.named_parameters())["scorer.3.weight"].mul_(1.25)
+try:
+    export_onnx.verify_batch_dynamic(_calibrated, onnx_path)          # default atol, as it ships
+    FAIL.append("verify/the shipping tolerance rejects a 1.25x weight error: it was accepted")
+except SystemExit as error:
+    check_true("verify/the shipping tolerance rejects a 1.25x weight error",
+               "differ" in str(error) or "probabilit" in str(error), str(error)[:160])
+# ... and that TINY_ATOL is not doing that work, so nobody mistakes it for a quality bound.
+try:
+    export_onnx.verify_batch_dynamic(_calibrated, onnx_path, atol=TINY_ATOL)
+    check_true("verify/TINY_ATOL is a pass-case tolerance, not a quality bound", True, "")
+except SystemExit:
+    FAIL.append("verify/TINY_ATOL is a pass-case tolerance: it caught 1.25x, so the comment is wrong")
+
+# INT8_ATOL was bounded only from below (`> 1e-3`), so 1e9 was green. It needs both sides, and the
+# bounds have to come from numbers that reproduce:
+#
+#   LOWER -- it must ACCEPT the drift a real quantized graph shows, and that is platform-dependent:
+#   9.95e-04 here (macOS/arm64), 2.53e-02 on the Linux x86 CI runner. Two earlier attempts were
+#   below the drift on some machine and so would fail a good graph -- `1e-3 < x < 0.1` let 1.1e-3
+#   through, under even the local figure, and `5e-3 < x < 5e-2` admitted the 2e-02 that CI then
+#   rejected at 2.53e-02. The floor is therefore above the widest drift observed, not the narrowest.
+#
+#   UPPER -- it must still REJECT a graph whose probabilities have collapsed. These are
+#   probabilities, so the scale is absolute: on a two-class output an error of 0.5 is a coin flip.
+#   Staying under 2e-1 keeps a wide margin under that.
+#
+# An earlier revision justified the upper bound as "well under the 0.29 that per-tensor quantization
+# produces", and a later one claimed per-tensor "does not complete at all on this onnxruntime". BOTH are
+# withdrawn. Per-tensor is `quantize_model`'s default since #790 and the block above exercises it on
+# every run of this suite: it completes, with a max probability drift of 1.65e-03 (against 9.95e-04
+# per-channel) -- the figure the INT8_ATOL table in scripts/export_onnx.py records. The
+# `InferenceError: Inferred shape and existing shape differ in dimension 0` that the earlier claim
+# quoted is what happens when `del model.graph.value_info[:]` is REMOVED, which is a different
+# statement and is already documented where that line lives.
+# The floor is 7e-2, not 5e-2. The widest healthy drift this PR records is Windows, where a good
+# export FAILS at 5e-2 and passes at 7e-2 -- so a floor of 5e-2 admitted values (6e-2 was verified to
+# pass this check) that would reject a valid Windows export. The floor has to be at or above the widest
+# drift the comment itself cites, or the bound contradicts the table it is derived from.
+check_true("quantize/INT8_ATOL is at or above the widest healthy drift recorded (Windows, 7e-2)",
+           7e-2 <= export_onnx.INT8_ATOL, export_onnx.INT8_ATOL)
+check_true("quantize/and far enough below 0.5 that a collapsed two-class output still fails",
+           export_onnx.INT8_ATOL < 2e-1, export_onnx.INT8_ATOL)
+
+# ------------------------------------------------------- export_to_onnx verifies by default
+# `verify_batch_dynamic` is the safety net for the day `dynamic_axes` is removed and this export
+# goes silently static. A net that defaults to off is not a net, and flipping that default is a
+# one-character change no other check here would notice: the suite calls `verify_batch_dynamic`
+# directly, and asserting `--no-verify` is *documented* says nothing about what happens without it.
+_sig = inspect.signature(export_onnx.export_to_onnx)
+check("export_to_onnx/verify defaults to True", _sig.parameters["verify"].default, True)
+
+_calls = []
+_real_agent = getattr(export_onnx, "Agent", None)
+_real_export = export_onnx.export_module
+_real_verify = export_onnx.verify_batch_dynamic
+
+
+class _StubAgent:
+    def __init__(self, *a, **k):
+        self.model = model
+
+
+export_onnx.Agent = _StubAgent
+export_onnx.export_module = lambda *a, **k: _calls.append("export")
+export_onnx.verify_batch_dynamic = lambda *a, **k: _calls.append("verify")
+try:
+    export_onnx.export_to_onnx("stub", os.path.join(tmp, "unused.onnx"))
+    check("export_to_onnx/verifies when not asked otherwise", _calls, ["export", "verify"])
+    _calls.clear()
+    export_onnx.export_to_onnx("stub", os.path.join(tmp, "unused.onnx"), verify=False)
+    check("export_to_onnx/--no-verify skips it", _calls, ["export"])
+finally:
+    export_onnx.export_module = _real_export
+    export_onnx.verify_batch_dynamic = _real_verify
+    if _real_agent is not None:
+        export_onnx.Agent = _real_agent
+
+# ------------------------------------------- marker width is baked in, and the message says so
+# `DecisionModel.forward` branches on `p.size(-1) >= 2` in Python, so the traced marker width bakes
+# that branch into the graph. A one-criterion `score` question produces exactly one marker and is
+# accepted by `Agent._to_internal`, so this is reachable -- and the graph raises an ONNX Runtime
+# `TopK` error there. That predates this PR; what this check pins is that the export no longer
+# *claims* marker width is dynamic, so nobody reads "Verification passed" as covering it.
+_w1 = export_onnx.example_inputs(batch=2, seq_len=16, num_markers=1)
+try:
+    session.run(export_onnx.OUTPUT_NAMES,
+                {n: t.numpy() for n, t in zip(export_onnx.INPUT_NAMES, _w1)})
+    check_true("limitation/num_markers=1 is known to fail", False,
+               "it succeeded -- the limitation is gone, so update the message and this check")
+except Exception as error:
+    check_true("limitation/num_markers=1 fails on a graph traced at width 2",
+               "TopK" in str(error) or "topk" in str(error), str(error).replace("\n", " ")[:120])
+_verify_doc = export_onnx.verify_batch_dynamic.__doc__ or ""
+# Not `"not dynamic" in doc`, which an earlier revision asserted. That string occurs in the docstring
+# only inside a RETRACTION of exactly that claim -- "An earlier revision of this docstring said the
+# width was \"not dynamic\" ... that is not necessary" -- so the check passed BECAUSE the docstring
+# says its premise was wrong, and would have failed if the retraction were reworded without changing a
+# fact. Assert the limitation that is actually documented: dynamic from two markers up, baked at one.
+check_true("limitation/the docstring says the width is dynamic from two markers up",
+           "dynamic for two or more markers" in _verify_doc, _verify_doc[:140])
+check_true("limitation/and that it is baked at exactly one",
+           "baked at exactly one" in _verify_doc, _verify_doc[:140])
+check_true("limitation/and it names the ONNX Runtime error a width-1 feed produces",
+           "TopK" in _verify_doc, _verify_doc[:140])
+
+# --------------------------------------------- onnxruntime missing is a message, not a traceback
+# Verifying by default made onnxruntime a requirement of a command that never needed it: the export
+# itself does not touch ORT. A bare ModuleNotFoundError after "Successfully exported" reads as a
+# failed export, which it was not.
+_hidden = {"onnxruntime": None}
+_saved = {k: sys.modules.get(k) for k in _hidden}
+sys.modules.update(_hidden)
+try:
+    export_onnx.verify_batch_dynamic(model, onnx_path, atol=TINY_ATOL)
+    check_true("cli/missing onnxruntime is explained", False, "no SystemExit was raised")
+except SystemExit as error:
+    msg = str(error)
+    check_true("cli/missing onnxruntime is explained, not a traceback",
+               "onnxruntime" in msg and "--no-verify" in msg and "laya[onnx]" in msg, msg[:160])
+except ModuleNotFoundError as error:
+    check_true("cli/missing onnxruntime is explained, not a traceback", False,
+               "raised a bare %s" % type(error).__name__)
+finally:
+    for k, v in _saved.items():
+        if v is None:
+            sys.modules.pop(k, None)
+        else:
+            sys.modules[k] = v
+
+# ------------------------------------------------------ the quantized graph is verified too
+check_true("quantize/export_to_onnx hands the model back so the INT8 graph can be checked",
+           "return agent.model" in inspect.getsource(export_onnx.export_to_onnx),
+           inspect.getsource(export_onnx.export_to_onnx)[-120:])
+# Read `main`'s source, not the `__main__` guard: the CLI body moved into a function so the
+# arguments it passes could be asserted for real, above. These substring checks stay as a cheap
+# belt-and-braces, but they are no longer the only thing pinning the wiring.
+_main = inspect.getsource(export_onnx.main)
+check_true("quantize/the INT8 graph is verified when --quantize is used",
+           "verify_batch_dynamic(model, int8_path" in _main, _main[-300:])
+check_true("quantize/INT8 uses its own looser tolerance",
+           "INT8_ATOL" in _main and export_onnx.INT8_ATOL > 1e-3,
+           "INT8_ATOL=%r" % (export_onnx.INT8_ATOL,))
+
+# ------------------------------------------------------------------ the docs say it too
+# The export gained a verification pass, a hard onnxruntime requirement and a --no-verify flag.
+# docs/evals.md is the page that documents the invocation, and nothing else enforces that it keeps up.
+_evals = os.path.join(_here, os.pardir, "docs", "evals.md")
+with open(_evals, encoding="utf-8") as fh:
+    _evals_text = fh.read()
+for _needle in ("--no-verify", "laya[onnx]", "verifies itself"):
+    check_true("docs/evals.md mentions %r" % _needle, _needle in _evals_text,
+               "add it next to the export invocation")
+
+# ---------------------------------------------------------------- CLI surface
+help_text = subprocess.run(
+    [sys.executable, os.path.join(_here, os.pardir, "scripts", "export_onnx.py"), "--help"],
+    capture_output=True, text=True, timeout=300,
+).stdout
+check_true("cli/--no-verify is documented in --help", "--no-verify" in help_text,
+           [ln for ln in help_text.splitlines() if "verify" in ln])
+
+# ---------------------------------------------------- `os._exit` must stay behind the __main__ guard
+# A source check on purpose: this is the one property of this file that cannot be observed by running
+# it the way `ci.yml` does. Unguarded, the exit at the bottom fires at IMPORT time, so `pytest tests/`
+# collects this file, the interpreter leaves during collection, and pytest reports SUCCESS having
+# executed nothing -- 0 bytes of output, exit 0, measured. `sys.exit` is loud in that situation
+# (exit 3 and an INTERNALERROR traceback); the hard exit is silent, which is why this file was the only
+# one in the repository that could turn a red run green by leaving.
+#
+# A mutation sweep driven by `python tests/<name>.py` cannot catch the regression -- in script mode the
+# guard changes nothing -- so it is asserted here rather than left for a reviewer to find again.
+# Assembled at run time, NOT written as one literal: a literal would appear in this file's own source
+# and `_GUARD in _src` would then be true even with the real guard deleted. That mistake survived a
+# mutation sweep once already.
+_GUARD = "if " + "__name__" + ' == "' + "__main__" + '":'
+_src = inspect.getsource(sys.modules[__name__])
+# Only statements that START with the call, so the line above that merely names it does not count.
+_calls = [ln for ln in _src.splitlines() if ln.strip().startswith("os." + "_exit(")]
+check("guard/the hard exit appears exactly once", len(_calls), 1)
+check_true("guard/it is indented, i.e. inside a block rather than at module level",
+           bool(_calls) and _calls[0].startswith("    "), _calls)
+check_true("guard/the file has a __main__ guard", _GUARD in _src, "")
+check_true("guard/and every hard exit is after it, never before",
+           all(ln in _src.split(_GUARD, 1)[-1] for ln in _calls), _calls)
+
+
+# --------------------------------------------- `probabilities()` is what makes the comparison honest
+# `verify_batch_dynamic`'s docstring rests on a specific property: comparing in probability space
+# ignores a constant added to every logit in a row (which no consumer can see) and catches a change of
+# scale (which every consumer can). Replacing `probabilities()` with the identity -- i.e. moving the
+# whole comparison into raw-logit space and invalidating that reasoning -- left 90 of 91 checks green,
+# and the one failure pointed at a comment rather than at the deleted softmax. Assert the property
+# directly, both ways.
+_probs_model = _build_model()
+try:
+    _shifted = copy.deepcopy(_probs_model)
+    with torch.no_grad():
+        _shifted.scorer[-1].bias.add_(100.0)
+    export_onnx.verify_batch_dynamic(_shifted, onnx_path, atol=TINY_ATOL)
+    check_true("probabilities/a constant added to every logit in a row is invisible", True, "")
+except SystemExit as _e:
+    FAIL.append("probabilities/a constant added to every logit should be invisible: %s" % str(_e)[:120])
+except Exception as _e:
+    FAIL.append("probabilities/the row-constant case could not be built: %s: %s"
+                % (type(_e).__name__, str(_e)[:100]))
+# The other half of that property -- that a change of SCALE is caught -- is already pinned at the
+# shipping tolerance by `verify/the shipping tolerance rejects a 1.25x weight error` above. A 3x scale
+# is not usable here: measured, it stays inside TINY_ATOL on this model because its two logits sit close
+# together, so the softmax barely moves. That is a property of the fixture, not of probability space,
+# and asserting it would have pinned the fixture.
+
+
+# ------------------------------------------------- which blocks actually ran, and how many checks
+# A silently skipped block used to be invisible: the Windows path replaces the quantize/ and cli/
+# blocks with two `check_true(..., True, "")` placeholders, which raise the PASS count while checking
+# nothing. Simulating it (`sys.platform.startswith("win")` -> `"darwin"`) was green at 85 passed with
+# the entire `--quantize` CLI wiring and the real INT8 verification unexecuted. The total is now
+# asserted, so a block that stops running is a failure rather than a smaller number nobody reads.
+_BLOCK_NAMES = sorted({n.split("/", 1)[0] for n in PASS + FAIL if "/" in n})
+check("suite/every block contributed checks", _BLOCK_NAMES,
+      ["cli", "docs", "example_inputs", "export", "export_to_onnx", "graph", "guard", "limitation",
+       "names", "parity", "parity717", "probabilities", "quantize", "run", "run717", "verify"])
+if sys.platform.startswith("win"):
+    check_true("suite/on Windows the quantize and cli blocks are the documented skips",
+               _tmp3 is None and _tmp4 is None, (_tmp3, _tmp4))
+else:
+    # The floor, not the exact number, so adding a check does not break the suite -- but losing a whole
+    # block does. The quantize/ and cli/ blocks are ~10 checks between them.
+    check_true("suite/at least 90 checks ran on a platform that skips nothing",
+               len(PASS) + len(FAIL) >= 90, len(PASS) + len(FAIL))
+
+
+# ---------------------------------------------------------------- report
+# The sessions this file opened are dropped before the report, so a torn-down session cannot be
+# blamed for a failure printed after it.
+del session, loaded, pinned, _s3   # _s3 was leaking: it was the one session this file opened
+                                  # and never released, while the comment above claimed all of
+                                  # them were dropped before the report.
+
+shutil.rmtree(tmp, ignore_errors=True)
+_report()
+
+# Exit without running interpreter finalization.
+#
+# This file is the one place in the suite that puts torch, onnxruntime and onnxruntime's quantizer
+# in a single process, and on macOS that combination aborts during C++ static destruction:
+# `libc++abi: terminating due to uncaught exception of type std::__1::system_error: recursive_mutex
+# lock failed: Invalid argument`, exit 134, AFTER this summary has printed "0 failed". A green
+# report and a red job.
+#
+# It is not this file's sessions being alive -- measured, 3 of 30 runs abort with every session
+# explicitly released and 0 of 30 with the release removed, so that hypothesis is dead -- and it is
+# not onnxruntime alone: 1 or 3 bare sessions opened and held in a fresh process abort 0 of 15
+# times. It is the teardown ORDER of two native libraries, which Python cannot fix from inside.
+#
+# So finalization is skipped. `os._exit` ends the process with the status this file computed, after
+# stdout is flushed, and the destructors that abort never run. The tests have all completed and
+# their results are already printed; nothing below this line was going to run anyway. Measured on
+# macOS with onnxruntime 1.30.0: 0 of 40 runs abort, against 4 of 42 for the same tests exiting
+# normally.
+if __name__ == "__main__":
+    # GUARDED, and the guard is the point. Without it this `os._exit` runs at IMPORT time, so a plain
+    # `pytest tests/` collects this file, the interpreter leaves during collection, and pytest reports
+    # SUCCESS having executed nothing. Measured on this branch before the guard:
+    #
+    #   python -m pytest tests/test_onnx_export_batch.py -q   ->  0 bytes of output, exit 0
+    #   python -m pytest tests/test_runtime_fixes.py -q       ->  9757 bytes, 103 INTERNALERROR
+    #                                                             lines, exit 3  (it uses sys.exit)
+    #
+    # The control is what makes it damning: `sys.exit` is loud and `os._exit` is silent, so this was
+    # the one file in the repository that could turn a red run green by leaving. `sys.exit` appears 67
+    # times across tests/; `os._exit` appears here and nowhere else. ci.yml runs this file as
+    # `python tests/...` so CI never saw it, which is exactly why it had to be caught by review.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(1 if FAIL else 0)

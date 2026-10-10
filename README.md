@@ -412,9 +412,13 @@ comes back with `abstention` and `abstention_threshold` fields naming whether it
 Router was built with", so a caller never has to send them back as `null`; a body that names
 `hooks`, `hooks_raise`, `hooks_timeout`, `on_predict_start`, or `on_predict_end` is refused with
 422 rather than silently dropped, matching what `laya-serve` does for the same fields. On
-`/predict/batch`, `min_confidence` reaches `Router.predict_batch` as a call argument rather than
-a per-request key; the other three travel inside each request dict, so states in one batch may
-name different budgets.
+`/predict/batch` the controls are read once, from the batch body: `min_confidence` becomes a call
+argument to `Router.predict_batch`, and the other three are copied into every request dict, so all
+states in one call share one budget. A `max_len` written inside a state is not a control there --
+it stays part of the state, and the body's value is what every state gets. Per-request budgets do
+exist one level down, in `Router.predict_batch`, which cannot share a forward pass between requests
+naming different budgets and so makes one pass per budget; the batch endpoint just gives an HTTP
+caller no way to name them separately.
 
 `/predict/batch` accepts two optional body fields that control the shape of the forward passes
 without changing any answer: `batch_size` (states per pass; omit it and the whole batch is one

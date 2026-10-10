@@ -12,13 +12,16 @@ Three questions this answers, none of which the other suites ask:
 3. Is a loaded agent safe to call from several threads, and what does that buy in throughput?
 
 Exits non-zero if a check fails. Concurrency is attempted on the selected device and retried on
-CPU if the device rejects it; that outcome is reported rather than hidden.
+CPU if the device rejects it; a device-level crash (SIGABRT/SIGSEGV from a GPU driver) is
+isolated in a short-lived helper process so it becomes a reported FAIL with a CPU retry,
+not an aborted run with no verdict.
 """
 import argparse
 import gc
 import json
 import os
 import statistics
+import subprocess
 import sys
 import threading
 import time
@@ -72,6 +75,80 @@ except ImportError:  # pragma: no cover - only when psutil is absent
 def _live(cls):
     """How many instances of `cls` the garbage collector can still see."""
     return sum(1 for o in gc.get_objects() if isinstance(o, cls))
+
+
+def _concurrency_child(models_dir, call_device, ref, n_threads, per_thread):
+    """The threading burst from section 3, running in a disposable helper process.
+
+    Same script, same agent loader, same threaded `predict` storm, same single-threaded
+    reference as the in-process loop it replaces; only the outcome travels back (one JSON
+    verdict line on stdout). A device-level crash (SIGABRT/SIGSEGV from a GPU driver)
+    then kills this helper, not the process owed the leak verdicts -- the parent sees a
+    bad exit code and runs the same CPU retry the script always had.
+    """
+    agent = _concurrency_load(models_dir, call_device)
+    here_ref = json.dumps(agent.predict(STATE, QUESTIONS)["answers"], sort_keys=True)
+    if here_ref != ref:
+        print(json.dumps({"status": "reference-mismatch",
+                          "detail": "child reference differs from the parent one"}), flush=True)
+        return 3
+
+    def worker(results, errors):
+        """Every worker asks the same questions about the same state, so any cross-talk or
+        corruption shows up as an answer that differs from the single-threaded reference.
+        The agent is closed over because there is exactly one burst in exactly one process,
+        and no retry can happen underneath running threads."""
+        try:
+            for _ in range(per_thread):
+                out = agent.predict(STATE, QUESTIONS)
+                results.append(json.dumps(out["answers"], sort_keys=True))
+        except Exception as e:  # noqa: BLE001
+            errors.append("%s: %s" % (type(e).__name__, str(e)[:120]))
+
+    results, errors = [], []
+    threads = [threading.Thread(target=worker, args=(results, errors)) for _ in range(n_threads)]
+    start = time.perf_counter()
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    elapsed = time.perf_counter() - start
+    if errors:
+        print(json.dumps({"status": "errors", "errors": errors[:5], "elapsed": elapsed,
+                          "done": len(results)}), flush=True)
+        return 4
+    mismatches = sum(1 for r in results if r != here_ref)
+    print(json.dumps({"status": "ok", "total": len(results), "mismatches": mismatches,
+                      "elapsed": elapsed}), flush=True)
+    return 0 if mismatches == 0 else 5
+
+
+def _concurrency_load(models_dir, call_device):
+    """The multilingual agent section 3 bursts against, loaded one way in both processes."""
+    return laya.load(os.path.join(models_dir, "laya-multilingual"), device=call_device)
+
+
+def _concurrency_shim():
+    """`python verify/soak_check.py --concurrency-child ...`: section 3's burst, on its
+    own argv. Prints one JSON verdict line on stdout and exits with a code the parent
+    reads; argparse learns the extra flag through `parse_known_args`, so `main` is
+    untouched."""
+    if "--concurrency-child" not in sys.argv:
+        return None
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--models-dir", required=True)
+    ap.add_argument("--device", required=True)
+    ap.add_argument("--ref", required=True)
+    ap.add_argument("--threads", type=int, required=True)
+    ap.add_argument("--per-thread", type=int, required=True)
+    known, _ = ap.parse_known_args()
+    sys.exit(_concurrency_child(known.models_dir, known.device,
+                                known.ref, known.threads, known.per_thread))
+
+
+_CONCURRENCY_CHILD_RC = _concurrency_shim()
+if _CONCURRENCY_CHILD_RC is not None:  # pragma: no cover - child entry only
+    sys.exit(_CONCURRENCY_CHILD_RC)
 
 
 def report(name, ok, detail=""):
@@ -197,51 +274,96 @@ def main():
           % rss_mb())
 
     # ------------------------------------------------------------ 3. concurrency
+    # ------------------------------------------------------------ 3. concurrency
+    # Threads hitting an MPS (or CUDA/XPU) model at once are exactly what SIGABRTed this
+    # script's interpreter on Apple silicon (torch 2.14, Metal assertion
+    # `_status < MTLCommandBufferStatusCommitted`): the driver aborts below Python, so a
+    # worker pool's try/except never sees it and a threaded runner that mimics the parent
+    # loop dies with no verdict either. Run the burst in a disposable helper process
+    # instead -- same loader, same threads, same reference, one JSON verdict -- whose
+    # death the parent converts into the CPU retry the script already promised. Leak
+    # sections 1-2 stay in-process: they measure the serving process, not a throwaway
+    # helper.
     head("3. Concurrent calls from %d threads" % args.threads)
     per_thread = max(1, args.calls // (args.threads * 4))
     total = args.threads * per_thread
 
-    def worker(ag, results, errors):
-        """Every worker asks the same questions about the same state, so any cross-talk or
-        corruption shows up as an answer that differs from the single-threaded reference.
-        The agent is passed in rather than closed over, so a device retry cannot change it
-        underneath running threads."""
-        try:
-            for _ in range(per_thread):
-                out = ag.predict(STATE, QUESTIONS)
-                results.append(json.dumps(out["answers"], sort_keys=True))
-        except Exception as e:  # noqa: BLE001
-            errors.append("%s: %s" % (type(e).__name__, str(e)[:120]))
+    def _report_verdict(verdict, device_name, expected_total):
+        status = verdict["status"]
+        if status == "reference-mismatch":
+            report("concurrency on %s" % device_name, False, verdict["detail"])
+            return device_name == "cpu"
+        if status == "errors":
+            errs = verdict["errors"] or ["no detail"]
+            report("concurrency on %s" % device_name, False,
+                   "%d error(s), first: %s" % (len(errs), errs[0]))
+            return device_name == "cpu"
+        done = verdict.get("total", 0)
+        report("all %d concurrent calls returned (%s)" % (expected_total, device_name),
+               done == expected_total,
+               "expected %d, got %d" % (expected_total, done))
+        mismatches = verdict.get("mismatches", 1)
+        report("concurrent answers match the single-threaded reference",
+               mismatches == 0,
+               "%d of %d differ" % (mismatches, done))
+        elapsed = verdict.get("elapsed") or 0.0
+        print("   %d calls in %.1f s across %d threads (%.0f calls/s)"
+              % (done, elapsed, args.threads, done / elapsed if elapsed else 0.0))
+        return True
 
-    primary = laya.load(models["multilingual"], device=device)
+    def _last_verdict(lines):
+        """The child's one JSON line, read back-to-front past warnings and progress."""
+        for line in reversed(lines):
+            try:
+                verdict = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(verdict, dict) and "status" in verdict:
+                return verdict
+        return None
+
+    def _child_timeout():
+        """Bound the helper's life: 300 s floor, rising with --calls like the work does."""
+        return max(300.0, 300.0 * args.calls / 200.0 if args.calls else 0.0)
+
+    def burst_in_child(call_device, expected_total):
+        """Run section 3's burst for one device inside the helper and report its verdict.
+
+        Returns True when the parent should stop retrying -- either the burst succeeded,
+        or this was the CPU pass itself and there is nothing left to fall back to. The
+        burst keeps the original report names, so a passing machine prints exactly what
+        the in-process loop used to, including the note when the CPU fallback is the pass
+        that won.
+        """
+        argv = [sys.executable, os.path.join(ROOT, "verify", "soak_check.py"),
+                "--concurrency-child", "--models-dir", args.models, "--device", call_device,
+                "--ref", ref, "--threads", str(args.threads), "--per-thread", str(per_thread)]
+        try:
+            child = subprocess.run(argv, capture_output=True, text=True, timeout=_child_timeout())
+        except subprocess.TimeoutExpired:
+            report("concurrency on %s" % call_device, False,
+                   "helper timed out after %ds" % _child_timeout())
+            return call_device == "cpu"
+        verdict = _last_verdict((child.stdout or "").splitlines())
+        if verdict is None or child.returncode != 0:
+            report("concurrency on %s" % call_device, False,
+                   "helper died without a verdict (exit %s)" % child.returncode)
+            return call_device == "cpu"
+        return _report_verdict(verdict, call_device, expected_total)
+
+    primary = _concurrency_load(args.models, device)
     ref = json.dumps(primary.predict(STATE, QUESTIONS)["answers"], sort_keys=True)
     attempts = [primary.device.type] + (["cpu"] if primary.device.type != "cpu" else [])
     for attempt_device in attempts:
         if primary.device.type != attempt_device:
             print("   the %s pass failed; retrying on cpu" % primary.device.type)
-            primary = laya.load(models["multilingual"], device="cpu")
-        results, errors = [], []
-        threads = [threading.Thread(target=worker, args=(primary, results, errors))
-                   for _ in range(args.threads)]
-        t0 = time.perf_counter()
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-        elapsed = time.perf_counter() - t0
-        if not errors:
-            report("all %d concurrent calls returned (%s)" % (total, attempt_device), len(results) == total,
-                   "expected %d, got %d" % (total, len(results)))
-            report("concurrent answers match the single-threaded reference",
-                   all(r == ref for r in results),
-                   "%d of %d differ" % (sum(1 for r in results if r != ref), len(results)))
-            print("   %d calls in %.1f s across %d threads (%.0f calls/s)"
-                  % (total, elapsed, args.threads, total / elapsed))
+            primary = _concurrency_load(args.models, "cpu")
+        done = burst_in_child(attempt_device, total)
+        if done:
             if attempt_device != primary.device.type:
                 print("   note: the %s pass is what succeeded, not the default device"
                       % attempt_device)
             break
-        report("concurrency on %s" % attempt_device, False, "%d error(s), first: %s" % (len(errors), errors[0]))
         if attempt_device == "cpu":
             break
 

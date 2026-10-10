@@ -27,6 +27,18 @@ the moment an ``os.environ`` read is added in another, so this derives the set i
 transcribing it: it walks ``laya/`` with ``ast`` and compares what it finds against what
 the docs mention, in both directions.
 
+A default column goes stale the same way and is harder to see, because the row still reads
+correctly. Both surfaces that document the package's own defaults say ``LAYA_DEFAULT_MODEL``
+falls back to ``english``. Since 0.4.0 it falls back to ``multilingual``: the breaking routing
+change moved ``Router(default=...)`` and four pages with it, but not ``docs/http-api.md`` nor the
+table in ``laya/serve.py``'s docstring, and the server leaves the keyword out when the variable is
+unset precisely so that the value "cannot drift" from ``Router``'s own. ``tests/test_serve.py``
+already pins the resolved ``router.default``; it never reads a table, so nothing compared the two
+columns to the code they describe. The operator who trusts the stale cell is asking for the
+checkpoint that change exists to stop -- off English it collapses while staying confident, so no
+downstream ``min_confidence`` gate catches it. So the default column is derived too, from three
+read shapes, and held on the two surfaces that describe the package rather than a container.
+
 Why the whole string-constant sweep rather than only ``os.environ.get("LAYA_...")``: the
 narrow form misses two of the fourteen names the package actually consumes, because
 ``_env_bool("LAYA_AUTO_TASK", ...)`` and ``os.environ.get(_ENV_KEY)`` hide the literal from
@@ -256,6 +268,312 @@ def offered(text: str, var: str) -> Set[str]:
     return out
 
 
+# ------------------------------------------------------------------ a documented default
+# Two cells promised ``english`` for ``LAYA_DEFAULT_MODEL`` while ``Router(default="multilingual")``
+# has answered those requests since 0.4.0: the breaking routing change moved the fallback and the
+# two environment tables were not part of it. Every other row on both pages is right, so this is
+# not a page nobody reads -- it is a page that reads well and went stale, which is the failure a
+# prose review cannot catch and a comparison against the code can. The comparison derives the
+# code's answer from three read shapes rather than transcribing a table of defaults here:
+#
+#   R1  the read site carries it: ``os.environ.get("LAYA_X", D)`` and ``_env_bool("LAYA_X", D)``.
+#   R2  a resolver reads with no literal default and answers the unset path with one, found through
+#       the guard on the variable that read assigned (`raw = ...` then `if not raw: return DEFAULT_X`).
+#   R3  a resolver sends *nothing* when unset -- it returns ``{}`` or ``None`` and the caller leaves
+#       the keyword out of ``Router(**options)`` -- so the answer is ``Router``'s own parameter
+#       default. The keyword comes from the one-key dict literal the resolver returns when the
+#       variable *is* set, or from the `options["key"] = value` line that forwards it.
+#
+# Only the two surfaces that document *the package's* defaults are held to this. ``docs/docker.md``
+# and ``docs/cli-mcp.md`` document the Compose service and the stdio server, whose defaults are
+# allowed to differ, which is the row in "what this cannot check" below.
+ROUTER_CLASS = "Router"
+PACKAGE_DEFAULT_SURFACES = ("laya/serve.py docstring", "docs/http-api.md")
+TABLE_RULE = re.compile(r"[ =]+")
+DEFAULT_GUTTER = 4
+
+
+def is_read(node):
+    """``(name, default_node)`` when this call is a ``LAYA_*`` read, else None.
+
+    ``_env_bool`` is in the set because ``LAYA_AUTO_TASK`` and ``LAYA_PRELOAD`` go through it, and
+    the narrow ``os.environ`` matcher this file already reports as insufficient misses them.
+    """
+    if not (isinstance(node, ast.Call) and node.args):
+        return None
+    func = node.func
+    environ = isinstance(func, ast.Attribute) and func.attr == "get" \
+        and isinstance(func.value, ast.Attribute) and func.value.attr == "environ"
+    if not (environ or (isinstance(func, ast.Name) and func.id == "_env_bool")):
+        return None
+    first = node.args[0]
+    if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
+        return None
+    found = NAME.findall(first.value)
+    if len(found) != 1:
+        return None
+    return found[0], (node.args[1] if len(node.args) > 1 else None)
+
+
+def own_nodes(func):
+    """Nodes in this function's own body, in source order, nested functions left out.
+
+    Nesting matters twice over: ``create_app`` would otherwise "read" every name its request
+    handlers read and be judged ambiguous, and a caller's ``options["k"] = v`` line has to be seen
+    after the ``v = F(...)`` line that gives it meaning.
+    """
+    out, stack = [], [func]
+    while stack:
+        node = stack.pop(0)
+        out.append(node)
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)) \
+                    and child is not func:
+                continue
+            stack.append(child)
+    return out
+
+
+def literal_of(node, consts):
+    """A constant, or a module-level constant's value; ``ast.Constant`` covers None and "".
+
+    Returns ``(found, value)`` rather than ``value`` because ``False`` and ``0`` are answers the
+    documentation has to be able to agree with.
+    """
+    if isinstance(node, ast.Constant):
+        return True, node.value
+    if isinstance(node, ast.Name) and node.id in consts:
+        return True, consts[node.id]
+    return False, None
+
+
+def module_consts(tree):
+    out = {}
+    for stmt in tree.body:
+        if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 \
+                and isinstance(stmt.targets[0], ast.Name) \
+                and isinstance(stmt.value, ast.Constant):
+            out[stmt.targets[0].id] = stmt.value.value
+    return out
+
+
+def read_names(func):
+    return {site[0] for node in own_nodes(func) for site in [is_read(node)] if site}
+
+
+def router_param_defaults():
+    """``Router.__init__``'s parameter defaults, as written in laya/router.py.
+
+    ``None`` is dropped: it is the same "no opinion" the resolver expressed, so it cannot be the
+    scalar a default column names.
+    """
+    tree = ast.parse(read(os.path.join(ROOT, "laya", "router.py")))
+    for cls in [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and n.name == ROUTER_CLASS]:
+        for func in cls.body:
+            if isinstance(func, ast.FunctionDef) and func.name == "__init__":
+                names = [a.arg for a in func.args.args[1:]]
+                defaults = func.args.defaults
+                pad = len(names) - len(defaults)
+                out = {}
+                for i, dflt in enumerate(defaults):
+                    ok, value = literal_of(dflt, {})
+                    if ok and value is not None:
+                        out[names[pad + i]] = value
+                return out
+    return {}
+
+
+def forwarded_keyword(func, funcs, name):
+    """The ``Router`` keyword a send-nothing resolver answers for, recovered from the caller.
+
+    Two shapes, both real in laya/serve.py: ``options.update(F(...))`` where F returns a one-key
+    dict literal, and ``value = F(...)`` followed by ``options["key"] = value``. The second one is
+    only a keyword when the same function then does ``Router(**options)``, and which local that is
+    comes out of the call rather than out of its name."""
+    for node in own_nodes(func):
+        if isinstance(node, ast.Return) and isinstance(node.value, ast.Dict) \
+                and len(node.value.keys) == 1:
+            key = node.value.keys[0]
+            if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                return key.value
+    for holder in funcs.values():
+        if holder is func:
+            continue
+        nodes = own_nodes(holder)
+        expanded = set()
+        for node in nodes:
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
+                    and node.func.id == ROUTER_CLASS:
+                expanded.update(kw.value.id for kw in node.keywords
+                                if kw.arg is None and isinstance(kw.value, ast.Name))
+        called = {}
+        for node in nodes:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 \
+                    and isinstance(node.targets[0], ast.Name) \
+                    and isinstance(node.value, ast.Call) \
+                    and isinstance(node.value.func, ast.Name):
+                inner = funcs.get(node.value.func.id)
+                if inner is not None:
+                    called[node.targets[0].id] = inner
+        for node in nodes:
+            if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+                continue
+            target = node.targets[0]
+            if isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name) \
+                    and target.value.id in expanded \
+                    and isinstance(target.slice, ast.Constant) \
+                    and isinstance(target.slice.value, str) \
+                    and isinstance(node.value, ast.Name):
+                inner = called.get(node.value.id)
+                if inner is not None and read_names(inner) == {name}:
+                    return target.slice.value
+    return None
+
+
+def code_defaults():
+    """What laya/serve.py does when a ``LAYA_*`` is unset.
+
+    Returns ``(derived, unchecked, conflicts)``: the names answered with a single value, the names
+    this file could not answer with the reason for each, and the names read with two different
+    literal defaults at two read sites.
+    """
+    tree = ast.parse(read(os.path.join(PACKAGE, "serve.py")))
+    consts = module_consts(tree)
+    funcs = {}
+    for func in [n for n in ast.walk(tree)
+                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+        funcs.setdefault(func.name, func)
+
+    read_defaults: Dict[str, Set[object]] = {}
+    for node in ast.walk(tree):
+        site = is_read(node)
+        if not site:
+            continue
+        ok, value = literal_of(site[1], consts) if site[1] is not None else (False, None)
+        # "" is not a default a page can name; it is the read's way of saying "unset", and the
+        # function's own guard decides what that means.
+        if ok and value is not None and value != "":
+            read_defaults.setdefault(site[0], set()).add(value)
+    # Two reads of one name that disagree about what unset means is a code bug, and naming either
+    # answer would let the page match the code and still be wrong, so it is failed on.
+    conflicts = {name: sorted(repr(v) for v in values)
+                 for name, values in read_defaults.items() if len(values) > 1}
+    derived = {name: next(iter(values)) for name, values in read_defaults.items()
+               if len(values) == 1}
+
+    unchecked = {}
+    router = router_param_defaults()
+    for name in sorted({n for func in funcs.values() for n in read_names(func)}):
+        if name in derived or name in conflicts:
+            continue
+        candidates = [f for f in funcs.values() if name in read_names(f)]
+        if len(candidates) != 1:
+            unchecked[name] = "read by %d functions, so no single unset path to follow" % len(candidates)
+            continue
+        func = candidates[0]
+        locals_ = set()
+        for node in own_nodes(func):
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 \
+                    and isinstance(node.targets[0], ast.Name) \
+                    and any(site and site[0] == name
+                            for c in ast.walk(node.value)
+                            for site in [is_read(c)] if isinstance(c, ast.Call)):
+                locals_.add(node.targets[0].id)
+        unset = None
+        for node in own_nodes(func):
+            if not isinstance(node, ast.If):
+                continue
+            if not locals_ & {n.id for n in ast.walk(node.test) if isinstance(n, ast.Name)}:
+                continue
+            returns = [s for s in node.body if isinstance(s, ast.Return)]
+            if returns:
+                unset = returns[0].value
+                break
+        if unset is None:
+            unchecked[name] = "no default at the read and no guard on the read's own variable"
+            continue
+        ok, value = literal_of(unset, consts)
+        if ok and value is not None:
+            derived[name] = value
+            continue
+        keyword = forwarded_keyword(func, funcs, name)
+        if keyword is None:
+            unchecked[name] = "the unset path sends nothing and no keyword names it"
+        elif keyword not in router:
+            unchecked[name] = "the unset path hands %r to %s, which defaults it to no value" \
+                              % (keyword, ROUTER_CLASS)
+        else:
+            derived[name] = router[keyword]
+    return derived, unchecked, conflicts
+
+
+def docstring_default_table():
+    """The environment table in laya/serve.py's module docstring, as ``{name: default cell}``.
+
+    Hand-aligned, and its name column overflows the rule above it, so slicing at the rule's spans
+    loses the long names. The default column is the one every row keeps to the right, so each row's
+    text after its final run of two or more spaces is taken, and kept only when it starts in that
+    column's gutter -- which is also what tells a wrapped meaning cell from a wrapped default.
+    """
+    doc = ast.get_docstring(ast.parse(read(os.path.join(PACKAGE, "serve.py")))) or ""
+    lines = doc.splitlines()
+    rules = [i for i, line in enumerate(lines) if TABLE_RULE.fullmatch(line) and "=" in line]
+    if len(rules) < 3:
+        return {}
+    gutter = [m.start() for m in re.finditer(r"=+", lines[rules[0]])][-1] - DEFAULT_GUTTER
+    rows, current = {}, None
+    for line in lines[rules[1] + 1:rules[2]]:
+        runs = list(re.finditer(r"\s{2,}", line))
+        piece = line[runs[-1].end():].strip() if runs else ""
+        on_column = bool(runs) and runs[-1].end() >= gutter and bool(piece)
+        found = NAME.findall(line[:40])
+        if len(found) == 1 and line.startswith("``"):
+            current = found[0]
+            rows[current] = [piece] if on_column else []
+        elif current and on_column:
+            rows[current].append(piece)
+    return {name: " ".join(cells) for name, cells in rows.items()}
+
+
+def markdown_default_table(rel_path):
+    """A markdown configuration table's default column, for rows whose first cell is one name."""
+    rows = {}
+    for line in read(os.path.join(ROOT, *rel_path.split("/"))).splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        found = NAME.findall(cells[0])
+        if len(found) == 1 and cells[0].strip("`") == found[0]:
+            rows[found[0]] = cells[-1]
+    return rows
+
+
+def default_text(value):
+    """How a scalar default reads in a table: booleans as the 1/0 the pages spell, 0.0 as 0."""
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
+def default_cell(cell):
+    """A default column's text, stripped of the markup and of the gloss some rows carry.
+
+    ``(`` ``english`` ``)``, ``0 (off)`` and ``none`` all state one value; the parentheses are the
+    table's own convention for "this is the value nobody set anything to", and the trailing pair on
+    ``0 (off)`` is a note about that value rather than a second value. A row whose whole cell is
+    parenthesised is therefore read inside the parentheses, and one that ends with them keeps the
+    part before.
+    """
+    text = cell.strip().strip("`").strip()
+    if re.fullmatch(r"\(.*\)", text):
+        return text[1:-1].strip()
+    return re.sub(r"\s*\([^)]*\)\s*$", "", text).strip()
+
+
 def main() -> int:
     pkg = package_names()
     docs = markdown_names()
@@ -365,11 +683,56 @@ def main() -> int:
                "claims compared: %s -- if laya/agent.py stops carrying a sentence that lists an "
                "accepted dtype, the prose site this sweep was written for moved" % sorted(claim_sites))
 
+    # ------------------------------------------------- what a documented default says
+    derived, unchecked, conflicts = code_defaults()
+    check("defaults/no name is read with two different literal defaults", conflicts, {})
+    surfaces = {"laya/serve.py docstring": docstring_default_table(),
+                "docs/http-api.md": markdown_default_table("docs/http-api.md")}
+    for name, value in sorted(derived.items()):
+        for surface in PACKAGE_DEFAULT_SURFACES:
+            table = surfaces[surface]
+            if name not in table:
+                continue
+            check("defaults/%s's %s cell says what the code does" % (surface, name),
+                  default_cell(table[name]), default_text(value))
+    # Non-vacuity by name. Without these the whole section could be standing on nothing: a table
+    # that stopped parsing returns {}, every `continue` above fires, and the file is green.
+    check_true("defaults/the drifted cell is derived from Router, not asserted from a copy",
+               derived.get("LAYA_DEFAULT_MODEL") == "multilingual",
+               "got %r -- if the routing fallback moved again, the two pages this was written for "
+               "moved with it or are now stale; check them before changing this line"
+               % derived.get("LAYA_DEFAULT_MODEL"))
+    counts = {s: len(surfaces[s]) for s in PACKAGE_DEFAULT_SURFACES}
+    check_true("defaults/both package surfaces still carry a default column",
+               all(count >= 12 and "LAYA_PRELOAD" in surfaces[s]
+                   for s, count in counts.items()), counts)
+    check_true("defaults/LAYA_DEFAULT_MODEL is a row on both package surfaces",
+               all("LAYA_DEFAULT_MODEL" in surfaces[s] for s in PACKAGE_DEFAULT_SURFACES),
+               {s: sorted(surfaces[s]) for s in PACKAGE_DEFAULT_SURFACES})
+    check_true("defaults/at least eight defaults were derived, not skipped",
+               len(derived) >= 8, sorted(derived))
+    documented = {name for surface in PACKAGE_DEFAULT_SURFACES for name in surfaces[surface]}
+    for name in sorted(documented - set(derived)):
+        # A name the server never reads has no unset path here to follow, so it joins the reported
+        # set rather than passing quietly -- but only if nothing more specific already explains it,
+        # which is why this cannot turn a failed derivation into a silent skip.
+        unchecked.setdefault(name, "laya/serve.py does not read it, so this file has no unset "
+                                   "path to follow for it")
+    unaccounted = sorted(name for surface in PACKAGE_DEFAULT_SURFACES
+                         for name in surfaces[surface]
+                         if name not in derived and name not in unchecked)
+    check_true("defaults/every documented default is derived or named as unchecked",
+               not unaccounted, unaccounted)
+
     # ------------------------------------------------- what this cannot check
     unbacked = [
         ("a documented default matches the code default",
-         "docs/docker.md documents the Compose service's default, which is deliberately not "
-         "the package default (LAYA_PRELOAD is 0 there and 1 in laya/serve.py)"),
+         "held to laya/serve.py and laya/router.py for %d of the names on the two package surfaces; "
+         "%s stay out because their unset answer is not a value a table can print. Also out: "
+         "docs/docker.md, which documents the Compose service's defaults and deliberately differs "
+         "from the package (LAYA_PRELOAD is 0 there and 1 in laya/serve.py), and docs/cli-mcp.md, "
+         "which documents the stdio server's"
+         % (len(derived), sorted(set(surfaces["docs/http-api.md"]) - set(derived)))),
         ("a name only mentioned in a comment",
          "comments are not string constants, so an undocumented read in a comment is invisible "
          "here; the same is true of a name built by concatenation, and of an accepted spelling "
@@ -391,6 +754,9 @@ def main() -> int:
             print("laya/agent.py compares %s against %s" % (var, sorted(accepted[var])))
         print("%d row(s) and %d completeness claim(s) held to that set: %s / %s"
               % (len(rows_sites), len(claim_sites), sorted(rows_sites), sorted(claim_sites)))
+        print("%d documented default(s) held to laya/serve.py and laya/router.py" % len(derived))
+        for name, why in sorted(unchecked.items()):
+            print("not derived: %s -- %s" % (name, why))
         for name, why in sorted(DEFERRED.items()):
             print("deferred: %s -- %s; delete the DEFERRED row once it is documented" % (name, why))
         print("not checkable from this repository (not asserted either way):")

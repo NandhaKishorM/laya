@@ -326,13 +326,14 @@ def items_from_rows(tok, rows: Iterable[Dict[str, Any]], max_len: int,
     """Items from `{state, questions, gold}` or `{state, questions, expected}` rows; returns `(items, skipped)`.
 
     `skipped` counts, by reason, questions that were labelled but could not become an item:
-    `empty_text`, `empty_label`, `invalid_question` (a `ValueError`, `TypeError` or `KeyError` out of
-    `to_internal`) and `invalid_target` (the same three out of `target_from_gold` or
-    `target_from_expected` -- a `gold` entry with no `probabilities` is a `KeyError`, an unhashable
-    `expected` a `TypeError`), plus the reasons `make_item` gives, of which only
+    `empty_text`, `empty_label`, `invalid_question` (from `to_internal`) and `invalid_target` (from
+    `target_from_gold` or `target_from_expected`), plus the reasons `make_item` gives, of which only
     `options_collapsed` and `options_beyond_max_len` can reach this count: both target builders
-    return exactly one entry per option. Questions with neither a `gold` nor an `expected` entry are
-    not counted -- the row simply does not label them.
+    return exactly one entry per option. Either call is caught on `ValueError`, `TypeError` or
+    `KeyError`, so a row that names a type the reader would not expect is still counted -- a `gold`
+    entry with no `probabilities` is a `KeyError`, an unhashable `expected` a `TypeError`. Questions
+    with neither a `gold` nor an `expected` entry are not counted -- the row simply does not label
+    them.
     """
     items, skipped = [], {}
     for row in rows:

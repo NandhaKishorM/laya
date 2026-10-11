@@ -479,6 +479,38 @@ class DataTests(unittest.TestCase):
             reported.add(reason)
         self.assertEqual(reported, table_reasons())
 
+    def test_each_caught_exception_shape_is_counted_at_its_own_call_site(self):
+        # The catch is `(ValueError, TypeError, KeyError)` at both call sites, and each type is here
+        # because a row really raises it: `target_from_gold` is read with `gold_q["probabilities"]`,
+        # so a gold entry that omits the key is a KeyError, and `float()` of a probability that is a
+        # dict is a TypeError. Removing either type from either clause turns one of these rows into
+        # an exception that escapes `items_from_rows` and aborts the run.
+        for label, gold, exc in (
+                ("gold entry with no probabilities", {"department": {}}, KeyError),
+                ("probability that is not a number",
+                 {"department": {"probabilities": {"billing": {}}}}, TypeError),
+                ("negative probability",
+                 {"department": {"probabilities": {"billing": -2.0}}}, ValueError)):
+            with self.subTest(shape=label):
+                with self.assertRaises(exc):
+                    target_from_gold(to_internal("q", DEPARTMENT), gold["department"])
+                row = {"state": "app crash", "questions": {"department": DEPARTMENT}, "gold": gold}
+                self.assertEqual(items_from_rows(self.tok, [row], 64, 40), ([], {"invalid_target": 1}))
+        # the question site: `Agent._check_question` validates the shape, so an unreadable question
+        # is a ValueError there, and `empty_label`/`invalid_question` never borrow the other's count
+        with self.assertRaises(ValueError):
+            to_internal("department", {"type": "choice", "instructions": "which ?", "criteria": []})
+        row = {"state": "app crash",
+               "questions": {"department": {"type": "choice", "instructions": "which ?", "criteria": []}},
+               "expected": {"department": "billing"}}
+        self.assertEqual(items_from_rows(self.tok, [row], 64, 40), ([], {"invalid_question": 1}))
+        # an unhashable `expected` reaches `target_from_expected` as the TypeError it documents
+        with self.assertRaises(TypeError):
+            target_from_expected(to_internal("q", DEPARTMENT), {"billing", "technical"})
+        row = {"state": "app crash", "questions": {"department": DEPARTMENT},
+               "expected": {"department": {"billing", "technical"}}}
+        self.assertEqual(items_from_rows(self.tok, [row], 64, 40), ([], {"invalid_target": 1}))
+
     def test_a_teacher_written_in_option_order_is_counted_not_fatal(self):
         # `docs/finetune.md:67` shows gold probabilities keyed by option. Writing them in option
         # order is the same mistake in the shape a teacher file usually has, and it died inside

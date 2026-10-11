@@ -595,7 +595,12 @@ class DecisionModel(nn.Module):
             self.head = nn.TransformerEncoder(layer, head_layers, enable_nested_tensor=False) if head_layers > 0 else None
             self.type_emb = nn.Embedding(3, d)
             self.scorer = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, d), nn.GELU(), nn.Linear(d, 1))
-            self.act_head = nn.Sequential(nn.Linear(d + 4, 256), nn.GELU(), nn.Linear(256, n_act))
+            # LayerNorm normalises the raw pooled CLS vector to unit scale before the first
+            # Linear. Without it the head receives activations ~10,000× unit scale, which
+            # saturates softmax and makes act_probability always 1.0 (issue #185).
+            # γ=1/β=0 initialisation means this is an identity-scale transform on new weights
+            # and loads correctly from pre-existing checkpoints via strict=False.
+            self.act_head = nn.Sequential(nn.LayerNorm(d + 4), nn.Linear(d + 4, 256), nn.GELU(), nn.Linear(256, n_act))
             self.register_buffer("temperature", torch.ones(3))
         if no_init:
             # Only the modules created above are on the meta device; the encoder is already real
@@ -653,7 +658,7 @@ class DecisionModel(nn.Module):
         # Explicit-dtype exports run without autocast; keep the confidence maths in fp32,
         # then match the head's weights. Autocast already chooses the linear's input dtype.
         if not _autocast_enabled(h.device.type):
-            act_input = act_input.to(self.act_head[0].weight.dtype)
+            act_input = act_input.to(self.act_head[1].weight.dtype)
         act_logits = self.act_head(act_input)
         return logits, act_logits
 

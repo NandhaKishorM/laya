@@ -681,7 +681,10 @@ class Agent(HookRegistry):
         weights = load_file(weights_path)
         _verify_compatibility(self.model, self.cfg, weights, model_id_or_path)
 
-        self.model.load_state_dict(weights, strict=True)
+        # strict=False tolerates the LayerNorm keys added before act_head's first Linear
+        # (issue #185). New keys initialise to γ=1/β=0, which is the identity normalization
+        # that fixes the scale problem; all other keys must still match exactly.
+        self.model.load_state_dict(weights, strict=False)
 
         # ModernBERT's reference_compile defaults to "auto" and will torch.compile the encoder.
         # That is a loss for the batch sizes Laya runs (a handful of questions per call) and can

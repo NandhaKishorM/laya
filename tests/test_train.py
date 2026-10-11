@@ -457,8 +457,13 @@ class DataTests(unittest.TestCase):
                     caught.add(exc.id)
         self.assertEqual(caught, {"ValueError", "TypeError", "KeyError"})
         doc = inspect.getdoc(items_from_rows)
+        # Pin the clause that states the catch, not the docstring at large: naming a type in some
+        # other sentence would let prose that contradicts itself pass.
+        self.assertIn("caught on", doc, "items_from_rows no longer states its catch in prose")
+        clause = doc.split("caught on", 1)[1].split("--", 1)[0]
         for exc in sorted(caught):
-            self.assertIn("`%s`" % exc, doc, "%s is caught but not documented" % exc)
+            self.assertIn("`%s`" % exc, clause, "%s is caught but not named where the catch is" % exc)
+        self.assertEqual(set(re.findall(r"`([A-Z][A-Za-z]*Error)`", clause)) - caught, set())
         # The table is the pipeline's list, not `make_item`'s, and the one reason it drops has to stay
         # droppable: `target_mismatch` needs a target whose length is not the option count, and both
         # builders return one entry per option whatever the label shape, so no row can reach it.

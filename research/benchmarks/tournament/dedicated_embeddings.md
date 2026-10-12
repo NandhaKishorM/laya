@@ -9,6 +9,11 @@ adding a second model or a second decision round is not assumed to help.
 This is a research entry point. It does not change Laya's API, defaults, dependencies,
 or the earlier `benchmark.py` and `results.json`.
 
+The fixed-k20 protocol below is retained as v1. The subsequent
+[review-driven amendment](amendment_v2.md) separately specifies development k/prefix
+selection, order sensitivity and row-interleaved timing. Its measurements must not
+replace the v1 results or be described as the original test-blind protocol.
+
 ## Reproduce a comparison
 
 Use a checkout with the ordinary Laya dependencies and `pyarrow` for the parquet files.
@@ -101,11 +106,13 @@ timing passes. Label vectors are warmed outside the timed request; new query vec
 are computed inside it. Repeated query text within a pass can hit the bounded cache,
 and the resulting hit/miss counts are reported.
 
-The original #102 source URL currently returns 404. A
+The original #102 source URL was unavailable when this study started. A
 [public checkout with matching figures](https://github.com/alex-shekhter/open-system-one/blob/3543ef3b350cf930e1a779eb141117b07c09a07c/laya_shortlist.py)
 uses ModernBERT with both roles prefixed as queries, similarities centered using the
-whole query batch, and precomputed embeddings excluded from decision timing. Its
-relationship to the original source has not been confirmed. This comparison uses
+whole query batch, and precomputed embeddings excluded from decision timing.
+Dylan subsequently confirmed the source relationship in the issue discussion and
+restored [the original repository](https://github.com/zhlei07/open-system-one/tree/e2f50d0e6101dfa0f86c44d8060d2e4b120fe40f).
+This comparison uses
 independent online cosine retrieval and official splits; it is not a reproduction of
 the original 2,500-row BANKING77 number or its latency claim.
 

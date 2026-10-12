@@ -5,7 +5,7 @@ import { FOREIGN_WORDS } from "../src/foreign-words.js";
 // Same cases as tests/test_router.py (#54): from four words up, undecided Latin text leaves the default
 // only with evidence of another language. MASSIVE test utterances unless noted.
 describe("undecided Latin text with evidence of another language", () => {
-  const router = new Router();
+  const router = new Router({ default: "english" });
 
   it.each([
     "streiche alle meine geplanten termine",          // de, `alle` and `meine`
@@ -56,7 +56,7 @@ describe("undecided Latin text with evidence of another language", () => {
     "wecke mich auf",                                 // under four words
   ])("follows the default without it: %s", (text) => {
     expect(router.route(text, {}).model).toBe("english");
-    expect(new Router({ default: "multilingual" }).route(text, {}).model).toBe("multilingual");
+    expect(new Router().route(text, {}).model).toBe("multilingual");
   });
 
   it("keeps the generated words", () => {

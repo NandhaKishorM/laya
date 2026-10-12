@@ -82,6 +82,16 @@ for label, fn in (("Agent.__init__", Agent.__init__), ("load", load)):
 
 # Python and TypeScript share the 0.4.0 fallback for unidentified text.
 check_param("Router.__init__", Router.__init__, "default", "multilingual")
+# The evidence rule adds a Latin-profile field while keeping routing detection's public keys.
+from laya.lang import latin_profile  # noqa: E402
+
+for text in ("refund me", "streiche alle meine geplanten termine", "Please refund the duplicate charge"):
+    check("latin_profile/keys " + text, set(latin_profile(text)),
+          {"language", "english_hits", "diacritic_rate", "looks_non_english", "other_evidence"})
+    check("Router.route/detection keys " + text, set(Router().route(text)["detection"]),
+          {"script", "script_profile", "language", "is_english", "language_undecided",
+           "diacritic_rate", "non_latin_fraction", "mixed_segment"})
+
 # Router keeps lang_guess and explicit per-model revisions too
 check_param("Router.__init__", Router.__init__, "lang_guess", None)
 check_param("Router.__init__", Router.__init__, "revisions", None)

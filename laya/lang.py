@@ -838,6 +838,7 @@ def _analyse_text(text: str) -> Dict[str, object]:
                 "non_latin_fraction": non_latin, "mixed_segment": None}
     prof_lat = latin_profile(text)
     lang = prof_lat["language"]
+    other_evidence = prof_lat["other_evidence"]
     # The acronym bar belongs here too, not only in the segment scan. The scan runs only once a
     # state already reads English overall, so a state that is *nothing but* an acronym line --
     # or one diluted by fewer English lines than it takes to tip this verdict -- never reached it
@@ -859,6 +860,7 @@ def _analyse_text(text: str) -> Dict[str, object]:
             if not _shouted_evidence(_WORD.findall(text), lang,
                                      float(prof_lat["diacritic_rate"])):
                 lang = None
+                other_evidence = bool(prof_lat["diacritic_rate"])
         else:
             # Mixed-case text: the segment scan has always held that an acronym is not a word,
             # but the whole-state verdict never applied that rule, so the acronyms voted in it.
@@ -885,7 +887,9 @@ def _analyse_text(text: str) -> Dict[str, object]:
                 blanked = _LETTER_RUN.sub(
                     lambda m: " " if m.group().isupper() else m.group(), text)
                 if blanked != text:
-                    lang = latin_profile(blanked)["language"]
+                    blanked_profile = latin_profile(blanked)
+                    lang = blanked_profile["language"]
+                    other_evidence = bool(prof_lat["diacritic_rate"]) or blanked_profile["other_evidence"]
     # Undecided is not English. Treating it as English sent every Latin-script language we hold no
     # stopwords for to the checkpoint that cannot read it, silently. When nothing identifies the
     # language, non-English letters or a shared Swedish-Danish marker can still prefer the
@@ -895,7 +899,7 @@ def _analyse_text(text: str) -> Dict[str, object]:
     # word, still goes to the English one.
     undecided = lang is None
     english = lang == "en" or (undecided and not prof_lat["looks_non_english"]
-                               and not prof_lat["other_evidence"])
+                               and not other_evidence)
     return {"script": "latin", "script_profile": prof, "language": lang,
             "is_english": english, "language_undecided": undecided,
             "diacritic_rate": round(float(prof_lat["diacritic_rate"]), 4),

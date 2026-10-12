@@ -748,25 +748,25 @@ check("latin_lang/french du stays evidence", guess_latin_language("baisse le vol
 for text in ["streiche alle meine geplanten termine",                      # de, `alle` (it) and `meine` (de)
              "me gustaría escuchar algunos buenos chistes divertidos"]:    # es, one `í`
     check("latin_lang/undecided with evidence " + text, guess_latin_language(text), None)
-    check("route/undecided with evidence " + text, _r_lat.route(text).model, "multilingual")
+    check("route/undecided with evidence " + text, _r_en.route(text).model, "multilingual")
 check("route/undecided evidence reason names the words", "function words of other languages" in
-      _r_lat.route("streiche alle meine geplanten termine").reason, True)
+      _r_en.route("streiche alle meine geplanten termine").reason, True)
 check("route/undecided evidence reason names the letter", "a non-English letter" in
-      _r_lat.route("me gustaría escuchar algunos buenos chistes divertidos").reason, True)
+      _r_en.route("me gustaría escuchar algunos buenos chistes divertidos").reason, True)
 # One word that English uses too is not enough, and neither is one such word twice: `do` and `las`
 # (both from the English texts checked on #286), so such text follows `default`, Portuguese with it
 for text in ["how do my health benefits work", "las vegas weather today",
              "verificar qualquer email da amazon",                         # pt, `da`
              "apaga la luz de la cocina"]:                                 # es, `la` twice
     check("route/one list word follows default " + text, _r_ml.route(text).model, "multilingual")
-    check("route/one list word stock default " + text, _r_lat.route(text).model, "english")
+    check("route/one list word english override " + text, _r_en.route(text).model, "english")
 # Under four words the text is not scored, so two such words are no evidence yet
-check("route/undecided three words follow default", _r_lat.route("wecke mich auf").model, "english")
-# No evidence, no move: English with no function word stays English (the first three are from the 20,000
+check("route/undecided three words follow default", _r_en.route("wecke mich auf").model, "english")
+# With an English default, English with no function word stays English (the first three are from the 20,000
 # English texts checked on #286, the last from en-US MASSIVE) ...
 for text in ["tell me my current savings account's interest rate", "play recently added music",
              "how many days before my credit card arrives", "turn off lobby light"]:
-    check("route/english without a function word " + text, _r_lat.route(text).model, "english")
+    check("route/english without a function word " + text, _r_en.route(text).model, "english")
 # ... while languages often typed in plain ASCII now have lists, or more words in theirs (Dutch,
 # Romanian). One word English never uses is enough. MASSIVE test utterances that went to the English
 # checkpoint before:
@@ -787,10 +787,10 @@ for text in ["tolong mainkan lagu dari bruno mars",                        # id,
              "slett alarmen jeg nettopp satte",                            # nb, `jeg`
              "olly kerro minulle vitsi",                                   # fi, `minulle`
              "kateri alarmi so nastavljeni"]:                              # sl, `kateri`
-    check("route/new list evidence " + text, _r_lat.route(text).model, "multilingual")
+    check("route/new list evidence " + text, _r_en.route(text).model, "multilingual")
 # A word of those lists that English uses too still needs a second one: en-US MASSIVE, `dim` and `kung`
 for text in ["olly give me some dim light", "kung fu panda three"]:
-    check("route/english with a new list word " + text, _r_lat.route(text).model, "english")
+    check("route/english with a new list word " + text, _r_en.route(text).model, "english")
 # A word leaves _FOREIGN_WORDS with its list, or it would be evidence for no language at all
 from laya.lang import _FOREIGN_WORDS, _OTHER_WORDS  # noqa: E402
 check("latin_lang/foreign words all come from a list", sorted(_FOREIGN_WORDS - _OTHER_WORDS), [])

@@ -70,6 +70,12 @@ HOOK_KEYS = {
 }
 
 # --------------------------------------------------------------- constructors
+from laya.common import DecisionModel
+
+check_param("DecisionModel.__init__", DecisionModel.__init__, "residual_adapters", None)
+check("DecisionModel.set_residual_enabled parameters", list(sig(DecisionModel.set_residual_enabled)),
+      ["self", "enabled"])
+
 for label, fn in (("Agent.__init__", Agent.__init__), ("load", load),
                   ("Router.__init__", Router.__init__), ("ONNXAgent.__init__", ONNXAgent.__init__)):
     for param, default in HOOK_KEYS.items():

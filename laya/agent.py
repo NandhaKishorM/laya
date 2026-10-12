@@ -676,6 +676,9 @@ class Agent(HookRegistry):
         # build_model skips initialisation of every parameter; the checkpoint supplies them all.
         self.model = build_model(self.cfg, encoder_dir=enc_dir if os.path.exists(enc_dir) else None,
                                  pretrained=False)
+        if compile:
+            from ._residual import reject_unsupported_backend
+            reject_unsupported_backend(self.model, "compile=True")
 
         # Load weights and verify architectural compatibility
         weights = load_file(weights_path)
@@ -872,6 +875,12 @@ class Agent(HookRegistry):
         changing `agent.dtype`, call `deaccelerate()` then `accelerate()` to rebuild it. Returns True if
         enabled. With `strict=False` any failure (no CUDA, tilelang missing) leaves the stock path in place.
         """
+        if getattr(self.model, "residual_adapters", None) is not None:
+            message = "residual_adapters do not support the fast path; using eager PyTorch inference"
+            if strict:
+                raise ValueError(message)
+            warnings.warn(message, RuntimeWarning)
+            return False
         if self._fast is not None:
             return True
         if self.device.type != "cuda":

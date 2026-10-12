@@ -148,6 +148,8 @@ class ONNXAgent(HookRegistry):
             # checkpoint without the masks it was trained with.
             raise ValueError("option_layout=%r is not supported by the ONNX runtime; load this "
                              "checkpoint with laya.Agent" % (self.cfg.get("option_layout"),))
+        if self.cfg.get("residual_adapters") is not None:
+            raise ValueError("residual_adapters do not support ONNX; use eager PyTorch inference")
 
         if not os.path.exists(onnx_path):
             raise FileNotFoundError(

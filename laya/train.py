@@ -668,6 +668,12 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
         # A frozen encoder is a fixed feature extractor: dropout in it would only add noise.
         model.encoder.eval()
 
+    # Adapter parameters live outside encoder.*, but their computation is inside
+    # the encoder forward. Freeze the backbone without cutting their gradient path.
+    adapters = getattr(model, "residual_adapters", None)
+    train_adapters = adapters is not None and any(p.requires_grad for p in adapters.parameters())
+    detach_encoder = config.freeze_encoder and not train_adapters
+
     groups = [{"params": [p for n, p in model.named_parameters()
                           if not n.startswith("encoder.") and p.requires_grad], "lr": config.head_lr}]
     if not config.freeze_encoder:
@@ -696,7 +702,7 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
                                  draw_option_order(it, order_rng, config.shuffle_options), parallel)
                      for it in epoch_items[start:start + config.micro_batch]]
             batch = collate_items([chunk], tok.pad_token_id)
-            logits = _forward(model, batch, device, amp, config.freeze_encoder)
+            logits = _forward(model, batch, device, amp, detach_encoder)
             mask = batch["marker_mask"].to(device)
             target = batch["target"].to(device)
             if config.loss == "rlcd":

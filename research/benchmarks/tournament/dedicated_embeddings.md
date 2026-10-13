@@ -8,6 +8,7 @@ adding a second model or a second decision round is not assumed to help.
 
 This is a research entry point. It does not change Laya's API, defaults, dependencies,
 or the earlier `benchmark.py` and `results.json`.
+The [recorded study](study_results.md) includes the completed results, evidence and reproduction steps.
 
 The fixed-k20 protocol below is retained as v1. The subsequent
 [review-driven amendment](amendment_v2.md) separately specifies development k/prefix

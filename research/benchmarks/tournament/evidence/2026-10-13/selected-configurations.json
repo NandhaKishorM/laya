@@ -1,0 +1,145 @@
+{
+  "selected": {
+    "minilm": {
+      "shortlist": {
+        "variant": "minilm",
+        "k": 32,
+        "correct": 119
+      },
+      "combined": {
+        "variant": "minilm",
+        "k": 12,
+        "correct": 118
+      }
+    },
+    "nomic": {
+      "shortlist": {
+        "variant": "nomic-qd",
+        "k": 20,
+        "correct": 117
+      },
+      "combined": {
+        "variant": "nomic-qd",
+        "k": 48,
+        "correct": 119
+      }
+    }
+  },
+  "based_only_on": "BANKING77 first200 frozen dev rows",
+  "protocol_sha256": "1682f4822bc9351981dff496d959e4400e2a4ce3681f4f91b5a7174de5ffeff3",
+  "selected_test_jobs": [
+    {
+      "report": "selected-test500-minilm-k12.json",
+      "parameters": {
+        "mode": "quality",
+        "dataset": "banking77",
+        "split": "test",
+        "limit": 500,
+        "offset": 0,
+        "seed": 0,
+        "variant": "minilm",
+        "strategies": "top1,shortlist,combined",
+        "k": 12,
+        "group_size": 16,
+        "permutation_seed": null,
+        "diagnose": true,
+        "device": "cpu",
+        "threads": 4,
+        "passes": 3,
+        "arms_file": null,
+        "local_files_only": true
+      },
+      "matched_top1_report": "selected-test500-minilm-k12.json"
+    },
+    {
+      "report": "selected-test500-minilm-k32.json",
+      "parameters": {
+        "mode": "quality",
+        "dataset": "banking77",
+        "split": "test",
+        "limit": 500,
+        "offset": 0,
+        "seed": 0,
+        "variant": "minilm",
+        "strategies": "shortlist",
+        "k": 32,
+        "group_size": 16,
+        "permutation_seed": null,
+        "diagnose": true,
+        "device": "cpu",
+        "threads": 4,
+        "passes": 3,
+        "arms_file": null,
+        "local_files_only": true
+      },
+      "matched_top1_report": "selected-test500-minilm-k12.json"
+    },
+    {
+      "report": "selected-test500-nomic-qd-k20.json",
+      "parameters": {
+        "mode": "quality",
+        "dataset": "banking77",
+        "split": "test",
+        "limit": 500,
+        "offset": 0,
+        "seed": 0,
+        "variant": "nomic-qd",
+        "strategies": "top1,shortlist",
+        "k": 20,
+        "group_size": 16,
+        "permutation_seed": null,
+        "diagnose": true,
+        "device": "cpu",
+        "threads": 4,
+        "passes": 3,
+        "arms_file": null,
+        "local_files_only": true
+      },
+      "matched_top1_report": "selected-test500-nomic-qd-k20.json"
+    },
+    {
+      "report": "selected-test500-nomic-qd-k48.json",
+      "parameters": {
+        "mode": "quality",
+        "dataset": "banking77",
+        "split": "test",
+        "limit": 500,
+        "offset": 0,
+        "seed": 0,
+        "variant": "nomic-qd",
+        "strategies": "combined",
+        "k": 48,
+        "group_size": 16,
+        "permutation_seed": null,
+        "diagnose": true,
+        "device": "cpu",
+        "threads": 4,
+        "passes": 3,
+        "arms_file": null,
+        "local_files_only": true
+      },
+      "matched_top1_report": "selected-test500-nomic-qd-k20.json"
+    }
+  ],
+  "grid_sha256": {
+    "minilm/k5": "81d60ca9b31f7736e142835077d49342542c95eaa3b1f12795b0286be679a4d5",
+    "minilm/k8": "38e2caf58a82a9154441c2eb1092c6833508cfd5311a6cf41e4a17f021833eea",
+    "minilm/k12": "64a41024ef7a9035ad82f23de33b9cabb3250a37c2a2de33c1209a72744539d6",
+    "minilm/k20": "d427daac52a7d3138a788be13865ec0c1bcf2be622a9322b789e0d332bb22811",
+    "minilm/k32": "3552d1a91c72b44743e8ade64c1f072fec0ebaaed02a7ffe0cf8d813b39becd8",
+    "minilm/k48": "d5dba2e752b076979f9d9cd4c7dff09cb4fb94e2e37c82c7a4c85c4d8558b008",
+    "nomic-qd/k5": "cde04d2ca142b85ca561be87db6fa71a0f9700fe225c1f4e32ad2f8244a6319e",
+    "nomic-qd/k8": "be9b4f3a56020b1a52ebde3f72ad1d0a82ffbf3affa42819dfa9d86c67b5ee45",
+    "nomic-qd/k12": "71e7216b9afc9bcfb52f41d723daf52e6a638bee223005846c6140dd9c7360c2",
+    "nomic-qd/k20": "b2d255a4dd074fc716cd8ab7a21a42b9d226f4bf5798864733f32e02677d0c73",
+    "nomic-qd/k32": "fa3f86d7926d2eef27c67c0584c9b825cf5c1891d9f85cdf2ca1f478e4906476",
+    "nomic-qd/k48": "c642193226d83ea5b16495455430da3d2d5786c9074557e48a66a8c0b5fa6ba0",
+    "nomic-qq/k5": "625b05285d78a3d93a75eaf06780a41f86c130aa1b2ba95ed5b876db9ae8192c",
+    "nomic-qq/k8": "29fd65abbe4c3aadb468e074fd5c050138af6350273c44ba195dac2f442f7499",
+    "nomic-qq/k12": "6d85587bd7eb802f126d508e9c6b2eca824ed1f054415238f99c4fa050434ace",
+    "nomic-qq/k20": "a8953ed8e452b82f29fba124d257a93e5607e14744a0dc33aff0def06bc779f4",
+    "nomic-qq/k32": "68359ca0aa2e5fc1c7ade243fe740e8326a108e9650cb940940a2938cf3f0094",
+    "nomic-qq/k48": "17172fc8b65e7ca202d92b15f5e533f40b13412f7eb5aaf6487c1b728b30f643"
+  },
+  "saved_before_new_test_utc": "2026-10-12T15:49:46Z"
+}

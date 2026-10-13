@@ -44,7 +44,8 @@ python research/benchmarks/tournament/benchmark.py --dataset banking77 --split t
 `pyarrow` reads the parquet files; it is not a dependency of the package.
 
 For dedicated sentence embedders, embedding top-1, and shortlist followed by a tournament,
-see the [same-request comparison](dedicated_embeddings.md). It keeps these historical results intact.
+see the [same-request comparison](dedicated_embeddings.md) and its [recorded study](study_results.md).
+They keep these historical results intact.
 
 ## Recorded results
 

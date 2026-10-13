@@ -5,6 +5,7 @@ This extends the [fixed-k20 study](dedicated_embeddings.md) following
 It asks two separate questions: does Laya add value over embedding top-1, and does
 an additional tournament earn its cost over one decision on retrieved candidates?
 The answer may favor the simpler pipeline.
+See the [recorded study](study_results.md) for completed results and portable verification/selection commands.
 
 The fixed study's test outcomes were already available when these rules were set.
 All new analyses are exploratory. A frozen amendment does not turn them into an

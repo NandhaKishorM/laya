@@ -13,3 +13,6 @@ research/benchmarks/feishu_zh/results/** text eol=lf
 research/benchmarks/zh_short_commands/data/** text eol=lf
 research/benchmarks/zh_short_commands/prompts.py text eol=lf
 research/benchmarks/zh_short_commands/results/** text eol=lf
+
+# The offline suite also checks runner, audit and README files on Windows.
+research/benchmarks/zh_short_commands/** text eol=lf

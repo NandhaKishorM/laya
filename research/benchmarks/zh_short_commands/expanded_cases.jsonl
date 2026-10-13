@@ -1,0 +1,96 @@
+{"id":"ext-001","text":"提高移动速度","gold":"faster","family":"direct"}
+{"id":"ext-002","text":"把速度调高","gold":"faster","family":"direct"}
+{"id":"ext-003","text":"走得更快一些","gold":"faster","family":"direct"}
+{"id":"ext-004","text":"加快行进速度","gold":"faster","family":"direct"}
+{"id":"ext-005","text":"速度太低了，请加快","gold":"faster","family":"corrective"}
+{"id":"ext-006","text":"走得太慢，请提高速度","gold":"faster","family":"corrective"}
+{"id":"ext-007","text":"速度不够快，再加快一点","gold":"faster","family":"corrective"}
+{"id":"ext-008","text":"现在太慢，需要更快","gold":"faster","family":"corrective"}
+{"id":"ext-009","text":"不要减速，请加速","gold":"faster","family":"negation"}
+{"id":"ext-010","text":"别再放慢了，走快一些","gold":"faster","family":"negation"}
+{"id":"ext-011","text":"不是要慢下来，是要加快","gold":"faster","family":"negation"}
+{"id":"ext-012","text":"不要走这么慢，提高速度","gold":"faster","family":"negation"}
+{"id":"ext-013","text":"机器人，请 speed up","gold":"faster","family":"mixed"}
+{"id":"ext-014","text":"把速度调到更快，faster please","gold":"faster","family":"mixed"}
+{"id":"ext-015","text":"请加速，go faster","gold":"faster","family":"mixed"}
+{"id":"ext-016","text":"继续清扫，但 move faster","gold":"faster","family":"mixed"}
+{"id":"ext-017","text":"降低移动速度","gold":"slower","family":"direct"}
+{"id":"ext-018","text":"把速度调低","gold":"slower","family":"direct"}
+{"id":"ext-019","text":"走得更慢一些","gold":"slower","family":"direct"}
+{"id":"ext-020","text":"放慢行进速度","gold":"slower","family":"direct"}
+{"id":"ext-021","text":"速度太高了，请放慢","gold":"slower","family":"corrective"}
+{"id":"ext-022","text":"走得太快，请降低速度","gold":"slower","family":"corrective"}
+{"id":"ext-023","text":"现在太快，需要更慢","gold":"slower","family":"corrective"}
+{"id":"ext-024","text":"移动得过快，减速一点","gold":"slower","family":"corrective"}
+{"id":"ext-025","text":"不要加速，请减速","gold":"slower","family":"negation"}
+{"id":"ext-026","text":"别再加快了，走慢一些","gold":"slower","family":"negation"}
+{"id":"ext-027","text":"不是要快起来，是要放慢","gold":"slower","family":"negation"}
+{"id":"ext-028","text":"不要走这么快，降低速度","gold":"slower","family":"negation"}
+{"id":"ext-029","text":"机器人，请 slow down","gold":"slower","family":"mixed"}
+{"id":"ext-030","text":"把速度调到更慢，slower please","gold":"slower","family":"mixed"}
+{"id":"ext-031","text":"请减速，go slower","gold":"slower","family":"mixed"}
+{"id":"ext-032","text":"继续清扫，但 move slower","gold":"slower","family":"mixed"}
+{"id":"ext-033","text":"停止移动","gold":"stop","family":"direct"}
+{"id":"ext-034","text":"立即停止行进","gold":"stop","family":"direct"}
+{"id":"ext-035","text":"原地停住","gold":"stop","family":"direct"}
+{"id":"ext-036","text":"暂停运动","gold":"stop","family":"direct"}
+{"id":"ext-037","text":"请停止移动，谢谢","gold":"stop","family":"polite"}
+{"id":"ext-038","text":"麻烦先停在原地","gold":"stop","family":"polite"}
+{"id":"ext-039","text":"请你现在停住","gold":"stop","family":"polite"}
+{"id":"ext-040","text":"可以先停止行进吗","gold":"stop","family":"polite"}
+{"id":"ext-041","text":"不要继续移动，立即停住","gold":"stop","family":"negation"}
+{"id":"ext-042","text":"别再往前走，停止运动","gold":"stop","family":"negation"}
+{"id":"ext-043","text":"不是减速，是完全停住","gold":"stop","family":"negation"}
+{"id":"ext-044","text":"不要转弯，原地停止","gold":"stop","family":"negation"}
+{"id":"ext-045","text":"机器人，stop moving","gold":"stop","family":"mixed"}
+{"id":"ext-046","text":"请停止，stop now","gold":"stop","family":"mixed"}
+{"id":"ext-047","text":"暂停移动，please stop","gold":"stop","family":"mixed"}
+{"id":"ext-048","text":"先 halt，停在原地","gold":"stop","family":"mixed"}
+{"id":"ext-049","text":"向左转弯","gold":"left","family":"direct"}
+{"id":"ext-050","text":"往左侧转向","gold":"left","family":"direct"}
+{"id":"ext-051","text":"朝左边拐","gold":"left","family":"direct"}
+{"id":"ext-052","text":"把方向转到左边","gold":"left","family":"direct"}
+{"id":"ext-053","text":"请向左转弯，谢谢","gold":"left","family":"polite"}
+{"id":"ext-054","text":"麻烦朝左边拐一下","gold":"left","family":"polite"}
+{"id":"ext-055","text":"请你往左侧转向","gold":"left","family":"polite"}
+{"id":"ext-056","text":"可以向左转吗","gold":"left","family":"polite"}
+{"id":"ext-057","text":"不要右转，请左转","gold":"left","family":"negation"}
+{"id":"ext-058","text":"别往右边拐，向左转","gold":"left","family":"negation"}
+{"id":"ext-059","text":"不是右边，是左边，往左转","gold":"left","family":"negation"}
+{"id":"ext-060","text":"不要直走了，朝左转弯","gold":"left","family":"negation"}
+{"id":"ext-061","text":"机器人，turn left","gold":"left","family":"mixed"}
+{"id":"ext-062","text":"请左转，left please","gold":"left","family":"mixed"}
+{"id":"ext-063","text":"向左拐，go left","gold":"left","family":"mixed"}
+{"id":"ext-064","text":"下一步向左，turn left now","gold":"left","family":"mixed"}
+{"id":"ext-065","text":"向右转弯","gold":"right","family":"direct"}
+{"id":"ext-066","text":"往右侧转向","gold":"right","family":"direct"}
+{"id":"ext-067","text":"朝右边拐","gold":"right","family":"direct"}
+{"id":"ext-068","text":"把方向转到右边","gold":"right","family":"direct"}
+{"id":"ext-069","text":"请向右转弯，谢谢","gold":"right","family":"polite"}
+{"id":"ext-070","text":"麻烦朝右边拐一下","gold":"right","family":"polite"}
+{"id":"ext-071","text":"请你往右侧转向","gold":"right","family":"polite"}
+{"id":"ext-072","text":"可以向右转吗","gold":"right","family":"polite"}
+{"id":"ext-073","text":"不要左转，请右转","gold":"right","family":"negation"}
+{"id":"ext-074","text":"别往左边拐，向右转","gold":"right","family":"negation"}
+{"id":"ext-075","text":"不是左边，是右边，往右转","gold":"right","family":"negation"}
+{"id":"ext-076","text":"不要直走了，朝右转弯","gold":"right","family":"negation"}
+{"id":"ext-077","text":"机器人，turn right","gold":"right","family":"mixed"}
+{"id":"ext-078","text":"请右转，right please","gold":"right","family":"mixed"}
+{"id":"ext-079","text":"向右拐，go right","gold":"right","family":"mixed"}
+{"id":"ext-080","text":"下一步向右，turn right now","gold":"right","family":"mixed"}
+{"id":"ext-081","text":"今天的天空很蓝","gold":"none","family":"direct"}
+{"id":"ext-082","text":"这块地板很干净","gold":"none","family":"direct"}
+{"id":"ext-083","text":"我的手机快没电了","gold":"none","family":"direct"}
+{"id":"ext-084","text":"右边的窗户很明亮","gold":"none","family":"direct"}
+{"id":"ext-085","text":"请告诉我今天星期几","gold":"none","family":"polite"}
+{"id":"ext-086","text":"麻烦介绍一下你的型号","gold":"none","family":"polite"}
+{"id":"ext-087","text":"可以告诉我剩余电量吗","gold":"none","family":"polite"}
+{"id":"ext-088","text":"请问现在几点了","gold":"none","family":"polite"}
+{"id":"ext-089","text":"这不是移动指令，我只是问时间","gold":"none","family":"negation"}
+{"id":"ext-090","text":"我没让你加速，只是在读说明书","gold":"none","family":"negation"}
+{"id":"ext-091","text":"不要把这句话当作停止指令","gold":"none","family":"negation"}
+{"id":"ext-092","text":"我不是叫你右转，只是在描述房间","gold":"none","family":"negation"}
+{"id":"ext-093","text":"今天 weather 很好","gold":"none","family":"mixed"}
+{"id":"ext-094","text":"你的 battery 还剩多少","gold":"none","family":"mixed"}
+{"id":"ext-095","text":"这本书的 title 是 Left and Right","gold":"none","family":"mixed"}
+{"id":"ext-096","text":"屏幕显示 stop 这个单词","gold":"none","family":"mixed"}

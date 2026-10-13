@@ -1,0 +1,430 @@
+[
+  {
+    "text": "太快了",
+    "config": "choice_criteria",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "faster",
+        "probabilities": {
+          "faster": 0.7952,
+          "slower": 0.0753,
+          "stop": 0.0071,
+          "left": 0.0058,
+          "right": 0.0054,
+          "none": 0.1112
+        },
+        "confidence": 0.6014,
+        "answer_confidence": 0.7952,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "太快了",
+    "config": "noul_plain",
+    "answers": {
+      "wants_faster": {
+        "type": "noul",
+        "noul": 0.7656,
+        "confidence": 0.7656,
+        "answer_confidence": 0.7656,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_slower": {
+        "type": "noul",
+        "noul": 0.0143,
+        "confidence": 0.9857,
+        "answer_confidence": 0.9857,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_stop": {
+        "type": "noul",
+        "noul": 0.0103,
+        "confidence": 0.9897,
+        "answer_confidence": 0.9897,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "is_command": {
+        "type": "noul",
+        "noul": 0.6767,
+        "confidence": 0.6767,
+        "answer_confidence": 0.6767,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "太快了",
+    "config": "noul_criteria",
+    "answers": {
+      "wants_faster": {
+        "type": "noul",
+        "noul": 0.6668,
+        "confidence": 0.6668,
+        "answer_confidence": 0.6668,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_slower": {
+        "type": "noul",
+        "noul": 0.8349,
+        "confidence": 0.8349,
+        "answer_confidence": 0.8349,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_stop": {
+        "type": "noul",
+        "noul": 0.9638,
+        "confidence": 0.9638,
+        "answer_confidence": 0.9638,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "is_command": {
+        "type": "noul",
+        "noul": 0.9164,
+        "confidence": 0.9164,
+        "answer_confidence": 0.9164,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "太慢了",
+    "config": "choice_criteria",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "slower",
+        "probabilities": {
+          "faster": 0.0017,
+          "slower": 0.9901,
+          "stop": 0.0036,
+          "left": 0.0005,
+          "right": 0.0004,
+          "none": 0.0037
+        },
+        "confidence": 0.9616,
+        "answer_confidence": 0.9901,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "太慢了",
+    "config": "noul_plain",
+    "answers": {
+      "wants_faster": {
+        "type": "noul",
+        "noul": 0.0394,
+        "confidence": 0.9606,
+        "answer_confidence": 0.9606,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_slower": {
+        "type": "noul",
+        "noul": 0.952,
+        "confidence": 0.952,
+        "answer_confidence": 0.952,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_stop": {
+        "type": "noul",
+        "noul": 0.2496,
+        "confidence": 0.7504,
+        "answer_confidence": 0.7504,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "is_command": {
+        "type": "noul",
+        "noul": 0.8146,
+        "confidence": 0.8146,
+        "answer_confidence": 0.8146,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "太慢了",
+    "config": "noul_criteria",
+    "answers": {
+      "wants_faster": {
+        "type": "noul",
+        "noul": 0.5578,
+        "confidence": 0.5578,
+        "answer_confidence": 0.5578,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_slower": {
+        "type": "noul",
+        "noul": 0.8832,
+        "confidence": 0.8832,
+        "answer_confidence": 0.8832,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_stop": {
+        "type": "noul",
+        "noul": 0.9641,
+        "confidence": 0.9641,
+        "answer_confidence": 0.9641,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "is_command": {
+        "type": "noul",
+        "noul": 0.9224,
+        "confidence": 0.9224,
+        "answer_confidence": 0.9224,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "不要右转，请左转",
+    "config": "choice_criteria",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "right",
+        "probabilities": {
+          "faster": 0.004,
+          "slower": 0.0123,
+          "stop": 0.2742,
+          "left": 0.2362,
+          "right": 0.359,
+          "none": 0.1143
+        },
+        "confidence": 0.2256,
+        "answer_confidence": 0.359,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "不要右转，请左转",
+    "config": "noul_plain",
+    "answers": {
+      "wants_faster": {
+        "type": "noul",
+        "noul": 0.6341,
+        "confidence": 0.6341,
+        "answer_confidence": 0.6341,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_slower": {
+        "type": "noul",
+        "noul": 0.9512,
+        "confidence": 0.9512,
+        "answer_confidence": 0.9512,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_stop": {
+        "type": "noul",
+        "noul": 0.784,
+        "confidence": 0.784,
+        "answer_confidence": 0.784,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "is_command": {
+        "type": "noul",
+        "noul": 0.7467,
+        "confidence": 0.7467,
+        "answer_confidence": 0.7467,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "不要右转，请左转",
+    "config": "noul_criteria",
+    "answers": {
+      "wants_faster": {
+        "type": "noul",
+        "noul": 0.9519,
+        "confidence": 0.9519,
+        "answer_confidence": 0.9519,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_slower": {
+        "type": "noul",
+        "noul": 0.987,
+        "confidence": 0.987,
+        "answer_confidence": 0.987,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_stop": {
+        "type": "noul",
+        "noul": 0.9922,
+        "confidence": 0.9922,
+        "answer_confidence": 0.9922,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "is_command": {
+        "type": "noul",
+        "noul": 0.9805,
+        "confidence": 0.9805,
+        "answer_confidence": 0.9805,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "不要左转，请右转",
+    "config": "choice_criteria",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "right",
+        "probabilities": {
+          "faster": 0.0052,
+          "slower": 0.0185,
+          "stop": 0.2607,
+          "left": 0.1555,
+          "right": 0.3851,
+          "none": 0.175
+        },
+        "confidence": 0.2111,
+        "answer_confidence": 0.3851,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "不要左转，请右转",
+    "config": "noul_plain",
+    "answers": {
+      "wants_faster": {
+        "type": "noul",
+        "noul": 0.7808,
+        "confidence": 0.7808,
+        "answer_confidence": 0.7808,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_slower": {
+        "type": "noul",
+        "noul": 0.9177,
+        "confidence": 0.9177,
+        "answer_confidence": 0.9177,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_stop": {
+        "type": "noul",
+        "noul": 0.6591,
+        "confidence": 0.6591,
+        "answer_confidence": 0.6591,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "is_command": {
+        "type": "noul",
+        "noul": 0.7861,
+        "confidence": 0.7861,
+        "answer_confidence": 0.7861,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  },
+  {
+    "text": "不要左转，请右转",
+    "config": "noul_criteria",
+    "answers": {
+      "wants_faster": {
+        "type": "noul",
+        "noul": 0.9586,
+        "confidence": 0.9586,
+        "answer_confidence": 0.9586,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_slower": {
+        "type": "noul",
+        "noul": 0.9924,
+        "confidence": 0.9924,
+        "answer_confidence": 0.9924,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "wants_stop": {
+        "type": "noul",
+        "noul": 0.9928,
+        "confidence": 0.9928,
+        "answer_confidence": 0.9928,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "is_command": {
+        "type": "noul",
+        "noul": 0.9824,
+        "confidence": 0.9824,
+        "answer_confidence": 0.9824,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    }
+  }
+]

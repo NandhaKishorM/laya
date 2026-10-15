@@ -232,8 +232,14 @@ def clean_email_body(body: str, max_chars: int = 3000) -> str:
     """Remove quoted email history, signatures and disclaimers to keep input focused.
 
     `max_chars` is the length the result is cut to, 3000 characters unless raised -- see
-    `email_state`, which takes the same budget and passes it through.
+    `email_state`, which takes the same budget and passes it through. It must be a positive
+    integer, and it is refused before the body is read, because every other reading of a bad
+    budget is silent: `0` returns an empty body, so the model decides from the subject alone;
+    a negative value slices from the end, so it cuts the closing paragraphs -- which is exactly
+    where `email_state` warns a request tends to arrive; `True` is a budget of one character.
     """
+    if isinstance(max_chars, bool) or not isinstance(max_chars, int) or max_chars < 1:
+        raise ValueError("max_chars must be a positive integer, got %r" % (max_chars,))
     text = (body or "").replace("\r\n", "\n").replace("\r", "\n").replace("\\n", "\n")
     # Bound regex work before the expensive patterns below: _DISCLAIMER uses
     # [^.]{0,60/80/100} alternations whose cost grows with input length, and only
@@ -276,8 +282,11 @@ def email_state(subject: str, body: str, sender: Optional[str] = None, clean: bo
     `max_chars` is the budget `clean_email_body` cuts the body to, and it is worth raising for a
     long message: at the default the body stops after 3000 characters, so a request that arrives in
     the last paragraphs never reaches the model -- including through `predict_long`, which scans a
-    state in windows precisely so it can read past one window's worth. Ignored when `clean=False`,
-    which passes the body through whole.
+    state in windows precisely so it can read past one window's worth. It must be a positive integer:
+    a budget that came out of arithmetic rather than a literal is refused before the body is read,
+    because the alternatives are silent -- `0` hands the model a subject and an empty body, and a
+    negative value cuts from the end, which is where the late request lives. Ignored when
+    `clean=False`, which passes the body through whole and so never reads the budget or refuses it.
 
     Any other keyword becomes a field of the state, so it is read by the model; a typo here is an
     input mutation, not an error. The exception is a keyword whose value is exactly ``None``: it is

@@ -774,6 +774,110 @@ check(
     clean_email_body(LONG_BODY),
 )
 
+
+# --------------------------------- guard/ the budget itself is validated (a `clean_email_body` guard)
+# `max_chars` reached three arithmetic uses unvalidated: `len(text) > max_chars * 4`, the slice that
+# follows it, and the final `text[:max_chars]`. Measured before the guard, on a 152-character body:
+#
+#   max_chars=0      -> '' returned, no error: `email_state` sends the model a subject and no body
+#   max_chars=-1     -> 135 characters: a negative budget cuts from the END, so it removes the
+#                       closing paragraphs -- the exact place `email_state`'s own docstring says a
+#                       request tends to arrive. A budget that came out of arithmetic (`limit - used`)
+#                       reads as "no limit" while destroying the tail.
+#   max_chars=True   -> 'H': a bool is a budget of one character
+#   max_chars=1.5    -> TypeError: slice indices must be integers or None...   (names nothing here)
+#   max_chars='3000' -> TypeError: '>' not supported between instances of 'int' and 'str'
+#   max_chars=None   -> TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'
+#
+# So four of the six bad values failed inside a stdlib expression with no mention of `max_chars`,
+# `email` or the caller's own argument, and two were silent. The guard follows the shape every other
+# integer control in the package uses (`laya/shortlist.py`'s max_length/batch_size, `laya/train.py`'s
+# TrainConfig), including the explicit `bool` rejection, and it runs before the body is read.
+def raises(fn, *args, **kwargs):
+    """(type, message) for what `fn` raises, or (None, returned) when it does not."""
+    try:
+        return None, fn(*args, **kwargs)
+    except BaseException as exc:  # noqa: BLE001 - the point is which type escaped
+        return type(exc), str(exc)
+
+
+BODY_152 = ("Hi support,\n"
+            "I was charged twice for invoice 4412 and the refund has not arrived.\n"
+            "Please refund the duplicate charge to the card on file.\n"
+            "Thanks, Aashish")
+check("guard/the probe body is the length the report quotes", len(BODY_152), 152)
+
+for bad in (0, -1, -len(BODY_152), True, False, 1.5, 250.0, "3000", None, [], 3000.0 / 3):
+    kind, message = raises(clean_email_body, BODY_152, bad)
+    check("guard/%r is a ValueError, not a leak from the slice" % (bad,), kind, ValueError)
+    check_true(
+        "guard/%r names the parameter and echoes the value" % (bad,),
+        message.startswith("max_chars must be a positive integer, got ")
+        and repr(bad) in message,
+        "got %r" % message,
+    )
+
+# The convention is the point: an error that reads like the package's other refusals is one a user
+# has already learned to act on. This is the same template `shortlist.py` and `train.py` print.
+kind, message = raises(clean_email_body, BODY_152, 0)
+check(
+    "guard/the zero case reads exactly like the sibling guards",
+    message,
+    "max_chars must be a positive integer, got 0",
+)
+
+# What the guard must NOT touch: the accepted spellings and the documented exception.
+check("guard/1 is a legal budget of one character", clean_email_body(BODY_152, 1), "H")
+check_true(
+    "guard/a large budget keeps the whole cleaned body",
+    len(clean_email_body(BODY_152, 10 ** 9)) == len(clean_email_body(BODY_152, len(BODY_152))),
+    "raising the budget past the body must not truncate it",
+)
+check(
+    "guard/the default is untouched by the guard",
+    clean_email_body(BODY_152),
+    clean_email_body(BODY_152, 3000),
+)
+# `email_state` is the name the docs put in front of users, and it forwards the keyword, so the same
+# value has to fail there rather than arrive as a mutated state.
+for bad in (0, -1, True, "3000"):
+    kind, _ = raises(email_state, "Billing", BODY_152, max_chars=bad)
+    check("guard/email_state forwards the refusal for %r" % (bad,), kind, ValueError)
+# ... and `clean=False` never reads the budget, so it must not refuse one either. The docstring says
+# so in as many words; this is what keeps that sentence honest.
+skipped, passed_through = raises(email_state, "Billing", BODY_152, clean=False, max_chars=0)
+check("guard/clean=False does not refuse a budget it will not read", skipped, None)
+check(
+    "guard/clean=False passes the body whole past the guard",
+    passed_through["body"] if skipped is None else "raised %s" % skipped,
+    BODY_152,
+)
+
+# Pin the prose to the code, the way the `**extra` block above does: both docstrings promise a
+# positive integer, and only one of them can enforce it.
+for fn in (clean_email_body, email_state):
+    doc = " ".join((inspect.getdoc(fn) or "").split())
+    check_true(
+        "guard doc/%s promises a positive integer" % fn.__name__,
+        "positive integer" in doc,
+        "the docstring never says what the budget has to be",
+    )
+    check_true(
+        "guard doc/%s promises it before reading the body" % fn.__name__,
+        "before the body is read" in doc,
+        "the guard is the first statement; the docstring should say the refusal precedes the reading",
+    )
+check_true(
+    "guard doc/email_state names the one arm that skips the guard",
+    "never reads the budget or refuses it" in " ".join((inspect.getdoc(email_state) or "").split()),
+    "clean=False skips clean_email_body, so it skips the refusal too -- the doc must not hide that",
+)
+check_true(
+    "guard/the guard is the first statement of clean_email_body",
+    "isinstance(max_chars, bool)" in inspect.getsource(clean_email_body).split("text =")[0],
+    "a budget check that runs after the regex work would still bound nothing",
+)
+
 # `email_state`'s `**extra` paragraph said "any other keyword becomes a field of the state", and
 # the body underneath it reads `if v is not None` -- a keyword carrying None never becomes a field.
 # The paragraph now names the filter, and these checks tie the two halves together: the live calls

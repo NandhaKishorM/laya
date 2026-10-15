@@ -1287,10 +1287,21 @@ class DeviceSpellingTests(unittest.TestCase):
             self.assertIn(repr(built), message)
 
     def test_a_non_string_reaches_torch_as_it_was_given(self):
-        # An ordinal or a device object is not this function's to normalise, and torch reads a bare
-        # `0` as an indexed device (`mps:0` on this build) rather than refusing it.
+        # An ordinal or a device object is not this function's to normalise. A bare `0` names torch's
+        # *current* accelerator rather than a parsed device type, so the question "what does torch
+        # build here" is asked first and the row drops out on a machine with no accelerator to build
+        # (`mps:0` on this one, `RuntimeError: Cannot access accelerator device when none is
+        # available` on a CPU-only runner). The device objects are the rows that pin pass-through.
+        pinned = 0
         for raw in (torch.device("cpu"), torch.device("cuda:3"), 0):
-            self.assertEqual(resolve_device(raw), torch.device(raw), repr(raw))
+            try:
+                want = torch.device(raw)
+            except Exception:
+                continue
+            pinned += 1
+            self.assertEqual(resolve_device(raw), want, repr(raw))
+        if not pinned:
+            self.skipTest("torch builds none of these device values on this machine")
 
     def test_finetune_checks_the_device_before_it_opens_anything(self):
         # The resolver runs at the top of `finetune`, so a mistyped flag costs neither a checkpoint

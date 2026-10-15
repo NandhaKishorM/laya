@@ -2276,6 +2276,128 @@ except Exception as _exc:  # noqa: BLE001
                 (type(_exc).__name__, _exc))
 
 
+# --------------------------------------------------------------------- constructor device argument
+# `LAYA_DEVICE` has been stripped, case-normalised and parsed at the point the process reads it
+# since `laya.mcp.device.env_device` grew that check. `Router(device=...)` had none of it, and with
+# it the `--device` flag of `laya` (both batch and single-shot paths build the router through
+# `make_router`) and of `laya-evals run`: the same spelling worked through the environment and
+# failed through the argument. Worse than the failure was its shape -- a `RuntimeError` out of
+# `torch.device`, raised inside `laya/agent.py::Agent.__init__` after the checkpoint directory had
+# already been resolved, verified and opened, so a Hub model pays for the download first. In
+# `laya-evals` a `RuntimeError` is not the `ValueError` its own handler around the Router build
+# converts into the documented usage exit 2, so `--device gpu` exits 1 -- the code that means a
+# threshold failed. `check_device` closes the gap on the construction line.
+import torch  # noqa: E402  (laya.common already imported it; here it is the parser under test)
+
+
+def _refused(value):
+    """The ValueError message `Router(device=value)` raises, None if it builds, text if it leaks."""
+    try:
+        Router(device=value, preload=False)
+    except ValueError as exc:
+        return str(exc)
+    except BaseException as exc:  # a wrong exception type is a failed arm, not an aborted run
+        return "wrong exception %s: %s" % (type(exc).__name__, exc)
+    return None
+
+
+def _refusal_says(name, cond, detail):
+    """`check`, but printing the refusal text when the condition fails."""
+    if cond:
+        PASS.append(name)
+    else:
+        FAIL.append("%s: %s" % (name, detail))
+
+
+def _named(raw):
+    """The string the Router hands torch for a raw argument: stripped, device type lower-cased."""
+    kind, sep, index = raw.strip().partition(":")
+    return kind.lower() + sep + index
+
+
+def _builds_verbatim(value):
+    """Whether torch builds the device `value` names, rather than merely accepting a string."""
+    try:
+        return str(torch.device(value)) == value
+    except Exception:
+        return False
+
+
+for _blank in ("", "   "):
+    check("device %r/is the unset value, like LAYA_DEVICE=" % _blank,
+          Router(device=_blank, preload=False).device, None)
+check("device None/stays None", Router(device=None, preload=False).device, None)
+
+# "auto" is the Agent's own spelling, and the CLI default of the finetune entry point; refusing it
+# here would turn a working request into the very error this section removes.
+for _auto in ("auto", "AUTO", " auto "):
+    check("device %r/left for the Agent to resolve" % _auto, _refused(_auto), None)
+    check("device %r/reported back as written" % _auto, Router(device=_auto, preload=False).device, _auto)
+
+for _raw, _want in (("", None), ("cpu", "cpu"), ("CUDA", "cuda"), ("CUDA:0", "cuda:0"),
+                    ("  Cuda:1 ", "cuda:1"), ("MPS", "mps"), ("meta", "meta"),
+                    ("privateuseone:1", "privateuseone:1")):
+    check("device %r/normalised to %r" % (_raw, _want), Router(device=_raw, preload=False).device, _want)
+
+# The guarantee normalisation buys, stated as a biconditional so it stays true on a torch that
+# stops truncating: accepted exactly when what torch builds is what the string says.
+for _raw in ("cpu", "CUDA:0", "cuda:7", "cuda:127", "mps", "meta", "privateuseone:1",
+             "cuda:128", "cuda:256", "cuda:258", "cuda:300", "cuda:511", "mps:70000",
+             "gpu", "cuda:", "cuda: 0"):
+    _message = _refused(_raw)
+    if _message is None:
+        check("device %r/accepted, and torch builds exactly it" % _raw,
+              Router(device=_raw, preload=False).device == _named(_raw)
+              and _builds_verbatim(_named(_raw)), True)
+    else:
+        _refusal_says("device %r/refused, because torch would not build it verbatim" % _raw,
+                      not _builds_verbatim(_named(_raw)), _message)
+
+# Which spellings this torch rewrites is its business; the message shape is the Router's. Derived
+# at runtime so a torch that truncates nothing leaves no vacuous pass.
+_rewritten = [v for v in ("cuda:128", "cuda:256", "cuda:258", "cuda:300", "cuda:511", "mps:70000")
+              if not _builds_verbatim(v) and _refused(v) is not None]
+if not _rewritten:
+    print("   NOTE no torch-rewritten index on this version, so the message arms below do not run")
+for _raw in _rewritten:
+    _message = _refused(_raw)
+    _refusal_says("device %r/refusal names the argument" % _raw, "device=" in _message, _message)
+    _refusal_says("device %r/refusal quotes torch's answer (%s)" % (_raw, torch.device(_raw)),
+                  str(torch.device(_raw)) in _message, _message)
+    _refusal_says("device %r/refusal is its own sentence, not the unparseable one" % _raw,
+                  "is not a torch device" not in _message
+                  and "is not the device torch asks for" in _message, _message)
+for _raw in ("gpu", "cuda:", "cuda: 0"):
+    _refusal_says("device %r/keeps the unparseable wording" % _raw,
+                  "is not a torch device" in _refused(_raw), _refused(_raw))
+
+# Every refusal has to be a ValueError: that is the type `laya-evals` already turns into its usage
+# exit code, and the reason this check sits on the construction line instead of in the Agent.
+for _raw in tuple(v for v in ("gpu", "cuda:", "cuda: 0", "cuda:xyz")) + tuple(_rewritten):
+    check("device %r/refuses as a ValueError, not a torch RuntimeError" % _raw,
+          _refused(_raw) is not None and not _refused(_raw).startswith("wrong exception"), True)
+
+# The point of checking on the construction line: a device the caller cannot have never reaches
+# the code that opens a checkpoint. `preload` is where the download starts, so it is the flag.
+_preloaded = []
+_old_preload = Router.preload
+Router.preload = lambda self: _preloaded.append(1)
+try:
+    for _raw in ("gpu",) + tuple(_rewritten):
+        try:
+            Router(device=_raw, preload=True)
+            FAIL.append("device preload/%s: should have raised ValueError" % _raw)
+        except ValueError:
+            pass
+finally:
+    Router.preload = _old_preload
+check("device preload/not reached for a refused device", _preloaded, [])
+
+# A caller who already built a torch.device is not a string, and is not this function's to rewrite.
+_obj = torch.device("cuda:3")
+check("device object/passed through untouched", Router(device=_obj, preload=False).device is _obj, True)
+
+
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

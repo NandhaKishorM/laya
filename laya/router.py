@@ -415,6 +415,72 @@ def check_agent_kwargs(agent_kwargs: Dict[str, Any]) -> None:
             % (", ".join(repr(n) for n in unknown), sorted(accepted - _ROUTER_OWNED_AGENT_ARGS)))
 
 
+def check_device(device: Any) -> Any:
+    """Return the device string torch will be asked for, or raise ``ValueError`` naming ``device``.
+
+    Three steps, in this order, because each one only makes sense after the previous: strip,
+    lower-case the device *type* (torch's parser is case-sensitive, so it reads ``CUDA:0`` as
+    nothing at all while ``LAYA_DEVICE=CUDA:0`` has worked since the environment gained its own
+    normalisation), then parse the result with ``torch.device`` and refuse it unless the device
+    torch builds is the device the string names.
+
+    The last step is the one a parse check alone misses. torch reads back an index it cannot keep
+    as a different one -- on 2.6.0 the index survives only in its low 8 bits, so ``cuda:258``
+    parses happily and asks for GPU 2, ``cuda:128`` asks for ``cuda:-128``, and both then sail
+    through the Agent's own out-of-range ordinal check, which is handed the wrapped number rather
+    than the one the caller wrote. Every ordinary spelling round-trips: measured over the device
+    types torch names, with and without an index, ``str(torch.device(v)) == v``.
+
+    `None` and a blank string both come back as ``None``, and ``auto`` (any case or padding) comes
+    back as written: all three mean "decide for yourself", which is `Agent.__init__`'s rule and not
+    this function's. Blank is unset here for the same reason `env_device` reads ``LAYA_DEVICE=`` as
+    unset -- a CI line that expands an empty variable into `--device "$DEV"` is asking for the
+    default, not for the ``RuntimeError: Device string must not be empty`` that string reaches
+    torch with today. A value that is not a string -- a ``torch.device`` a caller built themselves
+    -- is returned as given.
+
+    This is the argument-side twin of ``laya.mcp.device.env_device``, which applies the same three
+    steps to ``LAYA_DEVICE`` at the point the process reads it; the message differs because this
+    one names the argument a caller typed rather than a variable an operator exported. Without it
+    the same spelling works in one place and crashes in the other, and the crash is a
+    ``RuntimeError`` from ``torch.device`` raised inside `Agent.__init__` -- after the checkpoint
+    has been resolved, verified and downloaded. `laya-evals` converts a ``ValueError`` from the
+    Router build into its documented usage exit 2 and catches nothing else, so an unhandled
+    ``RuntimeError`` leaves that tool with exit 1, the code its own header reserves for a threshold
+    or baseline that failed: a mistyped flag reads as a regressed model.
+
+    torch is imported here, not at module scope, and only when there is a string to check, so
+    `Router()` stays cheap and a torch that cannot be imported leaves the value alone -- nothing
+    downstream could have used it.
+    """
+    if not isinstance(device, str):
+        return device
+    value = device.strip()
+    if not value:
+        return None
+    if value.lower() == "auto":
+        return device
+    kind, sep, index = value.partition(":")
+    normalised = "%s%s%s" % (kind.lower(), sep, index)
+    try:
+        import torch
+    except Exception:  # pragma: no cover - torch is a hard dependency of a checkpoint load
+        return normalised
+    try:
+        parsed = torch.device(normalised)
+    except Exception as exc:
+        raise ValueError(
+            "device=%r is not a torch device: %s -- pass a device such as 'cpu', 'cuda', "
+            "'cuda:0' or 'mps'" % (normalised, exc)
+        ) from exc
+    if str(parsed) != normalised:
+        raise ValueError(
+            "device=%r is not the device torch asks for: torch reads it as %r -- pass a device "
+            "such as 'cpu', 'cuda', 'cuda:0' or 'mps'" % (normalised, str(parsed))
+        )
+    return normalised
+
+
 def _digests_from_env(models: Dict[str, Any], resolve=normalise_name) -> Dict[str, Optional[Dict[str, str]]]:
     """Turn `LAYA_SHA256_DIGESTS` into per-checkpoint digest maps when it names models.
 
@@ -725,7 +791,10 @@ class Router(HookRegistry):
         self.descriptions: Dict[str, str] = {}
         for k, v in (models or {}).items():
             self._add(k, v)
-        self.device = device
+        # Checked on this line rather than at the first load, and normalised the way `LAYA_DEVICE`
+        # is: `CUDA:0` names a device torch understands, and an index it cannot keep is not allowed
+        # to quietly become a different one. See `check_device`.
+        self.device = check_device(device)
         self.token = token or os.environ.get("HF_TOKEN")
         # Optional Hub revision (commit SHA/branch/tag) applied to every checkpoint load.
         # `revisions` overrides it per normalized model name, for standalone repos whose

@@ -677,9 +677,10 @@ class EndToEndTests(unittest.TestCase):
     def test_train_config_learning_rate_validation(self):
         # `torch.optim.AdamW` checks a rate for NaN and sign but accepts `inf`, and one step at an
         # infinite rate leaves the parameter non-finite: the run trains, saves and reports success on a
-        # checkpoint of no model. A bool is not a rate either -- to the optimizer it is 1.0.
+        # checkpoint of no model. A bool is not a rate either -- to the optimizer it is 1.0. A negative
+        # rate is the one torch already refuses, checked here so the message names the knob.
         for name in ("encoder_lr", "head_lr", "min_lr"):
-            for bad in (float("inf"), float("-inf"), float("nan"), True, False, "2.5e-5"):
+            for bad in (float("inf"), float("-inf"), float("nan"), -1e-5, True, False, "2.5e-5"):
                 with self.subTest(name=name, value=bad):
                     with self.assertRaisesRegex(
                             ValueError, r"^%s must be a finite non-negative number, got " % name):

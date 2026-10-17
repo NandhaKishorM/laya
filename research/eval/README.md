@@ -576,6 +576,10 @@ the same field as its corresponding quoted policy or transcript. They are not
 guaranteed to have equal token lengths. This is a small demonstration, not a
 production distribution or a reproduction of the unpublished probe in #1229.
 
+The [pinned CPU reference archive](../results/context_robustness/README.md) includes
+both checkpoints' raw observations, direct API comparisons and offline-rebuildable
+reports. Both checkpoints receive English inputs in that example.
+
 ### Reading the report
 
 Groups are keyed by the ordered question hash. Within each variant kind:

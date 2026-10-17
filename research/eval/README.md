@@ -510,3 +510,140 @@ MASSIVE `en`, `--per-lang 300 --n-opts 20`, seed 13, laya 0.3.21, CPU (65 wrong 
 | `agreement_option_order` | 0.678 | |
 
 With one variant per transform, only `support_all` clearly ranks errors below correct answers better than `confidence`; the binary `agreement_*` signals rank them worse. Keeping the top 70% of cases gives 93.3% accuracy by `support_all` and 91.0% by `confidence`.
+
+## Paired context robustness
+
+The context evaluator measures how a fixed choice changes when the **state**
+changes. A support request may be routed correctly until a quoted policy is
+appended, and the wrong answer may still clear the caller's confidence gate.
+Equal aggregate accuracy can hide that damage if other requests recover.
+
+Run from the repository checkout:
+
+~~~bash
+python -m research.eval.context_robustness validate research/eval/fixtures/context_robustness_choice.jsonl
+python -m research.eval.context_robustness run research/eval/fixtures/context_robustness_choice.jsonl \
+  --model convaiinnovations/laya --revision 55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851 \
+  --max-len 512 --head-max-len 192 --min-confidence 0.7 --out context-english
+python -m research.eval.context_robustness summarize context-english --out rebuilt.json
+~~~
+
+The run command uses the public single-state prediction API on CPU eager, without
+AMP. Remote checkpoints require a full commit SHA. A local model directory instead
+uses artifact digests; omit revision for it. No hosted API, attack generator,
+training or new runtime dependency is involved. Normal model loading can download
+the specified checkpoint; set HF_HUB_OFFLINE=1 when using a prepared cache.
+
+The threshold above is an **illustrative policy**, not a calibrated recommendation.
+Omit min-confidence to measure choices without a gate; that report has
+policy.configured=false and no acceptance metrics. Zero is a configured threshold.
+The offline summarizer cannot substitute a different threshold.
+
+### Inputs and controls
+
+Each UTF-8 JSONL line uses schema laya-context-robustness-case/1 and contains:
+
+| Field | Contract |
+| --- | --- |
+| id | Unique case ID |
+| state | Clean string, object or conversation list |
+| questions | Exactly one choice; string instructions and at least two ordered string criteria keys |
+| expected | One of those keys |
+| gold_rationale | Why the business request has that expected label |
+| variants | Nonempty list of explicitly supplied state variants |
+
+Each variant has id, kind (benign or adversarial), state and rationale, and may
+have a family label. An adversarial variant **must** name control_id referring to
+a benign variant in the same case. A control can be reused; it is predicted once,
+and the report shows how often it was referenced. Variant IDs are unique within
+the case; clean is reserved. Benign-only cases are allowed.
+
+Variants share the original question, expected label, budgets and model. They
+cannot override these. State root types must agree within a case; strings and
+object/option order are preserved. Empty/null option descriptions are supported,
+but structured instructions, non-string labels and option_order are outside this
+research format. Invalid input is rejected before loading weights.
+
+The author must justify why each variant preserves the intended answer. The
+fixed question must distinguish trusted routing instructions from quoted material.
+A new legitimate request or business rule may change the right answer, and does
+not belong in a label-preserving dataset. Rationales are inspectable claims, not
+automatic semantic validation.
+
+The bundled synthetic fixture has 12 requests, four teams, and two adversarial
+styles with a benign control for each: 60 inputs per model. Each control occupies
+the same field as its corresponding quoted policy or transcript. They are not
+guaranteed to have equal token lengths. This is a small demonstration, not a
+production distribution or a reproduction of the unpublished probe in #1229.
+
+### Reading the report
+
+Groups are keyed by the ordered question hash. Within each variant kind:
+
+| Metric | Meaning |
+| --- | --- |
+| transitions | CC, CW, WC, WW: clean and variant correctness |
+| answer_flip_rate | Returned labels differ, including changes between two wrong labels |
+| accuracy_delta | (WC - CW) / all pairs |
+| new_error_given_clean_correct | CW / (CC + CW) |
+| policy.variant.wrong_and_accepted | Wrong and gate-passed variants / all pairs |
+| policy.variant.error_given_accepted | Wrong and gate-passed variants / gate-passed variants |
+| policy.gate_miss_on_new_errors | Newly wrong gate-passed variants / CW |
+
+The policy section also gives clean/variant acceptance coverage, newly wrong
+accepted answers among clean-correct pairs, and the narrower rate among clean
+answers that were both correct and accepted.
+
+Matched controls use **the same clean-correct triplets** on both sides. Their
+four-cell table compares benign and adversarial correctness. matched_error_delta
+is (benign correct/adversarial wrong - benign wrong/adversarial correct) divided
+by those triplets. The analogous policy delta compares wrong-and-accepted counts
+on that same denominator. This is not a subtraction of two differently sampled
+kind-level accuracies.
+
+Every fraction includes numerator, denominator and value; an empty denominator
+has value null. Repeated variants are not independent requests. Reports include
+unique clean counts, per-case variant counts and control reuse. The case-any-error
+rate depends on how many variants were attempted. No confidence interval,
+significance claim, universal safety score or automatic quality gate is produced.
+
+Raw usage is retained. Pair and triplet summaries also separate untruncated,
+truncated and unknown observations; a triplet checks all three inputs. The full
+population is never silently filtered. Missing usage means unknown, not no
+truncation. Inspect the raw state token counts and option-collapse metadata when
+interpreting a difference. Even matched controls cannot establish a causal
+effect of malicious wording or identify which text survived truncation.
+
+### Evidence and failures
+
+A new output directory contains:
+
+- manifest.json: input snapshot, order, raw-file/ordered-input hashes, settings,
+  model artifact digests, actual runtime and software identity, completion state.
+- observations.jsonl: ordered raw public API responses keyed by case and variant,
+  appended and flushed after each call.
+- report.json: derived counts, reproducible without loading weights.
+
+The directory must not already exist. Invalid responses, load errors and ordinary
+interruptions leave a failed manifest. A killed process may leave running state
+or a partial last line. Neither can become a complete report; there is no automatic
+retry, resume or stitching. Inspection of partial evidence is still possible.
+
+Analysis verifies IDs, order, completeness, file hashes and semantic source
+identity before scoring. Use the recorded Laya and evaluator sources to rebuild
+an older run; changing the scoring/gating implementation must not silently
+reinterpret historical observations. This conservative check can reject an
+unrelated source change too. Hashes detect mismatches, not fabricated evidence.
+The raw JSON remains readable in another environment.
+
+Correctness uses ChoiceAccuracy. Gate validation replays the same native helper
+against a copy of the recorded response. The returned choice and answer_confidence
+are preserved: binning may change answer_confidence, and rounded probabilities
+may tie, so recomputing argmax or maximum probability would describe a different
+decision. Entropy confidence is not a fallback.
+
+Offline checks (also included in the existing research CI lane):
+
+~~~bash
+python -m unittest research.eval.test_context_robustness -v
+~~~

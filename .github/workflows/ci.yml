@@ -189,6 +189,7 @@ jobs:
           python research/eval/test_laya_eval.py
           python research/eval/test_presentation_checks.py
           python -m research.eval.test_metamorphic
+            python -m unittest research.eval.test_context_robustness -v
           python research/evals/test_act_head_eval.py
 
       - name: Fixture dataset validates

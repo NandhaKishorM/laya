@@ -165,7 +165,7 @@ warning the run prints before gating on `min_confidence`.
 | `--label-smoothing` | `0.0` | weight moved off single answers |
 | `--freeze-encoder` | off | trains the decision head only; fits a small GPU or a CPU, but gains much less than a full fine-tune |
 | `--epochs`, `--micro-batch`, `--grad-accum` | 4, 8, 8 | the notebook's 4 epochs and effective batch of 64 |
-| `--encoder-lr`, `--head-lr` | 2.5e-5, 1e-4 | learning rates |
+| `--encoder-lr`, `--head-lr` | 2.5e-5, 1e-4 | learning rates. Each must be a finite, non-negative number: an infinite rate is what `float("1e999")` gives you, torch's optimizer accepts it, and the first step leaves the weights non-finite, so `laya-train` refuses one before it loads a checkpoint |
 | `--max-len`, `--head-max-len` | the base checkpoint's | token budgets; the notebook uses 1024 and 256 |
 | `--eval`, `--eval-data` | none | a second dataset, answered before and after the fine-tune. Without it the "after" numbers come from the calibration slice; the run's report says which of the two it is (`eval_mode`, `is_held_out`, `note`), and rows whose state and question also occur in the training or calibration inputs count as overlap and stop the metrics being held out (#967) |
 | `--target-error` | `0.10` | the error the run fits the checkpoint's per-bucket abstention thresholds to keep among the answers it accepts |

@@ -674,6 +674,36 @@ class EndToEndTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             TrainConfig(eval_data=123).validate()
 
+    def test_train_config_learning_rate_validation(self):
+        # `torch.optim.AdamW` checks a rate for NaN and sign but accepts `inf`, and one step at an
+        # infinite rate leaves the parameter non-finite: the run trains, saves and reports success on a
+        # checkpoint of no model. A bool is not a rate either -- to the optimizer it is 1.0. A negative
+        # rate is the one torch already refuses, checked here so the message names the knob.
+        for name in ("encoder_lr", "head_lr", "min_lr"):
+            for bad in (float("inf"), float("-inf"), float("nan"), -1e-5, True, False, "2.5e-5"):
+                with self.subTest(name=name, value=bad):
+                    with self.assertRaisesRegex(
+                            ValueError, r"^%s must be a finite non-negative number, got " % name):
+                        TrainConfig(**{name: bad}).validate()
+        # 0.0 stays legal (torch steps it as a no-op, and it is what "do not move these weights" means)
+        # and an int is a number, not a type mistake.
+        for good in (0.0, 2.5e-5, 1, 4):
+            TrainConfig(encoder_lr=good, head_lr=good, min_lr=good).validate()
+
+    def test_cli_refuses_an_infinite_rate_before_touching_a_checkpoint(self):
+        import contextlib
+        import io
+
+        # `--dry-run` validates ahead of resolve_checkpoint_dir, so this costs no download and no
+        # weights, and `1e999` is the ordinary numeric literal that reaches the rate as `inf`.
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            code = train_cli_main(["--data", "does-not-exist.jsonl", "--dry-run",
+                                   "--encoder-lr", "1e999"])
+        self.assertEqual(code, 1)
+        self.assertIn("laya-train: error: encoder_lr must be a finite non-negative number, got inf",
+                      buf.getvalue())
+
     def test_evaluate_records(self):
         # Empty records returns default dict
         empty = evaluate_records([])

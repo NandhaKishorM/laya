@@ -86,7 +86,7 @@ jobs:
         with:
           python-version: "3.12"
       # For resolving the dependency tree only; nothing here compiles the module.
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "17"
@@ -130,7 +130,7 @@ jobs:
       # reason it matters -- it runs the wrapper holding the signing key and the
       # Maven Central credentials, and Central is append-only.
       - uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "17"
@@ -317,7 +317,7 @@ jobs:
       # fails the build outright -- "Cannot find a Java installation on your machine matching:
       # {languageVersion=N}" -- instead of quietly running on the compile JDK. Verified both
       # ways: without `fromEnv` the build exits 1 with that message; with it, 0.
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: |
@@ -524,7 +524,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "17"

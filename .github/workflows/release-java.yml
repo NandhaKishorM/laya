@@ -46,7 +46,7 @@ jobs:
       # Validate the wrapper jar BEFORE anything can execute it. See this file's
       # header for why every job that runs ./gradlew needs this, not just one.
       - uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "17"
@@ -117,7 +117,7 @@ jobs:
       # Validate the wrapper jar BEFORE anything can execute it. See this file's
       # header for why every job that runs ./gradlew needs this, not just one.
       - uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "17"

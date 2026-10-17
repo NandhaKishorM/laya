@@ -13,3 +13,7 @@ research/benchmarks/feishu_zh/results/** text eol=lf
 research/benchmarks/zh_short_commands/data/** text eol=lf
 research/benchmarks/zh_short_commands/prompts.py text eol=lf
 research/benchmarks/zh_short_commands/results/** text eol=lf
+
+# The paired-context manifests hash raw fixture and observation bytes.
+research/eval/fixtures/context_robustness_choice.jsonl text eol=lf
+research/results/context_robustness/** text eol=lf

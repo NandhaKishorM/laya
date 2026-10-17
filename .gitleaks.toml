@@ -1,0 +1,28 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+# These are SHA-256 digests of public tokenizer artifacts at
+# convaiinnovations/laya revision 55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851.
+# Require the exact digest AND its archived manifest; keep all default rules.
+[[rules.allowlists]]
+description = "Pinned English tokenizer digests in the paired-context reference"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(^|[/\\])research[/\\]results[/\\]context_robustness[/\\]english[/\\]manifest\.json$''']
+regexes = [
+  '''^6c8aaa9a542084f2457eab775d4eeb51f92a70c0fd9de28d5edb0ddec3c08d30$''',
+  '''^50044de60daaa73df97d262e15a40d4faf0160e7d742df64b377877a1320dd12$''',
+]
+
+[[rules.allowlists]]
+description = "Pinned multilingual tokenizer digests in the paired-context reference"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(^|[/\\])research[/\\]results[/\\]context_robustness[/\\]multilingual[/\\]manifest\.json$''']
+regexes = [
+  '''^609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f$''',
+  '''^6c6b2d8e3c84ce0e671c129cd6b374b235d6f9863042a5836358d00a89bbb5a1$''',
+]

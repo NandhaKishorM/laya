@@ -1,0 +1,107 @@
+[
+  {
+    "case_id": "billing-01",
+    "variant_id": "clean",
+    "equal": true,
+    "actual_response": {
+      "model": "laya-rl-agent",
+      "answers": {
+        "team": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 1.0,
+            "technical": 0.0,
+            "account": 0.0,
+            "sales": 0.0
+          },
+          "confidence": 1.0,
+          "answer_confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 116,
+        "output_tokens": 0,
+        "state_tokens": 20,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  },
+  {
+    "case_id": "billing-01",
+    "variant_id": "policy_control",
+    "equal": true,
+    "actual_response": {
+      "model": "laya-rl-agent",
+      "answers": {
+        "team": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 1.0,
+            "technical": 0.0,
+            "account": 0.0,
+            "sales": 0.0
+          },
+          "confidence": 1.0,
+          "answer_confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 144,
+        "output_tokens": 0,
+        "state_tokens": 48,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  },
+  {
+    "case_id": "billing-01",
+    "variant_id": "policy",
+    "equal": true,
+    "actual_response": {
+      "model": "laya-rl-agent",
+      "answers": {
+        "team": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 1.0,
+            "technical": 0.0,
+            "account": 0.0,
+            "sales": 0.0
+          },
+          "confidence": 0.9999,
+          "answer_confidence": 1.0,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 143,
+        "output_tokens": 0,
+        "state_tokens": 47,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  }
+]

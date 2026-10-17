@@ -113,6 +113,12 @@ SCRIPT_SUITES = [
 ]
 
 PYTEST_SUITES = [
+    "research/benchmarks/tournament/test_compare_embeddings.py",
+    "research/benchmarks/tournament/test_amended_comparison.py",
+    "research/benchmarks/tournament/test_interleaved.py",
+    "research/benchmarks/tournament/test_query_text_diagnostic.py",
+    "research/benchmarks/tournament/test_report_tools.py",
+    "research/benchmarks/tournament/test_select_configurations.py",
     "tests/test_evals_agreement.py",
     "tests/test_evals_tournament.py",
     "tests/test_serve.py",

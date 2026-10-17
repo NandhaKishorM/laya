@@ -189,6 +189,11 @@ with Router(preload=True) as router:
 
 You can also pass `device="cpu"`, `device="cuda"`, or another supported PyTorch device when
 constructing the router. Availability and memory determine which devices can run a given model.
+The choice is checked when the router is built, before any checkpoint is downloaded: a spelling
+PyTorch cannot read (`gpu`, `cuda: 0`) or one it reads as a *different* device (`cuda:258` asks for
+GPU 2) raises `ValueError` from `Router(...)`, and `laya-evals run --device` reports that as a usage
+error instead of a failed run. `LAYA_DEVICE` is checked the same way; see
+[the CLI and MCP reference](cli-mcp.md).
 
 ## Mixed batches
 

@@ -1,0 +1,9 @@
+{
+  "created_utc": "2026-10-13T04:41:14.733099+00:00",
+  "policy": "Handwritten synthetic diagnostics; not independent annotation or a held-out population benchmark. Explicit final corrective action determines the movement label. Informational and meta-language requests are none (not a movement instruction). No multi-action, vague prohibition or conditional commands. Labels frozen before inference. Six balanced labels, 16 each, 96 cases, disjoint from baseline18. Reuse the seven upstream prompt configurations without fitting or selection.",
+  "sha256": {
+    "expanded_cases.jsonl": "32ca20269e544feefd62a8d084ef637f958e10d37b1f20106183a919d41a585c",
+    "data/cases.jsonl": "2d789879fe11328fb8b8099aaf35ddf7b2e301b393f9525701368339da28181e",
+    "prompts.py": "d26c8357a302f887258382c5a40d1c1320adab8b3e86c364ef150a913a06686d"
+  }
+}

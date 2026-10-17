@@ -1698,6 +1698,7 @@ Shortlisting the same option set on every request re-embeds option texts that do
 * **[laya-Ascend](https://github.com/zzhdbw/laya-Ascend)**: Laya on Huawei Ascend NPUs through `torch-npu`, with a CPU vs NPU benchmark (34x to 71x faster at batch size 1), a setup guide, and Snake and Tetris demos.
 * **[laya-apple](https://github.com/tc3oliver/laya-apple)**: a correctness-validated Laya runtime for Apple silicon that uses the MLX GPU and the Apple Neural Engine, with automatic routing and concurrent heterogeneous serving.
 * **[stuntd](https://github.com/bladedevoff/stuntd)**: runs Laya locally behind the Jev API (`POST /v1/systemone`, no key) and trains a head per decision on the frozen encoder from your own labelled rows, with a calibrated confidence threshold (a 12-label intent task: 89.5% zero-shot to 100% trained).
+* **[pydecide](https://github.com/gopaljigaur/decide)**: a Python client (`pip install "pydecide[mlx]"`) that answers typed `Choice`, `Score` and `Noul` questions from `laya` or `laya-mlx` in process and abstains instead of calling out: `Client([LayaMLXBackend()], Gate(min_confidence=0.8), on_low_confidence="raise")` raises `LowConfidence` carrying the answer it rejected and why, and no state leaves the machine. Also serves `POST /v1/systemone`, so a Jev client can point at local Laya unchanged.
 
 ---
 

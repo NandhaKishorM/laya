@@ -2090,7 +2090,7 @@ def predict_golden():
     agent = ONNXAgent(checkpoint, onnx_path=graph)
     single = {}
     for cid, state, lang, questions in PREDICT_CASES:
-        result = agent.predict(state, questions, lang=lang)
+        result = agent.predict(state, questions, lang=lang, state_token_counts=True)
         single[cid] = {"state": state, "lang": lang, "questions": questions,
                        "model": result["model"], "answers": result["answers"],
                        "usage": result["usage"]}
@@ -2103,7 +2103,7 @@ def predict_golden():
     }
     batches = []
     for batch_size, sort_by_length in ((None, False), (2, False), (3, True)):
-        kwargs = {"sort_by_length": sort_by_length}
+        kwargs = {"sort_by_length": sort_by_length, "state_token_counts": True}
         if batch_size is not None:
             kwargs["batch_size"] = batch_size
         results = agent.predict_batch(batch_states, batch_questions, **kwargs)
@@ -2548,7 +2548,7 @@ def typed_decisions_golden():
     for cid, state, lang, workflow, questions in TYPED_CASES:
         if workflow is not None:
             questions = _typed_questions(workflow, questions)
-        result = agent.predict(state, questions, lang=lang)
+        result = agent.predict(state, questions, lang=lang, state_token_counts=True)
         single[cid] = {"state": state, "lang": lang, "workflow": workflow,
                        "questions": questions, "model": result["model"],
                        "answers": result["answers"], "usage": result["usage"]}
@@ -2563,7 +2563,7 @@ def typed_decisions_golden():
     batch_questions = _typed_questions("invoice_processing", TYPED_INVOICE_QUESTIONS)
     batches = []
     for batch_size, sort_by_length in ((None, False), (2, False), (3, True)):
-        kwargs = {"sort_by_length": sort_by_length}
+        kwargs = {"sort_by_length": sort_by_length, "state_token_counts": True}
         if batch_size is not None:
             kwargs["batch_size"] = batch_size
         results = agent.predict_batch(batch_states, batch_questions, **kwargs)

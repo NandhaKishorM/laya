@@ -144,8 +144,8 @@ etc.). Scores use zero-based rubric levels. Confidence and accuracy have the
 same calibration limits as the Python model; see the root README.
 
 `usage` is the whole record `/v1/systemone` reports: `input_tokens`,
-`output_tokens` (always 0), `state_tokens`, `state_tokens_dropped`,
-`truncated` and `truncated_questions`. How much of a state the model reads is a
+`output_tokens` (always 0), `truncated` and `truncated_questions`, plus
+`state_tokens` and `state_tokens_dropped` when the call passed `stateTokenCounts: true`. How much of a state the model reads is a
 token budget that moves with `max_len`, `head_max_len` and each question's own
 option prompt, so these are the only fields that show a cut: the answer itself
 is unchanged when evidence is dropped. `options` is added only when some

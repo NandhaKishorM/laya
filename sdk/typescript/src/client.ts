@@ -113,7 +113,7 @@ export class Laya {
     const body: {
       state: State; questions: typeof wireQuestions; model?: string; task?: string;
       lang?: string; lang_guess?: string; max_len?: number; head_max_len?: number;
-      min_confidence?: number | Record<string, number>;
+      min_confidence?: number | Record<string, number>; state_token_counts?: boolean;
     } = { state, questions: wireQuestions };
     if (model !== undefined) body.model = model;
     // The per-request controls `/v1/systemone` forwards when the request sends them (see
@@ -125,6 +125,7 @@ export class Laya {
     if (options.maxLen !== undefined) body.max_len = options.maxLen;
     if (options.headMaxLen !== undefined) body.head_max_len = options.headMaxLen;
     if (options.minConfidence !== undefined) body.min_confidence = options.minConfidence;
+    if (options.stateTokenCounts === true) body.state_token_counts = true;
     validateJson(body);
     return JSON.stringify(body);
   }

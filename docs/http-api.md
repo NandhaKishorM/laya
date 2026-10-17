@@ -227,6 +227,9 @@ question's own option prompt (#174), so these keys are the only place that fact 
 | `truncated_questions` | the ids of the questions whose own window was cut, `[]` when none |
 | `options` | present only when some question's options no longer have a token span each: keyed by question id, with `total` (the options that question defines), `distinct` (the spans that reached the sequence) and `tokens_per_option` |
 
+Absent keys are absent, not `null`. Under `LAYA_JEV_STRICT` `usage` is only `input_tokens` and
+`output_tokens`, whatever the request asked for.
+
 A truncated answer is still an answer -- the head decides on the evidence it was given -- but a
 caller sizing states by character count cannot see the cut anywhere else in the response. That is
 why `truncated` and `truncated_questions` are always reported and cost nothing: a request only needs

@@ -736,7 +736,7 @@ schema-identical to what Jev returns (`choice`/`score`/`noul` answers and a
 `{input_tokens, output_tokens}` usage block), so an existing Jev client — e.g.
 the [`hs-jev`](https://github.com/getmissionctrl/hs-jev) Haskell client — just
 needs its `baseUrl` repointed; nothing else changes. A PHP client that targets
-`laya-serve` rather than Jev also exists: [`marcreichel/laya-php`](https://github.com/marcreichel/laya-php).
+`laya-serve` rather than Jev also exists: [`marcreichel/laya-php`](https://github.com/marcreichel/laya-php), alongside with another PHP client [`Jev-PHO`](https://github.com/f-lombardo/jev-php) that allows the user to connect to both Jev (which is its main target) and Laya.
 
 ```bash
 pip install "laya[serve]"          # adds fastapi + uvicorn + python-multipart

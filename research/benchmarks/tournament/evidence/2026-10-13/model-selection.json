@@ -1,0 +1,10 @@
+{
+  "macro_shortlist_accuracy": {
+    "bge": 0.6233333333333333,
+    "minilm": 0.6466666666666666
+  },
+  "based_only_on": "development",
+  "tie_break": null,
+  "selected": "minilm",
+  "frozen_before_test_utc": "2026-10-11T15:15:58Z"
+}

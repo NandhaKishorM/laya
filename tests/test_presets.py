@@ -37,8 +37,8 @@ PRESETS = {
 
 for name, build in PRESETS.items():
     english = build()
-    check("%s/default remains English" % name, english, build(language="en"))
-    localized = build(language="sv-SE")
+    check("%s/default remains English" % name, english, build(lang="en"))
+    localized = build(lang="sv-SE")
     check("%s/question keys remain stable" % name, sorted(localized), sorted(english))
     check("%s/state field remains stable" % name,
           state_field(localized), state_field(english))
@@ -55,11 +55,12 @@ for name, build in PRESETS.items():
         elif isinstance(en_criteria, list):
             check("%s/%s/score levels remain stable" % (name, qid),
                   len(sv_criteria), len(en_criteria))
-    check("%s/Swedish locale alias is stable" % name, localized, build(language="sv"))
+    check("%s/Swedish locale alias is stable" % name, localized, build(lang="sv"))
     try:
-        build(language="de")
-    except ValueError:
-        check_true("%s/unsupported language rejected" % name, True)
+        build(lang="de")
+    except ValueError as error:
+        check_true("%s/unsupported locale names preset and locale" % name,
+                   name in str(error) and "de" in str(error))
     else:
         check_true("%s/unsupported language rejected" % name, False)
 
@@ -84,7 +85,7 @@ check("guard/Swedish harm scale matches English level count",
       len(laya.guard_questions("sv")["harm_severity"]["criteria"]),
       len(laya.guard_questions("en")["harm_severity"]["criteria"]))
 check("email/Swedish urgency has distinct ascending anchors",
-      laya.email_questions(language="sv")["urgency"]["criteria"],
+      laya.email_questions(lang="sv")["urgency"]["criteria"],
       ["ingen tidspress: ärendet kan vänta utan märkbar påverkan",
        "viss brådska: bör hanteras snart men blockerar inte arbetet",
        "hög brådska: problemet blockerar arbetet eller tidsfristen är nära"])
@@ -144,7 +145,7 @@ check("triage display labels support English names",
 check("preset_labels/triage preserves the legacy API",
       laya.preset_labels("triage", "sv-SE"), laya.triage_labels("sv-SE"))
 for preset, builder in PRESETS.items():
-    questions = builder(language="sv-SE")
+    questions = builder(lang="sv-SE")
     labels = laya.preset_labels(preset, "sv-SE")
     expected_keys = set(questions)
     for question in questions.values():

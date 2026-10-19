@@ -1,13 +1,13 @@
-function presetLanguage(language: string): "en" | "sv" {
-  const normalized = language.trim().toLowerCase().replaceAll("_", "-").split("-", 1)[0];
+function presetLanguage(lang: string, preset: string): "en" | "sv" {
+  const normalized = lang.trim().toLowerCase().replaceAll("_", "-").split("-", 1)[0];
   if (normalized !== "en" && normalized !== "sv") {
-    throw new TypeError("language must be 'en' or 'sv'");
+    throw new TypeError(preset + " preset does not support locale " + JSON.stringify(lang));
   }
   return normalized;
 }
 
-export function triageQuestions(language = "en"): Record<string, unknown> {
-  if (presetLanguage(language) === "sv") {
+function buildTriageQuestions(lang = "en"): Record<string, unknown> {
+  if (presetLanguage(lang, "triage") === "sv") {
     return {
       intent: {
         type: "choice",
@@ -91,9 +91,10 @@ export function triageQuestions(language = "en"): Record<string, unknown> {
   };
 }
 
-export function emailQuestions(categories?: Record<string, string>, language = "en"): Record<string, unknown> {
-  const lang = presetLanguage(language);
-  const cats: Record<string, string> = categories ?? (lang === "sv" ? {
+function buildEmailQuestions(categories?: Record<string, string>, lang = "en"): Record<string, unknown> {
+  const normalizedLang = presetLanguage(lang, "email");
+  const cats: Record<string, string> =
+    categories && Object.keys(categories).length > 0 ? categories : (normalizedLang === "sv" ? {
     billing: "fakturor, betalningar och återbetalningar",
     technical: "buggar, driftstörningar och integrationer",
     sales: "priser, demonstrationer och nya köp",
@@ -108,7 +109,7 @@ export function emailQuestions(categories?: Record<string, string>, language = "
     hr: "hiring, leave, payroll",
     other: "none of the above",
   });
-  if (lang === "sv") {
+  if (normalizedLang === "sv") {
     return {
       category: {
         type: "choice",
@@ -167,8 +168,8 @@ export function emailQuestions(categories?: Record<string, string>, language = "
   };
 }
 
-export function guardQuestions(language = "en"): Record<string, unknown> {
-  if (presetLanguage(language) === "sv") {
+function buildGuardQuestions(lang = "en"): Record<string, unknown> {
+  if (presetLanguage(lang, "guard") === "sv") {
     return {
       jailbreak: {
         type: "noul",
@@ -246,8 +247,8 @@ export function guardQuestions(language = "en"): Record<string, unknown> {
   };
 }
 
-export function moderationQuestions(language = "en"): Record<string, unknown> {
-  if (presetLanguage(language) === "sv") {
+function buildModerationQuestions(lang = "en"): Record<string, unknown> {
+  if (presetLanguage(lang, "moderation") === "sv") {
     return {
       toxic: {
         type: "noul",
@@ -308,8 +309,8 @@ export function moderationQuestions(language = "en"): Record<string, unknown> {
   };
 }
 
-export function routerQuestions(language = "en"): Record<string, unknown> {
-  if (presetLanguage(language) === "sv") {
+function buildRouterQuestions(lang = "en"): Record<string, unknown> {
+  if (presetLanguage(lang, "router") === "sv") {
     return {
       difficulty: {
         type: "score",
@@ -375,6 +376,42 @@ export function routerQuestions(language = "en"): Record<string, unknown> {
       instructions: "Does `request` involve money, legal, medical or safety consequences?",
     },
   };
+}
+
+const PRESET_LOCALES = {
+  triage: { en: buildTriageQuestions("en"), sv: buildTriageQuestions("sv") },
+  email: { en: buildEmailQuestions(undefined, "en"), sv: buildEmailQuestions(undefined, "sv") },
+  guard: { en: buildGuardQuestions("en"), sv: buildGuardQuestions("sv") },
+  moderation: { en: buildModerationQuestions("en"), sv: buildModerationQuestions("sv") },
+  router: { en: buildRouterQuestions("en"), sv: buildRouterQuestions("sv") },
+};
+
+type QuestionPresetName = keyof typeof PRESET_LOCALES;
+
+function questionsForLocale(preset: QuestionPresetName, lang: string): Record<string, unknown> {
+  return structuredClone(PRESET_LOCALES[preset][presetLanguage(lang, preset)]);
+}
+
+export function triageQuestions(lang = "en"): Record<string, unknown> {
+  return questionsForLocale("triage", lang);
+}
+
+export function emailQuestions(categories?: Record<string, string>, lang = "en"): Record<string, unknown> {
+  return categories && Object.keys(categories).length > 0
+    ? buildEmailQuestions(categories, lang)
+    : questionsForLocale("email", lang);
+}
+
+export function guardQuestions(lang = "en"): Record<string, unknown> {
+  return questionsForLocale("guard", lang);
+}
+
+export function moderationQuestions(lang = "en"): Record<string, unknown> {
+  return questionsForLocale("moderation", lang);
+}
+
+export function routerQuestions(lang = "en"): Record<string, unknown> {
+  return questionsForLocale("router", lang);
 }
 
 const PRESET_LABELS = {
@@ -443,15 +480,14 @@ const PRESET_LABELS = {
 
 export type PresetName = keyof typeof PRESET_LABELS;
 
-export function presetLabels(preset: PresetName | "model_router", language = "en"): Record<string, string> {
-  const lang = presetLanguage(language);
+export function presetLabels(preset: PresetName | "model_router", lang = "en"): Record<string, string> {
   const name = preset === "model_router" ? "router" : preset;
   if (!Object.hasOwn(PRESET_LABELS, name)) {
     throw new TypeError("preset must be one of email, guard, moderation, router, triage, model_router");
   }
-  return { ...PRESET_LABELS[name as PresetName][lang] };
+  return { ...PRESET_LABELS[name as PresetName][presetLanguage(lang, name)] };
 }
 
-export function triageLabels(language = "en"): Record<string, string> {
-  return presetLabels("triage", language);
+export function triageLabels(lang = "en"): Record<string, string> {
+  return presetLabels("triage", lang);
 }

@@ -1,5 +1,6 @@
 """Ready-to-use question presets for common production decision workflows."""
 import re
+from copy import deepcopy
 from typing import Dict, Optional
 
 # A preset says which part of the state it reads by naming it in backticks: "What does the
@@ -25,22 +26,22 @@ def state_field(questions: Dict) -> Optional[str]:
     return next(iter(named))
 
 
-def _preset_language(language: str) -> str:
+def _preset_language(lang: str, preset: str) -> str:
     """Normalize the built-in preset locale and reject unsupported languages."""
-    if not isinstance(language, str):
-        raise ValueError("language must be 'en' or 'sv'")
-    language = language.strip().lower().replace("_", "-").split("-", 1)[0]
-    if language not in ("en", "sv"):
-        raise ValueError("language must be 'en' or 'sv'")
-    return language
+    if not isinstance(lang, str):
+        raise ValueError("%s preset does not support locale %r" % (preset, lang))
+    normalized = lang.strip().lower().replace("_", "-").split("-", 1)[0]
+    if normalized not in ("en", "sv"):
+        raise ValueError("%s preset does not support locale %r" % (preset, lang))
+    return normalized
 
 
-def triage_labels(language: str = "en") -> Dict[str, str]:
+def triage_labels(lang: str = "en") -> Dict[str, str]:
     """Display labels for the stable question and intent keys in :func:`triage_questions`.
 
     The keys remain suitable for application logic; callers can use the values in a localized UI.
     """
-    return preset_labels("triage", language)
+    return preset_labels("triage", lang)
 
 
 _PRESET_LABELS = {
@@ -109,14 +110,13 @@ _PRESET_LABELS = {
 _PRESET_LABEL_ALIASES = {"model_router": "router"}
 
 
-def preset_labels(preset: str, language: str = "en") -> Dict[str, str]:
+def preset_labels(preset: str, lang: str = "en") -> Dict[str, str]:
     """Display labels for stable question and choice keys in a built-in preset.
 
     The returned keys are machine identifiers; values are suitable for a localized UI.
     Regional language tags such as ``"sv-SE"`` are accepted. The MCP preset name
     ``"model_router"`` is accepted as an alias for ``"router"``.
     """
-    language = _preset_language(language)
     if not isinstance(preset, str):
         raise ValueError("preset must be one of %s" % ", ".join(sorted(_PRESET_LABELS)))
     name = preset.strip().lower()
@@ -124,18 +124,18 @@ def preset_labels(preset: str, language: str = "en") -> Dict[str, str]:
     if name not in _PRESET_LABELS:
         valid_names = sorted(set(_PRESET_LABELS) | set(_PRESET_LABEL_ALIASES))
         raise ValueError("preset must be one of %s" % ", ".join(valid_names))
-    return dict(_PRESET_LABELS[name][language])
+    return dict(_PRESET_LABELS[name][_preset_language(lang, name)])
 
 
-def triage_questions(language: str = "en") -> Dict:
+def _triage_questions(lang: str = "en") -> Dict:
     """Preset questions for customer support ticket triage.
 
-    ``language`` selects the prompt language (``"en"`` or ``"sv"``). Choice keys and
+    ``lang`` selects the prompt language (``"en"`` or ``"sv"``). Choice keys and
     question names stay stable so applications can localize the prompts without changing
     their downstream logic. Regional tags such as ``"sv-SE"`` are accepted.
     """
-    language = _preset_language(language)
-    if language == "sv":
+    lang = _preset_language(lang, "triage")
+    if lang == "sv":
         return {
             "intent": {
                 "type": "choice",
@@ -190,8 +190,8 @@ def triage_questions(language: str = "en") -> Dict:
                 },
             },
         }
-    if language != "en":
-        raise ValueError("language must be 'en' or 'sv'")
+    if lang != "en":
+        raise ValueError("triage preset does not support locale %r" % lang)
     return {
         "intent": {
             "type": "choice",
@@ -230,13 +230,13 @@ def triage_questions(language: str = "en") -> Dict:
     }
 
 
-def email_questions(categories: Optional[Dict[str, str]] = None, language: str = "en") -> Dict:
+def _email_questions(categories: Optional[Dict[str, str]] = None, lang: str = "en") -> Dict:
     """Preset questions for inbound email triage and threat filtering.
 
-    ``language`` selects English or Swedish prompt text. Caller-supplied ``categories`` are
+    ``lang`` selects English or Swedish prompt text. Caller-supplied ``categories`` are
     preserved as written; regional tags such as ``"sv-SE"`` are accepted.
     """
-    language = _preset_language(language)
+    lang = _preset_language(lang, "email")
     if not categories:
         categories = ({
             "billing": "fakturor, betalningar och återbetalningar",
@@ -245,7 +245,7 @@ def email_questions(categories: Optional[Dict[str, str]] = None, language: str =
             "security": "nätfiske, bedrägerier och kapade konton",
             "hr": "rekrytering, ledighet och löner",
             "other": "inget av alternativen passar",
-        } if language == "sv" else {
+        } if lang == "sv" else {
             "billing": "invoices, payments, refunds",
             "technical": "bugs, outages, integrations",
             "sales": "pricing, demos, new purchases",
@@ -253,7 +253,7 @@ def email_questions(categories: Optional[Dict[str, str]] = None, language: str =
             "hr": "hiring, leave, payroll",
             "other": "none of the above",
         })
-    if language == "sv":
+    if lang == "sv":
         return {
             "category": {
                 "type": "choice",
@@ -314,12 +314,12 @@ def email_questions(categories: Optional[Dict[str, str]] = None, language: str =
     }
 
 
-def guard_questions(language: str = "en") -> Dict:
+def _guard_questions(lang: str = "en") -> Dict:
     """Preset questions for real-time LLM input guardrails.
 
-    ``language`` selects English or Swedish prompt text; answer keys remain stable.
+    ``lang`` selects English or Swedish prompt text; answer keys remain stable.
     """
-    if _preset_language(language) == "sv":
+    if _preset_language(lang, "guard") == "sv":
         return {
             "jailbreak": {
                 "type": "noul",
@@ -403,12 +403,12 @@ def guard_questions(language: str = "en") -> Dict:
     }
 
 
-def moderation_questions(language: str = "en") -> Dict:
+def _moderation_questions(lang: str = "en") -> Dict:
     """Preset questions for content safety and moderation.
 
-    ``language`` selects English or Swedish prompt text; answer keys remain stable.
+    ``lang`` selects English or Swedish prompt text; answer keys remain stable.
     """
-    if _preset_language(language) == "sv":
+    if _preset_language(lang, "moderation") == "sv":
         return {
             "toxic": {
                 "type": "noul",
@@ -470,12 +470,12 @@ def moderation_questions(language: str = "en") -> Dict:
     }
 
 
-def router_questions(language: str = "en") -> Dict:
+def _router_questions(lang: str = "en") -> Dict:
     """Preset questions for intelligent model routing.
 
-    ``language`` selects English or Swedish prompt text; answer keys remain stable.
+    ``lang`` selects English or Swedish prompt text; answer keys remain stable.
     """
-    if _preset_language(language) == "sv":
+    if _preset_language(lang, "router") == "sv":
         return {
             "difficulty": {
                 "type": "score",
@@ -540,3 +540,45 @@ def router_questions(language: str = "en") -> Dict:
             "instructions": "Does `request` involve money, legal, medical or safety consequences?",
         },
     }
+
+
+_PRESET_LOCALES = {
+    "triage": {"en": _triage_questions("en"), "sv": _triage_questions("sv")},
+    "email": {"en": _email_questions(lang="en"), "sv": _email_questions(lang="sv")},
+    "guard": {"en": _guard_questions("en"), "sv": _guard_questions("sv")},
+    "moderation": {"en": _moderation_questions("en"), "sv": _moderation_questions("sv")},
+    "router": {"en": _router_questions("en"), "sv": _router_questions("sv")},
+}
+
+
+def _questions_for_locale(preset: str, lang: str) -> Dict:
+    """A fresh built-in question table for one preset and locale."""
+    normalized = _preset_language(lang, preset)
+    return deepcopy(_PRESET_LOCALES[preset][normalized])
+
+
+def triage_questions(lang: str = "en") -> Dict:
+    """Preset questions for customer support ticket triage."""
+    return _questions_for_locale("triage", lang)
+
+
+def email_questions(categories: Optional[Dict[str, str]] = None, lang: str = "en") -> Dict:
+    """Preset questions for inbound email triage and threat filtering."""
+    if categories:
+        return _email_questions(categories, lang)
+    return _questions_for_locale("email", lang)
+
+
+def guard_questions(lang: str = "en") -> Dict:
+    """Preset questions for real-time LLM input guardrails."""
+    return _questions_for_locale("guard", lang)
+
+
+def moderation_questions(lang: str = "en") -> Dict:
+    """Preset questions for content safety and moderation."""
+    return _questions_for_locale("moderation", lang)
+
+
+def router_questions(lang: str = "en") -> Dict:
+    """Preset questions for intelligent model routing."""
+    return _questions_for_locale("router", lang)

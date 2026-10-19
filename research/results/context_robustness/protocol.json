@@ -1,0 +1,25 @@
+{
+  "frozen_at_utc": "2026-10-17T08:43:51.753588+00:00",
+  "head": "aba2c6cf51ce5777d4a7b875393b0fd03881648a",
+  "source_sha256": {
+    "research/eval/fixtures/context_robustness_choice.jsonl": "d30debc5987ad076c0d1ca9167d4d05c67fef782dc5043574d3f0df4243cb56f",
+    "research/eval/context_robustness.py": "9c763eb6a1b840a7e79ce5dc2e6402022eede82c5a001a56ed209dac7a5f8167",
+    "research/eval/_context_runner.py": "482e047f9a909e91ec3d699bfac8f73231e852a65e6a6a5274e3b66c4ba95bb9"
+  },
+  "checkpoint": "convaiinnovations/laya",
+  "revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+  "subfolders": [
+    null,
+    "multilingual"
+  ],
+  "device": "cpu",
+  "backend": "eager",
+  "max_len": 512,
+  "head_max_len": 192,
+  "min_confidence": 0.7,
+  "n_clean_cases": 12,
+  "n_inputs_per_model": 60,
+  "direct_api_checks_per_model": 3,
+  "interpretation": "Synthetic English fixture; no population estimate or calibrated threshold claim.",
+  "prior_observation": "One predetermined clean first-case API compatibility smoke; fixture unchanged."
+}

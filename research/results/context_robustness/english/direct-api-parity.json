@@ -1,0 +1,108 @@
+[
+  {
+    "case_id": "billing-01",
+    "variant_id": "clean",
+    "equal": true,
+    "actual_response": {
+      "model": "laya-rl-agent",
+      "answers": {
+        "team": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.8818,
+            "technical": 0.0387,
+            "account": 0.0462,
+            "sales": 0.0333
+          },
+          "confidence": 0.6451,
+          "answer_confidence": 0.8818,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 122,
+        "output_tokens": 0,
+        "state_tokens": 22,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  },
+  {
+    "case_id": "billing-01",
+    "variant_id": "policy_control",
+    "equal": true,
+    "actual_response": {
+      "model": "laya-rl-agent",
+      "answers": {
+        "team": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.7368,
+            "technical": 0.1099,
+            "account": 0.0757,
+            "sales": 0.0776
+          },
+          "confidence": 0.3786,
+          "answer_confidence": 0.7368,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 149,
+        "output_tokens": 0,
+        "state_tokens": 49,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  },
+  {
+    "case_id": "billing-01",
+    "variant_id": "policy",
+    "equal": true,
+    "actual_response": {
+      "model": "laya-rl-agent",
+      "answers": {
+        "team": {
+          "type": "choice",
+          "choice": "billing",
+          "probabilities": {
+            "billing": 0.6689,
+            "technical": 0.1767,
+            "account": 0.0894,
+            "sales": 0.065
+          },
+          "confidence": 0.3012,
+          "answer_confidence": 0.6689,
+          "action": {
+            "act_probability": 1.0
+          },
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 149,
+        "output_tokens": 0,
+        "state_tokens": 49,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  }
+]

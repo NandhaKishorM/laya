@@ -1,0 +1,9 @@
+# CPU diagnostic environment. Install in a fresh Python 3.10 virtual environment.
+# Repository source supplies laya; run scripts from the repository root.
+torch==2.11.0
+transformers==5.17.0
+numpy==1.26.4
+huggingface_hub==1.33.0
+tokenizers==0.23.3
+safetensors==0.8.0
+ruff==0.17.0

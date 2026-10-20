@@ -435,7 +435,7 @@ def record_long_case(agent: Agent, case: dict, expects_error: bool = False) -> d
             if start + budget >= len(state_ids):
                 break
     rec["windows"] = windows
-    rec["result"] = onnx.predict_long(state, questions, **options)
+    rec["result"] = onnx.predict_long(state, questions, state_token_counts=True, **options)
     return rec
 
 

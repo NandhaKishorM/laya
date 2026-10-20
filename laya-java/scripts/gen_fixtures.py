@@ -1361,7 +1361,7 @@ def tournament_golden():
             self.calls = []
 
         def predict(self, state, questions, **kwargs):
-            result = agent.predict(state, questions, **kwargs)
+            result = agent.predict(state, questions, state_token_counts=True, **kwargs)
             self.calls.append({"asked": _asked(questions), "answers": result["answers"],
                                "usage": result["usage"]})
             return result
@@ -5167,7 +5167,7 @@ def _hook_predict_cases():
                 self.hooks_timeout = None
 
             def _infer_batch(self, inner_states, inner_questions, lang=None, batch_size=None,
-                             sort_by_length=False, **overrides):
+                             sort_by_length=False, state_token_counts=False, **overrides):
                 seen["states"] = list(inner_states)
                 seen["questions"] = list(inner_questions)
                 seen["overrides"] = dict(overrides)

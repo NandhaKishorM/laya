@@ -23,6 +23,7 @@ from laya.common import (
     encode_state,
     render_criterion,
     resolve_lang_temperatures,
+    state_counts_in_place,
     window_batch_cap,
     window_budget,
     temp_bucket,
@@ -863,6 +864,7 @@ class ONNXAgent(HookRegistry):
                         usage["state_tokens"] = stats[0]["state_tokens"]
                         # worst case: the questions share one state, not one head budget
                         usage["state_tokens_dropped"] = dropped
+                        usage = state_counts_in_place(usage)
                     # Only when a question lost options to the head budget, as on the torch Agent.
                     collapsed = collapsed_options(ids, items)
                     if collapsed:

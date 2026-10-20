@@ -133,6 +133,11 @@ check("asked/usage keys", sorted(asked),
       ["input_tokens", "options", "output_tokens", "state_tokens", "state_tokens_dropped",
        "truncated", "truncated_questions"])
 check("asked/state_tokens is the whole state, not a floor", asked["state_tokens"], len(STATE))
+# Key order is part of the wire shape: the golden fixtures of every SDK compare it as written.
+check("asked/count keys sit after output_tokens, before truncated",
+      [k for k in asked if k != "options"],
+      ["input_tokens", "output_tokens", "state_tokens", "state_tokens_dropped", "truncated",
+       "truncated_questions"])
 check_true("asked/something was dropped", asked["state_tokens_dropped"] > 0, asked)
 check("asked/truncated agrees with the default", asked["truncated"], default["truncated"])
 check("asked/truncated_questions agrees with the default",

@@ -41,6 +41,7 @@ from .common import (
     encode_state,
     render_criterion,
     resolve_lang_temperatures,
+    state_counts_in_place,
     temp_bucket,
     temperature_rejected,
     unpermute_probs,
@@ -1571,6 +1572,7 @@ class Agent(HookRegistry):
                                         usage["state_tokens"] = stats[0]["state_tokens"]
                                         # worst case: the questions share one state, not one head budget
                                         usage["state_tokens_dropped"] = dropped
+                                        usage = state_counts_in_place(usage)
                                     # Only when a question actually lost options to the head
                                     # budget: an answer chosen from 42 distinguishable spans of
                                     # 58 has a ceiling the caller cannot otherwise see, and a

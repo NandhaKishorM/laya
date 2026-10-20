@@ -141,11 +141,11 @@ def _state_cut(text: str, budget: int) -> int:
 
 
 # A space, and the U+2581 a Metaspace-style normalizer rewrites it to.
-_CUT_CHARS = (" ", "▁")
+_CUT_CHARS = (" ", "\u2581")
 
 
 def _added_tokens_permit_cut(tok) -> bool:
-    """False when an added token holds a space after a non-space (`"New York"`, `"▁New▁York"`).
+    """False when an added token holds a space after a non-space (`"New York"`, `"\u2581New\u2581York"`).
 
     Such a token can cover a cut and make the head ids differ from the full ones while still being
     long enough. Both shipped checkpoints pass: their space-bearing added tokens are pure runs.
@@ -217,7 +217,7 @@ def _normalizer_keeps_cut(tok, text: str, cut: int) -> bool:
         at = len(normalized_head)
         if at >= len(out):
             return False
-        return out[at].isspace() or out[at] == "▁"
+        return out[at].isspace() or out[at] == "\u2581"
     except Exception:
         return False
 
@@ -283,6 +283,12 @@ def encode_state_head(tok, text: str, need: int) -> List[int]:
         density = max(density, cut / len(head))
         want = need * density * 1.25 + 64
     return full()
+
+
+def state_counts_in_place(usage: Dict[str, Any]) -> Dict[str, Any]:
+    """`usage` with the two state counts back where they always sat: after `output_tokens`."""
+    head = ("input_tokens", "output_tokens", "state_tokens", "state_tokens_dropped")
+    return {**{k: usage[k] for k in head}, **{k: v for k, v in usage.items() if k not in head}}
 
 
 def encode_state(tok, state, need: Optional[int] = None) -> List[int]:

@@ -326,6 +326,22 @@ for method, kwargs in (("predict", dict(state="hi", questions=Q, model="english"
                getattr(old_router(), method)(**kwargs) is not None)
 
 
+# A `**kwargs` forwarder passes the signature check; whatever it forwards to may still refuse.
+# That TypeError must surface, not be retried away with the counts silently dropped.
+class _ForwardingAgent(_OldAgent):
+    def predict_batch(self, states, questions, batch_size=None, **kw):
+        return _OldAgent.predict_batch(self, states, questions, batch_size=batch_size, **kw)
+
+
+fwd = Router()
+fwd.attach("english", _ForwardingAgent())
+try:
+    fwd.predict_batch([{"state": "hi", "questions": Q, "model": "english"}], state_token_counts=True)
+    check_true("old agent/a forwarder's refusal is not retried away", False, "returned without counts")
+except TypeError as e:
+    check_true("old agent/a forwarder's refusal is not retried away", "state_token_counts" in str(e), e)
+
+
 # --------------------------------------------------------------- 9. RemoteRouter's request bodies
 from laya.mcp.remote import RemoteRouter  # noqa: E402
 

@@ -4295,3 +4295,74 @@ def test_state_token_counts_wire_shape(monkeypatch, strict, asked):
         # Absent, not None: the same convention as `usage["options"]` (#569).
         assert "state_tokens" not in usage and "state_tokens_dropped" not in usage
         assert usage["truncated"] is True and usage["truncated_questions"] == ["q"]
+
+
+class _AgentWithoutCounts:
+    """An attached agent that predates `state_token_counts` (#687)."""
+
+    def system_one(self, state, questions, lang=None):
+        return {"model": "m", "answers": {}, "usage": {"input_tokens": 1, "output_tokens": 0}}
+
+    def predict_batch(self, states, questions, batch_size=None, lang=None):
+        return [self.system_one(s, questions) for s in states]
+
+
+@pytest.mark.parametrize("path,body", [("/v1/systemone", REQ),
+                                       ("/v1/systemone/batch", {"states": [REQ["state"], REQ["state"]],
+                                                                "questions": REQ["questions"],
+                                                                "model": "english"})])
+def test_state_token_counts_on_an_agent_without_it_is_a_422(monkeypatch, path, body):
+    """Asked of an agent that cannot take it: refused as a client error on both routes, never a
+    500 and never a 200 without the counts that were asked for."""
+    from laya.router import Router
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    router = Router()
+    router.attach("english", _AgentWithoutCounts())
+    client = TestClient(create_app(router=router))
+    assert client.post(path, json=body).status_code == 200
+    r = client.post(path, json={**body, "state_token_counts": True})
+    assert r.status_code == 422, r.text
+    assert "state_token_counts" in r.json()["detail"]
+
+
+class _KwargsRouter(EliminationRouter):
+    """Records the controls each `predict` call received; has no `predict_batch`."""
+
+    def __init__(self):
+        super().__init__()
+        self.kwargs = []
+
+    def predict(self, state, questions, model=None, **kwargs):
+        self.kwargs.append(kwargs)
+        return super().predict(state, questions, model=model, **kwargs)
+
+
+@pytest.mark.parametrize("group", [None, "16"])
+def test_batch_forwards_state_token_counts_on_the_tournament_and_predict_fallback(monkeypatch, group):
+    """`/v1/systemone/batch` without `predict_batch` (and through a tournament) still forwards
+    the flag when asked, and only then."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    if group is None:
+        monkeypatch.delenv("LAYA_TOURNAMENT_GROUP", raising=False)
+        questions = REQ["questions"]
+    else:
+        monkeypatch.setenv("LAYA_TOURNAMENT_GROUP", group)
+        questions = _large_req(128)["questions"]
+    fake = _KwargsRouter()
+    client = TestClient(create_app(router=fake))
+    body = {"states": ["one", "two"], "questions": questions}
+    assert client.post("/v1/systemone/batch", json=body).status_code == 200
+    assert fake.kwargs and all("state_token_counts" not in k for k in fake.kwargs)
+    fake.kwargs.clear()
+    assert client.post("/v1/systemone/batch",
+                       json={**body, "state_token_counts": True}).status_code == 200
+    assert fake.kwargs and all(k.get("state_token_counts") is True for k in fake.kwargs)
+    if group is not None:
+        fake.kwargs.clear()
+        assert client.post("/v1/systemone",
+                           json={"state": "x", "questions": questions,
+                                 "state_token_counts": True}).status_code == 200
+        assert len(fake.kwargs) > 1 and all(k.get("state_token_counts") is True for k in fake.kwargs)

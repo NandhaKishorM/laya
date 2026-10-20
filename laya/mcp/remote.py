@@ -183,17 +183,16 @@ class RemoteRouter(Router):
                               "hooks are callables and cannot be sent to laya-serve; install them on the server")
         body: Dict[str, Any] = {"state": state, "questions": questions}
         controls = {"model": model, "task": task, "lang": lang, "lang_guess": lang_guess,
-                    "max_len": max_len, "head_max_len": head_max_len, "min_confidence": min_confidence}
+                    "max_len": max_len, "head_max_len": head_max_len, "min_confidence": min_confidence,
+                    # Only `True` goes on the wire: absent means off, and an older laya-serve
+                    # rejects an unknown body key.
+                    "state_token_counts": True if state_token_counts else None}
         for key in _WIRE_CONTROLS:
             value = controls[key]
             if value is not None and not (key == "model" and value == "auto"):
                 if key == "lang_guess" and not isinstance(value, str):
                     raise RemoteError("unsupported_remote", "a callable lang_guess cannot be sent over HTTP")
                 body[key] = value
-        if state_token_counts:
-            # Only when asked, and never a bare `False`: the server treats the key's
-            # absence as off, and an older laya-serve rejects an unknown body key.
-            body["state_token_counts"] = True
         return self._request("/v1/systemone", body)
 
     def predict_batch(

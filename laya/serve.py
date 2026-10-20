@@ -1407,8 +1407,8 @@ def create_app(router: Optional[Any] = None):
         if min_confidence is not None:
             predict_kwargs["min_confidence"] = min_confidence
         if _validate_state_token_counts_param(body):
-            # Only `True` is forwarded, as with `sort_by_length`: an attached agent that predates
-            # the argument drops it, and the counts are then simply absent rather than wrong.
+            # Only `True` is forwarded. An agent that cannot take it makes the Router raise
+            # `StateTokenCountsUnsupported`, a ValueError, so the client gets a 422, not a 500.
             predict_kwargs["state_token_counts"] = True
         if gate is None:
             gate = asyncio.Lock()

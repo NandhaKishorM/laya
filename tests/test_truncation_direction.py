@@ -1469,3 +1469,33 @@ def test_predict_long_windows_tokenize_the_whole_state_and_forward_the_flag(onnx
     assert "state_token_counts" not in _route_predict_long(target, small, questions)["kwargs"]
     taken = _route_predict_long(target, small, questions, state_token_counts=True)
     assert taken["path"] == "single" and taken["kwargs"]["state_token_counts"] is True
+
+
+@pytest.mark.parametrize("pre", ["bytelevel", "metaspace"])
+def test_state_head_takes_the_prefix_on_a_real_tokenizers_object(pre):
+    """Against a real `tokenizers` backend, built here, so a rename of the attributes the gates
+    read (`pre_tokenizer`, `use_regex`, `split`, `normalizer`) cannot silently disable the prefix."""
+    from tokenizers import Tokenizer, decoders, models, normalizers, pre_tokenizers, trainers
+    from transformers import PreTrainedTokenizerFast
+
+    from laya.common import encode_state_head, encode_text
+
+    tk = Tokenizer(models.BPE(unk_token="[UNK]"))
+    if pre == "bytelevel":
+        tk.normalizer = normalizers.NFC()
+        tk.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=True)
+        tk.decoder = decoders.ByteLevel()
+        alphabet = pre_tokenizers.ByteLevel.alphabet()
+    else:
+        tk.pre_tokenizer = pre_tokenizers.Metaspace(replacement="▁", prepend_scheme="always", split=True)
+        tk.decoder = decoders.Metaspace()
+        alphabet = []
+    corpus = ["the customer wants a refund on this order please help with the card payment"] * 50
+    tk.train_from_iterator(corpus, trainers.BpeTrainer(vocab_size=300, initial_alphabet=alphabet,
+                                                       special_tokens=["[UNK]", "[MASK]"]))
+    tok = PreTrainedTokenizerFast(tokenizer_object=tk, unk_token="[UNK]", mask_token="[MASK]")
+    text = "the customer wants a refund on this order please help " * 400
+    full = encode_text(tok, text, add_special_tokens=False)["input_ids"]
+    head = encode_state_head(tok, text, 64)
+    assert len(head) >= 64 and head == full[:len(head)]
+    assert len(head) < len(full) // 4, "the prefix path was not taken on a real tokenizer"

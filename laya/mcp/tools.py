@@ -339,6 +339,24 @@ def validate_budget(value: Any, name: str) -> int | None:
     return value
 
 
+def validate_state_token_counts(value: Any) -> bool:
+    """``state_token_counts``: a boolean asking for ``usage.state_tokens`` / ``state_tokens_dropped``
+    (#687). Absent by default, because counting the whole state means tokenizing all of it."""
+    if value is None:
+        return False
+    if not isinstance(value, bool):
+        raise ToolError("invalid_state_token_counts", "state_token_counts must be a boolean")
+    return value
+
+
+def _counts_tool_error(exc: BaseException) -> None:
+    """Re-raise an agent's refusal of ``state_token_counts`` as a ToolError the client can read."""
+    from ..router import StateTokenCountsUnsupported
+
+    if isinstance(exc, StateTokenCountsUnsupported):
+        raise ToolError("unsupported_state_token_counts", str(exc)) from exc
+
+
 def validate_min_confidence(value: Any) -> float | None:
     """The per-call abstention threshold (``min_confidence``), or ``None`` when unset.
 
@@ -417,6 +435,7 @@ def laya_predict(
     max_len: Any = None,
     head_max_len: Any = None,
     min_confidence: Any = None,
+    state_token_counts: Any = False,
     router: Any = None,
     agent: Any = None,
 ) -> dict:
@@ -452,6 +471,8 @@ def laya_predict(
         # Only when set, so a call that abstains over nothing stays byte-identical to the one
         # that made no ``min_confidence`` keyword exist.
         budget["min_confidence"] = min_conf
+    if validate_state_token_counts(state_token_counts):
+        budget["state_token_counts"] = True        # only when asked, like the controls above
     # `task` picks a checkpoint by saying what the work is, so it means nothing once one is pinned:
     # `Router._route` checks an explicit `model` first and never reaches the task, and
     # `Agent.system_one` does not accept the keyword at all. Both would answer as if it were unset,
@@ -494,6 +515,7 @@ def laya_predict(
         result = _run()
     except Exception as exc:
         _raise_if_remote_error(exc)
+        _counts_tool_error(exc)
         raise
     latency_ms = (time.perf_counter() - started) * 1000.0
 
@@ -966,6 +988,7 @@ def laya_predict_long(
     stride: Any = None,
     task: Any = None,
     lang: Any = None,
+    state_token_counts: Any = False,
     router: Any = None,
     agent: Any = None,
 ) -> dict:
@@ -1000,6 +1023,8 @@ def laya_predict_long(
         ("window", validate_budget(window, "window")),
         ("stride", validate_budget(stride, "stride")),
     ) if value is not None}
+    if validate_state_token_counts(state_token_counts):
+        scan["state_token_counts"] = True
     # `task` picks a checkpoint by saying what the work is, so it means nothing once one is pinned:
     # same rule as `laya_predict` -- the router checks an explicit `model` first and never reaches
     # the task, and a checkpoint's `predict_long` does not accept the keyword at all.
@@ -1032,7 +1057,11 @@ def laya_predict_long(
         return _scan(router, state_d, questions_d, model=model_name, **scan)
 
     started = time.perf_counter()
-    result = _run()
+    try:
+        result = _run()
+    except Exception as exc:
+        _counts_tool_error(exc)
+        raise
     latency_ms = (time.perf_counter() - started) * 1000.0
 
     if not isinstance(result, dict):
@@ -1340,6 +1369,7 @@ def laya_predict_batch(
     min_confidence: Any = None,
     sort_by_length: bool = False,
     *,
+    state_token_counts: Any = False,
     router: Any = None,
 ) -> dict:
     """Answer many requests in one call: ``Router.predict_batch`` over MCP.
@@ -1361,6 +1391,7 @@ def laya_predict_batch(
     # core's `float(True) == 1.0` (hooks_timeout).
     mc = validate_min_confidence(min_confidence)
     ht = _validate_hooks_timeout(hooks_timeout)
+    counts = validate_state_token_counts(state_token_counts)
     if router is None:
         raise ToolError("models_not_ready", "Router is not loaded")
     if not hasattr(router, "predict_batch"):
@@ -1377,9 +1408,12 @@ def laya_predict_batch(
             kwargs["min_confidence"] = mc
         if sort_by_length:
             kwargs["sort_by_length"] = True
+        if counts:
+            kwargs["state_token_counts"] = True
         results = router.predict_batch(items, **kwargs)
     except Exception as exc:
         _raise_if_remote_error(exc)
+        _counts_tool_error(exc)
         if not isinstance(exc, TypeError):
             raise
 

@@ -39,6 +39,7 @@ class PredictContext:
     router: Any = None
     max_len: Optional[int] = None
     head_max_len: Optional[int] = None
+    state_token_counts: bool = False
     usage: Optional[Dict[str, int]] = None
     started_at: float = <perf_counter()>
     elapsed_ms: Optional[float] = None
@@ -57,6 +58,7 @@ class PredictContext:
 | `router` | `Router \| None` | Router events | no | the Router, when one is in play. |
 | `max_len` | `int \| None` | always | yes (start) | per-call token budget for the encoder. `None` uses the agent config. |
 | `head_max_len` | `int \| None` | always | yes (start) | per-call token budget for the question head. `None` uses the agent config. |
+| `state_token_counts` | `bool` | always | no | whether the call asked for `usage["state_tokens"]` (#687); informational. A result cache must include it in its key, or a call that asked for the counts can be served a result without them. |
 | `usage` | `dict \| None` | end | yes (end) | `{"input_tokens", "output_tokens"}`, summed over the states of the call. |
 | `started_at` | `float` | always | no | `time.perf_counter()` when the call began. |
 | `elapsed_ms` | `float \| None` | end | no | wall time in milliseconds, measured from `started_at`. On an Agent that is the whole call. On a Router `started_at` is reset after routing and loading, so it is the prediction only -- a cold model load is not in it. |
@@ -79,7 +81,7 @@ def key(ctx, index):
     # Not sort_keys=True: criteria order is positional, so two orders are two questions,
     # and the checkpoint and token budget change the answer too.
     payload = json.dumps([ctx.states[index], ctx.questions, ctx.model,
-                          ctx.max_len, ctx.head_max_len], default=str)
+                          ctx.max_len, ctx.head_max_len, ctx.state_token_counts], default=str)
     return hashlib.sha256(payload.encode()).hexdigest()
 
 def cache_read(ctx):

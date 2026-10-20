@@ -393,7 +393,8 @@ class ONNXAgent(HookRegistry):
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
         ctx = PredictContext(states=states, questions=questions, model=self.model_id, agent=self,
-                             max_len=max_len, head_max_len=head_max_len)
+                             max_len=max_len, head_max_len=head_max_len,
+                             state_token_counts=bool(state_token_counts))
         try:
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             states, questions = ctx.states, ctx.questions

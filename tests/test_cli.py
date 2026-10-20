@@ -912,6 +912,15 @@ check("drift: the controls with no flag are exactly the accepted five",
           "on_predict_end", "on_predict_start"],
       sorted(PREDICT_CONTROLS - NAMED))
 
+# --------------------------------------------------------------------- --batch --state-token-counts
+code, _, err, stub = run_batch_cli(["--batch", path, "--predict", "--state-token-counts"])
+check("batch counts: exit code", code == 0, "got %r %s" % (code, err))
+check("batch counts: forwarded to predict_batch",
+      stub.predict_batch_calls[-1][2].get("state_token_counts") is True, stub.predict_batch_calls[-1][2])
+code, _, err, stub = run_batch_cli(["--batch", path, "--predict"])
+check("batch counts: absent without the flag",
+      "state_token_counts" not in stub.predict_batch_calls[-1][2], stub.predict_batch_calls[-1][2])
+
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

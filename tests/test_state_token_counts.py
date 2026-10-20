@@ -288,6 +288,120 @@ check("router/_ScanLong defaults to off", _ScanLong(window=None, stride=None, ag
                                                     batch_size=None, lang=None).state_token_counts,
       False)
 
+# --------------------------------------------------------------- 8. an agent that predates it
+from laya.router import StateTokenCountsUnsupported  # noqa: E402
+
+
+class _OldAgent:
+    """Explicit signatures without `state_token_counts` and without `**kwargs`."""
+
+    def system_one(self, state, questions, lang=None):
+        return {"model": "m", "answers": {}, "usage": {"input_tokens": 1}}
+
+    def predict_batch(self, states, questions, batch_size=None, lang=None):
+        return [self.system_one(s, questions) for s in states]
+
+    def predict_long(self, state, questions, window=None, stride=None, aggregate="auto",
+                     batch_size=None, lang=None):
+        return self.system_one(state, questions)
+
+
+def old_router():
+    r = Router()
+    r.attach("english", _OldAgent())
+    return r
+
+
+for method, kwargs in (("predict", dict(state="hi", questions=Q, model="english")),
+                       ("predict_long", dict(state="hi", questions=Q, model="english")),
+                       ("predict_batch", dict(requests=[{"state": "hi", "questions": Q,
+                                                         "model": "english"}]))):
+    try:
+        getattr(old_router(), method)(state_token_counts=True, **kwargs)
+        check_true("old agent/%s refuses the counts" % method, False, "returned without them")
+    except StateTokenCountsUnsupported as e:
+        check_true("old agent/%s refuses the counts" % method,
+                   isinstance(e, TypeError) and isinstance(e, ValueError) and "_OldAgent" in str(e), e)
+    check_true("old agent/%s still works without them" % method,
+               getattr(old_router(), method)(**kwargs) is not None)
+
+
+# --------------------------------------------------------------- 9. RemoteRouter's request bodies
+from laya.mcp.remote import RemoteRouter  # noqa: E402
+
+remote = RemoteRouter("http://127.0.0.1:9")
+bodies = []
+remote._request = lambda path, body=None: (bodies.append((path, body)) or
+                                           {"model": "m", "answers": {}, "usage": {}})
+remote.predict("hi", Q)
+remote.predict("hi", Q, state_token_counts=True)
+remote.predict_batch([{"state": "a", "questions": Q}, {"state": "b", "questions": Q}])
+remote.predict_batch([{"state": "a", "questions": Q}, {"state": "b", "questions": Q}],
+                     state_token_counts=True)
+check("remote/bodies sent", [p for p, _ in bodies], ["/v1/systemone"] * 6)
+check("remote/predict default omits it", "state_token_counts" in bodies[0][1], False)
+check("remote/predict asked sends true", bodies[1][1].get("state_token_counts"), True)
+check("remote/batch default omits it", ["state_token_counts" in b for _, b in bodies[2:4]],
+      [False, False])
+check("remote/batch asked sends true on every item",
+      [b.get("state_token_counts") for _, b in bodies[4:6]], [True, True])
+
+# --------------------------------------------------------------- 10. the MCP tools
+from laya.mcp import tools as mcp_tools  # noqa: E402
+
+QS = {"dept": Q["dept"]}
+for name, call in (
+        ("laya_predict", lambda r, **k: mcp_tools.laya_predict({"text": "hi"}, QS, router=r, **k)),
+        ("laya_predict_long", lambda r, **k: mcp_tools.laya_predict_long({"text": "hi"}, QS, router=r, **k)),
+        ("laya_predict_batch", lambda r, **k: mcp_tools.laya_predict_batch(
+            [{"state": {"text": "hi"}, "questions": QS}], router=r, **k))):
+    stub = _RecordingAgent()
+    r = Router()
+    r.attach("english", stub)
+    r.attach("multilingual", stub)
+    call(r)
+    check_true("mcp/%s default does not pass it" % name, "state_token_counts" not in stub.calls[-1][1],
+               stub.calls[-1])
+    call(r, state_token_counts=True)
+    check("mcp/%s asking reaches the agent" % name, stub.calls[-1][1].get("state_token_counts"), True)
+    for bad in ("yes", 1):
+        try:
+            call(r, state_token_counts=bad)
+            check_true("mcp/%s refuses %r" % (name, bad), False)
+        except mcp_tools.ToolError as e:
+            check("mcp/%s refuses %r" % (name, bad), e.code, "invalid_state_token_counts")
+    old = Router()
+    old.attach("english", _OldAgent())
+    old.attach("multilingual", _OldAgent())
+    try:
+        call(old, state_token_counts=True)
+        check_true("mcp/%s old agent is a ToolError" % name, False)
+    except mcp_tools.ToolError as e:
+        check("mcp/%s old agent is a ToolError" % name, e.code, "unsupported_state_token_counts")
+
+
+# --------------------------------------------------------------- 11. hooks see what was asked
+def seen_by_hook(run):
+    seen = []
+    run(lambda ctx: seen.append(ctx.state_token_counts))
+    return seen
+
+
+a = make_agent()
+check("hooks/agent default", seen_by_hook(lambda h: a.predict_batch([STATE], Q, on_predict_start=h)), [False])
+check("hooks/agent asked", seen_by_hook(lambda h: a.predict_batch([STATE], Q, on_predict_start=h,
+                                                                  state_token_counts=True)), [True])
+r = Router()
+r.attach("english", _RecordingAgent())
+for method, kw in (("predict", dict(state="hi", questions=Q, model="english")),
+                   ("predict_long", dict(state="hi", questions=Q, model="english")),
+                   ("predict_batch", dict(requests=[{"state": "hi", "questions": Q, "model": "english"}]))):
+    check("hooks/router.%s default" % method,
+          seen_by_hook(lambda h: getattr(r, method)(on_predict_start=h, **kw)), [False])
+    check("hooks/router.%s asked" % method,
+          seen_by_hook(lambda h: getattr(r, method)(on_predict_start=h, state_token_counts=True, **kw)),
+          [True])
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

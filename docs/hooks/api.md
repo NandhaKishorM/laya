@@ -39,11 +39,11 @@ class PredictContext:
     router: Any = None
     max_len: Optional[int] = None
     head_max_len: Optional[int] = None
-    state_token_counts: bool = False
     usage: Optional[Dict[str, int]] = None
     started_at: float = <perf_counter()>
     elapsed_ms: Optional[float] = None
     error: Optional[BaseException] = None
+    state_token_counts: bool = False
 ```
 
 | field | type | set when | mutable | meaning |

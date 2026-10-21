@@ -349,7 +349,8 @@ def record_shortlist_case(agent: Agent, case: dict) -> dict:
     from laya.shortlist import _subset_criteria, predict_shortlist
 
     state, questions, k = case["state"], case["questions"], case["k"]
-    result = predict_shortlist(agent, state, questions, hashing_embedder.embed, k=k)
+    result = predict_shortlist(agent, state, questions, hashing_embedder.embed, k=k,
+                               state_token_counts=True)
     shortlist_meta = result["shortlist"]
 
     reduced = {}

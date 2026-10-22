@@ -24,8 +24,14 @@ python -m unittest discover -s research/benchmarks/persian_fa/tests -v
 
 Both commands require only the standard library. They load no checkpoint and need no network
 or API key. The default audit verifies the original source hashes, all 1,152 answer records
-and every field of the three recomputed JSON summaries. CI runs these same commands.
-Frozen artifacts keep LF line endings on Windows as well as Linux.
+and every field of the three recomputed JSON summaries. CI runs these commands on Python
+3.10, 3.11, 3.12 and 3.13. Derived summary metrics (accuracy, macro-F1, mean confidence, ECE,
+latency percentiles and repeat agreement) use relative and absolute tolerances of `1e-12`
+to accommodate floating-point summation differences across Python versions. Counts, flags,
+metadata, keys and structure remain exact; null and non-finite values cannot substitute for
+numeric metrics. Source hashes and recorded answers are still checked exactly. The metric
+formulas and archived summaries are unchanged. Frozen artifacts keep LF line endings on
+Windows as well as Linux.
 
 ## Historical results
 

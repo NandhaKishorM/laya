@@ -257,6 +257,31 @@ def check_run(a: Audit, cases: list, run_dir: Path):
 
 
 # --------------------------------------------------------------------------- report
+_SUMMARY_METRICS = frozenset(("accuracy", "macro_f1", "mean_answer_confidence", "ece",
+                              "latency_ms_p50", "latency_ms_p90", "repeat_agreement"))
+
+
+def _summary_matches(saved, expected, path=()):
+    # Python 3.12 changed float sum(). Tolerate roundoff only in derived metrics,
+    # never in counts, flags, provenance or the shape of the saved evidence.
+    if len(path) == 3 and path[0] == "modes" and path[2] in _SUMMARY_METRICS:
+        if saved is None or expected is None:
+            return saved is None and expected is None
+        return (finite(saved) and finite(expected)
+                and math.isclose(saved, expected, rel_tol=1e-12, abs_tol=1e-12))
+    if type(saved) is not type(expected):
+        return False
+    if isinstance(expected, dict):
+        return (saved.keys() == expected.keys()
+                and all(_summary_matches(saved[key], value, path + (key,))
+                        for key, value in expected.items()))
+    if isinstance(expected, list):
+        return (len(saved) == len(expected)
+                and all(_summary_matches(left, right, path + (index,))
+                        for index, (left, right) in enumerate(zip(saved, expected))))
+    return saved == expected
+
+
 def pct(x):
     return "-" if x is None else f"{100 * x:.1f}%"
 
@@ -324,7 +349,7 @@ def main(argv=None):
                 summary = summarise(cases, meta, rows)
                 saved = run_dir / "summary.json"
                 if saved.exists() and not args.write:
-                    if json.loads(saved.read_text(encoding="utf-8")) != summary:
+                    if not _summary_matches(json.loads(saved.read_text(encoding="utf-8")), summary):
                         a.fail(f"{run_dir.name}: saved summary differs from recomputed results")
                 if args.run_dir:
                     print(render_markdown(summary))

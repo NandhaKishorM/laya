@@ -244,3 +244,103 @@ def test_the_abstention_and_eval_flags_are_documented():
         assert flag in named, (
             "%s is what decides a fine-tuned checkpoint's held-out numbers and its abstention map, "
             "and it is no longer in docs/finetune.md's Options table" % flag)
+
+
+# -------------------------------- docs/finetune.md's post-training fit contract
+
+# The paragraph that tells a fine-tuner what the temperature fit guarantees had drifted into three
+# wrong numbers at once. It said the fitted values are "clamped to `[0.1, 10]`", while
+# `laya/calibrate.py`'s `fit_one_temperature` ends in `clamp_temperature(fitted, TEMP_MIN, TEMP_MAX)`
+# and `laya/common.py` sets those to `0.5` and `5.0` -- the same window `README.md` documents for
+# checkpoint load, so this page was the only copy promising a range twice as wide, and the `0.1` and
+# `10` it names are LBFGS's `lr` and `max_iter` two lines above the clamp, not bounds. It also
+# promised "`1.2` if the fit raises": nothing in `laya/` fits a failure to 1.2 (that value exists only
+# as a per-question-type no-data default in two *other* wrapper scripts,
+# `research/scripts/finetune_single_device.py` and `notebooks/laya_finetune_typed_decisions_mps.py`),
+# and in the notebook this page describes the except branch hands back `fitted_temps = None`, so a
+# failed fit keeps the inherited checkpoint temperature -- and does not pop `temperature_by_options`,
+# because that pop is inside the success guard, while the page stated it unconditionally. A reader
+# sizing a confidence gate off `[0.1, 10]` believes a fit can be far sharper than 0.5, and a reader
+# whose fit raises expects a mildly-sharpened 1.2 checkpoint to ship as calibrated.
+
+FIT_PARAGRAPH_START = "After the last epoch, rank 0 fits"
+FIT_BLOCK_START = "# Post-training temperature calibration on rank 0"
+KAGGLE_NOTEBOOK = ROOT / "notebooks" / "laya_finetune_typed_decisions_2xT4_kaggle.ipynb"
+NUMBERED_RANGE = re.compile(r"\[(\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?)\]")
+
+
+def _fit_paragraph():
+    """docs/finetune.md's post-training fit paragraph, read to its first blank line."""
+    page = FINETUNE_PAGE.read_text(encoding="utf-8")
+    start = page.find(FIT_PARAGRAPH_START)
+    assert start != -1, (
+        "docs/finetune.md no longer has the %r paragraph -- this gate is checking a claim that "
+        "moved, so re-read the page before re-pinning it" % FIT_PARAGRAPH_START)
+    paragraph = page[start:]
+    end = paragraph.find("\n\n")
+    assert end != -1, "the fit paragraph is no longer followed by a blank line; cannot bound the read"
+    return " ".join(paragraph[:end].split())
+
+
+def _notebook_fit_block():
+    """The Kaggle notebook's rank-0 fit block, from its marker comment to the process-group teardown."""
+    notebook = json.loads(KAGGLE_NOTEBOOK.read_text(encoding="utf-8"))
+    source = "".join("".join(cell["source"]) for cell in notebook["cells"])
+    start = source.find(FIT_BLOCK_START)
+    assert start != -1, (
+        "%s no longer marks its post-training fit with %r; the page describes this block, so re-read "
+        "it before re-pinning the sentence" % (KAGGLE_NOTEBOOK.name, FIT_BLOCK_START))
+    end = source.find("dist.destroy_process_group()", start)
+    assert end != -1, "the rank-0 fit block has no teardown marker to read up to"
+    return source[start:end]
+
+
+def test_the_fit_paragraph_states_the_code_clamp_window():
+    """Every `[lo, hi]` the paragraph prints is `TEMP_MIN`/`TEMP_MAX`, the window the fit applies."""
+    from laya.calibrate import MIN_TYPE_N
+    from laya.common import TEMP_MAX, TEMP_MIN
+
+    paragraph = _fit_paragraph()
+    stated = [tuple(float(edge) for edge in pair) for pair in NUMBERED_RANGE.findall(paragraph)]
+    assert stated == [(TEMP_MIN, TEMP_MAX)], (
+        "docs/finetune.md's fit paragraph states the numeric ranges %s, but the fit clamps through "
+        "`clamp_temperature(fitted, TEMP_MIN, TEMP_MAX)`, which is (%s, %s). A reader sizing a "
+        "confidence gate off the page would expect a range the code never produces."
+        % (stated, TEMP_MIN, TEMP_MAX))
+    assert "fewer than `MIN_TYPE_N` (%d) items" % MIN_TYPE_N in paragraph, (
+        "the paragraph names a small-slice floor without naming `MIN_TYPE_N` (%d), which is the "
+        "count `_fit_groups` compares the slice against before it fits at all" % MIN_TYPE_N)
+
+
+def test_the_fit_paragraph_keeps_the_inherited_temperature_on_a_failed_fit():
+    """What the page promises for a raising fit is what the notebook's except branch really does."""
+    block = _notebook_fit_block()
+    paragraph = _fit_paragraph()
+    assert "fitted_temps, fitted = None" in block, (
+        "the notebook's failure path no longer hands `fitted_temps` back as None, so the page's "
+        "promise about a run that could not calibrate needs re-reading before it is repeated here")
+    assert "keeps the **inherited checkpoint temperature**" in paragraph, (
+        "the page tells a different story for a failed fit than the code does: a non-None "
+        "`fitted_temps` is the only way `temperature` reaches the config at all")
+    assert "1.2" not in block, (
+        "the notebook now fits a 1.2 on some path. The page used to promise exactly that and was "
+        "wrong; the value belongs to the two per-question-type no-data wrappers, not to this run")
+    # The page's "only there" qualifier is load-bearing: the pop is inside the success guard.
+    guard = block.index("if fitted_temps is not None:")
+    pop = block.index('out_cfg.pop("temperature_by_options", None)')
+    assert guard < pop, (
+        "`temperature_by_options` is no longer popped under the success guard, so the page's claim "
+        "that an uncalibrated run keeps the inherited buckets is stale")
+
+
+def test_the_page_drops_the_pre_fix_fit_contract():
+    """Ban the drifted numbers by literal, so a plain revert fails with an explicit message."""
+    page = FINETUNE_PAGE.read_text(encoding="utf-8")
+    for banned in ("clamped to `[0.1, 10]`", "`1.2` if the fit raises",
+                   "removes any inherited `temperature_by_options`** in the same write:"):
+        assert banned not in page, (
+            "docs/finetune.md says %r again. The fit clamps to `TEMP_MIN`/`TEMP_MAX`, a raising fit "
+            "keeps the inherited checkpoint temperature rather than a 1.2, and the "
+            "`temperature_by_options` pop happens on the success path only. If any of that has since "
+            "changed, re-read `laya/calibrate.py` and the notebook before re-adding the sentence."
+            % banned)

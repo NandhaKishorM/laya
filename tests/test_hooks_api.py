@@ -324,13 +324,13 @@ for name in ("PredictContext", "PredictHook", "Hook", "BaseHook", "AsyncHook"):
     check_true("laya.%s exists" % name, hasattr(laya, name))
 check_true("__all__/triage_labels", "triage_labels" in laya.__all__)
 check_true("__all__/preset_labels", "preset_labels" in laya.__all__)
-check_param("triage_questions", laya.triage_questions, "language", "en")
-check_param("triage_labels", laya.triage_labels, "language", "en")
+check_param("triage_questions", laya.triage_questions, "lang", "en")
+check_param("triage_labels", laya.triage_labels, "lang", "en")
 check_param("preset_labels", laya.preset_labels, "preset", inspect.Parameter.empty)
-check_param("preset_labels", laya.preset_labels, "language", "en")
-check_param("email_questions", laya.email_questions, "language", "en")
+check_param("preset_labels", laya.preset_labels, "lang", "en")
+check_param("email_questions", laya.email_questions, "lang", "en")
 for _preset_name in ("guard_questions", "moderation_questions", "router_questions"):
-    check_param(_preset_name, getattr(laya, _preset_name), "language", "en")
+    check_param(_preset_name, getattr(laya, _preset_name), "lang", "en")
 check("triage_questions/default remains English",
       laya.triage_questions(), laya.triage_questions("en"))
 sv_triage = laya.triage_questions("sv-SE")

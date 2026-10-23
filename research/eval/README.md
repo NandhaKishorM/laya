@@ -510,3 +510,63 @@ MASSIVE `en`, `--per-lang 300 --n-opts 20`, seed 13, laya 0.3.21, CPU (65 wrong 
 | `agreement_option_order` | 0.678 | |
 
 With one variant per transform, only `support_all` clearly ranks errors below correct answers better than `confidence`; the binary `agreement_*` signals rank them worse. Keeping the top 70% of cases gives 93.3% accuracy by `support_all` and 91.0% by `confidence`.
+
+
+## Stability hook prototype (experimental)
+
+`stability.py` is a prototype for [#635](https://github.com/NandhaKishorM/laya/issues/635): answer stability under option rename and reorder, as a predict hook, with no core change. `StabilityHook` adds, in `on_predict_start`, re-asked copies of every `choice` question as extra question rows in the same forward pass, and folds them back in `on_predict_end`:
+
+```python
+import laya
+from research.eval.stability import StabilityHook
+
+agent = laya.load("convaiinnovations/laya")
+answer = agent.predict(state, questions, hooks=[StabilityHook()])["answers"]["intent"]
+answer["reliability"]["probes"]           # the probe kinds that ran, e.g. ["rename", "reorder"]
+answer["reliability"]["soft_stability"]   # mean probability of the chosen option over all copies
+```
+
+The probes are chosen from the checkpoint's `option_layout` (#951), read from the agent running the call:
+
+* **Rename probes, always:** the same options in the same slots under opaque keys `A`, `B`, `C`..., assigned forwards, backwards and shuffled. Skipped above 20 options (`rename_max_options`), where a rename can leave only a fragment of each description (#543).
+* **Reorder probes, only on a sequential checkpoint:** the reversed order and three seeded shuffles through `option_order`, so Laya maps the probabilities back itself. On a parallel checkpoint the logits permute with the options, so a reorder probe always agrees and would only add cost.
+
+`layout=` overrides the detected layout, and `probes=("rename",)` restricts the probe kinds. Copies are seeded from the question id, so every state in a batch gets the same copies.
+
+The caller gets the questions it asked plus a `reliability` field on each choice answer: `layout`, `probes` (the kinds that actually ran), `soft_stability`, `stability` (share of copies that kept the answer), `by_probe` (the same per probe kind, original excluded), `n_variants`, `variant_choices`, `distinct_choices` and `variants_collapsed`. When no probe could run, for example a parallel checkpoint with more than 20 options, `probes` is empty and the signals are `null` rather than a perfect score, so a caller can tell an absence from a zero. Laya's own answer is unchanged. Copies are removed from `answers`, `usage["truncated_questions"]` and `usage["options"]`; `usage["input_tokens"]` keeps their cost. `score` and `noul` questions are untouched.
+
+`python -m research.eval.stability` runs MASSIVE through the existing harness sampler, once plain and once hooked per case, and reports AUROC with the selective-classification metrics from `laya.evals` (AURC, Brier, selective accuracy) for `answer_confidence`, the overall stability signals and each probe kind, bootstrap 95% intervals for the AUROC and AURC differences, and the measured cost: rows, tokens and time per case, collapsed options, and a `predict_batch` timing on one shared question.
+
+```bash
+python -m research.eval.stability --langs en --per-lang 300 --n-opts 20 --out stability_k20.json
+python -m research.eval.stability --langs en --per-lang 300 --n-opts 20 --probes rename --out stability_k20_rename.json
+python -m unittest research.eval.test_stability -v
+```
+
+### Measured
+
+MASSIVE `en`, `--per-lang 300 --n-opts 20`, seed 13, laya 0.3.28, `convaiinnovations/laya` (sequential layout), CPU, no binning map, 65 wrong answers. Bootstrap intervals over cases, 2,000 resamples.
+
+| | Rename and reorder probes (8 rows) | Rename probes only (4 rows) |
+|---|---:|---:|
+| AUROC `answer_confidence` | 0.831 | 0.831 |
+| AUROC `soft_stability` | 0.883 | 0.870 |
+| AUROC difference | +0.052 (+0.013 to +0.096) | +0.039 (-0.005 to +0.089) |
+| AURC `answer_confidence` | 0.084 | 0.084 |
+| AURC `soft_stability` | 0.064 | 0.066 |
+| AURC difference | -0.021 (-0.040 to -0.004) | -0.018 (-0.038 to -0.001) |
+| Confident errors flagged (of 37 with `answer_confidence >= 0.90`) | 27 | 19 |
+| Input tokens per case (plain 190) | 1,392 | 633 |
+| ms per case, `predict` (plain 666 / 632) | 4,966 | 2,535 |
+| ms per state, `predict_batch`, 64 states, batch 16 (plain 665 / 642) | 5,380 | 2,520 |
+
+Every hooked answer matched the plain one (300/300 in both runs). The rename-only column is the probe set a parallel checkpoint would get, measured on the sequential checkpoint: a checkpoint trained on the parallel layout has different weights, and its rename sensitivity is not measured here.
+
+At `head_max_len=192`, the original question's options collapse in 140 of 300 cases. The reorder copies collapse in exactly those cases; the rename copies, with shorter keys, never do.
+
+### Limits
+
+* Cost scales with rows: on CPU, batching does not reduce it. GPU is not measured.
+* Stability cannot flag an answer that is wrong under every copy, such as a consistent misreading.
+* AURC depends on how ties are ordered and moved between releases for the same answers, so compare it within one run.
+* English, one checkpoint, 300 cases.

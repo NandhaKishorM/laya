@@ -1,7 +1,7 @@
 {
   "generator": "tools/dump_golden.py",
   "onnx_dir": "multilingual",
-  "laya_version": "0.4.11",
+  "laya_version": "0.4.14",
   "onnxruntime_version": "1.30.0",
   "transformers_version": "5.17.0",
   "config": {

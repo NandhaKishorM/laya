@@ -21,10 +21,12 @@ The live suite is bimodal: 10 tasks pass 3/3 (category / tab / page navigation, 
 pagination that needs a scroll first, Google Flights). Run-to-run variance on live sites is larger
 than the gap between the two backbones, so treat them as equivalent and pick by latency.
 
-Checkpoints are ordinary Laya checkpoint directories:
+Checkpoints are ordinary Laya checkpoint directories, and this artifact ships one at the root of its
+Hub repo, so the source is that directory rather than a run name (`v10` and `v10s` are the names of
+its training scripts):
 
 ```python
-agent = laya.load("laya-browser/v10s")                       # after huggingface-cli download cklxx/laya-browser
+agent = laya.load("laya-browser")                            # the --local-dir target in Reproduce below
 agent.cfg["head_max_len"] = agent.cfg["head_max_len_train"]  # 768; the config records the input format too
 ```
 
@@ -80,7 +82,7 @@ than any data change: Mind2Web click top-1 0.44 → 0.51 and the live suite 6/16
 ```bash
 huggingface-cli download cklxx/laya-browser --local-dir laya-browser
 cd laya-browser/code && uv sync --extra fast
-uv run python verify.py v10s            # downloads the checkpoint, answers one recorded browser step
+uv run python verify.py ..              # the checkpoint one directory up; answers one recorded browser step
 ```
 
 `code/finetune/README.md` in that repo has every intermediate number from the first attempt to the

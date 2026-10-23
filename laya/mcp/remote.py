@@ -174,6 +174,7 @@ class RemoteRouter(Router):
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
         min_confidence: Optional[float] = None,
+        state_token_counts: bool = False,
     ) -> Dict[str, Any]:
         if hooks_timeout is not None:
             raise RemoteError("unsupported_remote", "hooks_timeout belongs to the server's hooks")
@@ -182,7 +183,10 @@ class RemoteRouter(Router):
                               "hooks are callables and cannot be sent to laya-serve; install them on the server")
         body: Dict[str, Any] = {"state": state, "questions": questions}
         controls = {"model": model, "task": task, "lang": lang, "lang_guess": lang_guess,
-                    "max_len": max_len, "head_max_len": head_max_len, "min_confidence": min_confidence}
+                    "max_len": max_len, "head_max_len": head_max_len, "min_confidence": min_confidence,
+                    # Only `True` goes on the wire: absent means off, and an older laya-serve
+                    # rejects an unknown body key.
+                    "state_token_counts": True if state_token_counts else None}
         for key in _WIRE_CONTROLS:
             value = controls[key]
             if value is not None and not (key == "model" and value == "auto"):
@@ -199,6 +203,7 @@ class RemoteRouter(Router):
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
         *,
+        state_token_counts: bool = False,
         hooks=None,
         on_predict_start=None,
         on_predict_end=None,
@@ -230,6 +235,8 @@ class RemoteRouter(Router):
                       if k in item}
             if min_confidence is not None:
                 kwargs["min_confidence"] = min_confidence
+            if state_token_counts:
+                kwargs["state_token_counts"] = True
             results.append(self.predict(item["state"], item["questions"], **kwargs))
         return results
 

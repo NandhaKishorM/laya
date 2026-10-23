@@ -99,7 +99,7 @@ def key(ctx, index):
     # Not sort_keys=True: criteria order is positional, so two orders are two questions,
     # and the checkpoint and token budget change the answer too.
     payload = json.dumps([ctx.states[index], ctx.questions, ctx.model,
-                          ctx.max_len, ctx.head_max_len], default=str)
+                          ctx.max_len, ctx.head_max_len, ctx.state_token_counts], default=str)
     return hashlib.sha256(payload.encode()).hexdigest()
 
 def read(ctx):

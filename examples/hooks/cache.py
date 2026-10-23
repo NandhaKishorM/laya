@@ -26,7 +26,7 @@ def cache_key(ctx, index):
     the Router one hook set serves three checkpoints, and a smaller `max_len` truncates the state.
     """
     payload = json.dumps([ctx.states[index], ctx.questions, ctx.model,
-                          ctx.max_len, ctx.head_max_len], default=str)
+                          ctx.max_len, ctx.head_max_len, ctx.state_token_counts], default=str)
     return hashlib.sha256(payload.encode()).hexdigest()
 
 

@@ -315,7 +315,8 @@ def describe_questions(agent: Agent, state, questions: dict) -> list:
 def record_case(agent: Agent, case: dict) -> dict:
     state, questions = case["state"], case["questions"]
     per_question = describe_questions(agent, state, questions)
-    result = agent.system_one(state, questions)
+    # The ports report the whole-state counts, which core gives only when asked (#687).
+    result = agent.system_one(state, questions, state_token_counts=True)
     last = agent.model.last
     return {
         "name": case["name"],
@@ -350,7 +351,8 @@ def record_shortlist_case(agent: Agent, case: dict) -> dict:
     from laya.shortlist import _subset_criteria, predict_shortlist
 
     state, questions, k = case["state"], case["questions"], case["k"]
-    result = predict_shortlist(agent, state, questions, hashing_embedder.embed, k=k)
+    result = predict_shortlist(agent, state, questions, hashing_embedder.embed, k=k,
+                               state_token_counts=True)
     shortlist_meta = result["shortlist"]
 
     reduced = {}

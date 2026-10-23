@@ -297,7 +297,8 @@ def describe_questions(agent: Agent, state, questions: dict) -> list:
 def record_case(agent: Agent, case: dict) -> dict:
     state, questions = case["state"], case["questions"]
     per_question = describe_questions(agent, state, questions)
-    result = agent.system_one(state, questions)
+    # The ports report the whole-state counts, which core gives only when asked (#687).
+    result = agent.system_one(state, questions, state_token_counts=True)
     last = agent.model.last
     return {
         "name": case["name"],
@@ -434,7 +435,7 @@ def record_long_case(agent: Agent, case: dict, expects_error: bool = False) -> d
             if start + budget >= len(state_ids):
                 break
     rec["windows"] = windows
-    rec["result"] = onnx.predict_long(state, questions, **options)
+    rec["result"] = onnx.predict_long(state, questions, state_token_counts=True, **options)
     return rec
 
 

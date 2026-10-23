@@ -25,8 +25,10 @@ const requiredJevConfidence: number = result.answers.team.x_jev_confidence;
 result.answers.refund.x_jev_confidence;
 // @ts-expect-error Jev confidence is numeric when present.
 const textJevConfidence: ChoiceAnswer['x_jev_confidence'] = '0.6';
-const stateTokens: number = result.usage.state_tokens;
-const stateTokensDropped: number = result.usage.state_tokens_dropped;
+const stateTokens: number | undefined = result.usage.state_tokens;
+const stateTokensDropped: number | undefined = result.usage.state_tokens_dropped;
+// @ts-expect-error The counts are opt-in, so a plain number is not guaranteed.
+const stateTokensRequired: number = result.usage.state_tokens;
 const truncated: boolean = result.usage.truncated;
 const truncatedQuestions: string[] = result.usage.truncated_questions;
 const collapsedSpans: number | null | undefined = result.usage.options?.refund?.tokens_per_option;
@@ -116,6 +118,6 @@ if (answer?.type === 'choice') {
   void [dynamicLabel, dynamicProbability];
 }
 void [label, arrayLabel, probability, score, noul, inlineLabel, intent, category, routingModel,
-  actionProbability, noulConfidence, stateTokens, stateTokensDropped, truncated, truncatedQuestions,
+  actionProbability, noulConfidence, stateTokens, stateTokensDropped, stateTokensRequired, truncated, truncatedQuestions,
   collapsedSpans, answeredUsage, mixedSegment, undetermined, answerConfidence,
   noulAnswerConfidence, gateState, gateThreshold, flagged, gatedAnswer];

@@ -263,6 +263,33 @@ def _english_from_code(value: Any) -> Optional[bool]:
     return primary in _ENGLISH_SUBTAGS
 
 
+class StateTokenCountsUnsupported(TypeError, ValueError):
+    """`state_token_counts=True` was asked of an agent whose entry point cannot take it (#687).
+
+    A `TypeError` like the one calling it would raise, and a `ValueError` so `laya.serve` answers
+    it with a 422 rather than a 500. Raised before the call, so the counts are never silently
+    absent from a result that was asked for them.
+    """
+
+
+def _require_state_token_counts(fn, agent) -> None:
+    """Raise `StateTokenCountsUnsupported` unless `fn`'s signature can take `state_token_counts`.
+
+    Read from the signature, as `_takes_lang` is, never from a `TypeError`; an uninspectable
+    signature is given the argument.
+    """
+    try:
+        params = inspect.signature(fn).parameters.values()
+    except Exception:
+        return
+    if not any((p.name == "state_token_counts" and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY))
+               or p.kind is p.VAR_KEYWORD for p in params):
+        raise StateTokenCountsUnsupported(
+            "state_token_counts was requested, but %s.%s does not accept it, so exact "
+            "usage['state_tokens'] cannot be reported; retry without state_token_counts"
+            % (type(agent).__name__, getattr(fn, "__name__", "?")))
+
+
 def _takes_lang(fn) -> bool:
     """Whether `fn` can be given `lang=` as a keyword, read from its signature.
 
@@ -310,12 +337,13 @@ class _ScanLong:
     `ctx.skip(...)` or rewrote the state/questions wins exactly as before.
     """
 
-    def __init__(self, window, stride, aggregate, batch_size, lang):
+    def __init__(self, window, stride, aggregate, batch_size, lang, state_token_counts=False):
         self.window = window
         self.stride = stride
         self.aggregate = aggregate
         self.batch_size = batch_size
         self.lang = lang
+        self.state_token_counts = state_token_counts
 
     def run(self, ctx):
         """Scan `ctx.states[0]` on `ctx.agent`, or refuse plainly when that agent cannot."""
@@ -332,6 +360,12 @@ class _ScanLong:
             lang = ((ctx.decision or {}).get("detection") or {}).get("language")
         kwargs = {"window": self.window, "stride": self.stride, "aggregate": self.aggregate,
                   "batch_size": self.batch_size}
+        # Passed only when asked, so an agent that predates it works on the default path. Asked
+        # of one that cannot take it, the call is refused up front rather than answered without
+        # the counts -- the same rule as `Router.predict` / `predict_batch`.
+        if self.state_token_counts:
+            _require_state_token_counts(scan, agent)
+            kwargs["state_token_counts"] = True
         # `lang` is passed only to an entry point whose signature takes it -- the check
         # `laya.evals` already makes for the arguments it forwards. Deciding this from the
         # signature rather than from a `TypeError` matters here: catching the error cannot tell
@@ -1323,6 +1357,7 @@ class Router(HookRegistry):
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
         min_confidence: Optional[float] = None,
+        state_token_counts: bool = False,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
 
@@ -1330,6 +1365,9 @@ class Router(HookRegistry):
         Router-level `on_predict_start` / `on_predict_end` hooks wrap the whole route+infer call
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
+        `state_token_counts` asks the agent for exact `usage["state_tokens"]` /
+        `usage["state_tokens_dropped"]`, which costs tokenizing the whole state; `truncated` and
+        `truncated_questions` are reported either way.
         """
         if state is None:
             raise TypeError("state must not be None; pass a string, dict, or list")
@@ -1355,6 +1393,7 @@ class Router(HookRegistry):
         scan = _SCAN.get()
         if scan is not None:
             _SCAN.set(None)
+        ctx.state_token_counts = bool(state_token_counts or getattr(scan, "state_token_counts", False))
         try:
             # Per-call hooks apply to the whole call, including on_route inside route().
             decision = self.route(state, questions, model=model, task=task, lang=lang,
@@ -1391,6 +1430,11 @@ class Router(HookRegistry):
                             overrides["max_len"] = ctx.max_len
                         if ctx.head_max_len is not None:
                             overrides["head_max_len"] = ctx.head_max_len
+                        if state_token_counts:
+                            # Only when asked, as the token budgets are; refused up front by an
+                            # agent that cannot take it, never dropped.
+                            _require_state_token_counts(agent.system_one, agent)
+                            overrides["state_token_counts"] = True
                         try:
                             result = agent.system_one(ctx.states[0], ctx.questions,
                                                       lang=effective_lang, **overrides)
@@ -1443,6 +1487,7 @@ class Router(HookRegistry):
                      aggregate: str = "auto", batch_size: Optional[int] = None,
                      hooks=None, on_predict_start=None, on_predict_end=None,
                      hooks_raise: Optional[bool] = None, hooks_timeout: Optional[float] = None,
+                     state_token_counts: bool = False,
                      ) -> Dict[str, Any]:
         """Route, then scan every window of the state instead of only its first one.
 
@@ -1486,8 +1531,11 @@ class Router(HookRegistry):
                     without one and warned about, not failed; that is a signature check, not a
                     swallowed error.
         """
+        # `state_token_counts` rides on the scan object, not on `predict`: the scan answers
+        # this call, so `predict` never reaches `system_one` on this path.
         token = _SCAN.set(_ScanLong(window=window, stride=stride, aggregate=aggregate,
-                                    batch_size=batch_size, lang=lang))
+                                    batch_size=batch_size, lang=lang,
+                                    state_token_counts=state_token_counts))
         try:
             return self.predict(state, questions, model=model, task=task, lang=lang,
                                 lang_guess=lang_guess,
@@ -1608,6 +1656,10 @@ class Router(HookRegistry):
         min_confidence: Optional[float] = None,
         sort_by_length: bool = False,
         *,
+        # Keyword-only, behind the `*`: a positional slot here would widen the positional
+        # prefix and `tests/test_hooks.py` pins that a sixth positional argument is refused,
+        # which is what keeps `hooks` from being passed by position.
+        state_token_counts: bool = False,
         hooks=None,
         on_predict_start=None,
         on_predict_end=None,
@@ -1714,7 +1766,8 @@ class Router(HookRegistry):
                                          decision=dict(decisions[i]), model=model_name, agent=agent,
                                          router=self,
                                          max_len=requests[i].get("max_len"),
-                                         head_max_len=requests[i].get("head_max_len"))
+                                         head_max_len=requests[i].get("head_max_len"),
+                                         state_token_counts=bool(state_token_counts))
                     started.append(ctx)
                     dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors,
                              lock=self._hooks_lock, timeout=timeout)
@@ -1784,6 +1837,10 @@ class Router(HookRegistry):
                         # Passed only when on, as the token-budget overrides are: agents attached
                         # via `attach()` may predate the knob (#294).
                         batch_kwargs["sort_by_length"] = True
+                    if state_token_counts:
+                        # Refused up front, never dropped by the retry below.
+                        _require_state_token_counts(agent.predict_batch, agent)
+                        batch_kwargs["state_token_counts"] = True
                     skip = _SKIP_DEFAULTS.set(True)
                     try:
                         batch_results = agent.predict_batch(

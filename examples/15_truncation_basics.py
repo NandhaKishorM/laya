@@ -61,7 +61,11 @@ QUESTIONS = {
     },
 }
 
-result = agent.predict(document, QUESTIONS)
+# `state_tokens` / `state_tokens_dropped` are opt-in: they count the WHOLE serialized state,
+# which means tokenizing all of it, while a prediction only ever reads as much as a question's
+# window can hold. `truncated` / `truncated_questions` need no flag and are exact without it,
+# so ask for the counts only when you want to know how much was dropped.
+result = agent.predict(document, QUESTIONS, state_token_counts=True)
 heading("one fact from the head, one from the tail")
 for qid in QUESTIONS:
     answer = result["answers"][qid]
@@ -73,7 +77,8 @@ for qid in QUESTIONS:
 usage = result["usage"]
 print("\n   usage: %d input tokens for %d questions in this call" % (usage["input_tokens"],
                                                                      len(QUESTIONS)))
-alone = agent.predict(document, {"cancel_threat": QUESTIONS["cancel_threat"]})
+alone = agent.predict(document, {"cancel_threat": QUESTIONS["cancel_threat"]},
+                      state_token_counts=True)
 print("   the same document with one question: %d input tokens -- exactly max_len=%d"
       % (alone["usage"]["input_tokens"], max_len))
 print("   so usage[\"input_tokens\"] is the batch total across the questions in the call:")
@@ -85,7 +90,8 @@ print("   `state_tokens_dropped`  : %d of them never reached the model"
       % usage["state_tokens_dropped"])
 print("   `truncated_questions`   : %s"
       % (", ".join("`%s`" % qid for qid in usage["truncated_questions"]) or "none"))
-fits = agent.predict("CASE HEADER: invoice #4411 was charged twice. Please refund it.", QUESTIONS)
+fits = agent.predict("CASE HEADER: invoice #4411 was charged twice. Please refund it.", QUESTIONS,
+                     state_token_counts=True)
 print("   a state that fits the window: `truncated`=%s, `state_tokens_dropped`=%d, "
       "`truncated_questions`=%s" % (fits["usage"]["truncated"], fits["usage"]["state_tokens_dropped"],
                                     fits["usage"]["truncated_questions"]))

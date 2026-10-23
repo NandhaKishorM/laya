@@ -132,6 +132,13 @@ _CONTROLS_DOC = (
 )
 
 
+_COUNTS_DOC = (
+    " state_token_counts: true adds usage.state_tokens and usage.state_tokens_dropped (whole-state "
+    "token counts, absent by default because counting tokenizes the whole state); usage.truncated "
+    "is reported either way."
+)
+
+
 def _models_from_env() -> list[str]:
     """Preload list from LAYA_MODELS (laya.serve contract: comma list of names).
 
@@ -303,6 +310,7 @@ def laya_route_tool(
         + _GUARDRAILS
         + _MODEL_DOC
         + _CONTROLS_DOC
+        + _COUNTS_DOC
     ),
 )
 def laya_predict_tool(
@@ -315,6 +323,7 @@ def laya_predict_tool(
     max_len: int | None = None,
     head_max_len: int | None = None,
     min_confidence: float | None = None,
+    state_token_counts: bool = False,
 ) -> str:
     """Answer typed questions (choice/score/noul) over any state in one forward pass."""
     router = _router_or_error()
@@ -329,6 +338,7 @@ def laya_predict_tool(
         max_len=max_len,
         head_max_len=head_max_len,
         min_confidence=min_confidence,
+        state_token_counts=state_token_counts,
         router=router,
     )
 
@@ -346,11 +356,13 @@ def laya_predict_tool(
         "into separate forward passes. Returns answers in input order with "
         "per-request routing and device, plus model_counts and batch latency. "
         + _GUARDRAILS
+        + _COUNTS_DOC
     ),
 )
 def laya_predict_batch_tool(requests: list, batch_size: int = 0, hooks_timeout: float | None = 0,
                             min_confidence: float | None = None,
-                            sort_by_length: bool = False) -> str:
+                            sort_by_length: bool = False,
+                            state_token_counts: bool = False) -> str:
     """Answer many typed-question requests in one batched call."""
     router = _router_or_error()
     # batch_size=0 means "unset": MCP clients send defaults eagerly, and
@@ -377,6 +389,7 @@ def laya_predict_batch_tool(requests: list, batch_size: int = 0, hooks_timeout: 
         hooks_timeout=hooks_timeout,
         min_confidence=min_confidence,
         sort_by_length=sort_by_length,
+        state_token_counts=state_token_counts,
         router=router,
     )
 
@@ -611,15 +624,18 @@ def laya_decide_tool(state: dict, schema: dict, model: str | None = None,
         "per-language calibration. "
         + _GUARDRAILS
         + _MODEL_DOC
+        + _COUNTS_DOC
     ),
 )
 def laya_predict_long_tool(state: dict, questions: dict, model: str = "auto",
                            window: int | None = None, stride: int | None = None,
-                           task: str | None = None, lang: str | None = None) -> str:
+                           task: str | None = None, lang: str | None = None,
+                           state_token_counts: bool = False) -> str:
     """Scan a long state in windows, then answer."""
     router = _router_or_error()
     return _wrap(laya_predict_long, state=state, questions=questions, model=model,
-                 window=window, stride=stride, task=task, lang=lang, router=router)
+                 window=window, stride=stride, task=task, lang=lang,
+                 state_token_counts=state_token_counts, router=router)
 
 
 def main() -> None:

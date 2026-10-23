@@ -919,7 +919,7 @@ def predict_plan_family(rng):
             del log[:]
             results = agent._infer_batch(case["states"], PLAN_QUESTIONS[case["questions"]],
                                          lang=case["lang"], batch_size=case["batch_size"],
-                                         sort_by_length=case["sort"])
+                                         sort_by_length=case["sort"], state_token_counts=True)
             recorded.append({
                 "name": case["name"], "states": case["states"], "questions": case["questions"],
                 "batch_size": case["batch_size"], "sort": case["sort"], "lang": case["lang"],

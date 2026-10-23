@@ -187,6 +187,16 @@ test('a per-bucket threshold map reaches the wire as min_confidence', async () =
   await client.predict('hello', questions, { minConfidence: map });
 });
 
+test('stateTokenCounts reaches the wire only when true', async () => {
+  // The server tokenizes the whole state only when asked, and omits the two counts otherwise.
+  const sent = [];
+  const client = new Laya({ fetch: async (_url, init) => { sent.push(JSON.parse(init.body)); return json(prediction); } });
+  await client.predict('hello', questions);
+  await client.predict('hello', questions, { stateTokenCounts: false });
+  await client.predict('hello', questions, { stateTokenCounts: true });
+  assert.deepEqual(sent.map(body => body.state_token_counts), [undefined, undefined, true]);
+});
+
 test('bad JavaScript inputs fail before fetch without lossy serialization', async () => {
   let calls = 0;
   const client = new Laya({ fetch: async () => { calls++; return json({}); } });

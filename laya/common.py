@@ -98,6 +98,212 @@ def serialize_state(state: Union[str, dict, list]) -> str:
     return json.dumps(state, ensure_ascii=False)
 
 
+# Prefix tokenization of the state (#687). `build_sequence` keeps `state_ids[:room]` with
+# room < max_len, so for every state but a conversation list the tail past `max_len` tokens was
+# tokenized only to be discarded. `encode_state_head` tokenizes a prefix cut where the cut cannot
+# change the ids before it, and falls back to the full tokenization whenever that is not proven.
+
+# First guess of characters per token. Measured: english prose 5.3, multilingual prose 3.8, flat
+# JSON 1.5-2.2. A starting point, not a bound: a short prefix is retried from its own density.
+STATE_HEAD_CHARS_PER_TOKEN = 8
+
+# Prefix attempts before tokenizing the whole state. Prose and JSON land on the first.
+_STATE_HEAD_MAX_ATTEMPTS = 3
+
+# A state must be this much bigger than the budget for a prefix to pay (0.88-0.94x below it).
+_STATE_HEAD_MIN_RATIO = 1.25
+
+# The density probe: at most this many characters, at least the floor.
+_STATE_HEAD_PROBE_CHARS = 512
+_STATE_HEAD_PROBE_MIN = 64
+
+# Candidate cut points tried before giving up. Each steps back one character, so a budget may land
+# at most this far into a whitespace run.
+_STATE_CUT_PROBES = 64
+
+
+def _state_cut(text: str, budget: int) -> int:
+    """The largest `i <= budget` with `text[i] == " "` and `text[i - 1]` not whitespace, or 0.
+
+    `text[:i]` then tokenizes to a prefix of `text`'s ids, given the three tokenizer properties
+    the gates below check: no added token spans the cut, the pre-tokenizer starts a piece at a
+    space, and normalization leaves the space in place. A cut inside a whitespace run is unsafe
+    (both checkpoints add greedy whitespace-run tokens), hence the `text[i - 1]` test.
+    """
+    i = text.rfind(" ", 1, budget + 1)
+    for _ in range(_STATE_CUT_PROBES):
+        if i < 1:
+            break
+        if not text[i - 1].isspace():
+            return i
+        i = text.rfind(" ", 1, i)
+    return 0
+
+
+# A space, and the U+2581 a Metaspace-style normalizer rewrites it to.
+_CUT_CHARS = (" ", "\u2581")
+
+
+def _added_tokens_permit_cut(tok) -> bool:
+    """False when an added token holds a space after a non-space (`"New York"`, `"\u2581New\u2581York"`).
+
+    Such a token can cover a cut and make the head ids differ from the full ones while still being
+    long enough. Both shipped checkpoints pass: their space-bearing added tokens are pure runs.
+    Not cached, so a token added later is still seen.
+    """
+    get = getattr(tok, "get_added_vocab", None)
+    if get is None:
+        return False
+    try:
+        added = get()
+    except Exception:
+        return False
+    for piece in added:
+        if not any(c in piece for c in _CUT_CHARS):
+            continue
+        for k in range(1, len(piece)):
+            if piece[k] in _CUT_CHARS and not (piece[k - 1].isspace() or piece[k - 1] in _CUT_CHARS):
+                return False
+    return True
+
+
+def _splits_on_whitespace(pt) -> bool:
+    """Whether this pre-tokenizer guarantees a space always opens a piece."""
+    name = type(pt).__name__
+    if name == "ByteLevel":
+        return bool(getattr(pt, "use_regex", False))
+    if name == "Metaspace":
+        # `split=False` keeps one piece, so merges cross the space.
+        return bool(getattr(pt, "split", False))
+    if name in ("Whitespace", "WhitespaceSplit", "BertPreTokenizer"):
+        return True
+    if name == "Sequence":
+        try:
+            members = list(pt)
+        except Exception:
+            return False
+        return any(_splits_on_whitespace(m) for m in members)
+    return False
+
+
+# Characters either side of a cut that `_normalizer_keeps_cut` normalizes.
+_CUT_CONTEXT_CHARS = 32
+
+
+def _normalizer_keeps_cut(tok, text: str, cut: int) -> bool:
+    r"""Whether the space at `text[cut]` survives normalization of the text around it.
+
+    Checked per cut on the real text, because a normalizer such as `Replace(" (?=[A-Z])", "")`
+    breaks only some cuts. A rewrite decided by text further than `_CUT_CONTEXT_CHARS` away is not
+    caught; neither shipped checkpoint has one, and closing it would mean normalizing the whole
+    state on every call.
+    """
+    bt = getattr(tok, "backend_tokenizer", None)
+    if bt is None:
+        return False
+    try:
+        normalizer = bt.normalizer
+    except Exception:
+        return False
+    if normalizer is None:
+        return True
+    try:
+        head = text[max(0, cut - _CUT_CONTEXT_CHARS):cut]
+        window = head + text[cut:cut + _CUT_CONTEXT_CHARS]
+        out = normalizer.normalize_str(window)
+        normalized_head = normalizer.normalize_str(head)
+        if not out.startswith(normalized_head):
+            return False
+        at = len(normalized_head)
+        if at >= len(out):
+            return False
+        return out[at].isspace() or out[at] == "\u2581"
+    except Exception:
+        return False
+
+
+def _pre_tokenizer_permits_cut(tok) -> bool:
+    """Whether the pre-tokenizer splits at spaces; False for a T5-style or uninspectable one."""
+    bt = getattr(tok, "backend_tokenizer", None)
+    if bt is None:
+        return False
+    try:
+        return _splits_on_whitespace(bt.pre_tokenizer)
+    except Exception:
+        return False
+
+
+def encode_state_head(tok, text: str, need: int) -> List[int]:
+    """Ids agreeing with `encode_text(tok, text)` on their first `need` entries, tokenizing no
+    further than that takes. Only for a prefix-truncated state: never a conversation list."""
+    full = lambda: encode_text(tok, text, add_special_tokens=False)["input_ids"]
+    if need <= 0 or len(text) <= need * STATE_HEAD_CHARS_PER_TOKEN * _STATE_HEAD_MIN_RATIO:
+        return full()
+
+    # Measure density on a small probe first, so a wrong guess costs at most the probe.
+    budget = need * STATE_HEAD_CHARS_PER_TOKEN
+    probe_budget = max(_STATE_HEAD_PROBE_MIN, min(_STATE_HEAD_PROBE_CHARS, budget // 8,
+                                                 len(text) // 64))
+    cut = _state_cut(text, probe_budget)
+    if not cut:
+        return full()
+    probe = encode_text(tok, text[:cut], add_special_tokens=False)["input_ids"]
+    if not probe:
+        return full()
+    density = cut / len(probe)
+
+    want = need * density * 1.25 + 64
+    # Not worth a prefix; decided before the gates, which cost 60-165 us.
+    if len(probe) < need and want * _STATE_HEAD_MIN_RATIO >= len(text):
+        return full()
+    if not (_added_tokens_permit_cut(tok)
+            and _pre_tokenizer_permits_cut(tok)):
+        return full()
+    # Normalization is checked only on the cut whose ids are returned.
+    if len(probe) >= need:
+        if not _normalizer_keeps_cut(tok, text, cut):
+            return full()
+        return probe
+
+    last_cut = cut
+    for _ in range(_STATE_HEAD_MAX_ATTEMPTS):
+        if want * _STATE_HEAD_MIN_RATIO >= len(text):
+            break
+        cut = _state_cut(text, int(want))
+        if not cut or cut <= last_cut:
+            break                          # the same prefix again: stop paying for it
+        last_cut = cut
+        head = encode_text(tok, text[:cut], add_special_tokens=False)["input_ids"]
+        if len(head) >= need:
+            if not _normalizer_keeps_cut(tok, text, cut):
+                break
+            return head
+        if not head:
+            break
+        density = max(density, cut / len(head))
+        want = need * density * 1.25 + 64
+    return full()
+
+
+def state_counts_in_place(usage: Dict[str, Any]) -> Dict[str, Any]:
+    """`usage` with the two state counts back where they always sat: after `output_tokens`."""
+    head = ("input_tokens", "output_tokens", "state_tokens", "state_tokens_dropped")
+    return {**{k: usage[k] for k in head}, **{k: v for k, v in usage.items() if k not in head}}
+
+
+def encode_state(tok, state, need: Optional[int] = None) -> List[int]:
+    """The state's ids: in full, or with `need` only as far as a prefix of `need` tokens.
+
+    The one place a state is serialized and tokenized, so the truncation path (`build_sequence`)
+    and the window path (`predict_long`) count the same ids. A list keeps its tail, so it is
+    always tokenized in full.
+    """
+    text = serialize_state(state).replace(tok.mask_token, " ")
+    if need is None or isinstance(state, list):
+        return encode_text(tok, text, add_special_tokens=False)["input_ids"]
+    return encode_state_head(tok, text, need)
+
+
 def render_criterion(value) -> str:
     """Render one criterion value as text.
 
@@ -199,8 +405,7 @@ def build_sequence(
     head_len = len(ids)
     room = max(0, max_len - len(ids) - 1)
     if state_ids is None:
-        state_ids = encode_text(tok, serialize_state(state).replace(tok.mask_token, " "),
-                                add_special_tokens=False)["input_ids"]
+        state_ids = encode_state(tok, state)
     # not state_ids[-room:]: with no room left, state_ids[-0:] is the whole state rather than none of it
     st = state_ids[max(0, len(state_ids) - room):] if truncate_left else state_ids[:room]
     ids = ids + st + [tok.sep_token_id]

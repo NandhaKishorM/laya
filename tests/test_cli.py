@@ -890,18 +890,36 @@ PREDICT_CONTROLS = {p for p in inspect.signature(_Router.predict).parameters
 NAMED = set(vars(cli.build_parser().parse_args(["hi"])))
 code, out, err, stub = run_cli(["--predict", "--model", "english", "--task", "multi",
                                 "--lang", "de", "--max-len", "1024", "--head-max-len", "512",
-                                "--min-confidence", "0.5", "hello"], router=GatedRouter(mark=False))
+                                "--min-confidence", "0.5", "--state-token-counts", "hello"],
+                               router=GatedRouter(mark=False))
 check("drift: every control the parser names a flag for arrives in the call",
       all(control in stub.kwargs for control in (PREDICT_CONTROLS & NAMED)),
       "missing %s" % sorted((PREDICT_CONTROLS & NAMED) - set(stub.kwargs)))
 # `lang_guess` has had its own flag since #795, so what is left is the hook arguments:
 # `hooks_raise` / `hooks_timeout` govern hooks and `make_router` installs none, so there is
 # nothing in this process for them to change, and the three callables cannot come off a shell.
+# `--state-token-counts` is a `store_true` that is forwarded only when given, as
+# `--sort-by-length` is: core's default is already False, so sending False would be
+# indistinguishable from the default while breaking any router-like object that predates it. The
+# run above therefore has to pass the flag for the control to arrive at all.
+code_off, _, _, stub_off = run_cli(["--predict", "hello"], router=GatedRouter(mark=False))
+check("drift: state_token_counts is absent unless the flag is given",
+      "state_token_counts" not in stub_off.kwargs, sorted(stub_off.kwargs))
+
 check("drift: the controls with no flag are exactly the accepted five",
       sorted(PREDICT_CONTROLS - NAMED)
       == ["hooks", "hooks_raise", "hooks_timeout",
           "on_predict_end", "on_predict_start"],
       sorted(PREDICT_CONTROLS - NAMED))
+
+# --------------------------------------------------------------------- --batch --state-token-counts
+code, _, err, stub = run_batch_cli(["--batch", path, "--predict", "--state-token-counts"])
+check("batch counts: exit code", code == 0, "got %r %s" % (code, err))
+check("batch counts: forwarded to predict_batch",
+      stub.predict_batch_calls[-1][2].get("state_token_counts") is True, stub.predict_batch_calls[-1][2])
+code, _, err, stub = run_batch_cli(["--batch", path, "--predict"])
+check("batch counts: absent without the flag",
+      "state_token_counts" not in stub.predict_batch_calls[-1][2], stub.predict_batch_calls[-1][2])
 
 # --------------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

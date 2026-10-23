@@ -65,6 +65,9 @@ export interface PredictOptions extends RequestOptions {
    *  An answer whose `answer_confidence` falls below its threshold comes back marked
    *  `low_confidence`, with the answer itself kept. */
   minConfidence?: MinConfidence;
+  /** Ask for `usage.state_tokens` / `usage.state_tokens_dropped`; the server then tokenizes the
+   *  whole state to count it. */
+  stateTokenCounts?: boolean;
 }
 
 interface AnswerBase {
@@ -157,11 +160,11 @@ export interface Usage {
   input_tokens: number;
   /** Always 0: the head answers in one pass and generates nothing. */
   output_tokens: number;
-  /** Tokens the whole serialized state needs. */
-  state_tokens: number;
+  /** Tokens the whole serialized state needs. Present only with `stateTokenCounts: true`. */
+  state_tokens?: number;
   /** Tokens of it at least one question did not get: the worst case over the questions, since
-   *  each leaves the state a different room. */
-  state_tokens_dropped: number;
+   *  each leaves the state a different room. Present only with `stateTokenCounts: true`. */
+  state_tokens_dropped?: number;
   /** Whether that worst case dropped anything. */
   truncated: boolean;
   /** The ids whose own window was cut, empty when none was. */

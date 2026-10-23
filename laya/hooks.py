@@ -53,6 +53,10 @@ class PredictContext:
     started_at: float = field(default_factory=time.perf_counter)
     elapsed_ms: Optional[float] = None
     error: Optional[BaseException] = None
+    # Last, so positional construction is unchanged. Whether the call asked for
+    # `usage["state_tokens"]` (#687); informational, changing it has no effect. A result cache must
+    # key on it, or it can serve a result without the counts to a call that asked for them.
+    state_token_counts: bool = False
 
     def skip(self, results: List[Dict[str, Any]]) -> None:
         """Set cached results from a start hook; inference is skipped, end hooks still run.

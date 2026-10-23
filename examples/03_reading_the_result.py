@@ -14,7 +14,6 @@ banner("03", "Reading the result", """
         {"model": "laya-rl-agent",
          "answers": {<question id>: <answer>, ...},
          "usage": {"input_tokens": <batch total>, "output_tokens": 0,
-                   "state_tokens": <the whole state>, "state_tokens_dropped": <worst case>,
                    "truncated": <bool>, "truncated_questions": [<question id>, ...]}}
 
     `answers` is keyed by the ids you chose, so glue code can index it directly instead of
@@ -24,13 +23,19 @@ banner("03", "Reading the result", """
 
     `usage` is the part readers misread: `input_tokens` is the whole batch, with the state
     counted once per question, so it grows with the number of questions rather than being a
-    context length. `output_tokens` is always 0 -- Laya never generates text. The keys after
-    them are how much of your state the model actually read: `state_tokens` is the whole
-    serialized state, `state_tokens_dropped` the most of it any one question's head gave up,
-    and `truncated` / `truncated_questions` name the questions that gave something up. One more
-    key, `options`, appears only when the head budget was tight enough to leave some question's
-    options sharing a token span -- that question can no longer tell those options apart, and
-    `usage["options"]` is where the call says so.
+    context length. `output_tokens` is always 0 -- Laya never generates text. The two keys
+    after them say whether the model read all of your state: `truncated`, and
+    `truncated_questions` naming the questions that gave something up.
+
+    Three keys appear only when there is something to say. `options` appears only when the head
+    budget was tight enough to leave some question's options sharing a token span -- that
+    question can no longer tell those options apart, and `usage["options"]` is where the call
+    says so. `state_tokens` and `state_tokens_dropped` -- the whole serialized state's token
+    count, and the most of it any one question's head gave up -- appear only when you pass
+    `state_token_counts=True`. That is what makes them exact: counting the whole state means
+    tokenizing the whole state, and by default `predict()` stops at what a question's window can
+    hold. Pass it when you want to know how much was dropped; `truncated` already tells you
+    whether anything was, for free.
     """)
 
 agent = load("english")

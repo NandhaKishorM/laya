@@ -316,7 +316,8 @@ check_true("ONNXAgent.predict is ONNXAgent.system_one", ONNXAgent.predict is ONN
 
 # --------------------------------------------------------------- context
 FIELDS = ["states", "questions", "run_id", "results", "decision", "model", "agent", "router",
-          "max_len", "head_max_len", "usage", "started_at", "elapsed_ms", "error"]
+          "max_len", "head_max_len", "usage", "started_at", "elapsed_ms", "error",
+          "state_token_counts"]
 check("PredictContext fields", [f.name for f in dataclasses.fields(PredictContext)], FIELDS)
 check("PredictContext/states required", PredictContext.__dataclass_fields__["states"].default,
       dataclasses.MISSING)

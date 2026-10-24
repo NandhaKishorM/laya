@@ -6,6 +6,9 @@ Datasets, baselines and thresholds for the `laya-evals` harness and its CI gate.
   across a few tags. It exists to prove the format and to run the harness in tests. It is
   **not** a quality claim and its accuracy has no meaning.
 - `dataset.template.jsonl`: the format, with comments. Start here.
+- [`massive_zh_routing.md`](massive_zh_routing.md): a pinned MASSIVE zh-CN source recipe
+  for the six-way voice-routing task, with split and overlap audit. Generated data
+  stays outside the repository.
 - `thresholds.json`: the tolerances the scheduled gate allows against the committed
   baselines in `research/results/`.
 - `check_regression.py`: adapts a `research/eval/laya_eval.py` report into

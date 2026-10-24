@@ -8,6 +8,8 @@ corpus from `laya-rust/tools/routing_cases.py` and writes one JSON file per prob
 
     lang_probe.json              lang.analyse / detect_script / script_profile /
                                   latin_profile / state_text, for every LANG_STATES entry.
+    route_batch_probe.json       Router.route_batch() decisions for every ROUTE_BATCH_CASES entry,
+                                  plus the errors it raises (ROUTE_BATCH_ERROR_CASES).
     route_probe.json             Router.route() decisions (model, reason, detection,
                                   workflow -- `repo` is intentionally omitted: the ported
                                   RouteDecision has no Repo field) for every ROUTE_CASES entry.
@@ -52,6 +54,8 @@ from routing_cases import (  # noqa: E402
     EMAIL_CLEAN_CASES,
     EMAIL_STATE_CASES,
     LANG_STATES,
+    ROUTE_BATCH_CASES,
+    ROUTE_BATCH_ERROR_CASES,
     ROUTE_CASES,
     SAMPLE_BANKING_CRITERIA,
     SAMPLE_BANKING_INSTRUCTIONS,
@@ -185,6 +189,33 @@ def build_route_probe():
             "decision": _decision_payload(decision),
         })
     return out
+
+
+def build_route_batch_probe():
+    cases = []
+    for label, router_kwargs, requests in ROUTE_BATCH_CASES:
+        decisions = Router(**router_kwargs).route_batch(requests)
+        cases.append({
+            "label": label,
+            "router_kwargs": router_kwargs,
+            "requests": requests,
+            "decisions": [_decision_payload(d) for d in decisions],
+        })
+    errors = []
+    for label, router_kwargs, requests in ROUTE_BATCH_ERROR_CASES:
+        try:
+            Router(**router_kwargs).route_batch(requests)
+        except (TypeError, ValueError) as e:
+            errors.append({
+                "label": label,
+                "router_kwargs": router_kwargs,
+                "requests": requests,
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+            })
+        else:
+            raise SystemExit("route_batch case %r was expected to raise but did not" % label)
+    return {"cases": cases, "errors": errors}
 
 
 # ============================================================================ email_probe
@@ -356,6 +387,7 @@ def main() -> int:
 
     lang_probe = build_lang_probe()
     route_probe = build_route_probe()
+    route_batch_probe = build_route_batch_probe()
     email_probe = build_email_probe()
     shortlist_probe = build_shortlist_probe()
     hashing_probe = build_hashing_embedder_probe()
@@ -376,6 +408,8 @@ def main() -> int:
         "counts": {
             "lang_probe": len(lang_probe),
             "route_probe": len(route_probe),
+            "route_batch_probe": len(route_batch_probe["cases"]),
+            "route_batch_probe_errors": len(route_batch_probe["errors"]),
             "email_probe_clean": len(email_probe["clean"]),
             "email_probe_state": len(email_probe["state"]),
             "shortlist_probe": len(shortlist_probe),
@@ -386,6 +420,9 @@ def main() -> int:
     results = {}
     results["lang_probe.json"] = dump(lang_probe, os.path.join(out_dir, "lang_probe.json"), args.force)
     results["route_probe.json"] = dump(route_probe, os.path.join(out_dir, "route_probe.json"), args.force)
+    results["route_batch_probe.json"] = dump(
+        route_batch_probe, os.path.join(out_dir, "route_batch_probe.json"), args.force
+    )
     results["email_probe.json"] = dump(email_probe, os.path.join(out_dir, "email_probe.json"), args.force)
     results["shortlist_probe.json"] = dump(shortlist_probe, os.path.join(out_dir, "shortlist_probe.json"), args.force)
     results["hashing_embedder_probe.json"] = dump(

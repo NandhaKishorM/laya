@@ -317,6 +317,48 @@ impl QuestionSet {
     }
 }
 
+impl QuestionSet {
+    /// An order-sensitive signature of the set: two sets share it only when they have the same
+    /// ids, types, instructions and options in the same order. The router groups requests by it
+    /// so equal schemas share a forward pass. Ports `_question_schema` (`laya/router.py`), which
+    /// is `json.dumps(questions, sort_keys=False)`: option and key order are positional.
+    pub(crate) fn schema_key(&self) -> String {
+        let rows: Vec<Value> = self
+            .map
+            .iter()
+            .map(|(id, question)| {
+                let body = match question {
+                    Question::Choice(q) => Value::Array(vec![
+                        Value::from("choice"),
+                        q.instructions.clone(),
+                        Value::Array(
+                            q.options
+                                .iter()
+                                .map(|(label, text)| {
+                                    Value::Array(vec![Value::from(label.as_str()), text.clone()])
+                                })
+                                .collect(),
+                        ),
+                    ]),
+                    Question::Score(q) => Value::Array(vec![
+                        Value::from("score"),
+                        q.instructions.clone(),
+                        Value::Array(q.levels.clone()),
+                    ]),
+                    Question::Noul(q) => Value::Array(vec![
+                        Value::from("noul"),
+                        q.instructions.clone(),
+                        q.if_false.clone(),
+                        q.if_true.clone(),
+                    ]),
+                };
+                Value::Array(vec![Value::from(id.as_str()), body])
+            })
+            .collect();
+        Value::Array(rows).to_string()
+    }
+}
+
 impl std::ops::Index<&str> for QuestionSet {
     type Output = Question;
 

@@ -146,6 +146,22 @@ impl CheckpointGoldenData {
             .collect()
     }
 
+    /// Cases recorded with `"kind": "batch"` that return results (`ONNXAgent.predict_batch`).
+    pub fn batch_cases(&self) -> Vec<GoldenCaseInfo> {
+        self.index()
+            .into_iter()
+            .filter(|c| c.kind.as_deref() == Some("batch") && !c.expects_error)
+            .collect()
+    }
+
+    /// Cases recorded with `"kind": "batch"` that raise a Python `TypeError`.
+    pub fn batch_error_cases(&self) -> Vec<GoldenCaseInfo> {
+        self.index()
+            .into_iter()
+            .filter(|c| c.kind.as_deref() == Some("batch") && c.expects_error)
+            .collect()
+    }
+
     /// Cases recorded with `"kind": "shortlist"` (`shortlist_many_options`): a hashing-embedder
     /// reduced choice question run through the ordinary predict pipeline, not a plain
     /// `Agent.predict` recording, so it is kept out of [`Self::success_cases`].

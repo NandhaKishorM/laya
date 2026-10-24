@@ -493,6 +493,43 @@ if let Some(window) = answer.window() {    // None for a single-pass state
 
 ---
 
+## Batch prediction
+
+`LayaEngine::predict_batch` answers the same questions over many states and shares forward passes
+between them: N states cost one pass, or `ceil(N / batch_size)` of them, instead of N. It ports
+`ONNXAgent.predict_batch` and gives each state the result `predict` would, in input order:
+
+```rust,no_run
+# use laya::{BatchOptions, LayaEngine, QuestionSet};
+# let engine = LayaEngine::from_directory("x")?; let questions = QuestionSet::new();
+# let states: Vec<serde_json::Value> = vec![];
+let options = BatchOptions::new().batch_size(8).sort_by_length(true);
+let results = engine.predict_batch(&states, &questions, &options)?;   // results[i] answers states[i]
+# Ok::<(), laya::LayaError>(())
+```
+
+- **`batch_size`.** The most states per forward pass. `None` or `0` sends them all in one pass, as
+  Python does for `None`, `0` and negative values.
+- **`sort_by_length`.** Groups similarly sized states inside windows of eight batches, so each batch
+  pads to a shorter maximum. It takes effect only with a `batch_size` above one and below the number
+  of states, and results keep input order. Different batch shapes can change floating-point
+  predictions slightly near a decision threshold.
+- **Edges.** No states give an empty list. No questions give one empty result per state, with no
+  state usage. A `null` state is `LayaError::InvalidState` (Python's `TypeError`); any other error
+  fails the whole call.
+- **Router.** `LayaRouter::predict_batch(&requests, &options)` takes `BatchRequest`s (state,
+  questions and the optional `model`, `task`, `lang` and `lang_guess` overrides), routes each,
+  groups them by checkpoint and then by question schema (order-sensitive, so option order is
+  positional), runs each group through `predict_batch` and returns the results in request order,
+  each with its `routing`. `LayaRouter::route_batch(&requests)` returns only the decisions and loads
+  nothing. A predictor without a batch capability (see `LayaPredictor::as_batch_predictor`) gives
+  `LayaError::NotSupported`.
+- **Not ported.** Per-call hooks, `min_confidence`, `lang`, per-request `max_len` / `head_max_len`
+  and the router's `diagnostics` report. `BatchOptions` and `BatchRequest` are `#[non_exhaustive]`
+  so those can be added without breaking callers.
+
+---
+
 ## Routing, language detection, email and shortlist
 
 Runnable end-to-end example: [`samples/laya-routing`](https://github.com/NandhaKishorM/laya/tree/main/laya-rust/samples/laya-routing).
@@ -704,6 +741,7 @@ invocation that has the `download` feature enabled (the default) with no externa
 | `src/tokenization/hf_tokenizer.rs` | HuggingFace tokenizer implementation | `HfTokenizer` |
 | `src/laya_engine.rs` | Loads the ONNX model and answers questions | `LayaEngine` |
 | `src/long_prediction.rs` | Window plan and aggregation for `predict_long` | `LongOptions` |
+| `src/batch_prediction.rs` | Chunking, sort windows and order restoration for `predict_batch` | `BatchOptions` |
 | `src/error.rs` | Error type | `LayaError`, `Result<T>` — every fallible call in this crate returns `Result<T, LayaError>` |
 
 Where the equivalent Python code is a module of related functions (`common.py`, `agent.py`), the
@@ -767,6 +805,6 @@ Rust port groups the corresponding functions into a unit struct with associated 
 
 - **Opt-in features are not ported yet:** abstention (`min_confidence`, including per-bucket
   thresholds), histogram-binning calibration, and per-language temperatures
-  (`lang_temperatures`). `predict_long` is ported, without hooks, per-language temperatures or
-  the confidence gate. They are off by default in
+  (`lang_temperatures`). `predict_long` and `predict_batch` are ported, without hooks,
+  per-language temperatures or the confidence gate. They are off by default in
   Python, so default predictions are unaffected. They are planned as follow-ups.

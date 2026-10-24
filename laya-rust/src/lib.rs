@@ -41,6 +41,7 @@
 //!   records the clamped entries.
 
 pub mod answers;
+pub mod batch_prediction;
 pub mod calibration;
 pub mod collator;
 pub mod error;
@@ -64,6 +65,7 @@ pub use answers::{
     ActionInfo, Answer, ChoiceAnswer, LayaResult, NoulAnswer, ScanUsage, ScoreAnswer, StateUsage,
     Usage, WindowInfo,
 };
+pub use batch_prediction::BatchOptions;
 pub use calibration::Calibration;
 pub use collator::{CollatedBatch, Collator, SequenceItem};
 pub use error::{LayaError, Result};
@@ -76,8 +78,8 @@ pub use laya_options::{
 };
 pub use laya_presets::LayaPresets;
 pub use laya_router::{
-    GuessInput, LangGuess, LayaLongPredictor, LayaPredictor, LayaRouter, LayaRouterOptions,
-    RouteDecision,
+    BatchRequest, GuessInput, LangGuess, LayaBatchPredictor, LayaLongPredictor, LayaPredictor,
+    LayaRouter, LayaRouterOptions, RouteDecision,
 };
 pub use laya_shortlist::{DEFAULT_SHORTLIST_K, LayaShortlist, ShortlistInfo};
 pub use long_prediction::LongOptions;

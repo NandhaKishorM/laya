@@ -103,6 +103,11 @@ pub enum LayaError {
         max_len: usize,
     },
 
+    /// A state or request was refused before any inference: a `null` state, which Python rejects
+    /// with a `TypeError` instead of answering a decision about the text `"null"`.
+    #[error("{0}")]
+    InvalidState(String),
+
     /// `predict_long` was given an aggregation mode other than `"auto"`.
     #[error("predict_long: only aggregate='auto' is supported")]
     UnsupportedAggregate(String),

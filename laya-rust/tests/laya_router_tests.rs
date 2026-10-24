@@ -10,7 +10,9 @@ use common::routing_golden;
 use laya::answers::{LayaResult, Usage};
 use laya::error::Result;
 use laya::laya_options::LayaCheckpoint;
-use laya::laya_router::{GuessInput, LangGuess, LayaPredictor, LayaRouter, LayaRouterOptions};
+use laya::laya_router::{
+    BatchRequest, GuessInput, LangGuess, LayaPredictor, LayaRouter, LayaRouterOptions,
+};
 use laya::questions::QuestionSet;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -555,6 +557,149 @@ fn route_probe_matches_every_entry() {
         "route_probe_matches_every_entry: checked {} cases",
         cases.len()
     );
+}
+
+// ---------------------------------------------------------------------- route_batch_probe.json
+
+fn batch_request(request: &Value) -> BatchRequest {
+    let questions = golden_data::build_questions(&request["questions"]).unwrap();
+    let mut built = BatchRequest::new(request["state"].clone(), questions);
+    built.model = request
+        .get("model")
+        .and_then(Value::as_str)
+        .map(String::from);
+    built.task = request
+        .get("task")
+        .and_then(Value::as_str)
+        .map(String::from);
+    built.lang = request
+        .get("lang")
+        .and_then(Value::as_str)
+        .map(String::from);
+    built.lang_guess = request
+        .get("lang_guess")
+        .and_then(Value::as_str)
+        .map(LangGuess::from);
+    built
+}
+
+fn batch_requests(case: &Value) -> Vec<BatchRequest> {
+    case["requests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(batch_request)
+        .collect()
+}
+
+#[test]
+fn route_batch_probe_matches_every_entry() {
+    let Some(probe) = routing_golden::load("route_batch_probe.json") else {
+        eprintln!("skip: routing golden not found (tests/golden/routing)");
+        return;
+    };
+
+    let cases = probe["cases"].as_array().unwrap();
+    for case in cases {
+        let label = case["label"].as_str().unwrap();
+        let router = router_from_kwargs(&case["router_kwargs"]);
+        let decisions = router
+            .route_batch(&batch_requests(case))
+            .unwrap_or_else(|e| panic!("{label}: route_batch failed: {e}"));
+        let expected = case["decisions"].as_array().unwrap();
+        assert_eq!(expected.len(), decisions.len(), "{label}: decision count");
+        for (index, (decision, want)) in decisions.iter().zip(expected).enumerate() {
+            assert_eq!(
+                checkpoint_name(decision.model),
+                want["model"].as_str().unwrap(),
+                "{label}[{index}]: model"
+            );
+            assert_eq!(
+                decision.reason,
+                want["reason"].as_str().unwrap(),
+                "{label}[{index}]: reason"
+            );
+            assert_eq!(
+                decision.workflow.as_deref(),
+                want["workflow"].as_str(),
+                "{label}[{index}]: workflow"
+            );
+            assert_eq!(
+                decision.detection.as_ref().map(|d| d.script.as_str()),
+                want["detection"]["script"].as_str(),
+                "{label}[{index}]: detection.script"
+            );
+        }
+    }
+    eprintln!(
+        "route_batch_probe_matches_every_entry: checked {} cases",
+        cases.len()
+    );
+}
+
+/// Python's request validation errors. A missing `state` or `questions`, a `questions` that is not
+/// a mapping and a request that is not a mapping cannot be written with `BatchRequest`, so those
+/// entries are unrepresentable in Rust and are checked to be exactly that set.
+#[test]
+fn route_batch_probe_errors_match_python_or_cannot_be_expressed() {
+    let Some(probe) = routing_golden::load("route_batch_probe.json") else {
+        eprintln!("skip: routing golden not found (tests/golden/routing)");
+        return;
+    };
+
+    let mut compared = Vec::new();
+    for case in probe["errors"].as_array().unwrap() {
+        let label = case["label"].as_str().unwrap();
+        let requests = case["requests"].as_array().unwrap();
+        let expressible = requests.iter().all(|request| {
+            request.is_object()
+                && request.get("state").is_some()
+                && request.get("questions").is_some_and(Value::is_object)
+        });
+        if !expressible {
+            continue;
+        }
+        let router = router_from_kwargs(&case["router_kwargs"]);
+        let error = router.route_batch(&batch_requests(case)).expect_err(label);
+        assert_eq!(
+            case["error_message"].as_str().unwrap(),
+            error.to_string(),
+            "{label}: error message"
+        );
+        compared.push(label.to_string());
+    }
+    assert_eq!(["state_none", "unknown_model"], compared.as_slice());
+}
+
+/// Python's `Router.predict` raises `TypeError` for a `None` state before it routes or loads, and
+/// `Router.predict_long` goes through `predict`, so neither may build a checkpoint for one.
+#[test]
+fn predict_and_predict_long_refuse_a_null_state_before_routing() {
+    let message = "state must not be None; pass a string, dict, or list";
+    let log = Arc::new(Mutex::new(Vec::new()));
+    let router = fake_router(2, log.clone());
+    let questions = noul_question_set(&["q"]);
+
+    let error = router
+        .predict(Value::Null, &questions, None, None, None)
+        .expect_err("predict refuses null");
+    assert_eq!(message, error.to_string());
+    let error = router
+        .predict(Value::Null, &questions, Some("bogus"), None, None)
+        .expect_err("the state is checked before the model name");
+    assert_eq!(message, error.to_string());
+    let error = router
+        .predict_long(
+            Value::Null,
+            &questions,
+            &laya::long_prediction::LongOptions::new(),
+            None,
+            None,
+            None,
+        )
+        .expect_err("predict_long refuses null");
+    assert_eq!(message, error.to_string());
+    assert!(log.lock().unwrap().is_empty(), "no checkpoint is loaded");
 }
 
 // ---------------------------------------------------------------------- lang_guess (callbacks)

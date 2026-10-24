@@ -32,6 +32,7 @@ hallucinate.
 - [Writing questions](#writing-questions)
 - [Supplying state](#supplying-state)
 - [Long prediction](#long-prediction)
+- [Batch prediction](#batch-prediction)
 - [Reading results](#reading-results)
 - [Confidence gating](#confidence-gating)
 - [Built-in presets](#built-in-presets)
@@ -327,7 +328,7 @@ LayaResult routed = router.PredictLong(document, questions, model: "english", ba
 - Scan usage sums `InputTokens`, `StateTokens`, `StateTokensDropped` and `Truncated`
   (a window count, including 0/1 for a single window). `TruncatedQuestions` is the last
   window's list; `Options` merges collapsed-option records by question id. These additional
-  diagnostics are currently populated only by `PredictLong`, not ordinary `Predict`.
+  diagnostics are populated by `Predict`, `PredictBatch` and `PredictLong`.
 - `aggregate` accepts only `"auto"`. Null state, unsupported aggregation, no state room, or a
   gap-causing stride throws `ArgumentException` (`ArgumentNullException` for null state).
   A stride valid for a requested window that gets clamped is reduced to half its new size.
@@ -339,6 +340,44 @@ LayaResult routed = router.PredictLong(document, questions, model: "english", ba
 The .NET adaptations are typed records instead of Python dictionaries, trace warnings instead of
 `RuntimeWarning`, and .NET argument/capability exceptions. The existing `"laya-rl-agent"` model
 identifier is kept, rather than Python ONNXAgent's `"laya-rl-agent-onnx"` suffix.
+
+---
+
+## Batch prediction
+
+`PredictBatch` answers the same questions about many states, sharing forward passes. It ports Python
+**`ONNXAgent.predict_batch`** (`batch_size`, `sort_by_length`):
+
+```csharp
+IReadOnlyList<LayaResult> results = engine.PredictBatch(
+    [ticket1, ticket2, ticket3], questions,
+    new LayaBatchOptions { BatchSize = 2, SortByLength = true });   // one result per state, input order
+```
+
+- One session run holds every state's question rows. `BatchSize` caps states per run; `null`, `0` or a
+  negative value sends them all in one run, exactly as Python (which raises nothing for such values).
+- `SortByLength` groups similarly sized encoded states inside windows of eight batches to reduce padding.
+  It has an effect only with `1 < BatchSize < states.Count`; otherwise it is ignored, as in Python. Results
+  keep input order. A different batch shape can move a prediction by a rounding step near a threshold.
+- An empty `states` list returns an empty list and never looks at the questions. An empty
+  `QuestionSet` gives each state an empty answer set with zero usage. A null state throws
+  `ArgumentNullException` (`state must not be None; pass a string, dict, or list`, the text Python's `TypeError`
+  carries, as `Predict` and `PredictLong` now do too); a question whose options
+  cannot fit the head budget throws `ArgumentException`, as `Predict` does. States are encoded and run a
+  window at a time, so an unanswerable state fails after the earlier windows have run, as in Python.
+- Each result carries the usage diagnostics Python's ONNX path reports (`StateTokens`,
+  `StateTokensDropped`, `Truncated`, `TruncatedQuestions`, `Options`), the same as `Predict` reports for a single state.
+- `LayaBatchOptions` is a class of init-only properties, so later per-call options extend it without
+  changing a signature. `ILayaBatchPredictor` is a separate interface; `ILayaPredictor` is unchanged.
+
+**Router.** `LayaRouter.PredictBatch(requests, options)` takes `LayaBatchRequest`s (`State`, `Questions`,
+and the optional routing overrides `Model`, `Task`, `Lang`, `LangGuess`), routes all of them first, groups them
+by routed checkpoint (first-seen order, so each checkpoint loads at most once), splits each group by question
+schema (order-sensitive) so same-schema states share a pass, and returns results in request order, each with
+`Routing`. `LayaRouter.RouteBatch(requests)` returns just the `RouteDecision`s and loads nothing. A null
+state or questions, or an unknown model, fails the whole call before anything loads. Attached predictors must
+implement `ILayaBatchPredictor`, else `NotSupportedException`. Hooks, `min_confidence`, per-call
+`lang` / `max_len` / `head_max_len` and the `diagnostics` dictionary are not ported yet.
 
 ---
 
@@ -540,7 +579,8 @@ var deDe   = router.Predict(
 Console.WriteLine(result.Routing!.Reason);   // "English Latin text"
 ```
 
-`router.Route(state, questions)` decides without loading or running anything — useful for logging
+`router.PredictBatch(requests, options)` and `router.RouteBatch(requests)` do the same for a mixed request list; see
+[Batch prediction](#batch-prediction). `router.Route(state, questions)` decides without loading or running anything — useful for logging
 or testing the routing logic in isolation. `Preload()` builds every checkpoint up front for a
 server or demo, so no request pays a cold load.
 
@@ -590,6 +630,7 @@ Python's `laya.Agent`.
 | `static LayaEngine FromDirectory(string directory)` | Shorthand for `Create(new LayaOptions { ModelDirectory = directory })`. |
 | `LayaResult Predict(object? state, QuestionSet questions)` | Answers every question about `state` in a single batched inference call. See [Supplying state](#supplying-state). |
 | `LayaResult PredictLong(object state, QuestionSet questions, int? window = null, int? stride = null, string aggregate = "auto", int? batchSize = null)` | Scans overlapping token windows. See [Long prediction](#long-prediction). |
+| `IReadOnlyList<LayaResult> PredictBatch(IReadOnlyList<object?> states, QuestionSet questions, LayaBatchOptions? options = null)` | Answers the same questions over many states in shared passes. See [Batch prediction](#batch-prediction). |
 | `LayaConfig Config { get; }` | The loaded checkpoint's `rl_agent_config.json`. |
 | `ModelArtifacts Artifacts { get; }` | The paths the artifacts were loaded from. |
 | `void Dispose()` | Releases the session and tokenizer. Safe to call more than once. |
@@ -946,11 +987,12 @@ disclaimer, signature and reply-header rules, including Portuguese, Spanish and 
 - **Opt-in features added in Python 0.3.21 are not ported yet:** abstention (`min_confidence`),
   and per-language temperatures (`lang_temperatures`). They are off by default in
   Python, so default predictions are unaffected. They are planned as follow-ups.
-- **Other Python-only APIs are not ported:** hooks, batching APIs, question option ordering and
-  digest controls.
-- **Usage diagnostics:** Python's `state_tokens`, `truncated`, `state_tokens_dropped` and
-  `truncated_questions` are exposed for `PredictLong` only; ordinary `Predict` still reports
-  just input/output tokens.
+- **Other Python-only APIs are not ported:** hooks, question option ordering and digest controls.
+  Batching is ported (`PredictBatch`, `LayaRouter.PredictBatch` / `RouteBatch`) without hooks,
+  `min_confidence`, per-call `lang` / `max_len` / `head_max_len` and the router `diagnostics` dictionary.
+- **Usage diagnostics:** Python's `state_tokens`, `truncated`, `state_tokens_dropped`, `truncated_questions`
+  and `options` are reported by `Predict`, `PredictBatch` and `PredictLong`, as Python's `system_one` is
+  `predict_batch([state])`.
 
 ## Differences from Python
 

@@ -11,6 +11,7 @@ Four sections, one per probe file:
     LANG_STATES      -> lang_probe.json      (lang.analyse / detect_script / script_profile /
                                                latin_profile / state_text)
     ROUTE_CASES       -> route_probe.json     (router.Router.route)
+    ROUTE_BATCH_CASES -> route_batch_probe.json (router.Router.route_batch, model-free)
     EMAIL_CASES        -> email_probe.json    (email.clean_email_body / email_state)
     SHORTLIST_CASES    -> shortlist_probe.json (shortlist.shortlist_choice)
 
@@ -575,6 +576,78 @@ ROUTE_CASES = [
     ("p0411/state_empty_dict", {}, {"state": {}}),
 ]
 
+
+
+
+# ============================================================================ route_batch_probe
+# Router.route_batch(requests): (label, Router kwargs, request dicts). Requests are JSON-able
+# (lang_guess as a language code) because the corpus is replayed from JSON by the .NET suite.
+# route_batch loads nothing, so these need no model.
+
+ROUTE_BATCH_CASES = [
+    ("empty", {}, []),
+    ("single_english", {}, [{"state": "I was charged twice, please refund.", "questions": Q_GENERIC}]),
+    ("mixed_order", {}, [
+        {"state": "I was charged twice, please refund.", "questions": Q_GENERIC},
+        {"state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung "
+                  "die nicht korrekt ist", "questions": Q_GENERIC},
+        {"state": {"body": "मुझसे दो बार शुल्क लिया गया"}, "questions": Q_GENERIC},
+        {"state": "I was charged twice, please refund.", "questions": Q_GENERIC},
+    ]),
+    ("per_request_overrides", {}, [
+        {"state": "hello", "questions": Q_GENERIC, "model": "ml"},
+        {"state": "hello", "questions": Q_GENERIC, "task": "typed_decisions"},
+        {"state": "मुझसे दो बार", "questions": Q_GENERIC, "lang": "en"},
+        {"state": "hello", "questions": Q_GENERIC, "lang": "de"},
+        {"state": "hello", "questions": Q_GENERIC, "lang": "C", "lang_guess": "ro"},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "ro"},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "en"},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "und"},
+        {"state": "x", "questions": Q_GENERIC, "model": "english", "lang_guess": "ro"},
+    ]),
+    ("installed_lang_guess", {"lang_guess": "ro"}, [
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "en"},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "C"},
+    ]),
+    ("auto_task_workflow", {"auto_task_detection": True}, [
+        {"state": {"body": "I was charged twice"}, "questions": _td_questions(_TD_IDS["customer_service"])},
+        {"state": {"body": "I was charged twice"}, "questions": Q_GENERIC},
+        {"state": "x", "questions": _td_questions(_TD_IDS["customer_service"]), "lang_guess": "ro"},
+    ]),
+    ("custom_default", {"default": "english"}, [
+        {"state": "12345", "questions": Q_GENERIC},
+        {"state": "Hello", "questions": Q_GENERIC},
+    ]),
+    ("falsy_states", {}, [
+        {"state": "", "questions": Q_GENERIC},
+        {"state": {}, "questions": Q_GENERIC},
+        {"state": [], "questions": Q_GENERIC},
+        {"state": 0, "questions": Q_GENERIC},
+    ]),
+    ("lang_variants", {}, [
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC, "lang": "fr"},
+        {"state": {"body": "मुझसे दो बार शुल्क लिया गया"}, "questions": Q_GENERIC, "lang": "en-US"},
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC, "lang": "C"},
+        {"state": {"body": "मुझसे दो बार शुल्क लिया गया"}, "questions": Q_GENERIC, "model": "english"},
+    ]),
+    ("installed_lang_guess_lang_wins", {"lang_guess": "de"}, [
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC},
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC,
+         "lang_guess": "en"},
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC, "lang": "en"},
+    ]),
+]
+
+# Requests Python refuses before routing anything: (label, Router kwargs, request dicts).
+ROUTE_BATCH_ERROR_CASES = [
+    ("state_none", {}, [{"state": "ok", "questions": Q_GENERIC}, {"state": None, "questions": Q_GENERIC}]),
+    ("state_missing", {}, [{"questions": Q_GENERIC}]),
+    ("questions_missing", {}, [{"state": "ok"}]),
+    ("questions_none", {}, [{"state": "ok", "questions": None}]),
+    ("unknown_model", {}, [{"state": "ok", "questions": Q_GENERIC}, {"state": "ok", "questions": Q_GENERIC, "model": "gpt"}]),
+    ("request_not_dict", {}, [{"state": "ok", "questions": Q_GENERIC}, "ok"]),
+]
 
 # ============================================================================ email_probe
 

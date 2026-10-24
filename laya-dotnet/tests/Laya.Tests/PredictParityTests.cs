@@ -86,6 +86,7 @@ public sealed partial class PredictParityTests(AllEnginesFixture fixture)
                      result.Usage.InputTokens);
         Assert.Equal(expected.GetProperty("usage").GetProperty("output_tokens").GetInt32(),
                      result.Usage.OutputTokens);
+        AssertBatchUsage(expected.GetProperty("usage"), result.Usage);
 
         var answers = expected.GetProperty("answers");
         // Ids in order: a result that answered the right questions in the wrong order would attach
@@ -144,6 +145,7 @@ public sealed partial class PredictParityTests(AllEnginesFixture fixture)
         Assert.Equal(expected.GetProperty("model").GetString(), result.Model);
         Assert.Equal(expected.GetProperty("usage").GetProperty("input_tokens").GetInt32(),
                      result.Usage.InputTokens);
+        AssertBatchUsage(expected.GetProperty("usage"), result.Usage);
 
         var answers = expected.GetProperty("answers");
         Assert.Equal([.. answers.EnumerateObject().Select(p => p.Name)], result.Ids);

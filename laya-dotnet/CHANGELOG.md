@@ -11,6 +11,18 @@ goldens: 0.4.12).
 
 ### Added
 
+- `LayaEngine.PredictBatch` (`ILayaBatchPredictor`), `LayaBatchOptions` (`BatchSize`, `SortByLength`),
+  `LayaRouter.PredictBatch` and `LayaRouter.RouteBatch` over `LayaBatchRequest`, ported from Python
+  `ONNXAgent.predict_batch` and `Router.predict_batch` / `route_batch`: shared forward passes, `batch_size`
+  chunking, `sort_by_length` inside windows of eight batches (effective only for `1 < batch_size < len(states)`),
+  routing grouped by checkpoint then question schema with input order restored, and per-request `lang_guess`.
+  Hooks, `min_confidence`, per-call `lang` / `max_len` / `head_max_len` and the router `diagnostics`
+  dictionary are not ported yet. Existing signatures are unchanged.
+- Behaviour change, to match Python (`system_one` is `predict_batch([state])`): `LayaEngine.Predict` and
+  `LayaRouter.Predict` / `PredictLong` refuse a null state with `ArgumentNullException` carrying Python's
+  text (`state must not be None; pass a string, dict, or list`) instead of answering the text `"null"`,
+  and `LayaEngine.Predict` with an empty `QuestionSet` returns an empty answer set with zero usage instead
+  of throwing. `LayaEngine.Predict` now reports the usage diagnostics too, as `PredictBatch([state])[0]` does. An unknown model name now carries Python's exact message.
 - `LangGuess` (a language code or a callback of the state), Python's `lang_guess`: per call through new
   `LayaRouter.Route`, `Predict` and `PredictLong` overloads, and for every request through
   `LayaRouterOptions.LangGuess`. Precedence is explicit `lang`, then `lang_guess`, then detection;
@@ -108,6 +120,5 @@ goldens: 0.4.12).
 ### Known gaps
 
 - Python-only opt-in features are not yet ported: abstention (`min_confidence`),
-  `lang_temperatures`, hooks, batching APIs, question option ordering and digest controls.
-- New Python usage diagnostics (`state_tokens`, `truncated`, `state_tokens_dropped` and
-  `truncated_questions`) are populated for `PredictLong`, but not ordinary `Predict`.
+  `lang_temperatures`, hooks, question option ordering and digest controls. Batching is ported without
+  hooks, `min_confidence` and per-call `lang` / `max_len` / `head_max_len`.

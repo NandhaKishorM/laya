@@ -1,0 +1,1061 @@
+{
+  "cases": [
+    {
+      "label": "empty",
+      "router_kwargs": {},
+      "requests": [],
+      "decisions": []
+    },
+    {
+      "label": "single_english",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "I was charged twice, please refund.",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        }
+      ],
+      "decisions": [
+        {
+          "model": "english",
+          "reason": "English Latin text",
+          "detection": {
+            "script": "latin",
+            "script_profile": {
+              "latin": 1.0
+            },
+            "language": "en",
+            "is_english": true,
+            "language_undecided": false,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        }
+      ]
+    },
+    {
+      "label": "mixed_order",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "I was charged twice, please refund.",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": {
+            "body": "मुझसे दो बार शुल्क लिया गया"
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": "I was charged twice, please refund.",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        }
+      ],
+      "decisions": [
+        {
+          "model": "english",
+          "reason": "English Latin text",
+          "detection": {
+            "script": "latin",
+            "script_profile": {
+              "latin": 1.0
+            },
+            "language": "en",
+            "is_english": true,
+            "language_undecided": false,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "Latin script but language looks like 'de', not English",
+          "detection": {
+            "script": "latin",
+            "script_profile": {
+              "latin": 1.0
+            },
+            "language": "de",
+            "is_english": false,
+            "language_undecided": false,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it",
+          "detection": {
+            "script": "devanagari",
+            "script_profile": {
+              "devanagari": 1.0
+            },
+            "language": null,
+            "is_english": false,
+            "language_undecided": true,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 1.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "English Latin text",
+          "detection": {
+            "script": "latin",
+            "script_profile": {
+              "latin": 1.0
+            },
+            "language": "en",
+            "is_english": true,
+            "language_undecided": false,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        }
+      ]
+    },
+    {
+      "label": "per_request_overrides",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "hello",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "model": "ml"
+        },
+        {
+          "state": "hello",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "task": "typed_decisions"
+        },
+        {
+          "state": "मुझसे दो बार",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang": "en"
+        },
+        {
+          "state": "hello",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang": "de"
+        },
+        {
+          "state": "hello",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang": "C",
+          "lang_guess": "ro"
+        },
+        {
+          "state": "Care este ora in Tokyo?",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang_guess": "ro"
+        },
+        {
+          "state": "Care este ora in Tokyo?",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang_guess": "en"
+        },
+        {
+          "state": "Care este ora in Tokyo?",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang_guess": "und"
+        },
+        {
+          "state": "x",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "model": "english",
+          "lang_guess": "ro"
+        }
+      ],
+      "decisions": [
+        {
+          "model": "multilingual",
+          "reason": "explicit model='ml'",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "typed-decisions",
+          "reason": "explicit task='typed_decisions'",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "explicit lang='en'",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "explicit lang='de'",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "lang_guess: the caller identified this as non-English text",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "lang_guess: the caller identified this as non-English text",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "lang_guess: the caller identified this as English text",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "English Latin text",
+          "detection": {
+            "script": "latin",
+            "script_profile": {
+              "latin": 1.0
+            },
+            "language": "en",
+            "is_english": true,
+            "language_undecided": false,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "explicit model='english'",
+          "detection": null,
+          "workflow": null
+        }
+      ]
+    },
+    {
+      "label": "installed_lang_guess",
+      "router_kwargs": {
+        "lang_guess": "ro"
+      },
+      "requests": [
+        {
+          "state": "Care este ora in Tokyo?",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": "Care este ora in Tokyo?",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang_guess": "en"
+        },
+        {
+          "state": "Care este ora in Tokyo?",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang_guess": "C"
+        }
+      ],
+      "decisions": [
+        {
+          "model": "multilingual",
+          "reason": "Router(lang_guess=...): the caller identified this as non-English text",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "lang_guess: the caller identified this as English text",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "Router(lang_guess=...): the caller identified this as non-English text",
+          "detection": null,
+          "workflow": null
+        }
+      ]
+    },
+    {
+      "label": "auto_task_workflow",
+      "router_kwargs": {
+        "auto_task_detection": true
+      },
+      "requests": [
+        {
+          "state": {
+            "body": "I was charged twice"
+          },
+          "questions": {
+            "action": {
+              "type": "noul",
+              "instructions": "x"
+            },
+            "category": {
+              "type": "noul",
+              "instructions": "x"
+            },
+            "churn_risk": {
+              "type": "noul",
+              "instructions": "x"
+            },
+            "needs_human": {
+              "type": "noul",
+              "instructions": "x"
+            },
+            "urgency": {
+              "type": "noul",
+              "instructions": "x"
+            }
+          }
+        },
+        {
+          "state": {
+            "body": "I was charged twice"
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": "x",
+          "questions": {
+            "action": {
+              "type": "noul",
+              "instructions": "x"
+            },
+            "category": {
+              "type": "noul",
+              "instructions": "x"
+            },
+            "churn_risk": {
+              "type": "noul",
+              "instructions": "x"
+            },
+            "needs_human": {
+              "type": "noul",
+              "instructions": "x"
+            },
+            "urgency": {
+              "type": "noul",
+              "instructions": "x"
+            }
+          },
+          "lang_guess": "ro"
+        }
+      ],
+      "decisions": [
+        {
+          "model": "typed-decisions",
+          "reason": "question ids match the 'customer_service' typed-decisions workflow",
+          "detection": null,
+          "workflow": "customer_service"
+        },
+        {
+          "model": "english",
+          "reason": "English Latin text",
+          "detection": {
+            "script": "latin",
+            "script_profile": {
+              "latin": 1.0
+            },
+            "language": "en",
+            "is_english": true,
+            "language_undecided": false,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "typed-decisions",
+          "reason": "question ids match the 'customer_service' typed-decisions workflow",
+          "detection": null,
+          "workflow": "customer_service"
+        }
+      ]
+    },
+    {
+      "label": "custom_default",
+      "router_kwargs": {
+        "default": "english"
+      },
+      "requests": [
+        {
+          "state": "12345",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": "Hello",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        }
+      ],
+      "decisions": [
+        {
+          "model": "english",
+          "reason": "no letters detected in state; using default (english)",
+          "detection": {
+            "script": "unknown",
+            "script_profile": {},
+            "language": null,
+            "is_english": true,
+            "language_undecided": true,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+          "detection": {
+            "script": "latin",
+            "script_profile": {
+              "latin": 1.0
+            },
+            "language": null,
+            "is_english": true,
+            "language_undecided": true,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        }
+      ]
+    },
+    {
+      "label": "falsy_states",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": {},
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": [],
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": 0,
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        }
+      ],
+      "decisions": [
+        {
+          "model": "multilingual",
+          "reason": "no letters detected in state; using default (multilingual)",
+          "detection": {
+            "script": "unknown",
+            "script_profile": {},
+            "language": null,
+            "is_english": true,
+            "language_undecided": true,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "no letters detected in state; using default (multilingual)",
+          "detection": {
+            "script": "unknown",
+            "script_profile": {},
+            "language": null,
+            "is_english": true,
+            "language_undecided": true,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "no letters detected in state; using default (multilingual)",
+          "detection": {
+            "script": "unknown",
+            "script_profile": {},
+            "language": null,
+            "is_english": true,
+            "language_undecided": true,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "multilingual",
+          "reason": "no letters detected in state; using default (multilingual)",
+          "detection": {
+            "script": "unknown",
+            "script_profile": {},
+            "language": null,
+            "is_english": true,
+            "language_undecided": true,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        }
+      ]
+    },
+    {
+      "label": "lang_variants",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": {
+            "body": "I was charged twice, please refund this order."
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang": "fr"
+        },
+        {
+          "state": {
+            "body": "मुझसे दो बार शुल्क लिया गया"
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang": "en-US"
+        },
+        {
+          "state": {
+            "body": "I was charged twice, please refund this order."
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang": "C"
+        },
+        {
+          "state": {
+            "body": "मुझसे दो बार शुल्क लिया गया"
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "model": "english"
+        }
+      ],
+      "decisions": [
+        {
+          "model": "multilingual",
+          "reason": "explicit lang='fr'",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "explicit lang='en-US'",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "English Latin text",
+          "detection": {
+            "script": "latin",
+            "script_profile": {
+              "latin": 1.0
+            },
+            "language": "en",
+            "is_english": true,
+            "language_undecided": false,
+            "diacritic_rate": 0.0,
+            "non_latin_fraction": 0.0,
+            "mixed_segment": null
+          },
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "explicit model='english'",
+          "detection": null,
+          "workflow": null
+        }
+      ]
+    },
+    {
+      "label": "installed_lang_guess_lang_wins",
+      "router_kwargs": {
+        "lang_guess": "de"
+      },
+      "requests": [
+        {
+          "state": {
+            "body": "I was charged twice, please refund this order."
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": {
+            "body": "I was charged twice, please refund this order."
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang_guess": "en"
+        },
+        {
+          "state": {
+            "body": "I was charged twice, please refund this order."
+          },
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "lang": "en"
+        }
+      ],
+      "decisions": [
+        {
+          "model": "multilingual",
+          "reason": "Router(lang_guess=...): the caller identified this as non-English text",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "lang_guess: the caller identified this as English text",
+          "detection": null,
+          "workflow": null
+        },
+        {
+          "model": "english",
+          "reason": "explicit lang='en'",
+          "detection": null,
+          "workflow": null
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "label": "state_none",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "ok",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": null,
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        }
+      ],
+      "error_type": "TypeError",
+      "error_message": "request 1 'state' must not be None; pass a string, dict, or list"
+    },
+    {
+      "label": "state_missing",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        }
+      ],
+      "error_type": "ValueError",
+      "error_message": "request 0 is missing required key 'state'"
+    },
+    {
+      "label": "questions_missing",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "ok"
+        }
+      ],
+      "error_type": "ValueError",
+      "error_message": "request 0 is missing required key 'questions'"
+    },
+    {
+      "label": "questions_none",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "ok",
+          "questions": null
+        }
+      ],
+      "error_type": "TypeError",
+      "error_message": "request 0 'questions' must be a dict, got NoneType"
+    },
+    {
+      "label": "unknown_model",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "ok",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        {
+          "state": "ok",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          },
+          "model": "gpt"
+        }
+      ],
+      "error_type": "ValueError",
+      "error_message": "unknown model 'gpt'; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+    },
+    {
+      "label": "request_not_dict",
+      "router_kwargs": {},
+      "requests": [
+        {
+          "state": "ok",
+          "questions": {
+            "dept": {
+              "type": "choice",
+              "instructions": "Which team?",
+              "criteria": {
+                "billing": null,
+                "tech": null
+              }
+            }
+          }
+        },
+        "ok"
+      ],
+      "error_type": "TypeError",
+      "error_message": "request 1 must be a dict, got str"
+    }
+  ]
+}

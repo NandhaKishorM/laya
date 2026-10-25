@@ -276,7 +276,7 @@ func checkDecision(t *testing.T, got router.Decision, want fixtures.Object) {
 
 func TestRouteGolden(t *testing.T) {
 	cases := family(t, "routes")
-	if len(cases) != 1058 {
+	if len(cases) != 1075 {
 		t.Fatalf("%d cases", len(cases))
 	}
 	var decided, refused, refusedRouters int

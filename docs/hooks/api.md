@@ -178,11 +178,14 @@ Collect `soft_stability` with `accept=None, escalate=None` on labelled evaluatio
 then pass those numeric values and correctness labels to `laya.hooks.calibrate_reliability`.
 Only fit or replay probed, numeric scores; exclude unprobed reports with `soft_stability=None`
 and keep their `decision=None`.
-The fitter requires equal, nonempty score and label sequences. Scores and both accuracy
-targets must be finite Python `int`/`float` values in `[0, 1]` (excluding `bool`); invalid
-lengths or values raise `ValueError`. Correctness labels must be Python `bool` values,
-otherwise it raises `TypeError`. It does not drop unmatched rows or coerce labels such
-as `0`/`1` or `"false"`.
+The fitter requires equal, nonempty, sized score and label sequences; generators raise
+`TypeError`. Scores and both accuracy targets must be finite `numbers.Real` values in
+`[0, 1]`, including NumPy scalars such as `numpy.float32` and `numpy.int64`, but excluding
+`bool` and `numpy.bool_`; invalid lengths or values raise `ValueError`. Correctness labels
+must be `bool` or `numpy.bool_` values (as produced by comparing NumPy arrays), otherwise
+it raises `TypeError`. It does not drop unmatched rows or coerce labels such as `0`/`1`
+or `"false"`. Returned cutoffs are plain Python `float` values, including when fitting
+NumPy inputs, so they can be saved in JSON.
 It chooses cutoffs from the distinct input scores at their supplied precision; equal scores
 stay in the same group. `ACCEPT` includes scores equal to `accept`, while `ESCALATE` requires
 a score strictly below `escalate`. If no cutoff meets the requested accuracy, `accept=1.01`

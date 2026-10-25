@@ -310,12 +310,18 @@ with open(_not_json, "w", encoding="utf-8") as f:
 _not_text = os.path.join(tmp, "not-text.json")
 with open(_not_text, "wb") as f:
     f.write(b"\xff\xfe\x00\x01binary")
+# `json` reports unclosable depth as a `RecursionError`, which is neither a `ValueError` decode
+# failure nor an `OSError`, so it is the one shape of unreadable artifact that used to reach the
+# caller as a traceback.
+_deep_report = os.path.join(tmp, "deep.json")
+with open(_deep_report, "w", encoding="utf-8") as f:
+    f.write("[" * 100000 + "]" * 100000)
 _bad_config_ckpt = os.path.join(tmp, "ckpt-bad-config")
 os.makedirs(_bad_config_ckpt)
 with open(os.path.join(_bad_config_ckpt, "rl_agent_config.json"), "w", encoding="utf-8") as f:
     f.write("{nope")
 
-# The last tuple element is the string the refusal must contain. For four rows that is the whole
+# The last tuple element is the string the refusal must contain. For five rows that is the whole
 # path, because `laya/evidence.py` builds those messages from the argument the caller passed. The
 # directory row is the exception: its refusal is the operating system's own `OSError` text, and the
 # Windows CI runner reports that path in 8.3 form (`C:\Users\RUNNER~1\...` where the test holds
@@ -331,6 +337,8 @@ for _label, _argv, _expect in (
          _not_json),
         ("--report is not UTF-8 text", ["evidence", "--checkpoint", ckpt, "--report", _not_text],
          _not_text),
+        ("--report is JSON nested too deep to read",
+         ["evidence", "--checkpoint", ckpt, "--report", _deep_report], _deep_report),
         ("the checkpoint's own config is not JSON",
          ["evidence", "--checkpoint", _bad_config_ckpt],
          os.path.join(_bad_config_ckpt, "rl_agent_config.json"))):
@@ -340,6 +348,18 @@ for _label, _argv, _expect in (
     check("evidence CLI: %s -> usage error 2" % _label, _rc, 2)
     check_true("evidence CLI: %s prints no traceback" % _label, "Traceback" not in _err.getvalue())
     check_true("evidence CLI: %s names the path" % _label, _expect in _err.getvalue())
+
+# The table asserts the path because that is the property all six rows share. For the depth row the
+# *kind* has to be pinned separately: a refusal that reused "is not valid JSON" would still exit 2 and
+# still name the file, and would tell the caller their artifact is malformed when it is only nested
+# deeper than `json` walks -- a different fix. Reusing the decode wording is the mistake this checks.
+_err = io.StringIO()
+with contextlib.redirect_stderr(_err):
+    _rc = evals_cli.main(["evidence", "--checkpoint", ckpt, "--report", _deep_report])
+check("evidence CLI: a too-deep --report is still usage error 2", _rc, 2)
+check_true("evidence CLI: a too-deep --report is refused as depth",
+           "nested deeper than it can be read" in _err.getvalue())
+check_true("and not as a document that fails to parse", "is not valid JSON" not in _err.getvalue())
 
 # ... and on the artifact the research harness actually writes: identity at the document's top
 # level, no `config` key. Read through `inspect_checkpoint`/`format_summary`, which is the whole of

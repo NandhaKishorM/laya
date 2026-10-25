@@ -47,8 +47,7 @@ internal static class PythonJsonReader
     {
         var p = new State(text);
         if (text.StartsWith('\uFEFF')) throw p.Error("Unexpected UTF-8 BOM (decode using utf-8-sig)", 0);
-        p.SkipWhitespace();
-        var value = p.Value(0);
+        var value = p.Value();
         p.SkipWhitespace();
         if (p.Pos != text.Length) throw p.Error("Extra data");
         return value;
@@ -85,16 +84,117 @@ internal static class PythonJsonReader
     }
 
     /// <summary>Whether re-emitting <paramref name="value"/> as JSON text changes what a reader of it sees.</summary>
-    internal static bool IsAlteredByReEmission(object? value) => value switch
+    /// <remarks>
+    /// Walks with an explicit stack, for the same reason <see cref="Parse"/> and <see cref="Write"/> do: the
+    /// value may be a document at <see cref="MaxDepth"/>, and a recursive walk would be the one remaining place
+    /// a deep document could exhaust the caller's stack.
+    /// </remarks>
+    internal static bool IsAlteredByReEmission(object? value)
     {
-        double d => !double.IsFinite(d),
-        string s => HasLoneSurrogate(s),
-        List<object?> list => list.Any(IsAlteredByReEmission),
-        IEnumerable<KeyValuePair<string, object?>> map => map.Any(kv => IsAlteredByReEmission(kv.Key) || IsAlteredByReEmission(kv.Value)),
-        _ => false,
-    };
+        var pending = new Stack<object?>();
+        pending.Push(value);
+        while (pending.Count > 0)
+        {
+            switch (pending.Pop())
+            {
+                case double d when !double.IsFinite(d): return true;
+                case string s when HasLoneSurrogate(s): return true;
+                case List<object?> list:
+                    foreach (var item in list) pending.Push(item);
+                    break;
+                case IEnumerable<KeyValuePair<string, object?>> map:
+                    foreach (var kv in map)
+                    {
+                        if (HasLoneSurrogate(kv.Key)) return true;
+                        pending.Push(kv.Value);
+                    }
+                    break;
+            }
+        }
+        return false;
+    }
 
+    /// <summary>One open container while re-emitting, with the enumerator over its children.</summary>
+    private struct WriteFrame
+    {
+        internal IEnumerator<object?>? Items;                          // an array: its elements
+        internal IEnumerator<KeyValuePair<string, object?>>? Pairs;    // an object: its members
+        internal bool IsObject;
+    }
+
+    /// <summary>Re-emit <paramref name="value"/> as JSON text.</summary>
+    /// <remarks>
+    /// Iterative: <see cref="Utf8JsonWriter"/> keeps its own depth counter and does not recurse, so this walk was
+    /// the only thing that made a deep document need stack proportional to its depth. A
+    /// <c>tokenizer_config.json</c> nested at CPython's limit is re-emitted through here
+    /// (<see cref="ParseDocument(string, out object?)"/>), so it must not be the call that overflows. Scalar
+    /// spellings, key order and lone-surrogate replacement are unchanged.
+    /// </remarks>
     private static void Write(Utf8JsonWriter w, object? value)
+    {
+        if (!IsContainer(value, out var items, out var pairs)) { WriteScalar(w, value); return; }
+        var frames = new List<WriteFrame>();
+        Open(w, items, pairs, frames);
+        while (frames.Count > 0)
+        {
+            var top = frames.Count - 1;
+            var frame = frames[top];
+            if (frame.IsObject)
+            {
+                if (frame.Pairs!.MoveNext())
+                {
+                    w.WritePropertyName(ReplaceLoneSurrogates(frame.Pairs.Current.Key));
+                    OpenChild(w, frame.Pairs.Current.Value, frames);
+                    continue;
+                }
+                w.WriteEndObject();
+            }
+            else
+            {
+                if (frame.Items!.MoveNext())
+                {
+                    OpenChild(w, frame.Items.Current, frames);
+                    continue;
+                }
+                w.WriteEndArray();
+            }
+            frames.RemoveAt(top);
+        }
+    }
+
+    /// <summary>Write one child: a scalar here, or a container's opening token and a frame to walk it.</summary>
+    private static void OpenChild(Utf8JsonWriter w, object? value, List<WriteFrame> frames)
+    {
+        if (IsContainer(value, out var items, out var pairs)) Open(w, items, pairs, frames);
+        else WriteScalar(w, value);
+    }
+
+    /// <summary>Write a container's opening token and push the frame that walks it.</summary>
+    private static void Open(Utf8JsonWriter w, IEnumerator<object?>? items,
+                             IEnumerator<KeyValuePair<string, object?>>? pairs, List<WriteFrame> frames)
+    {
+        if (pairs is not null)
+        {
+            w.WriteStartObject();
+            frames.Add(new WriteFrame { IsObject = true, Pairs = pairs });
+        }
+        else
+        {
+            w.WriteStartArray();
+            frames.Add(new WriteFrame { Items = items });
+        }
+    }
+
+    private static bool IsContainer(object? value, out IEnumerator<object?>? items,
+                                    out IEnumerator<KeyValuePair<string, object?>>? pairs)
+    {
+        items = value is List<object?> list ? list.GetEnumerator() : null;
+        pairs = value is IEnumerable<KeyValuePair<string, object?>> map ? map.GetEnumerator() : null;
+        return items is not null || pairs is not null;
+    }
+
+    /// <summary>The scalar half of the re-emission: the same spellings the recursive walk wrote.</summary>
+    private static void WriteScalar(Utf8JsonWriter w, object? value)
     {
         switch (value)
         {
@@ -103,18 +203,8 @@ internal static class PythonJsonReader
             case long l: w.WriteNumberValue(l); break;
             case BigInteger big: w.WriteRawValue(big.ToString(CultureInfo.InvariantCulture)); break;
             case double d when double.IsFinite(d): w.WriteNumberValue(d); break;
-            case double: w.WriteNullValue(); break;
+            case double: w.WriteNullValue(); break;   // NaN and the infinities are not JSON
             case string s: w.WriteStringValue(ReplaceLoneSurrogates(s)); break;
-            case List<object?> list:
-                w.WriteStartArray();
-                foreach (var item in list) Write(w, item);
-                w.WriteEndArray();
-                break;
-            case IEnumerable<KeyValuePair<string, object?>> map:
-                w.WriteStartObject();
-                foreach (var kv in map) { w.WritePropertyName(ReplaceLoneSurrogates(kv.Key)); Write(w, kv.Value); }
-                w.WriteEndObject();
-                break;
         }
     }
 
@@ -151,30 +241,161 @@ internal static class PythonJsonReader
             while (Pos < text.Length && text[Pos] is ' ' or '\t' or '\n' or '\r') Pos++;
         }
 
-        internal object? Value(int depth)
+        /// <summary>One open container while parsing: an array's list, or an object's map and pending key.</summary>
+        private sealed class Frame
         {
-            if (Pos >= text.Length) throw Error("Expecting value");
-            switch (text[Pos])
+            internal readonly List<object?>? Items;
+            internal readonly OrderedDictionary<string, object?>? Map;
+            internal string Key = "";
+
+            internal Frame(List<object?> items) => Items = items;
+
+            internal Frame(OrderedDictionary<string, object?> map, string key)
             {
-                case '"': Pos++; return String();
-                case '{':
-                    if (depth >= MaxDepth) throw new JsonException("maximum recursion depth exceeded while decoding a JSON object from a unicode string");
-                    Pos++;
-                    return Object(depth + 1);
-                case '[':
-                    if (depth >= MaxDepth) throw new JsonException("maximum recursion depth exceeded while decoding a JSON array from a unicode string");
-                    Pos++;
-                    return Array(depth + 1);
-                case 'n' when Literal("null"): return null;
-                case 't' when Literal("true"): return true;
-                case 'f' when Literal("false"): return false;
-                case 'N' when Literal("NaN"): return double.NaN;
-                case 'I' when Literal("Infinity"): return double.PositiveInfinity;
-                case '-' when string.CompareOrdinal(text, Pos, "-Infinity", 0, 9) == 0: Pos += 9; return double.NegativeInfinity;
-                default:
-                    var number = Number();
-                    return number ?? throw Error("Expecting value");
+                Map = map;
+                Key = key;
             }
+
+            internal bool IsObject => Map is not null;
+
+            internal void Add(object? value)
+            {
+                if (Map is not null) Map[Key] = value;
+                else Items!.Add(value);
+            }
+        }
+
+        /// <summary>
+        /// Parse one complete JSON value, leaving any trailing text for the caller (`Parse` reports "Extra data").
+        /// </summary>
+        /// <remarks>
+        /// Iterative, for the reason <see cref="MaxDepth"/> exists at all: CPython loads documents nested nearly
+        /// 3000 levels deep, and a recursive descent costs about two managed frames per level -- more than a
+        /// thread with the platform-default 1 MB stack has. Reaching the limit that way is not an error the
+        /// caller can catch: .NET cannot catch a stack overflow, so the process aborts instead, and a document
+        /// CPython accepts (a downloaded <c>tokenizer_config.json</c>) kills the host. Containers are held in an
+        /// explicit stack here, so depth costs heap and never stack.
+        ///
+        /// Everything observable is unchanged: tokens and their positions (the exact texts
+        /// `PythonJsonErrorTests` pins), the scalar types, last-value-wins duplicate keys, and the depth limit,
+        /// which counts the open containers -- the same number the recursive `depth` parameter carried.
+        /// </remarks>
+        internal object? Value()
+        {
+            var open = new Stack<Frame>();
+            while (true)
+            {
+                // One value, in "expect a value" position. The whitespace before it belongs here rather than in
+                // the container loops: the recursive version skipped it in `Object`, `Array` and `Parse` alike.
+                SkipWhitespace();
+                if (Pos >= text.Length) throw Error("Expecting value");
+                object? value;
+                switch (text[Pos])
+                {
+                    case '"':
+                        Pos++;
+                        value = String();
+                        break;
+                    case '{':
+                        if (open.Count >= MaxDepth)
+                            throw new JsonException("maximum recursion depth exceeded while decoding a JSON object from a unicode string");
+                        Pos++;
+                        var map = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
+                        SkipWhitespace();
+                        if (Pos < text.Length && text[Pos] == '}')
+                        {
+                            Pos++;
+                            value = map;                 // `{}` completes without ever opening a frame
+                            break;
+                        }
+                        open.Push(new Frame(map, ReadKey()));
+                        continue;                        // now parse that member's value
+                    case '[':
+                        if (open.Count >= MaxDepth)
+                            throw new JsonException("maximum recursion depth exceeded while decoding a JSON array from a unicode string");
+                        Pos++;
+                        var list = new List<object?>();
+                        SkipWhitespace();
+                        if (Pos < text.Length && text[Pos] == ']')
+                        {
+                            Pos++;
+                            value = list;                // `[]` completes without ever opening a frame
+                            break;
+                        }
+                        open.Push(new Frame(list));
+                        continue;                        // now parse the first element
+                    case 'n' when Literal("null"):
+                        value = null;
+                        break;
+                    case 't' when Literal("true"):
+                        value = true;
+                        break;
+                    case 'f' when Literal("false"):
+                        value = false;
+                        break;
+                    case 'N' when Literal("NaN"):
+                        value = double.NaN;
+                        break;
+                    case 'I' when Literal("Infinity"):
+                        value = double.PositiveInfinity;
+                        break;
+                    case '-' when string.CompareOrdinal(text, Pos, "-Infinity", 0, 9) == 0:
+                        Pos += 9;
+                        value = double.NegativeInfinity;
+                        break;
+                    default:
+                        value = Number() ?? throw Error("Expecting value");
+                        break;
+                }
+
+                // The value is complete: hand it to the innermost open container, then read the delimiter that
+                // follows. A container that closes becomes a value for ITS parent, so closing walks outward
+                // through this same loop instead of returning through stack frames.
+                while (true)
+                {
+                    if (open.Count == 0) return value;
+                    var frame = open.Peek();
+                    frame.Add(value);
+                    SkipWhitespace();
+                    if (frame.IsObject)
+                    {
+                        if (Pos < text.Length && text[Pos] == '}')
+                        {
+                            Pos++;
+                            open.Pop();
+                            value = frame.Map;
+                            continue;
+                        }
+                        if (Pos >= text.Length || text[Pos] != ',') throw Error("Expecting ',' delimiter");
+                        Pos++;
+                        SkipWhitespace();
+                        frame.Key = ReadKey();
+                        break;                          // parse the next member's value
+                    }
+                    if (Pos < text.Length && text[Pos] == ']')
+                    {
+                        Pos++;
+                        open.Pop();
+                        value = frame.Items;
+                        continue;
+                    }
+                    if (Pos >= text.Length || text[Pos] != ',') throw Error("Expecting ',' delimiter");
+                    Pos++;
+                    break;                              // parse the next element
+                }
+            }
+        }
+
+        /// <summary>The <c>"key":</c> of one object member, with the whitespace around the colon consumed.</summary>
+        private string ReadKey()
+        {
+            if (Pos >= text.Length || text[Pos] != '"') throw Error("Expecting property name enclosed in double quotes");
+            Pos++;
+            var key = String();
+            SkipWhitespace();
+            if (Pos >= text.Length || text[Pos] != ':') throw Error("Expecting ':' delimiter");
+            Pos++;
+            return key;
         }
 
         private bool Literal(string word)
@@ -273,43 +494,5 @@ internal static class PythonJsonReader
             return (char)value;   // a high surrogate followed by \uDC00.. joins in the UTF-16 string, as Python joins the pair
         }
 
-        private object Object(int depth)
-        {
-            var map = new OrderedDictionary<string, object?>(StringComparer.Ordinal);
-            SkipWhitespace();
-            if (Pos < text.Length && text[Pos] == '}') { Pos++; return map; }
-            while (true)
-            {
-                if (Pos >= text.Length || text[Pos] != '"') throw Error("Expecting property name enclosed in double quotes");
-                Pos++;
-                var key = String();
-                SkipWhitespace();
-                if (Pos >= text.Length || text[Pos] != ':') throw Error("Expecting ':' delimiter");
-                Pos++;
-                SkipWhitespace();
-                map[key] = Value(depth);
-                SkipWhitespace();
-                if (Pos < text.Length && text[Pos] == '}') { Pos++; return map; }
-                if (Pos >= text.Length || text[Pos] != ',') throw Error("Expecting ',' delimiter");
-                Pos++;
-                SkipWhitespace();
-            }
-        }
-
-        private object Array(int depth)
-        {
-            var list = new List<object?>();
-            SkipWhitespace();
-            if (Pos < text.Length && text[Pos] == ']') { Pos++; return list; }
-            while (true)
-            {
-                list.Add(Value(depth));
-                SkipWhitespace();
-                if (Pos < text.Length && text[Pos] == ']') { Pos++; return list; }
-                if (Pos >= text.Length || text[Pos] != ',') throw Error("Expecting ',' delimiter");
-                Pos++;
-                SkipWhitespace();
-            }
-        }
     }
 }

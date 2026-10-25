@@ -442,6 +442,75 @@ with patch("urllib.request.build_opener") as _m:
               tools, "Query via remote server").selections[0].index, 1)
 
 
+# --------------------------------------------------------------- 5c. Non-Object `answers` Field
+#
+# Section 5 makes `_call_remote` refuse a top-level array, string, number or `true`/`null`. One level
+# deeper is the same arbitrary JSON: a gateway can answer `{"answers": []}`. `res.get("answers", {})`
+# hands back the list -- the key is present, so the `{}` default never fires -- and the lookup then
+# crashes on `'list' object has no attribute 'get'`, which is not the fail-closed path. Three call
+# sites read it that way (the single selector, the multi selector and the query router); the two with
+# different answer keys are driven here, and the multi selector shares the single one's line. A body
+# without `answers`, or with `answers` as an object (even an empty one), is a no-decision response
+# rather than a malformed one, and has to keep selecting and routing exactly as it does today.
+from laya.integrations.llamaindex import _call_remote as _llama_call_remote
+
+_LLAMA_BAD_ANSWERS = [
+    (["boom"], "list"),
+    ("boom", "str"),
+    (3, "int"),
+    (True, "bool"),
+    (None, "null"),
+]
+for _answers, _label in _LLAMA_BAD_ANSWERS:
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse({"answers": _answers})
+        try:
+            _llama_call_remote("http://localhost:8000", "s", {"q": {}})
+            check_true("badans/%s/_call_remote raises" % _label, False, "no error raised")
+        except RuntimeError as _exc:
+            check_true("badans/%s/names answers" % _label,
+                       "'answers' must be a JSON object" in str(_exc), str(_exc))
+        except Exception as _exc:
+            check_true("badans/%s/_call_remote raises" % _label, False, type(_exc).__name__)
+
+        for _entry, _run in (
+            ("select", lambda: LayaSingleSelector(base_url="http://localhost:8000",
+                                                  api_key="k").select(
+                                                     tools, "Query via remote server")),
+            ("route", lambda: LayaQueryRouter(query_engines=engines, base_url="http://localhost:8000",
+                                              api_key="k").route("Query via remote server")),
+        ):
+            try:
+                _run()
+                check_true("badans/%s/%s raises" % (_label, _entry), False, "no error raised")
+            except RuntimeError:
+                check_true("badans/%s/%s raises" % (_label, _entry), True)
+            except Exception as _exc:
+                check_true("badans/%s/%s raises" % (_label, _entry), False, type(_exc).__name__)
+
+# The refusal names the offending type -- with `answers` nested inside an otherwise valid body, that
+# is the only thing a caller reading a log line can act on.
+with patch("urllib.request.build_opener") as _m:
+    _m.return_value.open.return_value = DummyHTTPResponse({"answers": ["boom"]})
+    try:
+        _llama_call_remote("http://localhost:8000", "s", {"q": {}})
+        check_true("badans/names the type", False, "no error raised")
+    except RuntimeError as _exc:
+        check_true("badans/names the type", "got list" in str(_exc), str(_exc))
+
+# Controls: the two no-decision shapes still select and still route.
+for _body, _label in (({"model": "laya-multilingual"}, "answers absent"),
+                      ({"answers": {}}, "answers empty")):
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse(_body)
+        check("badans/%s still selects" % _label,
+              LayaSingleSelector(base_url="http://localhost:8000").select(
+                  tools, "Query via remote server").selections[0].index, 0)
+        check("badans/%s still routes" % _label,
+              LayaQueryRouter(query_engines=engines, base_url="http://localhost:8000").route(
+                  "Query via remote server"), next(iter(engines)))
+
+
 # --------------------------------------------------------------- 6. Per-call decision controls
 #
 # `laya.integrations.langchain` has forwarded `max_len` / `head_max_len` and the five hook
@@ -790,6 +859,66 @@ for _label, _cls, _extra, _run in SURFACES:
 
 # --------------------------------------------------------------- Results Summary
 print(f"PASS: {len(PASS)}")
+
+# ------------------------------------------------------ 9c. Malformed NESTED decision fields
+#
+# One level below the non-object refusal above. The selectors read
+# `res.get("answers", {}).get(...)`, use `choice` with `.startswith`, and the multi-selector sorts
+# and thresholds `probabilities`, so a string probability raised TypeError from `sorted` and a
+# `true` ranked first as 1.0 -- a malformed body could win a selection instead of being refused.
+with patch("urllib.request.build_opener") as _m:
+    _m.return_value.open.return_value = DummyHTTPResponse({"answers": []})
+    for _what, _call in (
+        ("single", lambda: LayaSingleSelector(base_url="http://localhost:8000").select(
+            tools, "Query via remote server")),
+        ("multi", lambda: LayaMultiSelector(base_url="http://localhost:8000",
+                                            probability_threshold=0.3).select(
+            tools, "Compare both vector docs")),
+        ("router", lambda: LayaQueryRouter(
+            query_engines=engines,
+            descriptions={"vector": "Semantic search", "sql": "Relational SQL"},
+            base_url="http://localhost:8000").route("Run a query")),
+    ):
+        try:
+            _call()
+            check_true("nested/answers-list/%s raises" % _what, False, "no error raised")
+        except RuntimeError as exc:
+            check_true("nested/answers-list/%s malformed" % _what,
+                       "Malformed decision response" in str(exc))
+        except Exception as exc:
+            check_true("nested/answers-list/%s is RuntimeError" % _what, False, type(exc).__name__)
+
+_LLAMA_NESTED = [
+    ({"answers": {"selector": "choice_0"}}, "single", "answer-str"),
+    ({"answers": {"selector": {"choice": ["choice_0"]}}}, "single", "choice-list"),
+    ({"answers": {"selector": {"choice": "choice_0", "probabilities": {"choice_0": "90%"}}}},
+     "multi", "prob-str"),
+    ({"answers": {"selector": {"choice": "choice_0", "probabilities": {"choice_0": True}}}},
+     "multi", "prob-bool"),
+    ({"answers": {"route": {"choice": [1]}}}, "router", "route-choice-list"),
+]
+for _body, _surface, _label in _LLAMA_NESTED:
+    _surfaces = {
+        "single": lambda: LayaSingleSelector(base_url="http://localhost:8000").select(
+            tools, "Query via remote server"),
+        "multi": lambda: LayaMultiSelector(base_url="http://localhost:8000",
+                                           probability_threshold=0.3).select(
+            tools, "Compare both vector docs"),
+        "router": lambda: LayaQueryRouter(
+            query_engines=engines,
+            descriptions={"vector": "Semantic search", "sql": "Relational SQL"},
+            base_url="http://localhost:8000").route("Run a query"),
+    }
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse(_body)
+        try:
+            _surfaces[_surface]()
+            check_true("nested/%s raises" % _label, False, "no error raised")
+        except RuntimeError as exc:
+            check_true("nested/%s malformed" % _label, "Malformed decision response" in str(exc))
+        except Exception as exc:
+            check_true("nested/%s is RuntimeError" % _label, False, type(exc).__name__)
+
 print(f"FAIL: {len(FAIL)}")
 for f in FAIL:
     print(f"  - {f}")

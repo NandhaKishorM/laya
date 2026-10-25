@@ -1839,6 +1839,109 @@ finally:
     langchain_module.urllib.request.build_opener = _orig_build_opener_lc
 
 
+# --------------------------------------------------------------- Non-Object `answers` Field
+#
+# The section above makes `_call_remote` refuse a top-level array, string, number or `true`/`null`.
+# One level deeper is the same arbitrary JSON: a gateway can answer `{"answers": []}`. Reading
+# `result.get("answers", {})` hands back the list -- the key is present, so the `{}` default never
+# fires -- and the four consumers then either crash (`LayaRouter` subscripts it, the guardrail calls
+# `.items()` on it, the triage `.get("intent", …)`) or hand a non-mapping straight back to user code.
+# None of those is a documented outcome. `answers` absent and `answers` an empty object are the
+# no-decision cases that already have their own behaviour, and that behaviour is pinned unchanged here.
+_LC_BAD_ANSWERS = [
+    (["boom"], "list"),
+    ("boom", "str"),
+    (3, "int"),
+    (True, "bool"),
+    (None, "null"),
+]
+_LC_CRITERIA = {"billing": "invoices, refunds", "technical": "bugs, errors"}
+_lc_orig_opener_badans = langchain_module.urllib.request.build_opener
+try:
+    for _answers, _label in _LC_BAD_ANSWERS:
+        _raw_bad = json.dumps({"answers": _answers})
+        langchain_module.urllib.request.build_opener = (
+            lambda *a, _r=_raw_bad: _RawBodyOpener(_r))
+        try:
+            langchain_module._call_remote("http://localhost:8000", "s", {"q": {}})
+            check_true("badans/%s/_call_remote raises" % _label, False, "no error raised")
+        except RuntimeError as _e:
+            check_true("badans/%s/names answers" % _label,
+                       "'answers' must be a JSON object" in str(_e), str(_e))
+        except Exception as _e:
+            check_true("badans/%s/_call_remote raises" % _label, False, type(_e).__name__)
+
+        for _entry, _run in (
+            ("router", lambda: LayaRouter(criteria=_LC_CRITERIA, base_url="http://localhost:8000",
+                                          api_key="k").invoke("I need an invoice refund")),
+            ("guardrail", lambda: LayaGuardrail(base_url="http://localhost:8000",
+                                                api_key="k").invoke(
+                                                    "What is the capital of France?")),
+            ("triage", lambda: LayaTriage(base_url="http://localhost:8000",
+                                          api_key="k").invoke({"state": "I want a refund"})),
+        ):
+            try:
+                _run()
+                check_true("badans/%s/%s raises" % (_label, _entry), False, "no error raised")
+            except RuntimeError:
+                check_true("badans/%s/%s raises" % (_label, _entry), True)
+            except Exception as _e:
+                check_true("badans/%s/%s raises" % (_label, _entry), False, type(_e).__name__)
+
+    # The refusal names the offending type -- with `answers` nested inside an otherwise valid body,
+    # that is the only thing a caller reading a log line can act on.
+    langchain_module.urllib.request.build_opener = (
+        lambda *a: _RawBodyOpener(json.dumps({"answers": ["boom"]})))
+    try:
+        langchain_module._call_remote("http://localhost:8000", "s", {"q": {}})
+        check_true("badans/names the type", False, "no error raised")
+    except RuntimeError as _e:
+        check_true("badans/names the type", "got list" in str(_e), str(_e))
+
+    # Controls: a real decision still routes, screens and triages...
+    langchain_module.urllib.request.build_opener = (lambda *a: _RawBodyOpener(json.dumps({
+        "answers": {
+            "route": {"type": "choice", "choice": "billing",
+                      "confidence": 0.9, "answer_confidence": 0.9},
+        }})))
+    check("badans/object still routes",
+          LayaRouter(criteria=_LC_CRITERIA, base_url="http://localhost:8000").invoke(
+              "I need an invoice refund"), "billing")
+    check("badans/object still screens safe",
+          LayaGuardrail(base_url="http://localhost:8000").invoke(
+              "What is the capital of France?"), "What is the capital of France?")
+    check_true("badans/object still triages",
+               isinstance(LayaTriage(base_url="http://localhost:8000").invoke(
+                   {"state": "I want a refund"}), dict))
+
+    # ...and an empty-but-object `answers` keeps the two no-decision behaviours it already had: the
+    # router's own KeyError naming the question it asked, the guardrail reporting no violations.
+    langchain_module.urllib.request.build_opener = (
+        lambda *a: _RawBodyOpener(json.dumps({"answers": {}})))
+    check("badans/empty answers still screens safe",
+          LayaGuardrail(base_url="http://localhost:8000").invoke(
+              "What is the capital of France?"), "What is the capital of France?")
+    try:
+        LayaRouter(criteria=_LC_CRITERIA, base_url="http://localhost:8000").invoke(
+            "I need an invoice refund")
+        check_true("badans/empty answers keeps its KeyError", False, "no error raised")
+    except KeyError as _e:
+        check_true("badans/empty answers keeps its KeyError", str(_e) == "'route'", str(_e))
+
+    # A body with no `answers` key at all is the other no-decision shape: the guard fires on a present
+    # field only, so the guardrail still reports no violations rather than refusing the response.
+    langchain_module.urllib.request.build_opener = (
+        lambda *a: _RawBodyOpener(json.dumps({"model": "laya-multilingual"})))
+    check("badans/answers absent still screens safe",
+          LayaGuardrail(base_url="http://localhost:8000").invoke(
+              "What is the capital of France?"), "What is the capital of France?")
+    check_true("badans/answers absent still triages",
+               isinstance(LayaTriage(base_url="http://localhost:8000").invoke(
+                   {"state": "I want a refund"}), dict))
+finally:
+    langchain_module.urllib.request.build_opener = _lc_orig_opener_badans
+
+
 # --------------------------------------------------------------- Summary
 print(f"PASS: {len(PASS)}")
 print(f"FAIL: {len(FAIL)}")

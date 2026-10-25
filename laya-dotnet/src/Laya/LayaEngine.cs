@@ -24,11 +24,11 @@ namespace Laya;
 /// one <see cref="InferenceSession"/> runs the whole forward pass. For the split layout (the
 /// laya-ts exporter's output), two sessions run in sequence: the encoder produces
 /// <c>last_hidden_state</c>, which is fed straight into the head. Both cases go through
-/// <see cref="Run"/>, so batching, calibration and <see cref="Predict"/> do not know which
+/// <see cref="Run"/>, so batching, calibration and <see cref="Predict(object?, QuestionSet)"/> do not know which
 /// layout is loaded.
 /// </para>
 /// </remarks>
-public sealed class LayaEngine : IDisposable, ILayaLongPredictor
+public sealed class LayaEngine : IDisposable, ILayaLongPredictor, ILayaBatchPredictor
 {
     private const string ModelName = "laya-rl-agent";
 
@@ -189,16 +189,34 @@ public sealed class LayaEngine : IDisposable, ILayaLongPredictor
     /// <c>serialize_state</c> does, so an object or a list of conversation turns both work.
     /// </param>
     /// <param name="questions">The questions to answer, in the order they should be returned.</param>
+    /// <exception cref="ArgumentNullException">If <paramref name="state"/> is null, as Python's <c>TypeError</c>.</exception>
     /// <exception cref="ArgumentException">
     /// If a question's options cannot fit the head budget, rather than answering a silently
     /// truncated question.
     /// </exception>
     public LayaResult Predict(object? state, QuestionSet questions)
     {
+        StateGuard.NotNull(state);
         ArgumentNullException.ThrowIfNull(questions);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
-        if (questions.Count == 0) throw new ArgumentException("no questions to answer", nameof(questions));
-        return PredictStates([state], questions, diagnostics: false)[0];
+        // Python's system_one is predict_batch([state]): no questions is an empty answer set, not an error,
+        // and the usage carries the same truncation diagnostics.
+        return PredictStates([state], questions, diagnostics: true)[0];
+    }
+
+    /// <summary>
+    /// <see cref="Predict(object?, QuestionSet)"/> with per-call options. Ports the <c>min_confidence</c>
+    /// argument of Python's <c>system_one</c>: with <see cref="LayaPredictOptions.MinConfidence"/> set, every answer
+    /// reports <see cref="Answer.Abstention"/> and <see cref="Answer.AbstentionThreshold"/>, and carries
+    /// <see cref="Answer.LowConfidence"/> when it falls below the threshold. The threshold is validated before
+    /// anything else, as in Python, where it is the first thing <c>predict_batch</c> checks.
+    /// </summary>
+    /// <exception cref="ArgumentException">The threshold is invalid, with Python's <c>ValueError</c> text.</exception>
+    public LayaResult Predict(object? state, QuestionSet questions, LayaPredictOptions? options)
+    {
+        var gate = options?.MinConfidence?.Check();
+        var result = Predict(state, questions);
+        return gate is { } g ? ConfidenceGate.Apply(result, g) : result;
     }
 
     /// <summary>
@@ -221,7 +239,7 @@ public sealed class LayaEngine : IDisposable, ILayaLongPredictor
     public LayaResult PredictLong(object state, QuestionSet questions, int? window = null, int? stride = null,
                                   string aggregate = "auto", int? batchSize = null)
     {
-        ArgumentNullException.ThrowIfNull(state);
+        StateGuard.NotNull(state);
         ArgumentNullException.ThrowIfNull(questions);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
         if (aggregate != "auto")
@@ -258,14 +276,62 @@ public sealed class LayaEngine : IDisposable, ILayaLongPredictor
         return LongPrediction.Aggregate(questions, results, spans);
     }
 
+    /// <summary>
+    /// Evaluate the same <paramref name="questions"/> over many states, sharing forward passes. Ports
+    /// Python <c>ONNXAgent.predict_batch</c> (onnx_agent.py:342): one result per state in input order,
+    /// each identical in shape to what a single-state pass over the same states would produce, with
+    /// the diagnostic usage fields (state tokens, truncation, collapsed options) that Python's ONNX
+    /// path reports.
+    /// </summary>
+    /// <param name="states">The states; a null element is refused, an empty list returns an empty list.</param>
+    /// <param name="questions">The questions answered about every state. With no questions each state
+    /// gets an empty answer set and zero usage, as in Python.</param>
+    /// <param name="options">Batch size and ordering; see <see cref="LayaBatchOptions"/>.</param>
+    /// <exception cref="ArgumentException">A null state, an invalid <see cref="LayaBatchOptions.MinConfidence"/>,
+    /// or a question whose options cannot fit the head budget.</exception>
+    public IReadOnlyList<LayaResult> PredictBatch(
+        IReadOnlyList<object?> states, QuestionSet questions, LayaBatchOptions? options = null)
+    {
+        // onnx_agent.py:386: the threshold is validated before the states or the questions are looked at.
+        var gate = options?.MinConfidence?.Check();
+        var results = PredictBatchUngated(states, questions, options);
+        return gate is { } g ? [.. results.Select(r => ConfidenceGate.Apply(r, g))] : results;
+    }
+
+    private IReadOnlyList<LayaResult> PredictBatchUngated(
+        IReadOnlyList<object?> states, QuestionSet questions, LayaBatchOptions? options)
+    {
+        ArgumentNullException.ThrowIfNull(states);
+        ArgumentNullException.ThrowIfNull(questions);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+        // onnx_agent.py:398-414: the surviving states are validated before anything runs, and a
+        // missing state would otherwise be answered as the literal text "null".
+        var list = states.ToArray();
+        foreach (var state in list) StateGuard.NotNull(state);
+        // onnx_agent.py:415: an empty list answers [] without looking at the questions.
+        if (list.Length == 0) return [];
+        if (questions.Count == 0) return PredictStates(list, questions, diagnostics: true);
+        return BatchPlanning.Execute<EncodedState, LayaResult>(
+            list, options?.BatchSize, options?.SortByLength ?? false,
+            part => EncodeStates(part, questions),
+            encoded => encoded.Items.Max(item => item.Ids.Length),
+            chunk => InferStates(chunk, questions, diagnostics: true));
+    }
+
+    private sealed record EncodedState(SequenceItem[] Items, SequenceBuilder.SequenceDetails[] Details);
+
     private IReadOnlyList<LayaResult> PredictStates(
         IReadOnlyList<object?> states, QuestionSet questions, bool diagnostics)
     {
         if (questions.Count == 0)
             return states.Select(_ => new LayaResult(ModelName, [], new(StringComparer.Ordinal), new Usage(0, 0))).ToArray();
+        return InferStates(EncodeStates(states, questions), questions, diagnostics);
+    }
+
+    private IReadOnlyList<EncodedState> EncodeStates(IReadOnlyList<object?> states, QuestionSet questions)
+    {
         var ids = questions.Ids;
-        var items = new List<SequenceItem>(questions.Count * states.Count);
-        var details = new List<SequenceBuilder.SequenceDetails>(questions.Count * states.Count);
+        var encoded = new List<EncodedState>(states.Count);
 
         // A chronological conversation list is serialized newest-last, so right-truncation
         // (the default) would silently drop the newest turn. Matches Agent._encode_state's
@@ -279,6 +345,8 @@ public sealed class LayaEngine : IDisposable, ILayaLongPredictor
         {
             foreach (var state in states)
             {
+                var items = new List<SequenceItem>(ids.Count);
+                var details = new List<SequenceBuilder.SequenceDetails>(ids.Count);
                 var truncateLeft = PythonJson.IsListState(state);
                 var stateIds = _tokenizer.Encode(
                     PythonJson.State(state).Replace(_tokenizer.MaskToken, " ", StringComparison.Ordinal));
@@ -299,8 +367,19 @@ public sealed class LayaEngine : IDisposable, ILayaLongPredictor
                     items.Add(new SequenceItem(seq, markers, question.Type));
                     details.Add(built);
                 }
+                encoded.Add(new EncodedState([.. items], [.. details]));
             }
         }
+        return encoded;
+    }
+
+    private IReadOnlyList<LayaResult> InferStates(
+        IReadOnlyList<EncodedState> encoded, QuestionSet questions, bool diagnostics)
+    {
+        var ids = questions.Ids;
+        var states = encoded;
+        var items = encoded.SelectMany(e => e.Items).ToList();
+        var details = encoded.SelectMany(e => e.Details).ToList();
 
         var batch = Collator.Collate(items, _tokenizer.PadId);
         var (logits, actLogits) = Run(batch);

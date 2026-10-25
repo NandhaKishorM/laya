@@ -360,6 +360,31 @@ public sealed class LayaShortlistTests
         throw new InvalidOperationException($"no shortlist_probe.json entry labelled '{label}'");
     }
 
+    [Fact]
+    public void ScoresAreClippedToTheDocumentedRange()
+    {
+        // ShortlistInfo.Scores is documented as a cosine similarity, i.e. within [-1, 1]. Python
+        // clips the quotient (np.clip(dot / denom, -1.0, 1.0)) and laya-go pins that with
+        // TestCosineIsClipped; without the clip this port reported 1.0000000000000002 for a
+        // self-cosine, because a parallel-vector quotient can round above one.
+        var v = new[] { 34.0, 15.285714285714286, 70.85714285714286 };
+        double[][] embed(IReadOnlyList<string> texts) => [.. texts.Select(_ => (double[])v.Clone())];
+        var questions = new QuestionSet
+        {
+            ["intent"] = Question.Choice("Pick one", new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["a"] = null, ["b"] = null, ["c"] = null,
+            }),
+        };
+
+        var result = LayaShortlist.Predict(new Recorder(), "pick me", questions, embed, k: 2);
+
+        var scores = result.Shortlist!["intent"].Scores;
+        Assert.NotNull(scores);
+        Assert.All(scores!, s => Assert.InRange(s, -1.0, 1.0));
+        Assert.All(scores!, s => Assert.Equal(1.0, s));
+    }
+
     [Theory]
     [MemberData(nameof(ShortlistProbeCases))]
     public void EveryShortlistProbeEntry(string label)

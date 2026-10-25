@@ -162,5 +162,280 @@
     "file": "case_long_no_state_room.json",
     "expects_error": true,
     "kind": "long"
+  },
+  {
+    "name": "batch_one_state",
+    "file": "case_batch_one_state.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_mixed",
+    "file": "case_batch_mixed.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_1",
+    "file": "case_batch_size_1.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_3",
+    "file": "case_batch_size_3.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_over_len",
+    "file": "case_batch_size_over_len.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_zero",
+    "file": "case_batch_size_zero.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_negative",
+    "file": "case_batch_size_negative.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_on",
+    "file": "case_batch_sort_on.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_off",
+    "file": "case_batch_sort_off.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_3",
+    "file": "case_batch_sort_size_3.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_partial_window",
+    "file": "case_batch_sort_partial_window.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_no_batch_size",
+    "file": "case_batch_sort_no_batch_size.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_1",
+    "file": "case_batch_sort_size_1.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_eq_len",
+    "file": "case_batch_sort_size_eq_len.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_over_len",
+    "file": "case_batch_sort_size_over_len.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_zero",
+    "file": "case_batch_sort_size_zero.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_truncated",
+    "file": "case_batch_truncated.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_truncated_sorted",
+    "file": "case_batch_truncated_sorted.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_duplicate_states",
+    "file": "case_batch_duplicate_states.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_states",
+    "file": "case_batch_empty_states.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_states_invalid_questions",
+    "file": "case_batch_empty_states_invalid_questions.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_questions",
+    "file": "case_batch_empty_questions.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_both",
+    "file": "case_batch_empty_both.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sorted",
+    "file": "case_batch_sorted.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sorted_windows",
+    "file": "case_batch_sorted_windows.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_unsorted_windows",
+    "file": "case_batch_unsorted_windows.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_chunked",
+    "file": "case_batch_chunked.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_single_question",
+    "file": "case_batch_single_question.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_questions_with_options",
+    "file": "case_batch_empty_questions_with_options.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_scalar",
+    "file": "case_batch_min_confidence_scalar.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_zero",
+    "file": "case_batch_min_confidence_zero.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_map",
+    "file": "case_batch_min_confidence_map.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_map_default",
+    "file": "case_batch_min_confidence_map_default.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_empty_questions",
+    "file": "case_batch_min_confidence_empty_questions.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_empty_states",
+    "file": "case_batch_min_confidence_empty_states.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_none_state",
+    "file": "case_batch_none_state.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_options_exceed_head",
+    "file": "case_batch_options_exceed_head.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_invalid",
+    "file": "case_batch_min_confidence_invalid.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_before_none_state",
+    "file": "case_batch_min_confidence_before_none_state.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_bad_key",
+    "file": "case_batch_min_confidence_bad_key.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "min_confidence_scalar",
+    "file": "case_min_confidence_scalar.json",
+    "expects_error": false
+  },
+  {
+    "name": "min_confidence_zero",
+    "file": "case_min_confidence_zero.json",
+    "expects_error": false
+  },
+  {
+    "name": "min_confidence_map",
+    "file": "case_min_confidence_map.json",
+    "expects_error": false
+  },
+  {
+    "name": "min_confidence_map_default",
+    "file": "case_min_confidence_map_default.json",
+    "expects_error": false
+  },
+  {
+    "name": "min_confidence_invalid",
+    "file": "case_min_confidence_invalid.json",
+    "expects_error": true
+  },
+  {
+    "name": "min_confidence_empty_map",
+    "file": "case_min_confidence_empty_map.json",
+    "expects_error": true
+  },
+  {
+    "name": "min_confidence_bad_key",
+    "file": "case_min_confidence_bad_key.json",
+    "expects_error": true
   }
 ]

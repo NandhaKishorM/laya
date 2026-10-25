@@ -1,0 +1,238 @@
+{
+  "name": "batch_min_confidence_map_default",
+  "states": [
+    "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "Thanks, the refund arrived and everything works now.",
+    {
+      "ticket": 4821,
+      "message": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+      "notes": "Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. "
+    }
+  ],
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "min_confidence": {
+      "default": 0.55
+    }
+  },
+  "state_widths": [
+    90,
+    44,
+    147
+  ],
+  "results": [
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.836,
+            "technical": 0.0114,
+            "other": 0.1526
+          },
+          "confidence": 0.5562,
+          "answer_confidence": 0.836,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.55
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.3713,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.0231,
+            "1": 0.5824,
+            "2": 0.3945
+          },
+          "confidence": 0.3001,
+          "answer_confidence": 0.5824,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.55
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.0414,
+          "confidence": 0.9586,
+          "answer_confidence": 0.9586,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.55
+        }
+      },
+      "usage": {
+        "input_tokens": 264,
+        "output_tokens": 0,
+        "state_tokens": 56,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.9999,
+            "technical": 0.0,
+            "other": 0.0
+          },
+          "confidence": 0.9993,
+          "answer_confidence": 0.9999,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.55
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.6231,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.0528,
+            "1": 0.2714,
+            "2": 0.6759
+          },
+          "confidence": 0.2956,
+          "answer_confidence": 0.6759,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.55
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.0067,
+          "confidence": 0.9933,
+          "answer_confidence": 0.9933,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.55
+        }
+      },
+      "usage": {
+        "input_tokens": 126,
+        "output_tokens": 0,
+        "state_tokens": 10,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "other",
+          "probabilities": {
+            "refund": 0.2098,
+            "technical": 0.0637,
+            "other": 0.7266
+          },
+          "confidence": 0.331,
+          "answer_confidence": 0.7266,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.55
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.3977,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.0308,
+            "1": 0.5407,
+            "2": 0.4285
+          },
+          "confidence": 0.2692,
+          "answer_confidence": 0.5407,
+          "action": {
+            "act_probability": 1.0
+          },
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.55
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.1873,
+          "confidence": 0.8127,
+          "answer_confidence": 0.8127,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.55
+        }
+      },
+      "usage": {
+        "input_tokens": 435,
+        "output_tokens": 0,
+        "state_tokens": 113,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  ],
+  "runs": [
+    [
+      9,
+      147
+    ]
+  ]
+}

@@ -86,12 +86,40 @@ pub fn assert_answers_match(where_case: &str, expected: &Value, result: &LayaRes
             &format!("{where_q}.action.act_probability"),
         );
 
+        assert_gate_matches(want, got, &where_q);
+
         match got {
             Answer::Choice(choice) => assert_choice(want, choice, &where_q),
             Answer::Score(score) => assert_score(want, score, &where_q),
             Answer::Noul(noul) => assert_noul(want, noul, &where_q),
         }
     }
+}
+
+/// What the abstention gate wrote on one answer must be what Python wrote: `low_confidence` only
+/// when flagged, `abstention` and `abstention_threshold` only when a threshold was set. A golden
+/// recorded without a threshold carries none of the three, so this also pins "unset writes
+/// nothing".
+pub fn assert_gate_matches(want: &Value, got: &Answer, where_q: &str) {
+    assert_eq!(
+        want.get("low_confidence") == Some(&Value::Bool(true)),
+        got.low_confidence(),
+        "{where_q}: low_confidence"
+    );
+    assert!(
+        want.get("low_confidence").is_none() || want["low_confidence"] == Value::Bool(true),
+        "{where_q}: python only ever writes low_confidence: true"
+    );
+    assert_eq!(
+        want.get("abstention").and_then(Value::as_str),
+        got.abstention(),
+        "{where_q}: abstention"
+    );
+    assert_eq!(
+        want.get("abstention_threshold").and_then(Value::as_f64),
+        got.abstention_threshold(),
+        "{where_q}: abstention_threshold"
+    );
 }
 
 pub fn assert_state_usage_matches(where_case: &str, expected: &Value, result: &LayaResult) {

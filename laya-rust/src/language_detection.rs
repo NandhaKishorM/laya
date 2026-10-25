@@ -172,13 +172,14 @@ const EN_STOP: &[&str] = &[
     "after", "already", "always", "and", "any", "are", "aren", "as", "at", "be", "because", "been",
     "before", "being", "between", "both", "but", "can", "could", "couldn", "didn", "didnt", "does",
     "doesn", "doesnt", "doing", "done", "dont", "down", "during", "each", "ever", "every", "few",
-    "for", "from", "has", "hasn", "have", "haven", "havent", "here", "him", "his", "how", "i", "if",
-    "in", "into", "is", "isn", "isnt", "it", "ive", "many", "might", "much", "must", "never", "nor",
-    "not", "of", "on", "only", "onto", "our", "please", "shall", "she", "should", "some", "than",
-    "that", "thats", "the", "their", "them", "then", "there", "these", "they", "this", "those",
-    "through", "to", "too", "until", "very", "was", "wasn", "wasnt", "we", "were", "weren", "what",
-    "whats", "when", "where", "which", "while", "who", "whom", "why", "will", "with", "within",
-    "without", "won", "wont", "would", "wouldn", "yet", "you", "your", "youre", "yours",
+    "for", "from", "has", "hasn", "have", "haven", "havent", "here", "him", "his", "how", "i",
+    "if", "in", "into", "is", "isn", "isnt", "it", "ive", "many", "might", "much", "must", "never",
+    "nor", "not", "of", "on", "only", "onto", "our", "please", "shall", "she", "should", "some",
+    "than", "that", "thats", "the", "their", "them", "then", "there", "these", "they", "this",
+    "those", "through", "to", "too", "until", "very", "was", "wasn", "wasnt", "we", "were",
+    "weren", "what", "whats", "when", "where", "which", "while", "who", "whom", "why", "will",
+    "with", "within", "without", "won", "wont", "would", "wouldn", "yet", "you", "your", "youre",
+    "yours",
 ];
 
 const FR_STOP: &[&str] = &[

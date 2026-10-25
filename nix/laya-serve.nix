@@ -215,6 +215,22 @@ in
       '';
     };
 
+    bodyReadTimeout = lib.mkOption {
+      type = lib.types.nullOr lib.types.numbers.positive;
+      default = null;
+      example = 30;
+      description = ''
+        Seconds a request may spend delivering its body (sets
+        `LAYA_BODY_READ_TIMEOUT`). Admission is taken before the body is read, so
+        a client that opens a connection, sends a request head and then stops
+        writing holds one of `maxConcurrent`'s slots for as long as it stays
+        connected; past this deadline the server answers 408 and gives the slot
+        back. Raise it for clients on links slower than a few kilobytes a second,
+        lower it to turn a stalled upload into a refusal faster. null leaves the
+        server's own default (10 seconds).
+      '';
+    };
+
     maxLoaded = lib.mkOption {
       type = lib.types.nullOr lib.types.ints.positive;
       default = null;
@@ -381,6 +397,8 @@ in
         LAYA_LOG_LEVEL = cfg.logLevel;
       } // lib.optionalAttrs (cfg.maxConcurrent != null) {
         LAYA_MAX_CONCURRENT = toString cfg.maxConcurrent;
+      } // lib.optionalAttrs (cfg.bodyReadTimeout != null) {
+        LAYA_BODY_READ_TIMEOUT = toString cfg.bodyReadTimeout;
       } // lib.optionalAttrs (cfg.cudaAmp != null) {
         LAYA_CUDA_AMP = cfg.cudaAmp;
       } // lib.optionalAttrs (cfg.cpuAmp != null) {

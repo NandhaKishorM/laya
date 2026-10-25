@@ -7,9 +7,12 @@ Tamil 0.113 at 20 options, where random is 0.050), while holding up far better o
 languages (French 0.487, Spanish 0.480). So the signal that matters most is *script*, and the
 secondary signal is whether Latin text is English.
 
-Script detection is exact. The Latin-script language guess is a stopword/diacritic heuristic and
-is explicitly best-effort: pass an explicit model or `lang=` when you already know the language.
+Script detection is exact, and answers the same way on every supported interpreter: a letter is
+decided from the text, never from the Unicode database the host happens to ship (`_is_letter`).
+The Latin-script language guess is a stopword/diacritic heuristic and is explicitly best-effort:
+pass an explicit model or `lang=` when you already know the language.
 """
+import bisect
 import re
 import unicodedata
 from collections import Counter
@@ -44,6 +47,107 @@ _SCRIPT_RANGES = [
     ("kana", ((0x3040, 0x309F), (0x30A0, 0x30FF), (0x31F0, 0x31FF))),
     ("han", ((0x3400, 0x4DBF), (0x4E00, 0x9FFF), (0xF900, 0xFAFF))),
 ]
+
+_FLATTENED_RANGES = sorted(
+    ((lo, hi, script) for script, ranges in _SCRIPT_RANGES for lo, hi in ranges),
+    key=lambda item: item[0],
+)
+_STARTS = [lo for lo, hi, script in _FLATTENED_RANGES]
+_ENDS = [hi for lo, hi, script in _FLATTENED_RANGES]
+_SCRIPTS = [script for lo, hi, script in _FLATTENED_RANGES]
+_bisect_right = bisect.bisect_right
+
+# Letters the running interpreter's Unicode database may not know (see `_is_letter`).
+#
+# "Letters assigned after Unicode 14.0, plus the scripts Unicode 14 introduced": every codepoint here
+# is category ``L*`` in Unicode 16.0 and ``Cn`` (unassigned) in Unicode 14.0 -- except the Unicode 14
+# scripts themselves, which Unicode 14.0 does know and Unicode 13.0 (Python 3.10) does not, so 3.10
+# gets the same answer. Generated from the two databases, not typed by hand; the CJK extensions are
+# whole blocks because every ideograph in them is a letter.
+_POST_DATABASE_LETTER_RANGES = (
+    (0x01C89, 0x01C8A),   # CYRILLIC CAPITAL LETTER TJE
+    (0x0A7CB, 0x0A7CD),   # LATIN CAPITAL LETTER RAMS HORN
+    (0x0A7DA, 0x0A7DC),   # LATIN CAPITAL LETTER LAMBDA
+    (0x10570, 0x1057A),   # VITHKUQI (Unicode 14)
+    (0x1057C, 0x1058A),
+    (0x1058C, 0x10592),
+    (0x10594, 0x10595),
+    (0x10597, 0x105A1),
+    (0x105A3, 0x105B1),
+    (0x105B3, 0x105B9),
+    (0x105BB, 0x105BC),
+    (0x105C0, 0x105F3),   # TODHRI (Unicode 16)
+    (0x10D4A, 0x10D65),   # GARAY (Unicode 16)
+    (0x10D6F, 0x10D85),
+    (0x10EC2, 0x10EC4),   # ARABIC additions
+    (0x10F70, 0x10F81),   # OLD UYGHUR (Unicode 14)
+    (0x1123F, 0x11240),   # KHOJKI additions
+    (0x11380, 0x11389),   # TULU-TIGALARI (Unicode 16)
+    (0x1138B, 0x1138B),
+    (0x1138E, 0x1138E),
+    (0x11390, 0x113B5),
+    (0x113B7, 0x113B7),
+    (0x113D1, 0x113D1),
+    (0x113D3, 0x113D3),
+    (0x11BC0, 0x11BE0),   # SUNUWAR (Unicode 16)
+    (0x11F02, 0x11F02),   # KAWI (Unicode 15)
+    (0x11F04, 0x11F10),
+    (0x11F12, 0x11F33),
+    (0x12F90, 0x12FF0),   # CYPRO-MINOAN (Unicode 14)
+    (0x1342F, 0x1342F),   # EGYPTIAN HIEROGLYPH additions
+    (0x13441, 0x13446),
+    (0x13460, 0x143FA),
+    (0x16100, 0x1611D),   # GURUNG KHEMA (Unicode 16)
+    (0x16A70, 0x16ABE),   # TANGSA (Unicode 14)
+    (0x16D40, 0x16D6C),   # KIRAT RAI (Unicode 16)
+    (0x18CFF, 0x18CFF),   # KHITAN SMALL SCRIPT addition
+    (0x1B132, 0x1B132),   # HIRAGANA / KATAKANA additions
+    (0x1B155, 0x1B155),
+    (0x1DF25, 0x1DF2A),   # LATIN SMALL LETTER D WITH MID-HEIGHT LEFT HOOK
+    (0x1E030, 0x1E06D),   # MODIFIER LETTER additions
+    (0x1E290, 0x1E2AD),   # TOTO (Unicode 14)
+    (0x1E4D0, 0x1E4EB),   # NAG MUNDARI (Unicode 15)
+    (0x1E5D0, 0x1E5ED),   # OL ONAL (Unicode 16)
+    (0x1E5F0, 0x1E5F0),
+    (0x2B739, 0x2B739),   # CJK UNIFIED IDEOGRAPH extensions H and I
+    (0x2EBF0, 0x2EE5D),
+    (0x31350, 0x323AF),
+)
+# Cheapest rejection for a character the table could match: everything below the first range start is
+# never consulted (the ASCII and Latin text almost every request carries), so the common path stays
+# `str.isalpha()` plus one integer compare.
+_POST_DATABASE_LETTER_FLOOR = _POST_DATABASE_LETTER_RANGES[0][0]
+
+
+def _is_letter(ch: str) -> bool:
+    """Whether `ch` is a letter, as the *newest* interpreter would say, not just this one.
+
+    ``str.isalpha()`` and ``unicodedata.category`` are properties of the interpreter's bundled
+    Unicode database, and the supported versions disagree: Python 3.10 ships Unicode 13.0, 3.11 14.0,
+    3.12 15.0. A letter added since then is ``Cn`` -- *unassigned* -- on the older interpreter, so
+    `isalpha()` is False and it was dropped before `_script_counts`' "other" branch could count it.
+    Text written in one of those scripts therefore reported ``script="unknown"``, which is "no letters
+    detected", and `Router._route` reads that as the default checkpoint rather than as non-Latin text
+    -- the exact failure the "other" branch exists to prevent, and it made `analyse`/`is_english`
+    answer differently for the same input depending on the interpreter.
+
+    The table only SUPPLIES the answer a newer database would have given: a character this interpreter
+    already knows is decided by `isalpha()` alone, so behaviour on the newest interpreter is unchanged
+    codepoint for codepoint. What is a letter never depends on the host any more, for the scripts
+    listed above.
+    """
+    if ch.isalpha():
+        return True
+    if ord(ch) < _POST_DATABASE_LETTER_FLOOR:
+        return False
+    if unicodedata.category(ch) != "Cn":
+        return False
+    cp = ord(ch)
+    for lo, hi in _POST_DATABASE_LETTER_RANGES:
+        if lo <= cp <= hi:
+            return True
+    return False
+
 
 # Function words. Latin-script languages overlap heavily (de/la/le/un/e/que), so each hit is
 # weighted and a margin is required before calling something non-English.
@@ -329,16 +433,16 @@ def _script_counts(text: str) -> Dict[str, int]:
     counts: Dict[str, int] = {}
     latin = 0
     for ch in text:
-        if not ch.isalpha():
+        if not _is_letter(ch):
             continue
         cp = ord(ch)
         if cp < 0x02B0 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
             latin += 1                                   # Latin, IPA Extensions, Ext-Additional, fullwidth
             continue
-        for name, ranges in _SCRIPT_RANGES:
-            if any(lo <= cp <= hi for lo, hi in ranges):
-                counts[name] = counts.get(name, 0) + 1
-                break
+        idx = _bisect_right(_STARTS, cp) - 1
+        if idx >= 0 and cp <= _ENDS[idx]:
+            name = _SCRIPTS[idx]
+            counts[name] = counts.get(name, 0) + 1
         else:
             # An alphabetic character no range claims used to be counted nowhere, so text
             # written only in an unlisted script produced a total of 0 and was reported as
@@ -416,9 +520,9 @@ def _script_of(ch: str) -> Optional[str]:
     cp = ord(ch)
     if cp < 0x0250 or 0x1E00 <= cp <= 0x1EFF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
         return None
-    for name, ranges in _SCRIPT_RANGES:
-        if any(lo <= cp <= hi for lo, hi in ranges):
-            return name
+    idx = _bisect_right(_STARTS, cp) - 1
+    if idx >= 0 and cp <= _ENDS[idx]:
+        return _SCRIPTS[idx]
     return None
 
 

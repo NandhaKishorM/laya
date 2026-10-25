@@ -30,7 +30,8 @@ it.each([false, true])("runs process defaults once per request with fallback=%s"
     ]);
     expect(results).toHaveLength(2);
     expect(starts).toEqual([["first request"], ["second request"]]);
-    expect(ends).toEqual(starts);
+    // Ends unwrap in reverse start order: every request started before any ended.
+    expect(ends).toEqual([...starts].reverse());
   } finally {
     clearDefaultHooks();
   }
@@ -235,7 +236,9 @@ describe("Router.routeBatch / predictBatch", () => {
     const items = [req("one", { model: "english" }), req("two", { model: "english" })];
     const results = await router.predictBatch(items, null, { hooks: [perCall] });
     expect(results.map((r) => r.answers.seen)).toEqual(["one", "two"]);
-    // routeBatch runs before any predict hook. End hooks follow start order on this runtime.
+    // routeBatch runs before any predict hook. End hooks unwind in REVERSE start order (the
+    // LIFO rule Python's Router.predict_batch documents), and within one request the installed
+    // hook still runs before the per-call one.
     expect(order).toEqual([
       "installed:route:one",
       "percall:route:one",
@@ -245,10 +248,10 @@ describe("Router.routeBatch / predictBatch", () => {
       "percall:start:one",
       "installed:start:two",
       "percall:start:two",
-      "installed:end:one",
-      "percall:end:one",
       "installed:end:two",
       "percall:end:two",
+      "installed:end:one",
+      "percall:end:one",
     ]);
 
     order.length = 0;
@@ -266,8 +269,8 @@ describe("Router.routeBatch / predictBatch", () => {
       "installed:route:two",
       "installed:start:one",
       "installed:start:two",
-      "installed:end:one",
       "installed:end:two",
+      "installed:end:one",
     ]);
 
     const { router: bare } = makeRouter();
@@ -295,8 +298,32 @@ describe("Router.routeBatch / predictBatch", () => {
     });
     expect(results.map((r) => r.answers.seen)).toEqual(["one", "two"]);
     expect(calls.length).toBe(1);
-    // Starts run for every request in the checkpoint group, then ends, in start order.
-    expect(events).toEqual(["start:one", "start:two", "end:one", "end:two"]);
+    // Starts run for every request in the checkpoint group, then ends, in REVERSE start
+    // order -- the LIFO unwind Python's Router.predict_batch documents.
+    expect(events).toEqual(["start:one", "start:two", "end:two", "end:one"]);
+  });
+
+  it("ends three request contexts in reverse start order", async () => {
+    // Two requests cannot tell FIFO from LIFO apart in a way that names the rule, and this is
+    // the shape a tracing hook depends on: start a, b, c then end c, b, a.
+    const events: string[] = [];
+    const { router } = makeRouter();
+    await router.predictBatch(
+      [req("a", { model: "english" }), req("b", { model: "english" }), req("c", { model: "english" })],
+      null,
+      {
+        onPredictStart(ctx) {
+          events.push(`start:${ctx.states[0]}`);
+        },
+        onPredictEnd(ctx) {
+          events.push(`end:${ctx.states[0]}`);
+        },
+      },
+    );
+    expect(events).toEqual([
+      "start:a", "start:b", "start:c",
+      "end:c", "end:b", "end:a",
+    ]);
   });
 
   it("hooksRaise false swallows a throwing per-call hook; the default still raises", async () => {
@@ -390,7 +417,7 @@ describe("Router.routeBatch / predictBatch", () => {
         },
       });
       expect(results.map((r) => r.answers.seen)).toEqual(["one", "two"]);
-      expect(events).toEqual(["start:one", "start:two", "end:one", "end:two"]);
+      expect(events).toEqual(["start:one", "start:two", "end:two", "end:one"]);
     } finally {
       warn.mockRestore();
     }

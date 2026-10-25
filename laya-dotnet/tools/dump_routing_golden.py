@@ -11,6 +11,9 @@ corpus from `laya-dotnet/tools/routing_cases.py` and writes one JSON file per pr
     route_probe.json             Router.route() decisions (model, reason, detection,
                                   workflow -- `repo` is intentionally omitted: the ported
                                   RouteDecision has no Repo field) for every ROUTE_CASES entry.
+    route_batch_probe.json       Router.route_batch() decisions for every ROUTE_BATCH_CASES entry, and
+                                  the exception type/message for every ROUTE_BATCH_ERROR_CASES entry
+                                  (route_batch loads nothing, so no model is needed).
     email_probe.json             clean_email_body and email_state for every EMAIL_CLEAN_CASES /
                                   EMAIL_STATE_CASES entry.
     shortlist_probe.json         shortlist_choice(labels, scores, passthrough) for every
@@ -19,6 +22,11 @@ corpus from `laya-dotnet/tools/routing_cases.py` and writes one JSON file per pr
                                   its ranking/cosine/tie-break logic against this file). NaN/Inf
                                   values in a matrix are written as the strings "nan"/"inf"/
                                   "-inf" (see meta.json) because JSON has no literal for them.
+    confidence_probe.json        laya.confidence's own answers over the synthetic inputs of
+                                  tools/confidence_cases.py: threshold validation (check_min_confidence and
+                                  _map, with the error text), _option_bucket, resolve_min_confidence,
+                                  apply_confidence_gate (incl. reused payloads, #910) and jev_confidence.
+                                  Non-finite floats are written as "nan"/"inf"/"-inf" strings.
     hashing_embedder_probe.json  Exact laya-dotnet/tools/hashing_embedder.embed() vectors for a fixed probe
                                   list of strings, including non-ASCII and astral input.
     sample_inputs.json           The combined routing sample's fixed inputs (detection states,
@@ -38,6 +46,7 @@ given -- a content diff, not a mtime check, so re-running with no corpus changes
 silent no-op.
 """
 import argparse
+import copy
 import json
 import math
 import os
@@ -52,6 +61,8 @@ from routing_cases import (  # noqa: E402
     EMAIL_CLEAN_CASES,
     EMAIL_STATE_CASES,
     LANG_STATES,
+    ROUTE_BATCH_CASES,
+    ROUTE_BATCH_ERROR_CASES,
     ROUTE_CASES,
     SAMPLE_BANKING_CRITERIA,
     SAMPLE_BANKING_INSTRUCTIONS,
@@ -67,8 +78,10 @@ from routing_cases import (  # noqa: E402
     SHORTLIST_CASES,
 )
 
+import confidence_cases as cc  # noqa: E402
 import hashing_embedder  # noqa: E402
 
+from laya import confidence  # noqa: E402
 from laya.email import clean_email_body, email_state  # noqa: E402
 from laya.lang import analyse, detect_script, latin_profile, script_profile, state_text  # noqa: E402
 from laya.router import Router  # noqa: E402
@@ -185,6 +198,110 @@ def build_route_probe():
             "decision": _decision_payload(decision),
         })
     return out
+
+
+# ============================================================================ route_batch_probe
+def build_route_batch_probe():
+    cases = []
+    for label, router_kwargs, requests in ROUTE_BATCH_CASES:
+        decisions = Router(**router_kwargs).route_batch(requests)
+        cases.append({
+            "label": label,
+            "router_kwargs": router_kwargs,
+            "requests": requests,
+            "decisions": [_decision_payload(d) for d in decisions],
+        })
+    errors = []
+    for label, router_kwargs, requests in ROUTE_BATCH_ERROR_CASES:
+        try:
+            Router(**router_kwargs).route_batch(requests)
+        except (TypeError, ValueError) as e:
+            errors.append({
+                "label": label,
+                "router_kwargs": router_kwargs,
+                "requests": requests,
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+            })
+        else:
+            raise SystemExit("route_batch case %r was expected to raise but did not" % label)
+    return {"cases": cases, "errors": errors}
+
+
+# ============================================================================ confidence_probe
+def _checked(fn, arg):
+    """`{"valid": True, "result": ...}` or `{"valid": False, "error_type", "error_message"}`."""
+    try:
+        return {"valid": True, "result": fn(arg)}
+    except ValueError as e:
+        return {"valid": False, "error_type": type(e).__name__, "error_message": str(e)}
+
+
+def _gate_verdict(answers):
+    """What the gate wrote on each answer: only the keys that are present."""
+    return {
+        qid: {k: a[k] for k in ("low_confidence", "abstention", "abstention_threshold") if k in a}
+        for qid, a in answers.items()
+    }
+
+
+def _gate(answers, threshold):
+    """apply_confidence_gate exactly as ONNXAgent.predict_batch calls it: validate, then gate."""
+    mc = confidence.check_min_confidence(threshold) if threshold is not None else None
+    confidence.apply_confidence_gate([{"answers": answers}], mc)
+
+
+def build_confidence_probe():
+    # jev_confidence sums floats; CPython 3.12 made sum() compensated, and the SDKs reproduce that.
+    if sys.version_info < (3, 12):
+        sys.exit("confidence_probe.json must be recorded with Python 3.12 or later "
+                 "(sum() of floats is compensated from 3.12 on), got %d.%d" % sys.version_info[:2])
+    scalars = [dict(value=v, **_checked(confidence.check_min_confidence, v)) for v in cc.SCALAR_THRESHOLDS]
+
+    maps = []
+    for pairs in cc.MAP_THRESHOLDS:
+        # Python's dict keeps one entry per key, at its first position, holding its last value.
+        checked = _checked(confidence.check_min_confidence, dict(pairs))
+        if checked["valid"]:
+            checked["result"] = [list(item) for item in checked["result"].items()]
+        maps.append(dict(pairs=[list(pair) for pair in pairs], **checked))
+
+    buckets = [{"answer": a, "bucket": confidence._option_bucket(a)} for a in cc.BUCKET_ANSWERS]
+
+    resolve = [
+        {"thresholds": m, "answer": a, "result": confidence.resolve_min_confidence(a, m)}
+        for m in cc.RESOLVE_MAPS for a in cc.RESOLVE_ANSWERS
+    ]
+
+    gate_cases = []
+    for threshold in cc.GATE_THRESHOLDS:
+        answers = copy.deepcopy(cc.GATE_ANSWERS)
+        _gate(answers, threshold)
+        gate_cases.append({"threshold": threshold, "expected": _gate_verdict(answers)})
+
+    reuse = []
+    for steps in cc.REUSE_SEQUENCES:
+        answers = copy.deepcopy(cc.GATE_ANSWERS)
+        recorded = []
+        for threshold in steps:
+            _gate(answers, threshold)
+            recorded.append({"threshold": threshold, "expected": _gate_verdict(answers)})
+        reuse.append({"steps": recorded})
+
+    jev = [dict(case, result=confidence.jev_confidence(case["answer"])) for case in cc.JEV_CASES]
+
+    return {
+        "bucket_keys": sorted(confidence.bucket_keys()),
+        "gate_states": list(confidence.GATE_STATES),
+        "scalars": scalars,
+        "maps": maps,
+        "buckets": buckets,
+        "resolve": resolve,
+        "gate_answers": cc.GATE_ANSWERS,
+        "gate": gate_cases,
+        "reuse": reuse,
+        "jev": jev,
+    }
 
 
 # ============================================================================ email_probe
@@ -356,6 +473,8 @@ def main() -> int:
 
     lang_probe = build_lang_probe()
     route_probe = build_route_probe()
+    route_batch_probe = build_route_batch_probe()
+    confidence_probe = build_confidence_probe()
     email_probe = build_email_probe()
     shortlist_probe = build_shortlist_probe()
     hashing_probe = build_hashing_embedder_probe()
@@ -376,6 +495,15 @@ def main() -> int:
         "counts": {
             "lang_probe": len(lang_probe),
             "route_probe": len(route_probe),
+            "route_batch_probe": len(route_batch_probe["cases"]),
+            "route_batch_probe_errors": len(route_batch_probe["errors"]),
+            "confidence_probe_scalars": len(confidence_probe["scalars"]),
+            "confidence_probe_maps": len(confidence_probe["maps"]),
+            "confidence_probe_buckets": len(confidence_probe["buckets"]),
+            "confidence_probe_resolve": len(confidence_probe["resolve"]),
+            "confidence_probe_gate": len(confidence_probe["gate"]),
+            "confidence_probe_reuse": len(confidence_probe["reuse"]),
+            "confidence_probe_jev": len(confidence_probe["jev"]),
             "email_probe_clean": len(email_probe["clean"]),
             "email_probe_state": len(email_probe["state"]),
             "shortlist_probe": len(shortlist_probe),
@@ -386,6 +514,12 @@ def main() -> int:
     results = {}
     results["lang_probe.json"] = dump(lang_probe, os.path.join(out_dir, "lang_probe.json"), args.force)
     results["route_probe.json"] = dump(route_probe, os.path.join(out_dir, "route_probe.json"), args.force)
+    results["route_batch_probe.json"] = dump(
+        route_batch_probe, os.path.join(out_dir, "route_batch_probe.json"), args.force
+    )
+    results["confidence_probe.json"] = dump(
+        _encode_floats(confidence_probe), os.path.join(out_dir, "confidence_probe.json"), args.force
+    )
     results["email_probe.json"] = dump(email_probe, os.path.join(out_dir, "email_probe.json"), args.force)
     results["shortlist_probe.json"] = dump(shortlist_probe, os.path.join(out_dir, "shortlist_probe.json"), args.force)
     results["hashing_embedder_probe.json"] = dump(

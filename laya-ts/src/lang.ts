@@ -287,6 +287,13 @@ export function scriptProfile(text: string): Record<string, number> {
 // character carries far more than a letter. A short message needs a large share to count; a long
 // payload (ticket fields, English agent turns) dilutes the share, so there a sentence's worth of
 // letters counts too.
+// All-caps handling. A customer shouting in Portuguese is still Portuguese; an acronym block is not
+// French. A token of this many LETTERS is a word rather than an acronym, and on an all-caps line it
+// has to be a function word of the named language (or the line has to carry non-English
+// diacritics) before the line counts as prose in that language.
+const SHOUTED_MIN_WORD = 5;
+const SHOUTED_MIN_STOPWORD = 4;
+
 const NON_LATIN_FRACTION = 0.2;
 const NON_LATIN_MIN_FRACTION = 0.1;
 const NON_LATIN_MIN_LETTERS = 10;
@@ -411,6 +418,32 @@ const JOINED_RE = /[^\W_][._/\\][^\W_]/;
 // entirely in capitals keeps its words -- a customer shouting in Portuguese is still Portuguese.
 const LETTER_RUN_RE = /[\p{L}]{2,}/gu;
 
+/** True for a CASED segment written entirely in capitals.
+ *
+ * The uppercase half is not redundant: a caseless script has no lowercase either, so testing only
+ * "has a lowercase letter" would call every Devanagari or CJK line shouted and hold it to a bar it
+ * cannot clear. Both caps bars stay off text that is partly caseless (`analyseText`), because a bar
+ * that works by discarding Latin evidence has nothing to say about the half it cannot read.
+ */
+function shouted(text: string): boolean {
+  let upper = false;
+  for (const ch of text) {
+    if (/\p{Ll}/u.test(ch)) return false;
+    if (/\p{Lu}|\p{Lt}/u.test(ch)) upper = true;
+  }
+  return upper;
+}
+
+/** Whether an all-caps line's evidence for `lang` is more than acronym-shaped tokens. */
+function shoutedEvidence(tokens: string[], lang: string, diacriticRate: number): boolean {
+  if (!tokens.some((t) => t.length >= SHOUTED_MIN_WORD)) return false;
+  if (diacriticRate >= NON_EN_DIACRITIC_RATE) return true;
+  const stopSet = STOP[lang];
+  if (!stopSet) return false;
+  const matched = new Set(tokens.map((t) => t.toLowerCase()).filter((t) => stopSet.has(t)));
+  return [...matched].some((w) => w.length >= SHOUTED_MIN_STOPWORD);
+}
+
 /** Language code for one non-code line, or null when it does not name a foreign language.
  *
  * Same evidence bar as `nonEnglishSegment`: four words, a language `latinProfile` will name,
@@ -418,16 +451,20 @@ const LETTER_RUN_RE = /[\p{L}]{2,}/gu;
  */
 function namedProseLanguage(segment: string): string | null {
   if (!segment.trim() || CODE_LINE_RE.test(segment)) return null;
-  const prose = segment.split(/\s+/).filter((tok) => !JOINED_RE.test(tok)).join(" ");
-  // In mixed-case text, replace all-caps runs with spaces (they are acronyms).
-  let cleaned = prose;
-  if ([...prose].some((ch) => /\p{Ll}/u.test(ch))) {
-    cleaned = prose.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
+  let prose = segment.split(/\s+/).filter((tok) => !JOINED_RE.test(tok)).join(" ");
+  // A shouted segment keeps its acronym-shaped tokens -- shouting is not a foreign language, so it
+  // must also clear `shoutedEvidence` below. Mixed-case text blanks all-caps runs (they are
+  // acronyms) before the words are counted, which is Python's `_named_prose_language` split.
+  const isShouted = shouted(prose);
+  if (!isShouted) {
+    prose = prose.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
   }
-  const tokens = cleaned.match(WORD_RE) ?? [];
+  const tokens = prose.match(WORD_RE) ?? [];
   if (tokens.length < 4) return null;
-  const lang = latinProfile(cleaned).language;
+  const prof = latinProfile(prose);
+  const lang = prof.language;
   if (lang === null || lang === "en") return null;
+  if (isShouted && !shoutedEvidence(tokens, lang, prof.diacriticRate)) return null;
   const stopSet = STOP[lang];
   if (!stopSet) return null;
   const distinctHits = new Set(tokens.map((w) => w.toLowerCase()).filter((w) => stopSet.has(w)));
@@ -458,8 +495,31 @@ function nonEnglishSegment(state: unknown, maxChars = 4000): [string, string] | 
   return null;
 }
 
+/** Whether the non-Latin share of a Latin-plurality text is a real message, not a stray name. */
+function nonLatinCarries(nonLatin: number, nNonLatin: number): boolean {
+  return nonLatin >= NON_LATIN_FRACTION ||
+    (nonLatin >= NON_LATIN_MIN_FRACTION && nNonLatin >= NON_LATIN_MIN_LETTERS);
+}
+
+// Python's round(x, 4) rounds the exact binary value of the double, breaking a tie to the even
+// digit. Math.round instead rounds `x * 10000`, which differs in two ways: it breaks a tie away
+// from zero, and the multiplication invents a tie where the double is not one. Both are reachable
+// from a ratio of small counts. 1 diacritic in 32 characters is 0.03125 exactly, and Python
+// reports 0.0312 where Math.round reported 0.0313. 1 in 4000 is 0.00025 only to the decimal
+// reader -- the double is 0.0002500000000000000052, above the halfway point, so Python reports
+// 0.0003 while `0.00025 * 10000` lands on 2.5 exactly and a tie rule would report 0.0002. So the
+// digits are taken from the double's own decimal expansion, where "tie" means what it means to
+// Python, and only a real tie consults the parity of the digit before it.
 function round4(x: number): number {
-  return Math.round(x * 10000) / 10000;
+  const [whole, fraction = ""] = x.toFixed(20).split(".");
+  const kept = Number(whole + fraction.slice(0, 4).padEnd(4, "0"));
+  const rest = fraction.slice(4);
+  const first = rest.charAt(0);
+  const tail = rest.slice(1).replace(/0+$/, "");
+  if (first > "5" || (first === "5" && (tail.length > 0 || kept % 2 === 1))) {
+    return (kept + 1) / 10000;
+  }
+  return kept / 10000;
 }
 
 function analyseText(text: string): AnalyseResult {
@@ -469,9 +529,7 @@ function analyseText(text: string): AnalyseResult {
   let nAlpha = 0;
   for (const ch of text) if (IS_ALPHA_RE.test(ch)) nAlpha += 1;
   const nNonLatin = Math.round(nonLatin * nAlpha);
-  if (script === "latin" && nonLatinWords(text).length > 0 &&
-      (nonLatin >= NON_LATIN_FRACTION ||
-        (nonLatin >= NON_LATIN_MIN_FRACTION && nNonLatin >= NON_LATIN_MIN_LETTERS))) {
+  if (script === "latin" && nonLatinWords(text).length > 0 && nonLatinCarries(nonLatin, nNonLatin)) {
     // The plurality said Latin, but the non-Latin share is a real message, not a stray name or
     // symbol: re-classify to the dominant non-Latin script, as Python's analyse does.
     let bestScript = script;
@@ -499,7 +557,34 @@ function analyseText(text: string): AnalyseResult {
     };
   }
   const profLat = latinProfile(text);
-  const lang = profLat.language;
+  let lang = profLat.language;
+  // The acronym bar belongs here too, not only in the segment scan. That scan runs once a state
+  // already reads English overall, so a state that is *nothing but* an acronym line -- or one
+  // diluted by fewer English lines than it takes to tip this verdict -- never reached it and was
+  // named foreign outright: `MON DES EST LA` read French on its own. Vetoing here leaves the text
+  // undecided, so `looksNonEnglish` still decides it, and a shouted line with non-English
+  // diacritics is kept.
+  //
+  // Neither bar applies when the state is carried by a caseless script: both answer the verdict by
+  // taking evidence away from the Latin letters, and what is left is judged on Latin diacritics,
+  // which cannot see the caseless half -- so `ПРИВЕТ MON DES EST LA` would otherwise be sent to the
+  // English checkpoint on the strength of disbelieving the Latin part.
+  if (lang !== null && lang !== "en" && !nonLatinCarries(nonLatin, nNonLatin)) {
+    if (shouted(text)) {
+      if (!shoutedEvidence(text.match(WORD_RE) ?? [], lang, profLat.diacriticRate)) lang = null;
+    } else {
+      // Mixed-case text: re-take the verdict without the all-caps runs that voted in it. Only
+      // ACRONYM-SHAPED runs are blanked -- a run of SHOUTED_MIN_WORD letters is a word, and a word
+      // is not blanked out of its own sentence (blanking every run deleted emphasis capitals, so
+      // `sag mir das HEUTIGE DATUM` lost its verdict). Diacritic evidence stays measured on the
+      // original text, so a shouted foreign word cannot be blanked out of the safety net.
+      const caps = (text.match(LETTER_RUN_RE) ?? []).filter((m) => m === m.toUpperCase());
+      if (caps.length > 0 && !caps.some((c) => c.length >= SHOUTED_MIN_WORD)) {
+        const blanked = text.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
+        if (blanked !== text) lang = latinProfile(blanked).language;
+      }
+    }
+  }
   const undecided = lang === null;
   const english = lang === "en" || (undecided && !profLat.looksNonEnglish);
   return {
@@ -577,7 +662,20 @@ export function analyse(state: unknown): AnalyseResult {
       best = det;
     }
   }
-  return best ?? result;
+  if (!best) return result;
+  // The value pass answers `language` and `isEnglish` for the state, and leaves the script fields
+  // to the state. Returning `best` whole answered `script`, `scriptProfile` and `nonLatinFraction`
+  // from one leaf instead: a long English note above a short Russian message is 98.6% Latin, and
+  // the result said `script: "cyrillic"` with a profile of `{cyrillic: 1}` -- a description of the
+  // leaf that contradicts `scriptProfile(stateText(state))` for the same input, and that a caller
+  // reading `analyse(state).script` to report the language of a ticket cannot tell from the
+  // `isEnglish` flag beside it. Python's `analyse` overrides the same two fields and no others.
+  return {
+    ...result,
+    language: best.language,
+    isEnglish: false,
+    languageUndecided: best.languageUndecided,
+  };
 }
 
 export function isEnglish(state: unknown): boolean {

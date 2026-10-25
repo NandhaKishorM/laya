@@ -181,6 +181,11 @@ def _read_json_object(path: str) -> Dict[str, Any]:
     from two different arguments, so a refusal that omits the path cannot say which artifact is
     broken -- the only thing the caller can act on. Same reason `laya/evals.py:155` prefixes its
     dataset rows with the path.
+
+    A `RecursionError` belongs with them for the same reason and by the same argument: `json` reports
+    a nesting depth it will not walk as a stack overflow, which is neither of the two classes above,
+    so a too-deep artifact escaped as a traceback with exit 1 -- the code `laya-evals` keeps for a
+    quality failure -- naming no file at all, exactly the thing this docstring refuses to allow.
     """
     try:
         with open(path, "r", encoding="utf-8") as handle:
@@ -189,6 +194,8 @@ def _read_json_object(path: str) -> Dict[str, Any]:
         raise ValueError("%s is not valid JSON: %s" % (path, exc)) from exc
     except UnicodeDecodeError as exc:
         raise ValueError("%s is not UTF-8 text: %s" % (path, exc)) from exc
+    except RecursionError as exc:
+        raise ValueError("%s is JSON nested deeper than it can be read: %s" % (path, exc)) from exc
     if not isinstance(document, dict):
         raise ValueError("%s is not a JSON object" % path)
     return document

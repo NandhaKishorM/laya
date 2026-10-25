@@ -1,9 +1,11 @@
 """Record a seeded, generated differential corpus for language detection, routing and email.
 
 Where `dump_routing_golden.py` records hand-written probes, this script *generates* thousands of
-inputs from fragments of the vocabulary the Python modules themselves use (every stop list in
-`laya.lang`, a sample of every script range, the quote/sign-off/footer/disclaimer wording of
-`laya.email`), runs them through the real `laya.lang`, `laya.router` and `laya.email`, and writes
+inputs from fragments of the vocabulary the Python modules themselves use, imported live at generation
+time and sorted for determinism (every stop list, the shared / English-only / English-collision /
+Nordic-overlap / short-Swedish word sets and the non-English diacritics of `laya.lang`, a sample of
+every script range, the device-footer words of `laya.email`, plus the quote/sign-off/footer/disclaimer
+wording of `laya.email`), runs them through the real `laya.lang`, `laya.router` and `laya.email`, and writes
 what Python answered to `tests/golden/routing/differential_probe.json`. A port replays every case
 and must agree exactly. The file is an output of this script only; never edit it by hand.
 
@@ -28,7 +30,11 @@ REPO = os.path.dirname(os.path.dirname(TOOLS))
 sys.path.insert(0, REPO)
 
 from laya.email import clean_email_body, email_state  # noqa: E402
-from laya.lang import _SCRIPT_RANGES, _STOP, analyse, state_text  # noqa: E402
+from laya.email import _DEVICE  # noqa: E402
+from laya.lang import (  # noqa: E402
+    _EN_COLLISION_WORDS, _EN_ONLY_WORDS, _NON_EN_DIACRITICS, _NORDIC_OVERLAP_WORDS, _SCRIPT_RANGES,
+    _SHARED_WORDS, _SHORT_SWEDISH_WORDS, _STOP, analyse, state_text,
+)
 from laya.router import Router  # noqa: E402
 
 OUT_DEFAULT = os.path.join(REPO, "laya-rust", "tests", "golden", "routing", "differential_probe.json")
@@ -57,6 +63,13 @@ def pick(seq):
 # ------------------------------------------------------------------------------ state fragments
 STOP_LANGS = sorted(_STOP)
 STOP_WORDS = {k: sorted(v) for k, v in _STOP.items()}
+# The other word sets and character tables `laya.lang` decides with, read live: a change to any of
+# them changes the corpus (and therefore the golden), so a port that missed it is caught.
+SPECIAL_WORD_SETS = [sorted(_EN_ONLY_WORDS), sorted(_SHARED_WORDS), sorted(_EN_COLLISION_WORDS),
+                     sorted(_NORDIC_OVERLAP_WORDS), sorted(_SHORT_SWEDISH_WORDS)]
+DIACRITICS = sorted(_NON_EN_DIACRITICS)
+# `laya.email._DEVICE` is a regex alternation of plain words (and `e-?mail`); take the literal ones.
+DEVICE_WORDS = sorted(w for w in _DEVICE.split("|") if w.isalpha())
 ENGLISH = ["please", "refund", "invoice", "account", "locked", "order", "delivery", "password",
            "reset", "charged", "twice", "support", "ticket", "update", "my", "your", "help",
            "urgent", "payment", "confirmation", "shipping", "address", "cancel", "subscription"]
@@ -137,9 +150,21 @@ def accent_word():
     return w + pick(COMBINING) if rng.random() < 0.5 else w[:1] + pick(COMBINING) + w[1:]
 
 
+def diacritic_word():
+    """A live stop word with a non-English diacritic spliced in, so the diacritic rate moves."""
+    w = pick(STOP_WORDS[pick(STOP_LANGS)])
+    i = rng.randrange(len(w) + 1)
+    return w[:i] + pick(DIACRITICS) + w[i:]
+
+
 def fragment():
     r = rng.random()
     if r < 0.30:
+        sub = rng.random()
+        if sub < 0.20:
+            return pick(pick(SPECIAL_WORD_SETS))
+        if sub < 0.26:
+            return diacritic_word()
         return pick(STOP_WORDS[pick(STOP_LANGS)])
     if r < 0.45:
         return pick(ENGLISH)
@@ -237,6 +262,11 @@ def make_state():
         return d
     if r < 0.88:
         return " ".join(pick(STOP_WORDS[pick(STOP_LANGS)]) for _ in range(rng.randint(2, 8)))
+    if r < 0.94:
+        # short requests built from the English-only / shared / short-Swedish sets: the
+        # "Why hasn't my card been delivered?" shape that the English stop list decides
+        pool = pick(SPECIAL_WORD_SETS)
+        return " ".join(pick(pool) if rng.random() < 0.6 else pick(ENGLISH) for _ in range(rng.randint(1, 7)))
     return line()
 
 
@@ -359,6 +389,12 @@ def vary(s):
     return s
 
 
+def device_footer():
+    w = pick(DEVICE_WORDS)
+    return pick(["Sent from my %s", "Enviado do meu %s", "Envoyé depuis mon %s", "Get %s for iOS",
+                 "Sent from %s", "%s"]) % w
+
+
 def email_block():
     r = rng.random()
     if r < 0.30:
@@ -372,7 +408,7 @@ def email_block():
     if r < 0.68:
         return [vary(pick(SIGNOFFS))] + ([pick(NAMES)] if rng.random() < 0.7 else [])
     if r < 0.78:
-        return [vary(pick(DEVICE))]
+        return [vary(pick(DEVICE) if rng.random() < 0.6 else device_footer())]
     if r < 0.92:
         return [vary(pick(DISCLAIMERS))]
     return ["> " + pick(SENTENCES), ">> " + pick(SENTENCES)]

@@ -89,6 +89,9 @@ from ._controls import predict_kwargs as _predict_kwargs, reject_remote_hooks as
 from ._controls import reject_remote_lang_guess as _reject_remote_lang_guess  # noqa: E402
 from ._controls import require_router_controls as _require_router_controls  # noqa: E402
 from ._controls import router_kwargs as _router_kwargs  # noqa: E402
+from ._guard import answer_number as _answer_number  # noqa: E402
+from ._guard import answers_map as _answers_map  # noqa: E402
+from ._guard import malformed as _malformed  # noqa: E402
 from ._guard import score_violation_probability as _score_violation_probability  # noqa: E402
 from ..confidence import _gate_confidence  # noqa: E402
 
@@ -331,6 +334,16 @@ def _call_remote(
             f"Malformed decision response from Laya server at {url}: "
             f"expected a JSON object, got {type(parsed).__name__}"
         )
+    # `parsed` is an object now, but its `answers` field is the same arbitrary JSON: a gateway can
+    # answer `{"answers": []}`. Both consumers read it as `res.get("answers", {})` and then call
+    # `.get("delegation", …)` / `.items()` on it, so a non-object there leaks AttributeError past the
+    # same fail-closed paths -- this is the guard above one level deeper. A missing `answers` is left
+    # alone: that is the no-decision case the consumers already handle, not a malformed one.
+    if "answers" in parsed and not isinstance(parsed["answers"], dict):
+        raise RuntimeError(
+            f"Malformed decision response from Laya server at {url}: "
+            f"'answers' must be a JSON object, got {type(parsed['answers']).__name__}"
+        )
     return parsed
 
 
@@ -545,8 +558,14 @@ class LayaAgnoRouter:
         )
         self.last_decision = res
 
-        ans = res.get("answers", {}).get("delegation", {})
+        # The same nested-shape checks as the guardrail screen: `answers` must be an object,
+        # the answer must be an object, and `choice` is used with `.startswith` below -- a list
+        # there raised AttributeError out of a routing decision.
+        where = f"Laya server at {self.base_url}" if self.base_url else "Laya"
+        ans = _answers_map(res, where).get("delegation", {})
         chosen_key = ans.get("choice")
+        if chosen_key is not None and not isinstance(chosen_key, str):
+            raise _malformed(where, "'choice' must be a string, got %s" % type(chosen_key).__name__)
 
         # Gate on the same number core's `flag_low_confidence` gates on:
         # `answer_confidence` first, then the entropy `confidence` field, so an
@@ -801,16 +820,24 @@ class LayaAgnoGuardrail:
             hooks_timeout=self.hooks_timeout,
         )
         self.last_decision = res
-        answers = res.get("answers", {})
+        # A remote body is arbitrary JSON, so `answers` and each answer are checked before anything
+        # is read out of them: `res.get("answers", {})` only defaults when the key is absent, and a
+        # present-but-non-object value used to raise AttributeError/TypeError out of the one path
+        # whose job is to fail closed. A `noul` value is checked too (`>=` against a string or null
+        # is a TypeError, a bool reads as 1.0/0.0, NaN compares False i.e. "safe").
+        where = f"Laya server at {self.base_url}" if self.base_url else "Laya"
+        answers = _answers_map(res, where)
 
         violations: Dict[str, Any] = {}
         for qid, ans in answers.items():
             t = ans.get("type")
-            if t == "noul" and ans.get("noul", 0.0) >= self.threshold:
-                violations[qid] = {
-                    "probability": ans["noul"],
-                    "confidence": ans.get("confidence", 0.0),
-                }
+            if t == "noul":
+                probability = _answer_number(ans, "noul", where)
+                if probability >= self.threshold:
+                    violations[qid] = {
+                        "probability": probability,
+                        "confidence": ans.get("confidence", 0.0),
+                    }
             elif t == "score":
                 # Gate on the probability that the level is at or above the
                 # middle of the scale – same rule as LayaGuardrail / LayaTaskGuard.

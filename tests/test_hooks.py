@@ -1771,6 +1771,13 @@ check_raises("timeout/infinity is rejected", ValueError, lambda: validate_timeou
 check_raises("timeout/-infinity is rejected", ValueError, lambda: validate_timeout(float("-inf")))
 check_raises("timeout/True is rejected", ValueError, lambda: validate_timeout(True))
 check_raises("timeout/False is rejected", ValueError, lambda: validate_timeout(False))
+# A shape `float()` cannot read is still a bad timeout: a list/object used to leak TypeError and a
+# JSON integer too large for a float leaked OverflowError. Both must raise the same ValueError, and
+# the OverflowError case is what let a giant JSON number reach `laya/mcp/tools.py` (which catches
+# only TypeError/ValueError) and surface as `internal_error`.
+check_raises("timeout/list is rejected", ValueError, lambda: validate_timeout([10]))
+check_raises("timeout/dict is rejected", ValueError, lambda: validate_timeout({"a": 1}))
+check_raises("timeout/oversized int is rejected", ValueError, lambda: validate_timeout(10 ** 1000))
 
 
 # The refusal has to say *why*. `False` raises either way -- as a wrong type here, as a non-positive

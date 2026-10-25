@@ -19,6 +19,7 @@
  * with a `toJSONSchema()` method is accepted.
  */
 import type { QuestionDef } from "./agent.js";
+import type { PredictBatchOptions } from "./router.js";
 import { checkMinConfidence, flagLowConfidence } from "./common.js";
 import type { MinConfidence } from "./common.js";
 
@@ -145,7 +146,14 @@ function enumField(path: string, name: string, values: unknown[], description: u
     throw new SchemaError(`${path}: ${values.length} options exceeds MAX_OPTIONS=${MAX_OPTIONS}`);
   }
   if (values.length === 0) throw new SchemaError(`${path}: 'enum' must not be empty`);
-  if (values.every((v) => typeof v === "boolean")) return noulField(name, description);
+  // Python's `_enum_field` takes the noul shortcut only for exactly two DISTINCT booleans
+  // (`all(isinstance(v, bool) ...) and len(set(values)) == 2`). Without the distinctness test a
+  // one-value enum became a noul here and a one-option choice there -- a different question type
+  // and a different projected value type (boolean vs "true") from the documented mapping -- and
+  // `[true, true]` became a noul instead of the duplicate-label SchemaError both SDKs promise.
+  if (values.length === 2 && values.every((v) => typeof v === "boolean") && values[0] !== values[1]) {
+    return noulField(name, description);
+  }
   const options: [string, unknown][] = values.map((v) => [v == null ? "null" : String(v), v]);
   if (new Set(options.map(([label]) => label)).size !== options.length) {
     throw new SchemaError(`${path}: enum values produce duplicate choice labels`);
@@ -459,9 +467,26 @@ export async function decideBatch(
   const isRouter = typeof r.routeBatch === "function";
   let results: any[];
   if (isRouter) {
-    const requests = states.map((s) => ({ state: s, questions: qs, ...predictOpts }));
+    // `Router.predictBatch` reads the routing overrides off each REQUEST and takes the hook
+    // controls as its third argument. Spreading everything into the request objects (what this
+    // path used to do) put `hooks`/`onPredictStart`/`onPredictEnd`/`hooksRaise` where
+    // `predictBatch` never looks, so every per-call hook -- the tracing/metrics/audit hooks this
+    // option exists for -- silently observed nothing on the Router path while the Agent path
+    // fired them. Python's `decide_batch` makes the same split: `_ROUTER_REQUEST_KEYS` onto each
+    // request, everything else as call keywords.
+    const requestKeys = ["model", "task", "lang", "langGuess", "lang_guess", "maxLen", "headMaxLen"];
+    const perRequest: Record<string, unknown> = {};
+    const callOpts: PredictBatchOptions = {};
+    for (const [key, value] of Object.entries(predictOpts)) {
+      if (requestKeys.includes(key)) {
+        perRequest[key] = value;
+      } else if (key === "hooks" || key === "onPredictStart" || key === "onPredictEnd" || key === "hooksRaise") {
+        (callOpts as Record<string, unknown>)[key] = value;
+      }
+    }
+    const requests = states.map((s) => ({ state: s, questions: qs, ...perRequest }));
     const batchSize = (predictOpts.batchSize ?? null) as number | null;
-    results = await predictBatchFn.call(runner, requests, batchSize);
+    results = await predictBatchFn.call(runner, requests, batchSize, callOpts);
   } else {
     results = await predictBatchFn.call(runner, states, qs as Record<string, QuestionDef>, predictOpts);
   }

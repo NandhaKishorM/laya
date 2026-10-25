@@ -270,6 +270,41 @@ fn predict_reduces_choice_and_forwards_other_questions_unchanged() {
 }
 
 #[test]
+fn scores_are_clipped_to_the_documented_range() {
+    // `ShortlistInfo::scores` is documented as a cosine similarity, i.e. within [-1, 1]. Python
+    // clips the quotient (`np.clip(dot / denom, -1.0, 1.0)`) and laya-go pins that with
+    // `TestCosineIsClipped`; without the clip this port reported 1.0000000000000002 for a
+    // self-cosine, because a parallel-vector quotient can round above one.
+    let v = vec![34.0, 15.285714285714286, 70.85714285714286];
+    let embed = |texts: &[String]| -> Result<Vec<Vec<f64>>> {
+        Ok(texts.iter().map(|_| v.clone()).collect())
+    };
+    let criteria = [("a", Value::Null), ("b", Value::Null), ("c", Value::Null)];
+    let mut questions = QuestionSet::new();
+    questions = questions
+        .with("intent", Question::choice("Pick one", criteria).unwrap())
+        .unwrap();
+
+    let result =
+        LayaShortlist::predict(&FirstLabelPredictor, json!("pick me"), &questions, embed, 2)
+            .unwrap();
+    let scores = result.shortlist().unwrap()["intent"]
+        .scores
+        .as_ref()
+        .unwrap();
+    for score in scores {
+        assert!(
+            (-1.0..=1.0).contains(score),
+            "cosine {score} is outside the documented [-1, 1]"
+        );
+    }
+    assert!(
+        scores.iter().all(|s| *s == 1.0),
+        "a self-cosine clips to exactly 1.0, got {scores:?}"
+    );
+}
+
+#[test]
 fn predict_passthrough_forwards_the_original_question() {
     let full_criteria = [
         ("billing", json!({"desc": "payments"})),

@@ -223,6 +223,17 @@ def _call_remote(
             f"Malformed decision response from Laya server at {url}: "
             f"expected a JSON object, got {type(parsed).__name__}"
         )
+    # `parsed` is an object now, but its `answers` field is the same arbitrary JSON: a gateway can
+    # answer `{"answers": []}`. The consumers read it four ways -- `result["answers"][question_id]`,
+    # `.get("answers", {}).get("intent", …)`, `.items()` and one that hands it back to the caller --
+    # so a non-object leaks TypeError/AttributeError, or worse a non-mapping into user code, past the
+    # fail-closed paths. This is the guard above one level deeper. A missing `answers` is left alone:
+    # `LayaRouter` already reports that as its own KeyError, and the guardrail as no violations.
+    if "answers" in parsed and not isinstance(parsed["answers"], dict):
+        raise RuntimeError(
+            f"Malformed decision response from Laya server at {url}: "
+            f"'answers' must be a JSON object, got {type(parsed['answers']).__name__}"
+        )
     return parsed
 
 

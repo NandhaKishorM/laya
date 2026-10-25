@@ -8,7 +8,10 @@
 //! parses to an integer `Number`, `3.0` to a float `Number`), so a parsed `Value` can be handed
 //! straight to [`laya::questions::Question`] constructors.
 
+use indexmap::IndexMap;
+use laya::confidence::MinConfidence;
 use laya::error::Result as LayaResult;
+use laya::predict_options::PredictOptions;
 use laya::questions::{Question, QuestionSet};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -20,6 +23,31 @@ pub fn golden_base_dir() -> PathBuf {
         Ok(dir) if !dir.trim().is_empty() => PathBuf::from(dir),
         _ => Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden"),
     }
+}
+
+/// The `min_confidence` a recorded case passed to Python (`options.min_confidence`), written as
+/// the variant itself and not through the validating constructors, so an invalid recorded value
+/// reaches the engine's own validation. `None` when the case recorded no threshold.
+pub fn recorded_min_confidence(options: &Value) -> Option<MinConfidence> {
+    match options.get("min_confidence")? {
+        Value::Object(map) => Some(MinConfidence::Map(
+            map.iter()
+                .map(|(key, value)| (key.clone(), value.as_f64().expect("a float threshold")))
+                .collect::<IndexMap<_, _>>(),
+        )),
+        value => Some(MinConfidence::Scalar(
+            value.as_f64().expect("a float threshold"),
+        )),
+    }
+}
+
+/// The per-call options of a recorded `system_one` case: its `options`, when it recorded any.
+pub fn recorded_predict_options(case: &Value) -> PredictOptions {
+    let mut options = PredictOptions::new();
+    if let Some(recorded) = case.get("options") {
+        options.min_confidence = recorded_min_confidence(recorded);
+    }
+    options
 }
 
 /// The golden directory for one checkpoint subfolder (`"multilingual"`, `"english"`,
@@ -143,6 +171,22 @@ impl CheckpointGoldenData {
         self.index()
             .into_iter()
             .filter(|c| c.kind.as_deref() == Some("long") && c.expects_error)
+            .collect()
+    }
+
+    /// Cases recorded with `"kind": "batch"` that return results (`ONNXAgent.predict_batch`).
+    pub fn batch_cases(&self) -> Vec<GoldenCaseInfo> {
+        self.index()
+            .into_iter()
+            .filter(|c| c.kind.as_deref() == Some("batch") && !c.expects_error)
+            .collect()
+    }
+
+    /// Cases recorded with `"kind": "batch"` that raise a Python `TypeError`.
+    pub fn batch_error_cases(&self) -> Vec<GoldenCaseInfo> {
+        self.index()
+            .into_iter()
+            .filter(|c| c.kind.as_deref() == Some("batch") && c.expects_error)
             .collect()
     }
 

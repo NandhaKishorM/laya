@@ -476,3 +476,49 @@ test('presets are fresh and custom email categories are copied', () => {
   assert.equal(categories.finance.description, 'money');
   assert.ok(emailQuestions().category.criteria.billing);
 });
+
+test('accepts the question extensions the server accepts (option_order, noul labels)', async () => {
+  // The server honours both (laya/agent.py::_check_question) and the Python client passes them
+  // through unchanged. The client's closed whitelist rejected them as "unknown question field"
+  // before the request went out, so option ordering and custom noul wording were unreachable
+  // from this SDK.
+  const extended = {
+    team: {
+      type: 'choice',
+      instructions: 'Which team?',
+      criteria: { billing: null, support: null },
+      option_order: [1, 0],
+    },
+    flag: {
+      type: 'noul',
+      instructions: 'Flag it?',
+      labels: { false: 'nope', true: 'yep' },
+    },
+  };
+  let sent = null;
+  const client = new Laya({
+    fetch: async (_url, init) => {
+      sent = JSON.parse(init.body);
+      return json({
+        model: 'laya-rl-agent',
+        routing: route,
+        usage: { input_tokens: 3, output_tokens: 0 },
+        answers: {
+          team: { type: 'choice', choice: 'support', confidence: 0.9, probabilities: { support: 0.9, billing: 0.1 } },
+          flag: { type: 'noul', noul: 0.8, confidence: 0.8 },
+        },
+      });
+    },
+  });
+  const result = await client.predict('hello', extended);
+  assert.deepEqual(sent.questions, extended, 'the extensions reach the wire unchanged');
+  assert.equal(result.answers.team.choice, 'support');
+});
+
+test('still refuses a question field that is neither schema nor a documented extension', async () => {
+  const client = new Laya({ fetch: async () => json(prediction) });
+  await assert.rejects(
+    client.predict('hello', { refund: { type: 'noul', instructions: 'Refund?', instruction: 'typo' } }),
+    (error) => error instanceof LayaValidationError && /unknown question field/.test(error.message),
+  );
+});

@@ -26,3 +26,14 @@ updates:
     schedule:
       interval: weekly
     labels: [dependencies, ci]
+    # github/codeql-action is one repository publishing several actions, and CodeQL refuses to
+    # run when init, autobuild and analyze are not all the same version: "Loaded a configuration
+    # file for version X, but running version Y". Ungrouped, Dependabot opens one PR per action,
+    # so every one of them is a mismatched pair that cannot go green alone and cannot be merged
+    # alone. #1353 bumped init and #1356 bumped analyze, both red, and autobuild got no PR at
+    # all, which left the lane broken even after merging that pair. Grouping them means one PR
+    # that moves all three together.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"

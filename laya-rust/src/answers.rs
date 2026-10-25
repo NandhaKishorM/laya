@@ -1,6 +1,7 @@
 //! The typed result of one `predict` call. Pure data — nothing here runs the model; `engine.rs`
 //! (a later phase) is what builds these from calibrated probabilities.
 
+use crate::confidence::{self, Gate};
 use crate::laya_router::RouteDecision;
 use crate::laya_shortlist::ShortlistInfo;
 use crate::questions::QuestionType;
@@ -50,6 +51,7 @@ pub struct ChoiceAnswer {
     answer_confidence: f64,
     action: ActionInfo,
     window: Option<WindowInfo>,
+    gate: Gate,
 }
 
 impl ChoiceAnswer {
@@ -68,6 +70,7 @@ impl ChoiceAnswer {
             answer_confidence,
             action,
             window: None,
+            gate: Gate::default(),
         }
     }
 
@@ -92,6 +95,7 @@ pub struct ScoreAnswer {
     answer_confidence: f64,
     action: ActionInfo,
     window: Option<WindowInfo>,
+    gate: Gate,
 }
 
 impl ScoreAnswer {
@@ -112,6 +116,7 @@ impl ScoreAnswer {
             answer_confidence,
             action,
             window: None,
+            gate: Gate::default(),
         }
     }
 
@@ -137,6 +142,7 @@ pub struct NoulAnswer {
     answer_confidence: f64,
     action: ActionInfo,
     window: Option<WindowInfo>,
+    gate: Gate,
 }
 
 impl NoulAnswer {
@@ -153,6 +159,7 @@ impl NoulAnswer {
             answer_confidence,
             action,
             window: None,
+            gate: Gate::default(),
         }
     }
 
@@ -225,6 +232,59 @@ impl Answer {
             Answer::Noul(n) => n.window = Some(window),
         }
         self
+    }
+
+    pub(crate) fn set_gate(&mut self, gate: Gate) {
+        match self {
+            Answer::Choice(c) => c.gate = gate,
+            Answer::Score(s) => s.gate = gate,
+            Answer::Noul(n) => n.gate = gate,
+        }
+    }
+
+    fn gate(&self) -> Gate {
+        match self {
+            Answer::Choice(c) => c.gate,
+            Answer::Score(s) => s.gate,
+            Answer::Noul(n) => n.gate,
+        }
+    }
+
+    /// Whether the `min_confidence` gate flagged this answer: its confidence (`answer_confidence`,
+    /// else `confidence`) fell below the threshold. `false` when no gate ran, and `false` for an
+    /// answer with no usable confidence (that one reads `"unevaluated"`). Ports Python's
+    /// `low_confidence: True`, which is present only when flagged.
+    pub fn low_confidence(&self) -> bool {
+        self.gate().low_confidence
+    }
+
+    /// The gate's state for this answer: one of [`crate::confidence::GATE_STATES`]
+    /// (`"passed"`, `"abstained"`, `"unevaluated"`), or `None` when no `min_confidence` was set
+    /// for the call that produced it. Ports Python's `abstention`.
+    pub fn abstention(&self) -> Option<&'static str> {
+        self.gate().abstention
+    }
+
+    /// The threshold this answer was gated at: the scalar, or the map entry for its option-count
+    /// bucket (else the map's `"default"`, else `0.0`). `None` when no gate ran. Ports Python's
+    /// `abstention_threshold`.
+    pub fn abstention_threshold(&self) -> Option<f64> {
+        self.gate().threshold
+    }
+
+    /// The `confidence` Jev would report for this answer's (rounded) probabilities, which is not
+    /// Laya's normalized entropy: choice `(max(p) - 1/n) / (1 - 1/n)`, score `max(0, 1 -
+    /// sum(p_i * |i - mode|) / D)`. `None` for a noul answer and for probabilities that are not
+    /// finite and non-negative. Ports `jev_confidence` from `laya/confidence.py` (#302).
+    pub fn jev_confidence(&self) -> Option<f64> {
+        confidence::jev_confidence(self)
+    }
+
+    /// The `qtype:size` bucket a per-bucket `min_confidence` map gates this answer under, e.g.
+    /// `"choice:3-5"` (see [`crate::confidence::bucket_keys`]). `None` for a choice or score
+    /// answer with no options.
+    pub fn option_bucket(&self) -> Option<String> {
+        confidence::option_bucket(self)
     }
 
     /// The action head's output.
@@ -392,6 +452,11 @@ impl LayaResult {
     pub(crate) fn with_state_usage(mut self, usage: StateUsage) -> Self {
         self.state_usage = Some(usage);
         self
+    }
+
+    /// Applies `f` to every answer, in no particular order (the gate writes each independently).
+    pub(crate) fn for_each_answer_mut(&mut self, mut f: impl FnMut(&mut Answer)) {
+        self.by_id.values_mut().for_each(&mut f);
     }
 
     /// The question ids, in the order they were asked.

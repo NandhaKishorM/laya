@@ -103,6 +103,11 @@ pub enum LayaError {
         max_len: usize,
     },
 
+    /// A state or request was refused before any inference: a `null` state, which Python rejects
+    /// with a `TypeError` instead of answering a decision about the text `"null"`.
+    #[error("{0}")]
+    InvalidState(String),
+
     /// `predict_long` was given an aggregation mode other than `"auto"`.
     #[error("predict_long: only aggregate='auto' is supported")]
     UnsupportedAggregate(String),
@@ -116,6 +121,12 @@ pub enum LayaError {
     /// router whose predictor has no scan capability).
     #[error("{0}")]
     NotSupported(String),
+
+    /// A `min_confidence` threshold or per-bucket map that Python's `check_min_confidence` would
+    /// reject with a `ValueError`: out of `[0.0, 1.0]`, NaN, an empty map, or a key that is not a
+    /// bucket. The text is Python's, with `%r` rendered as Python's `repr`.
+    #[error("{0}")]
+    InvalidMinConfidence(String),
 }
 
 #[cfg(test)]

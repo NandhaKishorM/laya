@@ -274,7 +274,11 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
     values: Dict[str, Any] = {}
     for f in fields:
         answer = answers.get(f.name)
-        if answer is None:
+        # A field whose answer is not an answer object carries nothing to project -- exactly the
+        # absent field the `None` branch already omits. `apply_confidence_gate` makes the same call
+        # and skips a non-dict answer (confidence.py:298); reading `.get` off one instead raised a
+        # raw AttributeError here and crashed the whole projection.
+        if not isinstance(answer, dict):
             continue
         if answer.get("low_confidence"):
             values[f.name] = None
@@ -316,6 +320,10 @@ def _details(values: Dict[str, Any], answers: Dict[str, Any], result: Dict[str, 
     answer_confidence: Dict[str, Optional[float]] = {}
     probabilities: Dict[str, Dict[str, Any]] = {}
     for name, answer in answers.items():
+        if not isinstance(answer, dict):
+            # Same rule as `_project` and `apply_confidence_gate`: a non-dict answer is no answer,
+            # so it reports no confidence rather than raising AttributeError on `.get`.
+            continue
         confidence[name] = float(answer.get("confidence", 0.0))
         # Read through the module that owns the definition, so this and the `min_confidence` gate
         # cannot disagree about which quantity is being reported.

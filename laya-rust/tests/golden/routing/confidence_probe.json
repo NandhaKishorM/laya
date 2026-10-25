@@ -1,0 +1,4507 @@
+{
+  "bucket_keys": [
+    "choice:11+",
+    "choice:2",
+    "choice:3-5",
+    "choice:6-10",
+    "noul:11+",
+    "noul:2",
+    "noul:3-5",
+    "noul:6-10",
+    "score:11+",
+    "score:2",
+    "score:3-5",
+    "score:6-10"
+  ],
+  "gate_states": [
+    "passed",
+    "abstained",
+    "unevaluated"
+  ],
+  "scalars": [
+    {
+      "value": 0.0,
+      "valid": true,
+      "result": 0.0
+    },
+    {
+      "value": 1.0,
+      "valid": true,
+      "result": 1.0
+    },
+    {
+      "value": 0.5,
+      "valid": true,
+      "result": 0.5
+    },
+    {
+      "value": 0.35,
+      "valid": true,
+      "result": 0.35
+    },
+    {
+      "value": 1e-09,
+      "valid": true,
+      "result": 1e-09
+    },
+    {
+      "value": 0.9999999999,
+      "valid": true,
+      "result": 0.9999999999
+    },
+    {
+      "value": 1e-05,
+      "valid": true,
+      "result": 1e-05
+    },
+    {
+      "value": -0.1,
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got -0.1"
+    },
+    {
+      "value": 1.5,
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got 1.5"
+    },
+    {
+      "value": -1e-05,
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got -1e-05"
+    },
+    {
+      "value": 1.0000000001,
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got 1.0000000001"
+    },
+    {
+      "value": 2.0,
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got 2.0"
+    },
+    {
+      "value": 100.0,
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got 100.0"
+    },
+    {
+      "value": 1e+16,
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got 1e+16"
+    },
+    {
+      "value": 1.2345678901234566e-07,
+      "valid": true,
+      "result": 1.2345678901234566e-07
+    },
+    {
+      "value": "nan",
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got nan"
+    },
+    {
+      "value": "inf",
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got inf"
+    },
+    {
+      "value": "-inf",
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got -inf"
+    }
+  ],
+  "maps": [
+    {
+      "pairs": [],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "a min_confidence map must be a non-empty dict of bucket -> float, got {}"
+    },
+    {
+      "pairs": [
+        [
+          "default",
+          0.4
+        ]
+      ],
+      "valid": true,
+      "result": [
+        [
+          "default",
+          0.4
+        ]
+      ]
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          0.7
+        ],
+        [
+          "default",
+          0.4
+        ]
+      ],
+      "valid": true,
+      "result": [
+        [
+          "choice:2",
+          0.7
+        ],
+        [
+          "default",
+          0.4
+        ]
+      ]
+    },
+    {
+      "pairs": [
+        [
+          "choice:3-5",
+          0.5
+        ]
+      ],
+      "valid": true,
+      "result": [
+        [
+          "choice:3-5",
+          0.5
+        ]
+      ]
+    },
+    {
+      "pairs": [
+        [
+          "score:11+",
+          0.0
+        ],
+        [
+          "noul:2",
+          1.0
+        ]
+      ],
+      "valid": true,
+      "result": [
+        [
+          "score:11+",
+          0.0
+        ],
+        [
+          "noul:2",
+          1.0
+        ]
+      ]
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          0.05
+        ],
+        [
+          "choice:3-5",
+          0.1
+        ],
+        [
+          "choice:6-10",
+          0.15
+        ],
+        [
+          "choice:11+",
+          0.2
+        ],
+        [
+          "score:2",
+          0.25
+        ],
+        [
+          "score:3-5",
+          0.3
+        ],
+        [
+          "score:6-10",
+          0.35
+        ],
+        [
+          "score:11+",
+          0.4
+        ],
+        [
+          "noul:2",
+          0.45
+        ],
+        [
+          "noul:3-5",
+          0.5
+        ],
+        [
+          "noul:6-10",
+          0.55
+        ],
+        [
+          "noul:11+",
+          0.6
+        ],
+        [
+          "default",
+          0.5
+        ]
+      ],
+      "valid": true,
+      "result": [
+        [
+          "choice:2",
+          0.05
+        ],
+        [
+          "choice:3-5",
+          0.1
+        ],
+        [
+          "choice:6-10",
+          0.15
+        ],
+        [
+          "choice:11+",
+          0.2
+        ],
+        [
+          "score:2",
+          0.25
+        ],
+        [
+          "score:3-5",
+          0.3
+        ],
+        [
+          "score:6-10",
+          0.35
+        ],
+        [
+          "score:11+",
+          0.4
+        ],
+        [
+          "noul:2",
+          0.45
+        ],
+        [
+          "noul:3-5",
+          0.5
+        ],
+        [
+          "noul:6-10",
+          0.55
+        ],
+        [
+          "noul:11+",
+          0.6
+        ],
+        [
+          "default",
+          0.5
+        ]
+      ]
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          1.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got 1.5"
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          "nan"
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got nan"
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          -0.1
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got -0.1"
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          "inf"
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got inf"
+    },
+    {
+      "pairs": [
+        [
+          "bogus",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'bogus'"
+    },
+    {
+      "pairs": [
+        [
+          "Choice:2",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'Choice:2'"
+    },
+    {
+      "pairs": [
+        [
+          "choice:3",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'choice:3'"
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          0.5
+        ],
+        [
+          "bogus",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'bogus'"
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          1.5
+        ],
+        [
+          "bogus",
+          0.1
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got 1.5"
+    },
+    {
+      "pairs": [
+        [
+          "bogus",
+          1.5
+        ],
+        [
+          "choice:2",
+          0.1
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'bogus'"
+    },
+    {
+      "pairs": [
+        [
+          "choice:2",
+          0.5
+        ],
+        [
+          "choice:3-5",
+          2.0
+        ],
+        [
+          "nope",
+          0.1
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence must be a float in [0.0, 1.0], got 2.0"
+    },
+    {
+      "pairs": [
+        [
+          "it's",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got \"it's\""
+    },
+    {
+      "pairs": [
+        [
+          "say \"hi\"",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'say \"hi\"'"
+    },
+    {
+      "pairs": [
+        [
+          "it's \"x\"",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'it\\'s \"x\"'"
+    },
+    {
+      "pairs": [
+        [
+          "tab\there",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'tab\\there'"
+    },
+    {
+      "pairs": [
+        [
+          "café",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'café'"
+    },
+    {
+      "pairs": [
+        [
+          "",
+          0.5
+        ]
+      ],
+      "valid": false,
+      "error_type": "ValueError",
+      "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got ''"
+    },
+    {
+      "pairs": [
+        [
+          "default",
+          0.5
+        ],
+        [
+          "default",
+          0.25
+        ]
+      ],
+      "valid": true,
+      "result": [
+        [
+          "default",
+          0.25
+        ]
+      ]
+    }
+  ],
+  "buckets": [
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 1.0
+        }
+      },
+      "bucket": "choice:2"
+    },
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5,
+          "b": 0.5
+        }
+      },
+      "bucket": "choice:2"
+    },
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.3333,
+          "b": 0.3333,
+          "c": 0.3333
+        }
+      },
+      "bucket": "choice:3-5"
+    },
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.2,
+          "b": 0.2,
+          "c": 0.2,
+          "d": 0.2,
+          "e": 0.2
+        }
+      },
+      "bucket": "choice:3-5"
+    },
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.1667,
+          "b": 0.1667,
+          "c": 0.1667,
+          "d": 0.1667,
+          "e": 0.1667,
+          "f": 0.1667
+        }
+      },
+      "bucket": "choice:6-10"
+    },
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.1,
+          "b": 0.1,
+          "c": 0.1,
+          "d": 0.1,
+          "e": 0.1,
+          "f": 0.1,
+          "g": 0.1,
+          "h": 0.1,
+          "i": 0.1,
+          "j": 0.1
+        }
+      },
+      "bucket": "choice:6-10"
+    },
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0909,
+          "b": 0.0909,
+          "c": 0.0909,
+          "d": 0.0909,
+          "e": 0.0909,
+          "f": 0.0909,
+          "g": 0.0909,
+          "h": 0.0909,
+          "i": 0.0909,
+          "j": 0.0909,
+          "k": 0.0909
+        }
+      },
+      "bucket": "choice:11+"
+    },
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0769,
+          "b": 0.0769,
+          "c": 0.0769,
+          "d": 0.0769,
+          "e": 0.0769,
+          "f": 0.0769,
+          "g": 0.0769,
+          "h": 0.0769,
+          "i": 0.0769,
+          "j": 0.0769,
+          "k": 0.0769,
+          "l": 0.0769,
+          "m": 0.0769
+        }
+      },
+      "bucket": "choice:11+"
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 1.0
+        }
+      },
+      "bucket": "score:2"
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.5,
+          "1": 0.5
+        }
+      },
+      "bucket": "score:2"
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.3333,
+          "1": 0.3333,
+          "2": 0.3333
+        }
+      },
+      "bucket": "score:3-5"
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.2,
+          "1": 0.2,
+          "2": 0.2,
+          "3": 0.2,
+          "4": 0.2
+        }
+      },
+      "bucket": "score:3-5"
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.1667,
+          "1": 0.1667,
+          "2": 0.1667,
+          "3": 0.1667,
+          "4": 0.1667,
+          "5": 0.1667
+        }
+      },
+      "bucket": "score:6-10"
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.1,
+          "1": 0.1,
+          "2": 0.1,
+          "3": 0.1,
+          "4": 0.1,
+          "5": 0.1,
+          "6": 0.1,
+          "7": 0.1,
+          "8": 0.1,
+          "9": 0.1
+        }
+      },
+      "bucket": "score:6-10"
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0909,
+          "1": 0.0909,
+          "2": 0.0909,
+          "3": 0.0909,
+          "4": 0.0909,
+          "5": 0.0909,
+          "6": 0.0909,
+          "7": 0.0909,
+          "8": 0.0909,
+          "9": 0.0909,
+          "10": 0.0909
+        }
+      },
+      "bucket": "score:11+"
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0769,
+          "1": 0.0769,
+          "2": 0.0769,
+          "3": 0.0769,
+          "4": 0.0769,
+          "5": 0.0769,
+          "6": 0.0769,
+          "7": 0.0769,
+          "8": 0.0769,
+          "9": 0.0769,
+          "10": 0.0769,
+          "11": 0.0769,
+          "12": 0.0769
+        }
+      },
+      "bucket": "score:11+"
+    },
+    {
+      "answer": {
+        "type": "noul",
+        "noul": 0.9
+      },
+      "bucket": "noul:2"
+    },
+    {
+      "answer": {
+        "type": "choice",
+        "probabilities": {}
+      },
+      "bucket": null
+    },
+    {
+      "answer": {
+        "type": "score",
+        "probabilities": {}
+      },
+      "bucket": null
+    }
+  ],
+  "resolve": [
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5,
+          "b": 0.5
+        }
+      },
+      "result": 0.7
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.25,
+          "b": 0.25,
+          "c": 0.25,
+          "d": 0.25
+        }
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.125,
+          "b": 0.125,
+          "c": 0.125,
+          "d": 0.125,
+          "e": 0.125,
+          "f": 0.125,
+          "g": 0.125,
+          "h": 0.125
+        }
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0833,
+          "b": 0.0833,
+          "c": 0.0833,
+          "d": 0.0833,
+          "e": 0.0833,
+          "f": 0.0833,
+          "g": 0.0833,
+          "h": 0.0833,
+          "i": 0.0833,
+          "j": 0.0833,
+          "k": 0.0833,
+          "l": 0.0833
+        }
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.5,
+          "1": 0.5
+        }
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.25,
+          "1": 0.25,
+          "2": 0.25,
+          "3": 0.25
+        }
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.125,
+          "1": 0.125,
+          "2": 0.125,
+          "3": 0.125,
+          "4": 0.125,
+          "5": 0.125,
+          "6": 0.125,
+          "7": 0.125
+        }
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0833,
+          "1": 0.0833,
+          "2": 0.0833,
+          "3": 0.0833,
+          "4": 0.0833,
+          "5": 0.0833,
+          "6": 0.0833,
+          "7": 0.0833,
+          "8": 0.0833,
+          "9": 0.0833,
+          "10": 0.0833,
+          "11": 0.0833
+        }
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "noul",
+        "noul": 0.9
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {}
+      },
+      "result": 0.4
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5,
+          "b": 0.5
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.25,
+          "b": 0.25,
+          "c": 0.25,
+          "d": 0.25
+        }
+      },
+      "result": 0.5
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.125,
+          "b": 0.125,
+          "c": 0.125,
+          "d": 0.125,
+          "e": 0.125,
+          "f": 0.125,
+          "g": 0.125,
+          "h": 0.125
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0833,
+          "b": 0.0833,
+          "c": 0.0833,
+          "d": 0.0833,
+          "e": 0.0833,
+          "f": 0.0833,
+          "g": 0.0833,
+          "h": 0.0833,
+          "i": 0.0833,
+          "j": 0.0833,
+          "k": 0.0833,
+          "l": 0.0833
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.5,
+          "1": 0.5
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.25,
+          "1": 0.25,
+          "2": 0.25,
+          "3": 0.25
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.125,
+          "1": 0.125,
+          "2": 0.125,
+          "3": 0.125,
+          "4": 0.125,
+          "5": 0.125,
+          "6": 0.125,
+          "7": 0.125
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0833,
+          "1": 0.0833,
+          "2": 0.0833,
+          "3": 0.0833,
+          "4": 0.0833,
+          "5": 0.0833,
+          "6": 0.0833,
+          "7": 0.0833,
+          "8": 0.0833,
+          "9": 0.0833,
+          "10": 0.0833,
+          "11": 0.0833
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "noul",
+        "noul": 0.9
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "choice:3-5": 0.5
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {}
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5,
+          "b": 0.5
+        }
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.25,
+          "b": 0.25,
+          "c": 0.25,
+          "d": 0.25
+        }
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.125,
+          "b": 0.125,
+          "c": 0.125,
+          "d": 0.125,
+          "e": 0.125,
+          "f": 0.125,
+          "g": 0.125,
+          "h": 0.125
+        }
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0833,
+          "b": 0.0833,
+          "c": 0.0833,
+          "d": 0.0833,
+          "e": 0.0833,
+          "f": 0.0833,
+          "g": 0.0833,
+          "h": 0.0833,
+          "i": 0.0833,
+          "j": 0.0833,
+          "k": 0.0833,
+          "l": 0.0833
+        }
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.5,
+          "1": 0.5
+        }
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.25,
+          "1": 0.25,
+          "2": 0.25,
+          "3": 0.25
+        }
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.125,
+          "1": 0.125,
+          "2": 0.125,
+          "3": 0.125,
+          "4": 0.125,
+          "5": 0.125,
+          "6": 0.125,
+          "7": 0.125
+        }
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0833,
+          "1": 0.0833,
+          "2": 0.0833,
+          "3": 0.0833,
+          "4": 0.0833,
+          "5": 0.0833,
+          "6": 0.0833,
+          "7": 0.0833,
+          "8": 0.0833,
+          "9": 0.0833,
+          "10": 0.0833,
+          "11": 0.0833
+        }
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "noul",
+        "noul": 0.9
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "default": 0.25
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {}
+      },
+      "result": 0.25
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5,
+          "b": 0.5
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.25,
+          "b": 0.25,
+          "c": 0.25,
+          "d": 0.25
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.125,
+          "b": 0.125,
+          "c": 0.125,
+          "d": 0.125,
+          "e": 0.125,
+          "f": 0.125,
+          "g": 0.125,
+          "h": 0.125
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0833,
+          "b": 0.0833,
+          "c": 0.0833,
+          "d": 0.0833,
+          "e": 0.0833,
+          "f": 0.0833,
+          "g": 0.0833,
+          "h": 0.0833,
+          "i": 0.0833,
+          "j": 0.0833,
+          "k": 0.0833,
+          "l": 0.0833
+        }
+      },
+      "result": 0.6
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.5,
+          "1": 0.5
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.25,
+          "1": 0.25,
+          "2": 0.25,
+          "3": 0.25
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.125,
+          "1": 0.125,
+          "2": 0.125,
+          "3": 0.125,
+          "4": 0.125,
+          "5": 0.125,
+          "6": 0.125,
+          "7": 0.125
+        }
+      },
+      "result": 0.8
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0833,
+          "1": 0.0833,
+          "2": 0.0833,
+          "3": 0.0833,
+          "4": 0.0833,
+          "5": 0.0833,
+          "6": 0.0833,
+          "7": 0.0833,
+          "8": 0.0833,
+          "9": 0.0833,
+          "10": 0.0833,
+          "11": 0.0833
+        }
+      },
+      "result": 0.0
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "noul",
+        "noul": 0.9
+      },
+      "result": 0.3
+    },
+    {
+      "thresholds": {
+        "score:6-10": 0.8,
+        "noul:2": 0.3,
+        "choice:11+": 0.6
+      },
+      "answer": {
+        "type": "choice",
+        "probabilities": {}
+      },
+      "result": 0.0
+    }
+  ],
+  "gate_answers": {
+    "choice2": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.6,
+        "b": 0.4
+      },
+      "answer_confidence": 0.6,
+      "confidence": 0.029
+    },
+    "choice4": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.45,
+        "b": 0.25,
+        "c": 0.2,
+        "d": 0.1
+      },
+      "answer_confidence": 0.45,
+      "confidence": 0.12
+    },
+    "choice8": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.125,
+        "b": 0.125,
+        "c": 0.125,
+        "d": 0.125,
+        "e": 0.125,
+        "f": 0.125,
+        "g": 0.125,
+        "h": 0.125
+      },
+      "answer_confidence": 0.3,
+      "confidence": 0.05
+    },
+    "choice12": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.0833,
+        "b": 0.0833,
+        "c": 0.0833,
+        "d": 0.0833,
+        "e": 0.0833,
+        "f": 0.0833,
+        "g": 0.0833,
+        "h": 0.0833,
+        "i": 0.0833,
+        "j": 0.0833,
+        "k": 0.0833,
+        "l": 0.0833
+      },
+      "answer_confidence": 0.15,
+      "confidence": 0.02
+    },
+    "score2": {
+      "type": "score",
+      "probabilities": {
+        "0": 0.7,
+        "1": 0.3
+      },
+      "answer_confidence": 0.7,
+      "confidence": 0.1
+    },
+    "score4": {
+      "type": "score",
+      "probabilities": {
+        "0": 0.1,
+        "1": 0.5,
+        "2": 0.3,
+        "3": 0.1
+      },
+      "answer_confidence": 0.5,
+      "confidence": 0.2
+    },
+    "score8": {
+      "type": "score",
+      "probabilities": {
+        "0": 0.125,
+        "1": 0.125,
+        "2": 0.125,
+        "3": 0.125,
+        "4": 0.125,
+        "5": 0.125,
+        "6": 0.125,
+        "7": 0.125
+      },
+      "answer_confidence": 0.125,
+      "confidence": 0.01
+    },
+    "noul": {
+      "type": "noul",
+      "noul": 0.8,
+      "answer_confidence": 0.8,
+      "confidence": 0.8
+    },
+    "at_half": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.5,
+        "b": 0.5
+      },
+      "answer_confidence": 0.5,
+      "confidence": 0.0
+    },
+    "fallback_conf": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.5,
+        "b": 0.5
+      },
+      "confidence": 0.3
+    },
+    "nan_answer_conf": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.5,
+        "b": 0.5
+      },
+      "answer_confidence": "nan",
+      "confidence": 0.7
+    },
+    "inf_answer_conf": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.5,
+        "b": 0.5
+      },
+      "answer_confidence": "inf",
+      "confidence": 0.2
+    },
+    "unusable_both": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.5,
+        "b": 0.5
+      },
+      "answer_confidence": "nan",
+      "confidence": "inf"
+    },
+    "no_confidence": {
+      "type": "choice",
+      "probabilities": {
+        "a": 0.5,
+        "b": 0.5
+      }
+    },
+    "empty_choice": {
+      "type": "choice",
+      "probabilities": {},
+      "answer_confidence": 0.4
+    }
+  },
+  "gate": [
+    {
+      "threshold": null,
+      "expected": {
+        "choice2": {},
+        "choice4": {},
+        "choice8": {},
+        "choice12": {},
+        "score2": {},
+        "score4": {},
+        "score8": {},
+        "noul": {},
+        "at_half": {},
+        "fallback_conf": {},
+        "nan_answer_conf": {},
+        "inf_answer_conf": {},
+        "unusable_both": {},
+        "no_confidence": {},
+        "empty_choice": {}
+      }
+    },
+    {
+      "threshold": 0.0,
+      "expected": {
+        "choice2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "choice4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "choice8": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "choice12": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "score2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "score4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "score8": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "noul": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "at_half": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "fallback_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "inf_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.0
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.0
+        },
+        "empty_choice": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        }
+      }
+    },
+    {
+      "threshold": 1.0,
+      "expected": {
+        "choice2": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "choice4": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "choice8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "choice12": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "score2": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "score4": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "score8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "noul": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "at_half": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "fallback_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "nan_answer_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "inf_answer_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 1.0
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 1.0
+        },
+        "empty_choice": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        }
+      }
+    },
+    {
+      "threshold": 0.5,
+      "expected": {
+        "choice2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "choice4": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "choice8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "choice12": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "score2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "score4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "score8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "noul": {
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "at_half": {
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "fallback_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "inf_answer_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.5
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.5
+        },
+        "empty_choice": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        }
+      }
+    },
+    {
+      "threshold": 0.35,
+      "expected": {
+        "choice2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.35
+        },
+        "choice4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.35
+        },
+        "choice8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.35
+        },
+        "choice12": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.35
+        },
+        "score2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.35
+        },
+        "score4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.35
+        },
+        "score8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.35
+        },
+        "noul": {
+          "abstention": "passed",
+          "abstention_threshold": 0.35
+        },
+        "at_half": {
+          "abstention": "passed",
+          "abstention_threshold": 0.35
+        },
+        "fallback_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.35
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.35
+        },
+        "inf_answer_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.35
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.35
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.35
+        },
+        "empty_choice": {
+          "abstention": "passed",
+          "abstention_threshold": 0.35
+        }
+      }
+    },
+    {
+      "threshold": 0.2,
+      "expected": {
+        "choice2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "choice4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "choice8": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "choice12": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.2
+        },
+        "score2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "score4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "score8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.2
+        },
+        "noul": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "at_half": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "fallback_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "inf_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.2
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.2
+        },
+        "empty_choice": {
+          "abstention": "passed",
+          "abstention_threshold": 0.2
+        }
+      }
+    },
+    {
+      "threshold": {
+        "default": 0.4
+      },
+      "expected": {
+        "choice2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "choice4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "choice8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "choice12": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "score2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "score4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "score8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "noul": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "at_half": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "fallback_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "inf_answer_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.4
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.4
+        },
+        "empty_choice": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        }
+      }
+    },
+    {
+      "threshold": {
+        "choice:2": 0.7,
+        "default": 0.4
+      },
+      "expected": {
+        "choice2": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        },
+        "choice4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "choice8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "choice12": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "score2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "score4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "score8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "noul": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        },
+        "at_half": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        },
+        "fallback_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        },
+        "inf_answer_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.7
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.7
+        },
+        "empty_choice": {
+          "abstention": "passed",
+          "abstention_threshold": 0.4
+        }
+      }
+    },
+    {
+      "threshold": {
+        "choice:3-5": 0.5
+      },
+      "expected": {
+        "choice2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "choice4": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "choice8": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "choice12": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "score2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "score4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "score8": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "noul": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "at_half": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "fallback_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "inf_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.0
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.0
+        },
+        "empty_choice": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        }
+      }
+    },
+    {
+      "threshold": {
+        "choice:2": 0.7,
+        "choice:3-5": 0.5,
+        "choice:6-10": 0.4,
+        "choice:11+": 0.1,
+        "score:2": 0.8,
+        "score:3-5": 0.6,
+        "score:6-10": 0.2,
+        "noul:2": 0.9
+      },
+      "expected": {
+        "choice2": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        },
+        "choice4": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "choice8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.4
+        },
+        "choice12": {
+          "abstention": "passed",
+          "abstention_threshold": 0.1
+        },
+        "score2": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.8
+        },
+        "score4": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.6
+        },
+        "score8": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.2
+        },
+        "noul": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.9
+        },
+        "at_half": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        },
+        "fallback_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        },
+        "inf_answer_conf": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.7
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.7
+        },
+        "empty_choice": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        }
+      }
+    },
+    {
+      "threshold": {
+        "noul:2": 0.0,
+        "score:3-5": 1.0
+      },
+      "expected": {
+        "choice2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "choice4": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "choice8": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "choice12": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "score2": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "score4": {
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 1.0
+        },
+        "score8": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "noul": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "at_half": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "fallback_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "nan_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "inf_answer_conf": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        },
+        "unusable_both": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.0
+        },
+        "no_confidence": {
+          "abstention": "unevaluated",
+          "abstention_threshold": 0.0
+        },
+        "empty_choice": {
+          "abstention": "passed",
+          "abstention_threshold": 0.0
+        }
+      }
+    }
+  ],
+  "reuse": [
+    {
+      "steps": [
+        {
+          "threshold": 0.9,
+          "expected": {
+            "choice2": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "choice4": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "choice8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "choice12": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "score2": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "score4": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "score8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "noul": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "at_half": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "fallback_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "nan_answer_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "inf_answer_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.9
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.9
+            },
+            "empty_choice": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            }
+          }
+        },
+        {
+          "threshold": 0.0,
+          "expected": {
+            "choice2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "choice4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "choice8": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "choice12": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score8": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "noul": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "at_half": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "fallback_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "nan_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "inf_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.0
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.0
+            },
+            "empty_choice": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            }
+          }
+        },
+        {
+          "threshold": 0.2,
+          "expected": {
+            "choice2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "choice4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "choice8": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "choice12": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.2
+            },
+            "score2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "score4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "score8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.2
+            },
+            "noul": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "at_half": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "fallback_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "nan_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "inf_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.2
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.2
+            },
+            "empty_choice": {
+              "abstention": "passed",
+              "abstention_threshold": 0.2
+            }
+          }
+        },
+        {
+          "threshold": 1.0,
+          "expected": {
+            "choice2": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "choice4": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "choice8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "choice12": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "score2": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "score4": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "score8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "noul": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "at_half": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "fallback_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "nan_answer_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "inf_answer_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 1.0
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 1.0
+            },
+            "empty_choice": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 1.0
+            }
+          }
+        },
+        {
+          "threshold": 0.5,
+          "expected": {
+            "choice2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "choice4": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "choice8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "choice12": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "score2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "score4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "score8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "noul": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "at_half": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "fallback_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "nan_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "inf_answer_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.5
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.5
+            },
+            "empty_choice": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "steps": [
+        {
+          "threshold": {
+            "choice:2": 0.9,
+            "default": 0.5
+          },
+          "expected": {
+            "choice2": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "choice4": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "choice8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "choice12": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "score2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "score4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "score8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            },
+            "noul": {
+              "abstention": "passed",
+              "abstention_threshold": 0.5
+            },
+            "at_half": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "fallback_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "nan_answer_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "inf_answer_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.9
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.9
+            },
+            "empty_choice": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.5
+            }
+          }
+        },
+        {
+          "threshold": 0.0,
+          "expected": {
+            "choice2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "choice4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "choice8": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "choice12": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score8": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "noul": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "at_half": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "fallback_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "nan_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "inf_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.0
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.0
+            },
+            "empty_choice": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            }
+          }
+        },
+        {
+          "threshold": {
+            "choice:3-5": 0.9
+          },
+          "expected": {
+            "choice2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "choice4": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.9
+            },
+            "choice8": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "choice12": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "score8": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "noul": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "at_half": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "fallback_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "nan_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "inf_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.0
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.0
+            },
+            "empty_choice": {
+              "abstention": "passed",
+              "abstention_threshold": 0.0
+            }
+          }
+        },
+        {
+          "threshold": 0.35,
+          "expected": {
+            "choice2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.35
+            },
+            "choice4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.35
+            },
+            "choice8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.35
+            },
+            "choice12": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.35
+            },
+            "score2": {
+              "abstention": "passed",
+              "abstention_threshold": 0.35
+            },
+            "score4": {
+              "abstention": "passed",
+              "abstention_threshold": 0.35
+            },
+            "score8": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.35
+            },
+            "noul": {
+              "abstention": "passed",
+              "abstention_threshold": 0.35
+            },
+            "at_half": {
+              "abstention": "passed",
+              "abstention_threshold": 0.35
+            },
+            "fallback_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.35
+            },
+            "nan_answer_conf": {
+              "abstention": "passed",
+              "abstention_threshold": 0.35
+            },
+            "inf_answer_conf": {
+              "low_confidence": true,
+              "abstention": "abstained",
+              "abstention_threshold": 0.35
+            },
+            "unusable_both": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.35
+            },
+            "no_confidence": {
+              "abstention": "unevaluated",
+              "abstention_threshold": 0.35
+            },
+            "empty_choice": {
+              "abstention": "passed",
+              "abstention_threshold": 0.35
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "jev": [
+    {
+      "name": "choice-confident",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.9,
+          "b": 0.1
+        }
+      },
+      "typed": true,
+      "result": 0.8
+    },
+    {
+      "name": "choice-even",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5,
+          "b": 0.5
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "choice-three",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.7,
+          "b": 0.2,
+          "c": 0.1
+        }
+      },
+      "typed": true,
+      "result": 0.5499999999999999
+    },
+    {
+      "name": "choice-differs-from-entropy",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.7,
+          "b": 0.1,
+          "c": 0.1,
+          "d": 0.1
+        }
+      },
+      "typed": true,
+      "result": 0.6
+    },
+    {
+      "name": "choice-unnormalised",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 2.0,
+          "b": 1.0,
+          "c": 1.0
+        }
+      },
+      "typed": true,
+      "result": 0.25
+    },
+    {
+      "name": "choice-zero-total",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "choice-single",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.3
+        }
+      },
+      "typed": true,
+      "result": 1.0
+    },
+    {
+      "name": "choice-single-zero",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0
+        }
+      },
+      "typed": true,
+      "result": 1.0
+    },
+    {
+      "name": "choice-zero-among-others",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0,
+          "b": 1.0
+        }
+      },
+      "typed": true,
+      "result": 1.0
+    },
+    {
+      "name": "score-peaked",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.95,
+          "2": 0.05
+        }
+      },
+      "typed": true,
+      "result": 0.925
+    },
+    {
+      "name": "score-jevcompat-example",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.95,
+          "2": 0.05
+        }
+      },
+      "typed": true,
+      "result": 0.925
+    },
+    {
+      "name": "score-even",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.25,
+          "1": 0.25,
+          "2": 0.25,
+          "3": 0.25
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "score-edge-mode",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.8,
+          "1": 0.1,
+          "2": 0.1
+        }
+      },
+      "typed": true,
+      "result": 0.5499999999999999
+    },
+    {
+      "name": "score-zero-total",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.0,
+          "2": 0.0,
+          "3": 0.0
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "score-single",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.6
+        }
+      },
+      "typed": true,
+      "result": 1.0
+    },
+    {
+      "name": "score-two",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.3,
+          "1": 0.7
+        }
+      },
+      "typed": true,
+      "result": 0.4
+    },
+    {
+      "name": "score-bimodal",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.45,
+          "1": 0.05,
+          "2": 0.05,
+          "3": 0.45
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "score-tied-modes",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.4,
+          "1": 0.4,
+          "2": 0.2
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "score-levels-in-numeric-order",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.0,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0,
+          "9": 0.0,
+          "10": 1.0
+        }
+      },
+      "typed": true,
+      "result": 1.0
+    },
+    {
+      "name": "noul",
+      "answer": {
+        "type": "noul",
+        "noul": 0.9
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "empty-choice-probabilities",
+      "answer": {
+        "type": "choice",
+        "probabilities": {}
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "empty-score-probabilities",
+      "answer": {
+        "type": "score",
+        "probabilities": {}
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "nan-probability",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": "nan",
+          "b": 0.5
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "infinite-probability",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": "inf",
+          "b": 0.5
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "negative-infinite-probability",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": "-inf",
+          "b": 0.5
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "negative-probability",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 2.0,
+          "b": -1.0
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "mixed-sign-argmax-flips",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5,
+          "b": -1.5
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "all-negative-probabilities",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": -0.9,
+          "b": -0.1
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "negative-total-near-zero",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": -0.61,
+          "b": 0.6
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "negative-score-level",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 1.5,
+          "1": -0.5,
+          "2": 0.0
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "nan-score-level",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.5,
+          "1": "nan"
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "negative-single",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": -0.5
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "nan-single",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": "nan"
+        }
+      },
+      "typed": true,
+      "result": null
+    },
+    {
+      "name": "unknown-type",
+      "answer": {
+        "type": "weird",
+        "probabilities": {
+          "a": 1.0
+        }
+      },
+      "typed": false,
+      "result": null
+    },
+    {
+      "name": "missing-probabilities",
+      "answer": {
+        "type": "choice"
+      },
+      "typed": false,
+      "result": null
+    },
+    {
+      "name": "non-numeric-probability",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5,
+          "b": "high"
+        }
+      },
+      "typed": false,
+      "result": null
+    },
+    {
+      "name": "bool-probability",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": true,
+          "b": false
+        }
+      },
+      "typed": false,
+      "result": null
+    },
+    {
+      "name": "bool-among-numbers",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": true,
+          "b": 0.4
+        }
+      },
+      "typed": false,
+      "result": null
+    },
+    {
+      "name": "non-integer-score-level",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "low": 0.5,
+          "high": 0.5
+        }
+      },
+      "typed": false,
+      "result": null
+    },
+    {
+      "name": "sum-differs-choice-tenths",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.1,
+          "b": 0.1,
+          "c": 0.1,
+          "d": 0.1,
+          "e": 0.1,
+          "f": 0.1,
+          "g": 0.1,
+          "h": 0.1,
+          "i": 0.1,
+          "j": 0.1
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "sum-differs-score-tenths",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.1,
+          "1": 0.1,
+          "2": 0.1,
+          "3": 0.1,
+          "4": 0.1,
+          "5": 0.1,
+          "6": 0.1,
+          "7": 0.1,
+          "8": 0.1,
+          "9": 0.1
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "sum-differs-choice-hundredths",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.01,
+          "b": 0.01,
+          "c": 0.01,
+          "d": 0.01,
+          "e": 0.01,
+          "f": 0.01,
+          "g": 0.01,
+          "h": 0.01,
+          "i": 0.01,
+          "j": 0.01,
+          "k": 0.01,
+          "l": 0.01,
+          "m": 0.01,
+          "n": 0.01,
+          "o": 0.01,
+          "p": 0.01,
+          "q": 0.01,
+          "r": 0.01,
+          "s": 0.01,
+          "t": 0.01,
+          "u": 0.01,
+          "v": 0.01,
+          "w": 0.01,
+          "x": 0.01,
+          "y": 0.01,
+          "z": 0.01,
+          "{": 0.01,
+          "|": 0.01,
+          "}": 0.01,
+          "~": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          "": 0.01,
+          " ": 0.01,
+          "¡": 0.01,
+          "¢": 0.01,
+          "£": 0.01,
+          "¤": 0.01,
+          "¥": 0.01,
+          "¦": 0.01,
+          "§": 0.01,
+          "¨": 0.01,
+          "©": 0.01,
+          "ª": 0.01,
+          "«": 0.01,
+          "¬": 0.01,
+          "­": 0.01,
+          "®": 0.01,
+          "¯": 0.01,
+          "°": 0.01,
+          "±": 0.01,
+          "²": 0.01,
+          "³": 0.01,
+          "´": 0.01,
+          "µ": 0.01,
+          "¶": 0.01,
+          "·": 0.01,
+          "¸": 0.01,
+          "¹": 0.01,
+          "º": 0.01,
+          "»": 0.01,
+          "¼": 0.01,
+          "½": 0.01,
+          "¾": 0.01,
+          "¿": 0.01,
+          "À": 0.01,
+          "Á": 0.01,
+          "Â": 0.01,
+          "Ã": 0.01,
+          "Ä": 0.01
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "sum-differs-choice-7",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.6946,
+          "b": 0.03,
+          "c": 0.3634,
+          "d": 0.67,
+          "e": 0.2649,
+          "f": 0.72,
+          "g": 0.6497
+        }
+      },
+      "typed": true,
+      "result": 0.08093104600208292
+    },
+    {
+      "name": "sum-differs-choice-5",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.7133,
+          "b": 0.3416,
+          "c": 0.7,
+          "d": 0.8634,
+          "e": 0.6
+        }
+      },
+      "typed": true,
+      "result": 0.08534785445732211
+    },
+    {
+      "name": "sum-differs-choice-10",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.6,
+          "b": 0.1,
+          "c": 0.3,
+          "d": 0.7918,
+          "e": 0.94,
+          "f": 0.7,
+          "g": 0.9983,
+          "h": 0.5,
+          "i": 0.8,
+          "j": 0.6
+        }
+      },
+      "typed": true,
+      "result": 0.06411869919555421
+    },
+    {
+      "name": "sum-differs-choice-16",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.9,
+          "b": 0.11,
+          "c": 0.4,
+          "d": 0.84,
+          "e": 0.1412,
+          "f": 0.8523,
+          "g": 0.45,
+          "h": 0.69,
+          "i": 0.48,
+          "j": 0.5,
+          "k": 0.1126,
+          "l": 0.9598,
+          "m": 0.94,
+          "n": 0.18,
+          "o": 0.2723,
+          "p": 0.87
+        }
+      },
+      "typed": true,
+      "result": 0.051034313612778125
+    },
+    {
+      "name": "sum-differs-score-7",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.4,
+          "1": 0.4528,
+          "2": 0.2,
+          "3": 0.1,
+          "4": 0.93,
+          "5": 0.34,
+          "6": 0.89
+        }
+      },
+      "typed": true,
+      "result": 0.017729211945584966
+    },
+    {
+      "name": "sum-differs-score-3",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.453,
+          "1": 0.4,
+          "2": 0.0333
+        }
+      },
+      "typed": true,
+      "result": 0.21031253525894167
+    },
+    {
+      "name": "random-choice-00",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.2566,
+          "b": 0.4558
+        }
+      },
+      "typed": true,
+      "result": 0.27961819202695115
+    },
+    {
+      "name": "random-score-00",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.2566,
+          "1": 0.4558
+        }
+      },
+      "typed": true,
+      "result": 0.27961819202695104
+    },
+    {
+      "name": "random-choice-01",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.8042,
+          "b": 0.9099,
+          "c": 0.6461,
+          "d": 0.4657,
+          "e": 0.914,
+          "f": 0.3627,
+          "g": 0.1673,
+          "h": 0.8291,
+          "i": 0.5506,
+          "j": 0.1385,
+          "k": 0.9363,
+          "l": 0.3846
+        }
+      },
+      "typed": true,
+      "result": 0.052770495786391154
+    },
+    {
+      "name": "random-score-01",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.8042,
+          "1": 0.9099,
+          "2": 0.6461,
+          "3": 0.4657,
+          "4": 0.914,
+          "5": 0.3627,
+          "6": 0.1673,
+          "7": 0.8291,
+          "8": 0.5506,
+          "9": 0.1385,
+          "10": 0.9363,
+          "11": 0.3846
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-02",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.6852,
+          "b": 0.4922,
+          "c": 0.3347,
+          "d": 0.8721,
+          "e": 0.9064,
+          "f": 0.1556,
+          "g": 0.1312,
+          "h": 0.155,
+          "i": 0.5995,
+          "j": 0.7911,
+          "k": 0.4026,
+          "l": 0.7689
+        }
+      },
+      "typed": true,
+      "result": 0.06618043169000355
+    },
+    {
+      "name": "random-score-02",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.6852,
+          "1": 0.4922,
+          "2": 0.3347,
+          "3": 0.8721,
+          "4": 0.9064,
+          "5": 0.1556,
+          "6": 0.1312,
+          "7": 0.155,
+          "8": 0.5995,
+          "9": 0.7911,
+          "10": 0.4026,
+          "11": 0.7689
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-03",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.8998,
+          "b": 0.8419,
+          "c": 0.0794,
+          "d": 0.321
+        }
+      },
+      "typed": true,
+      "result": 0.226740114840577
+    },
+    {
+      "name": "random-score-03",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.8998,
+          "1": 0.8419,
+          "2": 0.0794,
+          "3": 0.321
+        }
+      },
+      "typed": true,
+      "result": 0.08328275990850109
+    },
+    {
+      "name": "random-choice-04",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.6957,
+          "b": 0.7158,
+          "c": 0.3912,
+          "d": 0.5873,
+          "e": 0.7343,
+          "f": 0.2801,
+          "g": 0.423,
+          "h": 0.2488
+        }
+      },
+      "typed": true,
+      "result": 0.06302088079233457
+    },
+    {
+      "name": "random-score-04",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.6957,
+          "1": 0.7158,
+          "2": 0.3912,
+          "3": 0.5873,
+          "4": 0.7343,
+          "5": 0.2801,
+          "6": 0.423,
+          "7": 0.2488
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-05",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.6537,
+          "b": 0.3714,
+          "c": 0.6408,
+          "d": 0.9808
+        }
+      },
+      "typed": true,
+      "result": 0.16076623720104277
+    },
+    {
+      "name": "random-score-05",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.6537,
+          "1": 0.3714,
+          "2": 0.6408,
+          "3": 0.9808
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-06",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0542,
+          "b": 0.993,
+          "c": 0.2939,
+          "d": 0.2498,
+          "e": 0.8353,
+          "f": 0.7231,
+          "g": 0.8383,
+          "h": 0.6679,
+          "i": 0.3134,
+          "j": 0.7684,
+          "k": 0.3708,
+          "l": 0.114
+        }
+      },
+      "typed": true,
+      "result": 0.08319173152589524
+    },
+    {
+      "name": "random-score-06",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0542,
+          "1": 0.993,
+          "2": 0.2939,
+          "3": 0.2498,
+          "4": 0.8353,
+          "5": 0.7231,
+          "6": 0.8383,
+          "7": 0.6679,
+          "8": 0.3134,
+          "9": 0.7684,
+          "10": 0.3708,
+          "11": 0.114
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-07",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.8131,
+          "b": 0.9647,
+          "c": 0.0528,
+          "d": 0.1295,
+          "e": 0.2193,
+          "f": 0.4647,
+          "g": 0.5681,
+          "h": 0.8712,
+          "i": 0.1082,
+          "j": 0.4005,
+          "k": 0.7698,
+          "l": 0.436
+        }
+      },
+      "typed": true,
+      "result": 0.09060490553789853
+    },
+    {
+      "name": "random-score-07",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.8131,
+          "1": 0.9647,
+          "2": 0.0528,
+          "3": 0.1295,
+          "4": 0.2193,
+          "5": 0.4647,
+          "6": 0.5681,
+          "7": 0.8712,
+          "8": 0.1082,
+          "9": 0.4005,
+          "10": 0.7698,
+          "11": 0.436
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-08",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.3693,
+          "b": 0.8736,
+          "c": 0.329,
+          "d": 0.1395,
+          "e": 0.2551
+        }
+      },
+      "typed": true,
+      "result": 0.30530129672006096
+    },
+    {
+      "name": "random-score-08",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.3693,
+          "1": 0.8736,
+          "2": 0.329,
+          "3": 0.1395,
+          "4": 0.2551
+        }
+      },
+      "typed": true,
+      "result": 0.26154758877871
+    },
+    {
+      "name": "random-choice-09",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.686,
+          "b": 0.3542,
+          "c": 0.2812,
+          "d": 0.8562
+        }
+      },
+      "typed": true,
+      "result": 0.1909135439627724
+    },
+    {
+      "name": "random-score-09",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.686,
+          "1": 0.3542,
+          "2": 0.2812,
+          "3": 0.8562
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-10",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.6386,
+          "b": 0.4663
+        }
+      },
+      "typed": true,
+      "result": 0.15594171418227876
+    },
+    {
+      "name": "random-score-10",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.6386,
+          "1": 0.4663
+        }
+      },
+      "typed": true,
+      "result": 0.15594171418227898
+    },
+    {
+      "name": "random-choice-11",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.2097,
+          "b": 0.6566,
+          "c": 0.0187,
+          "d": 0.9506
+        }
+      },
+      "typed": true,
+      "result": 0.35715842231422973
+    },
+    {
+      "name": "random-score-11",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.2097,
+          "1": 0.6566,
+          "2": 0.0187,
+          "3": 0.9506
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-12",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.4693,
+          "b": 0.1916
+        }
+      },
+      "typed": true,
+      "result": 0.42018459676199105
+    },
+    {
+      "name": "random-score-12",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.4693,
+          "1": 0.1916
+        }
+      },
+      "typed": true,
+      "result": 0.42018459676199127
+    },
+    {
+      "name": "random-choice-13",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.9691,
+          "b": 0.6389,
+          "c": 0.7036,
+          "d": 0.671,
+          "e": 0.5951,
+          "f": 0.1533,
+          "g": 0.6329,
+          "h": 0.495
+        }
+      },
+      "typed": true,
+      "result": 0.08508392552106149
+    },
+    {
+      "name": "random-score-13",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.9691,
+          "1": 0.6389,
+          "2": 0.7036,
+          "3": 0.671,
+          "4": 0.5951,
+          "5": 0.1533,
+          "6": 0.6329,
+          "7": 0.495
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-14",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.7871,
+          "b": 0.069,
+          "c": 0.9774
+        }
+      },
+      "typed": true,
+      "result": 0.29961821652577036
+    },
+    {
+      "name": "random-score-14",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.7871,
+          "1": 0.069,
+          "2": 0.9774
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-15",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.9361,
+          "b": 0.0913,
+          "c": 0.9088,
+          "d": 0.2108,
+          "e": 0.4095
+        }
+      },
+      "typed": true,
+      "result": 0.20770584783884216
+    },
+    {
+      "name": "random-score-15",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.9361,
+          "1": 0.0913,
+          "2": 0.9088,
+          "3": 0.2108,
+          "4": 0.4095
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-16",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.141,
+          "b": 0.6816,
+          "c": 0.801
+        }
+      },
+      "typed": true,
+      "result": 0.2400221729490023
+    },
+    {
+      "name": "random-score-16",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.141,
+          "1": 0.6816,
+          "2": 0.801
+        }
+      },
+      "typed": true,
+      "result": 0.1097560975609756
+    },
+    {
+      "name": "random-choice-17",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.735,
+          "b": 0.398,
+          "c": 0.5032,
+          "d": 0.2529,
+          "e": 0.9528
+        }
+      },
+      "typed": true,
+      "result": 0.1690858228649847
+    },
+    {
+      "name": "random-score-17",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.735,
+          "1": 0.398,
+          "2": 0.5032,
+          "3": 0.2529,
+          "4": 0.9528
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-18",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.6034,
+          "b": 0.5739,
+          "c": 0.8956
+        }
+      },
+      "typed": true,
+      "result": 0.14807757248299486
+    },
+    {
+      "name": "random-score-18",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.6034,
+          "1": 0.5739,
+          "2": 0.8956
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-19",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.0916,
+          "b": 0.3621,
+          "c": 0.0287,
+          "d": 0.537,
+          "e": 0.8582,
+          "f": 0.8354,
+          "g": 0.5424,
+          "h": 0.9539
+        }
+      },
+      "typed": true,
+      "result": 0.11613400259968573
+    },
+    {
+      "name": "random-score-19",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.0916,
+          "1": 0.3621,
+          "2": 0.0287,
+          "3": 0.537,
+          "4": 0.8582,
+          "5": 0.8354,
+          "6": 0.5424,
+          "7": 0.9539
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-20",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.9237,
+          "b": 0.4328
+        }
+      },
+      "typed": true,
+      "result": 0.36188720973092514
+    },
+    {
+      "name": "random-score-20",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.9237,
+          "1": 0.4328
+        }
+      },
+      "typed": true,
+      "result": 0.36188720973092514
+    },
+    {
+      "name": "random-choice-21",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.5616,
+          "b": 0.0699,
+          "c": 0.8875,
+          "d": 0.0634,
+          "e": 0.6978,
+          "f": 0.5905,
+          "g": 0.6597,
+          "h": 0.1242,
+          "i": 0.2992,
+          "j": 0.5477,
+          "k": 0.8902,
+          "l": 0.2786
+        }
+      },
+      "typed": true,
+      "result": 0.08035649869415279
+    },
+    {
+      "name": "random-score-21",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.5616,
+          "1": 0.0699,
+          "2": 0.8875,
+          "3": 0.0634,
+          "4": 0.6978,
+          "5": 0.5905,
+          "6": 0.6597,
+          "7": 0.1242,
+          "8": 0.2992,
+          "9": 0.5477,
+          "10": 0.8902,
+          "11": 0.2786
+        }
+      },
+      "typed": true,
+      "result": 0.0
+    },
+    {
+      "name": "random-choice-22",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.3113,
+          "b": 0.6847,
+          "c": 0.3262
+        }
+      },
+      "typed": true,
+      "result": 0.27677355921948266
+    },
+    {
+      "name": "random-score-22",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.3113,
+          "1": 0.6847,
+          "2": 0.3262
+        }
+      },
+      "typed": true,
+      "result": 0.27677355921948266
+    },
+    {
+      "name": "random-choice-23",
+      "answer": {
+        "type": "choice",
+        "probabilities": {
+          "a": 0.3983,
+          "b": 0.9787,
+          "c": 0.9707,
+          "d": 0.4993
+        }
+      },
+      "typed": true,
+      "result": 0.12502048940405106
+    },
+    {
+      "name": "random-score-23",
+      "answer": {
+        "type": "score",
+        "probabilities": {
+          "0": 0.3983,
+          "1": 0.9787,
+          "2": 0.9707,
+          "3": 0.4993
+        }
+      },
+      "typed": true,
+      "result": 0.1683877766069546
+    }
+  ]
+}

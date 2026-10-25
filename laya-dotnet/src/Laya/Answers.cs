@@ -131,6 +131,50 @@ public abstract class Answer
         return answer;
     }
 
+    /// <summary>
+    /// True only when a <see cref="MinConfidence"/> was set for the call and this answer's confidence fell
+    /// below its threshold (Python's <c>low_confidence: True</c>, which is absent otherwise). False for an
+    /// ungated call and for an answer that cleared the gate or could not be evaluated.
+    /// </summary>
+    public bool LowConfidence { get; private set; }
+
+    /// <summary>
+    /// What the abstention gate decided, one of <see cref="GateStates"/> (<c>passed</c>, <c>abstained</c>,
+    /// <c>unevaluated</c>), or <see langword="null"/> when the call set no <see cref="MinConfidence"/>
+    /// (Python writes no <c>abstention</c> key then).
+    /// </summary>
+    public string? Abstention { get; private set; }
+
+    /// <summary>
+    /// The threshold this answer was gated at: the scalar, or the map entry for its option-count bucket
+    /// (else the map's <c>default</c>, else 0.0). <see langword="null"/> when the call set no
+    /// <see cref="MinConfidence"/> (Python's <c>abstention_threshold</c>).
+    /// </summary>
+    public double? AbstentionThreshold { get; private set; }
+
+    /// <summary>
+    /// The <c>confidence</c> Jev would report for this answer's (rounded) probabilities, which is a different
+    /// formula from <see cref="Confidence"/> (Python's <c>jev_confidence</c>): for choice
+    /// <c>(max(p) - 1/n) / (1 - 1/n)</c>, for score <c>max(0, 1 - sum(p_i * |i - mode|) / D)</c>, both 1.0 for a
+    /// single option. <see langword="null"/> for a noul answer and for malformed probabilities (non-finite or negative).
+    /// </summary>
+    public double? JevConfidence() => this switch
+    {
+        ChoiceAnswer choice => ConfidenceGate.Jev(false, [.. choice.Probabilities.Select(kv => kv.Value)]),
+        ScoreAnswer score => ConfidenceGate.Jev(true, score.Probabilities),
+        _ => null,
+    };
+
+    /// <summary>A copy carrying the gate's verdict; the original stays as it was, so a reused answer never keeps a stale flag.</summary>
+    internal Answer WithGate(bool lowConfidence, string abstention, double threshold)
+    {
+        var answer = (Answer)MemberwiseClone();
+        answer.LowConfidence = lowConfidence;
+        answer.Abstention = abstention;
+        answer.AbstentionThreshold = threshold;
+        return answer;
+    }
+
     /// <summary>This answer as a choice answer.</summary>
     /// <exception cref="InvalidOperationException">If the question was not a choice question.</exception>
     public ChoiceAnswer AsChoice() => this as ChoiceAnswer
@@ -281,6 +325,10 @@ public sealed class LayaResult
     /// <summary>A copy of this result with <see cref="Shortlist"/> set. Used internally by <see cref="LayaShortlist"/>.</summary>
     internal LayaResult WithShortlist(IReadOnlyDictionary<string, ShortlistInfo> shortlist) =>
         new(Model, _order, _byId, Usage, Routing, shortlist);
+
+    /// <summary>A copy of this result with its answers replaced (same ids). Used internally by the abstention gate.</summary>
+    internal LayaResult WithAnswers(Dictionary<string, Answer> answers) =>
+        new(Model, _order, answers, Usage, Routing, Shortlist);
 
     /// <summary>The question ids, in the order they were asked.</summary>
     public IReadOnlyList<string> Ids => _order;

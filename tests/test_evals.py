@@ -776,13 +776,77 @@ def test_dataset_rejects_malformed_json_and_empty(tmp_path):
         Dataset.from_jsonl(str(empty))
 
 
+def test_dataset_names_an_unreadable_file_as_an_evalerror(tmp_path, monkeypatch):
+    """Four ways a dataset cannot be handed over are `EvalError`, not a crash.
+
+    `from_jsonl` opened bare, so a path that is a directory, a read the volume refuses, bytes that
+    are not UTF-8 and a line nested deeper than `json` will walk each left the module as
+    `IsADirectoryError` / `PermissionError` / `UnicodeDecodeError` / `RecursionError` -- and the CLI
+    that calls it keeps exit 1 for "a threshold or a baseline tolerance failed", so all four were
+    reported as a quality failure. The row-level refusals below are unchanged: this is about the
+    file, not its contents, and the message has to name the path because three of the four errors
+    do not.
+    """
+    real_open = open                      # captured before any patch below delegates to it
+
+    def make_refuser(wanted, err):
+        """`open` for real, except that one path raises. A factory, so nothing binds late."""
+        def refuse(target, *a, **k):
+            if str(target) == wanted:
+                raise err
+            return real_open(target, *a, **k)
+        return refuse
+
+    a_directory = tmp_path / "a-directory"
+    a_directory.mkdir()
+    denied = tmp_path / "denied.jsonl"
+    denied.write_text(json.dumps({"state": "s", "questions": Q, "expected": {"intent": "a"}}),
+                      encoding="utf-8")
+    not_utf8 = tmp_path / "not-utf8.jsonl"
+    not_utf8.write_bytes(b'{"state": "s", "q": "\xff\xfe"}\n')
+    too_deep = tmp_path / "too-deep.jsonl"
+    too_deep.write_text("[" * 100000 + "]" * 100000 + "\n", encoding="utf-8")
+
+    shapes = [("a path that is a directory", str(a_directory), None),
+              ("a volume that refuses the read", str(denied), OSError(13, "Permission denied")),
+              ("bytes that are not UTF-8", str(not_utf8), None),
+              ("a line nested too deep to read", str(too_deep), None)]
+    for label, path, error in shapes:
+        monkeypatch.setattr("builtins.open", real_open)
+        if error is not None:
+            monkeypatch.setattr("builtins.open", make_refuser(path, error))
+        with pytest.raises(EvalError) as exc:
+            Dataset.from_jsonl(path)
+        assert "cannot be read" in str(exc.value), "%s: %s" % (label, exc.value)
+        assert path in str(exc.value), "%s did not name the path: %s" % (label, exc.value)
+        if error is not None:
+            assert "Permission denied" in str(exc.value), (
+                "%s lost the errno the caller needs: %s" % (label, exc.value))
+    monkeypatch.setattr("builtins.open", real_open)
+
+    # The refusals that were already correct are untouched: they name the line, not the file.
+    bad = tmp_path / "bad.jsonl"
+    bad.write_text("{not json\n", encoding="utf-8")
+    with pytest.raises(EvalError) as exc:
+        Dataset.from_jsonl(str(bad))
+    assert "is not valid JSON" in str(exc.value) and ":1" in str(exc.value), str(exc.value)
+    assert "cannot be read" not in str(exc.value), \
+        "a row refusal is not a file refusal: catching `ValueError` above would say so twice"
+    blank = tmp_path / "blank.jsonl"
+    blank.write_text("# only a comment\n", encoding="utf-8")
+    with pytest.raises(EvalError) as exc:
+        Dataset.from_jsonl(str(blank))
+    assert "contains no examples" in str(exc.value), str(exc.value)
+
+
 # A row built in Python never passes through `Example.from_dict`, which is the only place these three
 # checks were made: `questions` and `expected` must be objects, and every `expected` key must name a
 # question that is actually there. Every reader takes the two fields as mappings, so a row that
 # skipped the checks reached `evaluate`'s scoring loop (`laya/evals.py:1205`), `questions_fingerprint`
-# (`laya/evals.py:285`) or an opt-in door's `_validate_dataset` as an unhandled ``AttributeError`` --
-# or got as far as the runner and came back as a verdict *about the runner*. `Dataset` is the one door
-# all four readers share, so the refusal names the row and lands before a call is paid for.
+# (`laya/evals.py::questions_fingerprint`) or an opt-in door's `_validate_dataset` as an unhandled
+# ``AttributeError`` -- or got as far as the runner and came back as a verdict *about the runner*.
+# `Dataset` is the one door all four readers share, so the refusal names the row and lands before a
+# call is paid for.
 @pytest.mark.parametrize("field, value, fragment", [
     ("expected", True, "'expected' must be an object keyed by question id, got bool"),
     ("expected", "a", "'expected' must be an object keyed by question id, got str"),
@@ -803,6 +867,64 @@ def test_dataset_refuses_a_row_whose_maps_are_not_objects(field, value, fragment
     with pytest.raises(EvalError) as exc:
         Dataset([Example(**row)])
     assert str(exc.value) == "example 0 " + fragment
+
+
+# The three checks above read `example.questions` and `example.expected`, so a row that is not a row
+# at all never reached any of them: `Dataset(json.load(handle))` -- the natural mistake for a dataset
+# saved as a JSON *array* rather than as JSONL, which is the shape `Example.from_dict` exists to
+# convert -- died inside the door on `AttributeError: 'dict' object has no attribute 'questions'`. A
+# traceback names no row index, and `docs/evals.md` ("Dataset format") promises that a mistake in a
+# dataset fails as `EvalError` instead. The guard is on the two attributes this door reads, not on
+# `isinstance(example, Example)`, so no row a Python caller can pass today starts being refused.
+@pytest.mark.parametrize("row, name", [
+    ({"state": "s1", "questions": Q, "expected": {"intent": "a"}}, "dict"),
+    (None, "NoneType"),
+    ("s1", "str"),
+    (["s1", Q, {"intent": "a"}], "list"),
+    (7, "int"),
+])
+def test_dataset_refuses_a_row_that_is_not_a_row(row, name):
+    with pytest.raises(EvalError) as exc:
+        Dataset([row])
+    assert str(exc.value) == (
+        "example 0 must be an Example, got %s with no 'questions'; build each row with "
+        "laya.evals.Example(...) or Example.from_dict(...)" % name)
+
+
+def test_the_non_row_refusal_names_the_offender_and_the_missing_field():
+    class QuestionsOnly:
+        """Carries one of the two maps the door reads, so it is refused for the other."""
+
+        questions = Q
+
+    with pytest.raises(EvalError) as exc:
+        Dataset([Example("s1", Q, {"intent": "a"}), QuestionsOnly()])
+    assert str(exc.value) == (
+        "example 1 must be an Example, got QuestionsOnly with no 'expected'; build each row "
+        "with laya.evals.Example(...) or Example.from_dict(...)")
+
+
+def test_a_non_row_is_refused_on_what_the_door_reads_not_on_its_type():
+    class DuckRow:
+        """Not an ``Example``, but answers both attributes the door reads."""
+
+        def __init__(self):
+            self.state, self.tags, self.language, self.model = "s1", (), None, None
+            self.questions, self.expected = Q, {"intent": "a"}
+
+    class ExampleSubclass(Example):
+        pass
+
+    good = {"state": "s1", "questions": Q, "expected": {"intent": "a"}}
+    for row in (DuckRow(), Example(**good), ExampleSubclass(**good)):
+        assert len(Dataset([row])) == 1
+
+
+def test_the_refused_json_row_is_the_one_from_dict_converts():
+    row = {"state": "s1", "questions": Q, "expected": {"intent": "a"}}
+    with pytest.raises(EvalError):
+        Dataset([row])
+    assert len(Dataset([Example.from_dict(row)])) == 1
 
 
 @pytest.mark.parametrize("expected, names", [
@@ -2172,6 +2294,58 @@ def test_an_infinite_limit_would_have_decided_nothing():
     assert evals_cli._check_thresholds({"choice_accuracy": 0.10}, {"choice_accuracy": -inf}, {}) == []
 
 
+def test_a_choice_threshold_never_reads_the_noul_number():
+    """A threshold names its metric, and `noul_accuracy` is not a stand-in for `choice_accuracy`.
+
+    A noul-only report publishes no `choice_accuracy` at all, so both directions used to be decided
+    by the noul figure: `--min choice_accuracy=0.5` exited 0 on a run that never answered a choice
+    question, and `--min choice_accuracy=0.9` printed the noul value under the choice name. Either
+    way the reader could not tell which metric gated the run. `docs/evals.md` (score-only `ece`)
+    states the rule the same way: a threshold naming an absent metric reports it missing "rather than
+    passing on a number that was never computed".
+    """
+    from laya import evals_cli
+
+    noul_only = {"noul_accuracy": 0.6667, "ece": 0.1}
+    for mins, maxs in (({"choice_accuracy": 0.5}, {}), ({"choice_accuracy": 0.9}, {}),
+                       ({}, {"choice_accuracy": 0.9})):
+        assert evals_cli._check_thresholds(noul_only, mins, maxs) == \
+            ["metric 'choice_accuracy' is not in the report"], "%r %r" % (mins, maxs)
+
+    # The metric named correctly is still gated normally, in both directions.
+    assert evals_cli._check_thresholds(noul_only, {"noul_accuracy": 0.5}, {}) == []
+    assert evals_cli._check_thresholds(noul_only, {}, {"noul_accuracy": 0.5}) == \
+        ["noul_accuracy=0.6667 is above the maximum 0.5000"]
+
+    # A report that does carry the metric is unaffected: this is only about the absent key.
+    both = {"choice_accuracy": 0.4, "noul_accuracy": 0.6667}
+    assert evals_cli._check_thresholds(both, {"choice_accuracy": 0.5}, {}) == \
+        ["choice_accuracy=0.4000 is below the minimum 0.5000"]
+
+
+def test_cli_run_gates_a_noul_only_dataset_by_the_flag_that_means_it(monkeypatch, tmp_path, capsys):
+    """End to end: `--min-accuracy` follows the report, `--min choice_accuracy=` refuses it.
+
+    `_cmd_run` resolves `--min-accuracy` to `noul_accuracy` when the report has no `choice_accuracy`,
+    so the ergonomics the substitution was standing in for stay intact while a threshold that names a
+    metric explicitly is answered by that metric or by a missing-metric failure.
+    """
+    from laya import evals_cli
+
+    _patch_router(monkeypatch, {"flag": {"flag": noul_answer(0.9)}})
+    dataset = _write_dataset(tmp_path, [{"state": "flag", "questions": QNOUL,
+                                         "expected": {"flag": True}}])
+
+    assert evals_cli.main(["run", dataset, "--min-accuracy", "0.5"]) == 0
+    capsys.readouterr()
+    assert evals_cli.main(["run", dataset, "--min", "choice_accuracy=0.5"]) == 1
+    captured = capsys.readouterr()
+    assert "FAIL: metric 'choice_accuracy' is not in the report" in captured.err, \
+        "the gate says the metric is missing instead of passing on the noul number"
+    assert "choice_accuracy=" not in captured.err, \
+        "no failure may attribute the noul figure to it either"
+
+
 def test_default_evaluators_cover_the_three_types():
     names = {e.name for e in default_evaluators()}
     assert {"choice_accuracy", "noul_accuracy", "score_mae", "mean_confidence"} <= names
@@ -2779,6 +2953,66 @@ def test_cli_report_reads_refuse_an_unreadable_report_with_code_2(monkeypatch, t
         assert "Traceback" not in err, "%s under run leaked a traceback: %s" % (label, err)
         assert "cannot read report" in err and path in err, "%s under run: %s" % (label, err)
     monkeypatch.setattr("builtins.open", real_open)
+
+
+def test_cli_dataset_reads_refuse_an_unreadable_dataset_with_code_2(monkeypatch, tmp_path, capsys):
+    """`validate` and `run` both call a dataset that cannot be read a usage error, not a crash.
+
+    Both doors read the file before any checkpoint is reached, so the exit code is the only thing a CI
+    job sees -- and on `main` a directory, a refused read, non-UTF-8 bytes and an unclosably deep line
+    each escaped `Dataset.from_jsonl` as a traceback with exit 1, the code `docs/evals.md` reserves for
+    "a threshold or a baseline tolerance failed". The one shape already refused properly, a line that
+    is not JSON, is included so this PR cannot be read as moving the goalposts: same door, same code,
+    different reason, and the reason is what the message says.
+    """
+    from laya import evals_cli
+
+    real_open = open                      # captured before any patch below delegates to it
+
+    def make_refuser(wanted, err):
+        """`open` for real, except that one path raises. A factory, so nothing binds late."""
+        def refuse(target, *a, **k):
+            if str(target) == wanted:
+                raise err
+            return real_open(target, *a, **k)
+        return refuse
+
+    a_directory = tmp_path / "a-directory"
+    a_directory.mkdir()
+    denied = tmp_path / "denied.jsonl"
+    denied.write_text(json.dumps({"state": "s", "questions": Q, "expected": {"intent": "a"}}) + "\n",
+                      encoding="utf-8")
+    not_utf8 = tmp_path / "not-utf8.jsonl"
+    not_utf8.write_bytes(b'{"state": "s", "q": "\xff\xfe"}\n')
+    too_deep = tmp_path / "too-deep.jsonl"
+    too_deep.write_text("[" * 100000 + "]" * 100000 + "\n", encoding="utf-8")
+    not_json = tmp_path / "not-json.jsonl"
+    not_json.write_text("{nope\n", encoding="utf-8")
+
+    # (label, path, injected open() error, the fragment the message must carry)
+    cases = [("a path that is a directory", str(a_directory), None, "cannot be read"),
+             ("a volume that refuses the read", str(denied), OSError(13, "Permission denied"),
+              "cannot be read"),
+             ("bytes that are not UTF-8", str(not_utf8), None, "cannot be read"),
+             ("a line nested too deep to read", str(too_deep), None, "cannot be read"),
+             ("a line that is not JSON", str(not_json), None, "is not valid JSON")]
+    built = _patch_router(monkeypatch)
+    for label, path, error, fragment in cases:
+        for command in ("validate", "run"):
+            monkeypatch.setattr("builtins.open", real_open)
+            if error is not None:
+                monkeypatch.setattr("builtins.open", make_refuser(path, error))
+            capsys.readouterr()
+            assert evals_cli.main([command, path]) == 2, "%s under %s" % (label, command)
+            err = capsys.readouterr().err
+            assert "Traceback" not in err, "%s under %s leaked a traceback: %s" % (label, command, err)
+            assert fragment in err, "%s under %s: %s" % (label, command, err)
+            assert path in err, "%s under %s did not name the path: %s" % (label, command, err)
+            if fragment == "is not valid JSON":
+                assert "cannot be read" not in err, \
+                    "%s under %s re-wrapped a row refusal as a file refusal: %s" % (label, command, err)
+    monkeypatch.setattr("builtins.open", real_open)
+    assert not built, "the dataset is read before a checkpoint is constructed"
 
 
 def test_cli_run_refuses_a_baseline_from_a_different_dataset(monkeypatch, tmp_path, capsys):
@@ -3454,7 +3688,7 @@ def test_cli_relative_slice_rule_requires_baseline_before_loading(monkeypatch, t
     assert not built
 
 
-def test_cli_rejects_invalid_policy_json_and_version(monkeypatch, tmp_path):
+def test_cli_rejects_invalid_policy_json_and_version(monkeypatch, tmp_path, capsys):
     from laya import evals_cli
 
     built = _patch_router(monkeypatch)
@@ -3462,9 +3696,27 @@ def test_cli_rejects_invalid_policy_json_and_version(monkeypatch, tmp_path):
     path = tmp_path / "gates.json"
     for content in ("{not json", json.dumps({"version": 2, "rules": [
             {"slice": {"language": "zh"}, "metric": "choice_accuracy",
-             "min_count": 1, "min": 0.5}]})):
+             "min_count": 1, "min": 0.5}]}),
+            # Unclosable depth is a document `json` refuses to read, and it says so with a
+            # `RecursionError` rather than a `ValueError`. It is the caller's file, so `docs/evals.md`
+            # ("Invalid policy syntax exits 2 before a checkpoint loads") belongs to it too.
+            "[" * 100000 + "]" * 100000):
         path.write_text(content, encoding="utf-8")
         assert evals_cli.main(["run", dataset, "--gate-policy", str(path)]) == 2
+        err = capsys.readouterr().err
+        assert "Traceback" not in err, "exit 2 with a traceback is the shape this refuses"
+        assert err.startswith("laya-evals: "), "a usage error, named as one: %r" % err
+        assert "gate policy" in err, "and named as *which* usage error: %r" % err
+    # A path that is not there is `OSError`, and `load_policy` names it as a gate policy on purpose:
+    # `main`'s own `FileNotFoundError` arm would still exit 2, with a message that no longer says
+    # which flag pointed at the missing file.
+    missing = tmp_path / "absent-gates.json"
+    assert evals_cli.main(["run", dataset, "--gate-policy", str(missing)]) == 2
+    err = capsys.readouterr().err
+    assert "Traceback" not in err, "exit 2 with a traceback is the shape this refuses: %r" % err
+    assert err.startswith("laya-evals: ") and "gate policy" in err, (
+        "the refusal still names the flag it came from: %r" % err)
+    assert str(missing) in err, "and the path the caller typed: %r" % err
     assert not built
 
 

@@ -604,6 +604,10 @@ export class Router extends HookRegistry {
     const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
     const hasStart = active.some((h) => typeof h.onPredictStart === "function");
+    // The per-call token-budget overrides seed the context, so a start hook can read and rewrite
+    // them exactly as it can `states`/`questions`; the values it leaves are what reaches the agent
+    // below. Python's Router.predict builds its context the same way (router.py: `PredictContext(
+    // ..., max_len=max_len, head_max_len=head_max_len)`).
     const ctx = new PredictContext({
       states: [state],
       questions: questions as Record<string, unknown>,
@@ -611,6 +615,8 @@ export class Router extends HookRegistry {
       model: null,
       agent: null,
       router: this,
+      maxLen: opts.maxLen ?? null,
+      headMaxLen: opts.headMaxLen ?? null,
     });
     try {
       // Per-call hooks apply to the whole call, including onRoute inside route().
@@ -639,15 +645,19 @@ export class Router extends HookRegistry {
           checkQuestion(qid, qdef);
         }
         // Python parity (router.py predict): the request's language also shapes the answer
-        // distribution through the agent's lang_temperatures. An explicit lang wins;
-        // otherwise forward the language the router detected for the routing decision.
-        // TS analyse() names English "en" where Python's analyse returns None (it only
-        // ever names non-English), so a detected "en" forwards as null — in Python only an
-        // explicit lang="en" can select an "en" override.
+        // distribution through the agent's lang_temperatures. An explicit lang wins; otherwise
+        // forward the language the router detected for the routing decision, "en" included --
+        // Python's `analyse` names English "en" too (laya/lang.py, `_latin_profile`), and
+        // `lang_temperatures` may carry an "en" entry, so replacing it with null made that
+        // override dead code on this path while the same agent honoured it when called directly.
         const detected = decision.detection?.language;
-        const effectiveLang = opts.lang ?? (detected && detected !== "en" ? detected : null);
+        const effectiveLang = opts.lang ?? detected ?? null;
         const agentOpts: PredictOptions = { lang: effectiveLang };
         if (mc !== null) agentOpts.minConfidence = mc;
+        // Forwarded only when set, as Python does: an absent override means "the agent's own
+        // config", and `null`/`undefined` must not overwrite a deployment's configured budget.
+        if (ctx.maxLen !== null && ctx.maxLen !== undefined) agentOpts.maxLen = ctx.maxLen;
+        if (ctx.headMaxLen !== null && ctx.headMaxLen !== undefined) agentOpts.headMaxLen = ctx.headMaxLen;
         markDefaultsRan(agentOpts);
         const result = (await agent.systemOne(
           ctx.states[0],
@@ -900,12 +910,9 @@ export class Router extends HookRegistry {
             continue;
           }
           // An explicit `lang` wins; otherwise forward the language the router detected for the
-          // routing decision. TS analyse() names English "en" where Python's returns None (it
-          // only ever names non-English), so a detected "en" forwards as null — in Python only
-          // an explicit lang="en" can select an "en" override. Same rule as `predict`.
+          // routing decision, "en" included, exactly as `predict` and Python's predict_batch do.
           const detectedLang = decisions[i].detection?.language ?? null;
-          const effectiveLang =
-            requests[i].lang ?? (detectedLang && detectedLang !== "en" ? detectedLang : null);
+          const effectiveLang = requests[i].lang ?? detectedLang;
           const langKey = hasLangOverrides ? effectiveLang : null;
           const schema = questionSchema(ctx.questions);
           const found = questionGroups.find(
@@ -1019,6 +1026,13 @@ export class Router extends HookRegistry {
    * Run onPredictEnd for every started per-request context and raise the first hook
    * failure, if any. Elapsed and usage are stamped on every context before any end hook
    * runs, so one request's end hooks never inflate another request's elapsed time.
+   *
+   * The end hooks run in REVERSE start order, because every request started before any
+   * ended: a hook that opens something in start and closes it in end (a tracing span, an
+   * `AsyncLocalStorage` frame, an in-flight counter) must unwind the last one first, or it
+   * closes the wrong frame and every request after the first inherits a corrupted context.
+   * Python's `Router.predict_batch` ends its contexts the same way and says so
+   * (`laya/router.py::_end_contexts`).
    */
   private _endContexts(active: Hook[], contexts: PredictContext[], raiseErrors: boolean): void {
     for (const ctx of contexts) {
@@ -1026,7 +1040,7 @@ export class Router extends HookRegistry {
       if (ctx.results !== null) ctx.usage = aggregateUsage(ctx.results);
     }
     let firstError: unknown = null;
-    for (const ctx of contexts) {
+    for (const ctx of [...contexts].reverse()) {
       try {
         dispatch(active, "onPredictEnd", ctx, { raiseErrors });
       } catch (hookErr) {

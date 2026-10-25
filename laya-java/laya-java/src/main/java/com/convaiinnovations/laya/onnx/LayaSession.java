@@ -80,8 +80,11 @@ public final class LayaSession implements InferenceSession {
                     + "head.onnx");
         }
         OrtEnvironment environment = OrtEnvironment.getEnvironment();
-        try {
-            OrtSession.SessionOptions options = new OrtSession.SessionOptions();
+        // The options are an input to createSession, not something a live session keeps, so they
+        // are closed as soon as both graphs are built. Not closing them leaked one native options
+        // structure per open() for the life of the process, which is invisible until a caller
+        // reloads checkpoints and native memory keeps climbing.
+        try (OrtSession.SessionOptions options = new OrtSession.SessionOptions()) {
             if (threads > 0) {
                 options.setIntraOpNumThreads(threads);
             }
@@ -94,9 +97,21 @@ public final class LayaSession implements InferenceSession {
                 return new LayaSession(environment,
                         environment.createSession(fusedPath.toString(), options), null, null);
             }
-            return new LayaSession(environment, null,
-                    environment.createSession(encoderPath.toString(), options),
-                    environment.createSession(headPath.toString(), options));
+            OrtSession encoderSession = environment.createSession(encoderPath.toString(), options);
+            try {
+                return new LayaSession(environment, null, encoderSession,
+                        environment.createSession(headPath.toString(), options));
+            } catch (OrtException | RuntimeException failure) {
+                // Half a graph is still a native session. `close()` is only reachable through a
+                // LayaSession and this path never constructs one, so without this the encoder
+                // outlives the failed load.
+                try {
+                    encoderSession.close();
+                } catch (OrtException | RuntimeException closing) {
+                    failure.addSuppressed(closing);
+                }
+                throw failure;
+            }
         } catch (OrtException failure) {
             throw new InferenceException("could not load the laya graph in " + directory, failure);
         }

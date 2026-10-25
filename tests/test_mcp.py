@@ -1368,6 +1368,16 @@ def test_batch_predict():
     expect_tool_error("batch/hooks_timeout_bool_rejected",
                       lambda: laya_predict_batch(BATCH_REQUESTS, hooks_timeout=True, router=BatchRouter()),
                       "invalid_hooks_timeout")
+    # A list and a JSON integer too large for a float are also bad deadlines. `_validate_hooks_timeout`
+    # catches only (TypeError, ValueError), so before core refused them as a ValueError the giant int
+    # escaped as an `OverflowError` and surfaced as `internal_error` -- the failure this handler exists
+    # to prevent. Both must now come back as `invalid_hooks_timeout`.
+    expect_tool_error("batch/hooks_timeout_list_rejected",
+                      lambda: laya_predict_batch(BATCH_REQUESTS, hooks_timeout=[10], router=BatchRouter()),
+                      "invalid_hooks_timeout")
+    expect_tool_error("batch/hooks_timeout_oversized_int_rejected",
+                      lambda: laya_predict_batch(BATCH_REQUESTS, hooks_timeout=10 ** 1000, router=BatchRouter()),
+                      "invalid_hooks_timeout")
     # min_confidence=0.0 is a real gate (abstain over nothing) and must still be forwarded.
     router = BatchRouter()
     laya_predict_batch(BATCH_REQUESTS, min_confidence=0.0, router=router)

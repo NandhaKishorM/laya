@@ -1,0 +1,137 @@
+{
+  "name": "batch_single_question",
+  "states": [
+    "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "Thanks, the refund arrived and everything works now.",
+    {
+      "ticket": 4821,
+      "message": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+      "notes": "Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. Routine checks. "
+    },
+    [
+      {
+        "role": "assistant",
+        "content": "How can I help?"
+      },
+      {
+        "role": "user",
+        "content": "I was billed twice this month and nobody has answered."
+      }
+    ]
+  ],
+  "questions": {
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "batch_size": 2
+  },
+  "state_widths": [
+    91,
+    44,
+    157,
+    74
+  ],
+  "results": [
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "cancel": {
+          "type": "noul",
+          "noul": 0.968,
+          "confidence": 0.968,
+          "answer_confidence": 0.968,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 91,
+        "output_tokens": 0,
+        "state_tokens": 57,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "cancel": {
+          "type": "noul",
+          "noul": 0.0144,
+          "confidence": 0.9856,
+          "answer_confidence": 0.9856,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 44,
+        "output_tokens": 0,
+        "state_tokens": 10,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "cancel": {
+          "type": "noul",
+          "noul": 0.9238,
+          "confidence": 0.9238,
+          "answer_confidence": 0.9238,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 157,
+        "output_tokens": 0,
+        "state_tokens": 123,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "cancel": {
+          "type": "noul",
+          "noul": 0.1497,
+          "confidence": 0.8503,
+          "answer_confidence": 0.8503,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 74,
+        "output_tokens": 0,
+        "state_tokens": 40,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  ],
+  "runs": [
+    [
+      2,
+      91
+    ],
+    [
+      2,
+      157
+    ]
+  ]
+}

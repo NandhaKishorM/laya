@@ -212,12 +212,15 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
             "english" => LayaCheckpoint.English,
             "multilingual" => LayaCheckpoint.Multilingual,
             "typed-decisions" => LayaCheckpoint.TypedDecisions,
+            // Python's text, list reprs included (router.py:187): sorted(DEFAULT_MODELS), sorted(_ALIASES).
             _ => throw new ArgumentException(
-                $"unknown model '{name}'; choose one of english, multilingual, typed-decisions "
-                + $"(or an alias: {string.Join(", ", Aliases.Keys.OrderBy(k => k, StringComparer.Ordinal))})",
-                nameof(name)),
+                $"unknown model {PythonStr.Repr(name)}; choose one of {PyList(["english", "multilingual", "typed-decisions"])} "
+                + $"(or an alias: {PyList(Aliases.Keys)})"),
         };
     }
+
+    private static string PyList(IEnumerable<string> items) =>
+        "[" + string.Join(", ", items.OrderBy(k => k, StringComparer.Ordinal).Select(PythonStr.Repr)) + "]";
 
     /// <summary>
     /// Name of the typed-decisions workflow whose question ids these are, else
@@ -498,6 +501,26 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
         => PredictRouted(state, questions, model, task, lang, langGuess,
             predictor => predictor.Predict(state, questions));
 
+    /// <summary>
+    /// Routes as <see cref="Predict(object?, QuestionSet)"/> does (no model, task, language or hint overrides), with
+    /// per-call options (a <see langword="null"/> <paramref name="options"/> gates nothing, so a literal <c>Predict(s, q, null)</c> still means what it meant); see <see cref="Predict(object?, QuestionSet, string?, string?, string?, LangGuess?, LayaPredictOptions?)"/>.
+    /// </summary>
+    public LayaResult Predict(object? state, QuestionSet questions, LayaPredictOptions? options)
+        => Predict(state, questions, null, null, null, null, options);
+
+    /// <summary>
+    /// <see cref="Predict(object?, QuestionSet, string?, string?, string?, LangGuess?)"/> with per-call options.
+    /// Ports the <c>min_confidence</c> argument of Python's <c>Router.predict</c>: the threshold is validated after the
+    /// state and questions are checked and before anything is routed or loaded, and the gate is applied to the
+    /// answers whichever checkpoint produced them. <c>PredictLong</c> takes none, as in Python.
+    /// </summary>
+    /// <exception cref="ArgumentException">The threshold is invalid, with Python's <c>ValueError</c> text.</exception>
+    public LayaResult Predict(
+        object? state, QuestionSet questions, string? model, string? task, string? lang, LangGuess? langGuess,
+        LayaPredictOptions? options)
+        => PredictRouted(state, questions, model, task, lang, langGuess,
+            predictor => predictor.Predict(state, questions), options?.MinConfidence);
+
     LayaResult ILayaLongPredictor.PredictLong(
         object state, QuestionSet questions, int? window, int? stride, string aggregate, int? batchSize) =>
         PredictLong(state, questions, window, stride, aggregate, batchSize);
@@ -522,7 +545,7 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
         string aggregate, int? batchSize,
         string? model, string? task, string? lang, LangGuess? langGuess)
     {
-        ArgumentNullException.ThrowIfNull(state);
+        StateGuard.NotNull(state);
         return PredictRouted(state, questions, model, task, lang, langGuess, predictor =>
             predictor is ILayaLongPredictor scanner
                 ? scanner.PredictLong(state, questions, window, stride, aggregate, batchSize)
@@ -532,26 +555,35 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
 
     private LayaResult PredictRouted(
         object? state, QuestionSet questions, string? model, string? task, string? lang, LangGuess? langGuess,
-        Func<ILayaPredictor, LayaResult> predict)
+        Func<ILayaPredictor, LayaResult> predict, MinConfidence? minConfidence = null)
     {
+        StateGuard.NotNull(state);
         ArgumentNullException.ThrowIfNull(questions);
+        // router.py:1338: validated after the state and questions, before routing or loading anything.
+        var gate = minConfidence?.Check();
         var decision = Route(state, questions, model, task, lang, langGuess);
+        // Inference runs outside the lock, exactly as Python's predict() calls
+        // agent.system_one after load() has already returned and released the lock — so
+        // concurrent predictions on a shared checkpoint are not serialised by the router.
+        var result = WithLease(decision.Model, predict);
+        return (gate is { } g ? ConfidenceGate.Apply(result, g) : result).WithRouting(decision);
+    }
 
+    // Loads (or finds) the checkpoint, holds a lease so eviction cannot dispose it mid-call, and
+    // runs `run` on it outside the lock.
+    private T WithLease<T>(LayaCheckpoint checkpoint, Func<ILayaPredictor, T> run)
+    {
         Slot slot;
         lock (_lock)
         {
             ThrowIfDisposed();
-            slot = FindOrBuild(decision.Model);
+            slot = FindOrBuild(checkpoint);
             slot.Leases++;
             Evict();
         }
         try
         {
-            // Inference runs outside the lock, exactly as Python's predict() calls
-            // agent.system_one after load() has already returned and released the lock — so
-            // concurrent predictions on a shared checkpoint are not serialised by the router.
-            var result = predict(slot.Predictor);
-            return result.WithRouting(decision);
+            return run(slot.Predictor);
         }
         finally
         {
@@ -562,6 +594,163 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
                     disposable.Dispose();
             }
         }
+    }
+
+    // ── batching ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Route a heterogeneous request batch without loading any checkpoint. Ports Python
+    /// <c>Router.route_batch</c> (router.py:1538): each request is validated and routed exactly as
+    /// <see cref="Route(object?, QuestionSet?, string?, string?, string?, LangGuess?)"/> does with its own
+    /// <c>Model</c>, <c>Task</c>, <c>Lang</c> and <c>LangGuess</c>, and the decisions keep input order.
+    /// </summary>
+    /// <exception cref="ArgumentException">A request is null, has a null state or null questions, or names an unknown model or task.</exception>
+    public IReadOnlyList<RouteDecision> RouteBatch(IReadOnlyList<LayaBatchRequest> requests)
+    {
+        ArgumentNullException.ThrowIfNull(requests);
+        var decisions = new List<RouteDecision>(requests.Count);
+        for (var i = 0; i < requests.Count; i++)
+        {
+            var request = requests[i]
+                ?? throw new ArgumentException($"request {i} must be a dict, got NoneType");
+            if (request.State is null)
+                throw new ArgumentNullException(null, $"request {i} 'state' must not be None; pass a string, dict, or list");
+            if (request.Questions is null)
+                throw new ArgumentException($"request {i} 'questions' must be a dict, got NoneType");
+            decisions.Add(Route(request.State, request.Questions, request.Model, request.Task,
+                                request.Lang, request.LangGuess));
+        }
+        return decisions;
+    }
+
+    /// <summary>
+    /// Route and answer a heterogeneous request batch with minimal checkpoint churn. Ports Python
+    /// <c>Router.predict_batch</c> (router.py:1603): requests are routed first
+    /// (<see cref="RouteBatch"/>), grouped by routed checkpoint in first-seen order, and within a
+    /// checkpoint split again by question schema (order-sensitive, router.py:221) so states sharing
+    /// a schema share forward passes via <see cref="ILayaBatchPredictor.PredictBatch"/>. Results are
+    /// returned in input order, each carrying its <see cref="LayaResult.Routing"/>.
+    /// </summary>
+    /// <param name="requests">The requests; an empty list returns an empty list and loads nothing.</param>
+    /// <param name="options">Passed to every checkpoint batch; <see cref="LayaBatchOptions.SortByLength"/>
+    /// acts per question group, as in Python. <see cref="LayaBatchOptions.MinConfidence"/> is batch-wide: it is
+    /// applied by the router to every result, is not passed to the checkpoints, and is not part of the grouping.</param>
+    /// <exception cref="NotSupportedException">A routed checkpoint (an attached predictor) has no batch support.</exception>
+    public IReadOnlyList<LayaResult> PredictBatch(
+        IReadOnlyList<LayaBatchRequest> requests, LayaBatchOptions? options = null)
+    {
+        // router.py:1669: validated before any request is looked at.
+        var gate = options?.MinConfidence?.Check();
+        // router.py:1789 calls the agent without min_confidence and gates the results itself.
+        var inner = options is { MinConfidence: not null }
+            ? new LayaBatchOptions { BatchSize = options.BatchSize, SortByLength = options.SortByLength }
+            : options;
+        var decisions = RouteBatch(requests);
+        if (decisions.Count == 0) return [];
+
+        // First-seen order, so cache effects stay deterministic and an interleaved workload costs at
+        // most one load per routed checkpoint (router.py:1674).
+        var checkpoints = new List<LayaCheckpoint>();
+        var byCheckpoint = new Dictionary<LayaCheckpoint, List<int>>();
+        for (var i = 0; i < decisions.Count; i++)
+        {
+            if (!byCheckpoint.TryGetValue(decisions[i].Model, out var indices))
+            {
+                byCheckpoint[decisions[i].Model] = indices = [];
+                checkpoints.Add(decisions[i].Model);
+            }
+            indices.Add(i);
+        }
+
+        var results = new LayaResult[requests.Count];
+        foreach (var checkpoint in checkpoints)
+        {
+            var indices = byCheckpoint[checkpoint];
+            WithLease(checkpoint, predictor =>
+            {
+                if (predictor is not ILayaBatchPredictor batcher)
+                    throw new NotSupportedException(
+                        $"{predictor.GetType().Name} has no PredictBatch, so requests cannot share forward passes");
+                foreach (var (questions, group) in GroupBySchema(requests, indices))
+                {
+                    var batch = batcher.PredictBatch([.. group.Select(i => requests[i].State)], questions, inner);
+                    if (batch.Count != group.Count)
+                        throw new InvalidOperationException(
+                            $"internal error: Agent.predict_batch returned {batch.Count} results for {group.Count} states");
+                    for (var k = 0; k < batch.Count; k++)
+                        results[group[k]] = (gate is { } g ? ConfidenceGate.Apply(batch[k], g) : batch[k])
+                            .WithRouting(decisions[group[k]]);
+                }
+                return 0;
+            });
+        }
+        return results;
+    }
+
+    // Splits one checkpoint's requests by question schema, first-seen order (router.py:1726-1776). A
+    // later per-request token budget or lang joins the grouping key here.
+    private static List<(QuestionSet Questions, List<int> Indices)> GroupBySchema(
+        IReadOnlyList<LayaBatchRequest> requests, List<int> indices)
+    {
+        var groups = new List<(string Schema, QuestionSet Questions, List<int> Indices)>();
+        QuestionSet? lastQuestions = null;
+        string? lastSchema = null;
+        foreach (var i in indices)
+        {
+            var questions = requests[i].Questions;
+            string schema;
+            if (ReferenceEquals(questions, lastQuestions)) schema = lastSchema!;
+            else
+            {
+                schema = QuestionSchema(questions);
+                lastQuestions = questions;
+                lastSchema = schema;
+            }
+            var at = groups.FindIndex(g => g.Schema == schema);
+            if (at < 0) groups.Add((schema, questions, [i]));
+            else groups[at].Indices.Add(i);
+        }
+        return [.. groups.Select(g => (g.Questions, g.Indices))];
+    }
+
+    /// <summary>
+    /// Order-sensitive signature of a question set, for sharing forward passes (router.py:221): ids, types,
+    /// instructions, labels and rendered options all count, in declaration order.
+    /// </summary>
+    internal static string QuestionSchema(QuestionSet questions)
+    {
+        // json.dumps(questions, sort_keys=False, ensure_ascii=False, default=str): insertion order at
+        // every level, ", " / ": " separators, Python float repr (so 1 and 1.0 differ). A question
+        // carries no memory of how its dict was spelled, so each is written in canonical key order
+        // (type, instructions, criteria) and a noul only lists the wordings it was given.
+        var all = new List<KeyValuePair<string, object?>>();
+        foreach (var (id, question) in questions)
+        {
+            var entry = new List<KeyValuePair<string, object?>>
+            {
+                new("type", SequenceBuilder.TypeName(question.Type)),
+                new("instructions", question.Instructions),
+            };
+            switch (question)
+            {
+                case ChoiceQuestion choice:
+                    entry.Add(new("criteria", choice.Options.ToList()));
+                    break;
+                case ScoreQuestion score:
+                    entry.Add(new("criteria", score.Levels));
+                    break;
+                case NoulQuestion { IfFalse: null, IfTrue: null }:
+                    break;
+                case NoulQuestion noul:
+                    var wording = new List<KeyValuePair<string, object?>>();
+                    if (noul.IfFalse is not null) wording.Add(new("false", noul.IfFalse));
+                    if (noul.IfTrue is not null) wording.Add(new("true", noul.IfTrue));
+                    entry.Add(new("criteria", wording));
+                    break;
+            }
+            all.Add(new(id, entry));
+        }
+        return PythonJson.Dumps(all, escapeNonAscii: false, fallbackToStr: true);
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);

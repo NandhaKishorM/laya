@@ -39,8 +39,19 @@ public final class AgentConfig {
     public static final double TEMP_MIN = 0.5;
     public static final double TEMP_MAX = 5.0;
 
-    /** One language's override table. */
+    /**
+     * One language's override table.
+     *
+     * <p>Copied at construction because both components are mutable: a {@code double[]} is an
+     * array, and a {@code Map} is only as immutable as the instance behind it. Without the copy a
+     * caller holding the array it passed in could retune a loaded checkpoint after the fact, and
+     * every later prediction would quietly use the edited temperature.
+     */
     public record LangTemperatures(double[] temperature, Map<String, Double> byOptions) {
+        public LangTemperatures {
+            temperature = temperature.clone();
+            byOptions = Map.copyOf(byOptions);
+        }
     }
 
     private final int maxLen;
@@ -55,9 +66,13 @@ public final class AgentConfig {
                         Map<String, LangTemperatures> langTemperatures, String encoder) {
         this.maxLen = maxLen;
         this.headMaxLen = headMaxLen;
-        this.temperature = temperature;
-        this.temperatureByOptions = temperatureByOptions;
-        this.langTemperatures = langTemperatures;
+        // Copied rather than aliased. Both parsers already pass immutable maps, and `Map.copyOf`
+        // returns such a map unchanged, so the load path pays nothing; what it buys is that a
+        // caller who keeps the map (or array) it passed cannot retune a loaded checkpoint after
+        // the fact. `temperature()` clones on the way out for the same reason.
+        this.temperature = temperature.clone();
+        this.temperatureByOptions = Map.copyOf(temperatureByOptions);
+        this.langTemperatures = Map.copyOf(langTemperatures);
         this.encoder = encoder;
     }
 
@@ -276,14 +291,17 @@ public final class AgentConfig {
         return headMaxLen;
     }
 
+    /** A copy: the live array would let a caller retune a loaded checkpoint. */
     public double[] temperature() {
         return temperature.clone();
     }
 
+    /** The bucket table itself. Immutable, so it cannot be used to retune the checkpoint. */
     public Map<String, Double> temperatureByOptions() {
         return temperatureByOptions;
     }
 
+    /** The language tables themselves. Immutable, as {@link #temperatureByOptions()}. */
     public Map<String, LangTemperatures> langTemperatures() {
         return langTemperatures;
     }

@@ -21,6 +21,7 @@ import numpy as np  # noqa: E402
 
 from laya.agent import Agent  # noqa: E402
 from laya.common import window_budget  # noqa: E402
+from laya.hooks import OptionStabilityHook  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 
 PASS, FAIL = [], []
@@ -398,6 +399,87 @@ except Exception as exc:
     FAIL.append("questions/a first-window end annotation raised %r" % exc)
 else:
     check("questions/a first-window end annotation preserves the scan's answers", actual, expected)
+
+# Exercise the real encoder, typed decoder and stability hook with the existing CPU session.
+def _stability_hook():
+    return OptionStabilityHook(accept=None, escalate=None, probes="reorder",
+                               variants=["reversed"], seed="long-regression")
+
+
+stability_questions = {"dept": {"type": "choice", "instructions": "?", "criteria": {"a": "x", "b": "y"}},
+                       "urgent": QUESTIONS["urgent"]}
+for name, method, states in (("ordinary", "system_one", "aa"),
+                             ("short", "predict_long", "aa"),
+                             ("batch", "predict_batch", ["aa", "bb"])):
+    hook = _stability_hook()
+    result = getattr(_bare_onnx(), method)(states, stability_questions, hooks=[hook])
+    rows = result if isinstance(result, list) else [result]
+    check("stability/%s retains user questions" % name,
+          [list(row["answers"]) for row in rows], [list(stability_questions)] * len(rows))
+    check("stability/%s runs the real reorder probe" % name,
+          [row["answers"]["dept"]["reliability"]["probes"] for row in rows], [["reorder"]] * len(rows))
+    check("stability/%s releases its run plan" % name, hook._plans, {})
+
+stability_windows = []
+_bare_onnx().predict_long(LONG_STATE, stability_questions, window=16, stride=8,
+                          on_predict_start=lambda ctx: stability_windows.extend(ctx.states))
+reference_rows = _bare_onnx().predict_batch(stability_windows, stability_questions, hooks=[_stability_hook()])
+hook = _stability_hook()
+try:
+    actual = _bare_onnx().predict_long(LONG_STATE, stability_questions, window=16, stride=8, hooks=[hook])
+except Exception as exc:
+    FAIL.append("stability/long raised %r after probe removal" % exc)
+else:
+    check("stability/long retains exactly the user questions", list(actual["answers"]), list(stability_questions))
+    for qid in stability_questions:
+        answer = dict(actual["answers"][qid])
+        window = answer.pop("window")
+        check("stability/%s retains its exact winning batch answer and metadata" % qid,
+              answer, reference_rows[window["index"]]["answers"][qid])
+        check("stability/%s attributes the original token window" % qid,
+              (window["token_start"], window["token_end"], window["count"]),
+              (window["index"] * 8, min(window["index"] * 8 + 16, len(LONG_STATE)), len(stability_windows)))
+    check("stability/long counts the scored windows", actual["usage"]["windows"], len(stability_windows))
+check("stability/long releases its run plan", hook._plans, {})
+
+
+def _remove_dept(ctx):
+    for row in ctx.results:
+        del row["answers"]["dept"]
+
+
+check_raises("end removal/a caller question cannot silently disappear from every window", ValueError,
+             lambda: _bare_onnx().predict_long(LONG_STATE, stability_questions, window=16, stride=8,
+                                             on_predict_end=_remove_dept))
+
+for policy in (True, False):
+    check_raises("end removal/partial removal is refused with hooks_raise=%s" % policy, ValueError,
+                 lambda: _bare_onnx().predict_long(
+                     LONG_STATE, stability_questions, window=16, stride=8, hooks_raise=policy,
+                     on_predict_end=lambda ctx: ctx.results[0]["answers"].pop("dept")))
+
+
+def _add_temporary(ctx):
+    ctx.questions["temporary"] = dict(stability_questions["urgent"])
+
+
+def _remove_temporary(ctx):
+    for row in ctx.results:
+        del row["answers"]["temporary"]
+
+
+try:
+    actual = _bare_onnx().predict_long(LONG_STATE, dict(stability_questions), window=16, stride=8,
+                                      on_predict_start=_add_temporary, on_predict_end=_remove_temporary)
+except Exception as exc:
+    FAIL.append("end removal/an in-place start addition raised %r after removal" % exc)
+else:
+    check("end removal/an in-place start addition can be uniformly removed", actual["answers"],
+          _bare_onnx().predict_long(LONG_STATE, stability_questions, window=16, stride=8)["answers"])
+check_raises("end removal/a start-added question missing in only one window is refused", ValueError,
+             lambda: _bare_onnx().predict_long(
+                 LONG_STATE, dict(stability_questions), window=16, stride=8, on_predict_start=_add_temporary,
+                 on_predict_end=lambda ctx: ctx.results[0]["answers"].pop("temporary")))
 
 for malformed in (None, [], {"bad": None}, {"bad": {}}, {"bad": {"type": "unknown"}}):
     errors = []

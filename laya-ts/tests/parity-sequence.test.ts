@@ -24,8 +24,9 @@ describe("common parity", () => {
   });
   it("formats non-integer numbers like Python's float repr", () => {
     // Expected strings are Python's json.dumps({"x": v}, ensure_ascii=False). Python switches
-    // to exponent notation below 1e-4 and pads the exponent to two digits; JavaScript's
-    // Number#toString switches only below 1e-6 and never pads, so the model read other tokens.
+    // to exponent notation below 1e-4 OR at 1e16 and above, and pads the exponent to two digits;
+    // JavaScript's Number#toString switches only below 1e-6 and never pads, so the model read
+    // other tokens. The upper bound is the one a state carrying money or an id reaches.
     const cases: [number, string][] = [
       [0.5, '{"x": 0.5}'],
       [0.0001, '{"x": 0.0001}'],
@@ -35,12 +36,19 @@ describe("common parity", () => {
       [-2.5e-8, '{"x": -2.5e-08}'],
       [1.5e-10, '{"x": 1.5e-10}'],
       [5e-324, '{"x": 5e-324}'],
+      [1e16, '{"x": 1e+16}'],
+      [1.5e16, '{"x": 1.5e+16}'],
+      [-1e16, '{"x": -1e+16}'],
+      [1e21, '{"x": 1e+21}'],
+      [1.2345678901234568e17, '{"x": 1.2345678901234568e+17}'],
+      [1e308, '{"x": 1e+308}'],
     ];
     for (const [v, want] of cases) expect(serializeState({ x: v })).toBe(want);
     expect(renderOptions({ t: "score", ins: "x", crit: [0.00005] })).toEqual(["level 0: 5e-05"]);
-    // an integer-valued number reads as a Python int, which keeps plain digits
+    // Below 1e16 the fixed form is Python's; an integer-valued number reads as a Python int.
     expect(serializeState({ n: 49 })).toBe('{"n": 49}');
-    expect(serializeState({ n: 1e16 })).toBe('{"n": 10000000000000000}');
+    expect(serializeState({ n: 1e15 })).toBe('{"n": 1000000000000000}');
+    expect(serializeState(1e16)).toBe("1e+16");
   });
   it("truncateLeft keeps tail of state (py parity)", () => {
     const tok = {

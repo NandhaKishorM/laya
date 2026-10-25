@@ -576,6 +576,40 @@ for _line in MIXED_SCRIPT_NOT_ENGLISH:
 check("mixed-script/latin-only acronym run is still english",
       _route.route("MON DES EST LA")["model"], "english")
 
+# Scripts newer than the interpreter's own Unicode database. `str.isalpha()` answers from that
+# database, so a letter added after it is "unassigned" and was dropped before `_script_counts`'s
+# "other" branch could count it: the state then read as `script="unknown"`, which `Router._route`
+# treats as "no letters detected" and answers with the configured default -- the exact failure the
+# "other" branch exists to prevent. Python 3.10 ships Unicode 13.0, 3.11 14.0 and 3.12 15.0, so this
+# is a supported-version difference in a public answer (`laya.is_english`). `_is_letter` supplies
+# the answer a newer database would have given and changes nothing it already knows, which
+# `tests/test_lang_guess.py` cannot see: these cases fail on the older interpreters without it.
+POST_DATABASE_SCRIPTS = [
+    ("𑼁𑼂𑼃", "kawi"),              # Unicode 15.0
+    ("𞓑𞓒", "nag mundari"),                 # Unicode 15.0
+    ("𐗀𐗁", "todhri"),                      # Unicode 16.0
+    ("𐕱𐕲", "vithkuqi"),                    # Unicode 14.0
+    ("𐽱𐽲", "old uyghur"),                  # Unicode 14.0
+    ("𮯰𮯱", "CJK extension I"),             # Unicode 15.1
+]
+for _text, _name in POST_DATABASE_SCRIPTS:
+    check("newer-script/%s is not 'unknown'" % _name, analyse(_text)["script"], "other")
+    check("newer-script/%s is not english" % _name, analyse(_text)["is_english"], False)
+    check("newer-script/%s routes multilingual" % _name,
+          _route.route(_text)["model"], "multilingual")
+
+# The table only answers for characters this interpreter does not know: a symbol, a digit and a
+# mark stay non-letters, so an emoji-only state is still "no letters" and an English request is
+# untouched. Checked rather than assumed -- these are the shapes a blanket "anything above the
+# floor is a letter" would break.
+check("newer-script/emoji are not letters", analyse("\U0001F600\U0001F601")["script"], "unknown")
+check("newer-script/emoji still route by default",
+      _route.route("\U0001F600\U0001F601")["model"], _route.default)
+check("newer-script/english is unchanged",
+      analyse("We were billed twice and want a refund")["script"], "latin")
+check("newer-script/english still routes english",
+      _route.route("We were billed twice and want a refund")["model"], "english")
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

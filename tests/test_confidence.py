@@ -433,8 +433,9 @@ check("export/laya re-exports the same tuple", laya.GATE_STATES, _confidence.GAT
 # --------------------------------- the two doc pages must attribute confidence per question type
 # `docs/structured.md` and `docs/questions-and-answers.md` each opened their confidence section with
 # "`confidence` is normalized entropy". Neither agent writes that for every type:
-# `Agent._decode_answers` (`laya/agent.py:1369-1398`) and `ONNXAgent._decode_answers`
-# (`laya/onnx_agent.py:715-785`) put `confidence_from_probs(p, k)` = `1 - H(p) / log(k)` in the
+# `Agent._decode_answers` (`laya/agent.py::Agent._decode_answers`) and `ONNXAgent._decode_answers`
+# (`laya/onnx_agent.py::ONNXAgent._decode_answers`) put `confidence_from_probs(p, k)` =
+# `1 - H(p) / log(k)` in the
 # `choice` and `score` answers and `max(p_true, 1 - p_true)` in the `noul` one. Each page printed a
 # `noul` in the very block its sentence introduces, so the sentence was falsifiable from the page
 # alone: the Q&A page's sample answer is `{"type": "noul", "noul": 0.8727, "confidence": 0.8727}`,

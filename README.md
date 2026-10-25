@@ -94,33 +94,18 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.14
+## What's new in 0.4.16
 
-* **Plain English questions stop going to the multilingual checkpoint.** Nothing in "Why hasn't my
-  card been delivered?" was on the 34-word English function list, so it read as undecided and took
-  the router default. 82 closed-class words are now on that list: question words, auxiliaries,
-  what `_WORD` leaves of a contraction, and common determiners and connectives. That is 589 of the
-  2,974 MASSIVE en-US test rows, and on the rows that move the English checkpoint answers better
-  (283 against 214 head to head, sign test p=0.002). Content words stay out, because a foreign
-  sentence borrows those. No row moves off the English checkpoint, and 15 of 148,700 non-English
-  MASSIVE rows move onto it, 11 of them English titles (#1315). All four SDKs carry the same list.
-* **A Go SDK you can route with.** `laya-go` gains the routing half of `laya.router` with
-  `Route`/`RouteBatch` and `on_route` hooks, the `laya.email` port, presets and the embedding
-  shortlist, a calibration payload installed at `Open`, and runnable quickstart and benchmark
-  samples (#1310, #1311, #1308, #1307, #1306, #1309).
-* **Four more fail-closed guards in the integrations.** A remote decision body that is valid JSON
-  but not an object now raises instead of leaking `AttributeError` in LangChain, CrewAI and
-  LlamaIndex (#1301). A probability that is not a real number, or is a bool, routes to the
-  `fallback_tool` rather than raising out of `float()` (#1300), and the guardrail score rail
-  degrades instead of crashing on a malformed `probabilities` block (#1302).
-* **`calibrate_reliability` refuses evidence it cannot fit**: mismatched lengths, a score outside
-  [0, 1], a non-finite score, and a label that is not a boolean (#1314). NumPy booleans and reals
-  count, since `preds == gold` is how correctness is usually computed.
-* **`probabilities` are rounded independently and need not sum to 1.** Three equally likely options
-  come back as `0.3333` each, totalling `0.9999`. Now documented in both the in-process and HTTP
-  references, where a strict unit-sum check would have been written against it (#1305).
-* **pydecide joins Community Tools.** Local inference is its default now, and hosted backends have
-  to be asked for by name rather than appearing because an API key is in the environment (#1304).
+* **Rust and .NET answer batches, and abstain, the way Python does.** `predict_batch` and the
+  router batch APIs are ported to both, grouping by checkpoint and question schema and restoring
+  input order (#1358, #1359). The `min_confidence` abstention gate and `jev_confidence` follow, so
+  a low-confidence answer abstains identically in every port (#1362, #1363). Both sets are checked
+  against goldens recorded from the Python package rather than hand-written tables.
+* **Four inputs are now refused where they enter instead of failing later.** A non-numeric or
+  overflowing `hooks_timeout` is a `ValueError` at the call (#1365), an unhashable tournament
+  choice label is a 422 rather than a 500 (#1366), a question or batch file that cannot be read
+  names the file and exits 2 rather than printing a traceback (#1367), and an answer that is not
+  an object is left out of a structured projection rather than ending the call (#1368).
 
 Earlier releases are in the [GitHub releases](https://github.com/NandhaKishorM/laya/releases).
 

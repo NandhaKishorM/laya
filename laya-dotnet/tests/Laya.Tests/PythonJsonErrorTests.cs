@@ -121,6 +121,37 @@ public sealed class PythonJsonErrorTests
     }
 
     [Fact]
+    public void DeepNestingNeedsNoStackProportionalToItsDepth()
+    {
+        // 2990 levels on a 256 KB thread. Neither the parse nor the re-emission may recurse, because the
+        // caller's stack is the one thing this port cannot ask anyone to make bigger. Before both walks became
+        // iterative this test killed the test host outright ("Stack overflow ... Abort trap: 6") -- which is
+        // the defect itself: .NET cannot catch a stack overflow, so a document CPython loads had no way to be
+        // reported as an error either.
+        var text = Nested(2990, "1");
+        Exception? caught = null;
+        var thread = new Thread(
+            () =>
+            {
+                try
+                {
+                    using var doc = PythonJsonReader.ParseDocument(text, out _);
+                    if (doc.RootElement.GetProperty("cls_token").GetString() != "[CLS]")
+                        throw new InvalidOperationException("re-emitted payload lost a field");
+                    var depth = 0;
+                    var element = doc.RootElement.GetProperty("x");
+                    while (element.ValueKind == JsonValueKind.Array) { depth++; element = element[0]; }
+                    if (depth != 2990) throw new InvalidOperationException($"depth {depth} != 2990");
+                }
+                catch (Exception e) { caught = e; }
+            },
+            maxStackSize: 256 * 1024);
+        thread.Start();
+        thread.Join();
+        Assert.Null(caught);
+    }
+
+    [Fact]
     public void NestingPastPythonsLimitIsRejected() =>
         Assert.ThrowsAny<JsonException>(() => PythonJsonReader.Parse(new string((char)91, 2998) + new string((char)93, 2998)));
 

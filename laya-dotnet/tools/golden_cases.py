@@ -386,3 +386,171 @@ LONG_ERROR_CASES = [
      "options": {"aggregate": "mean"}},
     {"name": "long_no_state_room", "state": "short", "questions": ERROR_CASES[0]["questions"]},
 ]
+
+
+# ONNXAgent.predict_batch: the same questions over many states, with the batching knobs.
+# States are the order-sensitive part: widths differ so `sort_by_length` has something to
+# reorder, and list states are long enough to be left-truncated. `options` go to predict_batch
+# verbatim (`batch_size`, `sort_by_length`).
+BATCH_QUESTIONS = LONG_QUESTIONS
+
+_BATCH_FILLER = "Routine account check completed. "
+_BATCH_TURNS = " ".join(
+    "Turn %d: the agent restated the refund policy and the customer repeated the complaint." % i
+    for i in range(140)
+)
+
+# Widths in the order given are deliberately shuffled, so a stable sort has real work to do and
+# repeated widths (k % 5) exercise its tie-breaking.
+BATCH_SORT_STATES = [_BATCH_FILLER * k + QUICKSTART_STATE for k in
+                     (18, 2, 9, 0, 14, 5, 11, 1, 16, 7, 3, 12, 19, 4, 8, 13, 6, 17, 10, 15)]
+
+BATCH_MIXED_STATES = [
+    QUICKSTART_STATE,
+    {"subject": "Double charged on invoice 88213", "body": QUICKSTART_STATE},
+    [{"role": "user", "content": "Hi, I need help with my invoice."},
+     {"role": "assistant", "content": "Of course, what is wrong?"},
+     {"role": "user", "content": QUICKSTART_STATE}],
+    "",
+    _BATCH_FILLER * 12 + QUICKSTART_STATE,
+    "Thanks, that is all sorted now.",
+    {"notes": _BATCH_FILLER * 8, "message": "Please cancel my account today."},
+    "Mein Konto wurde zweimal belastet. Bitte erstatten Sie den Betrag.",
+]
+
+# Long enough to overflow every checkpoint's window: a list state keeps its newest turns
+# (left truncation), a string or dict keeps its start.
+BATCH_TRUNCATED_STATES = [
+    "Customer support transcript. " + _BATCH_TURNS,
+    [{"role": "user" if i % 2 == 0 else "assistant",
+      "content": "Turn %d: the agent restated the refund policy and the customer repeated the complaint." % i}
+     for i in range(140)] + [{"role": "user", "content": "I want a refund or I will cancel today."}],
+    {"notes": _BATCH_TURNS, "message": QUICKSTART_STATE},
+    QUICKSTART_STATE,
+]
+
+# Shared with the Rust SDK's corpus. A mix of kinds and widths, one of them long enough to truncate.
+BATCH_STATES = [
+    QUICKSTART_STATE,
+    "Thanks, the refund arrived and everything works now.",
+    {"ticket": 4821, "message": QUICKSTART_STATE, "notes": "Routine checks. " * 12},
+    [{"role": "assistant", "content": "How can I help?"},
+     {"role": "user", "content": "I was billed twice this month and nobody has answered."}],
+    LONG_STATE,
+    "The app crashes on login since yesterday's update.",
+    "ok",
+]
+
+# Eighteen states of varied length, so a batch size of two crosses the eight-batch sort window.
+BATCH_WINDOW_STATES = [
+    ("Routine status note %d. " % i) * (i % 7 + 1) + (QUICKSTART_STATE if i % 5 == 0 else "")
+    for i in range(18)
+]
+
+BATCH_CASES = [
+    {"name": "batch_one_state", "states": [QUICKSTART_STATE], "questions": BATCH_QUESTIONS},
+    {"name": "batch_mixed", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS},
+    {"name": "batch_size_1", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 1}},
+    {"name": "batch_size_3", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 3}},
+    {"name": "batch_size_over_len", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 100}},
+    # `batch_size and batch_size > 0` is falsy for zero and negatives: one run, no error.
+    {"name": "batch_size_zero", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 0}},
+    {"name": "batch_size_negative", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": -2}},
+    # sort_by_length takes effect only for 1 < batch_size < len(states); the sort window is 8 batches.
+    {"name": "batch_sort_on", "states": BATCH_SORT_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 2, "sort_by_length": True}},
+    {"name": "batch_sort_off", "states": BATCH_SORT_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 2}},
+    {"name": "batch_sort_size_3", "states": BATCH_SORT_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 3, "sort_by_length": True}},
+    {"name": "batch_sort_partial_window", "states": BATCH_SORT_STATES[:3], "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 2, "sort_by_length": True}},
+    {"name": "batch_sort_no_batch_size", "states": BATCH_SORT_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"sort_by_length": True}},
+    {"name": "batch_sort_size_1", "states": BATCH_SORT_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 1, "sort_by_length": True}},
+    {"name": "batch_sort_size_eq_len", "states": BATCH_SORT_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 20, "sort_by_length": True}},
+    {"name": "batch_sort_size_over_len", "states": BATCH_SORT_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 25, "sort_by_length": True}},
+    {"name": "batch_sort_size_zero", "states": BATCH_SORT_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 0, "sort_by_length": True}},
+    {"name": "batch_truncated", "states": BATCH_TRUNCATED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 2}},
+    {"name": "batch_truncated_sorted", "states": BATCH_TRUNCATED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 3, "sort_by_length": True}},
+    {"name": "batch_duplicate_states", "states": [QUICKSTART_STATE] * 3, "questions": BATCH_QUESTIONS},
+    # An empty list is answered without looking at the questions, even ones that cannot be asked.
+    {"name": "batch_empty_states", "states": [], "questions": BATCH_QUESTIONS},
+    {"name": "batch_empty_states_invalid_questions", "states": [], "questions": ERROR_CASES[0]["questions"]},
+    {"name": "batch_empty_questions", "states": [QUICKSTART_STATE, ""], "questions": {}},
+    {"name": "batch_empty_both", "states": [], "questions": {}},
+    {"name": "batch_sorted", "states": BATCH_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 2, "sort_by_length": True}},
+    {"name": "batch_sorted_windows", "states": BATCH_WINDOW_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 2, "sort_by_length": True}},
+    {"name": "batch_unsorted_windows", "states": BATCH_WINDOW_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 2}},
+    {"name": "batch_chunked", "states": BATCH_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 3}},
+    # A single question per state.
+    {"name": "batch_single_question", "states": BATCH_STATES[:4],
+     "questions": {"cancel": BATCH_QUESTIONS["cancel"]}, "options": {"batch_size": 2}},
+    {"name": "batch_empty_questions_with_options", "states": BATCH_STATES[:3], "questions": {},
+     "options": {"batch_size": 2, "sort_by_length": True}},
+    # The abstention gate (`min_confidence`): batch-wide, applied to every answer of every state.
+    {"name": "batch_min_confidence_scalar", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"min_confidence": 0.6}},
+    {"name": "batch_min_confidence_zero", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "options": {"min_confidence": 0.0}},
+    {"name": "batch_min_confidence_map", "states": BATCH_SORT_STATES[:7], "questions": BATCH_QUESTIONS,
+     "options": {"batch_size": 3, "sort_by_length": True,
+                 "min_confidence": {"choice:3-5": 0.8, "score:3-5": 0.5, "noul:2": 0.7}}},
+    {"name": "batch_min_confidence_map_default", "states": BATCH_STATES[:3], "questions": BATCH_QUESTIONS,
+     "options": {"min_confidence": {"default": 0.55}}},
+    {"name": "batch_min_confidence_empty_questions", "states": BATCH_STATES[:3], "questions": {},
+     "options": {"min_confidence": 0.5}},
+    {"name": "batch_min_confidence_empty_states", "states": [], "questions": BATCH_QUESTIONS,
+     "options": {"min_confidence": 0.5}},
+]
+
+BATCH_ERROR_CASES = [
+    {"name": "batch_none_state", "states": [QUICKSTART_STATE, None], "questions": BATCH_QUESTIONS,
+     "error_type": "TypeError"},
+    {"name": "batch_options_exceed_head", "states": ["short", QUICKSTART_STATE],
+     "questions": ERROR_CASES[0]["questions"], "error_type": "ValueError"},
+    # The threshold is validated before anything else, so it wins over a missing state.
+    {"name": "batch_min_confidence_invalid", "states": [QUICKSTART_STATE], "questions": BATCH_QUESTIONS,
+     "options": {"min_confidence": 1.5}, "error_type": "ValueError"},
+    {"name": "batch_min_confidence_before_none_state", "states": [QUICKSTART_STATE, None],
+     "questions": BATCH_QUESTIONS, "options": {"min_confidence": -0.25}, "error_type": "ValueError"},
+    {"name": "batch_min_confidence_bad_key", "states": [QUICKSTART_STATE], "questions": BATCH_QUESTIONS,
+     "options": {"min_confidence": {"choice:2": 0.5, "choice:3": 0.5}}, "error_type": "ValueError"},
+]
+
+# `system_one` with the abstention gate. `options` go to `system_one` verbatim, and are recorded
+# only for these cases so every earlier golden stays byte-identical.
+MIN_CONFIDENCE_CASES = [
+    {"name": "min_confidence_scalar", "state": QUICKSTART_STATE, "questions": CASES[0]["questions"],
+     "options": {"min_confidence": 0.6}},
+    {"name": "min_confidence_zero", "state": QUICKSTART_STATE, "questions": CASES[0]["questions"],
+     "options": {"min_confidence": 0.0}},
+    {"name": "min_confidence_map", "state": QUICKSTART_STATE, "questions": CASES[0]["questions"],
+     "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}}},
+    {"name": "min_confidence_map_default", "state": "Thanks, that is all sorted now.",
+     "questions": CASES[0]["questions"], "options": {"min_confidence": {"default": 0.55}}},
+]
+
+MIN_CONFIDENCE_ERROR_CASES = [
+    {"name": "min_confidence_invalid", "state": QUICKSTART_STATE, "questions": CASES[0]["questions"],
+     "options": {"min_confidence": 1.5}},
+    {"name": "min_confidence_empty_map", "state": QUICKSTART_STATE, "questions": CASES[0]["questions"],
+     "options": {"min_confidence": {}}},
+    {"name": "min_confidence_bad_key", "state": QUICKSTART_STATE, "questions": CASES[0]["questions"],
+     "options": {"min_confidence": {"default": 0.5, "choice:3": 0.5}}},
+]

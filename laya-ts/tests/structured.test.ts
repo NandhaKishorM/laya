@@ -408,6 +408,48 @@ describe("structured/answerConfidence", () => {
   });
 });
 
+describe("structured/boolean enums", () => {
+  // Python parity (laya/structured.py::_enum_field): the noul shortcut is exactly two distinct
+  // booleans. A single-value enum plans as a one-option choice there, and a duplicate enum raises
+  // the duplicate-label SchemaError -- both of which this side used to plan as a noul, changing
+  // the question type and the projected value type ("true" vs boolean).
+  it("plans a two-value boolean enum as a noul", () => {
+    const [f] = planFromJsonSchema({ type: "object", properties: { a: { enum: [true, false] } } });
+    expect(f.kind).toBe("noul");
+    expect(f.question.type).toBe("noul");
+  });
+
+  it("plans a single-value boolean enum as a one-option choice", () => {
+    const fields = planFromJsonSchema({ type: "object", properties: { a: { enum: [true] } } });
+    expect(fields[0].kind).toBe("choice");
+    expect(fields[0].question.type).toBe("choice");
+    expect(fields[0].question.criteria).toEqual({ true: null });
+  });
+
+  it("refuses a duplicate boolean enum instead of planning a noul", () => {
+    expect(() => planFromJsonSchema({ type: "object", properties: { a: { enum: [true, true] } } })).toThrow(
+      SchemaError,
+    );
+    expect(() => planFromJsonSchema({ type: "object", properties: { a: { enum: [false, false] } } })).toThrow(
+      /duplicate choice labels/,
+    );
+  });
+
+  it("projects the one-option choice back to the boolean value", async () => {
+    const runner = {
+      async predict() {
+        return {
+          model: "fake",
+          answers: { a: { type: "choice", choice: "true", confidence: 0.9, probabilities: { true: 0.9 } } },
+        };
+      },
+    };
+    expect(await decide(runner as any, "state", { type: "object", properties: { a: { enum: [true] } } })).toEqual({
+      a: true,
+    });
+  });
+});
+
 describe("structured/decideBatch", () => {
   const fakeBatchRunner = (answersPerState: Record<string, any>[]) => ({
     calls: [] as any[],
@@ -546,3 +588,59 @@ describe("structured/decideBatch", () => {
 });
 
 
+
+// `DecideBatchOptions` documents that anything it does not read itself is forwarded to the
+// runner, hooks included. On a Router-like runner the call used to spread those options into the
+// request objects and pass no third argument, so `Router.predictBatch` -- which reads hooks from
+// its options argument, not from each request -- never ran them: tracing and metrics hooks
+// observed nothing on the batch path while firing on the single-request and Agent paths.
+describe("structured/decideBatch Router hook forwarding", () => {
+  const provider = () => ({
+    async runEncoder(b: any) {
+      const n = b?.inputIds?.length ?? 1;
+      return { lastHidden: Array.from({ length: n }, () => [[1, 0], [0, 1]]) };
+    },
+    async runHead(_h: any, batch?: any) {
+      const n = batch?.inputIds?.length ?? 1;
+      return {
+        logits: Array.from({ length: n }, () => [2, 0, 1, 0]),
+        act: Array.from({ length: n }, () => [3, 0]),
+      };
+    },
+  });
+
+  const routerWithAgent = () =>
+    new Router({ default: "english", loader: () => new Agent({ provider: provider() } as any) } as any);
+
+  it("fires per-call hooks through decide() and decideBatch() on a Router", async () => {
+    const fired: string[] = [];
+    const hook = {
+      onPredictStart(ctx: any) {
+        fired.push(String(ctx.states[0]));
+      },
+    };
+    await decide(routerWithAgent(), "single", SCHEMA, { hooks: [hook] });
+    expect(fired).toEqual(["single"]);
+
+    fired.length = 0;
+    await decideBatch(routerWithAgent(), ["s1", "s2"], SCHEMA, { hooks: [hook] });
+    expect(fired).toEqual(["s1", "s2"]);
+  });
+
+  it("forwards the plain-callable form too, and does not put hooks on the request objects", async () => {
+    const fired: string[] = [];
+    const router = routerWithAgent();
+    const calls: any[] = [];
+    // Record what reaches the router's own predictBatch, then run the real one.
+    const realBatch = router.predictBatch.bind(router);
+    (router as any).predictBatch = (requests: any[], batchSize: any, opts: any) => {
+      calls.push({ requests, batchSize, opts });
+      return realBatch(requests, batchSize, opts);
+    };
+    await decideBatch(router, ["s1"], SCHEMA, { onPredictStart: (ctx) => fired.push(String(ctx.states[0])) });
+    expect(fired).toEqual(["s1"]);
+    expect(calls).toHaveLength(1);
+    expect("onPredictStart" in calls[0].requests[0]).toBe(false);
+    expect(typeof calls[0].opts.onPredictStart).toBe("function");
+  });
+});

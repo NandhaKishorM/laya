@@ -69,7 +69,11 @@ fn reproduces_the_recorded_answers() {
                 .unwrap_or_else(|e| panic!("{}/{case}: {e}", checkpoint.subdir()));
 
             let result = engine
-                .predict(state, &questions)
+                .predict_with_options(
+                    state,
+                    &questions,
+                    &golden_data::recorded_predict_options(&root),
+                )
                 .unwrap_or_else(|e| panic!("{}/{case}: predict failed: {e}", checkpoint.subdir()));
             let expected = &root["result"];
             let where_case = format!("{}/{case}", checkpoint.subdir());
@@ -132,6 +136,7 @@ fn reproduces_the_recorded_answers() {
                     &format!("{where_q}.action.act_probability"),
                 );
 
+                common::result_compare::assert_gate_matches(want, got, &where_q);
                 match got {
                     Answer::Choice(choice) => assert_choice(want, choice, &where_q),
                     Answer::Score(score) => assert_score(want, score, &where_q),
@@ -178,7 +183,11 @@ fn reproduces_the_recorded_answers_for_the_split_layout() {
                 .unwrap_or_else(|e| panic!("{}/{case}: {e}", checkpoint.subdir()));
 
             let result = engine
-                .predict(state, &questions)
+                .predict_with_options(
+                    state,
+                    &questions,
+                    &golden_data::recorded_predict_options(&root),
+                )
                 .unwrap_or_else(|e| panic!("{}/{case}: predict failed: {e}", checkpoint.subdir()));
             let expected = &root["result"];
             let where_case = format!("{}/{case} (split layout)", checkpoint.subdir());
@@ -217,6 +226,7 @@ fn reproduces_the_recorded_answers_for_the_split_layout() {
                     PROB_TOLERANCE,
                     &format!("{where_q}.answer_confidence"),
                 );
+                common::result_compare::assert_gate_matches(want, got, &where_q);
                 match got {
                     Answer::Choice(choice) => assert_choice(want, choice, &where_q),
                     Answer::Score(score) => assert_score(want, score, &where_q),
@@ -254,12 +264,33 @@ fn rejects_the_same_questions_python_rejects() {
             let questions = golden_data::build_questions(&root["questions"])
                 .unwrap_or_else(|e| panic!("{}/{case}: {e}", checkpoint.subdir()));
 
-            let error = engine.predict(state, &questions).expect_err(&format!(
-                "{}/{case}: expected predict to fail",
-                checkpoint.subdir()
-            ));
+            let error = engine
+                .predict_with_options(
+                    state,
+                    &questions,
+                    &golden_data::recorded_predict_options(&root),
+                )
+                .expect_err(&format!(
+                    "{}/{case}: expected predict to fail",
+                    checkpoint.subdir()
+                ));
             let expected_message = root["error_message"].as_str().unwrap();
             let actual_message = error.to_string();
+            // A rejected threshold is Python's ValueError text, whole.
+            if root.get("options").is_some() {
+                assert!(
+                    matches!(error, LayaError::InvalidMinConfidence(_)),
+                    "{}/{case}: expected LayaError::InvalidMinConfidence, got {error:?}",
+                    checkpoint.subdir()
+                );
+                assert_eq!(
+                    expected_message,
+                    actual_message,
+                    "{}/{case}: error message",
+                    checkpoint.subdir()
+                );
+                continue;
+            }
             assert!(
                 actual_message.starts_with(expected_message),
                 "{}/{case}: error message mismatch\n  python: {expected_message}\n  rust:   {actual_message}",

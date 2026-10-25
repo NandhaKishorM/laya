@@ -517,9 +517,18 @@ class RouterTest {
         assertTrue(decided.reason().startsWith("non-Latin script"), decided.reason());
         assertTrue(decided.detection() != null, "detection ran, so it is reported");
 
+        // `C.UTF-8` names a locale, not a language, so the hint abstains and detection decides.
+        // Detection's answer for this state is `English Latin text` -- `here` and `now` are English
+        // function words now -- which is the same pair the `lang-agnostic-C-falls-through` row of
+        // router.json records. The reason is compared exactly, not by a "Latin script" prefix: that
+        // prefix was also the reason detection gives when it cannot identify a language, so it
+        // showed the hint stayed out only as long as plain English stayed undecided.
         Router agnostic = Router.builder().langGuess(Router.LanguageHint.of("C.UTF-8")).build();
-        assertTrue(agnostic.route("plain english words here now").reason()
-                .startsWith("Latin script"), "a code naming no language must not decide");
+        Router.RouteDecision fallback = agnostic.route("plain english words here now");
+        assertEquals("English Latin text", fallback.reason(),
+                "a code naming no language must not decide; detection's reason shows who did");
+        assertEquals(Router.Checkpoint.ENGLISH, fallback.model());
+        assertTrue(fallback.detection() != null, "detection ran, so it is reported");
     }
 
     @Test

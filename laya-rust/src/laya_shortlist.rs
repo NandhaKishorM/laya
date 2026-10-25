@@ -316,7 +316,14 @@ fn cosine(query: &[f64], docs: &[Vec<f64>]) -> Vec<f64> {
         let denom = doc_norm * query_norm;
         if denom > 0.0 {
             let dot: f64 = doc.iter().zip(query).map(|(a, b)| a * b).sum();
-            sims[i] = dot / denom;
+            // Python clips (`np.clip(dot / denom, -1.0, 1.0)`, `laya/shortlist.py::_cosine`) and
+            // laya-go ports that with `TestCosineIsClipped` ("the clip is the reference's
+            // contract"). The quotient rounds OUTSIDE [-1, 1] for vectors that are parallel but
+            // not exactly representable -- a self-cosine of [34, 15.285714285714286,
+            // 70.85714285714286] is 1.0000000000000002 -- so an unclipped value breaks the range
+            // this API documents for `ShortlistInfo::scores`. `clamp` propagates NaN unchanged,
+            // matching laya-go, which also leaves NaN alone.
+            sims[i] = (dot / denom).clamp(-1.0, 1.0);
         }
     }
     sims

@@ -355,6 +355,21 @@ LANG_STATES = [
     ("p0411/digits_only", "12345 67890"),
     ("p0411/state_text_cap_multibyte", "ç" * 4100),
     ("p0411/roman_numerals", "Ⅳ Ⅴ Ⅵ Ⅶ please"),
+    ("p0414/card_delivered", "Why hasn't my card been delivered?"),
+    ("p0414/parcel_arrived", "Why hasn't my parcel arrived"),
+    ("p0414/account_locked", 'How could my account get locked'),
+    ("p0414/refund_appear", 'Where should my refund appear'),
+    ("p0414/ticket_yesterday", 'Who handled my ticket yesterday'),
+    ("p0414/transfer_through", "Why didn't my transfer go through"),
+    ("p0414/havent_answered", "They haven't answered my message"),
+    ("p0414/many_people_app", 'Many people said my app crashes after login'),
+    ("p0414/every_payment", 'Every payment fails because my card expired'),
+    ("p0414/doesnt_subscription", "Doesn't my subscription include storage"),
+    ("p0414/isnt_charging", "Why isn't my phone charging"),
+    ("p0414/those_refunds", 'Those refunds never reached my account'),
+    ("p0414/dont_cancel", 'Dont cancel my order'),
+    ("p0414/doesnt_pin", 'Why doesnt my pin work'),
+    ("p0414/german_with_why", 'Ich habe keine ahnung why'),
 ]
 
 
@@ -573,6 +588,94 @@ ROUTE_CASES = [
     ("p0411/state_none", {}, {"state": None}),
     ("p0411/state_number", {}, {"state": 5}),
     ("p0411/state_empty_dict", {}, {"state": {}}),
+    ("p0414/card_delivered", {}, {"state": "Why hasn't my card been delivered?"}),
+    ("p0414/parcel_arrived", {}, {"state": "Why hasn't my parcel arrived"}),
+    ("p0414/account_locked", {}, {"state": 'How could my account get locked'}),
+    ("p0414/refund_appear", {}, {"state": 'Where should my refund appear'}),
+    ("p0414/ticket_yesterday", {}, {"state": 'Who handled my ticket yesterday'}),
+    ("p0414/transfer_through", {}, {"state": "Why didn't my transfer go through"}),
+    ("p0414/havent_answered", {}, {"state": "They haven't answered my message"}),
+    ("p0414/many_people_app", {}, {"state": 'Many people said my app crashes after login'}),
+    ("p0414/every_payment", {}, {"state": 'Every payment fails because my card expired'}),
+    ("p0414/doesnt_subscription", {}, {"state": "Doesn't my subscription include storage"}),
+    ("p0414/isnt_charging", {}, {"state": "Why isn't my phone charging"}),
+    ("p0414/those_refunds", {}, {"state": 'Those refunds never reached my account'}),
+    ("p0414/dont_cancel", {}, {"state": 'Dont cancel my order'}),
+    ("p0414/doesnt_pin", {}, {"state": 'Why doesnt my pin work'}),
+    ("p0414/german_with_why", {}, {"state": 'Ich habe keine ahnung why'}),
+    ("p0414/question_custom_default", {"default": "english"}, {"state": "Why hasn't my card been delivered?"}),
+    ("p0414/question_multilingual_default", {"default": "multilingual"}, {"state": "Why hasn't my parcel arrived"}),
+]
+
+
+# ============================================================================ route_batch_probe
+# Router.route_batch(requests): (label, Router kwargs, request dicts). Requests are JSON-able
+# (lang_guess as a language code) because the corpus is replayed from JSON by the .NET suite.
+# route_batch loads nothing, so these need no model.
+
+ROUTE_BATCH_CASES = [
+    ("empty", {}, []),
+    ("single_english", {}, [{"state": "I was charged twice, please refund.", "questions": Q_GENERIC}]),
+    ("mixed_order", {}, [
+        {"state": "I was charged twice, please refund.", "questions": Q_GENERIC},
+        {"state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung "
+                  "die nicht korrekt ist", "questions": Q_GENERIC},
+        {"state": {"body": "मुझसे दो बार शुल्क लिया गया"}, "questions": Q_GENERIC},
+        {"state": "I was charged twice, please refund.", "questions": Q_GENERIC},
+    ]),
+    ("per_request_overrides", {}, [
+        {"state": "hello", "questions": Q_GENERIC, "model": "ml"},
+        {"state": "hello", "questions": Q_GENERIC, "task": "typed_decisions"},
+        {"state": "मुझसे दो बार", "questions": Q_GENERIC, "lang": "en"},
+        {"state": "hello", "questions": Q_GENERIC, "lang": "de"},
+        {"state": "hello", "questions": Q_GENERIC, "lang": "C", "lang_guess": "ro"},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "ro"},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "en"},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "und"},
+        {"state": "x", "questions": Q_GENERIC, "model": "english", "lang_guess": "ro"},
+    ]),
+    ("installed_lang_guess", {"lang_guess": "ro"}, [
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "en"},
+        {"state": "Care este ora in Tokyo?", "questions": Q_GENERIC, "lang_guess": "C"},
+    ]),
+    ("auto_task_workflow", {"auto_task_detection": True}, [
+        {"state": {"body": "I was charged twice"}, "questions": _td_questions(_TD_IDS["customer_service"])},
+        {"state": {"body": "I was charged twice"}, "questions": Q_GENERIC},
+        {"state": "x", "questions": _td_questions(_TD_IDS["customer_service"]), "lang_guess": "ro"},
+    ]),
+    ("custom_default", {"default": "english"}, [
+        {"state": "12345", "questions": Q_GENERIC},
+        {"state": "Hello", "questions": Q_GENERIC},
+    ]),
+    ("falsy_states", {}, [
+        {"state": "", "questions": Q_GENERIC},
+        {"state": {}, "questions": Q_GENERIC},
+        {"state": [], "questions": Q_GENERIC},
+        {"state": 0, "questions": Q_GENERIC},
+    ]),
+    ("lang_variants", {}, [
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC, "lang": "fr"},
+        {"state": {"body": "मुझसे दो बार शुल्क लिया गया"}, "questions": Q_GENERIC, "lang": "en-US"},
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC, "lang": "C"},
+        {"state": {"body": "मुझसे दो बार शुल्क लिया गया"}, "questions": Q_GENERIC, "model": "english"},
+    ]),
+    ("installed_lang_guess_lang_wins", {"lang_guess": "de"}, [
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC},
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC,
+         "lang_guess": "en"},
+        {"state": {"body": "I was charged twice, please refund this order."}, "questions": Q_GENERIC, "lang": "en"},
+    ]),
+]
+
+# Requests Python refuses before routing anything: (label, Router kwargs, request dicts).
+ROUTE_BATCH_ERROR_CASES = [
+    ("state_none", {}, [{"state": "ok", "questions": Q_GENERIC}, {"state": None, "questions": Q_GENERIC}]),
+    ("state_missing", {}, [{"questions": Q_GENERIC}]),
+    ("questions_missing", {}, [{"state": "ok"}]),
+    ("questions_none", {}, [{"state": "ok", "questions": None}]),
+    ("unknown_model", {}, [{"state": "ok", "questions": Q_GENERIC}, {"state": "ok", "questions": Q_GENERIC, "model": "gpt"}]),
+    ("request_not_dict", {}, [{"state": "ok", "questions": Q_GENERIC}, "ok"]),
 ]
 
 

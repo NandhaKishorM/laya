@@ -4,11 +4,11 @@
     python laya-ts/scripts/option_stability_fixtures.py --python-root REFERENCE --check
 
 REFERENCE must contain laya/hooks.py and laya/common.py. The committed oracle records
-its actual source hashes and Git provenance; it uses the rename semantics from #1286
-and the raw score/report/calibration contract from #1289. It is a local combination
-of those changes until they land, not a claim that they are already on main.
-Only the standard library is needed. The production render functions are loaded
-unchanged from their AST so generating fixtures does not import torch or a model.
+its original source hashes and Git provenance from a local combination of the #1286
+rename semantics and the raw score/report/calibration contract from #1289.
+NumPy is required by the production hooks. The production render functions are
+loaded unchanged from their AST so generating fixtures does not import torch or
+a model.
 """
 from __future__ import annotations
 

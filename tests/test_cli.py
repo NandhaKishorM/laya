@@ -384,6 +384,17 @@ code, out, err, stub = run_batch_cli(["--batch", os.path.join(tmp, "missing.txt"
 check("batch missing file: exit 2 with a named failure",
       code == 2 and "could not read" in err, "code %r err %r" % (code, err))
 
+# read_batch_lines opens FILE with encoding="utf-8", so a non-UTF-8 file fails inside the read
+# with a UnicodeDecodeError -- a ValueError, not an OSError -- which the old `except OSError`
+# let escape as a traceback with exit 1, naming no file. It is a usage error about this file.
+bad_bytes = os.path.join(tmp, "latin1.txt")
+with open(bad_bytes, "wb") as handle:
+    handle.write(b"caf\xe9 ticket\nsecond line\n")
+code, out, err, stub = run_batch_cli(["--batch", bad_bytes])
+check("batch non-UTF-8 file: exit 2 naming the file, not a traceback",
+      code == 2 and "could not read" in err and bad_bytes in err,
+      "code %r err %r" % (code, err))
+
 code, out, err, stub = run_batch_cli(["--batch", path, "inline text"])
 check("batch: text and --batch are mutually exclusive",
       code == 2 and "not both" in err, "code %r err %r" % (code, err))
@@ -668,6 +679,36 @@ code, out, err, stub = run_cli(["hi", "--questions", os.path.join(_TMP, "missing
                                router=QuestionRecorder())
 check("questions: missing file is a handled error",
       code == 2 and "no such --questions file" in err, "code %r, err %r" % (code, err))
+
+
+def write_raw(name, data):
+    path = os.path.join(_TMP, name)
+    with open(path, "wb") as handle:
+        handle.write(data)
+    return path
+
+
+# A file that is not valid JSON, not UTF-8, or nested past what json.load can read used to leak
+# out of load_questions as a bare JSONDecodeError / UnicodeDecodeError / RecursionError: the first
+# two named the fault but not the file, and RecursionError was swallowed by run()'s
+# `except (ImportError, OSError, RuntimeError)` and reported as a checkpoint/download problem --
+# a false diagnosis for a corrupt question file. Each is now a path-naming ValueError (exit 2).
+not_json_path = write_raw("not_json.json", b"{ this is not json }")
+code, out, err, stub = run_cli(["hi", "--questions", not_json_path], router=QuestionRecorder())
+check("questions: invalid JSON is exit 2 naming the file",
+      code == 2 and "not valid JSON" in err and not_json_path in err, "code %r err %r" % (code, err))
+
+non_utf8_path = write_raw("latin1.json", b'{"\xe9": {"type": "noul"}}')
+code, out, err, stub = run_cli(["hi", "--questions", non_utf8_path], router=QuestionRecorder())
+check("questions: non-UTF-8 file is exit 2 naming the file",
+      code == 2 and "not UTF-8 text" in err and non_utf8_path in err, "code %r err %r" % (code, err))
+
+# Depth past the C scanner's limit raises RecursionError, not a decode/parse error.
+deep_path = write_raw("deep.json", b"[" * 100000 + b"]" * 100000)
+code, out, err, stub = run_cli(["hi", "--questions", deep_path], router=QuestionRecorder())
+check("questions: too-deep JSON is exit 2, not a download-error message",
+      code == 2 and "nested deeper" in err and "checkpoint" not in err,
+      "code %r err %r" % (code, err))
 
 code, out, err, stub = run_cli(["hi", "--questions", INTENTS_PATH, "--preset", "triage"],
                                router=QuestionRecorder())

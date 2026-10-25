@@ -10,13 +10,17 @@ export interface InternalQ {
   optionOrder?: number[];
 }
 /** Python `json.dumps` for a finite number. JavaScript prints the same shortest round-trip
-digits, but Python switches to exponent notation below 1e-4 (JavaScript: below 1e-6) and pads the
-exponent to two digits (`5e-05`, not `5e-5`). An integer-valued number prints as before, which
-matches a Python int below 1e21: JavaScript cannot tell Python's `49.0` from `49`. */
+digits, but CPython's `repr` switches to exponent notation when the decimal exponent is below -4
+OR at or above 16 -- JavaScript's `String(v)` switches below 1e-6 and at 1e21 -- and pads a single
+digit exponent to two (`5e-05`, not `5e-5`, and `1e+16`, never `1e16`). An integer-valued number
+prints as before, which matches a Python int below 1e21: JavaScript cannot tell Python's `49.0`
+from `49`. The upper bound is not cosmetic: `1e16` is `10000000000000000` in JavaScript and
+`1e+16` in Python, and that text is what the tokenizer sees. */
 function pyNumber(v: number): string {
   const [mant, exp] = v.toExponential().split("e");
   const e = Number(exp);
-  return e >= -4 ? String(v) : `${mant}e-${String(-e).padStart(2, "0")}`;
+  if (e >= -4 && e < 16) return String(v);
+  return `${mant}e${e < 0 ? "-" : "+"}${String(Math.abs(e)).padStart(2, "0")}`;
 }
 /** Python `json.dumps(v, ensure_ascii=False)` replica: separators (", ", ": "),
 unicode raw, unknown types fall back to undefined (caller applies str()). */

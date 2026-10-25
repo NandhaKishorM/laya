@@ -164,6 +164,17 @@ def load_questions(path):
             raw = json.load(handle)
     except FileNotFoundError:
         raise ValueError("no such --questions file: %s" % path)
+    # The same three refusals `laya/evidence.py::_read_json_object` makes: a bare JSONDecodeError or
+    # UnicodeDecodeError says what is wrong with the text but not which file, and a too-deep document
+    # surfaces as a RecursionError that the caller's `except (OSError, RuntimeError, ...)` misreads as
+    # a dependency/download problem. Prefix each with the path so it is a usage error about this file.
+    except json.JSONDecodeError as error:
+        raise ValueError("--questions file %s is not valid JSON: %s" % (path, error)) from error
+    except UnicodeDecodeError as error:
+        raise ValueError("--questions file %s is not UTF-8 text: %s" % (path, error)) from error
+    except RecursionError as error:
+        raise ValueError("--questions file %s is JSON nested deeper than it can be read: %s"
+                         % (path, error)) from error
     if not isinstance(raw, dict):
         raise ValueError("--questions file must be a JSON object of question id -> definition")
     state_key = "request"
@@ -483,7 +494,7 @@ def main(argv=None):
             return 2
         try:
             lines = read_batch_lines(args.batch)
-        except OSError as error:
+        except (OSError, UnicodeDecodeError) as error:
             print("laya: could not read %s (%s)." % (args.batch, error), file=sys.stderr)
             return 2
         if not lines:

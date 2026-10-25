@@ -41,8 +41,10 @@
 //!   records the clamped entries.
 
 pub mod answers;
+pub mod batch_prediction;
 pub mod calibration;
 pub mod collator;
+pub mod confidence;
 pub mod error;
 pub mod language_detection;
 pub mod laya_config;
@@ -54,6 +56,7 @@ pub mod laya_router;
 pub mod laya_shortlist;
 pub mod long_prediction;
 pub mod model_artifacts;
+pub mod predict_options;
 pub mod python_json;
 mod python_json_reader;
 pub mod questions;
@@ -64,8 +67,10 @@ pub use answers::{
     ActionInfo, Answer, ChoiceAnswer, LayaResult, NoulAnswer, ScanUsage, ScoreAnswer, StateUsage,
     Usage, WindowInfo,
 };
+pub use batch_prediction::BatchOptions;
 pub use calibration::Calibration;
 pub use collator::{CollatedBatch, Collator, SequenceItem};
+pub use confidence::{GATE_STATES, MinConfidence, bucket_keys};
 pub use error::{LayaError, Result};
 pub use language_detection::{LanguageAnalysis, LanguageDetection, LatinProfile};
 pub use laya_config::LayaConfig;
@@ -76,12 +81,13 @@ pub use laya_options::{
 };
 pub use laya_presets::LayaPresets;
 pub use laya_router::{
-    GuessInput, LangGuess, LayaLongPredictor, LayaPredictor, LayaRouter, LayaRouterOptions,
-    RouteDecision,
+    BatchRequest, GuessInput, LangGuess, LayaBatchPredictor, LayaLongPredictor, LayaPredictor,
+    LayaRouter, LayaRouterOptions, RouteDecision,
 };
 pub use laya_shortlist::{DEFAULT_SHORTLIST_K, LayaShortlist, ShortlistInfo};
 pub use long_prediction::LongOptions;
 pub use model_artifacts::{ModelArtifacts, ModelLayout, ModelPaths};
+pub use predict_options::PredictOptions;
 pub use python_json::PythonJson;
 pub use questions::{
     ChoiceQuestion, NoulQuestion, Question, QuestionSet, QuestionType, ScoreQuestion,

@@ -258,6 +258,8 @@ def validate_timeout(value: Optional[float]) -> Optional[float]:
     ``join(inf)`` raises ``OverflowError`` instead of waiting.
     A bool is rejected as well: ``float(True)`` is ``1.0``, so ``hooks_timeout=True`` would
     otherwise install a one-second deadline on every hook call that the caller never asked for.
+    A value ``float()`` cannot read -- a list/object, or a JSON integer too large for a float -- is
+    rejected with the same ``ValueError`` rather than leaking ``TypeError``/``OverflowError``.
     """
     if value is None:
         return None
@@ -268,7 +270,16 @@ def validate_timeout(value: Optional[float]) -> Optional[float]:
         # first, so an MCP caller still hears `invalid_hooks_timeout` rather than this ValueError.
         raise ValueError(
             "hooks_timeout must be a positive finite number or None, not a bool; got %r" % (value,))
-    timeout = float(value)
+    try:
+        timeout = float(value)
+    except (TypeError, OverflowError):
+        # A list/object is not a number and a JSON integer larger than a float overflows `float()`;
+        # both used to escape as a raw TypeError/OverflowError from the coercion below. `OverflowError`
+        # in particular is a valid-JSON number that reached `laya/mcp/tools.py::_validate_hooks_timeout`,
+        # which catches only (TypeError, ValueError), so it surfaced as `internal_error`. Refuse both
+        # shapes here with the same ValueError as every other bad timeout.
+        raise ValueError(
+            "hooks_timeout must be a positive finite number or None; got %r" % (value,)) from None
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("hooks_timeout must be a positive finite number or None; got %r" % (value,))
     return timeout

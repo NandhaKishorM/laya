@@ -20,6 +20,7 @@ import numpy as np  # noqa: E402
 
 import laya.agent as agent_mod
 from laya.agent import Agent, _check_scan_budget, _start_evidence
+from laya.hooks import OptionStabilityHook
 
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 
@@ -583,6 +584,97 @@ expected = _question_agent().predict_long(LONG, Q)
 actual, exc = _attempt(lambda: _question_agent().predict_long(LONG, Q, on_predict_end=_annotate_first_window))
 check("questions/a first-window end annotation preserves the scan's answers", actual, expected)
 check("questions/a first-window end annotation does not require other windows to match", _kind(exc), None)
+
+# The public stability hook adds probe questions at start and removes their answers at end.
+# Ordinary inference is the reference for the returned labels, probabilities and reliability;
+# a long scan must retain the same user-question mapping and its deciding window's metadata.
+def _stability_hook():
+    return OptionStabilityHook(accept=None, escalate=None, probes="reorder",
+                               variants=["reversed"], seed="long-regression")
+
+
+for name, method, states in (("ordinary", "system_one", "short"),
+                             ("short", "predict_long", "short"),
+                             ("batch", "predict_batch", ["first", "second"])):
+    hook = _stability_hook()
+    result = getattr(_question_agent(), method)(states, Q, hooks=[hook])
+    rows = result if isinstance(result, list) else [result]
+    check("stability/%s returns only user questions" % name,
+          [list(row["answers"]) for row in rows], [list(Q)] * len(rows))
+    check("stability/%s ran the real reorder probe" % name,
+          [row["answers"]["dept"]["reliability"]["probes"] for row in rows],
+          [["reorder"]] * len(rows))
+    check("stability/%s releases its run plan" % name, hook._plans, {})
+
+reference_agent = _question_agent()
+reference_agent.predict_long(LONG, Q)
+reference_rows = _question_agent().predict_batch(list(reference_agent._encoded), Q,
+                                                hooks=[_stability_hook()])
+check_true("stability/the first window has the most confident original choice",
+           reference_rows[0]["answers"]["dept"]["answer_confidence"] >
+           reference_rows[1]["answers"]["dept"]["answer_confidence"])
+check("stability/the original choice keeps its own label", reference_rows[0]["answers"]["dept"]["choice"], "a")
+hook = _stability_hook()
+actual, exc = _attempt(lambda: _question_agent().predict_long(LONG, Q, hooks=[hook]))
+check("stability/long returns after probe answers are removed", _kind(exc), None)
+check("stability/long retains the final user schema", list((actual or {}).get("answers", {})), list(Q))
+if actual is not None:
+    for qid in Q:
+        answer = dict(actual["answers"][qid])
+        window = answer.pop("window")
+        check("stability/%s keeps the winning batch answer and all metadata" % qid,
+              answer, reference_rows[0]["answers"][qid])
+        check("stability/%s keeps the original winning window" % qid, window,
+              {"index": 0, "token_start": 0, "token_end": 72, "count": len(reference_rows)})
+    check("stability/usage counts every scored window", actual["usage"]["windows"], len(reference_rows))
+check("stability/long releases its run plan", hook._plans, {})
+
+routed_agent = _question_agent()
+routed_agent.hooks = [_stability_hook()]
+routed, exc = _attempt(lambda: _router(routed_agent).predict_long(LONG, Q, model="english"))
+check("stability/router reaches the hooked long scan", _kind(exc), None)
+if routed is not None and actual is not None:
+    check("stability/router preserves the scan's answers", routed["answers"], actual["answers"])
+    check("stability/router retains routing metadata", routed["routing"]["model"], "english")
+
+
+def _remove_dept(ctx):
+    for row in ctx.results:
+        del row["answers"]["dept"]
+
+
+check_raises("end removal/a caller question cannot silently disappear from every window", ValueError,
+             lambda: _question_agent().predict_long(LONG, Q, on_predict_end=_remove_dept))
+
+for policy in (True, False):
+    check_raises("end removal/a partial removal is refused with hooks_raise=%s" % policy, ValueError,
+                 lambda: _question_agent().predict_long(
+                     LONG, Q, hooks_raise=policy,
+                     on_predict_end=lambda ctx: ctx.results[0]["answers"].pop("dept")))
+
+check_raises("end removal/a replacement batch cannot silently omit every answer", ValueError,
+             lambda: make_agent(lambda states, q: [{"answers": {}, "usage": {}} for _ in states])
+             .predict_long(LONG, Q))
+
+
+def _add_temporary(ctx):
+    ctx.questions["temporary"] = dict(Q["flag"])
+
+
+def _remove_temporary(ctx):
+    for row in ctx.results:
+        del row["answers"]["temporary"]
+
+
+actual, exc = _attempt(lambda: _question_agent().predict_long(
+    LONG, dict(Q), on_predict_start=_add_temporary, on_predict_end=_remove_temporary))
+check("end removal/an in-place start addition returns after removal", _kind(exc), None)
+check("end removal/an in-place start addition can be uniformly removed",
+      (actual or {}).get("answers"), _question_agent().predict_long(LONG, Q)["answers"])
+check_raises("end removal/a start-added question missing in only one window is refused", ValueError,
+             lambda: _question_agent().predict_long(
+                 LONG, dict(Q), on_predict_start=_add_temporary,
+                 on_predict_end=lambda ctx: ctx.results[0]["answers"].pop("temporary")))
 
 # The recorder must leave invalid input to predict_batch's existing question validation.
 for malformed in (None, [], {"bad": None}, {"bad": {}}, {"bad": {"type": "unknown"}}):

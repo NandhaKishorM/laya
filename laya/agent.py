@@ -1831,6 +1831,14 @@ class Agent(HookRegistry):
             question_types = {qid: self._to_internal(qdef)["t"] for qid, qdef in questions.items()}
         answers = {}
         for qid, qtype in question_types.items():
+            missing = sum(qid not in r["answers"] for r in results)
+            if missing:
+                # End hooks may remove start-added questions, but must not hide a missing
+                # caller answer or an inconsistent set of answers across windows.
+                if missing == len(results) and qid not in asked and evidence["question_types"] is not None:
+                    continue
+                raise ValueError("predict_long: answer %r is missing from %d of %d windows after prediction hooks"
+                                 % (qid, missing, len(results)))
             per = [r["answers"][qid] for r in results]
             if qtype == "noul":
                 # Evidence anywhere: the strongest window decides. Its own P(true) and confidence

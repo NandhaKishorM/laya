@@ -38,7 +38,12 @@ public sealed partial class PredictParityTests
         var states = BatchStates(root);
         var questions = GoldenData.BuildQuestions(root.GetProperty("questions"));
 
-        var got = engine.PredictBatch(states, questions, BatchOptions(root.GetProperty("options")));
+        // Cases whose states, questions and chunk shapes are byte-identical (the batch_size and
+        // min_confidence variants) feed the graph the same tensors, so that forward pass runs once;
+        // each case still tokenizes, plans, gates and decodes on its own and meets its own golden.
+        IReadOnlyList<LayaResult> got;
+        using (ForwardMemos.Install(engine, checkpoint, split))
+            got = engine.PredictBatch(states, questions, BatchOptions(root.GetProperty("options")));
 
         var expected = root.GetProperty("results").EnumerateArray().ToArray();
         Assert.Equal(expected.Length, got.Count);

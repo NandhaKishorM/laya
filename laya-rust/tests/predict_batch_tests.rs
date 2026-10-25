@@ -11,6 +11,7 @@
 mod common;
 
 use common::engines::{self, CHECKPOINTS};
+use common::forward_memo::ForwardMemos;
 use common::golden_data::{self, CheckpointGoldenData};
 use common::result_compare::{assert_result_matches, assert_state_usage_matches};
 use laya::answers::{LayaResult, Usage};
@@ -500,6 +501,7 @@ fn check_batch_case(engine: &LayaEngine, where_case: &str, root: &Value) {
 
 fn run_success_cases(
     load: fn(LayaCheckpoint) -> Option<LayaEngine>,
+    split: bool,
     label: &str,
     unavailable: &str,
 ) {
@@ -516,6 +518,11 @@ fn run_success_cases(
         for case in golden.batch_cases() {
             checked_any = true;
             let root = golden.load_case(&case);
+            // Cases whose states, questions and chunk shapes are byte-identical (the batch_size
+            // and min_confidence variants) feed the graph the same tensors, so that forward pass
+            // runs once; each case still tokenizes, plans, gates and decodes on its own and meets
+            // its own golden.
+            let _memo = ForwardMemos::install(&engine, checkpoint, split);
             check_batch_case(
                 &engine,
                 &format!("{}/{case}{label}", checkpoint.subdir()),
@@ -532,6 +539,7 @@ fn run_success_cases(
 fn reproduces_the_recorded_batch_predictions() {
     run_success_cases(
         engines::load,
+        false,
         "",
         "no batch golden data + artifacts found for any checkpoint",
     );
@@ -541,6 +549,7 @@ fn reproduces_the_recorded_batch_predictions() {
 fn reproduces_the_recorded_batch_predictions_for_the_split_layout() {
     run_success_cases(
         engines::load_split,
+        true,
         " (split layout)",
         "no split-layout ONNX artifacts + batch golden data found for any checkpoint",
     );

@@ -1014,7 +1014,7 @@ with `--solution` rather than as a positional argument.
 ## Known gaps
 
 Default and long predictions are verified against goldens regenerated from Python
-**0.4.11**, and routing against goldens from Python **0.4.12**. Language detection uses current script and mixed-language rules; `MixedSegment`
+**0.4.14**, and routing against goldens from the same version. Language detection uses current script and mixed-language rules; `MixedSegment`
 identifies the foreign line or field that overrides a mostly-English state. Undetermined
 Latin text uses the router's configured default. Email cleaning follows current request,
 disclaimer, signature and reply-header rules, including Portuguese, Spanish and French markers.

@@ -259,6 +259,29 @@ requests by their orders as well. `LayaShortlist::predict` drops the order of a 
 with a warning, because the order no longer fits the kept labels; a choice it forwards whole keeps
 its order.
 
+### Noul labels
+
+A noul question names its two options "false" and "true" by default. `Question::with_noul_labels`
+(or `Question::with_labels` with the JSON object `{"false": ..., "true": ...}`) renames them, so
+the model reads `"<label>: <criterion or default text>"` instead. This is Python's `labels`. The
+answer is unchanged: a noul still returns the probability of true, and temperature, `min_confidence`
+and `option_order` do not depend on the labels (a label moves with its slot).
+
+```rust,no_run
+use laya::Question;
+use serde_json::Value;
+
+let q = Question::noul("Is the service down?", Value::Null, Value::Null)
+    .with_noul_labels("healthy", "outage"); // "healthy: no, the statement does not hold", ...
+# Ok::<(), laya::LayaError>(())
+```
+
+As in Python, the labels must be exactly the keys `false` and `true`, each a distinct non-empty
+string once stripped of whitespace (the stripped text is what the model reads), and `labels` is only
+allowed on a noul. Nothing is refused when the question is built: `predict`, `predict_batch` and
+`predict_long` refuse it with `LayaError::InvalidQuestion`, Python's text, naming the question.
+The router includes the labels in its batch grouping key.
+
 ### QuestionSet
 
 ```rust,no_run
@@ -956,6 +979,9 @@ Rust port groups the corresponding functions into a unit struct with associated 
 - **`option_order` is a builder, not a dictionary key.** `Question::with_option_order` takes
   integers, so Python's refusal of a bool, a float or a non-list order has nothing to refuse; the
   permutation rule and its text are the same, and so is the timing (at prediction).
+- **`labels` is a builder, not a dictionary key.** `Question::with_labels` takes any JSON value
+  (`with_noul_labels` is the two-string shortcut), so Python's refusal of a non-dict, a missing or
+  extra key and a non-string is reproduced at prediction with the same text and timing.
 - **`QuestionType` carries no methods.** The Python type name lives on
   `SequenceBuilder::type_name` rather than on the enum, and the `qtype` tensor's integer encoding
   is a plain `qtype as i64` cast (the enum's discriminants already match `QTYPES`). The reverse

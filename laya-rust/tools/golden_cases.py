@@ -1004,3 +1004,143 @@ OPTION_ORDER_SHORTLIST_CASES = [
         "k": 20,
     },
 ]
+
+# Custom noul `labels` (common.py:114-125 and :147-153, agent.py:1101-1106): the false/true option texts
+# the model reads become "<label>: <criterion or default text>"; the answer is still P(true), and the
+# temperature and min_confidence buckets (`noul:2`) do not look at them. Validated and stripped in
+# `_check_question` / `_resolve_noul_labels`. Kept in lists of their own, processed after every earlier
+# case, so the existing goldens and index.json stay byte-identical (the dump only appends).
+def _labelled(question, false_label, true_label, **extra):
+    """`question` with `labels`, spelled as agent.py:1907 documents it: after `criteria`, before `option_order`."""
+    return dict(question, labels={"false": false_label, "true": true_label}, **extra)
+
+
+_LABEL_PLAIN = CASES[0]["questions"]["churn_risk"]          # no criteria
+_LABEL_WORDED = CASES[0]["questions"]["needs_human"]        # false/true criteria
+
+NOUL_LABELS_CASES = [
+    # With and without criteria: "B: no, the statement does not hold" / "A: yes, ..." and the worded form.
+    {
+        "name": "noul_labels",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _labelled(_LABEL_PLAIN, "B", "A"),
+            "needs_human": _labelled(_LABEL_WORDED, "no", "yes"),
+        },
+    },
+    # Padding is stripped before rendering (Python str.strip, so tabs and newlines go too).
+    {
+        "name": "noul_labels_padded",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _labelled(_LABEL_PLAIN, "  low risk ", "\thigh risk\n"),
+            "needs_human": _labelled(_LABEL_WORDED, " bot ", " human "),
+        },
+    },
+    # Labels spelled like the defaults render exactly as no labels at all; non-ASCII labels pass through.
+    {
+        "name": "noul_labels_default_spelling",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _labelled(_LABEL_PLAIN, "false", "true"),
+            "needs_human": _labelled(_LABEL_WORDED, "não", "是"),
+        },
+    },
+    # The labels travel with their slot: slot 0 shows the true option under `option_order` [1, 0].
+    {
+        "name": "noul_labels_option_order",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _labelled(_LABEL_PLAIN, "B", "A", option_order=[1, 0]),
+            "needs_human": _labelled(_LABEL_WORDED, "no", "yes", option_order=[1, 0]),
+        },
+    },
+    # Mixed with unlabelled questions of every type, and the noul:2 abstention bucket.
+    {
+        "name": "noul_labels_mixed_min_confidence",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "department": _ORDER_CHOICE,
+            "urgency": _ORDER_SCORE,
+            "churn_risk": _labelled(_LABEL_PLAIN, "B", "A"),
+            "needs_human": _LABEL_WORDED,
+        },
+        "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}},
+    },
+]
+
+# A typed SDK can express only these invalid shapes: a blank label, two equal labels (after strip), and a
+# non-string (None). A missing or extra key, a non-dict, and `labels` on a non-noul question cannot be
+# spelled with typed questions, so they are not recorded here.
+NOUL_LABELS_ERROR_CASES = [
+    {"name": "noul_labels_blank_false", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "", "A")}},
+    {"name": "noul_labels_blank_after_strip", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "B", " \t\n ")}},
+    {"name": "noul_labels_equal", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "same", "same")}},
+    {"name": "noul_labels_equal_after_strip", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "yes", "  yes ")}},
+    {"name": "noul_labels_non_string_false", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, None, "A")}},
+    {"name": "noul_labels_non_string_true", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "B", None)}},
+    # Questions are checked in declaration order, so the first bad one is the one named, and within one
+    # question `option_order` is checked before `labels`.
+    {"name": "noul_labels_first_bad_reported", "state": QUICKSTART_STATE,
+     "questions": {"department": _ORDER_CHOICE,
+                   "needs_human": _labelled(_LABEL_WORDED, "x", "x"),
+                   "churn_risk": _labelled(_LABEL_PLAIN, "", "A")}},
+    {"name": "noul_labels_order_checked_first", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "", "", option_order=[0, 0])}},
+    # `%r` of the id: a quote in it switches repr to double quotes.
+    {"name": "noul_labels_id_repr", "state": QUICKSTART_STATE,
+     "questions": {"it's": _labelled(_LABEL_PLAIN, "a", " a")}},
+]
+
+# predict_long (ONNXAgent): checked before the window budget, rendered in every window.
+NOUL_LABELS_LONG_QUESTIONS = dict(LONG_QUESTIONS, cancel=_labelled(LONG_QUESTIONS["cancel"], "B", "A"))
+
+NOUL_LABELS_LONG_CASES = [
+    {"name": "long_noul_labels_short", "state": QUICKSTART_STATE,
+     "questions": NOUL_LABELS_LONG_QUESTIONS},
+    {
+        "name": "long_noul_labels_multi_chunk",
+        "state": ("The agent checked the account and recorded routine status updates. " * 180
+                  + QUICKSTART_STATE),
+        "questions": dict(NOUL_LABELS_LONG_QUESTIONS,
+                          cancel=_labelled(LONG_QUESTIONS["cancel"], " B ", "A", option_order=[1, 0])),
+        "options": {"batch_size": 2},
+    },
+]
+
+NOUL_LABELS_LONG_ERROR_CASES = [
+    {"name": "long_noul_labels_invalid", "state": "short",
+     "questions": dict(LONG_QUESTIONS, cancel=_labelled(LONG_QUESTIONS["cancel"], "a", "a "))},
+    # Checked before the stride, as Python validates the questions first.
+    {"name": "long_noul_labels_before_stride", "state": "short",
+     "questions": {"cancel": _labelled(LONG_QUESTIONS["cancel"], "", "A")},
+     "options": {"window": 32, "stride": 33}},
+]
+
+# predict_batch (ONNXAgent): one set of labels per question, shared by every state.
+NOUL_LABELS_BATCH_CASES = [
+    {"name": "batch_noul_labels", "states": BATCH_MIXED_STATES,
+     "questions": NOUL_LABELS_LONG_QUESTIONS},
+    {"name": "batch_noul_labels_chunked", "states": BATCH_SORT_STATES[:7],
+     "questions": NOUL_LABELS_LONG_QUESTIONS,
+     "options": {"batch_size": 3, "sort_by_length": True}},
+    {"name": "batch_noul_labels_min_confidence", "states": BATCH_MIXED_STATES[:4],
+     "questions": NOUL_LABELS_LONG_QUESTIONS,
+     "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}}},
+    # No states: answered without looking at the questions, so bad labels are not reported.
+    {"name": "batch_noul_labels_empty_states_invalid",
+     "states": [], "questions": {"cancel": _labelled(LONG_QUESTIONS["cancel"], "x", "x")}},
+]
+
+NOUL_LABELS_BATCH_ERROR_CASES = [
+    {"name": "batch_noul_labels_invalid", "states": [QUICKSTART_STATE, "short"],
+     "questions": {"topic": LONG_QUESTIONS["topic"],
+                   "cancel": _labelled(LONG_QUESTIONS["cancel"], "", "A")},
+     "error_type": "ValueError"},
+]

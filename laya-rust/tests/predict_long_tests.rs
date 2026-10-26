@@ -451,7 +451,7 @@ fn rejects_the_same_long_requests_python_rejects() {
             let right_variant = match name {
                 "long_invalid_aggregate" => matches!(error, LayaError::UnsupportedAggregate(_)),
                 // Python's ValueError text, whole, raised before the window budget is planned.
-                _ if golden_data::is_option_order_error(expected_message) => {
+                _ if golden_data::is_question_check_error(expected_message) => {
                     assert_eq!(
                         expected_message,
                         actual_message,

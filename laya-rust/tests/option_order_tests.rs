@@ -217,3 +217,19 @@ fn the_shortlist_drops_a_stale_order_with_pythons_warning_and_keeps_a_passthroug
         log[0].2
     );
 }
+
+#[test]
+fn noul_labels_move_with_their_slot() {
+    let q = Question::noul("h", "fine", Value::Null)
+        .with_noul_labels("calm", "alarm")
+        .with_option_order([1, 0]);
+    assert_eq!(
+        vec![
+            "noul question: h",
+            " alarm: yes, the statement holds",
+            " calm: fine",
+            "s"
+        ],
+        texts_for(&q)
+    );
+}

@@ -279,7 +279,7 @@ fn rejects_the_same_questions_python_rejects() {
             let expected_message = root["error_message"].as_str().unwrap();
             let actual_message = error.to_string();
             // An invalid `option_order` is Python's ValueError text, whole, naming the question.
-            if golden_data::is_option_order_error(expected_message) {
+            if golden_data::is_question_check_error(expected_message) {
                 assert!(
                     matches!(error, LayaError::InvalidQuestion(_)),
                     "{}/{case}: expected LayaError::InvalidQuestion, got {error:?}",

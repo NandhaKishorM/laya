@@ -45,6 +45,14 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
   (such a file loads as Python loads it, without that warning). API notes: `LayaOptions` has a new
   public field, `calibration`, so code that builds it without `..Default::default()` must add it;
   `LayaEngine::binning_map` and the public `calibration_file` module are new.
+- Noul custom labels, Python's `labels`: `Question::with_noul_labels` and `Question::with_labels`
+  (plus `Question::labels`) rename a noul question's two options, rendered as
+  `"<label>: <criterion or default text>"`. The labels must be exactly `false` and `true`, distinct
+  non-empty strings once stripped; invalid labels, and labels on a choice or score, are refused at
+  `predict`, `predict_batch` and `predict_long` with `LayaError::InvalidQuestion` and Python's
+  text, naming the question. The answer, the temperature bucket and the abstention gate are
+  unchanged, a label moves with its slot under `option_order`, and the router includes the labels
+  in its batch grouping key. `Question::noul` is unchanged.
 - Question-level `option_order`, Python's way to lay a question's options out in another order:
   `Question::with_option_order` and `Question::option_order` on choice, score and noul questions.
   Slot `s` shows option `order[s]`; the model's row is softmaxed in slot order and scattered back

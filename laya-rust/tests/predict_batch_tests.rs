@@ -593,7 +593,7 @@ fn rejects_the_same_batch_requests_python_rejects() {
                     );
                     assert_eq!(message, error.to_string(), "{}/{case}", checkpoint.subdir());
                 }
-                "ValueError" if golden_data::is_option_order_error(message) => {
+                "ValueError" if golden_data::is_question_check_error(message) => {
                     // An invalid `option_order`: Python's text, whole, naming the question.
                     assert!(
                         matches!(error, LayaError::InvalidQuestion(_)),

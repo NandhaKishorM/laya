@@ -9,7 +9,7 @@
 
 use crate::error::Result;
 use crate::python_json::PythonJson;
-use crate::questions::Question;
+use crate::questions::{Question, resolve_noul_labels};
 use crate::tokenization::LayaTokenizer;
 use serde_json::Value;
 
@@ -89,7 +89,14 @@ impl SequenceBuilder {
                 } else {
                     PythonJson::criterion(n.if_true())
                 };
-                vec![format!("false: {false_text}"), format!("true: {true_text}")]
+                // `check` has already refused invalid labels, as Python's `_check_question` does
+                // before `render_options`, so the defaults here are only a fallback.
+                let (false_label, true_label) = resolve_noul_labels(question.labels())
+                    .unwrap_or_else(|_| ("false".to_string(), "true".to_string()));
+                vec![
+                    format!("{false_label}: {false_text}"),
+                    format!("{true_label}: {true_text}"),
+                ]
             }
         }
     }

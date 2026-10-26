@@ -156,7 +156,13 @@ impl LayaShortlist {
                             })
                             .collect();
                         let kept_count = kept.len();
-                        let reduced_choice = Question::choice(choice.instructions().clone(), kept)?;
+                        let mut reduced_choice =
+                            Question::choice(choice.instructions().clone(), kept)?;
+                        // Python re-keys only the criteria and keeps every other key, so a
+                        // `labels` entry (refused later for a choice) survives the narrowing.
+                        if let Some(labels) = question.labels() {
+                            reduced_choice = reduced_choice.with_labels(labels.clone());
+                        }
                         // The order has one slot per option, so one that fitted the caller's
                         // labels does not fit the kept ones; it is dropped, not remapped (which
                         // would move options between slots). Ports `_drop_stale_order`.

@@ -243,6 +243,17 @@ fn builds_the_recorded_sequence_for_every_question() {
                     panic!("{}/{case}: missing question '{id}'", checkpoint.subdir())
                 });
 
+                // The order the sequence was recorded with (only written when the question has
+                // one): the markers and ids below are in slot order, so they are only comparable if
+                // it was applied.
+                let recorded_order = recorded.get("option_order").map(golden_data::ints);
+                assert_eq!(
+                    recorded_order.as_deref(),
+                    question.option_order(),
+                    "{}/{case}/{id}: option_order",
+                    checkpoint.subdir()
+                );
+
                 // The rendered option strings come first: they are the readable form of a
                 // divergence, so a mismatch here explains a mismatch in the ids below.
                 let expected_options: Vec<&str> = recorded["options"]

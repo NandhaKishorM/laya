@@ -653,5 +653,96 @@
     "file": "case_long_lang_miss.json",
     "expects_error": false,
     "kind": "long"
+  },
+  {
+    "name": "calibration_plain",
+    "file": "case_calibration_plain.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_buckets",
+    "file": "case_calibration_buckets.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_lang_override_skips_binning",
+    "file": "case_calibration_lang_override_skips_binning.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_lang_miss_bins",
+    "file": "case_calibration_lang_miss_bins.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_lang_null_entry_inherits_checkpoint",
+    "file": "case_calibration_lang_null_entry_inherits_checkpoint.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_lang_buckets_skip_binning",
+    "file": "case_calibration_lang_buckets_skip_binning.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_table_without_lang",
+    "file": "case_calibration_table_without_lang.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_min_confidence",
+    "file": "case_calibration_min_confidence.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_min_confidence_map",
+    "file": "case_calibration_min_confidence_map.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_min_confidence_buckets",
+    "file": "case_calibration_min_confidence_buckets.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_min_confidence_lang_override",
+    "file": "case_calibration_min_confidence_lang_override.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_batch",
+    "file": "case_calibration_batch.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "calibration_batch_lang_override",
+    "file": "case_calibration_batch_lang_override.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "calibration_batch_min_confidence",
+    "file": "case_calibration_batch_min_confidence.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "calibration_long_scan",
+    "file": "case_calibration_long_scan.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "calibration_long_single_window",
+    "file": "case_calibration_long_single_window.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "calibration_long_lang_override",
+    "file": "case_calibration_long_lang_override.json",
+    "expects_error": false,
+    "kind": "long"
   }
 ]

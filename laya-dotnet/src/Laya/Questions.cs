@@ -36,11 +36,12 @@ public enum QuestionType
 /// </remarks>
 public abstract class Question
 {
-    internal Question(QuestionType type, object instructions)
+    internal Question(QuestionType type, object instructions, IReadOnlyList<int>? optionOrder = null)
     {
         ArgumentNullException.ThrowIfNull(instructions);
         Type = type;
         Instructions = instructions;
+        OptionOrder = optionOrder is null ? null : Array.AsReadOnly(optionOrder.ToArray());
     }
 
     /// <summary>Which of the three question types this is.</summary>
@@ -51,6 +52,55 @@ public abstract class Question
     /// <see cref="PythonJson.Instructions"/>, matching Python's <c>_to_internal</c>.
     /// </summary>
     public object Instructions { get; }
+
+    /// <summary>
+    /// Which option each slot shows, or null for the canonical order. Slot <c>s</c> shows option
+    /// <c>OptionOrder[s]</c>; answers still come back in the caller's option order. Ports the
+    /// <c>option_order</c> key of a Python question definition. It is checked when the question is
+    /// answered, not when it is built, as Python checks it in <c>_check_question</c>: it must be a
+    /// permutation of <c>0..n-1</c>, with <c>n</c> the number of options (criteria, score levels, or 2
+    /// for a noul). Set it with <c>WithOptionOrder</c> on the concrete question.
+    /// </summary>
+    public IReadOnlyList<int>? OptionOrder { get; }
+
+    /// <summary>How many options this question renders to; Python's <c>_option_count</c>.</summary>
+    internal abstract int OptionCount { get; }
+
+    /// <summary>
+    /// Rejects an <see cref="OptionOrder"/> that is not a permutation of the option indices, with
+    /// Python's text from <c>Agent._check_question</c>. A no-op without an order.
+    /// </summary>
+    internal void CheckOptionOrder(string id)
+    {
+        if (OptionOrder is not { } order) return;
+        var n = OptionCount;
+        var ok = order.Count == n;
+        if (ok)
+        {
+            var seen = new bool[n];
+            foreach (var i in order)
+            {
+                if (i < 0 || i >= n || seen[i]) { ok = false; break; }
+                seen[i] = true;
+            }
+        }
+        if (!ok)
+            throw new ArgumentException(
+                $"question {PythonStr.Repr(id)}: 'option_order' must be a permutation of range({n}) -- one slot per "
+                + $"option, each option once -- got [{string.Join(", ", order)}]");
+    }
+
+    /// <summary>
+    /// Puts a slot-ordered probability row back into option order: Python's <c>unpermute_probs</c>.
+    /// A missing order, or one whose length differs from the row's, returns the row untouched.
+    /// </summary>
+    internal static double[] Unpermute(double[] p, IReadOnlyList<int>? order)
+    {
+        if (order is null || order.Count != p.Length) return p;
+        var canonical = new double[p.Length];
+        for (var s = 0; s < p.Length; s++) canonical[order[s]] = p[s];
+        return canonical;
+    }
 
     /// <summary>A choice question over ordered <c>(label, description)</c> options.</summary>
     /// <remarks>A null or empty description means "no description", exactly as in Python; note
@@ -85,8 +135,9 @@ public abstract class Question
 /// <summary>A <see cref="QuestionType.Choice"/> question: ordered, named options.</summary>
 public sealed class ChoiceQuestion : Question
 {
-    internal ChoiceQuestion(object instructions, IEnumerable<KeyValuePair<string, object?>> options)
-        : base(QuestionType.Choice, instructions)
+    internal ChoiceQuestion(object instructions, IEnumerable<KeyValuePair<string, object?>> options,
+                            IReadOnlyList<int>? optionOrder = null)
+        : base(QuestionType.Choice, instructions, optionOrder)
     {
         ArgumentNullException.ThrowIfNull(options);
         var list = new List<KeyValuePair<string, object?>>();
@@ -110,13 +161,24 @@ public sealed class ChoiceQuestion : Question
 
     /// <summary>The labels, in order.</summary>
     public IReadOnlyList<string> Labels => Options.Select(o => o.Key).ToList();
+
+    internal override int OptionCount => Options.Count;
+
+    /// <summary>
+    /// A copy of this question whose slot <c>s</c> shows option <paramref name="optionOrder"/><c>[s]</c>
+    /// (null clears it). See <see cref="Question.OptionOrder"/>; validated when the question is answered.
+    /// </summary>
+    public ChoiceQuestion WithOptionOrder(IEnumerable<int>? optionOrder) => new(Instructions, Options, optionOrder?.ToArray());
+
+    /// <summary>The params form of <see cref="WithOptionOrder(IEnumerable{int}?)"/>.</summary>
+    public ChoiceQuestion WithOptionOrder(params int[] optionOrder) => new(Instructions, Options, optionOrder);
 }
 
 /// <summary>A <see cref="QuestionType.Score"/> question: an ordered scale, lowest level first.</summary>
 public sealed class ScoreQuestion : Question
 {
-    internal ScoreQuestion(object instructions, IEnumerable<object?> levels)
-        : base(QuestionType.Score, instructions)
+    internal ScoreQuestion(object instructions, IEnumerable<object?> levels, IReadOnlyList<int>? optionOrder = null)
+        : base(QuestionType.Score, instructions, optionOrder)
     {
         ArgumentNullException.ThrowIfNull(levels);
         Levels = levels.ToList();
@@ -126,13 +188,24 @@ public sealed class ScoreQuestion : Question
 
     /// <summary>The levels, lowest first. The answer is an expectation over these indices.</summary>
     public IReadOnlyList<object?> Levels { get; }
+
+    internal override int OptionCount => Levels.Count;
+
+    /// <summary>
+    /// A copy of this question whose slot <c>s</c> shows level <paramref name="optionOrder"/><c>[s]</c>
+    /// (null clears it). See <see cref="Question.OptionOrder"/>; validated when the question is answered.
+    /// </summary>
+    public ScoreQuestion WithOptionOrder(IEnumerable<int>? optionOrder) => new(Instructions, Levels, optionOrder?.ToArray());
+
+    /// <summary>The params form of <see cref="WithOptionOrder(IEnumerable{int}?)"/>.</summary>
+    public ScoreQuestion WithOptionOrder(params int[] optionOrder) => new(Instructions, Levels, optionOrder);
 }
 
 /// <summary>A <see cref="QuestionType.Noul"/> question: does the statement hold?</summary>
 public sealed class NoulQuestion : Question
 {
-    internal NoulQuestion(object instructions, object? ifFalse, object? ifTrue)
-        : base(QuestionType.Noul, instructions)
+    internal NoulQuestion(object instructions, object? ifFalse, object? ifTrue, IReadOnlyList<int>? optionOrder = null)
+        : base(QuestionType.Noul, instructions, optionOrder)
     {
         IfFalse = ifFalse;
         IfTrue = ifTrue;
@@ -143,6 +216,18 @@ public sealed class NoulQuestion : Question
 
     /// <summary>Wording for the true option, or null for the default.</summary>
     public object? IfTrue { get; }
+
+    internal override int OptionCount => 2;
+
+    /// <summary>
+    /// A copy of this question whose slot <c>s</c> shows option <paramref name="optionOrder"/><c>[s]</c>,
+    /// where 0 is the false option and 1 the true one (null clears it). See <see cref="Question.OptionOrder"/>;
+    /// validated when the question is answered.
+    /// </summary>
+    public NoulQuestion WithOptionOrder(IEnumerable<int>? optionOrder) => new(Instructions, IfFalse, IfTrue, optionOrder?.ToArray());
+
+    /// <summary>The params form of <see cref="WithOptionOrder(IEnumerable{int}?)"/>.</summary>
+    public NoulQuestion WithOptionOrder(params int[] optionOrder) => new(Instructions, IfFalse, IfTrue, optionOrder);
 }
 
 /// <summary>

@@ -839,6 +839,9 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
                     entry.Add(new("criteria", wording));
                     break;
             }
+            // `dict(question, option_order=...)` and the README's spelling both put it after the
+            // other keys; json.dumps writes it as a list, so an order is part of the grouping key.
+            if (question.OptionOrder is { } order) entry.Add(new("option_order", order.ToList()));
             all.Add(new(id, entry));
         }
         return PythonJson.Dumps(all, escapeNonAscii: false, fallbackToStr: true);

@@ -56,6 +56,32 @@ public sealed class ShortlistInfo
 }
 
 /// <summary>
+/// Tournament metadata for one choice question: the finalists that reached the final call and how wide the field
+/// was. Mirrors Python's <c>tournament[qid]</c> entry.
+/// </summary>
+public sealed class TournamentInfo
+{
+    internal TournamentInfo(IReadOnlyList<string> labels, int n, int rounds)
+    {
+        Labels = labels;
+        N = n;
+        Rounds = rounds;
+    }
+
+    /// <summary>The finalists, in criteria order (every label when no round was needed).</summary>
+    public IReadOnlyList<string> Labels { get; }
+
+    /// <summary>
+    /// How many labels the caller's question had before the first round: how wide the field was, not how many
+    /// finalists came out of it, so on a choice that played a round it is larger than <c>Labels.Count</c>.
+    /// </summary>
+    public int N { get; }
+
+    /// <summary>How many elimination rounds this question played (0 when it needed none).</summary>
+    public int Rounds { get; }
+}
+
+/// <summary>
 /// Opt-in embedding shortlist for high-cardinality choice questions. Ports <c>laya/shortlist.py</c>.
 /// </summary>
 /// <remarks>
@@ -77,6 +103,9 @@ public static class LayaShortlist
 {
     /// <summary>Default shortlist size, matching Python's <c>DEFAULT_SHORTLIST_K</c>.</summary>
     public const int DefaultShortlistK = 20;
+
+    /// <summary>Default tournament group size, matching Python's <c>DEFAULT_TOURNAMENT_GROUP</c>.</summary>
+    public const int DefaultTournamentGroup = 16;
 
     /// <summary>
     /// Return the top-<paramref name="k"/> choice labels for <paramref name="state"/>, ranked by
@@ -186,6 +215,171 @@ public static class LayaShortlist
 
         var result = predictor.Predict(state, reduced);
         return result.WithShortlist(meta);
+    }
+
+    /// <summary>
+    /// Narrow each large choice question by elimination, then call <paramref name="predictor"/> once more.
+    /// Ports Python's <c>predict_tournament</c> (<c>shortlist.py:139-227</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A choice with more than <paramref name="groupSize"/> labels is cut, in criteria order, into groups of
+    /// near-equal size and at most <paramref name="groupSize"/>. One <c>Predict</c> call answers every group of
+    /// every such question (the groups go in as separate questions with the ids <c>"0"</c>, <c>"1"</c>, ...,
+    /// so they share one forward pass) and each group's answer goes through to the next round. Rounds repeat
+    /// until no choice has more than <paramref name="groupSize"/> labels left. Unlike
+    /// <see cref="Predict"/> this needs no embedder. The final call answers every question of the request, with
+    /// each choice that went through a round cut to its finalists; a request that needs no round is the only
+    /// call. <paramref name="questions"/> is not mutated.
+    /// </para>
+    /// <para>
+    /// A choice that went through a round loses an <see cref="Question.OptionOrder"/> it carried, with one
+    /// warning naming the question (once per question per call, and once per process for identical text, as
+    /// Python's default warnings filter shows it). A choice that needed no round keeps its order.
+    /// </para>
+    /// <para>
+    /// The result is the final call's result (so its probabilities and <see cref="LayaResult.Usage"/> are the
+    /// final call's alone) plus <see cref="LayaResult.Tournament"/>, one entry per choice question.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="groupSize"/> is below 2, with Python's <c>ValueError</c> text.
+    /// </exception>
+    /// <exception cref="KeyNotFoundException">
+    /// A round's reply lacks the answer of a group, or the answer is not a choice, or a winner is not a label of
+    /// its question: Python's <c>KeyError</c> text (the quoted key).
+    /// </exception>
+    public static LayaResult PredictTournament(
+        ILayaPredictor predictor,
+        object? state,
+        QuestionSet questions,
+        int groupSize = DefaultTournamentGroup)
+    {
+        ArgumentNullException.ThrowIfNull(predictor);
+        return PredictTournament(predictor.Predict, state, questions, groupSize);
+    }
+
+    /// <summary>
+    /// <see cref="PredictTournament(ILayaPredictor, object, QuestionSet, int)"/> over a predict function, so a
+    /// caller can forward per-call options to every round and to the final call, as Python's
+    /// <c>**predict_kwargs</c> does: <c>(s, q) =&gt; engine.Predict(s, q, options)</c>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="predict"/> returned <see langword="null"/>, with Python's <c>TypeError</c> text for a
+    /// reply that is not a dict.
+    /// </exception>
+    public static LayaResult PredictTournament(
+        Func<object?, QuestionSet, LayaResult> predict,
+        object? state,
+        QuestionSet questions,
+        int groupSize = DefaultTournamentGroup)
+    {
+        ArgumentNullException.ThrowIfNull(predict);
+        ArgumentNullException.ThrowIfNull(questions);
+        if (groupSize < 2)
+            throw new ArgumentException(
+                $"group_size must be an integer of at least 2, got {groupSize.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+
+        var entries = new List<TournamentEntry>();
+        foreach (var (qid, question) in questions)
+        {
+            if (question is not ChoiceQuestion choice) continue;
+            var labels = choice.Options.Select(o => o.Key).ToList();
+            entries.Add(new TournamentEntry(qid, labels, labels.Count));
+        }
+        var warned = new HashSet<string>(StringComparer.Ordinal);
+
+        while (true)
+        {
+            var groups = new List<(TournamentEntry Entry, List<string> Labels)>();
+            foreach (var entry in entries)
+            {
+                var n = entry.Labels.Count;
+                var parts = (int)(((long)n + groupSize - 1) / groupSize);     // -(-n // g) for positive n and g
+                if (parts <= 1) continue;
+                for (var i = 0; i < parts; i++)
+                {
+                    var lo = (int)((long)i * n / parts);
+                    var hi = (int)((long)(i + 1) * n / parts);
+                    groups.Add((entry, entry.Labels.GetRange(lo, hi - lo)));
+                }
+            }
+            if (groups.Count == 0) break;
+
+            var round = new QuestionSet();
+            for (var i = 0; i < groups.Count; i++)
+                round[GroupId(i)] = CutQuestion(questions, groups[i].Entry.Qid, groups[i].Labels, warned);
+            var reply = CallPredict(predict, state, round);
+
+            var winners = new Dictionary<TournamentEntry, List<string>>();
+            for (var i = 0; i < groups.Count; i++)
+            {
+                if (!reply.TryGetAnswer(GroupId(i), out var answer) || answer is null)
+                    throw new KeyNotFoundException(PythonStr.Repr(GroupId(i)));
+                if (answer is not ChoiceAnswer picked)
+                    throw new KeyNotFoundException(PythonStr.Repr("choice"));
+                if (!winners.TryGetValue(groups[i].Entry, out var list)) winners[groups[i].Entry] = list = [];
+                list.Add(picked.Choice);
+            }
+            foreach (var (entry, labels) in winners)
+            {
+                entry.Labels = labels;
+                entry.Rounds++;
+            }
+        }
+
+        var final = new QuestionSet(questions);
+        foreach (var entry in entries)
+            if (entry.Rounds > 0)
+                final[entry.Qid] = CutQuestion(questions, entry.Qid, entry.Labels, warned);
+        var result = CallPredict(predict, state, final);
+
+        var meta = new Dictionary<string, TournamentInfo>(StringComparer.Ordinal);
+        foreach (var entry in entries)
+            meta[entry.Qid] = new TournamentInfo(entry.Labels, entry.N, entry.Rounds);
+        return result.WithTournament(meta);
+    }
+
+    private sealed class TournamentEntry(string qid, List<string> labels, int n)
+    {
+        public string Qid { get; } = qid;
+        public List<string> Labels { get; set; } = labels;
+        public int N { get; } = n;
+        public int Rounds { get; set; }
+    }
+
+    private static string GroupId(int i) => i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static LayaResult CallPredict(Func<object?, QuestionSet, LayaResult> predict, object? state, QuestionSet questions) =>
+        predict(state, questions)
+        ?? throw new InvalidOperationException("predict/system_one must return a dict, got NoneType");
+
+    /// <summary>
+    /// Python's <c>cut</c> in <c>predict_tournament</c>: the question narrowed to <paramref name="labels"/>
+    /// without an <c>option_order</c> that no longer fits it (<c>_drop_stale_order</c>, shortlist.py:425-448).
+    /// The one warning site of the tournament, as Python's <c>stacklevel=2</c> attributes every such warning to
+    /// the <c>cut</c> line, so it must not be inlined into either of its callers.
+    /// </summary>
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static ChoiceQuestion CutQuestion(QuestionSet questions, string qid, IReadOnlyList<string> labels, HashSet<string> warned)
+    {
+        var choice = (ChoiceQuestion)questions[qid];
+        var byLabel = choice.Options.ToDictionary(o => o.Key, o => o.Value, StringComparer.Ordinal);
+        var kept = new List<KeyValuePair<string, object?>>(labels.Count);
+        foreach (var label in labels)
+        {
+            // Python's _subset_criteria indexes the criteria dict: an unknown winner is a KeyError(label).
+            if (!byLabel.TryGetValue(label, out var description))
+                throw new KeyNotFoundException(PythonStr.Repr(label));
+            kept.Add(new(label, description));
+        }
+        var narrowed = Question.Choice(choice.Instructions, kept);
+        if (choice.OptionOrder is { } order && warned.Add(qid))
+            WarnOnce.Warn(
+                $"laya.shortlist: question {PythonStr.Repr(qid)}: 'option_order' ({order.Count} slots) was dropped because the label "
+                + $"set was narrowed to {labels.Count}; the order no longer fits the kept options and remapping "
+                + "it onto them would move options between slots.");
+        return narrowed;
     }
 
     // ── ranking ───────────────────────────────────────────────────────────────

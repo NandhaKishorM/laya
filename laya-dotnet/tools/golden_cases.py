@@ -1144,3 +1144,69 @@ NOUL_LABELS_BATCH_ERROR_CASES = [
                    "cancel": _labelled(LONG_QUESTIONS["cancel"], "", "A")},
      "error_type": "ValueError"},
 ]
+
+# predict_tournament (shortlist.py:139-227), run by dump_golden.py through Python's own function on the real
+# checkpoint. `group_size` is passed only when a case names it (the default 16 otherwise) and `options` go to
+# every round and to the final call as `**predict_kwargs`. 40 labels at group size g take ceil(40/g) groups of
+# 40*i//parts slices: g=4 -> 10 groups of 4, then 3 groups (3, 3, 4), then the final call (two rounds); g=7 -> 6
+# uneven groups (6 or 7 labels); g=8 -> 5 groups; g=16 -> 3 groups (13, 13, 14); g=40 -> no round at all.
+# Kept in lists of their own, processed after every earlier case, so the existing goldens and index.json stay
+# byte-identical (the dump only appends).
+_T_LABELS = list(SAMPLE_BANKING_CRITERIA)
+_T_BANK = {"type": "choice", "instructions": SAMPLE_BANKING_INSTRUCTIONS, "criteria": SAMPLE_BANKING_CRITERIA}
+_T_SECOND = {
+    "type": "choice",
+    "instructions": "Which product area does the request touch?",
+    "criteria": {label: SAMPLE_BANKING_CRITERIA[label] for label in reversed(_T_LABELS[:25])},
+}
+_T_SMALL = {
+    "type": "choice",
+    "instructions": "Which channel is the customer using?",
+    "criteria": {"app": "mobile app", "web": "website", "branch": "in person"},
+}
+
+TOURNAMENT_CASES = [
+    {"name": "tournament_group4", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK}, "group_size": 4},
+    {"name": "tournament_group7", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK}, "group_size": 7},
+    {"name": "tournament_group8", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK}, "group_size": 8},
+    # No group_size: the default of 16.
+    {"name": "tournament_default_group", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK}},
+    # 40 labels do not exceed 40: no round, one call, the request unchanged.
+    {"name": "tournament_group40", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK},
+     "group_size": 40},
+    # Two large choices, a small one, a score and a noul together at g=6: the 40-label choice plays two rounds,
+    # the 25-label one plays one, the others pass through to the final call unchanged.
+    {"name": "tournament_multi", "state": SAMPLE_BANKING_STATE,
+     "questions": {
+         "intent": _T_BANK,
+         "area": _T_SECOND,
+         "channel": _T_SMALL,
+         "urgency": CASES[0]["questions"]["urgency"],
+         "churn_risk": CASES[0]["questions"]["churn_risk"],
+     },
+     "group_size": 6},
+    # option_order: dropped (with a RuntimeWarning) from both choices that played a round; kept on the choice
+    # that needed none, on the score and on the noul.
+    {"name": "tournament_option_order", "state": SAMPLE_BANKING_STATE,
+     "questions": {
+         "intent": dict(_T_BANK, option_order=list(range(len(_T_LABELS) - 1, -1, -1))),
+         "area": dict(_T_SECOND, option_order=list(range(24, -1, -1))),
+         "channel": dict(_T_SMALL, option_order=[1, 2, 0]),
+         "urgency": dict(CASES[0]["questions"]["urgency"], option_order=[3, 1, 0, 2]),
+         "churn_risk": dict(CASES[0]["questions"]["churn_risk"], option_order=[1, 0]),
+     }},
+    # Per-call options reach every round and the final call.
+    {"name": "tournament_min_confidence", "state": SAMPLE_BANKING_STATE,
+     "questions": {"intent": _T_BANK, "urgency": CASES[0]["questions"]["urgency"]},
+     "group_size": 8, "options": {"min_confidence": 0.6}},
+]
+
+# Raised before any call, so the model is never asked.
+TOURNAMENT_ERROR_CASES = [
+    {"name": "tournament_group_size_1", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK},
+     "group_size": 1, "error_type": "ValueError"},
+    {"name": "tournament_group_size_0", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK},
+     "group_size": 0, "error_type": "ValueError"},
+    {"name": "tournament_group_size_negative", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK},
+     "group_size": -3, "error_type": "ValueError"},
+]

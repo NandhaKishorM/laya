@@ -1019,5 +1019,71 @@
     "file": "case_batch_noul_labels_invalid.json",
     "expects_error": true,
     "kind": "batch"
+  },
+  {
+    "name": "tournament_group4",
+    "file": "case_tournament_group4.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group7",
+    "file": "case_tournament_group7.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group8",
+    "file": "case_tournament_group8.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_default_group",
+    "file": "case_tournament_default_group.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group40",
+    "file": "case_tournament_group40.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_multi",
+    "file": "case_tournament_multi.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_option_order",
+    "file": "case_tournament_option_order.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_min_confidence",
+    "file": "case_tournament_min_confidence.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group_size_1",
+    "file": "case_tournament_group_size_1.json",
+    "expects_error": true,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group_size_0",
+    "file": "case_tournament_group_size_0.json",
+    "expects_error": true,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group_size_negative",
+    "file": "case_tournament_group_size_negative.json",
+    "expects_error": true,
+    "kind": "tournament"
   }
 ]

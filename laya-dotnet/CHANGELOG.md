@@ -19,6 +19,13 @@ goldens: 0.4.12).
   the option indices is rejected by `Predict`, `PredictBatch` and `PredictLong` with Python's text, naming
   the question. `LayaRouter` batch grouping includes the order, and `LayaShortlist.Predict` drops the order of a
   choice it narrows with Python's warning. Existing signatures are unchanged.
+- Custom noul labels, Python's `labels` key (agent.py `_check_question`, common.py `_resolve_noul_labels` /
+  `render_options`): `NoulQuestion.WithLabels(falseLabel, trueLabel)`, `WithoutLabels()` and
+  `NoulQuestion.Labels` (`NoulLabels`). The model reads `<label>: <wording>` in place of `false: ...` /
+  `true: ...`; the labels are stripped, must be distinct and non-empty, and are checked when the question is
+  answered (`Predict`, `PredictBatch`, `PredictLong`) with Python's text, naming the question. The answer is
+  still P(true), and the temperature and `min_confidence` buckets and `OptionOrder` do not depend on them.
+  `LayaRouter` batch grouping includes the labels. Existing signatures are unchanged.
 - `LayaEngine.PredictBatch` (`ILayaBatchPredictor`), `LayaBatchOptions` (`BatchSize`, `SortByLength`),
   `LayaRouter.PredictBatch` and `LayaRouter.RouteBatch` over `LayaBatchRequest`, ported from Python
   `ONNXAgent.predict_batch` and `Router.predict_batch` / `route_batch`: shared forward passes, `batch_size`

@@ -64,12 +64,13 @@ public static class SequenceBuilder
                 return levels;
 
             case NoulQuestion noul:
+                var (falseLabel, trueLabel) = noul.ResolveLabels();
                 return
                 [
-                    "false: " + (IsBlankCriterion(noul.IfFalse)
+                    falseLabel + ": " + (IsBlankCriterion(noul.IfFalse)
                         ? "no, the statement does not hold"
                         : PythonJson.Criterion(noul.IfFalse)),
-                    "true: " + (IsBlankCriterion(noul.IfTrue)
+                    trueLabel + ": " + (IsBlankCriterion(noul.IfTrue)
                         ? "yes, the statement holds"
                         : PythonJson.Criterion(noul.IfTrue)),
                 ];

@@ -396,9 +396,13 @@ public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatch
     /// The part of Python's <c>_check_question</c> a typed question can still fail: its option order,
     /// checked over the questions in declaration order before any is tokenized (onnx_agent.py:534, :813).
     /// </summary>
-    private static void CheckQuestions(QuestionSet questions)
+    internal static void CheckQuestions(QuestionSet questions)
     {
-        foreach (var (id, question) in questions) question.CheckOptionOrder(id);
+        foreach (var (id, question) in questions)
+        {
+            question.CheckOptionOrder(id);
+            question.CheckLabels(id);
+        }
     }
 
     private IReadOnlyList<EncodedState> EncodeStates(IReadOnlyList<object?> states, QuestionSet questions, CallSettings call)

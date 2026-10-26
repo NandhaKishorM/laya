@@ -263,6 +263,11 @@ public static class GoldenData
             // not validated here: an invalid order must reach the engine, which is what rejects it.
             if (def.TryGetProperty("option_order", out var order))
                 question = WithOrder(question, [.. order.EnumerateArray().Select(e => e.GetInt32())]);
+            // The recorded noul `labels`, as the Python call carried them: padding kept, and a JSON null
+            // (Python's None, a non-string) kept as null so the engine is what rejects it.
+            if (def.TryGetProperty("labels", out var labels))
+                question = ((NoulQuestion)question).WithLabels(
+                    labels.GetProperty("false").GetString(), labels.GetProperty("true").GetString());
             set[entry.Name] = question;
         }
         return set;

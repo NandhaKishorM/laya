@@ -58,6 +58,12 @@ from golden_cases import (  # noqa: E402
     LONG_ERROR_CASES,
     MIN_CONFIDENCE_CASES,
     MIN_CONFIDENCE_ERROR_CASES,
+    NOUL_LABELS_BATCH_CASES,
+    NOUL_LABELS_BATCH_ERROR_CASES,
+    NOUL_LABELS_CASES,
+    NOUL_LABELS_ERROR_CASES,
+    NOUL_LABELS_LONG_CASES,
+    NOUL_LABELS_LONG_ERROR_CASES,
     OPTION_ORDER_BATCH_CASES,
     OPTION_ORDER_BATCH_ERROR_CASES,
     OPTION_ORDER_CASES,
@@ -783,6 +789,28 @@ def run_checkpoint(onnx_dir: str, out_dir: str) -> int:
             index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
                           "expects_error": expects_error, "kind": "long"})
     for cases, expects_error in ((OPTION_ORDER_BATCH_CASES, False), (OPTION_ORDER_BATCH_ERROR_CASES, True)):
+        for case in cases:
+            rec = record_batch_case(agent, case, expects_error)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error, "kind": "batch"})
+
+    # Custom noul `labels`, appended after the option_order cases for the same reason. `describe_questions`
+    # needs no change: `Agent._to_internal` copies `labels` into the internal question, and `render_options`
+    # and `build_sequence` read them from there, so `options` / `input_ids` / `markers` are the labelled text.
+    for case in NOUL_LABELS_CASES + NOUL_LABELS_ERROR_CASES:
+        expects_error = case in NOUL_LABELS_ERROR_CASES
+        rec = (record_error_case if expects_error else record_case)(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": expects_error})
+    for cases, expects_error in ((NOUL_LABELS_LONG_CASES, False), (NOUL_LABELS_LONG_ERROR_CASES, True)):
+        for case in cases:
+            rec = record_long_case(agent, case, expects_error)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error, "kind": "long"})
+    for cases, expects_error in ((NOUL_LABELS_BATCH_CASES, False), (NOUL_LABELS_BATCH_ERROR_CASES, True)):
         for case in cases:
             rec = record_batch_case(agent, case, expects_error)
             dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))

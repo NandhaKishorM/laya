@@ -36,13 +36,14 @@
 //!   rules are otherwise byte-for-byte identical to Python's `json.dumps`.
 //! - **Warnings go through the `log` facade.** Python's `warnings.warn` calls that this crate
 //!   ports (a checkpoint whose temperatures were clamped, a `lang_temperatures` entry that was,
-//!   and `predict_long` capping the window or reducing the stride) are sent to the [`log`](https://docs.rs/log) facade at `warn` level with
+//!   a calibration file's, and `predict_long` capping the window or reducing the stride) are sent to the [`log`](https://docs.rs/log) facade at `warn` level with
 //!   target `laya` and Python's text. [`laya_config::LayaConfig::clamped_temperatures`] still
 //!   records the clamped entries.
 
 pub mod answers;
 pub mod batch_prediction;
 pub mod calibration;
+pub mod calibration_file;
 pub mod collator;
 pub mod confidence;
 pub mod error;
@@ -70,6 +71,7 @@ pub use answers::{
 };
 pub use batch_prediction::BatchOptions;
 pub use calibration::Calibration;
+pub use calibration_file::{BinningEntry, BinningMap, CalibrationFile};
 pub use collator::{CollatedBatch, Collator, SequenceItem};
 pub use confidence::{GATE_STATES, MinConfidence, bucket_keys};
 pub use error::{LayaError, Result};

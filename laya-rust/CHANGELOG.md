@@ -29,6 +29,22 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
   where they belong. API notes: **breaking:** the `max_len` and `head_max_len` fields of
   `LayaError::NoMarkers` change from `usize` to `i64`, so code that reads or builds them must adapt;
   `LayaOptions` has a new public field, and `LayaPredictor` gained the provided methods `predict_with_options` and `has_lang_temperatures`.
+- Calibration files and histogram binning, ported from `ONNXAgent(calibration=...)`,
+  `calibrate.apply_calibration_payload` and `calibrate.apply_binning_map`:
+  `LayaOptions::calibration` (a path; `LayaOptions::set_calibration`) is read when the engine is
+  built, after the checkpoint's temperatures and the `lang_temperatures` table, and the router
+  passes it to every engine it builds. The file's `temperature` and `temperature_by_options`
+  replace the checkpoint's (clamped, with Python's warning through the `log` facade), a missing or
+  `null` `binning_map` clears the map, and a payload Python refuses is `LayaError::InvalidConfig`
+  with its `ValueError` text (`CalibrationFile::parse`, checked against
+  `routing/calibration_probe.json`). A `binning_map` recalibrates `answer_confidence` only, from
+  the unrounded temperature-scaled value and before the four-place rounding, so the
+  `min_confidence` gate and `predict_long`'s window choice see the binned value; a call whose `lang`
+  selects a `lang_temperatures` entry skips it, as in Python. Not ported: the warning for a version
+  2 file fitted to another checkpoint, because an ONNX agent has no `model_id_or_path` to compare
+  (such a file loads as Python loads it, without that warning). API notes: `LayaOptions` has a new
+  public field, `calibration`, so code that builds it without `..Default::default()` must add it;
+  `LayaEngine::binning_map` and the public `calibration_file` module are new.
 - The abstention gate, ported from `laya/confidence.py`: `PredictOptions::min_confidence` with
   `LayaEngine::predict_with_options` and `LayaRouter::predict_with_options`, and
   `BatchOptions::min_confidence` for `predict_batch` on the engine and the router (one threshold
@@ -156,4 +172,4 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
 
 - Language detection, routing and email cleaning follow the regenerated Python 0.4.14 probes; a
   later Python change needs the probes regenerated.
-- Not yet ported: histogram-binning calibration and per-call hooks.
+- Not yet ported: per-call hooks.

@@ -19,6 +19,8 @@ import (
 // scoreSession is a session that scores: it prefers the second option of every question. It counts
 // its Run and Close calls and can hold a Run until released.
 type scoreSession struct {
+	mu           sync.Mutex
+	shapes       [][2]int // Rows, Length of each Run
 	runs, closes atomic.Int32
 	entered      chan struct{} // sent to (non-blocking) when a Run starts, if set
 	hold         chan struct{} // a Run waits for it to close, if set
@@ -26,6 +28,9 @@ type scoreSession struct {
 
 func (s *scoreSession) Run(ctx context.Context, b infer.Batch) (infer.Output, error) {
 	s.runs.Add(1)
+	s.mu.Lock()
+	s.shapes = append(s.shapes, [2]int{b.Rows, b.Length})
+	s.mu.Unlock()
 	if s.entered != nil {
 		select {
 		case s.entered <- struct{}{}:

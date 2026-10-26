@@ -295,7 +295,7 @@ func (r *Router) PredictLong(ctx context.Context, state any, qs schema.Questions
 	if c.gate != nil {
 		return Routed{}, errors.New("router: PredictLong takes no confidence gate; use Predict or PredictBatch with ForMinConfidence")
 	}
-	if c.maxLen != 0 || c.headMaxLen != 0 {
+	if c.maxLen > 0 || c.headMaxLen > 0 {
 		return Routed{}, errors.New("router: PredictLong takes no ForMaxLen or ForHeadMaxLen; a scan sizes its windows with ForWindow")
 	}
 	return r.predictOne(ctx, nil, state, qs, c, &scanLong{window: c.window, stride: c.stride, batch: c.batch, lang: c.lang})
@@ -315,6 +315,9 @@ func (r *Router) predictOne(ctx context.Context, fixed *Decision, state any, qs 
 	pol, err := r.policy(c)
 	if err != nil {
 		return Routed{}, err
+	}
+	if err := ctx.Err(); err != nil {
+		return Routed{}, err // before anything is routed or built
 	}
 	hooks := r.predictHooks(c)
 	pc := &agent.PredictContext{States: []any{state}, Questions: qs, RunID: newRunID(), Router: r,
@@ -362,7 +365,9 @@ func (r *Router) predictOne(ctx context.Context, fixed *Decision, state any, qs 
 			if a == nil {
 				return errors.New("router: a start hook cleared the agent")
 			}
-			d := decision
+			// A start hook may have cleared the decision; then no language was detected, as
+			// Python's (ctx.decision or {}).
+			var d Decision
 			if pd, ok := pc.Decision.(Decision); ok {
 				d = pd
 			}
@@ -439,12 +444,32 @@ type batchGroup struct {
 // Skip-ped request does not shift the others.
 //
 // QuestionSchema is the grouping key, so questions that differ in key order or in an option
-// order never share a pass. Unlike Python, a request whose language is the empty string shares a
-// group with one that has none, and a MaxLen or HeadMaxLen of 0 or less is no override.
+// order never share a pass. Unlike Python, a MaxLen or HeadMaxLen of 0 or less is no override. An explicit
+// empty language is a different group from none, as in Python, though both reach the agent as no
+// language. ForMinConfidence, ForSortByLength, ForWindow, ForStride and ForBatchSize in a
+// request's own Options are refused: they are batch-level, as predict_batch's arguments are.
 func (r *Router) PredictBatch(ctx context.Context, reqs []Request, batchSize int, opts ...CallOption) ([]Routed, error) {
 	c0 := applyCalls(opts)
 	gate, err := agent.NewGate(c0.gate...)
 	if err != nil {
+		return nil, err
+	}
+	if c0.err != nil {
+		return nil, c0.err
+	}
+	pol, err := r.policy(c0)
+	if err != nil {
+		return nil, err
+	}
+	for i, q := range reqs {
+		if nilState(q.State) {
+			return nil, fmt.Errorf("request %d 'state' must not be None; pass a string, dict, or list", i)
+		}
+		if rc := applyCalls(q.Options); rc.gate != nil || rc.sort || rc.window != 0 || rc.stride != 0 || rc.batch != 0 {
+			return nil, fmt.Errorf("request %d: ForMinConfidence, ForSortByLength, ForWindow, ForStride and ForBatchSize apply to the whole batch; pass them to PredictBatch", i)
+		}
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	decisions, err := r.RouteBatch(reqs, opts...)
@@ -453,13 +478,6 @@ func (r *Router) PredictBatch(ctx context.Context, reqs []Request, batchSize int
 	}
 	if len(decisions) == 0 {
 		return []Routed{}, nil
-	}
-	if c0.err != nil {
-		return nil, c0.err
-	}
-	pol, err := r.policy(c0)
-	if err != nil {
-		return nil, err
 	}
 	calls := make([]call, len(reqs))
 	for i, q := range reqs {

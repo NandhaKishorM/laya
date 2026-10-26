@@ -48,6 +48,7 @@ impl TryFrom<i64> for QuestionType {
 pub struct ChoiceQuestion {
     instructions: Value,
     options: Vec<(String, Value)>,
+    option_order: Option<Vec<i64>>,
 }
 
 impl ChoiceQuestion {
@@ -73,6 +74,7 @@ impl ChoiceQuestion {
 pub struct ScoreQuestion {
     instructions: Value,
     levels: Vec<Value>,
+    option_order: Option<Vec<i64>>,
 }
 
 impl ScoreQuestion {
@@ -93,6 +95,7 @@ pub struct NoulQuestion {
     instructions: Value,
     if_false: Value,
     if_true: Value,
+    option_order: Option<Vec<i64>>,
 }
 
 impl NoulQuestion {
@@ -200,6 +203,7 @@ impl Question {
         Ok(Question::Choice(ChoiceQuestion {
             instructions: instructions.into(),
             options: list,
+            option_order: None,
         }))
     }
 
@@ -230,6 +234,7 @@ impl Question {
         Ok(Question::Score(ScoreQuestion {
             instructions: instructions.into(),
             levels: list,
+            option_order: None,
         }))
     }
 
@@ -245,7 +250,70 @@ impl Question {
             instructions: instructions.into(),
             if_false: if_false.into(),
             if_true: if_true.into(),
+            option_order: None,
         })
+    }
+
+    /// Show the options to the model in a different order. Slot `s` shows option `order[s]`; the
+    /// answer is still reported by option, so the probabilities come back unpermuted. `order`
+    /// must be a permutation of `0..n`, one slot per option (`n` is the number of options of a
+    /// choice, the number of levels of a score, and 2 for a noul). Ports a question's
+    /// `option_order` (`laya/agent.py` `_check_question`).
+    ///
+    /// Like Python, an order that is not such a permutation is not rejected here: the question
+    /// is refused when it is predicted, with [`LayaError::InvalidQuestion`].
+    pub fn with_option_order(mut self, order: impl IntoIterator<Item = i64>) -> Question {
+        let order = Some(order.into_iter().collect());
+        match &mut self {
+            Question::Choice(q) => q.option_order = order,
+            Question::Score(q) => q.option_order = order,
+            Question::Noul(q) => q.option_order = order,
+        }
+        self
+    }
+
+    /// The option order set with [`Question::with_option_order`], if any.
+    pub fn option_order(&self) -> Option<&[i64]> {
+        match self {
+            Question::Choice(q) => q.option_order.as_deref(),
+            Question::Score(q) => q.option_order.as_deref(),
+            Question::Noul(q) => q.option_order.as_deref(),
+        }
+    }
+
+    /// Python's `_option_count`: how many options this question renders to.
+    fn option_count(&self) -> usize {
+        match self {
+            Question::Choice(q) => q.options.len(),
+            Question::Score(q) => q.levels.len(),
+            Question::Noul(_) => 2,
+        }
+    }
+
+    /// Ports the `option_order` rule of `Agent._check_question`, with its text.
+    pub(crate) fn check_option_order(&self, id: &str) -> Result<()> {
+        let Some(order) = self.option_order() else {
+            return Ok(());
+        };
+        let n = self.option_count();
+        let mut seen = vec![false; n];
+        let permutation = order.len() == n
+            && order.iter().all(|&i| {
+                usize::try_from(i)
+                    .ok()
+                    .filter(|&i| i < n && !std::mem::replace(&mut seen[i], true))
+                    .is_some()
+            });
+        if permutation {
+            return Ok(());
+        }
+        let shown: Vec<String> = order.iter().map(i64::to_string).collect();
+        Err(LayaError::InvalidQuestion(format!(
+            "question {}: 'option_order' must be a permutation of range({n}) -- one slot per \
+             option, each option once -- got [{}]",
+            crate::laya_router::python_repr_str(id),
+            shown.join(", ")
+        )))
     }
 }
 
@@ -301,6 +369,15 @@ impl QuestionSet {
         self.map.get(id)
     }
 
+    /// Ports the per-question validation `predict_batch` and `predict_long` run first
+    /// (`Agent._check_question`), in question order; only the `option_order` rule can fail here,
+    /// the rest being refused when the question is built.
+    pub(crate) fn check(&self) -> Result<()> {
+        self.map
+            .iter()
+            .try_for_each(|(id, question)| question.check_option_order(id))
+    }
+
     /// Whether the set contains this id.
     pub fn contains_id(&self, id: &str) -> bool {
         self.map.contains_key(id)
@@ -352,6 +429,13 @@ impl QuestionSet {
                         q.if_true.clone(),
                     ]),
                 };
+                let body = match (body, question.option_order()) {
+                    (Value::Array(mut parts), Some(order)) => {
+                        parts.push(Value::from(order.to_vec()));
+                        Value::Array(parts)
+                    }
+                    (body, _) => body,
+                };
                 Value::Array(vec![Value::from(id.as_str()), body])
             })
             .collect();
@@ -367,5 +451,108 @@ impl std::ops::Index<&str> for QuestionSet {
         self.map
             .get(id)
             .unwrap_or_else(|| panic!("no question with id '{id}'"))
+    }
+}
+
+#[cfg(test)]
+mod option_order_tests {
+    use super::*;
+
+    fn three() -> Question {
+        Question::choice_labels("h", ["a", "b", "c"]).unwrap()
+    }
+
+    fn message(result: Result<()>) -> String {
+        match result {
+            Err(LayaError::InvalidQuestion(text)) => text,
+            other => panic!("expected InvalidQuestion, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_permutation_passes_for_each_question_type() {
+        assert!(
+            three()
+                .with_option_order([2, 0, 1])
+                .check_option_order("q")
+                .is_ok()
+        );
+        assert!(
+            Question::score("h", ["x", "y"])
+                .unwrap()
+                .with_option_order([1, 0])
+                .check_option_order("q")
+                .is_ok()
+        );
+        assert!(
+            Question::noul("h", Value::Null, Value::Null)
+                .with_option_order([1, 0])
+                .check_option_order("q")
+                .is_ok()
+        );
+        assert!(three().check_option_order("q").is_ok());
+    }
+
+    #[test]
+    fn a_non_permutation_is_refused_with_pythons_text_and_the_question_id() {
+        let text = message(
+            three()
+                .with_option_order([0, 0, 1])
+                .check_option_order("it's"),
+        );
+        assert_eq!(
+            "question \"it's\": 'option_order' must be a permutation of range(3) -- one slot per \
+             option, each option once -- got [0, 0, 1]",
+            text
+        );
+        let text = message(
+            Question::noul("h", Value::Null, Value::Null)
+                .with_option_order([0])
+                .check_option_order("q"),
+        );
+        assert!(text.ends_with("range(2) -- one slot per option, each option once -- got [0]"));
+        let text = message(
+            Question::score("h", ["x", "y"])
+                .unwrap()
+                .with_option_order([-1, 0])
+                .check_option_order("q"),
+        );
+        assert!(text.ends_with("range(2) -- one slot per option, each option once -- got [-1, 0]"));
+        let text = message(three().with_option_order([]).check_option_order("q"));
+        assert!(text.ends_with("range(3) -- one slot per option, each option once -- got []"));
+        let text = message(three().with_option_order([0, 1, 3]).check_option_order("q"));
+        assert!(text.ends_with("got [0, 1, 3]"));
+    }
+
+    #[test]
+    fn the_set_check_reports_the_first_bad_question_in_order() {
+        let set = QuestionSet::new()
+            .with("ok", three().with_option_order([1, 2, 0]))
+            .unwrap()
+            .with("bad1", three().with_option_order([0, 1]))
+            .unwrap()
+            .with("bad2", three().with_option_order([9, 9, 9]))
+            .unwrap();
+        assert!(message(set.check()).starts_with("question 'bad1':"));
+        assert!(
+            QuestionSet::new()
+                .with("ok", three())
+                .unwrap()
+                .check()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn the_schema_key_tells_two_orders_and_no_order_apart() {
+        let key = |q: Question| QuestionSet::new().with("q", q).unwrap().schema_key();
+        let plain = key(three());
+        let first = key(three().with_option_order([0, 1, 2]));
+        let second = key(three().with_option_order([2, 1, 0]));
+        assert_ne!(plain, first);
+        assert_ne!(first, second);
+        assert_eq!(first, key(three().with_option_order([0, 1, 2])));
+        let noul = Question::noul("h", Value::Null, Value::Null);
+        assert_ne!(key(noul.clone()), key(noul.with_option_order([1, 0])));
     }
 }

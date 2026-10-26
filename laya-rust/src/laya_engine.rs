@@ -355,6 +355,7 @@ impl LayaEngine {
         // Python checks the state before the aggregate mode.
         refuse_null_states(std::slice::from_ref(&state))?;
         options.check_aggregate()?;
+        questions.check()?;
         let tokenizer = self.tokenizer.as_ref();
         let explicit_window = options.window.unwrap_or(0);
         let (budget, warnings) = long_prediction::window_budget_warned(
@@ -455,6 +456,7 @@ impl LayaEngine {
         if ids.is_empty() {
             return Ok(self.empty_results(states.len()));
         }
+        questions.check()?;
         let params = self.call_params(
             options.lang.as_deref(),
             options.max_len,
@@ -502,6 +504,7 @@ impl LayaEngine {
         if ids.is_empty() {
             return Ok(self.empty_results(states.len()));
         }
+        questions.check()?;
         let encoded = states
             .iter()
             .map(|state| self.encode_state(state, &ids, questions, params))
@@ -656,7 +659,11 @@ impl LayaEngine {
                     });
                 let row_start = row * batch.marker_count;
                 let row_logits = &output.logits[row_start..row_start + batch.marker_count];
-                let p = Calibration::probabilities(row_logits, k, temperature);
+                // The row comes back in slot order; everything below indexes by option.
+                let p = Calibration::unpermute_probs(
+                    Calibration::probabilities(row_logits, k, temperature),
+                    question.option_order(),
+                );
 
                 let act_start = row * n_act;
                 let act_row = &output.act_logits[act_start..act_start + n_act];

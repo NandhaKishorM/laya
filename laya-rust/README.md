@@ -233,6 +233,32 @@ Question::noul("Is this email a phishing or scam attempt?", "a legitimate email"
   `typed-decisions`, 192 on `english`). If the options cannot fit even after truncation,
   `predict` returns `LayaError::NoMarkers` instead of silently answering a truncated question.
 
+### Option order
+
+Any question can show its options to the model in another order, with
+`Question::with_option_order`. Slot `s` shows option `order[s]`; `order` must be a permutation of
+`0..n`, where `n` is the number of options of a choice, the number of levels of a score, and 2 for a
+noul (slot 0 shows `false`, slot 1 `true`). Probabilities and the chosen label are still reported by
+option, never by slot, so the answer reads the same however the question was laid out. This is
+Python's question-level `option_order`, a way to average out position bias by asking the same
+question under several orders.
+
+```rust,no_run
+use laya::Question;
+
+let q = Question::choice_labels("Which team?", ["sales", "billing", "technical"])?
+    .with_option_order([2, 0, 1]); // slot 0 shows `technical`, slot 1 `sales`, slot 2 `billing`
+assert_eq!(Some(&[2, 0, 1][..]), q.option_order());
+# Ok::<(), laya::LayaError>(())
+```
+
+As in Python, an order that is not a permutation is not refused when the question is built but
+when it is predicted (`predict`, `predict_batch`, `predict_long`), with
+`LayaError::InvalidQuestion` and Python's text, naming the question. The router groups batch
+requests by their orders as well. `LayaShortlist::predict` drops the order of a choice it narrows,
+with a warning, because the order no longer fits the kept labels; a choice it forwards whole keeps
+its order.
+
 ### QuestionSet
 
 ```rust,no_run
@@ -927,6 +953,9 @@ Rust port groups the corresponding functions into a unit struct with associated 
 - **Warnings use the `log` facade.** The clamped-temperature warning (`LayaConfig::parse`) and the
   two `predict_long` window warnings are sent, with Python's text, to `log` at `warn` level with
   target `laya`. `LayaConfig::clamped_temperatures` still records the clamped entries.
+- **`option_order` is a builder, not a dictionary key.** `Question::with_option_order` takes
+  integers, so Python's refusal of a bool, a float or a non-list order has nothing to refuse; the
+  permutation rule and its text are the same, and so is the timing (at prediction).
 - **`QuestionType` carries no methods.** The Python type name lives on
   `SequenceBuilder::type_name` rather than on the enum, and the `qtype` tensor's integer encoding
   is a plain `qtype as i64` cast (the enum's discriminants already match `QTYPES`). The reverse

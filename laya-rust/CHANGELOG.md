@@ -45,6 +45,15 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
   (such a file loads as Python loads it, without that warning). API notes: `LayaOptions` has a new
   public field, `calibration`, so code that builds it without `..Default::default()` must add it;
   `LayaEngine::binning_map` and the public `calibration_file` module are new.
+- Question-level `option_order`, Python's way to lay a question's options out in another order:
+  `Question::with_option_order` and `Question::option_order` on choice, score and noul questions.
+  Slot `s` shows option `order[s]`; the model's row is softmaxed in slot order and scattered back
+  by option before the temperature bucket, the abstention gate and the answer see it
+  (`Calibration::unpermute_probs`). An order that is not a permutation of `0..n` is refused at
+  `predict`, `predict_batch` and `predict_long` with `LayaError::InvalidQuestion` and Python's
+  text, naming the question. The router includes the order in its batch grouping key, and
+  `LayaShortlist::predict` drops the order of a choice it narrows, with Python's warning (`log`,
+  target `laya`). Existing constructors are unchanged.
 - The abstention gate, ported from `laya/confidence.py`: `PredictOptions::min_confidence` with
   `LayaEngine::predict_with_options` and `LayaRouter::predict_with_options`, and
   `BatchOptions::min_confidence` for `predict_batch` on the engine and the router (one threshold

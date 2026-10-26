@@ -793,3 +793,214 @@ CALIBRATION_LONG_CASES = [
                + QUICKSTART_STATE),
      "options": {"window": 96, "batch_size": 3, "lang": "de"}},
 ]
+
+
+# Question-level `option_order` (agent.py:1089-1100, common.py:237-241 and :558-571): slot `s` shows
+# option `option_order[s]`, the model row comes back in slot order and is scattered back to option
+# order before the answer is built. Kept in lists of their own, processed after every earlier case,
+# so the existing goldens and index.json stay byte-identical (the dump only appends).
+def _ordered(question, order):
+    """`question` with an `option_order`, spelled as the README does: the key comes last."""
+    return dict(question, option_order=order)
+
+
+_ORDER_CHOICE = CASES[0]["questions"]["department"]
+_ORDER_SCORE = CASES[0]["questions"]["urgency"]
+_ORDER_NOUL = CASES[0]["questions"]["churn_risk"]
+_ORDER_NOUL_WORDED = CASES[0]["questions"]["needs_human"]
+_ORDER_MANY = next(c for c in CASES if c["name"] == "many_options")
+
+OPTION_ORDER_CASES = [
+    {
+        "name": "option_order_choice",
+        "state": QUICKSTART_STATE,
+        "questions": {"department": _ordered(_ORDER_CHOICE, [2, 0, 1])},
+    },
+    {
+        "name": "option_order_score",
+        "state": QUICKSTART_STATE,
+        "questions": {"urgency": _ordered(_ORDER_SCORE, [3, 1, 0, 2])},
+    },
+    # A noul with default wording and one with its own wording; slot 0 shows "true", slot 1 "false".
+    {
+        "name": "option_order_noul",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _ordered(_ORDER_NOUL, [1, 0]),
+            "needs_human": _ordered(_ORDER_NOUL_WORDED, [1, 0]),
+        },
+    },
+    # The identity permutation is a valid order: same sequence and answers as no order at all.
+    {
+        "name": "option_order_identity",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "department": _ordered(_ORDER_CHOICE, [0, 1, 2]),
+            "urgency": _ordered(_ORDER_SCORE, [0, 1, 2, 3]),
+            "churn_risk": _ordered(_ORDER_NOUL, [0, 1]),
+        },
+    },
+    # Some questions with an order and some without, in one forward pass.
+    {
+        "name": "option_order_mixed",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "department": _ordered(_ORDER_CHOICE, [1, 2, 0]),
+            "urgency": _ORDER_SCORE,
+            "churn_risk": _ordered(_ORDER_NOUL, [1, 0]),
+            "needs_human": _ORDER_NOUL_WORDED,
+        },
+    },
+    # Choice labels given as a list (normalised to {label: None}), and a single-option choice.
+    {
+        "name": "option_order_choice_labels_list",
+        "state": "I would like to upgrade to the enterprise plan.",
+        "questions": {
+            "intent": {
+                "type": "choice",
+                "instructions": "What does the customer want?",
+                "criteria": ["upgrade", "downgrade", "cancel", "other"],
+                "option_order": [3, 1, 0, 2],
+            },
+            "only": {
+                "type": "choice",
+                "instructions": "Only one label.",
+                "criteria": {"single": "the only option"},
+                "option_order": [0],
+            },
+        },
+    },
+    # Enough options to force per-option truncation (opt_budget < 16), listed in reverse.
+    {
+        "name": "option_order_many_options",
+        "state": _ORDER_MANY["state"],
+        "questions": {
+            "wide": _ordered(_ORDER_MANY["questions"]["wide"], list(range(39, -1, -1))),
+        },
+    },
+    # The abstention gate and the temperature bucket see the unpermuted result.
+    {
+        "name": "option_order_min_confidence",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "department": _ordered(_ORDER_CHOICE, [2, 0, 1]),
+            "urgency": _ordered(_ORDER_SCORE, [3, 1, 0, 2]),
+            "churn_risk": _ordered(_ORDER_NOUL, [1, 0]),
+        },
+        "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}},
+    },
+]
+
+# An invalid order raises ValueError from `_check_question` with the question id in the text. Only
+# lists of ints are recorded: a typed SDK cannot spell a bool, a float or a non-list order.
+OPTION_ORDER_ERROR_CASES = [
+    {"name": "option_order_wrong_length", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [0, 1])}},
+    {"name": "option_order_duplicate", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [0, 0, 1])}},
+    {"name": "option_order_out_of_range", "state": QUICKSTART_STATE,
+     "questions": {"urgency": _ordered(_ORDER_SCORE, [0, 1, 2, 4])}},
+    {"name": "option_order_negative", "state": QUICKSTART_STATE,
+     "questions": {"urgency": _ordered(_ORDER_SCORE, [-1, 0, 1, 2])}},
+    {"name": "option_order_empty", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [])}},
+    # A noul has two options, whatever its wording.
+    {"name": "option_order_noul_wrong_length", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _ordered(_ORDER_NOUL, [0, 1, 2])}},
+    # A score order must cover its levels (4 here), not the 3 slots of the choice before it.
+    {"name": "option_order_score_wrong_length", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [2, 0, 1]),
+                   "urgency": _ordered(_ORDER_SCORE, [2, 0, 1])}},
+    # Questions are checked in declaration order, so the first bad one is the one named.
+    {"name": "option_order_first_bad_reported", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [1, 2, 0]),
+                   "churn_risk": _ordered(_ORDER_NOUL, [1, 1]),
+                   "urgency": _ordered(_ORDER_SCORE, [0, 0, 0, 0])}},
+    # `%r` of the id: a quote in it switches repr to double quotes.
+    {"name": "option_order_id_repr", "state": QUICKSTART_STATE,
+     "questions": {"it's": _ordered(_ORDER_NOUL, [0, 0])}},
+]
+
+# predict_long (ONNXAgent): the order is checked before the window budget, and carried by every window.
+OPTION_ORDER_LONG_QUESTIONS = {
+    "topic": _ordered(LONG_QUESTIONS["topic"], [2, 0, 1]),
+    "urgency": _ordered(LONG_QUESTIONS["urgency"], [2, 1, 0]),
+    "cancel": _ordered(LONG_QUESTIONS["cancel"], [1, 0]),
+}
+
+OPTION_ORDER_LONG_CASES = [
+    {"name": "long_option_order_short", "state": QUICKSTART_STATE,
+     "questions": OPTION_ORDER_LONG_QUESTIONS},
+    {
+        "name": "long_option_order_multi_chunk",
+        "state": ("The agent checked the account and recorded routine status updates. " * 180
+                  + QUICKSTART_STATE),
+        "questions": OPTION_ORDER_LONG_QUESTIONS,
+        "options": {"batch_size": 2},
+    },
+    {
+        "name": "long_option_order_mixed",
+        "state": {"notes": "Routine checks completed. " * 22, "message": QUICKSTART_STATE},
+        "questions": {"topic": OPTION_ORDER_LONG_QUESTIONS["topic"],
+                      "urgency": LONG_QUESTIONS["urgency"],
+                      "cancel": OPTION_ORDER_LONG_QUESTIONS["cancel"]},
+        "options": {"window": 96},
+    },
+]
+
+OPTION_ORDER_LONG_ERROR_CASES = [
+    {"name": "long_option_order_invalid", "state": "short",
+     "questions": {"topic": _ordered(LONG_QUESTIONS["topic"], [0, 1]),
+                   "urgency": LONG_QUESTIONS["urgency"]}},
+    # Checked before the stride, as Python validates the questions first.
+    {"name": "long_option_order_before_stride", "state": "short",
+     "questions": {"cancel": _ordered(LONG_QUESTIONS["cancel"], [2, 0])},
+     "options": {"window": 32, "stride": 33}},
+]
+
+# predict_batch (ONNXAgent): one order per question, shared by every state.
+OPTION_ORDER_BATCH_CASES = [
+    {"name": "batch_option_order", "states": BATCH_MIXED_STATES,
+     "questions": OPTION_ORDER_LONG_QUESTIONS},
+    {"name": "batch_option_order_chunked", "states": BATCH_SORT_STATES[:7],
+     "questions": OPTION_ORDER_LONG_QUESTIONS,
+     "options": {"batch_size": 3, "sort_by_length": True}},
+    {"name": "batch_option_order_min_confidence", "states": BATCH_MIXED_STATES[:4],
+     "questions": OPTION_ORDER_LONG_QUESTIONS,
+     "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}}},
+    # No states: answered without looking at the questions, so a bad order is not reported.
+    {"name": "batch_option_order_empty_states_invalid",
+     "states": [], "questions": {"topic": _ordered(LONG_QUESTIONS["topic"], [0, 0, 0])}},
+]
+
+OPTION_ORDER_BATCH_ERROR_CASES = [
+    {"name": "batch_option_order_invalid", "states": [QUICKSTART_STATE, "short"],
+     "questions": {"topic": _ordered(LONG_QUESTIONS["topic"], [0, 1, 3]),
+                   "cancel": LONG_QUESTIONS["cancel"]},
+     "error_type": "ValueError"},
+]
+
+# predict_shortlist: a choice narrowed below its label count loses its order (with a RuntimeWarning);
+# a passthrough choice and non-choice questions keep theirs. 40 labels are cut to k=20; the second
+# choice has 3 labels and is forwarded whole.
+OPTION_ORDER_SHORTLIST_CASES = [
+    {
+        "name": "shortlist_option_order",
+        "state": SAMPLE_BANKING_STATE,
+        "questions": {
+            "intent": {
+                "type": "choice",
+                "instructions": SAMPLE_BANKING_INSTRUCTIONS,
+                "criteria": SAMPLE_BANKING_CRITERIA,
+                "option_order": list(range(len(SAMPLE_BANKING_CRITERIA) - 1, -1, -1)),
+            },
+            "channel": _ordered(
+                {"type": "choice", "instructions": "Which channel is the customer using?",
+                 "criteria": {"app": "mobile app", "web": "website", "branch": "in person"}},
+                [1, 2, 0]),
+            "urgency": _ordered(_ORDER_SCORE, [3, 1, 0, 2]),
+            "frustrated": _ordered(_ORDER_NOUL, [1, 0]),
+        },
+        "k": 20,
+    },
+]

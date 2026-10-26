@@ -895,5 +895,129 @@
     "file": "case_batch_option_order_invalid.json",
     "expects_error": true,
     "kind": "batch"
+  },
+  {
+    "name": "noul_labels",
+    "file": "case_noul_labels.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_padded",
+    "file": "case_noul_labels_padded.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_default_spelling",
+    "file": "case_noul_labels_default_spelling.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_option_order",
+    "file": "case_noul_labels_option_order.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_mixed_min_confidence",
+    "file": "case_noul_labels_mixed_min_confidence.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_blank_false",
+    "file": "case_noul_labels_blank_false.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_blank_after_strip",
+    "file": "case_noul_labels_blank_after_strip.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_equal",
+    "file": "case_noul_labels_equal.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_equal_after_strip",
+    "file": "case_noul_labels_equal_after_strip.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_non_string_false",
+    "file": "case_noul_labels_non_string_false.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_non_string_true",
+    "file": "case_noul_labels_non_string_true.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_first_bad_reported",
+    "file": "case_noul_labels_first_bad_reported.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_order_checked_first",
+    "file": "case_noul_labels_order_checked_first.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_id_repr",
+    "file": "case_noul_labels_id_repr.json",
+    "expects_error": true
+  },
+  {
+    "name": "long_noul_labels_short",
+    "file": "case_long_noul_labels_short.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_noul_labels_multi_chunk",
+    "file": "case_long_noul_labels_multi_chunk.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_noul_labels_invalid",
+    "file": "case_long_noul_labels_invalid.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "long_noul_labels_before_stride",
+    "file": "case_long_noul_labels_before_stride.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "batch_noul_labels",
+    "file": "case_batch_noul_labels.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_noul_labels_chunked",
+    "file": "case_batch_noul_labels_chunked.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_noul_labels_min_confidence",
+    "file": "case_batch_noul_labels_min_confidence.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_noul_labels_empty_states_invalid",
+    "file": "case_batch_noul_labels_empty_states_invalid.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_noul_labels_invalid",
+    "file": "case_batch_noul_labels_invalid.json",
+    "expects_error": true,
+    "kind": "batch"
   }
 ]

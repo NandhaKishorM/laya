@@ -808,6 +808,32 @@ let kept = &result.shortlist().unwrap()["banking_intent"]; // kept.labels, kept.
 # Ok::<(), laya::LayaError>(())
 ```
 
+`LayaShortlist::cached_embed_fn(embed, 4096)` (or `CachedEmbed::new`) wraps the embedder in an LRU
+cache keyed by exact text, so a fixed label set is embedded once; call it as
+`|texts| cache.embed(texts)`. Misses go to one `embed` call, rows are stored as `f32`, non-finite
+values become `0.0` (and stay cached), and `cache_info()` / `cache_clear()` report and reset it.
+
+**Tournament** narrows a choice with more than `group_size` labels without any embedder: the model
+answers the labels in contiguous groups, and the group winners meet in one more call.
+
+```rust,no_run
+use laya::laya_shortlist::LayaShortlist;
+# use laya::{laya_router::LayaPredictor, QuestionSet}; use serde_json::json;
+# let router: &dyn LayaPredictor = todo!(); let state = json!(""); let questions = QuestionSet::new();
+
+let result = LayaShortlist::predict_tournament(router, state.clone(), &questions, 16)?;
+let meta = &result.tournament().unwrap()["banking_intent"]; // meta.labels (finalists), meta.n, meta.rounds
+// Per-call options go to every round and the final call through a closure:
+let again = LayaShortlist::predict_tournament_with(
+    |state, questions| router.predict(state, questions), // or predict_with_options(.., &options)
+    state, &questions, 16)?;
+# Ok::<(), laya::LayaError>(())
+```
+
+The result is the final call's, with its usage; `tournament()` has an entry per choice question
+only. A choice that played a round loses its `option_order`, with Python's warning (`log`, target
+`laya`).
+
 ---
 
 ## Samples

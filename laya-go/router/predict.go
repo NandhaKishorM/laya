@@ -286,11 +286,18 @@ func (r *Router) PredictRouted(ctx context.Context, d Decision, state any, qs sc
 // PredictLong routes state as Predict does, then scores every window of it on the chosen
 // checkpoint with Agent.PredictLong. A start hook that answers (Skip) or rewrites the state wins:
 // the scan runs last. ForWindow, ForStride, ForBatchSize and the language (ForLang, else the
-// detected one) reach the scan; ForMaxLen, ForHeadMaxLen and ForMinConfidence do not. The scan's
+// detected one) reach the scan. ForMaxLen, ForHeadMaxLen and ForMinConfidence are refused, as
+// predict_long accepts none of them. The scan's
 // errors are always returned, and Routed.Warnings holds its warnings.
 func (r *Router) PredictLong(ctx context.Context, state any, qs schema.Questions, opts ...CallOption) (Routed, error) {
 	c := applyCalls(opts)
-	c.maxLen, c.headMaxLen, c.gate = 0, 0, nil
+	// predict_long takes none of these: refuse them rather than answer a different question.
+	if c.gate != nil {
+		return Routed{}, errors.New("router: PredictLong takes no confidence gate; use Predict or PredictBatch with ForMinConfidence")
+	}
+	if c.maxLen != 0 || c.headMaxLen != 0 {
+		return Routed{}, errors.New("router: PredictLong takes no ForMaxLen or ForHeadMaxLen; a scan sizes its windows with ForWindow")
+	}
 	return r.predictOne(ctx, nil, state, qs, c, &scanLong{window: c.window, stride: c.stride, batch: c.batch, lang: c.lang})
 }
 

@@ -134,7 +134,7 @@ func (h *routedHook) OnPredictStart(pc *agent.PredictContext) {
 
 func (h *routedHook) OnPredictEnd(pc *agent.PredictContext) {
 	used := "None"
-	if pc.Results != nil {
+	if pc.Usage != (agent.HookUsage{}) { // every golden result has tokens, so zero means "never summed"
 		used = fmt.Sprint(pc.Usage.InputTokens)
 	}
 	status := "ok"
@@ -191,147 +191,165 @@ func TestRoutedGolden(t *testing.T) {
 	for _, c := range cases {
 		rec := fixtures.Obj(t, c)
 		t.Run(str(t, rec, "case"), func(t *testing.T) {
-			rig := &routedRig{pools: map[string]schema.Questions{}, idx: map[*agent.Agent]int{}}
-			for _, p := range fixtures.Obj(t, rec.Must("pools")) {
-				rig.pools[p.Key] = questionsOf(t, p.Value)
-			}
-			states := fixtures.Obj(t, rec.Must("states"))
-			var hooks []any
-			for _, h := range fixtures.List(t, rec.Must("hooks")) {
-				pair := fixtures.List(t, h)
-				hk := &routedHook{name: fixtures.Str(t, pair[0]), rig: rig, pools: rig.pools}
-				for _, part := range strings.Split(fixtures.Str(t, pair[1]), ";") {
-					if part != "" {
-						k, v, _ := strings.Cut(part, ":")
-						hk.parts = append(hk.parts, [2]string{k, v})
-					}
-				}
-				hooks = append(hooks, hk)
-			}
-			r, err := router.New(router.WithInstalledHooks(hooks...))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var agentOpts []agent.Option
-			if fixtures.Bool(t, rec.Must("temps")) {
-				agentOpts = append(agentOpts, agent.WithLangTemperatures(map[string]map[string]any{
-					"de": {"temperature": []any{1.0, 1.0, 1.0}}}))
-			}
-			for i, name := range []string{"english", "multilingual", "typed-decisions"} {
-				a, err := agent.Open(toyCheckpoint(), &probeSession{}, agentOpts...)
-				if err != nil {
-					t.Fatal(err)
-				}
-				rig.idx[a] = i + 1
-				defer a.Close()
-				if err := r.Attach(name, a); err != nil {
-					t.Fatal(err)
-				}
-			}
-			router.SetRunner(r, rig.runner())
-
-			request := func(item any) router.Request {
-				kw := fixtures.Obj(t, item)
-				var state any
-				if v := kw.Must("s"); v != nil {
-					key := fixtures.Str(t, v)
-					state = key
-					if s, ok := states.Get(key); ok {
-						state = fixtures.Str(t, s)
-					}
-				}
-				return router.Request{State: state, Questions: rig.pools[str(t, kw, "q")], Options: routedCallOptions(t, kw)}
-			}
-			reqs := fixtures.List(t, rec.Must("requests"))
-			var opts []router.CallOption
-			if v := rec.Must("min_confidence"); v != nil {
-				opts = append(opts, router.ForMinConfidence(fixtures.Float(t, v)))
-			}
-			var got []router.Routed
-			var callErr error
-			switch method := str(t, rec, "method"); method {
-			case "batch":
-				batches++
-				bs := 0
-				if v := rec.Must("batch_size"); v != nil {
-					bs = fixtures.Int(t, v)
-				}
-				if fixtures.Bool(t, rec.Must("sort")) {
-					opts = append(opts, router.ForSortByLength(true))
-				}
-				var rs []router.Request
-				for _, it := range reqs {
-					rs = append(rs, request(it))
-				}
-				got, callErr = r.PredictBatch(context.Background(), rs, bs, opts...)
-			default:
-				rq := request(reqs[0])
-				opts = append(opts, rq.Options...)
-				opts = append(opts, routedCallOptions(t, fixtures.Obj(t, rec.Must("call")))...)
-				var one router.Routed
-				if method == "predict" {
-					one, callErr = r.Predict(context.Background(), rq.State, rq.Questions, opts...)
-				} else {
-					one, callErr = r.PredictLong(context.Background(), rq.State, rq.Questions, opts...)
-				}
-				if callErr == nil {
-					got = []router.Routed{one}
-				}
-			}
-
-			if want, bad := rec.Get("error"); bad {
+			res := replayRouted(t, rec)
+			if res.err {
 				withError++
-				if callErr == nil || callErr.Error() != fixtures.Str(t, want) {
-					t.Fatalf("error = %v, want %q", callErr, want)
-				}
-			} else if callErr != nil {
-				t.Fatalf("unexpected error %v", callErr)
-			} else {
-				wantRes := fixtures.List(t, rec.Must("results"))
-				if len(got) != len(wantRes) {
-					t.Fatalf("%d results, want %d", len(got), len(wantRes))
-				}
-				for i, w := range wantRes {
-					wo := fixtures.Obj(t, w)
-					if got[i].Prediction.Usage.InputTokens != fixtures.Int(t, wo.Must("in")) ||
-						got[i].Prediction.Usage.OutputTokens != fixtures.Int(t, wo.Must("out")) ||
-						string(got[i].Routing.Model) != str(t, wo, "model") || got[i].Routing.Reason != str(t, wo, "reason") {
-						t.Errorf("result %d = %d/%d %s %q, want %v", i, got[i].Prediction.Usage.InputTokens,
-							got[i].Prediction.Usage.OutputTokens, got[i].Routing.Model, got[i].Routing.Reason, w)
-					}
-				}
 			}
-			var wantCalls []string
-			for _, c := range fixtures.List(t, rec.Must("calls")) {
-				wantCalls = append(wantCalls, pyCall(t, fixtures.Obj(t, c)))
-			}
-			if strings.Join(rig.calls, "\n") != strings.Join(wantCalls, "\n") {
-				t.Errorf("calls:\n%s\nwant:\n%s", strings.Join(rig.calls, "\n"), strings.Join(wantCalls, "\n"))
-			}
-			var wantEvents []string
-			for _, e := range fixtures.List(t, rec.Must("events")) {
-				wantEvents = append(wantEvents, fixtures.Str(t, e))
-			}
-			if len(wantEvents) > 0 {
+			if res.events {
 				withEvents++
 			}
-			if strings.Join(rig.events, "\n") != strings.Join(wantEvents, "\n") {
-				t.Errorf("events:\n%s\nwant:\n%s", strings.Join(rig.events, "\n"), strings.Join(wantEvents, "\n"))
-			}
-			var loaded []string
-			for _, k := range r.Loaded() {
-				loaded = append(loaded, string(k))
-			}
-			var wantLoaded []string
-			for _, k := range fixtures.List(t, rec.Must("loaded")) {
-				wantLoaded = append(wantLoaded, fixtures.Str(t, k))
-			}
-			if strings.Join(loaded, ",") != strings.Join(wantLoaded, ",") {
-				t.Errorf("loaded = %v, want %v", loaded, wantLoaded)
+			if res.batch {
+				batches++
 			}
 		})
 	}
 	if withError < 8 || withEvents < 15 || batches < 18 {
 		t.Errorf("golden thin: %d errors, %d with events, %d batches", withError, withEvents, batches)
 	}
+}
+
+type routedOutcome struct{ err, events, batch bool }
+
+// replayRouted runs one recorded case against the Router and checks it; the fuzz test replays the
+// same records.
+func replayRouted(t *testing.T, rec fixtures.Object) (res routedOutcome) {
+	rig := &routedRig{pools: map[string]schema.Questions{}, idx: map[*agent.Agent]int{}}
+	for _, p := range fixtures.Obj(t, rec.Must("pools")) {
+		rig.pools[p.Key] = questionsOf(t, p.Value)
+	}
+	states := fixtures.Obj(t, rec.Must("states"))
+	var hooks []any
+	for _, h := range fixtures.List(t, rec.Must("hooks")) {
+		pair := fixtures.List(t, h)
+		hk := &routedHook{name: fixtures.Str(t, pair[0]), rig: rig, pools: rig.pools}
+		for _, part := range strings.Split(fixtures.Str(t, pair[1]), ";") {
+			if part != "" {
+				k, v, _ := strings.Cut(part, ":")
+				hk.parts = append(hk.parts, [2]string{k, v})
+			}
+		}
+		hooks = append(hooks, hk)
+	}
+	r, err := router.New(router.WithInstalledHooks(hooks...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var agentOpts []agent.Option
+	if fixtures.Bool(t, rec.Must("temps")) {
+		agentOpts = append(agentOpts, agent.WithLangTemperatures(map[string]map[string]any{
+			"de": {"temperature": []any{1.0, 1.0, 1.0}}}))
+	}
+	for i, name := range []string{"english", "multilingual", "typed-decisions"} {
+		a, err := agent.Open(toyCheckpoint(), &probeSession{}, agentOpts...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rig.idx[a] = i + 1
+		defer a.Close()
+		if err := r.Attach(name, a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	router.SetRunner(r, rig.runner())
+
+	request := func(item any) router.Request {
+		kw := fixtures.Obj(t, item)
+		var state any
+		if v := kw.Must("s"); v != nil {
+			key := fixtures.Str(t, v)
+			state = key
+			if s, ok := states.Get(key); ok {
+				state = fixtures.Str(t, s)
+			}
+		}
+		return router.Request{State: state, Questions: rig.pools[str(t, kw, "q")], Options: routedCallOptions(t, kw)}
+	}
+	reqs := fixtures.List(t, rec.Must("requests"))
+	var opts []router.CallOption
+	if v := rec.Must("min_confidence"); v != nil {
+		opts = append(opts, router.ForMinConfidence(fixtures.Float(t, v)))
+	}
+	var got []router.Routed
+	var callErr error
+	switch method := str(t, rec, "method"); method {
+	case "batch":
+		res.batch = true
+		bs := 0
+		if v := rec.Must("batch_size"); v != nil {
+			bs = fixtures.Int(t, v)
+		}
+		if fixtures.Bool(t, rec.Must("sort")) {
+			opts = append(opts, router.ForSortByLength(true))
+		}
+		var rs []router.Request
+		for _, it := range reqs {
+			rs = append(rs, request(it))
+		}
+		got, callErr = r.PredictBatch(context.Background(), rs, bs, opts...)
+	default:
+		rq := request(reqs[0])
+		opts = append(opts, rq.Options...)
+		opts = append(opts, routedCallOptions(t, fixtures.Obj(t, rec.Must("call")))...)
+		var one router.Routed
+		if method == "predict" {
+			one, callErr = r.Predict(context.Background(), rq.State, rq.Questions, opts...)
+		} else {
+			one, callErr = r.PredictLong(context.Background(), rq.State, rq.Questions, opts...)
+		}
+		if callErr == nil {
+			got = []router.Routed{one}
+		}
+	}
+
+	if want, bad := rec.Get("error"); bad {
+		res.err = true
+		if callErr == nil || callErr.Error() != fixtures.Str(t, want) {
+			t.Fatalf("error = %v, want %q", callErr, want)
+		}
+	} else if callErr != nil {
+		t.Fatalf("unexpected error %v", callErr)
+	} else {
+		wantRes := fixtures.List(t, rec.Must("results"))
+		if len(got) != len(wantRes) {
+			t.Fatalf("%d results, want %d", len(got), len(wantRes))
+		}
+		for i, w := range wantRes {
+			wo := fixtures.Obj(t, w)
+			if got[i].Prediction.Usage.InputTokens != fixtures.Int(t, wo.Must("in")) ||
+				got[i].Prediction.Usage.OutputTokens != fixtures.Int(t, wo.Must("out")) ||
+				string(got[i].Routing.Model) != str(t, wo, "model") || got[i].Routing.Reason != str(t, wo, "reason") {
+				t.Errorf("result %d = %d/%d %s %q, want %v", i, got[i].Prediction.Usage.InputTokens,
+					got[i].Prediction.Usage.OutputTokens, got[i].Routing.Model, got[i].Routing.Reason, w)
+			}
+		}
+	}
+	var wantCalls []string
+	for _, c := range fixtures.List(t, rec.Must("calls")) {
+		wantCalls = append(wantCalls, pyCall(t, fixtures.Obj(t, c)))
+	}
+	if strings.Join(rig.calls, "\n") != strings.Join(wantCalls, "\n") {
+		t.Errorf("calls:\n%s\nwant:\n%s", strings.Join(rig.calls, "\n"), strings.Join(wantCalls, "\n"))
+	}
+	var wantEvents []string
+	for _, e := range fixtures.List(t, rec.Must("events")) {
+		wantEvents = append(wantEvents, fixtures.Str(t, e))
+	}
+	if len(wantEvents) > 0 {
+		res.events = true
+	}
+	if strings.Join(rig.events, "\n") != strings.Join(wantEvents, "\n") {
+		t.Errorf("events:\n%s\nwant:\n%s", strings.Join(rig.events, "\n"), strings.Join(wantEvents, "\n"))
+	}
+	var loaded []string
+	for _, k := range r.Loaded() {
+		loaded = append(loaded, string(k))
+	}
+	var wantLoaded []string
+	for _, k := range fixtures.List(t, rec.Must("loaded")) {
+		wantLoaded = append(wantLoaded, fixtures.Str(t, k))
+	}
+	if strings.Join(loaded, ",") != strings.Join(wantLoaded, ",") {
+		t.Errorf("loaded = %v, want %v", loaded, wantLoaded)
+	}
+	return res
 }

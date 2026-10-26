@@ -410,3 +410,17 @@ func TestBatchEndsInReverseAndSeesDecision(t *testing.T) {
 		t.Errorf("events %s, want %s", got, want)
 	}
 }
+
+func TestPredictLongRefusesWhatPredictLongLacks(t *testing.T) {
+	f := &scoringFactory{}
+	r := scoringRouter(t, f)
+	for name, opt := range map[string]router.CallOption{
+		"gate": router.ForMinConfidence(0.5), "max_len": router.ForMaxLen(64), "head_max_len": router.ForHeadMaxLen(16)} {
+		if _, err := r.PredictLong(context.Background(), enText, qsA(t), opt); err == nil {
+			t.Errorf("%s accepted by PredictLong", name)
+		}
+	}
+	if f.count() != 0 {
+		t.Errorf("%d builds for refused calls", f.count())
+	}
+}

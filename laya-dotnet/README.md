@@ -793,6 +793,31 @@ var result = LayaShortlist.Predict(router, state, questions, embed, k: 20);
 var kept = result.Shortlist!["banking_intent"];   // kept.Labels, kept.Scores, kept.K, kept.N
 ```
 
+`CachedEmbedFunction` (Python's `cached_embed_fn`) wraps the embedder so a fixed option set is embedded once:
+`LayaEmbedFunction cached = new CachedEmbedFunction(embed);` (default bound 4096 strings, least recently used
+evicted). Lookups are exact string matches (a null text is `""`), the misses of a call are de-duplicated and
+embedded in one call, rows are stored as 32-bit floats, and a NaN or infinity becomes `0.0` and is cached. Nothing
+is cached when the embedder throws or returns a bad shape, and a row of another width than the cache holds is
+refused (`call cache_clear() if the model behind embed_fn changed`). `CacheInfo()` returns the size, bound and
+hit and miss counts (per text occurrence), `CacheClear()` empties it and resets the counts. It is safe to share
+between threads; the embedder runs outside the lock.
+
+**Tournament** narrows large choice questions with the decision model itself, no embedder needed:
+
+```csharp
+var result = LayaShortlist.PredictTournament(engine, state, questions, groupSize: 16);
+var info = result.Tournament!["banking_intent"];   // info.Labels (finalists), info.N (field width), info.Rounds
+```
+
+A choice with more than `groupSize` labels is cut, in order, into near-equal groups; one `Predict` answers every
+group of every such question, the winners go to the next round, and a final `Predict` answers the whole request
+with each such choice cut to its finalists. The result is the final call's (probabilities and `Usage` are the
+final call's alone) plus `Tournament`, an entry per choice question. A choice that played a round loses its
+`OptionOrder` with one warning naming the question. To forward per-call options to every round and the final
+call, pass a function: `PredictTournament((s, q) => engine.Predict(s, q, options), state, questions)`.
+`groupSize` below 2 throws `ArgumentException` (`group_size must be an integer of at least 2, got 1`); a round
+reply that lacks a group's answer throws `KeyNotFoundException` with Python's `KeyError` text (`'1'`).
+
 ---
 
 ## API reference

@@ -11,6 +11,13 @@ goldens: 0.4.12).
 
 ### Added
 
+- `LayaShortlist.PredictTournament` (Python's `predict_tournament`, shortlist.py:139-227): elimination rounds
+  over the decision model for choices with more than `groupSize` (default 16) labels, then one final call;
+  `LayaResult.Tournament` (`TournamentInfo`: `Labels`, `N`, `Rounds`, choice questions only). An overload takes a
+  predict function so per-call options reach every round, as Python's `**predict_kwargs`. `CachedEmbedFunction`,
+  `EmbedCacheInfo` (Python's `cached_embed_fn`, shortlist.py:287-400): LRU cache of an embedder per exact text.
+  Both are recorded against Python's own functions (`tournament_probe.json`, `cached_embed_probe.json`, model
+  cases `tournament_*` in `dump_golden.py`). Existing signatures are unchanged.
 - Question-level option ordering, Python's `option_order` (agent.py `_check_question`, common.py
   `build_sequence` / `unpermute_probs`): `ChoiceQuestion`, `ScoreQuestion` and `NoulQuestion` gain
   `WithOptionOrder(...)` (a copy of the question) and `Question.OptionOrder`. Slot `s` shows option

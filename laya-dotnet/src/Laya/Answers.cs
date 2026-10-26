@@ -287,7 +287,8 @@ public sealed class LayaResult
     private readonly List<string> _order;
 
     internal LayaResult(string model, List<string> order, Dictionary<string, Answer> byId, Usage usage,
-                        RouteDecision? routing = null, IReadOnlyDictionary<string, ShortlistInfo>? shortlist = null)
+                        RouteDecision? routing = null, IReadOnlyDictionary<string, ShortlistInfo>? shortlist = null,
+                        IReadOnlyDictionary<string, TournamentInfo>? tournament = null)
     {
         Model = model;
         _order = order;
@@ -295,6 +296,7 @@ public sealed class LayaResult
         Usage = usage;
         Routing = routing;
         Shortlist = shortlist;
+        Tournament = tournament;
     }
 
     /// <summary>The model identifier, matching Python's <c>"laya-rl-agent"</c>.</summary>
@@ -319,16 +321,28 @@ public sealed class LayaResult
     /// </summary>
     public IReadOnlyDictionary<string, ShortlistInfo>? Shortlist { get; }
 
+    /// <summary>
+    /// Per-choice-question elimination metadata, when this result came from
+    /// <see cref="LayaShortlist.PredictTournament(ILayaPredictor, object, QuestionSet, int)"/>; one entry per
+    /// choice question, none for a score or noul. <see langword="null"/> otherwise. Mirrors Python's
+    /// <c>result["tournament"]</c>.
+    /// </summary>
+    public IReadOnlyDictionary<string, TournamentInfo>? Tournament { get; }
+
     /// <summary>A copy of this result with <see cref="Routing"/> set. Used internally by <see cref="LayaRouter"/>.</summary>
-    internal LayaResult WithRouting(RouteDecision routing) => new(Model, _order, _byId, Usage, routing, Shortlist);
+    internal LayaResult WithRouting(RouteDecision routing) => new(Model, _order, _byId, Usage, routing, Shortlist, Tournament);
 
     /// <summary>A copy of this result with <see cref="Shortlist"/> set. Used internally by <see cref="LayaShortlist"/>.</summary>
     internal LayaResult WithShortlist(IReadOnlyDictionary<string, ShortlistInfo> shortlist) =>
-        new(Model, _order, _byId, Usage, Routing, shortlist);
+        new(Model, _order, _byId, Usage, Routing, shortlist, Tournament);
+
+    /// <summary>A copy of this result with <see cref="Tournament"/> set. Used internally by <see cref="LayaShortlist"/>.</summary>
+    internal LayaResult WithTournament(IReadOnlyDictionary<string, TournamentInfo> tournament) =>
+        new(Model, _order, _byId, Usage, Routing, Shortlist, tournament);
 
     /// <summary>A copy of this result with its answers replaced (same ids). Used internally by the abstention gate.</summary>
     internal LayaResult WithAnswers(Dictionary<string, Answer> answers) =>
-        new(Model, _order, answers, Usage, Routing, Shortlist);
+        new(Model, _order, answers, Usage, Routing, Shortlist, Tournament);
 
     /// <summary>The question ids, in the order they were asked.</summary>
     public IReadOnlyList<string> Ids => _order;

@@ -195,14 +195,15 @@ func TestBatchTypedNilStateRefusedBeforeRouting(t *testing.T) {
 
 func TestCancelledContextBuildsNothing(t *testing.T) {
 	f := &scoringFactory{}
-	r := scoringRouter(t, f)
+	routed := 0
+	r := scoringRouter(t, f, router.WithInstalledHooks(&router.HookFuncs{OnRouteFunc: func(*router.RouteContext) { routed++ }}))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	_, e1 := r.Predict(ctx, enText, qsA(t))
 	_, e2 := r.PredictBatch(ctx, []router.Request{{State: enText, Questions: qsA(t)}}, 0)
 	_, e3 := r.PredictLong(ctx, enText, qsA(t))
-	if !errors.Is(e1, context.Canceled) || !errors.Is(e2, context.Canceled) || !errors.Is(e3, context.Canceled) || f.count() != 0 {
-		t.Errorf("errors %v %v %v, builds %d", e1, e2, e3, f.count())
+	if !errors.Is(e1, context.Canceled) || !errors.Is(e2, context.Canceled) || !errors.Is(e3, context.Canceled) || f.count() != 0 || routed != 0 {
+		t.Errorf("errors %v %v %v, builds %d, route hooks %d", e1, e2, e3, f.count(), routed)
 	}
 }
 
@@ -219,7 +220,7 @@ func TestBatchOptionsAreValidatedEvenWithNoRequests(t *testing.T) {
 	if _, err := r.PredictBatch(context.Background(), []router.Request{req}, 0); err == nil {
 		t.Error("a per-request gate was silently ignored")
 	}
-	if _, err := r.PredictLong(context.Background(), enText, qsA(t), router.ForMaxLen(0)); err != nil {
+	if _, err := r.PredictLong(context.Background(), enText, qsA(t), router.ForMaxLen(-5)); err != nil {
 		t.Errorf("ForMaxLen(0) is no override: %v", err)
 	}
 }

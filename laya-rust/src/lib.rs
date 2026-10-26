@@ -91,7 +91,10 @@ pub use laya_router::{
     BatchRequest, GuessInput, LangGuess, LayaBatchPredictor, LayaLongPredictor, LayaPredictor,
     LayaRouter, LayaRouterOptions, RouteDecision,
 };
-pub use laya_shortlist::{DEFAULT_SHORTLIST_K, LayaShortlist, ShortlistInfo};
+pub use laya_shortlist::{
+    CacheInfo, CachedEmbed, DEFAULT_CACHE_MAXSIZE, DEFAULT_SHORTLIST_K, DEFAULT_TOURNAMENT_GROUP,
+    LayaShortlist, ShortlistInfo, TournamentInfo,
+};
 pub use long_prediction::LongOptions;
 pub use model_artifacts::{ModelArtifacts, ModelLayout, ModelPaths};
 pub use predict_options::PredictOptions;

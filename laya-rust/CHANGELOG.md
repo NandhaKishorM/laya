@@ -45,6 +45,18 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
   (such a file loads as Python loads it, without that warning). API notes: `LayaOptions` has a new
   public field, `calibration`, so code that builds it without `..Default::default()` must add it;
   `LayaEngine::binning_map` and the public `calibration_file` module are new.
+- `LayaShortlist::predict_tournament`, Python's `predict_tournament`: a choice with more than
+  `group_size` labels (default 16, `DEFAULT_TOURNAMENT_GROUP`) is answered in contiguous groups,
+  round by round, and the winners meet in one final predict, with no embedder. The result is the
+  final call's, plus `LayaResult::tournament()` (`labels`, `n`, `rounds` per choice question). A
+  narrowed choice loses its `option_order` with Python's warning. `predict_tournament_with` takes
+  the predict call as a closure, so per-call options reach every round and the final call. Errors
+  carry Python's text: `group_size` below 2, a reply without a group's answer (`'1'`), and an
+  answer that is not a choice (`'choice'`).
+- `LayaShortlist::cached_embed_fn` / `CachedEmbed`, Python's `cached_embed_fn`: an LRU cache
+  (4096 texts by default) around an embedding function, with exact-text keys, de-duplicated
+  misses in one call, `f32` storage, non-finite values cached as `0.0`, Python's shape and
+  dimension errors, `cache_info` and `cache_clear`. Safe to share between threads.
 - Noul custom labels, Python's `labels`: `Question::with_noul_labels` and `Question::with_labels`
   (plus `Question::labels`) rename a noul question's two options, rendered as
   `"<label>: <criterion or default text>"`. The labels must be exactly `false` and `true`, distinct

@@ -9,7 +9,8 @@ No network: the checkpoint is a tiny local one built here, the same shape
 `tests/test_download.py` uses.
 
 Section 7 spends that same tiny agent on `examples/39_error_handling.py`: it runs the page and holds
-what it promises to what it prints.
+what it promises to what it prints. Section 10 spends it on `docs/finetune_browser_agent.md`: it
+builds the directory that page's own download command makes and loads the sources that page names.
 
 Run: python tests/test_load_errors.py
 """
@@ -495,6 +496,91 @@ check_true("unprobed GPU/warns about the probe",
            any("capability" in str(w.message) for w in caught),
            str([str(w.message) for w in caught]))
 del _no_probe
+
+
+# --------------------------------- 10. docs/finetune_browser_agent.md's checkpoint sources resolve
+# That page sends the reader to a Hub artifact and tells them how to load it twice: a `laya.load(...)`
+# in a python fence, and a positional to `code/verify.py` in the Reproduce bash fence. Both carried
+# `v10s`, which on that repo names a *training script* (`code/finetune/run_v10s.sh`), not a checkpoint:
+# the artifact ships one checkpoint at the root of its repo, so `laya-browser/v10s` is a directory
+# `--local-dir laya-browser` never writes. `laya` reads a source that is not on disk as a Hub id, so the
+# line does not fail on the reader's path -- it asks the Hub for a repository named `laya-browser/v10s`.
+# Nothing reads that page today, so this does: the layout comes from the page's own download and `cd`
+# lines, and every source the page prints has to resolve in it.
+DOC = Path(__file__).resolve().parents[1] / "docs" / "finetune_browser_agent.md"
+DOC_TEXT = DOC.read_text(encoding="utf-8")
+DOC_PY = "\n".join(re.findall(r"```python\n(.*?)```", DOC_TEXT, re.S))
+DOC_SH = "\n".join(re.findall(r"```bash\n(.*?)```", DOC_TEXT, re.S))
+
+_dl = re.findall(r"huggingface-cli download (\S+) --local-dir (\S+)", DOC_TEXT)
+check_true("finetune page/one download line names the repo and its local directory",
+           len(_dl) == 1, str(_dl))
+DOC_REPO, DOC_LOCAL = _dl[0] if _dl else ("", "")
+DOC_CWD = next(iter(re.findall(r"^\s*cd (\S+)", DOC_SH, re.M)), "")
+
+DOC_TMP = Path(tempfile.mkdtemp(prefix="laya_finetune_page_"))
+build_checkpoint(DOC_TMP / DOC_LOCAL)
+(DOC_TMP / DOC_LOCAL / "code").mkdir()
+
+
+def _page_source_resolves(src, cwd):
+    """The repo id the page names, or a directory that really holds a checkpoint. Nothing else loads."""
+    if src == DOC_REPO:
+        return True
+    return os.path.exists(os.path.join(os.path.realpath(os.path.join(str(cwd), src)),
+                                       "rl_agent_config.json"))
+
+
+# The python fence runs where the reader downloaded to; the bash fence runs after its own `cd`.
+DOC_SOURCES = [("python", s, DOC_TMP) for s in re.findall(r'laya\.load\(\s*"([^"]+)"', DOC_PY)]
+for _line in DOC_SH.splitlines():
+    if "verify.py" in _line:
+        for _tok in _line.split("#", 1)[0].split("verify.py", 1)[1].split():
+            if not _tok.startswith("--"):
+                DOC_SOURCES.append(("bash", _tok, DOC_TMP / DOC_CWD))
+
+check_true("finetune page/the extraction still finds both source forms",
+           len(DOC_SOURCES) >= 2, str(DOC_SOURCES))
+check("finetune page/every source it prints resolves to a checkpoint",
+      [(how, src) for how, src, cwd in DOC_SOURCES if not _page_source_resolves(src, cwd)], [])
+check_true("finetune page/the rule still rejects a training-script name used as a checkpoint",
+           not _page_source_resolves(DOC_LOCAL + "/v10s", DOC_TMP)
+           and not _page_source_resolves("v10s", DOC_TMP / DOC_CWD), str(DOC_SOURCES))
+
+# The resolution rule is the claim, so it runs against the real loader rather than only the regex.
+_hub = []
+
+
+def _capture_hub(repo_id, **kw):
+    _hub.append(repo_id)
+    raise RuntimeError("handed to the Hub")
+
+
+_prev_cwd = os.getcwd()
+os.chdir(str(DOC_TMP))
+try:
+    if DOC_LOCAL:
+        _page_agent = load(DOC_LOCAL, device="cpu")
+        check_true("finetune page/the local directory the download makes loads", _page_agent is not None)
+        del _page_agent
+        with patch("huggingface_hub.snapshot_download", side_effect=_capture_hub):
+            try:
+                load(DOC_LOCAL + "/v10s", device="cpu")
+            except BaseException:  # noqa: BLE001 -- the recorded repo id is the witness, not its type
+                pass
+        check("finetune page/a run-name suffix leaves the local tree for the Hub",
+              _hub, [DOC_LOCAL + "/v10s"])
+finally:
+    os.chdir(_prev_cwd)
+    shutil.rmtree(DOC_TMP, ignore_errors=True)
+
+# The trained budget the reader must set is stated twice on the page: an inline comment, and the prose
+# that explains why the input format moved the numbers. Those two have to say the same number.
+_inline = re.search(r'head_max_len_train"\]\s*#\s*(\d+)', DOC_PY)
+_prose = re.search(r"`head_max_len` \d+ → (\d+)", DOC_TEXT)
+check_true("finetune page/the two statements of the trained budget agree",
+           bool(_inline) and bool(_prose) and _inline.group(1) == _prose.group(1),
+           "%s vs %s" % (_inline and _inline.group(1), _prose and _prose.group(1)))
 
 
 TMP.cleanup()

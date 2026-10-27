@@ -42,6 +42,7 @@ Mirrors the [Laya Python SDK](https://github.com/NandhaKishorM/laya/blob/main/RE
 - [Execution providers and cargo features](#execution-providers-and-cargo-features)
 - [Async usage](#async-usage)
 - [Configuration reference](#configuration-reference-layaoptions)
+- [Pinning and verifying a download](#pinning-and-verifying-a-download)
 - [Routing, language detection, email and shortlist](#routing-language-detection-email-and-shortlist)
 - [Samples](#samples)
 - [Testing](#testing)
@@ -480,6 +481,8 @@ The same pattern applies to `ModelArtifacts::resolve` / `LayaEngine::create` wit
 | `download_progress` | `Option<Arc<dyn Fn(ArtifactDownloadProgress) + Send + Sync>>` | `None` | Per-file progress sink. |
 | `lang_temperatures` | `LangTemperatureTable` | empty | Per-language temperature overrides; see [Per-language temperatures](#per-language-temperatures-and-per-call-overrides). |
 | `calibration` | `Option<PathBuf>` | `None` | A calibration file read onto the engine at construction (`set_calibration` sets it); see [Calibration files and histogram binning](#calibration-files-and-histogram-binning). |
+| `revision` | `Option<String>` | `None` → `LAYA_REVISION` | Hub commit, branch or tag to download, or `reviewed` for the pinned commit of `hugging_face_repo`. See [Pinning and verifying a download](#pinning-and-verifying-a-download). |
+| `expected_sha256` | `Option<IndexMap<String, String>>` | `None` → `LAYA_SHA256_DIGESTS` | `{path: SHA-256}` checked before anything is parsed. `Some` of an empty map masks the variable. |
 
 Every field is `pub`, including `hugging_face_subfolder`, so `LayaOptions` can be built with
 ordinary struct-update syntax as well as `LayaOptions::new()` plus field assignment:
@@ -951,6 +954,33 @@ invocation that has the `download` feature enabled (the default) with no externa
 
 ---
 
+## Pinning and verifying a download
+
+Ports `laya/revisions.py`. Both controls are opt-in and work the same way: an option, else an
+environment variable, else nothing.
+
+- **Revision.** `LayaOptions::revision` (else `LAYA_REVISION`) names a commit, branch or tag; the
+  word `reviewed` means the commit this SDK's reviewed table holds for `hugging_face_repo`
+  (`laya::revisions::PINNED_REVISIONS`), and is refused for a repository without one. Both are
+  stripped, the option wins, and a blank option suppresses the variable. A pinned download is
+  fetched from `resolve/<revision>/` and cached under `<cache>/<revision>/<checkpoint>`, so two
+  revisions never share files; unpinned loads keep `<cache>/<checkpoint>` and `resolve/main/`.
+- **Digests.** `LayaOptions::expected_sha256` (else `LAYA_SHA256_DIGESTS`, a JSON object) maps paths
+  relative to the checkpoint directory to SHA-256 digests. It is checked in `ModelArtifacts::resolve` (so in `LayaEngine::create`),
+  for downloaded and local directories alike, before the config, tokenizer or model is looked for.
+  Absolute and `..` paths, missing files and mismatches are refused; case and surrounding
+  whitespace in a digest do not matter. The key `onnx` (or `onnx_path`) means the fused
+  `model.onnx`; a split checkpoint is refused for that key, so list `encoder.onnx` and `head.onnx`.
+- **Router.** `LayaRouterOptions::revisions` and `sha256_digests` pin each checkpoint;
+  `engine_options.revision` / `expected_sha256` apply to all. The two digest maps merge file by
+  file, the per-checkpoint entry winning. `LAYA_SHA256_DIGESTS` may be flat (the same files on
+  every checkpoint) or model-keyed (`{"english": {...}, ...}`); mixing the two is refused.
+- **What was loaded.** `LayaRouter::loaded_revisions()` and `LayaEngine::revision()` report the
+  commit the Hub sent (`X-Repo-Commit`, kept in a `.laya_revision` file beside the downloaded
+  files), else the pin, else `None`. Local directories report `None`.
+
+---
+
 ## Module map
 
 | Rust module | Purpose | Rust type(s) |
@@ -964,6 +994,7 @@ invocation that has the `download` feature enabled (the default) with no externa
 | `src/calibration_file.rs` | Calibration file loader and histogram binning | `CalibrationFile`, `BinningMap`, `BinningEntry` |
 | `src/laya_options.rs` | Engine construction options | `LayaOptions`, `LayaCheckpoint`, `LayaExecutionProvider`, `ArtifactDownloadProgress` |
 | `src/model_artifacts.rs` | Locating/downloading model files | `ModelArtifacts`, `ModelLayout`, `ModelPaths` (the fused/split layout enum and its resolved paths — see [Getting the model](#getting-the-model)) |
+| `src/revisions.rs` | Revision pins and SHA-256 digest checks | `resolve_revision`, `verify_digests`, `PINNED_REVISIONS`, `DigestGraph` |
 | `src/laya_presets.rs` | Built-in question presets | `LayaPresets` |
 | `src/sequence_builder.rs` | Token sequence construction | `SequenceBuilder` |
 | `src/collator.rs` | Batches sequences for one forward pass | `Collator`, `CollatedBatch`, `SequenceItem` |
@@ -1025,6 +1056,7 @@ Rust port groups the corresponding functions into a unit struct with associated 
   `max_len=-5: must be a non-negative integer`, since Python slices from the end for it. Python
   also tolerates a small fractional `head_max_len` (roughly up to 8 plus 4 per option); that is
   refused here too.
+- **Revision reporting.** Python's `snapshot_revision` (the commit a Hub snapshot directory points at) has no equivalent; the reported revision is the `X-Repo-Commit` the Hub sent, else the pin, else `None`. A pinned download is cached per revision, and the `onnx` digest key means the fused `model.onnx` and is refused on a split checkpoint.
 - **Lone surrogate escapes in config JSON are refused.** `"\ud800"` loads in Python and is an error
   here, because a Rust `String` cannot hold a lone surrogate.
 - **JSON nesting is cut off at 1000 levels.** Python's limit depends on the interpreter's

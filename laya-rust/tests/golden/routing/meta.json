@@ -27,6 +27,10 @@
     "email_probe_clean": 253,
     "email_probe_state": 22,
     "shortlist_probe": 22,
-    "hashing_embedder_probe": 22
+    "hashing_embedder_probe": 22,
+    "revision_probe_resolve": 33,
+    "revision_probe_verify": 64,
+    "revision_probe_digests_from_env": 24,
+    "revision_probe_merge": 11
   }
 }

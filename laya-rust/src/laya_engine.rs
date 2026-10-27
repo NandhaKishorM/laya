@@ -137,6 +137,8 @@ impl LayaEngine {
     #[track_caller]
     pub fn create(options: LayaOptions) -> Result<Self> {
         let artifacts = ModelArtifacts::resolve(&options)?;
+        // `resolve` has already verified `expected_sha256` (else `LAYA_SHA256_DIGESTS`), before
+        // it looked for the config or the tokenizer: nothing below runs on an unverified file.
         let (mut config, mut deferred) =
             LayaConfig::load_deferred(&artifacts.config_path, &options.lang_temperatures)?;
         let lang_temperatures = std::mem::take(&mut deferred.lang_temperatures);
@@ -231,6 +233,12 @@ impl LayaEngine {
     /// where no checkpoint was inferred.
     pub fn checkpoint(&self) -> Option<LayaCheckpoint> {
         self.artifacts.checkpoint
+    }
+
+    /// The Hub revision this engine was loaded for: the pin in force when the artifacts came from
+    /// the cache or a download, `None` otherwise. See [`ModelArtifacts::revision`].
+    pub fn revision(&self) -> Option<&str> {
+        self.artifacts.revision.as_deref()
     }
 
     /// Answer every question in `questions` about `state`.

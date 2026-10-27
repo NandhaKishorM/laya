@@ -130,6 +130,22 @@ pub enum LayaError {
     /// bucket. The text is Python's, with `%r` rendered as Python's `repr`.
     #[error("{0}")]
     InvalidMinConfidence(String),
+
+    /// A revision pin that Python's `resolve_revision` would refuse with a `ValueError`: the word
+    /// `reviewed` for a repository that has no reviewed SHA. The text is Python's.
+    #[error("{0}")]
+    InvalidRevision(String),
+
+    /// A digest check that Python's `verify_digests` (or the router's `LAYA_SHA256_DIGESTS`
+    /// reading) would refuse with a `ValueError`: a SHA-256 mismatch, an unsafe path, a malformed
+    /// or mixed-shape map. The text is Python's.
+    #[error("{0}")]
+    InvalidDigests(String),
+
+    /// A file named in the expected digests is not there (Python's `FileNotFoundError` from
+    /// `verify_digests`). The text is Python's.
+    #[error("{0}")]
+    DigestFileNotFound(String),
 }
 
 #[cfg(test)]

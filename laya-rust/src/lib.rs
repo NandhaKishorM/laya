@@ -62,6 +62,7 @@ pub mod predict_options;
 pub mod python_json;
 mod python_json_reader;
 pub mod questions;
+pub mod revisions;
 pub mod sequence_builder;
 pub mod tokenization;
 

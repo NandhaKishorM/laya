@@ -74,6 +74,33 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
   text, naming the question. The router includes the order in its batch grouping key, and
   `LayaShortlist::predict` drops the order of a choice it narrows, with Python's warning (`log`,
   target `laya`). Existing constructors are unchanged.
+- Revision pinning and SHA-256 digest checks, ported from `laya/revisions.py`, `onnx_agent.py` and
+  `router.py`, with Python's error texts. New module `laya::revisions`: `resolve_revision`
+  (argument, else `LAYA_REVISION`, stripped; a blank argument suppresses the variable; the word
+  `reviewed` selects `PINNED_REVISIONS` case-insensitively and is refused for a repository without
+  a pin), `verify_digests` (an explicit map, else `LAYA_SHA256_DIGESTS`; `Some(empty)` masks the
+  variable; absolute and `..` paths, missing files and mismatches are refused; the comparison
+  ignores case and surrounding whitespace) and `PINNED_REVISIONS`. `LayaOptions::revision` and
+  `LayaOptions::expected_sha256` drive them: a pinned download comes from `resolve/<revision>/` and
+  is cached per revision under `<cache>/<revision>/<checkpoint>` (the revision is percent-encoded
+  into one folder name; an unpinned load keeps `<cache>/<checkpoint>` and `resolve/main/`), and
+  verification runs in `ModelArtifacts::resolve` (so in `LayaEngine::create`) as soon as the artifact
+  directory is known, local directories included, and before the config, tokenizer or session is
+  looked for, so an incomplete and mismatched directory reports the digest. The `onnx` /
+  `onnx_path` digest key names the fused `model.onnx`; on a split checkpoint it is refused (list
+  `encoder.onnx` and `head.onnx` by path). `LayaRouterOptions::{revisions, sha256_digests}` give
+  per-checkpoint pins and digests; a flat or model-keyed `LAYA_SHA256_DIGESTS` is read as Python's
+  router reads it (`digests_from_env`, with the mixed-shape error), merged file by file with
+  `engine_options.expected_sha256`, the per-checkpoint entry winning (`merge_expected_digests`).
+  `LayaRouter::loaded_revisions` and `LayaEngine::revision` / `ModelArtifacts::revision` report the
+  commit: the `X-Repo-Commit` header the Hub sent with every file (read from the first response, before the CDN redirect, which is followed by hand without sending the token to another host; stored in a `.laya_revision`
+  stamp beside the files, so a cache hit reports it too), else the pin, else `None`; a plain local
+  directory reports `None`. Python's `snapshot_revision` has no equivalent. Checked against
+  `routing/revision_probe.json`, which Python's own functions write. API notes: new dependency
+  `sha2`; `LayaOptions`, `LayaRouterOptions` and `ModelArtifacts` are not `#[non_exhaustive]`, so
+  code that builds them with a full struct literal needs the new fields (`..Default::default()`
+  avoids that); `LayaError` gains `InvalidRevision`, `InvalidDigests` and `DigestFileNotFound`, so
+  an exhaustive `match` needs arms for them; `LayaPredictor` gains a defaulted `revision()`.
 - The abstention gate, ported from `laya/confidence.py`: `PredictOptions::min_confidence` with
   `LayaEngine::predict_with_options` and `LayaRouter::predict_with_options`, and
   `BatchOptions::min_confidence` for `predict_batch` on the engine and the router (one threshold

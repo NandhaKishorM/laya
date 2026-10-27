@@ -52,6 +52,9 @@ regex = "1.13.1"
 # `log` facade at `warn` level with target `laya`. The facade only; no backend is linked, so a
 # program that installs none sees nothing. Already in the dependency tree through `ort`/`tokenizers`.
 log = "0.4"
+# Digest verification (`revisions.rs`): `laya.revisions.verify_digests` hashes artifacts with
+# SHA-256 before any of them is parsed. Pure Rust; already in the tree through `ort`.
+sha2 = "0.10"
 
 [dev-dependencies]
 proptest = "1"

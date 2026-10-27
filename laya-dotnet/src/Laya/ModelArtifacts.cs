@@ -56,6 +56,17 @@ public sealed class ModelArtifacts
     /// </summary>
     public LayaCheckpoint? Checkpoint { get; }
 
+    /// <summary>
+    /// The commit this artifact was downloaded from, or <see langword="null"/>. For a download (and
+    /// a later hit on that cache folder) it is the commit the Hub reported in the <c>X-Repo-Commit</c>
+    /// header of every file, kept in a <c>.laya_revision</c> stamp beside the files, as Python reports the
+    /// snapshot SHA. When the header is missing or the files disagree there is no stamp, and it falls
+    /// back to the pinned value (<see cref="LayaOptions.Revision"/> or <c>LAYA_REVISION</c>), else
+    /// <see langword="null"/>. A local directory that is not a download cache is always
+    /// <see langword="null"/>.
+    /// </summary>
+    public string? Revision { get; private set; }
+
     private ModelArtifacts(string directory, LayaArtifactLayout layout, string? modelPath,
                             string? encoderPath, string? headPath, string configPath,
                             string tokenizerPath, LayaCheckpoint? checkpoint)
@@ -117,16 +128,36 @@ public sealed class ModelArtifacts
         LayaOptions options, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(options);
+        return await ResolveDirectoryAsync(options, ct).ConfigureAwait(false);
+    }
+
+    // Integrity is verified before any file in the checkpoint is parsed or executed, and before the
+    // directory's own completeness checks, as Python's verify_digests precedes the config read: a
+    // directory that is both incomplete and mismatched reports the digest error first. It runs for a
+    // local directory too (onnx_agent.py).
+    private static void VerifyDigests(
+        string dir, LayaOptions options, string? modelPath, bool split) =>
+        LayaRevisions.Verify(
+            dir, options.ExpectedSha256, modelPath,
+            split
+                ? "laya: the 'onnx' / 'onnx_path' digest key names the fused model.onnx, but this checkpoint "
+                  + "is the split layout (encoder.onnx + head.onnx); list encoder.onnx and head.onnx by "
+                  + "relative path instead"
+                : null);
+
+    private static async Task<ModelArtifacts> ResolveDirectoryAsync(
+        LayaOptions options, CancellationToken ct)
+    {
 
         // 1. Explicit directory. No checkpoint inference: the caller knows what they loaded.
         if (!string.IsNullOrEmpty(options.ModelDirectory))
-            return ValidateDirectory(options.ModelDirectory, checkpoint: null);
+            return ValidateDirectory(options.ModelDirectory, checkpoint: null, options);
 
         // 2. LAYA_ONNX_DIR: backward-compat env var that points directly at the artifact dir.
         //    Treated as an explicit path for the same reason: it may point at any checkpoint.
         var envDir = Environment.GetEnvironmentVariable("LAYA_ONNX_DIR");
         if (!string.IsNullOrEmpty(envDir))
-            return ValidateDirectory(envDir, checkpoint: null);
+            return ValidateDirectory(envDir, checkpoint: null, options);
 
         var subfolder = LayaOptions.CheckpointSubfolder(options.Checkpoint);
 
@@ -137,16 +168,22 @@ public sealed class ModelArtifacts
         {
             var rootDir = Path.Combine(onnxRoot, subfolder);
             if (IsComplete(rootDir))
-                return ValidateDirectory(rootDir, options.Checkpoint);
+                return ValidateDirectory(rootDir, options.Checkpoint, options);
             // Not complete under LAYA_ONNX_ROOT — fall through to cache and download rather
             // than failing immediately, so a partially-downloaded cache still works.
         }
 
-        // 4. Cache hit.
+        // 4. Cache hit. Python resolves the revision once it leaves local paths, before the Hub is
+        //    asked; a pin is cached under <cache>/<revision>/<checkpoint>, so it can never be served
+        //    from another revision's files.
+        var revision = LayaRevisions.ResolveRevision(options.HuggingFaceRepo, options.Revision);
         var cacheRoot = ResolveCacheRoot(options);
+        if (revision is not null)
+            cacheRoot = Path.Combine(cacheRoot, LayaRevisions.RevisionFolder(revision));
         var artifactDir = Path.Combine(cacheRoot, subfolder);
         if (IsComplete(artifactDir))
-            return ValidateDirectory(artifactDir, options.Checkpoint);
+            return ValidateDirectory(artifactDir, options.Checkpoint, options)
+                .WithRevision(ReadStamp(artifactDir) ?? revision);
 
         // 5. Download or report the locations that were tried.
         if (!options.AllowDownload)
@@ -167,8 +204,24 @@ public sealed class ModelArtifacts
                 "  Split : encoder.onnx + head.onnx (the laya-ts exporter's layout).");
         }
 
-        await DownloadArtifactAsync(options, artifactDir, ct).ConfigureAwait(false);
-        return ValidateDirectory(artifactDir, options.Checkpoint);
+        var commit = await DownloadArtifactAsync(options, artifactDir, revision, ct).ConfigureAwait(false);
+        return ValidateDirectory(artifactDir, options.Checkpoint, options).WithRevision(commit ?? revision);
+    }
+
+    private const string StampName = ".laya_revision";
+
+    private static string? ReadStamp(string dir)
+    {
+        var path = Path.Combine(dir, StampName);
+        if (!File.Exists(path)) return null;
+        var text = File.ReadAllText(path).Trim();
+        return text.Length == 0 ? null : text;
+    }
+
+    private ModelArtifacts WithRevision(string? revision)
+    {
+        Revision = revision;
+        return this;
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
@@ -223,7 +276,7 @@ public sealed class ModelArtifacts
         return File.Exists(root) ? root : null;
     }
 
-    private static ModelArtifacts ValidateDirectory(string dir, LayaCheckpoint? checkpoint)
+    private static ModelArtifacts ValidateDirectory(string dir, LayaCheckpoint? checkpoint, LayaOptions options)
     {
         var requested = dir;
         dir = Path.GetFullPath(dir);
@@ -252,6 +305,7 @@ public sealed class ModelArtifacts
 
         if (File.Exists(modelPath))
         {
+            VerifyDigests(dir, options, modelPath, split: false);
             RequireFile(dir, "model.onnx.data",
                 "The external weights file must sit next to model.onnx — ONNX Runtime resolves " +
                 "it relative to the graph file, and loading the graph on its own produces a " +
@@ -267,6 +321,7 @@ public sealed class ModelArtifacts
 
         if (File.Exists(encoderPath) && File.Exists(headPath))
         {
+            VerifyDigests(dir, options, modelPath: null, split: true);
             RequireFile(dir, "rl_agent_config.json");
             var tokenizerPath = ResolveTokenizerPath(dir) ?? throw MissingTokenizer(dir);
 
@@ -275,6 +330,8 @@ public sealed class ModelArtifacts
                 configPath: Path.Combine(dir, "rl_agent_config.json"),
                 tokenizerPath: tokenizerPath, checkpoint: checkpoint);
         }
+
+        VerifyDigests(dir, options, modelPath: null, split: false);
 
         // Neither layout is present: half a split export (only one of encoder.onnx/head.onnx)
         // falls through to here too, since neither "if" above matched.
@@ -336,24 +393,32 @@ public sealed class ModelArtifacts
     private static readonly HashSet<string> OptionalSplitFiles =
         ["encoder.onnx.data", "head.onnx.data"];
 
-    private static async Task DownloadArtifactAsync(
-        LayaOptions options, string destDir, CancellationToken ct)
+    // Returns the commit every downloaded file reported in X-Repo-Commit (and stamps it into destDir),
+    // or null when a response lacked the header or the files disagreed.
+    private static async Task<string?> DownloadArtifactAsync(
+        LayaOptions options, string destDir, string? revision, CancellationToken ct)
     {
         System.IO.Directory.CreateDirectory(destDir);
+        var stamp = Path.Combine(destDir, StampName);
+        if (File.Exists(stamp)) File.Delete(stamp);   // a stale stamp must not outlive a new download
+        string? commit = null;
+        var consistent = true;
 
         var token = options.HuggingFaceToken
             ?? Environment.GetEnvironmentVariable("HF_TOKEN");
 
         // One client for every file; disposed here, not per file.
-        using var client = new HttpClient();
-        if (!string.IsNullOrEmpty(token))
-            client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
+        // Redirects are followed by hand (HubClient): the Hub names the commit in X-Repo-Commit on the
+        // first hop only, and the token must not follow a redirect to another host.
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
+        var client = new HubClient(http, string.IsNullOrEmpty(token) ? null : token);
 
         // The English checkpoint lives at the bundle root; all others use a named subfolder.
         // HuggingFaceDownloadSubfolder returns "" for English, so the URL has no extra segment.
         var hfSub = options.HuggingFaceDownloadSubfolder;
-        var baseUrl = $"https://huggingface.co/{options.HuggingFaceRepo}/resolve/main/"
+        // resolve/main/ unless pinned; a pin is percent-encoded as one segment, as huggingface_hub does.
+        var baseUrl = $"{options.HubEndpoint.TrimEnd('/')}/{options.HuggingFaceRepo}/resolve/"
+            + (revision is null ? "main" : Uri.EscapeDataString(revision)) + "/"
             + (string.IsNullOrEmpty(hfSub) ? "" : hfSub + "/");
 
         // Try the fused file list first (the layout this SDK has always produced); fall back to
@@ -376,9 +441,16 @@ public sealed class ModelArtifacts
                 && !await ExistsAsync(client, url, ct).ConfigureAwait(false))
                 continue;
 
-            await DownloadFileAsync(client, url, remote, dest, part, options.DownloadProgress, ct)
+            var reported = await DownloadFileAsync(client, url, remote, dest, part, options.DownloadProgress, ct)
                 .ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(reported)) consistent = false;
+            else if (commit is null) commit = reported.Trim();
+            else if (commit != reported.Trim()) consistent = false;
         }
+
+        if (!consistent || commit is null) return null;
+        File.WriteAllText(stamp, commit);
+        return commit;
     }
 
     /// <summary>
@@ -386,7 +458,7 @@ public sealed class ModelArtifacts
     /// fused or the split layout, and returns the matching file list. Fused is tried first.
     /// </summary>
     private static async Task<(LayaArtifactLayout Layout, (string Remote, string Local)[] Files)> ProbeLayoutAsync(
-        HttpClient client, string baseUrl, CancellationToken ct)
+        HubClient client, string baseUrl, CancellationToken ct)
     {
         if (await ExistsAsync(client, baseUrl + "model.onnx", ct).ConfigureAwait(false))
             return (LayaArtifactLayout.Fused, FusedArtifactFiles);
@@ -404,17 +476,56 @@ public sealed class ModelArtifacts
             "SDK at the output directory via LAYA_ONNX_DIR or LayaOptions.ModelDirectory.");
     }
 
-    private static async Task<bool> ExistsAsync(HttpClient client, string url, CancellationToken ct)
+    private static async Task<bool> ExistsAsync(HubClient client, string url, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Head, url);
-        using var response = await client.SendAsync(request, ct).ConfigureAwait(false);
+        using var hop = await client.SendAsync(HttpMethod.Head, url, ct).ConfigureAwait(false);
+        var response = hop.Response;
         // Anything other than 404 is treated as "exists" — a 401/403 means the repo is gated but
         // the file is really there, and DownloadFileAsync gives the token-specific error for that.
         return response.StatusCode is not System.Net.HttpStatusCode.NotFound;
     }
 
-    private static async Task DownloadFileAsync(
-        HttpClient client,
+    /// <summary>An HTTP client that follows redirects itself, noting the first X-Repo-Commit it sees.</summary>
+    private sealed class HubClient(HttpClient http, string? token)
+    {
+        private const int MaxRedirects = 10;
+
+        internal sealed class Hop(HttpResponseMessage response, string? commit) : IDisposable
+        {
+            public HttpResponseMessage Response { get; } = response;
+            public string? Commit { get; } = commit;
+            public void Dispose() => Response.Dispose();
+        }
+
+        // The Authorization header goes only to the origin of the first URL, never to a host a redirect
+        // leads to (the CDN), as huggingface_hub does.
+        internal async Task<Hop> SendAsync(HttpMethod method, string url, CancellationToken ct)
+        {
+            var origin = new Uri(url);
+            var current = origin;
+            string? commit = null;
+            for (var redirects = 0; ; redirects++)
+            {
+                using var request = new HttpRequestMessage(method, current);
+                if (token is not null && current.Scheme == origin.Scheme && current.Authority == origin.Authority)
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct)
+                    .ConfigureAwait(false);
+                if (commit is null && response.Headers.TryGetValues("X-Repo-Commit", out var values))
+                    commit = values.FirstOrDefault();
+
+                var status = (int)response.StatusCode;
+                if (status is not (301 or 302 or 303 or 307 or 308) || response.Headers.Location is not { } location
+                    || redirects >= MaxRedirects)
+                    return new Hop(response, commit);
+                response.Dispose();
+                current = new Uri(current, location);   // a relative Location resolves against this hop
+            }
+        }
+    }
+
+    private static async Task<string?> DownloadFileAsync(
+        HubClient client,
         string url,
         string displayName,
         string destPath,
@@ -422,8 +533,8 @@ public sealed class ModelArtifacts
         IProgress<ArtifactDownloadProgress>? progress,
         CancellationToken ct)
     {
-        using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct)
-            .ConfigureAwait(false);
+        using var hop = await client.SendAsync(HttpMethod.Get, url, ct).ConfigureAwait(false);
+        var response = hop.Response;
 
         // A bare EnsureSuccessStatusCode here surfaces as "404 (Not Found)" with no hint as to which
         // file was missing or what to do about it. The two failures worth naming:
@@ -453,6 +564,7 @@ public sealed class ModelArtifacts
 
         response.EnsureSuccessStatusCode();
 
+        var commitHeader = hop.Commit;
         var total = response.Content.Headers.ContentLength;
 
         using var src = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
@@ -474,5 +586,6 @@ public sealed class ModelArtifacts
         // not that the destination is valid.
         if (File.Exists(destPath)) File.Delete(destPath);
         File.Move(partPath, destPath);
+        return commitHeader;
     }
 }

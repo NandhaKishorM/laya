@@ -28,7 +28,7 @@ namespace Laya;
 /// layout is loaded.
 /// </para>
 /// </remarks>
-public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatchPredictor, ILayaCallPredictor, ILayaLangTemperatures
+public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatchPredictor, ILayaCallPredictor, ILayaLangTemperatures, IRevisioned
 {
     private const string ModelName = "laya-rl-agent";
 
@@ -80,6 +80,12 @@ public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatch
     /// <c>agent.lang_temperatures</c> being non-empty; a router splits a batch by language only for such an engine.
     /// </summary>
     public bool HasLangTemperatures => _langTemperatures.Count > 0;
+
+    /// <summary>
+    /// The commit this engine was downloaded from, or <see langword="null"/> (see
+    /// <see cref="ModelArtifacts.Revision"/>). Reported by <see cref="LayaRouter.LoadedRevisions"/>.
+    /// </summary>
+    public string? Revision => Artifacts.Revision;
 
     /// <summary>
     /// Which checkpoint variant was loaded, or <see langword="null"/> when loaded from an

@@ -771,6 +771,15 @@ to the `Route`/`Predict`/`PredictLong` overloads that end in `LangGuess? langGue
 request with `new LayaRouterOptions { LangGuess = LangGuess.FromCallback(state => Identify(state)) }`.
 Route reasons quote caller text with Python's `repr`, escaping non-printable characters.
 
+**Pinning and digests per checkpoint.** `LayaRouterOptions.Revision` pins every checkpoint and `Revisions`
+(keyed by name or alias) overrides it per checkpoint; a null or blank entry inherits `Revision`.
+`Sha256Digests` holds `{name: {artifact: digest}}`; `EngineOptions.ExpectedSha256` reaches every checkpoint,
+the two are merged file by file, and the per-checkpoint entry wins for a file both name. `LAYA_SHA256_DIGESTS`
+may be flat (the same files on every checkpoint) or nested per checkpoint; mixing the two throws, and an
+entry in `Sha256Digests` replaces the environment's for that checkpoint (`null` masks it). Names are checked
+when the router is built. `LoadedRevisions` reports the commit each resident checkpoint was downloaded from (`null` for a local directory). The
+revision of `EngineOptions` itself is ignored, like its `Checkpoint`.
+
 **Email cleaning** strips quoted history, signatures and disclaimers before you ask any questions:
 
 ```csharp
@@ -866,6 +875,8 @@ settable (`{ get; set; }`).
 | `HuggingFaceToken` | `string?` | `null` → `HF_TOKEN` | Bearer token for gated or private repos. `""` disables auth. |
 | `CacheDirectory` | `string?` | per-user cache | Root that downloads land under: `%LOCALAPPDATA%\laya\onnx` or `~/.cache/laya/onnx`. |
 | `DownloadProgress` | `IProgress<ArtifactDownloadProgress>?` | `null` | Per-file progress sink. |
+| `Revision` | `string?` | `null` → `LAYA_REVISION` | Hub commit, branch or tag to download (Python's `revision=`). Empty or unset applies `LAYA_REVISION`; a blank value pins nothing and suppresses it; `"reviewed"` means the reviewed SHA of `HuggingFaceRepo` (`LayaRevisions.PinnedRevisions`, matched case-insensitively), refused for a repository with none. A pin downloads from `resolve/<revision>/` and is cached under `<cache>/<revision>/<checkpoint>`; with no pin the URL (`resolve/main/`) and cache layout are unchanged. It applies to the cache and download steps only, not to `ModelDirectory`, `LAYA_ONNX_DIR` or `LAYA_ONNX_ROOT`. `ModelArtifacts.Revision` and `LayaEngine.Revision` report the commit downloaded, as Python reports the snapshot SHA: the Hub's `X-Repo-Commit` response header, recorded in a `.laya_revision` stamp in the cache folder so a later cache hit reports the same SHA. If the header is missing or the files disagree there is no stamp and it falls back to the pinned value, else `null`. A local directory that is not a download cache reports `null`. |
+| `ExpectedSha256` | `IReadOnlyDictionary<string, string>?` | `null` → `LAYA_SHA256_DIGESTS` | SHA-256 digests `{path relative to the artifact directory: hex digest}`, checked (case-insensitively, after trimming) once the artifact directory is resolved, a local one included, and before the config, tokenizer or session is loaded (Python's `expected_sha256`). `null` reads the `LAYA_SHA256_DIGESTS` JSON object; an empty map masks it. Absolute and `..` paths are refused. The key `onnx` (or `onnx_path`) means the fused `model.onnx` and is refused on a split checkpoint: list `encoder.onnx` and `head.onnx` by path there. A mismatch or an unsafe path throws `ArgumentException` (Python's `ValueError`) with Python's text; a listed file that is absent throws `FileNotFoundException`. |
 
 ### `LayaExecutionProvider` (enum)
 
@@ -1201,7 +1212,7 @@ disclaimer, signature and reply-header rules, including Portuguese, Spanish and 
   (`lang_temperatures`, with per-call `lang`) are ported (see "Abstention" and "Per-language temperatures" above).
   Calibration files and histogram binning (`calibration=` / `load_calibration`) are ported too (see "Calibration files and
   histogram binning" above); fitting and saving one (`fit_binning`, `save_calibration`) is not.
-- **Other Python-only APIs are not ported:** hooks and digest controls.
+- **Other Python-only APIs are not ported:** hooks.
   Batching is ported (`PredictBatch`, `LayaRouter.PredictBatch` / `RouteBatch`) without hooks and the router
   `diagnostics` dictionary.
 - **Usage diagnostics:** Python's `state_tokens`, `truncated`, `state_tokens_dropped`, `truncated_questions`

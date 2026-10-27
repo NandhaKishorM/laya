@@ -33,6 +33,22 @@ goldens: 0.4.12).
   answered (`Predict`, `PredictBatch`, `PredictLong`) with Python's text, naming the question. The answer is
   still P(true), and the temperature and `min_confidence` buckets and `OptionOrder` do not depend on them.
   `LayaRouter` batch grouping includes the labels. Existing signatures are unchanged.
+- Revision pinning and SHA-256 digest checks, ported from Python `laya/revisions.py`, `onnx_agent.py` and
+  `router.py`: `LayaOptions.Revision` (else `LAYA_REVISION`; `reviewed` selects the reviewed SHA of the
+  repository, matched case-insensitively, via `LayaRevisions.PinnedRevisions`) downloads from
+  `resolve/<revision>/` and caches a pinned load under `<cache>/<revision>/<checkpoint>` (unpinned loads keep
+  the `resolve/main/` URL and today's layout); `LayaOptions.ExpectedSha256` (else `LAYA_SHA256_DIGESTS`; an
+  empty map masks the variable) is verified after the artifact directory is resolved, local directories
+  included, and before the config, tokenizer or session is loaded. `LayaRouterOptions.Revision`, `Revisions`
+  and `Sha256Digests` (flat or nested `LAYA_SHA256_DIGESTS`, merged per file with the per-checkpoint entry
+  winning) and `LayaRouter.LoadedRevisions` follow the Python router. Errors carry Python's texts
+  (`ValueError` is `ArgumentException`, `FileNotFoundError` is `FileNotFoundException`). The digest key
+  `onnx` / `onnx_path` means the fused `model.onnx` and is refused on a split checkpoint. Additive: no
+  existing signature changes. A model-free probe recorded from Python (`revision_probe.json`, corpus
+  `tools/revision_cases.py`, fixtures `tools/revision_fixtures/`) pins the behaviour, the `PINNED_REVISIONS`
+  table included. `ModelArtifacts.Revision`, `LayaEngine.Revision` and `LayaRouter.LoadedRevisions` report the
+  commit downloaded (the Hub's `X-Repo-Commit`, kept in a `.laya_revision` stamp so a cache hit agrees), falling
+  back to the pinned value, else `null`, when the header is missing or inconsistent.
 - `LayaEngine.PredictBatch` (`ILayaBatchPredictor`), `LayaBatchOptions` (`BatchSize`, `SortByLength`),
   `LayaRouter.PredictBatch` and `LayaRouter.RouteBatch` over `LayaBatchRequest`, ported from Python
   `ONNXAgent.predict_batch` and `Router.predict_batch` / `route_batch`: shared forward passes, `batch_size`
@@ -169,5 +185,5 @@ goldens: 0.4.12).
 
 ### Known gaps
 
-- Python-only opt-in features are not yet ported: hooks, digest controls and
+- Python-only opt-in features are not yet ported: hooks and
   calibration binning (`load_calibration`). Batching is ported without hooks.

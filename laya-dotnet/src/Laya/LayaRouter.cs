@@ -70,6 +70,32 @@ public sealed class LayaRouterOptions
     /// See <see cref="Laya.LangGuess"/>.
     /// </summary>
     public LangGuess? LangGuess { get; init; }
+
+    /// <summary>
+    /// Hub revision applied to every checkpoint (Python's <c>Router(revision=)</c>). A
+    /// <see langword="null"/> or blank value pins nothing and leaves <c>LAYA_REVISION</c> in charge.
+    /// <see cref="LayaOptions.Revision"/> on <see cref="EngineOptions"/> is ignored, like
+    /// <see cref="LayaOptions.Checkpoint"/>.
+    /// </summary>
+    public string? Revision { get; set; }
+
+    /// <summary>
+    /// Per-checkpoint revisions keyed by checkpoint name or alias (Python's
+    /// <c>Router(revisions=)</c>). An entry overrides <see cref="Revision"/> for that checkpoint; a
+    /// <see langword="null"/> or blank entry means "no pin of its own", so it inherits
+    /// <see cref="Revision"/>. An unknown name throws at construction.
+    /// </summary>
+    public IReadOnlyDictionary<string, string?>? Revisions { get; set; }
+
+    /// <summary>
+    /// Per-checkpoint SHA-256 digests <c>{name: {artifact: digest}}</c> (Python's
+    /// <c>Router(sha256_digests=)</c>), merged file by file with <c>EngineOptions.ExpectedSha256</c>
+    /// (which reaches every checkpoint) and winning for a file both name. A flat
+    /// <c>LAYA_SHA256_DIGESTS</c> applies to every checkpoint; a nested one pins each checkpoint it
+    /// names, and an entry here replaces the environment's for that checkpoint. A
+    /// <see langword="null"/> entry names no files and masks the environment for that checkpoint.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>?>? Sha256Digests { get; set; }
 }
 
 /// <summary>
@@ -140,6 +166,8 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
     }
 
     private readonly Func<LayaCheckpoint, ILayaPredictor> _engineFactory;
+    private readonly RouterPins _pins;
+    private readonly LayaOptions _template;
     private readonly Lock _lock = new();
     private readonly Dictionary<LayaCheckpoint, Slot> _slots = new();
     private readonly List<LayaCheckpoint> _order = []; // least-recently-used first
@@ -163,7 +191,7 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
 
     /// <summary>Create a router that builds real <see cref="LayaEngine"/> instances on demand.</summary>
     public LayaRouter(LayaRouterOptions? options = null)
-        : this(options, BuildDefaultFactory((options ?? new LayaRouterOptions()).EngineOptions))
+        : this(options ?? new LayaRouterOptions(), RouterPins.From(options ?? new LayaRouterOptions()), null)
     {
     }
 
@@ -173,10 +201,17 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
     /// with fake predictors and no ONNX weights.
     /// </summary>
     internal LayaRouter(LayaRouterOptions? options, Func<LayaCheckpoint, ILayaPredictor> engineFactory)
+        : this(options ?? new LayaRouterOptions(), RouterPins.From(options ?? new LayaRouterOptions()),
+               engineFactory ?? throw new ArgumentNullException(nameof(engineFactory)))
     {
-        ArgumentNullException.ThrowIfNull(engineFactory);
-        options ??= new LayaRouterOptions();
-        _engineFactory = engineFactory;
+    }
+
+    private LayaRouter(
+        LayaRouterOptions options, RouterPins pins, Func<LayaCheckpoint, ILayaPredictor>? engineFactory)
+    {
+        _pins = pins;
+        _template = options.EngineOptions;
+        _engineFactory = engineFactory ?? (checkpoint => LayaEngine.Create(OptionsFor(checkpoint)));
         _maxLoaded = Math.Max(1, options.MaxLoaded);
         Default = options.Default;
         AutoTaskDetection = options.AutoTaskDetection;
@@ -184,14 +219,22 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
         if (options.Preload) Preload();
     }
 
-    private static Func<LayaCheckpoint, ILayaPredictor> BuildDefaultFactory(LayaOptions template) => checkpoint =>
-        LayaEngine.Create(EngineOptions(template, checkpoint));
+    // The options one checkpoint is built with: the template, plus that checkpoint's own revision and
+    // its digests merged with the template's (router.py:988-998).
+    internal LayaOptions OptionsFor(LayaCheckpoint checkpoint)
+    {
+        var options = EngineOptions(_template, checkpoint);
+        options.Revision = _pins.RevisionFor(checkpoint);
+        options.ExpectedSha256 = MergeExpectedDigests(_template.ExpectedSha256, _pins.DigestEntry(checkpoint));
+        return options;
+    }
 
     /// <summary>The options of the engine the router builds for <paramref name="checkpoint"/> from its <paramref name="template"/>.</summary>
     internal static LayaOptions EngineOptions(LayaOptions template, LayaCheckpoint checkpoint) =>
         new()
         {
             Checkpoint = checkpoint,
+            HubEndpoint = template.HubEndpoint,
             ExecutionProvider = template.ExecutionProvider,
             IntraOpThreads = template.IntraOpThreads,
             InterOpThreads = template.InterOpThreads,
@@ -204,6 +247,87 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
             LangTemperatures = template.LangTemperatures,
             Calibration = template.Calibration,
         };
+
+    /// <summary>
+    /// The per-file merge of the digests that reach every checkpoint and one checkpoint's own
+    /// (Python's <c>_merge_expected_digests</c>): <see langword="null"/> when both are silent, which
+    /// leaves <c>LAYA_SHA256_DIGESTS</c> its fallback; an empty map is not silent and masks it.
+    /// For a file both name, <paramref name="perModel"/> wins.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string>? MergeExpectedDigests(
+        IReadOnlyDictionary<string, string>? shared, IReadOnlyDictionary<string, string>? perModel)
+    {
+        if (shared is null && perModel is null) return null;
+        var merged = new Dictionary<string, string>(shared ?? new Dictionary<string, string>(), StringComparer.Ordinal);
+        foreach (var (file, digest) in perModel ?? new Dictionary<string, string>()) merged[file] = digest;
+        return merged;
+    }
+
+    /// <summary>
+    /// Python's <c>_digests_from_env</c>: <c>LAYA_SHA256_DIGESTS</c> as per-checkpoint maps when it is
+    /// nested (<c>{model: {artifact: digest}}</c>), every checkpoint a nested map does not name getting
+    /// an empty one; empty when it is flat, unset or unparseable (the loader reads those itself).
+    /// </summary>
+    /// <exception cref="ArgumentException">The value mixes the two shapes, or names an unknown model.</exception>
+    internal static Dictionary<LayaCheckpoint, Dictionary<string, string>> DigestsFromEnv()
+    {
+        var result = new Dictionary<LayaCheckpoint, Dictionary<string, string>>();
+        var raw = PythonStr.Strip(Environment.GetEnvironmentVariable("LAYA_SHA256_DIGESTS") ?? "");
+        if (raw.Length == 0) return result;
+        object? data;
+        try { data = PythonJsonReader.Parse(raw); }
+        catch (System.Text.Json.JsonException) { return result; }
+        if (data is not IReadOnlyCollection<KeyValuePair<string, object?>> map || map.Count == 0) return result;
+        if (map.All(kv => kv.Value is string)) return result;   // flat: the loader already applies it
+        if (!map.All(kv => kv.Value is IEnumerable<KeyValuePair<string, object?>>))
+            throw new ArgumentException(
+                "LAYA_SHA256_DIGESTS must be either {artifact: digest} for every checkpoint or "
+                + "{model: {artifact: digest}} per checkpoint; " + PyList(map.Select(kv => kv.Key))
+                + " mixes the two or holds a value that is neither");
+        foreach (var (name, files) in map)
+        {
+            var inner = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var (file, digest) in (IEnumerable<KeyValuePair<string, object?>>)files!)
+                inner[file] = LayaRevisions.PyStr(digest);
+            result[NormaliseName(name)] = inner;
+        }
+        foreach (var checkpoint in AllCheckpoints) result.TryAdd(checkpoint, new Dictionary<string, string>());
+        return result;
+    }
+
+    /// <summary>
+    /// Each checkpoint's revision and digests, read once at construction as Python's
+    /// <c>Router.__init__</c> does (so a misspelled name fails here, not at first load).
+    /// </summary>
+    private sealed class RouterPins
+    {
+        private string? _revision;
+        private readonly Dictionary<LayaCheckpoint, string?> _revisions = new();
+        private readonly Dictionary<LayaCheckpoint, IReadOnlyDictionary<string, string>?> _digests = new();
+
+        internal static RouterPins From(LayaRouterOptions options)
+        {
+            var pins = new RouterPins { _revision = options.Revision };
+            foreach (var (name, revision) in options.Revisions ?? new Dictionary<string, string?>())
+                pins._revisions[NormaliseName(name)] = revision;
+            foreach (var (checkpoint, files) in DigestsFromEnv()) pins._digests[checkpoint] = files;
+            foreach (var (name, files) in options.Sha256Digests ?? new Dictionary<string, IReadOnlyDictionary<string, string>?>())
+                pins._digests[NormaliseName(name)] = files;
+            return pins;
+        }
+
+        // A null or blank entry is "no pin of its own", so the checkpoint inherits the router's.
+        internal string? RevisionFor(LayaCheckpoint checkpoint) =>
+            Pin(_revisions.GetValueOrDefault(checkpoint)) ?? Pin(_revision);
+
+        // Null when the checkpoint has no entry (the loader's own env fallback applies); an empty map
+        // for an entry that names no files.
+        internal IReadOnlyDictionary<string, string>? DigestEntry(LayaCheckpoint checkpoint) =>
+            _digests.TryGetValue(checkpoint, out var entry) ? entry ?? new Dictionary<string, string>() : null;
+
+        private static string? Pin(string? value) =>
+            value is not null && PythonStr.Strip(value).Length != 0 ? value : null;
+    }
 
     // ── name resolution ──────────────────────────────────────────────────────
 
@@ -483,6 +607,20 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
     public IReadOnlyList<LayaCheckpoint> Loaded
     {
         get { lock (_lock) return [.. _order]; }
+    }
+
+    /// <summary>
+    /// The commit each resident checkpoint was downloaded from (Python's <c>loaded_revisions</c>): the
+    /// <c>X-Repo-Commit</c> the Hub reported, else the pinned value, else <see langword="null"/>; always
+    /// <see langword="null"/> for a local directory (see <see cref="ModelArtifacts.Revision"/>).
+    /// </summary>
+    public IReadOnlyDictionary<LayaCheckpoint, string?> LoadedRevisions
+    {
+        get
+        {
+            lock (_lock)
+                return _slots.ToDictionary(s => s.Key, s => (s.Value.Predictor as IRevisioned)?.Revision);
+        }
     }
 
     // ── running ───────────────────────────────────────────────────────────────

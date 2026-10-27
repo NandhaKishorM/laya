@@ -51,6 +51,10 @@ corpus from `laya-dotnet/tools/routing_cases.py` and writes one JSON file per pr
                                   saw, the float32 rows returned (or the error) and cache_info() afterwards; plus
                                   the maxsize values it refuses. tournament_probe.json and cached_embed_probe.json
                                   are not counted in meta.json, so the earlier files stay byte-identical.
+    revision_probe.json          laya.revisions.resolve_revision / verify_digests and the Router's
+                                  _digests_from_env / _merge_expected_digests over the fixture files in
+                                  tools/revision_fixtures/, with the inputs, env values and Python's
+                                  result or exception type and text (corpus: tools/revision_cases.py).
     sample_inputs.json           The combined routing sample's fixed inputs (detection states,
                                   routing-decision examples, support questions/emails, a raw
                                   email, and the banking shortlist demo), plus the
@@ -104,6 +108,7 @@ from routing_cases import (  # noqa: E402
     SHORTLIST_CASES,
     TOURNAMENT_PROBE_CASES,
 )
+from revision_cases import build_revision_probe  # noqa: E402
 
 import calibration_cases as calc  # noqa: E402
 import confidence_cases as cc  # noqa: E402
@@ -803,6 +808,7 @@ def main() -> int:
     sample_inputs = build_sample_inputs()
     tournament_probe = build_tournament_probe()
     cached_embed_probe = build_cached_embed_probe()
+    revision_probe = build_revision_probe()
 
     meta = {
         "generator": "tools/dump_routing_golden.py",
@@ -838,6 +844,10 @@ def main() -> int:
             "email_probe_state": len(email_probe["state"]),
             "shortlist_probe": len(shortlist_probe),
             "hashing_embedder_probe": len(hashing_probe),
+            "revision_probe_resolve": len(revision_probe["resolve"]),
+            "revision_probe_verify": len(revision_probe["verify"]),
+            "revision_probe_digests_from_env": len(revision_probe["digests_from_env"]),
+            "revision_probe_merge": len(revision_probe["merge"]),
         },
     }
 
@@ -863,6 +873,9 @@ def main() -> int:
     results["shortlist_probe.json"] = dump(shortlist_probe, os.path.join(out_dir, "shortlist_probe.json"), args.force)
     results["hashing_embedder_probe.json"] = dump(
         hashing_probe, os.path.join(out_dir, "hashing_embedder_probe.json"), args.force
+    )
+    results["revision_probe.json"] = dump(
+        revision_probe, os.path.join(out_dir, "revision_probe.json"), args.force
     )
     results["sample_inputs.json"] = dump(sample_inputs, os.path.join(out_dir, "sample_inputs.json"), args.force)
     results["tournament_probe.json"] = dump(

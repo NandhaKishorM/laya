@@ -868,7 +868,11 @@ def clamp_temperature(t, lo: float = TEMP_MIN, hi: float = TEMP_MAX) -> float:
         return 1.0
     try:
         t = float(t)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # `OverflowError` is the third way a checkpoint value is not a temperature this function can
+        # use: JSON has no double limit, so a 400-digit integer literal loads as a Python int and
+        # `float()` refuses it. `laya/confidence.py` and `calibrate.py` already read that exception
+        # as "does not read as a number"; here it walked out of `Agent.__init__` and failed the load.
         return 1.0
     if t != t or t in (float("inf"), float("-inf")):    # NaN / inf
         return 1.0
@@ -890,7 +894,10 @@ def temperature_rejected(raw, applied: float) -> bool:
         return True
     try:
         value = float(raw)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # The promise in the last sentence above is what `OverflowError` breaks: a value too wide for
+        # a double is a value that "will not convert", so it belongs in the reported list rather than
+        # in the caller's traceback -- and `clamp_temperature` one above already falls back for it.
         return True
     return value != applied
 

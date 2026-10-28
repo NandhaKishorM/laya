@@ -138,6 +138,24 @@ class TemperatureLoadingTests(unittest.TestCase):
                 self.assertIn("noul:2", messages[0])
                 self.assert_predictions(agent, choice=1.0, score=2.0, noul=1.0)
 
+    def test_overflowing_integer_entries_use_neutral_fallback_and_warn(self):
+        # JSON has no double limit, so a checkpoint file can carry a temperature that is an exact
+        # integer and still not a number `float()` can produce. `clamp_temperature`'s docstring
+        # promises the neutral 1.0 for anything that is not a number and `calibrate.load_calibration`
+        # promises "a non-numeric or out-of-range entry cannot crash" the load; both held for a
+        # string, a list or an infinity, and broke on this one value.
+        for value in (10 ** 400, -(10 ** 400)):
+            with self.subTest(value=value):
+                agent, messages = self.load_config(temperature=[value, 2.0, 3.0],
+                                                   temperature_by_options={"choice:2": value})
+                self.assertEqual(agent.temperature, [1.0, 2.0, 3.0])
+                self.assertEqual(agent.temperature_by_options, {"choice:2": 1.0})
+                self.assertEqual(len(messages), 1)
+                self.assertIn("temperature[0]", messages[0])
+                self.assertIn("choice:2", messages[0])
+                self.assertIn(repr(value), messages[0])
+                self.assert_predictions(agent, choice=1.0, score=2.0, noul=3.0)
+
     def test_out_of_range_values_keep_existing_clamps(self):
         agent, messages = self.load_config(temperature=[0.1, 10, -1],
                                           temperature_by_options={"choice:2": 9, "score:3-5": 0})
@@ -194,6 +212,10 @@ class TemperatureRejectionPredicateTests(unittest.TestCase):
             ({}, 1.0, True),
             (float("nan"), 1.0, True),
             (float("inf"), 1.0, True),
+            # Not a number `float()` can make either: JSON's arbitrary-precision integer literal
+            # overflows the conversion, which the diagnostic used to raise instead of report.
+            (10 ** 400, 1.0, True),
+            (-(10 ** 400), 1.0, True),
         ]
         for raw, applied, want in cases:
             with self.subTest(raw=raw, applied=applied):

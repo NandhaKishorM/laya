@@ -297,15 +297,16 @@ def _mps_amp_min_rows() -> int:
 
 def _cuda_amp_dtype(checkpoint_default: Optional[str]) -> torch.dtype:
     """Autocast dtype on CUDA at compute capability >= 8: the checkpoint's `amp_dtype` (bf16 for the
-    shipped checkpoints), or LAYA_CUDA_AMP=fp16|float16|bf16|bfloat16 when set. fp16 stays 2-10x
-    closer to the fp32 forward than bf16 on every shipped checkpoint at the same speed; anything
-    else is ignored. The long spellings count because they are what `agent.dtype` reports back, so
-    the precision a user reads off one response is one they can ask for on the next."""
-    raw = os.environ.get("LAYA_CUDA_AMP", "").lower()
-    if raw in ("fp16", "float16"):
-        return torch.float16
-    if raw in ("bf16", "bfloat16"):
-        return torch.bfloat16
+    shipped checkpoints), or LAYA_CUDA_AMP=fp16|bf16|fp32 when set. fp16 stays 2-10x closer to the
+    fp32 forward than bf16 on every shipped checkpoint at the same speed. fp32 disables reduced
+    precision entirely. Raises ValueError on any other non-empty value."""
+    _cuda_amp_env = os.environ.get("LAYA_CUDA_AMP", "").strip().lower()
+    if _cuda_amp_env:
+        if _cuda_amp_env not in {"fp16", "bf16", "fp32"}:
+            raise ValueError(
+                f"LAYA_CUDA_AMP must be 'fp16', 'bf16', or 'fp32'; got {_cuda_amp_env!r}"
+            )
+        return {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[_cuda_amp_env]
     return amp_dtype(checkpoint_default)
 
 

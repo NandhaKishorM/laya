@@ -327,8 +327,26 @@ os.environ["LAYA_CUDA_AMP"] = "fp16"
 check("cuda-amp/env fp16 overrides a bf16 checkpoint", _cuda_amp_dtype("bf16"), torch.float16)
 os.environ["LAYA_CUDA_AMP"] = "BF16"
 check("cuda-amp/env bf16 overrides an fp16 checkpoint", _cuda_amp_dtype("fp16"), torch.bfloat16)
+# A value the function cannot parse used to fall back to the checkpoint without a word, so a typo
+# served bf16 to a deployment that believed it had asked for something else (#443). It raises now.
 os.environ["LAYA_CUDA_AMP"] = "int8"
-check("cuda-amp/env invalid falls back to the checkpoint", _cuda_amp_dtype("bf16"), torch.bfloat16)
+try:
+    _cuda_amp_dtype("bf16")
+    invalid = None
+except ValueError as e:
+    invalid = str(e)
+check("cuda-amp/env invalid raises and names the value", invalid is not None and "'int8'" in invalid, True)
+# fp32 is the precision the parity numbers are measured against; the caller turns autocast off for
+# it rather than entering an autocast region at float32.
+os.environ["LAYA_CUDA_AMP"] = "fp32"
+check("cuda-amp/env fp32 asks for full precision", _cuda_amp_dtype("bf16"), torch.float32)
+os.environ["LAYA_CUDA_AMP"] = "Float32"
+check("cuda-amp/env float32 is the same ask as fp32", _cuda_amp_dtype("bf16"), torch.float32)
+os.environ["LAYA_CUDA_AMP"] = " bf16\n"
+check("cuda-amp/env value is trimmed", _cuda_amp_dtype("fp16"), torch.bfloat16)
+# The compose files forward `${LAYA_CUDA_AMP:-}`, so an unset variable arrives as "".
+os.environ["LAYA_CUDA_AMP"] = ""
+check("cuda-amp/env empty means unset", _cuda_amp_dtype("bf16"), torch.bfloat16)
 # `agent.dtype` reports float16 and bfloat16, so those are the spellings a caller can read off one
 # response and ask for on the next. laya/agent.py has accepted both from the start; both prose
 # sites that listed the vocabulary described them as inert, and tests/test_env_docs.py now holds

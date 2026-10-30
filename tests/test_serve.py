@@ -4612,3 +4612,296 @@ def test_http_route_internal_failure_is_sanitized_not_retried(monkeypatch, caplo
     assert str(error) not in response.text
     assert len(fake.route_calls) == 1
     assert any(record.exc_info for record in caplog.records)
+
+
+def test_http_route_oversized_stream_frees_admission_without_dispatch(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = DiagnosticRouter()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            oversized = await _asgi_post(app, "/v1/route", b"x" * (MAX_BODY_BYTES + 1))
+            valid = await _asgi_post(app, "/v1/route", json.dumps(_ROUTE_REQ).encode())
+            return oversized, valid
+
+    (status, _), (valid_status, _) = asyncio.run(exercise())
+    assert status == 413
+    assert valid_status == 200
+    assert len(fake.route_calls) == 1
+
+
+def test_http_route_stalled_body_frees_admission_without_dispatch(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    monkeypatch.setenv("LAYA_BODY_READ_TIMEOUT", "0.05")
+    fake = DiagnosticRouter()
+    app = create_app(fake)
+    body = json.dumps(_ROUTE_REQ).encode()
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            stalled = await _asgi_post(app, "/v1/route", body, stall_after=10)
+            valid = await _asgi_post(app, "/v1/route", body)
+            return stalled, valid
+
+    (status, payload), (valid_status, _) = asyncio.run(exercise())
+    assert status == 408
+    assert b"not received in time" in payload
+    assert valid_status == 200
+    assert len(fake.route_calls) == 1
+
+
+def test_http_route_admission_covers_routing_and_is_reusable(monkeypatch):
+    import threading
+    import httpx
+
+    class BlockingRoute(DiagnosticRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+
+        def route(self, *args, **kwargs):
+            self.entered.set()
+            assert self.release.wait(5), "test did not release routing"
+            return super().route(*args, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = BlockingRoute()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                pending = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    for path, body in (("/v1/route", _ROUTE_REQ), ("/v1/systemone", REQ)):
+                        refused = await client.post(path, json=body)
+                        assert refused.status_code == 503
+                        assert refused.headers["retry-after"] == "1"
+                    fake.release.set()
+                    assert (await pending).status_code == 200
+                    assert (await client.post("/v1/route", json=_ROUTE_REQ)).status_code == 200
+                finally:
+                    fake.release.set()
+                    await pending
+
+    asyncio.run(exercise())
+    assert len(fake.route_calls) == 2
+    assert fake.calls == []
+
+
+def test_http_route_and_prediction_share_worker_without_blocking_health(monkeypatch):
+    import threading
+    import httpx
+    import laya.serve as serve
+
+    class BlockingRoute(DiagnosticRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+            self.work = []
+
+        def route(self, *args, **kwargs):
+            self.work.append(("route", threading.get_ident(), threading.current_thread().name))
+            self.entered.set()
+            assert self.release.wait(5), "test did not release routing"
+            result = super().route(*args, **kwargs)
+            self.work.append(("route finished", threading.get_ident(), threading.current_thread().name))
+            return result
+
+        def predict(self, *args, **kwargs):
+            self.work.append(("predict", threading.get_ident(), threading.current_thread().name))
+            return super().predict(*args, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "2")
+    fake = BlockingRoute()
+    # This test measures scheduling, not first-import device discovery. An actual-device
+    # report avoids importing torch while a deliberately blocked route awaits release.
+    fake._agents = {"english": SimpleNamespace(device="cpu")}
+    app = create_app(fake)
+    read_body = serve._read_json_body
+
+    async def exercise():
+        body_read = asyncio.Event()
+
+        async def observed_body(request, timeout):
+            result = await read_body(request, timeout)
+            if request.url.path == "/v1/systemone":
+                body_read.set()
+            return result
+
+        monkeypatch.setattr(serve, "_read_json_body", observed_body)
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                routing = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                prediction = None
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    health = await asyncio.wait_for(client.get("/health"), 2)
+                    assert health.status_code == 200 and health.json()["status"] == "ok"
+                    prediction = asyncio.create_task(client.post("/v1/systemone", json=REQ))
+                    await asyncio.wait_for(body_read.wait(), 2)
+                    assert [item[0] for item in fake.work] == ["route"]
+                    fake.release.set()
+                    assert (await routing).status_code == (await prediction).status_code == 200
+                finally:
+                    fake.release.set()
+                    await routing
+                    if prediction is not None:
+                        await prediction
+
+    asyncio.run(exercise())
+    assert [item[0] for item in fake.work] == ["route", "route finished", "predict"]
+    assert len({item[1] for item in fake.work}) == 1
+    assert all(item[2].startswith("laya-infer") for item in fake.work)
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_http_route_does_not_reset_the_inference_idle_clock(monkeypatch, fail):
+    import time
+    import laya.serve as serve
+
+    clock = [100.0]
+    monkeypatch.setattr(serve, "time", SimpleNamespace(monotonic=lambda: clock[0], perf_counter=time.perf_counter))
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "300")
+
+    class TimedRoute(DiagnosticRouter):
+        def route(self, *args, **kwargs):
+            clock[0] += 5.0
+            if fail:
+                raise ValueError("route rejected")
+            return super().route(*args, **kwargs)
+
+    with TestClient(create_app(TimedRoute())) as client:
+        clock[0] = 120.0
+        assert client.get("/health").json()["idle_seconds"] == 20.0
+        response = client.post("/v1/route", json=_ROUTE_REQ)
+        assert response.status_code == (422 if fail else 200)
+        # Both entry-time and completion-time resets would produce a smaller number.
+        assert client.get("/health").json()["idle_seconds"] == 25.0
+        assert client.post("/v1/systemone", json=REQ).status_code == 200
+        assert client.get("/health").json()["idle_seconds"] == 0.0
+        clock[0] = 150.0
+        client.post("/v1/route", json=_ROUTE_REQ)
+        assert client.get("/health").json()["idle_seconds"] == 30.0
+
+
+@pytest.mark.parametrize("cancel", [False, True])
+def test_http_route_finishing_or_cancelled_does_not_postpone_idle_unload(monkeypatch, cancel):
+    import threading
+    import time
+    import httpx
+    import laya.serve as serve
+
+    clock = [100.0]
+    monkeypatch.setattr(serve, "time", SimpleNamespace(monotonic=lambda: clock[0], perf_counter=time.perf_counter))
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "0.2")
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+
+    class BlockingRoute(IdleRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+            self.finished = threading.Event()
+            self.active = False
+            self.route_thread = None
+            self.unload_overlaps = []
+
+        def route(self, state, questions, model=None):
+            self.active = True
+            self.route_thread = threading.get_ident()
+            self.entered.set()
+            try:
+                assert self.release.wait(5), "test did not release routing"
+                return dict(_ROUTE_DECISION)
+            finally:
+                self.active = False
+                self.finished.set()
+
+        def unload(self):
+            if self.active:
+                self.unload_overlaps.append(threading.get_ident())
+            assert not self.active, "unload overlapped routing"
+            assert threading.get_ident() == self.route_thread
+            super().unload()
+
+    fake = BlockingRoute()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                task = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    clock[0] = 101.0  # The original deadline has expired while routing is blocked.
+                    if cancel:
+                        task.cancel()
+                        with pytest.raises(asyncio.CancelledError):
+                            await task
+                        # A cancelled HTTP request cannot stop its already-running sync hook.
+                        assert fake.active and not fake.finished.is_set()
+                        bad = await client.post("/v1/route", json={**_ROUTE_REQ, "explain": "false"})
+                        assert bad.status_code == 422, "cancellation did not release the admission slot"
+                    assert not fake.unloaded.is_set()
+                    fake.release.set()
+                    if not cancel:
+                        assert (await task).status_code == 200
+                    assert await asyncio.to_thread(fake.finished.wait, 2)
+                    # Keep the clock fixed. A route that resets the deadline will never unload.
+                    assert await asyncio.to_thread(fake.unloaded.wait, 2)
+                    assert (await client.get("/health")).json()["loaded"] == []
+                finally:
+                    fake.release.set()
+                    if not task.done():
+                        await task
+
+    asyncio.run(exercise())
+
+    # The reaper logs and retries unload exceptions; a later successful retry must not
+    # conceal an earlier overlap that raised inside unload().
+    assert fake.unload_overlaps == []
+
+
+@pytest.mark.parametrize("name", ["lang", "lang_guess"])
+@pytest.mark.parametrize("value", [True, 1, {}, []])
+def test_http_route_language_controls_are_strings_before_dispatch(monkeypatch, name, value):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, name: value})
+    assert response.status_code == 422, response.text
+    assert name in response.json()["detail"]
+    assert fake.route_calls == []
+
+
+def test_http_route_validation_and_failure_release_admission(monkeypatch, caplog):
+    class RejectingRoute(DiagnosticRouter):
+        def route(self, state, questions, model=None, **kwargs):
+            if state == "invalid task":
+                raise ValueError("unknown task 'bad-task'")
+            if state == "broken hook":
+                raise RuntimeError("private hook error")
+            return super().route(state, questions, model=model, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = RejectingRoute()
+    with TestClient(create_app(fake)) as client:
+        rejected = client.post("/v1/route", json={**_ROUTE_REQ, "state": "invalid task"})
+        assert rejected.status_code == 422 and "bad-task" in rejected.json()["detail"]
+        with caplog.at_level(logging.ERROR, logger="laya.serve"):
+            failed = client.post("/v1/route", json={**_ROUTE_REQ, "state": "broken hook"})
+        assert failed.status_code == 500 and "private hook error" not in failed.text
+        assert client.post("/v1/route", json=_ROUTE_REQ).status_code == 200
+    assert len(fake.route_calls) == 1

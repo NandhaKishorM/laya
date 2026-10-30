@@ -127,5 +127,20 @@ test('JavaScript → HTTP → Python Router → real offline Agent inference', {
   await assert.rejects(client.predict('x'.repeat(50_001), fixture.questions), error =>
     error instanceof LayaAPIError && error.status === 413 && error.message.includes('state too large'));
   assert.equal((await fetch(`${fixture.baseURL}/v1/predict`, { method: 'POST' })).status, 404);
-  assert.equal((await fetch(`${fixture.baseURL}/v1/route`, { method: 'POST' })).status, 404);
+  assert.equal((await fetch(`${fixture.baseURL}/v1/route`, { method: 'POST' })).status, 401);
+  for (const explain of [false, true]) {
+    const response = await fetch(`${fixture.baseURL}/v1/route`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer integration-test', 'content-type': 'application/json' },
+      body: JSON.stringify({ state: 'hello', questions: {}, explain }),
+    });
+    assert.equal(response.status, 200);
+    const route = await response.json();
+    assert.deepEqual(Object.keys(route).sort(),
+      (explain ? ['model', 'repo', 'reason', 'diagnostic'] : ['model', 'repo', 'reason']).sort());
+    assert.equal(route.model, 'multilingual');
+    if (explain) {
+      assert.deepEqual(route.diagnostic, { stage: 'whole_state', reason: 'insufficient_words', source: null });
+    }
+  }
 });

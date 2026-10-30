@@ -1152,6 +1152,15 @@ check("serve/BODY_REFUSALS names nothing but hooks",
       [key for key in _http_refusals if "hook" not in key and "predict" not in key], [])
 check("serve forwards and refuses disjoint sets", sorted(set(_http_controls) & set(_http_refusals)), [])
 
+from laya.serve import ROUTE_BODY_CONTROLS, ROUTE_BODY_REFUSALS  # noqa: E402
+
+check("HTTP route controls track Router.route", sorted(ROUTE_BODY_CONTROLS),
+      sorted(set(sig(Router.route)) - {"self", "state", "questions"} - set(ROUTE_BODY_REFUSALS)))
+check("HTTP route accepts and refuses disjoint controls",
+      sorted(set(ROUTE_BODY_CONTROLS) & set(ROUTE_BODY_REFUSALS)), [])
+check("HTTP route refuses prediction-only controls and operator hook policy",
+      sorted(set(_http_controls + _http_refusals) - set(ROUTE_BODY_CONTROLS) - set(ROUTE_BODY_REFUSALS)), [])
+
 # The opt-in shortlist evaluator is a public Python entry point. Pin its required
 # provenance arguments without adding an eager import to the package root.
 from laya.evals_shortlist import evaluate_shortlist  # noqa: E402

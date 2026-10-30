@@ -19,3 +19,12 @@ research/benchmarks/zh_short_commands/results/** text eol=lf
 # that rewrote the line endings would report every line as changed on the next re-run.
 laya-rust/tests/round4_python_cases.txt text eol=lf
 laya-dotnet/tests/Laya.Tests/golden/round4/round4_python.txt text eol=lf
+
+# Persian fixtures, prompts and historical runs retain their original byte hashes.
+research/benchmarks/persian_fa/SOURCE.json text eol=lf
+research/benchmarks/persian_fa/LICENSE text eol=lf
+research/benchmarks/persian_fa/data/** text eol=lf
+research/benchmarks/persian_fa/prompts.py text eol=lf
+research/benchmarks/persian_fa/normalize.py text eol=lf
+research/benchmarks/persian_fa/metrics.py text eol=lf
+research/benchmarks/persian_fa/results/** text eol=lf

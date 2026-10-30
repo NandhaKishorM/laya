@@ -171,6 +171,24 @@ returns `422` with its message, including one raised by an operator hook. Other 
 are logged server-side and return `500` with `routing failed`.
 There is no batch routing endpoint or SDK routing method in this change.
 
+#### Try a configuration mismatch locally
+
+From a checkout, run the complete example without downloading checkpoints or starting a server:
+
+```bash
+python -m pip install -e ".[serve]" httpx
+python examples/http_route.py
+```
+
+The example uses FastAPI's in-process `TestClient` against the real handler. Its local Router
+defaults to `multilingual`, while its injected server Router defaults to `english`. The same short
+state produces identical language diagnostics but different model selections, demonstrating why
+local diagnostics cannot establish a deployment's decision. It also checks the default three-field
+response and an explicit model pin, whose diagnostic is `null`, and verifies that neither Router
+loaded checkpoints. Each response is a snapshot of that request, not a reservation for later
+inference. Injecting the Router keeps the example independent of normal startup preload;
+`httpx` is needed for the test client, not by the routing endpoint.
+
 ### `POST /v1/systemone`
 
 One request carries a `state` and any number of questions over it:

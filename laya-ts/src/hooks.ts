@@ -6,6 +6,8 @@
  * overridden per call. Port of `laya/hooks.py`.
  */
 
+import { pyRepr } from "./common.js";
+
 /** Mutable state passed to every hook for one call. */
 export class PredictContext {
   /** `states` / `questions` may be rewritten by `onPredictStart`. */
@@ -336,6 +338,81 @@ function reportHookFailure(hook: Hook, event: HookEvent, err: unknown): void {
 
 function isThenable(value: unknown): value is PromiseLike<unknown> {
   return typeof (value as PromiseLike<unknown> | null | undefined)?.then === "function";
+}
+
+/**
+ * Python's `float()` read of a string, or null for a string `float()` rejects.
+ *
+ * `Number()` is looser in both directions: it reads `"inf"` as NaN where `float()` reads infinity,
+ * and it reads `"0x10"` as 16 where `float()` raises. Decimal, exponent and the `inf`/`nan`
+ * spellings are what a JSON body can hold; a `_`-grouped digit like `"1_000"`, which CPython does
+ * read, is refused here as unconvertible rather than passed through `Number()`, which gives NaN.
+ */
+function floatFromText(text: string): number | null {
+  const body = text.trim().toLowerCase();
+  if (body === "nan" || body === "+nan" || body === "-nan") return NaN;
+  if (/^[+-]?(inf|infinity)$/.test(body)) return body.startsWith("-") ? -Infinity : Infinity;
+  if (!/^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(body)) return null;
+  return Number(body);
+}
+
+/**
+ * The `hooksTimeout` of one call, in seconds: a positive finite number, or null for "no limit".
+ * Port of `laya/hooks.py::validate_timeout` (hooks.py:251-285), whose refusals
+ * `laya-java/fixtures/hooks.json` records under `timeouts`.
+ *
+ * The port had no gate at all -- `typeof value === "number" ? value * 1000 : null` -- so it
+ * installed deadlines the reference refuses to install, and skipped the deadline for everything
+ * not already a number. Measured on the built port with a hook whose `onPredictStart` never
+ * settles, against the same table CPython's `validate_timeout` answers:
+ *
+ *     hooksTimeout   the reference                          laya-ts (before)
+ *     0              ValueError, `got 0`                    TimeoutError at 1 ms; the hook never ran
+ *     -1             ValueError, `got -1`                   TimeoutError at 2 ms
+ *     NaN            ValueError, `got nan`                  TimeoutError at 2 ms
+ *     Infinity       ValueError, `got inf`                  TimeoutError at 1 ms
+ *     true           ValueError, `not a bool; got True`     no deadline, the hook runs unbounded
+ *     [1]            ValueError, `got [1]`                  no deadline
+ *     {"a": 1}       ValueError, `got {'a': 1}`             no deadline
+ *     "0.5"          a 0.5 s deadline                       no deadline
+ *
+ * `setTimeout(0)` fires on the next tick and `setTimeout(-1000)` fires after 1 ms (Node warns
+ * `TimeoutNegativeWarning` and clamps), so a zero or negative timeout is not a missing deadline
+ * but an instant one: every hook call fails with a `TimeoutError` naming a deadline of `0s` that
+ * no caller asked for, and with `hooksRaise: false` the prediction still completes and reports the
+ * fake timeout as a warning. That is exactly the race Python's docstring refuses to leave to
+ * `thread.join`. The non-number rows are the quieter half: a `hooksTimeout` read from a config
+ * body as a string or a nested object silently became "no limit".
+ */
+export function validateHooksTimeout(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") {
+    // `float(True)` is 1.0, so a bool would otherwise install a one-second deadline on every
+    // hook call. Refused as a wrong type, not as a non-positive number.
+    throw new Error(
+      `hooks_timeout must be a positive finite number or None, not a bool; got ${pyRepr(value)}`,
+    );
+  }
+  let seconds: number | null;
+  if (typeof value === "number") seconds = value;
+  else if (typeof value === "bigint") seconds = Number(value);
+  else if (typeof value === "string") {
+    const read = floatFromText(value);
+    if (read === null) {
+      // The message `float()` itself raises; the reference lets it escape from the coercion.
+      throw new Error(`could not convert string to float: ${pyRepr(value)}`);
+    }
+    seconds = read;
+  } else seconds = null;
+  if (seconds === null) {
+    // A list, an object, a function: `float()` raises TypeError, which the reference catches and
+    // re-raises as the same ValueError every other bad timeout gets.
+    throw new Error(`hooks_timeout must be a positive finite number or None; got ${pyRepr(value)}`);
+  }
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new Error(`hooks_timeout must be a positive finite number or None; got ${pyRepr(value)}`);
+  }
+  return seconds;
 }
 
 function trimTrailingZeros(decimal: string): string {

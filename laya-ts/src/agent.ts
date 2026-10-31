@@ -32,6 +32,7 @@ import {
   defaultsAlreadyRan,
   dispatchAsync,
   normaliseHooks,
+  validateHooksTimeout,
   type HookArg,
   type PredictHook,
 } from "./hooks.js";
@@ -451,7 +452,7 @@ export class Agent extends HookRegistry {
     // Hooks are opt-in; an unset hook list is a no-op. See hooks.ts.
     this.hooks = normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     this.hooksRaise = opts.hooksRaise ?? true;
-    this.hooksTimeout = opts.hooksTimeout ?? null;
+    this.hooksTimeout = validateHooksTimeout(opts.hooksTimeout ?? null);
     const cfg = { ...(opts.cfg ?? {}) } as AgentCfg;
     if (opts.max_len !== undefined) cfg.max_len = opts.max_len;
     if (opts.head_max_len !== undefined) cfg.head_max_len = opts.head_max_len;
@@ -560,8 +561,8 @@ export class Agent extends HookRegistry {
       ? [...this.hooks, ...normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd)]
       : composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
-    const hooksTimeout = opts.hooksTimeout ?? this.hooksTimeout;
-    const timeoutMs = typeof hooksTimeout === "number" ? hooksTimeout * 1000 : null;
+    const hooksTimeout = validateHooksTimeout(opts.hooksTimeout ?? this.hooksTimeout);
+    const timeoutMs = hooksTimeout === null ? null : hooksTimeout * 1000;
     const ctx = new PredictContext({
       states,
       questions: questions as Record<string, unknown>,

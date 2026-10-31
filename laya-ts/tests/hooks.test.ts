@@ -655,7 +655,7 @@ describe("hook timeout", () => {
   });
 
   // `laya-java/fixtures/hooks.json` records `laya/hooks.py::validate_timeout` answering every
-  // value in `HOOK_TIMEOUT_VALUES` (`gen_fixtures.py:4719`, recorded at :5009-5024): the accepted
+  // value in `HOOK_TIMEOUT_VALUES` (`gen_fixtures.py:4731`, recorded at :5021-5038): the accepted
   // seconds or the `ValueError` text. `laya-java` replays those rows in `HooksTest.timeoutsMatch()`;
   // until now the TypeScript port had no test that consulted the file, and no gate either --
   // `typeof value === "number" ? value * 1000 : null` installed the deadline for a number and

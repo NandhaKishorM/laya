@@ -1,0 +1,5116 @@
+{
+  "temp_min": 0.5,
+  "temp_max": 5.0,
+  "version": 2,
+  "maps": {
+    "main": {
+      "choice:3-5": {
+        "bins": 4,
+        "values": [
+          0.1,
+          0.4,
+          0.6,
+          0.9
+        ]
+      },
+      "noul:2": {
+        "bins": 2,
+        "values": [
+          0.25,
+          0.75
+        ]
+      },
+      "score:2": {
+        "bins": 1,
+        "values": [
+          0.5
+        ]
+      },
+      "choice:6-10": {
+        "bins": 10,
+        "values": [
+          0.05,
+          0.15,
+          0.25,
+          0.35,
+          0.45,
+          0.55,
+          0.65,
+          0.75,
+          0.85,
+          0.95
+        ]
+      },
+      "choice:11+": {
+        "bins": 100,
+        "values": [
+          0.0,
+          0.37,
+          0.74,
+          0.11,
+          0.48,
+          0.85,
+          0.22,
+          0.59,
+          0.96,
+          0.33,
+          0.7,
+          0.07,
+          0.44,
+          0.81,
+          0.18,
+          0.55,
+          0.92,
+          0.29,
+          0.66,
+          0.03,
+          0.4,
+          0.77,
+          0.14,
+          0.51,
+          0.88,
+          0.25,
+          0.62,
+          0.99,
+          0.36,
+          0.73,
+          0.1,
+          0.47,
+          0.84,
+          0.21,
+          0.58,
+          0.95,
+          0.32,
+          0.69,
+          0.06,
+          0.43,
+          0.8,
+          0.17,
+          0.54,
+          0.91,
+          0.28,
+          0.65,
+          0.02,
+          0.39,
+          0.76,
+          0.13,
+          0.5,
+          0.87,
+          0.24,
+          0.61,
+          0.98,
+          0.35,
+          0.72,
+          0.09,
+          0.46,
+          0.83,
+          0.2,
+          0.57,
+          0.94,
+          0.31,
+          0.68,
+          0.05,
+          0.42,
+          0.79,
+          0.16,
+          0.53,
+          0.9,
+          0.27,
+          0.64,
+          0.01,
+          0.38,
+          0.75,
+          0.12,
+          0.49,
+          0.86,
+          0.23,
+          0.6,
+          0.97,
+          0.34,
+          0.71,
+          0.08,
+          0.45,
+          0.82,
+          0.19,
+          0.56,
+          0.93,
+          0.3,
+          0.67,
+          0.04,
+          0.41,
+          0.78,
+          0.15,
+          0.52,
+          0.89,
+          0.26,
+          0.63
+        ]
+      }
+    },
+    "empty": {}
+  },
+  "payloads": [
+    {
+      "label": "temperatures only",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "temperatures and buckets",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5, \"noul:2\": 0.8}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5,
+          "noul:2": 0.8
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "null buckets",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": null}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "empty buckets",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "bucket names are not validated",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"bogus\": 2.0, \"\": 3.0}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "bogus": 2.0,
+          "": 3.0
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "integers are numbers",
+      "json": "{\"temperature\": [2, 3, 1], \"temperature_by_options\": {\"noul:2\": 2}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          2.0,
+          3.0,
+          1.0
+        ],
+        "temperature_by_options": {
+          "noul:2": 2.0
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 1",
+      "json": "{\"version\": 1, \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "null version is 1",
+      "json": "{\"version\": null, \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "a binning map",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 4, \"values\": [0.1, 0.4, 0.6, 0.9]}, \"noul:2\": {\"bins\": 2, \"values\": [0.2, 0.8]}, \"score:2\": {\"bins\": 1, \"values\": [0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": {
+          "choice:3-5": {
+            "bins": 4,
+            "values": [
+              0.1,
+              0.4,
+              0.6,
+              0.9
+            ]
+          },
+          "noul:2": {
+            "bins": 2,
+            "values": [
+              0.2,
+              0.8
+            ]
+          },
+          "score:2": {
+            "bins": 1,
+            "values": [
+              0.5
+            ]
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "null binning map clears",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": null}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "empty binning map is kept",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": {}
+      },
+      "warnings": []
+    },
+    {
+      "label": "values at the bounds",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 3, \"values\": [0.0, 1.0, 0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": {
+          "choice:3-5": {
+            "bins": 3,
+            "values": [
+              0.0,
+              1.0,
+              0.5
+            ]
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "integer values",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0, 1]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": {
+          "choice:3-5": {
+            "bins": 2,
+            "values": [
+              0,
+              1
+            ]
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "a bucket name is not validated",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"nonsense\": {\"bins\": 4, \"values\": [0.1, 0.4, 0.6, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": {
+          "nonsense": {
+            "bins": 4,
+            "values": [
+              0.1,
+              0.4,
+              0.6,
+              0.9
+            ]
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "a quote in a bucket name",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"it's\": {\"bins\": 4, \"values\": [0.1, 0.4, 0.6, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": {
+          "it's": {
+            "bins": 4,
+            "values": [
+              0.1,
+              0.4,
+              0.6,
+              0.9
+            ]
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "clamp high and low",
+      "json": "{\"temperature\": [9.0, 0.1, 1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          5.0,
+          0.5,
+          1.0
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=9.0 -> 5, temperature[1]=0.1 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "clamp boundaries are accepted",
+      "json": "{\"temperature\": [0.5, 5.0, 1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          0.5,
+          5.0,
+          1.0
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "clamp a bucket",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 99.0, \"noul:2\": 0.01, \"score:3-5\": 2.0}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 5.0,
+          "noul:2": 0.5,
+          "score:3-5": 2.0
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using choice:3-5=99.0 -> 5, noul:2=0.01 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "clamp temperatures and buckets in one warning",
+      "json": "{\"temperature\": [9.0, 1.0, 0.0], \"temperature_by_options\": {\"choice:2\": -1.0, \"noul:2\": 7.5}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          5.0,
+          1.0,
+          0.5
+        ],
+        "temperature_by_options": {
+          "choice:2": 0.5,
+          "noul:2": 5.0
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=9.0 -> 5, temperature[2]=0.0 -> 0.5, choice:2=-1.0 -> 0.5, noul:2=7.5 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "negative zero",
+      "json": "{\"temperature\": [-0.0, 1.0, 1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          0.5,
+          1.0,
+          1.0
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=-0.0 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "non-finite temperatures",
+      "json": "{\"temperature\": [NaN, 1.0, Infinity], \"temperature_by_options\": {\"noul:2\": -Infinity}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "temperature_by_options": {
+          "noul:2": 1.0
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=nan -> 1, temperature[2]=inf -> 1, noul:2=-inf -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a bool is not a temperature",
+      "json": "{\"temperature\": [true, 1.5, false]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.0,
+          1.5,
+          1.0
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=True -> 1, temperature[2]=False -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a numeric string is read as float() reads it",
+      "json": "{\"temperature\": [\"2.5\", \" 1e1 \", \"abc\"]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          2.5,
+          5.0,
+          1.0
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[1]=' 1e1 ' -> 5, temperature[2]='abc' -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "null and nested values are 1.0",
+      "json": "{\"temperature\": [null, [1.0], {\"a\": 1.0}]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=None -> 1, temperature[1]=[1.0] -> 1, temperature[2]={'a': 1.0} -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "bucket values that are not numbers",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:2\": true, \"noul:2\": null, \"score:2\": \"2.5\", \"choice:6-10\": 7}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:2": 1.0,
+          "noul:2": 1.0,
+          "score:2": 2.5,
+          "choice:6-10": 5.0
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using choice:2=True -> 1, noul:2=None -> 1, choice:6-10=7 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a quote in a clamped bucket name",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"it's\": 99.0}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "it's": 5.0
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using it's=99.0 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "version 2 for this checkpoint",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 written as a float",
+      "json": "{\"version\": 2.0, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 as a string",
+      "json": "{\"version\": \"2\", \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 as a padded string",
+      "json": "{\"version\": \" 2 \", \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 as a signed string",
+      "json": "{\"version\": \"+2\", \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 with an underscore",
+      "json": "{\"version\": \"0_2\", \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 in fullwidth digits",
+      "json": "{\"version\": \"\\uff12\", \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 3 is checked too",
+      "json": "{\"version\": 3, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "a huge version is checked",
+      "json": "{\"version\": 10000000000000000000000000000000000000000, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 1 is never checked",
+      "json": "{\"version\": 1, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"elsewhere\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 0 is never checked",
+      "json": "{\"version\": 0, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"elsewhere\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "negative version is never checked",
+      "json": "{\"version\": -3, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"elsewhere\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 for another model",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya-multilingual\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya-multilingual' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 for another subfolder",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"typed-decisions\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='typed-decisions' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 recorded without a subfolder",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": null, \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder=None but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with another config",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 512, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Checkpoint config identity differs. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with an extra config key",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\", \"extra\": 1}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Checkpoint config identity differs. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with a missing config key",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Checkpoint config identity differs. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with a float where the config has an integer",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024.0, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 with a config that is a list",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": [1, 2]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Checkpoint config identity differs. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with no config",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\"}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Checkpoint config identity differs. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with a null config",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": null}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Checkpoint config identity differs. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with nothing recorded",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path=None subfolder=None but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Checkpoint config identity differs. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with a model that is not a string",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": 7, \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path=7 subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with a model that is a list",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": [\"a\", \"b\"], \"subfolder\": {\"k\": 1.5}, \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path=['a', 'b'] subfolder={'k': 1.5} but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 with a quote in the model",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"it's\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path=\"it's\" subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 for the English checkpoint",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": null, \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": null,
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 for the English checkpoint recorded with a subfolder",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": null,
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder=None. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "version 2 for a local directory",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"onnx/multilingual\", \"subfolder\": null, \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "onnx/multilingual",
+        "subfolder": null,
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "version 2 for a local directory recorded for the hub",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "onnx/multilingual",
+        "subfolder": null,
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='convaiinnovations/laya' subfolder='multilingual' but this agent is model_id_or_path='onnx/multilingual' subfolder=None. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "an identity warning and a clamp warning",
+      "json": "{\"version\": 2, \"temperature\": [9.0, 1.0, 1.0], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"x\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          5.0,
+          1.0,
+          1.0
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='x' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        },
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=9.0 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "payload is a list",
+      "json": "[1, 2, 3]",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must be an object, got list",
+      "warnings": []
+    },
+    {
+      "label": "payload is a number",
+      "json": "3",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must be an object, got int",
+      "warnings": []
+    },
+    {
+      "label": "payload is a float",
+      "json": "1.5",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must be an object, got float",
+      "warnings": []
+    },
+    {
+      "label": "payload is a string",
+      "json": "\"abc\"",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must be an object, got str",
+      "warnings": []
+    },
+    {
+      "label": "payload is null",
+      "json": "null",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must be an object, got NoneType",
+      "warnings": []
+    },
+    {
+      "label": "payload is true",
+      "json": "true",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must be an object, got bool",
+      "warnings": []
+    },
+    {
+      "label": "payload is empty",
+      "json": "{}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "version is a bool",
+      "json": "{\"version\": true, \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got True",
+      "warnings": []
+    },
+    {
+      "label": "version is false",
+      "json": "{\"version\": false, \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got False",
+      "warnings": []
+    },
+    {
+      "label": "version is a list",
+      "json": "{\"version\": [2], \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got [2]",
+      "warnings": []
+    },
+    {
+      "label": "version is an object",
+      "json": "{\"version\": {\"v\": 2}, \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got {'v': 2}",
+      "warnings": []
+    },
+    {
+      "label": "version is not whole",
+      "json": "{\"version\": 1.9, \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got 1.9",
+      "warnings": []
+    },
+    {
+      "label": "version is not whole and large",
+      "json": "{\"version\": 2.5, \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got 2.5",
+      "warnings": []
+    },
+    {
+      "label": "version is a word",
+      "json": "{\"version\": \"abc\", \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got 'abc'",
+      "warnings": []
+    },
+    {
+      "label": "version is an empty string",
+      "json": "{\"version\": \"\", \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got ''",
+      "warnings": []
+    },
+    {
+      "label": "version is a decimal string",
+      "json": "{\"version\": \"1.5\", \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got '1.5'",
+      "warnings": []
+    },
+    {
+      "label": "version is a double underscore string",
+      "json": "{\"version\": \"1__2\", \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got '1__2'",
+      "warnings": []
+    },
+    {
+      "label": "version has a quote",
+      "json": "{\"version\": \"it's\", \"temperature\": [1.5, 2.0, 1.25]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got \"it's\"",
+      "warnings": []
+    },
+    {
+      "label": "version is NaN",
+      "json": "{\"version\": NaN, \"temperature\": [1.0, 1.0, 1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got nan",
+      "warnings": []
+    },
+    {
+      "label": "version is Infinity",
+      "json": "{\"version\": Infinity, \"temperature\": [1.0, 1.0, 1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got inf",
+      "warnings": []
+    },
+    {
+      "label": "version is an overflowing float",
+      "json": "{\"version\": 1e999, \"temperature\": [1.0, 1.0, 1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON version must be an integer, got inf",
+      "warnings": []
+    },
+    {
+      "label": "version is a huge whole float",
+      "json": "{\"version\": 1e300, \"temperature\": [1.0, 1.0, 1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path=None subfolder=None but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Checkpoint config identity differs. Loading the temperatures anyway."
+        }
+      ]
+    },
+    {
+      "label": "temperature is missing",
+      "json": "{\"version\": 1}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "temperature is null",
+      "json": "{\"temperature\": null}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "temperature has two values",
+      "json": "{\"temperature\": [1.0, 2.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "temperature has four values",
+      "json": "{\"temperature\": [1.0, 2.0, 3.0, 4.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "temperature is empty",
+      "json": "{\"temperature\": []}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "temperature is a number",
+      "json": "{\"temperature\": 2.0}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "temperature is a string of three",
+      "json": "{\"temperature\": \"abc\"}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "temperature is an object of three",
+      "json": "{\"temperature\": {\"a\": 1, \"b\": 2, \"c\": 3}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON must contain temperature: [3 floats]",
+      "warnings": []
+    },
+    {
+      "label": "buckets are a list",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": [1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON temperature_by_options must be an object of bucket -> float, got list",
+      "warnings": []
+    },
+    {
+      "label": "buckets are a number",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": 3}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON temperature_by_options must be an object of bucket -> float, got int",
+      "warnings": []
+    },
+    {
+      "label": "buckets are a float",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": 1.5}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON temperature_by_options must be an object of bucket -> float, got float",
+      "warnings": []
+    },
+    {
+      "label": "buckets are a string",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": \"x\"}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON temperature_by_options must be an object of bucket -> float, got str",
+      "warnings": []
+    },
+    {
+      "label": "buckets are false",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": false}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON temperature_by_options must be an object of bucket -> float, got bool",
+      "warnings": []
+    },
+    {
+      "label": "buckets are an empty list",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": []}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON temperature_by_options must be an object of bucket -> float, got list",
+      "warnings": []
+    },
+    {
+      "label": "binning map is a list",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": []}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map must be an object of bucket -> {bins, values}, got list",
+      "warnings": []
+    },
+    {
+      "label": "binning map is a number",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": 3}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map must be an object of bucket -> {bins, values}, got int",
+      "warnings": []
+    },
+    {
+      "label": "binning map is a string",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": \"x\"}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map must be an object of bucket -> {bins, values}, got str",
+      "warnings": []
+    },
+    {
+      "label": "binning map is false",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": false}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map must be an object of bucket -> {bins, values}, got bool",
+      "warnings": []
+    },
+    {
+      "label": "entry is a list",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": [0.1, 0.9]}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must be an object with \"bins\" and \"values\", got list",
+      "warnings": []
+    },
+    {
+      "label": "entry is null",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": null}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must be an object with \"bins\" and \"values\", got NoneType",
+      "warnings": []
+    },
+    {
+      "label": "entry is a number",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": 0.5}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must be an object with \"bins\" and \"values\", got float",
+      "warnings": []
+    },
+    {
+      "label": "entry is a string",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": \"x\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must be an object with \"bins\" and \"values\", got str",
+      "warnings": []
+    },
+    {
+      "label": "entry is empty",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got None",
+      "warnings": []
+    },
+    {
+      "label": "entry is true",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": true}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must be an object with \"bins\" and \"values\", got bool",
+      "warnings": []
+    },
+    {
+      "label": "a quote in a refused bucket name",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"it's\": 3}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map[\"it's\"] must be an object with \"bins\" and \"values\", got int",
+      "warnings": []
+    },
+    {
+      "label": "bins is missing",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got None",
+      "warnings": []
+    },
+    {
+      "label": "bins is null",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": null, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got None",
+      "warnings": []
+    },
+    {
+      "label": "bins is zero",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 0, \"values\": []}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got 0",
+      "warnings": []
+    },
+    {
+      "label": "bins is negative",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": -2, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got -2",
+      "warnings": []
+    },
+    {
+      "label": "bins is a whole float",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2.0, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got 2.0",
+      "warnings": []
+    },
+    {
+      "label": "bins is a float",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2.5, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got 2.5",
+      "warnings": []
+    },
+    {
+      "label": "bins is a string",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": \"2\", \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got '2'",
+      "warnings": []
+    },
+    {
+      "label": "bins is true",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": true, \"values\": [0.1]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got True",
+      "warnings": []
+    },
+    {
+      "label": "bins is a list",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": [2], \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got [2]",
+      "warnings": []
+    },
+    {
+      "label": "bins is a huge integer",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 1000000000000000000000000000000, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have \"values\" of length \"bins\" (1000000000000000000000000000000)",
+      "warnings": []
+    },
+    {
+      "label": "bins is a negative huge integer",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": -1000000000000000000000000000000, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have an integer \"bins\" >= 1, got -1000000000000000000000000000000",
+      "warnings": []
+    },
+    {
+      "label": "bins is NaN",
+      "json": "{\"temperature\": [1.0, 1.0, 1.0], \"binning_map\": {\"a\": {\"bins\": NaN, \"values\": [0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['a'] must have an integer \"bins\" >= 1, got nan",
+      "warnings": []
+    },
+    {
+      "label": "values is missing",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have \"values\" of length \"bins\" (2)",
+      "warnings": []
+    },
+    {
+      "label": "values is null",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": null}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have \"values\" of length \"bins\" (2)",
+      "warnings": []
+    },
+    {
+      "label": "values is too short",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 3, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have \"values\" of length \"bins\" (3)",
+      "warnings": []
+    },
+    {
+      "label": "values is too long",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 1, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have \"values\" of length \"bins\" (1)",
+      "warnings": []
+    },
+    {
+      "label": "values is a string",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 3, \"values\": \"abc\"}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have \"values\" of length \"bins\" (3)",
+      "warnings": []
+    },
+    {
+      "label": "values is an object of the right size",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": {\"a\": 0.1, \"b\": 0.9}}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have \"values\" of length \"bins\" (2)",
+      "warnings": []
+    },
+    {
+      "label": "values is a number",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 1, \"values\": 0.5}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] must have \"values\" of length \"bins\" (1)",
+      "warnings": []
+    },
+    {
+      "label": "a value is null",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.1, null]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got [0.1, None]",
+      "warnings": []
+    },
+    {
+      "label": "a value is a string",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.1, \"0.9\"]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got [0.1, '0.9']",
+      "warnings": []
+    },
+    {
+      "label": "a value is a word",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.1, \"abc\"]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got [0.1, 'abc']",
+      "warnings": []
+    },
+    {
+      "label": "a value is true",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.1, true]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got [0.1, True]",
+      "warnings": []
+    },
+    {
+      "label": "a value is false",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [false, 0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got [False, 0.5]",
+      "warnings": []
+    },
+    {
+      "label": "a value is a list",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.1, [0.9]]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got [0.1, [0.9]]",
+      "warnings": []
+    },
+    {
+      "label": "a value is an object",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [{\"v\": 0.1}, 0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got [{'v': 0.1}, 0.5]",
+      "warnings": []
+    },
+    {
+      "label": "a value is NaN",
+      "json": "{\"temperature\": [1.0, 1.0, 1.0], \"binning_map\": {\"a\": {\"bins\": 2, \"values\": [0.1, NaN]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['a'] values must be finite, got [0.1, nan]",
+      "warnings": []
+    },
+    {
+      "label": "a value is Infinity",
+      "json": "{\"temperature\": [1.0, 1.0, 1.0], \"binning_map\": {\"a\": {\"bins\": 2, \"values\": [0.1, Infinity]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['a'] values must be finite, got [0.1, inf]",
+      "warnings": []
+    },
+    {
+      "label": "a value is negative Infinity",
+      "json": "{\"temperature\": [1.0, 1.0, 1.0], \"binning_map\": {\"a\": {\"bins\": 1, \"values\": [-Infinity]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['a'] values must be finite, got [-inf]",
+      "warnings": []
+    },
+    {
+      "label": "a value overflows to Infinity",
+      "json": "{\"temperature\": [1.0, 1.0, 1.0], \"binning_map\": {\"a\": {\"bins\": 1, \"values\": [1e999]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['a'] values must be finite, got [inf]",
+      "warnings": []
+    },
+    {
+      "label": "a value is below zero",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [-0.1, 0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be in [0, 1], got [-0.1, 0.5]",
+      "warnings": []
+    },
+    {
+      "label": "a value is above one",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.5, 1.0000001]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be in [0, 1], got [0.5, 1.0000001]",
+      "warnings": []
+    },
+    {
+      "label": "a value is an integer above one",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.5, 2]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be in [0, 1], got [0.5, 2]",
+      "warnings": []
+    },
+    {
+      "label": "a value is -0.0",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 1, \"values\": [-0.0]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {},
+        "binning_map": {
+          "choice:3-5": {
+            "bins": 1,
+            "values": [
+              -0.0
+            ]
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "a value is a huge integer",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.5, 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "OverflowError",
+      "error_message": "int too large to convert to float",
+      "warnings": []
+    },
+    {
+      "label": "a huge integer value after a bad one",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 3, \"values\": [null, 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, 0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got [None, 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, 0.5]",
+      "warnings": []
+    },
+    {
+      "label": "a bad value after a huge integer",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 3, \"values\": [10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, null, 0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "OverflowError",
+      "error_message": "int too large to convert to float",
+      "warnings": []
+    },
+    {
+      "label": "a string value before a list value",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [\"0.5\", [1]]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be numbers, got ['0.5', [1]]",
+      "warnings": []
+    },
+    {
+      "label": "an out-of-range value before a finite one",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [2.0, 0.5]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be in [0, 1], got [2.0, 0.5]",
+      "warnings": []
+    },
+    {
+      "label": "an out-of-range value before a non-finite one",
+      "json": "{\"temperature\": [1.0, 1.0, 1.0], \"binning_map\": {\"a\": {\"bins\": 2, \"values\": [2.0, NaN]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['a'] values must be in [0, 1], got [2.0, nan]",
+      "warnings": []
+    },
+    {
+      "label": "the second entry is the bad one",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 4, \"values\": [0.1, 0.4, 0.6, 0.9]}, \"noul:2\": {\"bins\": 2, \"values\": [0.1, 5.0]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['noul:2'] values must be in [0, 1], got [0.1, 5.0]",
+      "warnings": []
+    },
+    {
+      "label": "the first entry is the bad one",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"binning_map\": {\"choice:3-5\": {\"bins\": 2, \"values\": [0.1, 5.0]}, \"noul:2\": {\"bins\": 2, \"values\": [0.2, \"x\"]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['choice:3-5'] values must be in [0, 1], got [0.1, 5.0]",
+      "warnings": []
+    },
+    {
+      "label": "a refusal beats a temperature warning",
+      "json": "{\"temperature\": [9.0, 1.0, 1.0], \"binning_map\": {\"a\": {\"bins\": 1, \"values\": [3.0]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['a'] values must be in [0, 1], got [3.0]",
+      "warnings": []
+    },
+    {
+      "label": "a refusal beats an identity warning",
+      "json": "{\"version\": 2, \"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"convaiinnovations/laya\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}, \"binning_map\": {\"a\": {\"bins\": 1, \"values\": [3.0]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "ValueError",
+      "error_message": "calibration JSON binning_map['a'] values must be in [0, 1], got [3.0]",
+      "warnings": []
+    },
+    {
+      "label": "a duplicate key keeps its last value",
+      "json": "{\"temperature\": [1.0, 2.0, 3.0], \"temperature\": [4.0, 5.0, 1.5], \"binning_map\": {\"a\": {\"bins\": 1, \"values\": [0.5]}, \"a\": {\"bins\": 2, \"values\": [0.1, 0.9]}}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "result": {
+        "temperature": [
+          4.0,
+          5.0,
+          1.5
+        ],
+        "temperature_by_options": {},
+        "binning_map": {
+          "a": {
+            "bins": 2,
+            "values": [
+              0.1,
+              0.9
+            ]
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "a temperature that is a huge integer",
+      "json": "{\"temperature\": [10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, 1.0, 1.0]}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "OverflowError",
+      "error_message": "int too large to convert to float",
+      "warnings": []
+    },
+    {
+      "label": "a bucket temperature that is a huge integer",
+      "json": "{\"temperature\": [1.5, 2.0, 1.25], \"temperature_by_options\": {\"noul:2\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "OverflowError",
+      "error_message": "int too large to convert to float",
+      "warnings": []
+    },
+    {
+      "label": "a huge integer after an identity warning",
+      "json": "{\"version\": 2, \"temperature\": [10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, 1.0, 1.0], \"temperature_by_options\": {\"choice:3-5\": 2.5}, \"model_id_or_path\": \"x\", \"subfolder\": \"multilingual\", \"config\": {\"encoder\": \"jhu-clsp/mmBERT-base\", \"max_len\": 1024, \"head_max_len\": 192, \"option_layout\": \"sequential\"}}",
+      "identity": {
+        "model_id_or_path": "convaiinnovations/laya",
+        "subfolder": "multilingual",
+        "cfg": {
+          "encoder": "jhu-clsp/mmBERT-base",
+          "max_len": 1024,
+          "head_max_len": 192,
+          "option_layout": "sequential",
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.1
+          }
+        }
+      },
+      "error_type": "OverflowError",
+      "error_message": "int too large to convert to float",
+      "warnings": [
+        {
+          "category": "UserWarning",
+          "message": "calibration was fitted for model_id_or_path='x' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        }
+      ]
+    }
+  ],
+  "lookups": [
+    {
+      "label": "choice:3-5 at 0.0",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.0,
+      "result": 0.1
+    },
+    {
+      "label": "choice:3-5 at 1e-300",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 1e-300,
+      "result": 0.1
+    },
+    {
+      "label": "choice:3-5 at 0.1",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.1,
+      "result": 0.1
+    },
+    {
+      "label": "choice:3-5 at 0.2499999999999999",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.2499999999999999,
+      "result": 0.1
+    },
+    {
+      "label": "choice:3-5 at 0.25",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.25,
+      "result": 0.4
+    },
+    {
+      "label": "choice:3-5 at 0.2500000000000001",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.2500000000000001,
+      "result": 0.4
+    },
+    {
+      "label": "choice:3-5 at 0.3",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.3,
+      "result": 0.4
+    },
+    {
+      "label": "choice:3-5 at 0.4999999999999999",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.4999999999999999,
+      "result": 0.4
+    },
+    {
+      "label": "choice:3-5 at 0.5",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.5,
+      "result": 0.6
+    },
+    {
+      "label": "choice:3-5 at 0.5000000000000001",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.5000000000000001,
+      "result": 0.6
+    },
+    {
+      "label": "choice:3-5 at 0.6",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.6,
+      "result": 0.6
+    },
+    {
+      "label": "choice:3-5 at 0.7499999999999999",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.7499999999999999,
+      "result": 0.6
+    },
+    {
+      "label": "choice:3-5 at 0.75",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.75,
+      "result": 0.9
+    },
+    {
+      "label": "choice:3-5 at 0.7500000000000001",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.7500000000000001,
+      "result": 0.9
+    },
+    {
+      "label": "choice:3-5 at 0.9",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.9,
+      "result": 0.9
+    },
+    {
+      "label": "choice:3-5 at 0.9999999999999999",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 0.9999999999999999,
+      "result": 0.9
+    },
+    {
+      "label": "choice:3-5 at 1.0",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 1.0,
+      "result": 0.9
+    },
+    {
+      "label": "choice:3-5 at -0.0",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": -0.0,
+      "result": 0.1
+    },
+    {
+      "label": "choice:3-5 at -0.1",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": -0.1,
+      "result": 0.1
+    },
+    {
+      "label": "choice:3-5 at -1e+300",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": -1e+300,
+      "result": 0.1
+    },
+    {
+      "label": "choice:3-5 at 1.0000000000000002",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 1.0000000000000002,
+      "result": 0.9
+    },
+    {
+      "label": "choice:3-5 at 1.5",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 1.5,
+      "result": 0.9
+    },
+    {
+      "label": "choice:3-5 at 7.0",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 7.0,
+      "result": 0.9
+    },
+    {
+      "label": "choice:3-5 at 1e+300",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": 1e+300,
+      "result": 0.9
+    },
+    {
+      "label": "one bin at 0.0",
+      "map": "main",
+      "bucket": "score:2",
+      "confidence": 0.0,
+      "result": 0.5
+    },
+    {
+      "label": "one bin at 0.5",
+      "map": "main",
+      "bucket": "score:2",
+      "confidence": 0.5,
+      "result": 0.5
+    },
+    {
+      "label": "one bin at 1.0",
+      "map": "main",
+      "bucket": "score:2",
+      "confidence": 1.0,
+      "result": 0.5
+    },
+    {
+      "label": "miss at 0.0",
+      "map": "main",
+      "bucket": "score:3-5",
+      "confidence": 0.0,
+      "result": 0.0
+    },
+    {
+      "label": "miss at 0.123456789",
+      "map": "main",
+      "bucket": "score:3-5",
+      "confidence": 0.123456789,
+      "result": 0.123456789
+    },
+    {
+      "label": "miss at 0.5",
+      "map": "main",
+      "bucket": "score:3-5",
+      "confidence": 0.5,
+      "result": 0.5
+    },
+    {
+      "label": "miss at 1.0",
+      "map": "main",
+      "bucket": "score:3-5",
+      "confidence": 1.0,
+      "result": 1.0
+    },
+    {
+      "label": "miss at 1.5",
+      "map": "main",
+      "bucket": "score:3-5",
+      "confidence": 1.5,
+      "result": 1.5
+    },
+    {
+      "label": "miss at -0.25",
+      "map": "main",
+      "bucket": "score:3-5",
+      "confidence": -0.25,
+      "result": -0.25
+    },
+    {
+      "label": "miss on an empty bucket name",
+      "map": "main",
+      "bucket": "",
+      "confidence": 0.4,
+      "result": 0.4
+    },
+    {
+      "label": "miss on a nearly right name",
+      "map": "main",
+      "bucket": "choice:3-5 ",
+      "confidence": 0.4,
+      "result": 0.4
+    },
+    {
+      "label": "miss on another case",
+      "map": "main",
+      "bucket": "CHOICE:3-5",
+      "confidence": 0.4,
+      "result": 0.4
+    },
+    {
+      "label": "empty map",
+      "map": "empty",
+      "bucket": "choice:3-5",
+      "confidence": 0.4,
+      "result": 0.4
+    },
+    {
+      "label": "ten bins at 0.1",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.1,
+      "result": 0.15
+    },
+    {
+      "label": "ten bins at 0.2",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.2,
+      "result": 0.25
+    },
+    {
+      "label": "ten bins at 0.3",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.3,
+      "result": 0.35
+    },
+    {
+      "label": "ten bins at 0.7",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.7,
+      "result": 0.75
+    },
+    {
+      "label": "ten bins at 0.57",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.57,
+      "result": 0.55
+    },
+    {
+      "label": "ten bins at 0.9",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.9,
+      "result": 0.95
+    },
+    {
+      "label": "ten bins at 0.95",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.95,
+      "result": 0.95
+    },
+    {
+      "label": "ten bins at 0.99",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.99,
+      "result": 0.95
+    },
+    {
+      "label": "ten bins at 0.999999",
+      "map": "main",
+      "bucket": "choice:6-10",
+      "confidence": 0.999999,
+      "result": 0.95
+    },
+    {
+      "label": "hundred bins at 0.01",
+      "map": "main",
+      "bucket": "choice:11+",
+      "confidence": 0.01,
+      "result": 0.37
+    },
+    {
+      "label": "hundred bins at 0.07",
+      "map": "main",
+      "bucket": "choice:11+",
+      "confidence": 0.07,
+      "result": 0.59
+    },
+    {
+      "label": "hundred bins at 0.29",
+      "map": "main",
+      "bucket": "choice:11+",
+      "confidence": 0.29,
+      "result": 0.36
+    },
+    {
+      "label": "hundred bins at 0.57",
+      "map": "main",
+      "bucket": "choice:11+",
+      "confidence": 0.57,
+      "result": 0.72
+    },
+    {
+      "label": "hundred bins at 0.58",
+      "map": "main",
+      "bucket": "choice:11+",
+      "confidence": 0.58,
+      "result": 0.09
+    },
+    {
+      "label": "hundred bins at 0.99",
+      "map": "main",
+      "bucket": "choice:11+",
+      "confidence": 0.99,
+      "result": 0.63
+    },
+    {
+      "label": "hundred bins at 1.0",
+      "map": "main",
+      "bucket": "choice:11+",
+      "confidence": 1.0,
+      "result": 0.63
+    },
+    {
+      "label": "two bins at 0.5",
+      "map": "main",
+      "bucket": "noul:2",
+      "confidence": 0.5,
+      "result": 0.75
+    },
+    {
+      "label": "two bins at 0.7499999999999999",
+      "map": "main",
+      "bucket": "noul:2",
+      "confidence": 0.7499999999999999,
+      "result": 0.75
+    },
+    {
+      "label": "two bins at 0.75",
+      "map": "main",
+      "bucket": "noul:2",
+      "confidence": 0.75,
+      "result": 0.75
+    },
+    {
+      "label": "two bins at 1.0",
+      "map": "main",
+      "bucket": "noul:2",
+      "confidence": 1.0,
+      "result": 0.75
+    },
+    {
+      "label": "nan",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": "nan",
+      "error_type": "ValueError",
+      "error_message": "cannot convert float NaN to integer"
+    },
+    {
+      "label": "inf",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": "inf",
+      "error_type": "OverflowError",
+      "error_message": "cannot convert float infinity to integer"
+    },
+    {
+      "label": "-inf",
+      "map": "main",
+      "bucket": "choice:3-5",
+      "confidence": "-inf",
+      "error_type": "OverflowError",
+      "error_message": "cannot convert float infinity to integer"
+    },
+    {
+      "label": "nan on a miss",
+      "map": "main",
+      "bucket": "score:3-5",
+      "confidence": "nan",
+      "result": "nan"
+    },
+    {
+      "label": "inf on a miss",
+      "map": "main",
+      "bucket": "score:3-5",
+      "confidence": "inf",
+      "result": "inf"
+    }
+  ]
+}

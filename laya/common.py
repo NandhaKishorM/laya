@@ -868,7 +868,15 @@ def clamp_temperature(t, lo: float = TEMP_MIN, hi: float = TEMP_MAX) -> float:
         return 1.0
     try:
         t = float(t)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # `OverflowError` is a number this function cannot read, not a bug in the caller: JSON's
+        # grammar has no double limit, so a temperature written as a 401-digit integer literal
+        # parses as an `int` and `float()` refuses it. (`1e400` in the same file is fine -- JSON
+        # reads that as a float, which is `inf`, and the check below already answers 1.0 for it.)
+        # `confidence._finite`, `hooks.validate_timeout` and `calibrate.apply_calibration_payload`
+        # all read this exception as "does not read as a number" already; here it used to escape,
+        # and with it every `Agent`/`ONNXAgent`/`load_calibration` load that had read the
+        # checkpoint off disk by then.
         return 1.0
     if t != t or t in (float("inf"), float("-inf")):    # NaN / inf
         return 1.0
@@ -890,7 +898,11 @@ def temperature_rejected(raw, applied: float) -> bool:
         return True
     try:
         value = float(raw)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # The same "does not read as a number" `clamp_temperature` answers with 1.0, so the entry
+        # is named rather than the loader raising while it builds the warning about it. A wide
+        # integer literal is that case: it has a neutral fallback to report, and the value that
+        # `float()` cannot hold is exactly the one a reader needs to see.
         return True
     return value != applied
 

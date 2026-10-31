@@ -2240,7 +2240,7 @@ for _fn in (test_tl_kernels_drops_the_wrong_row_claim,
 # --------------------------------------- DecisionResult's docstring must split confidence by question type
 # `laya/structured.py`'s `DecisionResult` closed with "confidence keeps the **normalized-entropy
 # value** it has always had, because that is a different quantity on a scale that depends on the
-# label count". `Agent._decode_answers` (`laya/agent.py:1369-1398`) uses two different formulas:
+# label count". `Agent._decode_answers` (`laya/agent.py:1394-1423`) uses two different formulas:
 #   * `choice` and `score`  ->  `confidence_from_probs(p, k)` = `1 - H(p) / log(k)`
 #   * `noul`                ->  `max(p_true, 1 - p_true)`  (its own comment: "identical here:
 #                               over two options `max(p_true, 1 - p_true)` is `max(p)`")

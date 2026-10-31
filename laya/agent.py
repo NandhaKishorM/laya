@@ -296,16 +296,26 @@ def _mps_amp_min_rows() -> int:
 
 
 def _cuda_amp_dtype(checkpoint_default: Optional[str]) -> torch.dtype:
-    """Autocast dtype on CUDA at compute capability >= 8: the checkpoint's `amp_dtype` (bf16 for the
-    shipped checkpoints), or LAYA_CUDA_AMP=fp16|float16|bf16|bfloat16 when set. fp16 stays 2-10x
-    closer to the fp32 forward than bf16 on every shipped checkpoint at the same speed; anything
-    else is ignored. The long spellings count because they are what `agent.dtype` reports back, so
-    the precision a user reads off one response is one they can ask for on the next."""
-    raw = os.environ.get("LAYA_CUDA_AMP", "").lower()
+    """Precision asked for on CUDA: the checkpoint's `amp_dtype` (bf16 for the shipped checkpoints),
+    or LAYA_CUDA_AMP=fp16|float16|bf16|bfloat16|fp32|float32 when set. fp16 stays 2-10x closer to
+    the fp32 forward than bf16 on every shipped checkpoint at the same speed. float32 means no
+    autocast at all, and the caller turns it off rather than autocasting to float32. Below compute
+    capability 8 the caller runs fp16 for either half-precision ask. The long spellings count
+    because they are what `agent.dtype` reports back, so the precision a user reads off one
+    response is one they can ask for on the next. The value is trimmed and lower-cased, an empty
+    one means unset, and anything else raises ValueError: a typo fails the load instead of
+    silently serving the checkpoint's choice."""
+    raw = os.environ.get("LAYA_CUDA_AMP", "").strip().lower()
     if raw in ("fp16", "float16"):
         return torch.float16
     if raw in ("bf16", "bfloat16"):
         return torch.bfloat16
+    if raw in ("fp32", "float32"):
+        return torch.float32
+    if raw:
+        raise ValueError("LAYA_CUDA_AMP=%r is not a CUDA precision; use fp16, float16, bf16, bfloat16, "
+                         "fp32 or float32, or leave it unset for the checkpoint's own amp_dtype"
+                         % os.environ["LAYA_CUDA_AMP"])
     return amp_dtype(checkpoint_default)
 
 
@@ -796,20 +806,26 @@ class Agent(HookRegistry):
         self.mps_amp_min_rows = _mps_amp_min_rows()
         if self.device.type == "cuda":
             self.amp_enabled = True
-            try:
-                major = torch.cuda.get_device_capability(self.device)[0]
-            except (RuntimeError, AttributeError):
-                # A driver that reports a GPU but cannot answer the capability query
-                # cannot be trusted with bf16 either; fp16 is the safe default and
-                # placement below still decides whether the device is usable at all.
-                warnings.warn("Warning: could not query CUDA capability; assuming fp16 defaults.",
-                              RuntimeWarning)
-                self.dtype = torch.float16
+            # Read on every CUDA device, so a value that does not parse fails here whatever the
+            # GPU, and fp32 means full precision on all of them (#443).
+            requested = _cuda_amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+            if requested == torch.float32:
+                self.amp_enabled = False
             else:
-                if major < 8:
+                try:
+                    major = torch.cuda.get_device_capability(self.device)[0]
+                except (RuntimeError, AttributeError):
+                    # A driver that reports a GPU but cannot answer the capability query
+                    # cannot be trusted with bf16 either; fp16 is the safe default and
+                    # placement below still decides whether the device is usable at all.
+                    warnings.warn("Warning: could not query CUDA capability; assuming fp16 defaults.",
+                                  RuntimeWarning)
                     self.dtype = torch.float16
                 else:
-                    self.dtype = _cuda_amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+                    if major < 8:
+                        self.dtype = torch.float16
+                    else:
+                        self.dtype = requested
         elif self.device.type == "mps":
             self.amp_enabled = True
             self.dtype = torch.float16
@@ -907,12 +923,21 @@ class Agent(HookRegistry):
         matches the stock forward it replaces within rounding (see benchmarks/parity_fast.py). After
         changing `agent.dtype`, call `deaccelerate()` then `accelerate()` to rebuild it. Returns True if
         enabled. With `strict=False` any failure (no CUDA, tilelang missing) leaves the stock path in place.
+        An fp32 agent (`LAYA_CUDA_AMP=fp32`) is such a failure: its kernels only run in 16 bits, so it
+        warns and keeps the stock forward, or raises with `strict=True`.
         """
         if self._fast is not None:
             return True
         if self.device.type != "cuda":
             if strict:
                 raise RuntimeError("laya fast path needs a CUDA device")
+            return False
+        if self.dtype not in (torch.bfloat16, torch.float16):
+            msg = ("laya fast path runs in bf16 or fp16 only and this agent runs %s; "
+                   "keeping the stock forward" % self.dtype)
+            if strict:
+                raise RuntimeError(msg)
+            warnings.warn("Warning: " + msg, RuntimeWarning)
             return False
         if self._backend is not None:
             self.deaccelerate()

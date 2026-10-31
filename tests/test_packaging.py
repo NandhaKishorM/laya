@@ -1057,7 +1057,7 @@ for _opt, _var in sorted(AMP_MEANING.items()):
                all("`%s`" % t in described for t in accepted),
                "core compares %s against %s; the option text says: %s"
                % (_var, accepted, described.strip()[:160]))
-    offered = [t for t in ("fp16", "float16", "bf16", "bfloat16")
+    offered = [t for t in ("fp16", "float16", "bf16", "bfloat16", "fp32", "float32")
                if "`%s`" % t in described and t not in accepted]
     check_true("nix/%s offers no dtype core ignores for it" % _opt, not offered,
                "%s is not in the set laya.agent compares %s against" % (offered, _var))
@@ -1070,8 +1070,8 @@ check_true("nix/mpsAmpMinRows's type refuses what the runtime would clamp",
            % option_type("mpsAmpMinRows"))
 
 # Both AMP options tell the operator that the transport refuses whitespace, and that is a claim
-# about the type, not the prose: the runtime lower-cases but does not trim, so `"bf16 "` is a
-# silently inert setting. Checked where the claim is made.
+# about the type, not the prose: a single token is the value the service reads, whatever each
+# runtime comparison does with surrounding space. Checked where the claim is made.
 for _opt in ("cudaAmp", "cpuAmp"):
     _t = option_type(_opt)
     check_true("nix/%s's type carries its own no-whitespace claim" % _opt,

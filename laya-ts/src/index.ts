@@ -42,7 +42,8 @@ export type {
   OptionStabilityOptions, OptionStabilityReport, StabilityProbe, ReliabilityDecision,
   StabilityVariant, VariantOptions, CalibrationOptions,
 } from "./option-stability.js";
-export { triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions } from "./presets.js";
+export { triageQuestions, emailQuestions, guardQuestions, moderationQuestions, routerQuestions, presetLabels, triageLabels } from "./presets.js";
+export type { PresetName } from "./presets.js";
 export {
   decide,
   decideBatch,

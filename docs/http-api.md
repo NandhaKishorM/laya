@@ -191,7 +191,10 @@ inference. Injecting the Router keeps the example independent of normal startup 
 
 ### `POST /v1/systemone`
 
-One request carries a `state` and any number of questions over it:
+One request carries a `state` and any number of questions over it. Those questions share that
+state: each is answered against the whole serialized context, so a question whose instructions
+name `rows[i]` still sees every record. One answer per record is one entry of `states` on
+`POST /v1/systemone/batch`.
 
 ```bash
 curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
@@ -208,7 +211,7 @@ curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
 
 | field | required | meaning |
 |---|---|---|
-| `state` | yes | text, email, ticket or JSON document to decide on; a missing or `null` state is a `400` |
+| `state` | yes | the one context every question in the request is answered against: text, email, ticket or JSON; a missing or `null` state is a `400` |
 | `questions` | yes | object keyed by question id; each question is `choice` / `score` / `noul` with `instructions` and `criteria` |
 | `model` | no | names a checkpoint; a path or unpublished Hub id is a `422`, anything else is ignored (see below) |
 | `task` | no | forces a checkpoint by workflow name instead of letting routing decide; an unknown name is a `422` naming it |
@@ -300,7 +303,8 @@ marks, it does not drop.
 
 `usage` reports what the forward pass was built from. How much of a state the model reads is a token
 budget, not a character count, and the budget moves with `max_len`, `head_max_len` and every
-question's own option prompt (#174), so these keys are the only place that fact is visible:
+question's own option prompt (#174), so these keys are the only place in the response
+that fact is visible:
 
 | `usage` key | meaning |
 |---|---|
@@ -313,7 +317,13 @@ question's own option prompt (#174), so these keys are the only place that fact 
 | `options` | present only when some question's options no longer have a token span each: keyed by question id, with `total` (the options that question defines), `distinct` (the spans that reached the sequence) and `tokens_per_option` |
 
 A truncated answer is still an answer -- the head decides on the evidence it was given -- but a
-caller sizing states by character count cannot see the cut anywhere else in the response.
+caller sizing states by character count cannot see the cut anywhere else in the response. When
+`usage.truncated` is true or `state_tokens_dropped` is above zero, the server logs one warning
+for the request with that dropped-token count and the question ids. The warning is written on
+`/v1/systemone` and `/v1/systemone/batch` before `LAYA_JEV_STRICT` projects the payload, so a
+strict response that no longer carries these keys still leaves the cut in the server log. A
+batch logs once, with the indexes of the results that were cut and the dropped-token count of
+each, rather than once per answer.
 
 `routing` records which checkpoint answered and why:
 
@@ -372,8 +382,9 @@ answering, on both `/v1/systemone` and `/v1/systemone/batch`:
 The projection keeps only the contracted keys and recomputes nothing: every value is the one the
 result already carries, so the probabilities and scores a strict client reads are identical to
 the ones the full payload reports. The default stays the full payload, and a deployment that
-turns the flag on loses the truncation visibility `usage` provides -- a cut state is then
-visible in the logs, not in the response. Score `criteria` should stay plain strings under the
+turns the flag on loses the truncation visibility `usage` provides. The server has already
+logged the dropped state tokens by then, so a cut state is in the log, where the response no
+longer carries it. Score `criteria` should stay plain strings under the
 strict contract: a strict client compares the returned `legend` against the criteria it sent,
 and Laya renders a structured criterion with Python's JSON, which a JavaScript caller that
 stringifies its own criteria may not match byte for byte.
@@ -543,8 +554,12 @@ as long as it keeps the socket open.
 This server speaks one protocol on purpose. There is no OpenAI-compatible endpoint; run several
 questions in one request instead, since they share a single forward pass per question set.
 `POST /v1/systemone/batch` answers one `questions` set over an array of
-`states`. It has no section on this page yet -- its request shape is in the README's self-hosting
-section -- and every check above applies to it as it does to `POST /v1/systemone`: the same shape
-`400`s, the same unpaired-surrogate refusal, the same auth, admission, size limits, body-control
-validation and `500` mapping. The `laya` CLI and MCP server cover local use -- see the
+`states`. Each state is its own context, which is what a caller needs for one decision per
+record; questions in one `/v1/systemone` request see the whole shared state, including when
+their text names `rows[i]`. It has no section on this page yet -- its request shape is in the
+README's self-hosting section -- and every check above applies to it as it does to
+`POST /v1/systemone`: the same shape `400`s, the same unpaired-surrogate refusal, the same auth,
+admission, size limits, body-control validation and `500` mapping. A state that does not fit
+the token room is truncated the same way, and a batch with any truncated result logs one
+warning for the call. The `laya` CLI and MCP server cover local use -- see the
 [README](https://github.com/NandhaKishorM/laya#readme).

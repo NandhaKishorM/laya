@@ -64,12 +64,13 @@ public static class SequenceBuilder
                 return levels;
 
             case NoulQuestion noul:
+                var (falseLabel, trueLabel) = noul.ResolveLabels();
                 return
                 [
-                    "false: " + (IsBlankCriterion(noul.IfFalse)
+                    falseLabel + ": " + (IsBlankCriterion(noul.IfFalse)
                         ? "no, the statement does not hold"
                         : PythonJson.Criterion(noul.IfFalse)),
-                    "true: " + (IsBlankCriterion(noul.IfTrue)
+                    trueLabel + ": " + (IsBlankCriterion(noul.IfTrue)
                         ? "yes, the statement holds"
                         : PythonJson.Criterion(noul.IfTrue)),
                 ];
@@ -86,7 +87,10 @@ public static class SequenceBuilder
     /// </summary>
     private static bool IsBlankCriterion(object? value) => value is null || (value is string s && s.Length == 0);
 
-    /// <summary>Build the token sequence and marker positions for one question.</summary>
+    /// <summary>
+    /// Build the token sequence and marker positions for one question. When the question carries an
+    /// <see cref="Question.OptionOrder"/> the option fragments and their markers are in slot order.
+    /// </summary>
     /// <param name="tokenizer">Must encode without special tokens.</param>
     /// <param name="state">The text, object or turn list being judged.</param>
     /// <param name="question">The question to build for.</param>
@@ -113,7 +117,7 @@ public static class SequenceBuilder
         ILayaTokenizer tokenizer, object? state, Question question,
         int maxLen, int headMaxLen, bool truncateLeft = false, int[]? stateIds = null)
     {
-        var (ids, markers, options) = BuildHead(tokenizer, question, headMaxLen);
+        var (ids, markers, options) = BuildHead(tokenizer, question, headMaxLen, question.OptionOrder);
         // Widened: a per-call budget can be any int, and Python's integers do not wrap.
         var room = (int)Math.Max(0L, (long)maxLen - ids.Count - 1);
         stateIds ??= tokenizer.Encode(Scrub(PythonJson.State(state), tokenizer.MaskToken));
@@ -130,10 +134,11 @@ public static class SequenceBuilder
     }
 
     internal static int StateRoom(ILayaTokenizer tokenizer, Question question, int maxLen, int headMaxLen) =>
-        (int)Math.Max(0L, (long)maxLen - BuildHead(tokenizer, question, headMaxLen).Ids.Count - 1);
+        // state_room builds the head without the question's option_order (common.py:359).
+        (int)Math.Max(0L, (long)maxLen - BuildHead(tokenizer, question, headMaxLen, null).Ids.Count - 1);
 
     private static (List<int> Ids, List<int> Markers, OptionUsage Options) BuildHead(
-        ILayaTokenizer tokenizer, Question question, int headMaxLen)
+        ILayaTokenizer tokenizer, Question question, int headMaxLen, IReadOnlyList<int>? optionOrder)
     {
         ArgumentNullException.ThrowIfNull(tokenizer);
         ArgumentNullException.ThrowIfNull(question);
@@ -146,10 +151,13 @@ public static class SequenceBuilder
         var instructions = Scrub(RenderInstructions(question), mask);
         var headIds = tokenizer.Encode($"{TypeName(question.Type)} question: {instructions}").ToList();
 
-        var optionIds = new List<List<int>>(options.Count);
-        foreach (var option in options)
+        // Slot s shows option `OptionOrder[s]` (common.py:237-241); without an order the slots follow the
+        // canonical option order. The markers below are then in slot order too.
+        IReadOnlyList<int> order = optionOrder ?? Enumerable.Range(0, options.Count).ToArray();
+        var optionIds = new List<List<int>>(order.Count);
+        foreach (var slot in order)
         {
-            var encoded = tokenizer.Encode(" " + Scrub(option, mask));
+            var encoded = tokenizer.Encode(" " + Scrub(options[slot], mask));
             var take = Math.Min(MaxOptionTokens, encoded.Length);
             var fragment = new List<int>(take + 1) { tokenizer.MaskId };
             for (var i = 0; i < take; i++) fragment.Add(encoded[i]);
@@ -186,7 +194,7 @@ public static class SequenceBuilder
         ids.Add(tokenizer.SepId);
 
         var distinct = optionIds.Select(o => string.Join(",", o)).Distinct(StringComparer.Ordinal).Count();
-        return (ids, markers, new OptionUsage(options.Count, distinct, perOption));
+        return (ids, markers, new OptionUsage(optionIds.Count, distinct, perOption));
     }
 
     private static string Scrub(string text, string maskToken) =>

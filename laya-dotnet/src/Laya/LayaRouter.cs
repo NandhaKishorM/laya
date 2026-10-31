@@ -839,6 +839,14 @@ public sealed class LayaRouter : ILayaLongPredictor, IDisposable
                     entry.Add(new("criteria", wording));
                     break;
             }
+            // `labels` is written as the {"false": ..., "true": ...} dict, unstripped, so differently
+            // padded labels group apart as they do in Python; it precedes option_order, the order the
+            // keys are documented in (agent.py:1907).
+            if (question is NoulQuestion { Labels: { } labels })
+                entry.Add(new("labels", new List<KeyValuePair<string, object?>> { new("false", labels.False), new("true", labels.True) }));
+            // `dict(question, option_order=...)` and the README's spelling both put it after the
+            // other keys; json.dumps writes it as a list, so an order is part of the grouping key.
+            if (question.OptionOrder is { } order) entry.Add(new("option_order", order.ToList()));
             all.Add(new(id, entry));
         }
         return PythonJson.Dumps(all, escapeNonAscii: false, fallbackToStr: true);

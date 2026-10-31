@@ -94,26 +94,19 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.18
+## What's new in 0.4.19
 
-* **A C++ ONNX Runtime backend.** `laya_onnx` runs both shipped checkpoints on real graphs, with
-  goldens recorded by Python's `ONNXAgent` and the runtime pinned by sha256 in
-  `laya-cpp/cmake/onnxruntime.cmake`, verified at the moment it is fetched. The whole suite also
-  runs once under ThreadSanitizer (#1420).
-* **MCP route tools can explain a decision.** `laya_route` and `laya_route_batch` take
-  `explain: true` and return the final decision's `diagnostic`, and only that: the full detection
-  mapping is not exposed, because it copies caller text verbatim. `laya_predict` is unchanged
-  (#1409). Four MCP failures that a client could not act on are now named errors, including a
-  question `type` sent as an array, which crashed on an unhashable lookup (#1410).
-* **Eight more inputs are refused where they enter.** An `anyOf` or `oneOf` that is not an array,
-  an empty or over-long `[repo, subfolder]` pair, a JSON integer too wide for a double, a
-  `LAYA_SHA256_DIGESTS` nested past the JSON reader's depth, a delegation choice naming no agent,
-  and a non-object answer are each a named refusal rather than an `IndexError`, an `OverflowError`,
-  a `RecursionError` or a silently wrong answer. A negative agent index no longer wraps to the
-  last agent (#1364, #1412, #1413, #1414, #1416, #1417, #1418). A dataset or report saved with a
-  BOM is read instead of refused (#1415).
-* **Staged adoption covers attacker-controlled context.** A confidence threshold fitted on clean
-  data is not an injection detector (#1419).
+* **Routing snapshots over HTTP.** `POST /v1/route` returns the model, repo and reason a request
+  would route to without running inference or loading a checkpoint. It shares the inference worker
+  but deliberately not the idle clock, so polling diagnostics cannot keep a server resident, and it
+  withholds the detection mapping because that copies caller text verbatim (#1422).
+* **`LAYA_CUDA_AMP` accepts `fp32` and refuses a typo.** Full precision is now selectable, and a
+  value that does not parse fails the load instead of silently serving the checkpoint's own dtype.
+  The value is trimmed, so a stray space no longer changes the precision you get (#1424).
+* **Routing skips the hook machinery when nothing is listening.** `route` and `route_batch` build
+  no context and draw no OS entropy unless a hook actually implements `on_route`, and a Router
+  subclass that overrides `route` still goes through it (#1386).
+* **Every CI job is bounded.** The TypeScript SDK job was the last one without a timeout (#1423).
 
 Earlier releases are in the [GitHub releases](https://github.com/NandhaKishorM/laya/releases).
 

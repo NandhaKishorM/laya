@@ -4390,3 +4390,518 @@ def test_a_body_delivered_in_time_still_answers(monkeypatch):
     status, payload = asyncio.run(_asgi_post(app, "/v1/systemone", _ASGI_BODY))
     assert status == 200
     assert json.loads(payload)["usage"]["input_tokens"] == 42
+
+
+# --------------------------------------------------------------------------- HTTP routing diagnostics
+
+_ROUTE_REQ = {"state": {"message": "Turn lights off"}, "questions": REQ["questions"]}
+_ROUTE_DECISION = {"model": "english", "repo": "example/english", "reason": "test routing"}
+_ROUTE_DIAGNOSTIC = {"stage": "whole_state", "reason": "insufficient_words", "source": None}
+
+
+class DiagnosticRouter(FakeRouter):
+    """Records routing separately from inference; its omitted kwargs stay observable."""
+
+    def __init__(self):
+        super().__init__()
+        self.route_calls = []
+
+    def route(self, state, questions, model=None, **kwargs):
+        self.route_calls.append({"state": state, "questions": questions, "model": model, **kwargs})
+        return dict(_ROUTE_DECISION, detection={"diagnostic": dict(_ROUTE_DIAGNOSTIC),
+                                               "mixed_segment": "private caller text"})
+
+    def load(self, *args, **kwargs):
+        raise AssertionError("routing must not load a checkpoint")
+
+
+@pytest.mark.parametrize("flag", [{}, {"explain": False}, {"explain": True}])
+def test_http_route_opt_in_projection_and_no_inference(monkeypatch, flag):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, **flag})
+    assert response.status_code == 200, response.text
+    expected = dict(_ROUTE_DECISION)
+    if flag.get("explain"):
+        expected["diagnostic"] = _ROUTE_DIAGNOSTIC
+    assert response.json() == expected
+    assert fake.route_calls == [{**_ROUTE_REQ, "model": None,
+                                 **({"explain": True} if flag.get("explain") else {})}]
+    assert fake.calls == []
+    assert "private caller text" not in response.text
+    assert "X-Inference-Time-Ms" not in response.headers
+
+
+@pytest.mark.parametrize("bad", [None, 0, 1, 0.0, 1.0, "false", "true", "", [], {}])
+def test_http_route_refuses_non_boolean_explain_before_dispatch(monkeypatch, bad):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, "explain": bad})
+    assert response.status_code == 422, response.text
+    assert "explain" in response.json()["detail"]
+    assert fake.route_calls == fake.calls == []
+
+
+@pytest.mark.parametrize("diagnostic", [None, {"stage": "operator", "reason": "hook replacement", "source": None}])
+def test_http_route_observes_the_final_hook_decision_once(monkeypatch, diagnostic):
+    from laya import BaseHook, Router
+
+    class ReplaceRoute(BaseHook):
+        def on_route(self, ctx):
+            ctx.decision = dict(_ROUTE_DECISION)
+            if diagnostic is not None:
+                ctx.decision["detection"] = {"diagnostic": diagnostic, "mixed_segment": "private value"}
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = Router(hooks=[ReplaceRoute()])
+    calls = []
+    original_route = router._route
+
+    def counted_route(*args, **kwargs):
+        calls.append(kwargs)
+        return original_route(*args, **kwargs)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("routing must not load or predict")
+
+    monkeypatch.setattr(router, "_route", counted_route)
+    monkeypatch.setattr(router, "predict", forbidden)
+    monkeypatch.setattr(router, "load", forbidden)
+    with TestClient(create_app(router)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, "explain": True})
+    assert response.status_code == 200, response.text
+    assert response.json() == dict(_ROUTE_DECISION, diagnostic=diagnostic)
+    assert len(calls) == 1
+    assert router.loaded == []
+
+
+@pytest.mark.parametrize("control", [{"model": "english"}, {"task": "typed_decisions"},
+                                     {"lang": "de"}, {"lang_guess": "de"}])
+def test_http_route_explicit_controls_match_core_and_have_null_diagnostic(monkeypatch, control):
+    from laya import Router
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = Router()
+    expected = router.route(**_ROUTE_REQ, **control, explain=True)
+    with TestClient(create_app(router)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, **control, "explain": True})
+    assert response.status_code == 200, response.text
+    assert response.json() == {**{key: expected[key] for key in _ROUTE_DECISION}, "diagnostic": None}
+    assert router.loaded == []
+
+
+def test_http_route_uses_server_defaults_and_registered_models(monkeypatch):
+    from laya import Router
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = Router(default="multilingual", models={"private": "/tmp/operator-checkpoint"})
+    with TestClient(create_app(router)) as client:
+        inherited = client.post("/v1/route", json={**_ROUTE_REQ, "explain": True})
+        pinned = client.post("/v1/route", json={**_ROUTE_REQ, "model": "private", "explain": True})
+        jev = client.post("/v1/route", json={**_ROUTE_REQ, "model": "jev-1", "explain": True})
+    assert inherited.status_code == pinned.status_code == jev.status_code == 200
+    assert inherited.json()["model"] == "multilingual"
+    assert inherited.json()["diagnostic"] == _ROUTE_DIAGNOSTIC
+    assert jev.json() == inherited.json()
+    assert pinned.json()["model"] == "private" and pinned.json()["diagnostic"] is None
+    assert router.loaded == []
+
+
+@pytest.mark.parametrize("control", [{}, {"task": None, "lang": None, "lang_guess": None}])
+def test_http_route_omitted_or_null_controls_inherit_router_hints(monkeypatch, control):
+    from laya import Router
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = Router(default="english", lang_guess="de")
+    with TestClient(create_app(router)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, **control, "explain": True})
+    assert response.status_code == 200, response.text
+    assert response.json()["model"] == "multilingual"
+    assert response.json()["diagnostic"] is None
+
+
+@pytest.mark.parametrize("name", ["max_len", "head_max_len", "min_confidence", "batch_size",
+                                  "sort_by_length", "diagnostics", "states", "hooks", "on_route",
+                                  "on_predict_start", "on_predict_end", "hooks_raise", "hooks_timeout"])
+@pytest.mark.parametrize("value", [None, 1])
+def test_http_route_refuses_prediction_and_hook_controls(monkeypatch, name, value):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, name: value})
+    assert response.status_code == 422, response.text
+    assert name in response.json()["detail"]
+    assert fake.route_calls == []
+
+
+def test_http_route_auth_precedes_body_validation(monkeypatch):
+    monkeypatch.setenv("LAYA_API_KEY", "key")
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        assert client.post("/v1/route", content=b"not JSON").status_code == 401
+        assert client.post("/v1/route", json=_ROUTE_REQ,
+                           headers={"Authorization": "Bearer wrong"}).status_code == 401
+        response = client.post("/v1/route", json=_ROUTE_REQ, headers={"Authorization": "Bearer key"})
+    assert response.status_code == 200, response.text
+    assert len(fake.route_calls) == 1
+
+
+@pytest.mark.parametrize("body, status", [
+    ([], 400), ({"state": "hello"}, 400), ({"questions": {}}, 400),
+    ({"state": None, "questions": {}}, 400), ({"state": "hello", "questions": []}, 400),
+    ({"state": "x" * (MAX_STATE_CHARS + 1), "questions": {}}, 413),
+    ({"state": "\ud800", "questions": {}}, 400),
+])
+def test_http_route_body_contract_and_limits(monkeypatch, body, status):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", content=json.dumps(body),
+                               headers={"Content-Type": "application/json"})
+    assert response.status_code == status, response.text
+    assert fake.route_calls == []
+
+
+@pytest.mark.parametrize("body", [b"not JSON", b'{"state":'])
+def test_http_route_malformed_json_does_not_dispatch(monkeypatch, body):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", content=body, headers={"Content-Type": "application/json"})
+    assert response.status_code == 400, response.text
+    assert fake.route_calls == []
+
+
+def test_http_route_legacy_router_only_refuses_requested_explanation(monkeypatch):
+    class LegacyRouter(FakeRouter):
+        def route(self, state, questions, model=None):
+            self.calls.append((state, questions, model))
+            return dict(_ROUTE_DECISION)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = LegacyRouter()
+    with TestClient(create_app(fake)) as client:
+        for flag in ({}, {"explain": False}):
+            response = client.post("/v1/route", json={**_ROUTE_REQ, **flag})
+            assert response.status_code == 200, response.text
+            assert response.json() == _ROUTE_DECISION
+        fake.calls.clear()
+        response = client.post("/v1/route", json={**_ROUTE_REQ, "explain": True})
+    assert response.status_code == 422, response.text
+    assert "explain" in response.json()["detail"]
+    assert fake.calls == [], "the failed explained route must not retry without explain"
+
+
+@pytest.mark.parametrize("error", [RuntimeError("secret /opt/checkpoint location"),
+                                    TypeError("wrapped.route() got an unexpected keyword argument 'explain'")])
+def test_http_route_internal_failure_is_sanitized_not_retried(monkeypatch, caplog, error):
+    class BrokenRouter(DiagnosticRouter):
+        def route(self, *args, **kwargs):
+            self.route_calls.append(kwargs)
+            raise error
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = BrokenRouter()
+    with TestClient(create_app(fake), raise_server_exceptions=False) as client:
+        with caplog.at_level(logging.ERROR, logger="laya.serve"):
+            response = client.post("/v1/route", json={**_ROUTE_REQ, "explain": True})
+    assert response.status_code == 500, response.text
+    assert response.json() == {"detail": "routing failed"}
+    assert str(error) not in response.text
+    assert len(fake.route_calls) == 1
+    assert any(record.exc_info for record in caplog.records)
+
+
+def test_http_route_oversized_stream_frees_admission_without_dispatch(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = DiagnosticRouter()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            oversized = await _asgi_post(app, "/v1/route", b"x" * (MAX_BODY_BYTES + 1))
+            valid = await _asgi_post(app, "/v1/route", json.dumps(_ROUTE_REQ).encode())
+            return oversized, valid
+
+    (status, _), (valid_status, _) = asyncio.run(exercise())
+    assert status == 413
+    assert valid_status == 200
+    assert len(fake.route_calls) == 1
+
+
+def test_http_route_stalled_body_frees_admission_without_dispatch(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    monkeypatch.setenv("LAYA_BODY_READ_TIMEOUT", "0.05")
+    fake = DiagnosticRouter()
+    app = create_app(fake)
+    body = json.dumps(_ROUTE_REQ).encode()
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            stalled = await _asgi_post(app, "/v1/route", body, stall_after=10)
+            valid = await _asgi_post(app, "/v1/route", body)
+            return stalled, valid
+
+    (status, payload), (valid_status, _) = asyncio.run(exercise())
+    assert status == 408
+    assert b"not received in time" in payload
+    assert valid_status == 200
+    assert len(fake.route_calls) == 1
+
+
+def test_http_route_admission_covers_routing_and_is_reusable(monkeypatch):
+    import threading
+    import httpx
+
+    class BlockingRoute(DiagnosticRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+
+        def route(self, *args, **kwargs):
+            self.entered.set()
+            assert self.release.wait(5), "test did not release routing"
+            return super().route(*args, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = BlockingRoute()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                pending = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    for path, body in (("/v1/route", _ROUTE_REQ), ("/v1/systemone", REQ)):
+                        refused = await client.post(path, json=body)
+                        assert refused.status_code == 503
+                        assert refused.headers["retry-after"] == "1"
+                    fake.release.set()
+                    assert (await pending).status_code == 200
+                    assert (await client.post("/v1/route", json=_ROUTE_REQ)).status_code == 200
+                finally:
+                    fake.release.set()
+                    await pending
+
+    asyncio.run(exercise())
+    assert len(fake.route_calls) == 2
+    assert fake.calls == []
+
+
+def test_http_route_and_prediction_share_worker_without_blocking_health(monkeypatch):
+    import threading
+    import httpx
+    import laya.serve as serve
+
+    class BlockingRoute(DiagnosticRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+            self.work = []
+
+        def route(self, *args, **kwargs):
+            self.work.append(("route", threading.get_ident(), threading.current_thread().name))
+            self.entered.set()
+            assert self.release.wait(5), "test did not release routing"
+            result = super().route(*args, **kwargs)
+            self.work.append(("route finished", threading.get_ident(), threading.current_thread().name))
+            return result
+
+        def predict(self, *args, **kwargs):
+            self.work.append(("predict", threading.get_ident(), threading.current_thread().name))
+            return super().predict(*args, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "2")
+    fake = BlockingRoute()
+    # This test measures scheduling, not first-import device discovery. An actual-device
+    # report avoids importing torch while a deliberately blocked route awaits release.
+    fake._agents = {"english": SimpleNamespace(device="cpu")}
+    app = create_app(fake)
+    read_body = serve._read_json_body
+
+    async def exercise():
+        body_read = asyncio.Event()
+
+        async def observed_body(request, timeout):
+            result = await read_body(request, timeout)
+            if request.url.path == "/v1/systemone":
+                body_read.set()
+            return result
+
+        monkeypatch.setattr(serve, "_read_json_body", observed_body)
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                routing = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                prediction = None
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    health = await asyncio.wait_for(client.get("/health"), 2)
+                    assert health.status_code == 200 and health.json()["status"] == "ok"
+                    prediction = asyncio.create_task(client.post("/v1/systemone", json=REQ))
+                    await asyncio.wait_for(body_read.wait(), 2)
+                    assert [item[0] for item in fake.work] == ["route"]
+                    fake.release.set()
+                    assert (await routing).status_code == (await prediction).status_code == 200
+                finally:
+                    fake.release.set()
+                    await routing
+                    if prediction is not None:
+                        await prediction
+
+    asyncio.run(exercise())
+    assert [item[0] for item in fake.work] == ["route", "route finished", "predict"]
+    assert len({item[1] for item in fake.work}) == 1
+    assert all(item[2].startswith("laya-infer") for item in fake.work)
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_http_route_does_not_reset_the_inference_idle_clock(monkeypatch, fail):
+    import time
+    import laya.serve as serve
+
+    clock = [100.0]
+    monkeypatch.setattr(serve, "time", SimpleNamespace(monotonic=lambda: clock[0], perf_counter=time.perf_counter))
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "300")
+
+    class TimedRoute(DiagnosticRouter):
+        def route(self, *args, **kwargs):
+            clock[0] += 5.0
+            if fail:
+                raise ValueError("route rejected")
+            return super().route(*args, **kwargs)
+
+    with TestClient(create_app(TimedRoute())) as client:
+        clock[0] = 120.0
+        assert client.get("/health").json()["idle_seconds"] == 20.0
+        response = client.post("/v1/route", json=_ROUTE_REQ)
+        assert response.status_code == (422 if fail else 200)
+        # Both entry-time and completion-time resets would produce a smaller number.
+        assert client.get("/health").json()["idle_seconds"] == 25.0
+        assert client.post("/v1/systemone", json=REQ).status_code == 200
+        assert client.get("/health").json()["idle_seconds"] == 0.0
+        clock[0] = 150.0
+        client.post("/v1/route", json=_ROUTE_REQ)
+        assert client.get("/health").json()["idle_seconds"] == 30.0
+
+
+@pytest.mark.parametrize("cancel", [False, True])
+def test_http_route_finishing_or_cancelled_does_not_postpone_idle_unload(monkeypatch, cancel):
+    import threading
+    import time
+    import httpx
+    import laya.serve as serve
+
+    clock = [100.0]
+    monkeypatch.setattr(serve, "time", SimpleNamespace(monotonic=lambda: clock[0], perf_counter=time.perf_counter))
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "0.2")
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+
+    class BlockingRoute(IdleRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+            self.finished = threading.Event()
+            self.active = False
+            self.route_thread = None
+            self.unload_overlaps = []
+
+        def route(self, state, questions, model=None):
+            self.active = True
+            self.route_thread = threading.get_ident()
+            self.entered.set()
+            try:
+                assert self.release.wait(5), "test did not release routing"
+                return dict(_ROUTE_DECISION)
+            finally:
+                self.active = False
+                self.finished.set()
+
+        def unload(self):
+            if self.active:
+                self.unload_overlaps.append(threading.get_ident())
+            assert not self.active, "unload overlapped routing"
+            assert threading.get_ident() == self.route_thread
+            super().unload()
+
+    fake = BlockingRoute()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                task = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    clock[0] = 101.0  # The original deadline has expired while routing is blocked.
+                    if cancel:
+                        task.cancel()
+                        with pytest.raises(asyncio.CancelledError):
+                            await task
+                        # A cancelled HTTP request cannot stop its already-running sync hook.
+                        assert fake.active and not fake.finished.is_set()
+                        bad = await client.post("/v1/route", json={**_ROUTE_REQ, "explain": "false"})
+                        assert bad.status_code == 422, "cancellation did not release the admission slot"
+                    assert not fake.unloaded.is_set()
+                    fake.release.set()
+                    if not cancel:
+                        assert (await task).status_code == 200
+                    assert await asyncio.to_thread(fake.finished.wait, 2)
+                    # Keep the clock fixed. A route that resets the deadline will never unload.
+                    assert await asyncio.to_thread(fake.unloaded.wait, 2)
+                    assert (await client.get("/health")).json()["loaded"] == []
+                finally:
+                    fake.release.set()
+                    if not task.done():
+                        await task
+
+    asyncio.run(exercise())
+
+    # The reaper logs and retries unload exceptions; a later successful retry must not
+    # conceal an earlier overlap that raised inside unload().
+    assert fake.unload_overlaps == []
+
+
+@pytest.mark.parametrize("name", ["lang", "lang_guess"])
+@pytest.mark.parametrize("value", [True, 1, {}, []])
+def test_http_route_language_controls_are_strings_before_dispatch(monkeypatch, name, value):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, name: value})
+    assert response.status_code == 422, response.text
+    assert name in response.json()["detail"]
+    assert fake.route_calls == []
+
+
+def test_http_route_validation_and_failure_release_admission(monkeypatch, caplog):
+    class RejectingRoute(DiagnosticRouter):
+        def route(self, state, questions, model=None, **kwargs):
+            if state == "invalid task":
+                raise ValueError("unknown task 'bad-task'")
+            if state == "broken hook":
+                raise RuntimeError("private hook error")
+            return super().route(state, questions, model=model, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = RejectingRoute()
+    with TestClient(create_app(fake)) as client:
+        rejected = client.post("/v1/route", json={**_ROUTE_REQ, "state": "invalid task"})
+        assert rejected.status_code == 422 and "bad-task" in rejected.json()["detail"]
+        with caplog.at_level(logging.ERROR, logger="laya.serve"):
+            failed = client.post("/v1/route", json={**_ROUTE_REQ, "state": "broken hook"})
+        assert failed.status_code == 500 and "private hook error" not in failed.text
+        assert client.post("/v1/route", json=_ROUTE_REQ).status_code == 200
+    assert len(fake.route_calls) == 1

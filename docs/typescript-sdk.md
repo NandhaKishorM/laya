@@ -48,8 +48,10 @@ Optional extensions are validated when present.
 
 `predict` posts `/v1/systemone` and `health` gets `/health` -- those two calls are the client's whole
 network surface, and `/v1/systemone` is the only inference endpoint among them. There is no standalone
-routing method: `laya-client` exposes `predict` and `health` and nothing else, and the live integration
-test asserts the server answers `404` for `/v1/route`. The controls the endpoint does honour are
+routing method: `laya-client` exposes `predict` and `health` and nothing else. The server separately
+offers [`POST /v1/route`](http-api.md#post-v1route) for a routing snapshot without inference; call it
+with ordinary HTTP when needed. The live integration test covers this server contract without adding
+an SDK method. The controls the prediction endpoint does honour are
 per-request, and each is sent only when the caller supplied the option -- an absent option leaves the
 deployment's own `Router(...)` settings in charge instead of overriding them with a client-side default:
 

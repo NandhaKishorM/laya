@@ -6,7 +6,7 @@ output_tokens}`` usage block -- so a client written against Jev (for example the
 `hs-jev` Haskell client) can point its ``baseUrl`` at this server and keep
 working unchanged. All this module adds is the HTTP surface Laya itself does not
 ship: a ``POST /v1/systemone`` route and its ``POST /v1/systemone/batch`` sibling,
-an optional bearer check, and a health probe.
+``POST /v1/route`` for routing without inference, an optional bearer check, and a health probe.
 
 Each ``choice`` and ``score`` answer also carries ``x_jev_confidence``: the
 ``confidence`` Jev's own formula gives for the same probabilities. Laya's
@@ -198,6 +198,14 @@ BATCH_BODY_ITEM_CONTROLS = ("max_len", "head_max_len", "task", "lang", "lang_gue
 # the endpoint cannot honour is told, not ignored. It is listed separately from ``BODY_REFUSALS``
 # because that tuple is pinned against ``Router.predict``, which has no ``diagnostics``.
 BATCH_BODY_OUT_PARAMETERS = ("diagnostics",)
+
+# Route-only requests cannot apply prediction budgets, abstention or batch controls.
+# Hook policy belongs to the operator, including the on_route callback itself.
+ROUTE_BODY_CONTROLS = ("model", "task", "lang", "lang_guess", "explain")
+ROUTE_BODY_REFUSALS = BODY_REFUSALS + (
+    "on_route", "max_len", "head_max_len", "min_confidence", "batch_size",
+    "sort_by_length", "diagnostics", "states",
+)
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -1407,6 +1415,76 @@ def create_app(router: Optional[Any] = None):
             yield
         finally:
             admission.release()
+
+    @app.post("/v1/route")
+    async def route(request: Request, authorization: Optional[str] = Header(default=None)):
+        nonlocal gate
+        _check_auth(authorization)
+        async with _admit():
+            body = await _read_json_body(request, body_read_timeout)
+            if not isinstance(body, dict) or "questions" not in body:
+                raise HTTPException(status_code=400, detail="request body must be an object with a 'questions' field")
+            state, questions = body.get("state"), body["questions"]
+            _check_request_limits(state, questions, MAX_TOURNAMENT_CHOICE_OPTIONS if tournament_group
+                                  else MAX_CHOICE_OPTIONS)
+            if _has_lone_surrogate(body):
+                raise HTTPException(status_code=400, detail=_LONE_SURROGATE_DETAIL)
+            refused = sorted(key for key in ROUTE_BODY_REFUSALS if key in body)
+            if refused:
+                raise HTTPException(status_code=422,
+                                    detail="%s cannot be sent to the routing endpoint" % ", ".join(refused))
+            explain = body.get("explain", False)
+            if not isinstance(explain, bool):
+                raise HTTPException(status_code=422, detail="explain must be a boolean")
+            model = _resolve_model(body.get("model"), getattr(router, "resolve", None))
+            route_kwargs = {}
+            if body.get("task") is not None:
+                route_kwargs["task"] = body["task"]
+            for key in ("lang", "lang_guess"):
+                value = _validate_language_param(body, key)
+                if value is not None:
+                    route_kwargs[key] = value
+
+            def run_route():
+                if explain:
+                    try:
+                        decision = router.route(state, questions, model=model, explain=True, **route_kwargs)
+                    except TypeError as error:
+                        # A legacy injected router may lack the keyword. Do not retry (hooks
+                        # may have side effects), or mislabel an error raised inside route.
+                        if (error.__traceback__.tb_next is None
+                                and "unexpected keyword argument 'explain'" in str(error)):
+                            raise HTTPException(status_code=422,
+                                                detail="this router does not support explain=True") from None
+                        raise
+                else:
+                    decision = router.route(state, questions, model=model, **route_kwargs)
+                # Read the final on_route result, without rerunning language detection or
+                # exporting detection.mixed_segment (which can contain verbatim input).
+                result = {key: decision[key] for key in ("model", "repo", "reason")}
+                if explain:
+                    detection = decision.get("detection")
+                    result["diagnostic"] = detection.get("diagnostic") if isinstance(detection, dict) else None
+                return result
+
+            if gate is None:
+                gate = asyncio.Lock()
+            try:
+                async with gate:
+                    loop = asyncio.get_running_loop()
+                    # Share the inference worker, but not _run_inference: diagnostics must
+                    # not refresh the idle deadline, even on failure or HTTP cancellation.
+                    result = await loop.run_in_executor(pool, run_route)
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(content=result)
+            except HTTPException:
+                raise
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from None
+            except Exception:  # noqa: BLE001 -- never expose internal paths or hook errors
+                _log.exception("routing failed for model=%s",
+                               str(model).replace("\n", "\\n").replace("\r", "\\r"))
+                raise HTTPException(status_code=500, detail="routing failed")
 
     @app.post("/v1/systemone")
     async def systemone(request: Request, authorization: Optional[str] = Header(default=None)):

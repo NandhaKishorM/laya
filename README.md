@@ -94,19 +94,24 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.19
+## What's new in 0.4.20
 
-* **Routing snapshots over HTTP.** `POST /v1/route` returns the model, repo and reason a request
-  would route to without running inference or loading a checkpoint. It shares the inference worker
-  but deliberately not the idle clock, so polling diagnostics cannot keep a server resident, and it
-  withholds the detection mapping because that copies caller text verbatim (#1422).
-* **`LAYA_CUDA_AMP` accepts `fp32` and refuses a typo.** Full precision is now selectable, and a
-  value that does not parse fails the load instead of silently serving the checkpoint's own dtype.
-  The value is trimmed, so a stray space no longer changes the precision you get (#1424).
-* **Routing skips the hook machinery when nothing is listening.** `route` and `route_batch` build
-  no context and draw no OS entropy unless a hook actually implements `on_route`, and a Router
-  subclass that overrides `route` still goes through it (#1386).
-* **Every CI job is bounded.** The TypeScript SDK job was the last one without a timeout (#1423).
+* **A guardrail no longer passes an answer it cannot score.** A `probabilities` value of `NaN` or
+  `-Infinity` made `score_violation_probability` return a non-finite number, and every threshold
+  comparison against it is false, so the integration guards reported such an answer as passing. The
+  non-finite cases now take the same normalised-score fallback a malformed answer already took, and
+  a probability too wide for a double falls back instead of raising (#1431).
+* **A truncated state is visible even under `LAYA_JEV_STRICT`.** `laya-serve` logs one warning when
+  a request drops state tokens, and one aggregate line per batch naming which results were cut. It
+  logs before the strict projection removes `usage.truncated`, which is the only mode where the
+  response carried no sign of the cut (#1426).
+* **A temperature too wide for a double falls back to 1.0.** JSON has no double limit, so a
+  temperature written as a 401-digit integer parses as an `int` that `float()` refuses; the clamp
+  now reads that as "not a number" like every other unreadable value, instead of raising after the
+  checkpoint was already read off disk (#1433).
+* **`laya-ts` validates `hooksTimeout`.** The port installed deadlines the Python reference refuses,
+  including an instant one for `hooksTimeout: 0`, and silently skipped the deadline for a value
+  arriving from a config body as a string, bool or object (#1432).
 
 Earlier releases are in the [GitHub releases](https://github.com/NandhaKishorM/laya/releases).
 

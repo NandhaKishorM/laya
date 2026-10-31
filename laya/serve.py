@@ -281,6 +281,100 @@ def _add_jev_confidence(result: Dict[str, Any]) -> Dict[str, Any]:
     return {**result, "answers": answers}
 
 
+def _log_field(value: Any) -> str:
+    """Caller-influenced text folded onto one log line.
+
+    Question ids are request keys, and `truncated_questions` copies them. A newline in
+    one would split the warning into a second record -- the same log injection the
+    inference-failure line already closes for `model`.
+    """
+    return str(value).replace("\n", "\\n").replace("\r", "\\r")
+
+
+def _question_count(questions: Any) -> int:
+    return len(questions) if isinstance(questions, dict) else 0
+
+
+def _state_truncation(result: Any) -> Optional[Dict[str, Any]]:
+    """Dropped-token signal on one result, or None when usage does not report a cut.
+
+    `truncated` is a bool on a normal predict and a window count on `predict_long`, so the
+    check is `> 0` and not `is True` (a count of 2 is a cut; `False` is not). Bool is an
+    int in Python, and a fake that puts `True` in `state_tokens_dropped` must not be read
+    as one dropped token. A missing `usage`, a non-dict, or a value that is not a flag or
+    a count is "no report": the fakes this server's tests inject, and any router that
+    predates the truncation fields, succeed without them, and a bad report must not turn
+    that success into a 500 (#1425).
+    """
+    if not isinstance(result, dict):
+        return None
+    usage = result.get("usage")
+    if not isinstance(usage, dict):
+        return None
+    dropped = usage.get("state_tokens_dropped")
+    count = dropped if isinstance(dropped, int) and not isinstance(dropped, bool) and dropped > 0 else 0
+    flag = usage.get("truncated")
+    cut = flag is True or (isinstance(flag, int) and not isinstance(flag, bool) and flag > 0)
+    if not cut and count == 0:
+        return None
+    raw_ids = usage.get("truncated_questions")
+    ids = ([_log_field(qid) for qid in raw_ids if isinstance(qid, str) and qid]
+           if isinstance(raw_ids, list) else [])
+    return {"state_tokens_dropped": count, "truncated_questions": ids}
+
+
+def _warn_state_truncated(result: Any, *, route: str, model: Any, questions: Any) -> None:
+    """Warn once when one decision result dropped state tokens (#1425).
+
+    Call before `_project_jev_strict`: that projection removes `truncated` and
+    `state_tokens_dropped`, and the log is then the only operator signal. The line
+    carries the route, the resolved model, how many questions shared the state, and
+    the dropped-token count -- not the state text.
+    """
+    report = _state_truncation(result)
+    if report is None:
+        return
+    _log.warning(
+        "state truncated on %s model=%s questions=%d state_tokens_dropped=%d truncated_questions=%s",
+        route, _log_field(model), _question_count(questions),
+        report["state_tokens_dropped"], report["truncated_questions"],
+    )
+
+
+def _warn_batch_state_truncated(results: Any, *, model: Any, questions: Any) -> None:
+    """Warn once for a batch, aggregating every item whose state was cut (#1425).
+
+    One line for the request, not one per answer and not one per truncated item: the
+    indexes and the per-item dropped counts are the context an operator needs to find
+    the records that never reached the model. Same ordering rule as
+    `_warn_state_truncated`: read `usage` before strict projection strips it.
+    """
+    if not isinstance(results, list):
+        return
+    hits = []
+    for index, item in enumerate(results):
+        report = _state_truncation(item)
+        if report is not None:
+            hits.append((index, report))
+    if not hits:
+        return
+    question_ids = []
+    seen = set()
+    for _, report in hits:
+        for qid in report["truncated_questions"]:
+            if qid not in seen:
+                seen.add(qid)
+                question_ids.append(qid)
+    _log.warning(
+        "state truncated on /v1/systemone/batch model=%s questions=%d results=%d/%d "
+        "indices=%s state_tokens_dropped=%s truncated_questions=%s",
+        _log_field(model), _question_count(questions), len(hits), len(results),
+        [index for index, _ in hits],
+        [report["state_tokens_dropped"] for _, report in hits],
+        question_ids,
+    )
+
+
 def _tournament_plan(questions: Any, group: int) -> Optional[Dict[str, List[str]]]:
     """The choices to narrow by elimination, as `{qid: labels}`, or None to answer in one pass.
 
@@ -1554,6 +1648,9 @@ def create_app(router: Optional[Any] = None):
                     run = partial(router.predict, state, questions, model=model, **predict_kwargs)
                 result = await loop.run_in_executor(pool, _run_inference, run)
                 infer_ms = (time.perf_counter() - t0) * 1000.0
+                # Log while `usage` still carries the truncation report. `_project_jev_strict`
+                # drops it, and a strict client then has no other signal (#1425).
+                _warn_state_truncated(result, route="/v1/systemone", model=model, questions=questions)
                 if _env_bool("LAYA_JEV_STRICT", False):
                     result = _project_jev_strict(result)
                 else:
@@ -1707,6 +1804,11 @@ def create_app(router: Optional[Any] = None):
                 t0 = time.perf_counter()
                 batch_res = await loop.run_in_executor(pool, _run_inference, _do_batch)
                 infer_ms = (time.perf_counter() - t0) * 1000.0
+                # Same ordering as `/v1/systemone`: one aggregate warning, read off the
+                # items before strict projection removes their truncation fields (#1425).
+                _warn_batch_state_truncated(
+                    batch_res.get("results") if isinstance(batch_res, dict) else None,
+                    model=model, questions=questions)
                 if _env_bool("LAYA_JEV_STRICT", False):
                     batch_res["results"] = [_project_jev_strict(item) for item in batch_res["results"]]
                 else:

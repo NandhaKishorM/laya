@@ -741,6 +741,8 @@ curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
 }'
 ```
 
+Questions in that request share the one `state`. Each is answered against the whole serialized state, so an instruction that names a record (`rows[i]`) still sees every record in it. One answer per record means one state per record, sent as `states` to `POST /v1/systemone/batch`. A state that does not fit the token room the questions leave is truncated before inference, and the server logs the dropped state tokens. The full response reports the same cut on `usage` (`truncated`, `state_tokens_dropped`, `truncated_questions`); `LAYA_JEV_STRICT=1` omits those fields, and the log line is the signal that remains.
+
 To evaluate multiple states in a single call, send a `states` array to `POST /v1/systemone/batch` (capped at 64 states; a batch larger than `LAYA_MAX_BATCH_TOKENS` is split across several forward passes rather than refused):
 
 ```bash
@@ -754,7 +756,7 @@ curl -s localhost:8000/v1/systemone/batch -H 'content-type: application/json' -d
 }'
 ```
 
-The endpoint shares forward passes via `Router.predict_batch` and returns an array of `results` in matching order along with aggregated `total_usage`.
+The endpoint shares forward passes via `Router.predict_batch` and returns an array of `results` in matching order along with aggregated `total_usage`. Each entry of `states` is its own context, which is the per-record call: a question on `/v1/systemone` sees the whole shared state, even when its text names `rows[i]`. When any result dropped state tokens, the server logs one warning for the batch — which results were cut, and how many tokens each lost — rather than one line per answer.
 
 
 Configuration is by environment variable: `LAYA_HOST`, `LAYA_PORT`,
@@ -785,8 +787,9 @@ When publishing the server under a reverse-proxy prefix such as `/laya`, set
 `LAYA_ROOT_PATH=/laya`. The proxy should strip that prefix before forwarding;
 the setting controls FastAPI-generated URLs and leaves the internal routes unchanged.
 
-Three things differ from Jev when you port a client:
+Four things differ from Jev when you port a client:
 
+* **One shared context.** One `/v1/systemone` request is one state, and every question is decided on that whole state. Several records packed into it, with questions aimed at `rows[i]`, still share that context. Per-record answers are `states` on `/v1/systemone/batch`, one state per record. A state larger than the token room is truncated, and `laya-serve` logs the dropped tokens; under `LAYA_JEV_STRICT` that log is where the cut stays visible.
 * **Options per question.** A question's options share the checkpoint's option budget, `head_max_len` (192 tokens on `laya`, 256 on the other two), not Jev's cap of 255 options. In addition, the HTTP server (`laya.serve`) enforces an amplification guard of at most 100 choice options per question (`MAX_CHOICE_OPTIONS = 100`, rejected with 413 before inference). Once options overflow the token budget, around 20 options with a short description each, every option is trimmed to fit, so long or similar labels can reach the model reading the same ([Where Jev leads](#where-jev-leads)). Once they no longer fit the window at all, the library rejects the request with 422. For more candidates, narrow them first with `predict_shortlist` ([Honest limits](#honest-limits)).
 * **Score levels.** Every level needs a description. A `null` level is rejected with 422 rather than scored and echoed back in `legend`.
 * **`confidence`** on `choice` and `score` answers is 1 minus normalised entropy, a measure of how concentrated the distribution is, not Jev's `(n·p_max − 1)/(n − 1)`. A threshold carried over from Jev does not transfer. For one calibrated number on every question type, gate on `answer_confidence`, the probability of the reported answer. Both values shift with the number of options, so fit and validate any cutoff on held-out data at the option counts your workload uses ([#394](https://github.com/NandhaKishorM/laya/issues/394)).

@@ -280,6 +280,198 @@ def test_jev_strict_leaves_an_unknown_answer_shape_unchanged(monkeypatch):
     assert "routing" not in body
 
 
+# A cut state is silent in the answer. The report lives on `usage`, and strict mode removes it,
+# so the server log is what an operator can alert on (#1425). These blocks are what `Agent`
+# publishes: `truncated` false with nothing dropped, and the same shape once tokens were lost.
+INTACT_USAGE = {"input_tokens": 42, "output_tokens": 0, "state_tokens": 12,
+                "state_tokens_dropped": 0, "truncated": False, "truncated_questions": []}
+CUT_USAGE = {"input_tokens": 42, "output_tokens": 0, "state_tokens": 935,
+             "state_tokens_dropped": 587, "truncated": True,
+             "truncated_questions": ["r0", "r1"]}
+
+
+class ScriptedUsageRouter(FakeRouter):
+    """FakeRouter that replaces `usage` from a per-call queue.
+
+    `None` drops the key. A state the queue does not cover keeps the base
+    `{input_tokens, output_tokens}` payload the other server tests assert.
+    """
+
+    def __init__(self, usages):
+        super().__init__()
+        self._usages = list(usages)
+
+    def predict(self, state, questions, model=None):
+        result = super().predict(state, questions, model=model)
+        if self._usages:
+            usage = self._usages.pop(0)
+            if usage is None:
+                result.pop("usage", None)
+            else:
+                result["usage"] = usage
+        return result
+
+    def predict_batch(self, requests, **kwargs):
+        return [self.predict(item["state"], item["questions"], model=item.get("model"))
+                for item in requests]
+
+
+def _state_truncated_logs(caplog):
+    return [r for r in caplog.records
+            if r.name == "laya.serve" and r.levelno == logging.WARNING
+            and "state truncated" in r.getMessage()]
+
+
+def test_truncated_state_is_logged_on_systemone(monkeypatch, caplog):
+    """A result that dropped state tokens warns once, and the JSON payload stays the result's."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    client = TestClient(create_app(router=ScriptedUsageRouter([dict(CUT_USAGE)])))
+
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        response = client.post("/v1/systemone", json=REQ)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert set(body) == {"model", "answers", "usage", "routing"}
+    assert body["usage"]["truncated"] is True
+    assert body["usage"]["state_tokens_dropped"] == 587
+    assert body["usage"]["truncated_questions"] == ["r0", "r1"]
+    assert body["answers"]["dept"]["choice"] == "billing"
+    logs = _state_truncated_logs(caplog)
+    assert len(logs) == 1, [r.getMessage() for r in caplog.records]
+    message = logs[0].getMessage()
+    assert message.startswith("state truncated on /v1/systemone ")
+    assert "state_tokens_dropped=587" in message
+    assert "r0" in message and "r1" in message
+    # two question ids, one line: not one warning per answer
+    assert message.count("state truncated") == 1
+
+
+def test_intact_responses_do_not_log_truncation(monkeypatch, caplog):
+    """An uncut result keeps today's payload and does not warn, on either decision route."""
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    client, _ = _client(monkeypatch)
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        single = client.post("/v1/systemone", json=REQ)
+        batch = client.post("/v1/systemone/batch", json={"states": ["one", "two"],
+                                                         "questions": REQ["questions"]})
+    assert single.status_code == 200 and batch.status_code == 200
+    assert single.json()["usage"] == {"input_tokens": 42, "output_tokens": 0}
+    assert [item["usage"] for item in batch.json()["results"]] == [
+        {"input_tokens": 42, "output_tokens": 0},
+        {"input_tokens": 42, "output_tokens": 0},
+    ]
+    assert batch.json()["total_usage"] == {"input_tokens": 84, "output_tokens": 0}
+    assert _state_truncated_logs(caplog) == []
+
+    # The fields the agent actually sends, when they say nothing was cut.
+    caplog.clear()
+    explicit = TestClient(create_app(router=ScriptedUsageRouter(
+        [dict(INTACT_USAGE), dict(INTACT_USAGE), dict(INTACT_USAGE)])))
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        kept = explicit.post("/v1/systemone", json=REQ)
+        kept_batch = explicit.post("/v1/systemone/batch", json={"states": ["one", "two"],
+                                                                "questions": REQ["questions"]})
+    assert kept.status_code == 200 and kept_batch.status_code == 200
+    assert kept.json()["usage"]["truncated"] is False
+    assert kept.json()["usage"]["state_tokens_dropped"] == 0
+    assert all(item["usage"] == INTACT_USAGE for item in kept_batch.json()["results"])
+    assert _state_truncated_logs(caplog) == []
+
+
+def test_batch_logs_mixed_truncation_once(monkeypatch, caplog):
+    """One truncated item and one intact item produce one aggregate warning, not one per answer."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    client = TestClient(create_app(router=ScriptedUsageRouter([dict(CUT_USAGE), dict(INTACT_USAGE)])))
+
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        response = client.post("/v1/systemone/batch", json={"states": ["cut", "kept"],
+                                                            "questions": REQ["questions"]})
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["results"][0]["usage"]["truncated"] is True
+    assert data["results"][0]["usage"]["state_tokens_dropped"] == 587
+    assert data["results"][1]["usage"]["truncated"] is False
+    assert data["results"][1]["usage"]["state_tokens_dropped"] == 0
+    assert data["total_usage"] == {"input_tokens": 84, "output_tokens": 0}
+    logs = _state_truncated_logs(caplog)
+    assert len(logs) == 1, [r.getMessage() for r in caplog.records]
+    message = logs[0].getMessage()
+    assert message.startswith("state truncated on /v1/systemone/batch ")
+    assert "results=1/2" in message
+    assert "indices=[0]" in message
+    assert "state_tokens_dropped=[587]" in message
+    assert "r0" in message and "r1" in message
+
+
+def test_strict_mode_logs_truncation_before_projection(monkeypatch, caplog):
+    """The warning is read before LAYA_JEV_STRICT strips the truncation fields from the body."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_JEV_STRICT", "1")
+    client = TestClient(create_app(router=ScriptedUsageRouter([dict(CUT_USAGE), dict(CUT_USAGE), dict(INTACT_USAGE)])))
+
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        single = client.post("/v1/systemone", json=REQ)
+    assert single.status_code == 200, single.text
+    body = single.json()
+    assert set(body) == {"model", "answers", "usage"}
+    assert body["usage"] == {"input_tokens": 42, "output_tokens": 0}
+    assert "truncated" not in body["usage"]
+    assert "x_jev_confidence" not in body["answers"]["dept"]
+    logs = _state_truncated_logs(caplog)
+    assert len(logs) == 1, [r.getMessage() for r in caplog.records]
+    assert "state_tokens_dropped=587" in logs[0].getMessage()
+    assert "r0" in logs[0].getMessage() and "r1" in logs[0].getMessage()
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        batch = client.post("/v1/systemone/batch", json={"states": ["cut", "kept"],
+                                                         "questions": REQ["questions"]})
+    assert batch.status_code == 200, batch.text
+    data = batch.json()
+    assert [item["usage"] for item in data["results"]] == [
+        {"input_tokens": 42, "output_tokens": 0},
+        {"input_tokens": 42, "output_tokens": 0},
+    ]
+    assert all("routing" not in item for item in data["results"])
+    assert data["total_usage"] == {"input_tokens": 84, "output_tokens": 0}
+    logs = _state_truncated_logs(caplog)
+    assert len(logs) == 1, [r.getMessage() for r in caplog.records]
+    message = logs[0].getMessage()
+    assert "results=1/2" in message
+    assert "indices=[0]" in message
+    assert "state_tokens_dropped=[587]" in message
+    assert "state_tokens_dropped" not in batch.text
+
+
+@pytest.mark.parametrize("usage", [None, {"input_tokens": 7, "output_tokens": 0,
+                                           "truncated": "yes", "state_tokens_dropped": "many"}])
+def test_missing_or_malformed_usage_stays_a_success(monkeypatch, caplog, usage):
+    """A router that omits the truncation report, or fills it with junk, still answers 200."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    client = TestClient(create_app(router=ScriptedUsageRouter([usage, usage, usage])))
+
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        single = client.post("/v1/systemone", json=REQ)
+        batch = client.post("/v1/systemone/batch", json={"states": ["one", "two"],
+                                                         "questions": REQ["questions"]})
+
+    assert single.status_code == 200, single.text
+    assert batch.status_code == 200, batch.text
+    if usage is None:
+        assert "usage" not in single.json()
+        assert all("usage" not in item for item in batch.json()["results"])
+        assert batch.json()["total_usage"] == {"input_tokens": 0, "output_tokens": 0}
+    else:
+        assert single.json()["usage"] == usage
+        assert [item["usage"] for item in batch.json()["results"]] == [usage, usage]
+    assert _state_truncated_logs(caplog) == []
+
+
 def test_choice_and_score_answers_carry_jev_confidence(monkeypatch):
     """Each choice and score answer reports Jev's `confidence` beside Laya's own (#302)."""
     client, _ = _strict_client(monkeypatch, None)

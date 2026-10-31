@@ -138,6 +138,27 @@ class TemperatureLoadingTests(unittest.TestCase):
                 self.assertIn("noul:2", messages[0])
                 self.assert_predictions(agent, choice=1.0, score=2.0, noul=1.0)
 
+    def test_json_integer_wider_than_a_float_uses_neutral_fallback_and_warn(self):
+        # JSON keeps arbitrary precision, so a checkpoint whose `rl_agent_config.json` carries a
+        # temperature written out as hundreds of digits loads as an `int` and `float()` answers it
+        # with `OverflowError`. The clamp caught TypeError and ValueError only, so the failure was
+        # not a reported fallback but a load that died after reading the weights off disk -- while
+        # the same file with `1e400` parses as a float, arrives as `inf`, and has always loaded.
+        # `2 ** 1024` is the smallest power of two `float()` refuses.
+        for value in (10 ** 400, -(10 ** 400), 2 ** 1024):
+            with self.subTest(value=value):
+                agent, messages = self.load_config(temperature=[value, 2.0, 3.0],
+                                                   temperature_by_options={"choice:2": value})
+                self.assertEqual(agent.temperature, [1.0, 2.0, 3.0])
+                self.assertEqual(agent.temperature_by_options, {"choice:2": 1.0})
+                self.assertEqual(len(messages), 1)
+                self.assertIn("temperature[0]", messages[0])
+                self.assertIn("choice:2", messages[0])
+                self.assertIn("uncalibrated", messages[0])
+                # The value the clamp replaced is named in the warning, digit for digit.
+                self.assertIn(str(value), messages[0])
+                self.assert_predictions(agent, choice=1.0, score=2.0, noul=3.0)
+
     def test_out_of_range_values_keep_existing_clamps(self):
         agent, messages = self.load_config(temperature=[0.1, 10, -1],
                                           temperature_by_options={"choice:2": 9, "score:3-5": 0})
@@ -194,6 +215,14 @@ class TemperatureRejectionPredicateTests(unittest.TestCase):
             ({}, 1.0, True),
             (float("nan"), 1.0, True),
             (float("inf"), 1.0, True),
+            # A number `float()` cannot hold is the same answer: JSON keeps arbitrary precision,
+            # so these reach a loader as `int` and the clamp installs its neutral 1.0.
+            (10 ** 400, 1.0, True),
+            (-(10 ** 400), 1.0, True),
+            (2 ** 1024, 1.0, True),
+            # Wide but still convertible: `float()` reads this one, so the ordinary out-of-range
+            # comparison decides it, exactly as it decides the `9.0` row above.
+            (2 ** 1023, TEMP_MAX, True),
         ]
         for raw, applied, want in cases:
             with self.subTest(raw=raw, applied=applied):

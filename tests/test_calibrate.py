@@ -798,6 +798,32 @@ check_true(
     [str(w.message) for w in caught],
 )
 
+# The same guard has a third arm, and this is the one the file format makes reachable: JSON keeps
+# arbitrary precision, so a calibration file whose temperature is written out as hundreds of digits
+# loads as an `int` and `float()` answers it with `OverflowError`. `clamp_temperature` caught
+# TypeError and ValueError only, so the very payload this function's docstring promises "cannot
+# crash a later forward" crashed the load instead -- while `1e400`, the same number one character
+# away in the same file, parses as a float, arrives as `inf`, and has always clamped quietly.
+WIDE = 10 ** 400                      # 401 digits: inside the print limit, outside float range
+wide_payload = {**bad_payload, "temperature": [WIDE, 1.2, 1.1],
+                "temperature_by_options": {"choice:2": 2 ** 1024}}
+wide_agent = Agent.__new__(Agent)
+wide_agent.model_id_or_path = "convaiinnovations/laya"
+wide_agent.subfolder = None
+wide_agent.cfg = {"encoder": "answerdotai/ModernBERT-large"}
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    apply_calibration_payload(wide_agent, wide_payload)
+check("wide-int-load/temperature", wide_agent.temperature, [1.0, 1.2, 1.1])
+check("wide-int-load/by_options", wide_agent.temperature_by_options, {"choice:2": 1.0})
+check_true(
+    "wide-int-load/warns and names each value digit for digit",
+    any(issubclass(w.category, RuntimeWarning)
+        and "temperature[0]=%d -> 1" % WIDE in str(w.message)
+        and "choice:2=%d -> 1" % (2 ** 1024) in str(w.message) for w in caught),
+    [str(w.message) for w in caught],
+)
+
 
 # --------------------------------------------------------------- payload shape
 # The values above are tolerated and clamped; the *shape* is not negotiable, and the

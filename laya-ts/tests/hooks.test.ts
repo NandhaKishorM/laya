@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { Agent, defaultTokenizer } from "../src/agent.js";
 import { Router } from "../src/router.js";
@@ -9,6 +10,7 @@ import {
   defaultHooks,
   normaliseHooks,
   setDefaultHooks,
+  validateHooksTimeout,
   type Hook,
   type PredictContext,
 } from "../src/hooks.js";
@@ -647,6 +649,155 @@ describe("hook timeout", () => {
       await vi.advanceTimersByTimeAsync(200);
       const r = await longCall;
       expect(r.answers).toHaveProperty("q");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // `laya-java/fixtures/hooks.json` records `laya/hooks.py::validate_timeout` answering every
+  // value in `HOOK_TIMEOUT_VALUES` (`gen_fixtures.py:4719`, recorded at :5009-5024): the accepted
+  // seconds or the `ValueError` text. `laya-java` replays those rows in `HooksTest.timeoutsMatch()`;
+  // until now the TypeScript port had no test that consulted the file, and no gate either --
+  // `typeof value === "number" ? value * 1000 : null` installed the deadline for a number and
+  // treated everything else as "no limit", so the reference's refusals arrived here as either an
+  // instant `TimeoutError` (0, -1, NaN, Infinity) or a missing deadline (a bool, a string, a list).
+  //
+  // `input` is the Python `repr` of the value, and is the key this test maps on purpose: a value
+  // added to the reference's list must land here deliberately rather than fall through untested.
+  const TIMEOUT_ROWS = JSON.parse(
+    readFileSync(new URL("../../laya-java/fixtures/hooks.json", import.meta.url), "utf8"),
+  ).timeouts as {
+    input: string;
+    accepted: boolean;
+    value: number | null;
+    seconds: string | null;
+    error: string | null;
+  }[];
+
+  const TIMEOUT_INPUTS: Record<string, unknown> = {
+    None: null,
+    "1": 1,
+    "2": 2,
+    "10": 10,
+    "60": 60,
+    "1.5": 1.5,
+    "0.05": 0.05,
+    "1e-07": 1e-7,
+    "'0.5'": "0.5",
+    "0": 0,
+    "0.0": 0,
+    "-1": -1,
+    "-0.5": -0.5,
+    nan: NaN,
+    inf: Infinity,
+    "-inf": -Infinity,
+  };
+
+  /** JavaScript has one number where the reference recorded a Python `int` and a Python `float`.
+   *  Both rows still assert the refusal; only the `repr` in its text cannot be reproduced. */
+  const REPR_AMBIGUOUS = new Set(["0", "0.0"]);
+
+  /** The message a call refuses with, or a test failure if it did not refuse. `toThrowError` with
+   *  a string matches a substring, and the whole point of these rows is the exact text. */
+  function refusalOf(build: () => unknown): string {
+    try {
+      build();
+    } catch (err) {
+      return (err as Error).message;
+    }
+    throw new Error("expected a refusal");
+  }
+
+  for (const row of TIMEOUT_ROWS) {
+    if (!(row.input in TIMEOUT_INPUTS)) {
+      it(`${row.input} (UNRECORDED)`, () => {
+        throw new Error(
+          `hooks.json records the timeout value ${row.input}, which this test maps to no JavaScript ` +
+            "value. Add it to TIMEOUT_INPUTS -- leaving it out stops the port being tested for it.",
+        );
+      });
+      continue;
+    }
+    const value = TIMEOUT_INPUTS[row.input];
+    if (row.accepted) {
+      it(`${row.input} is accepted as ${row.value}`, () => {
+        expect(validateHooksTimeout(value)).toBe(row.value);
+      });
+      continue;
+    }
+    it(`${row.input} is refused`, () => {
+      expect(refusalOf(() => validateHooksTimeout(value))).toBe(
+        REPR_AMBIGUOUS.has(row.input) ? row.error!.replace(/got .*$/, "got 0") : row.error!,
+      );
+    });
+  }
+
+  // Shapes the reference's list does not carry, measured from `validate_timeout` directly.
+  it("refuses the shapes a JSON body can hold, naming them as the reference does", () => {
+    const PREFIX = "hooks_timeout must be a positive finite number or None";
+    expect(refusalOf(() => validateHooksTimeout(true))).toBe(`${PREFIX}, not a bool; got True`);
+    expect(refusalOf(() => validateHooksTimeout(false))).toBe(`${PREFIX}, not a bool; got False`);
+    expect(refusalOf(() => validateHooksTimeout([1]))).toBe(`${PREFIX}; got [1]`);
+    expect(refusalOf(() => validateHooksTimeout({ a: 1 }))).toBe(`${PREFIX}; got {'a': 1}`);
+    // A string `float()` cannot read leaks its own message, which the reference does not wrap.
+    expect(refusalOf(() => validateHooksTimeout(" "))).toBe("could not convert string to float: ' '");
+    expect(refusalOf(() => validateHooksTimeout("abc"))).toBe(
+      "could not convert string to float: 'abc'",
+    );
+    // A spelling `float()` does read is then refused for what it reads, and names the string.
+    expect(refusalOf(() => validateHooksTimeout("inf"))).toBe(`${PREFIX}; got 'inf'`);
+    expect(refusalOf(() => validateHooksTimeout("0"))).toBe(`${PREFIX}; got '0'`);
+    expect(validateHooksTimeout("1e-7")).toBe(1e-7);
+  });
+
+  it("refuses a bad timeout when the agent is built, not at the first hook", () => {
+    expect(refusalOf(() => makeAgent([], { hooksTimeout: 0 }))).toBe(
+      "hooks_timeout must be a positive finite number or None; got 0",
+    );
+    expect(refusalOf(() => makeAgent([], { hooksTimeout: true }))).toBe(
+      "hooks_timeout must be a positive finite number or None, not a bool; got True",
+    );
+  });
+
+  it("refuses a bad per-call override instead of firing an instant deadline", async () => {
+    class NeverHook {
+      async onPredictStart(): Promise<void> {
+        return new Promise(() => {});
+      }
+    }
+    vi.useFakeTimers();
+    try {
+      const settled = capture(
+        makeAgent([], { hooks: [new NeverHook()] }).systemOne("hi", QUESTIONS, { hooksTimeout: 0 }),
+      );
+      await vi.advanceTimersByTimeAsync(50);
+      const err = await settled;
+      expect((err as Error).message).toBe(
+        "hooks_timeout must be a positive finite number or None; got 0",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reads a string timeout the reference reads and sets that deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const settled = capture(
+        makeAgent([], { hooks: [new SlowHook()], hooksTimeout: "0.5" }).systemOne("hi", QUESTIONS),
+      );
+      let done = false;
+      settled.then(() => {
+        done = true;
+      });
+      await vi.advanceTimersByTimeAsync(400);
+      // Half a second has not passed, and before this gate a string timeout never armed a timer
+      // at all, so nothing would have fired at any point.
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(100);
+      const err = await settled;
+      expect((err as Error).name).toBe("TimeoutError");
+      expect((err as Error).message).toBe("laya: hook SlowHook.onPredictStart exceeded 0.5s");
     } finally {
       vi.useRealTimers();
     }

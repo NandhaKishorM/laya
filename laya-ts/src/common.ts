@@ -244,7 +244,13 @@ export function answerConfidence(p: number[]): number {
   return Math.min(1, Math.max(0, Math.max(...p)));
 }
 
-function pyRepr(v: unknown): string {
+/**
+ * The value as CPython's `repr` renders it, for a refusal that has to name what was passed.
+ *
+ * Exported because `hooks.ts` needs it for the `hooks_timeout` refusals, whose messages are
+ * compared against `laya/hooks.py::validate_timeout` character for character.
+ */
+export function pyRepr(v: unknown): string {
   if (typeof v === "boolean") return v ? "True" : "False";
   if (v === null || v === undefined) return "None";
   if (typeof v === "number") {
@@ -253,7 +259,7 @@ function pyRepr(v: unknown): string {
     if (v === -Infinity) return "-inf";
     return String(v);
   }
-  if (typeof v === "string") return JSON.stringify(v);
+  if (typeof v === "string") return pyStrRepr(v);
   if (Array.isArray(v)) return `[${v.map(pyRepr).join(", ")}]`;
   if (typeof v === "object") {
     const entries = Object.entries(v as Record<string, unknown>).map(
@@ -262,6 +268,27 @@ function pyRepr(v: unknown): string {
     return `{${entries.join(", ")}}`;
   }
   return String(v);
+}
+
+/**
+ * CPython's `repr` of a str: `'quoted'`, unless the text holds a `'` and no `"`, where it flips to
+ * double quotes to avoid escaping. `JSON.stringify` always double-quotes, so a container rendered
+ * through it -- `['a']`, `{'a': 1}` -- shows the wrong quotes for its strings, and a refusal
+ * naming the value stops being comparable to the oracle's. See `laya-java/fixtures/
+ * confidence_gate.json`, which records the reference's `got '0.5'` for a string value.
+ */
+function pyStrRepr(s: string): string {
+  const quote = s.includes("'") && !s.includes('"') ? '"' : "'";
+  let out = "";
+  for (const ch of s) {
+    if (ch === quote || ch === "\\") out += `\\${ch}`;
+    else if (ch === "\n") out += "\\n";
+    else if (ch === "\r") out += "\\r";
+    else if (ch === "\t") out += "\\t";
+    else if (ch < " " || ch === "\x7f") out += `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`;
+    else out += ch;
+  }
+  return `${quote}${out}${quote}`;
 }
 
 /** The option types and option-count sizes `optionBucket`/`tempBucket` can produce. The bucket

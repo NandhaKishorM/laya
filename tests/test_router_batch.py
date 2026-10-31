@@ -587,3 +587,27 @@ def test_predict_batch_memoizes_identical_question_schema(monkeypatch):
     assert len(results) == 4
     # Exactly 2 schema serializations instead of 4
     assert len(calls) == 2
+
+
+def test_route_batch_reaches_subclass_route_override():
+    """A subclass that overrides route() must have its override invoked by route_batch()."""
+    from laya.router import RouteDecision
+
+    class CustomRouter(Router):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.route_calls = []
+
+        def route(self, state, questions=None, **kwargs):
+            self.route_calls.append(state)
+            decision = super().route(state, questions, **kwargs)
+            return RouteDecision(dict(decision, reason="custom_override"))
+
+    router = CustomRouter()
+    items = [request("first request"), request("second request")]
+    decisions = router.route_batch(items)
+
+    assert router.route_calls == ["first request", "second request"]
+    assert len(decisions) == 2
+    assert [d["reason"] for d in decisions] == ["custom_override", "custom_override"]
+

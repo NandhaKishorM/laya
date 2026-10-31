@@ -9,7 +9,7 @@
 
 use crate::error::Result;
 use crate::python_json::PythonJson;
-use crate::questions::Question;
+use crate::questions::{Question, resolve_noul_labels};
 use crate::tokenization::LayaTokenizer;
 use serde_json::Value;
 
@@ -89,7 +89,14 @@ impl SequenceBuilder {
                 } else {
                     PythonJson::criterion(n.if_true())
                 };
-                vec![format!("false: {false_text}"), format!("true: {true_text}")]
+                // `check` has already refused invalid labels, as Python's `_check_question` does
+                // before `render_options`, so the defaults here are only a fallback.
+                let (false_label, true_label) = resolve_noul_labels(question.labels())
+                    .unwrap_or_else(|_| ("false".to_string(), "true".to_string()));
+                vec![
+                    format!("{false_label}: {false_text}"),
+                    format!("{true_label}: {true_text}"),
+                ]
             }
         }
     }
@@ -168,8 +175,19 @@ impl SequenceBuilder {
         );
         let mut header_ids: Vec<u32> = tokenizer.encode(&header_text)?;
 
+        // Slot s shows option `order[s]`; the markers follow slot order. Python's `build_head`
+        // walks `option_order` as given, so an order that is not a permutation of the options
+        // (which the engine refuses first) is walked as far as it is valid here.
+        let canonical: Vec<usize> = (0..options.len()).collect();
+        let slots: Vec<usize> = match question.option_order() {
+            Some(order) if order.len() == options.len() => order
+                .iter()
+                .map_while(|&i| usize::try_from(i).ok().filter(|&i| i < options.len()))
+                .collect(),
+            _ => canonical,
+        };
         let mut option_ids: Vec<Vec<u32>> = Vec::with_capacity(options.len());
-        for option in &options {
+        for option in slots.iter().map(|&i| &options[i]) {
             let encoded = tokenizer.encode(&format!(" {}", Self::scrub(option, mask_token)))?;
             let take = Self::MAX_OPTION_TOKENS.min(encoded.len());
             let mut fragment = Vec::with_capacity(take + 1);

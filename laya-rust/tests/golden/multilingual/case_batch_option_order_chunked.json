@@ -1,0 +1,464 @@
+{
+  "name": "batch_option_order_chunked",
+  "states": [
+    "Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "Routine account check completed. Routine account check completed. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Routine account check completed. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account."
+  ],
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      },
+      "option_order": [
+        2,
+        0,
+        1
+      ]
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ],
+      "option_order": [
+        2,
+        1,
+        0
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account.",
+      "option_order": [
+        1,
+        0
+      ]
+    }
+  },
+  "options": {
+    "batch_size": 3,
+    "sort_by_length": true
+  },
+  "state_widths": [
+    180,
+    100,
+    135,
+    90,
+    160,
+    115,
+    145
+  ],
+  "results": [
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.9116,
+            "technical": 0.0016,
+            "other": 0.0867
+          },
+          "confidence": 0.7208,
+          "answer_confidence": 0.9116,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.5335,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.5458,
+            "1": 0.3749,
+            "2": 0.0793
+          },
+          "confidence": 0.1815,
+          "answer_confidence": 0.5458,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.0793,
+          "confidence": 0.9207,
+          "answer_confidence": 0.9207,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 534,
+        "output_tokens": 0,
+        "state_tokens": 146,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.819,
+            "technical": 0.0039,
+            "other": 0.1771
+          },
+          "confidence": 0.5525,
+          "answer_confidence": 0.819,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.7377,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.3678,
+            "1": 0.5267,
+            "2": 0.1055
+          },
+          "confidence": 0.1418,
+          "answer_confidence": 0.5267,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.0673,
+          "confidence": 0.9327,
+          "answer_confidence": 0.9327,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 294,
+        "output_tokens": 0,
+        "state_tokens": 66,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.8451,
+            "technical": 0.0009,
+            "other": 0.154
+          },
+          "confidence": 0.6023,
+          "answer_confidence": 0.8451,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.1852,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.1203,
+            "1": 0.5741,
+            "2": 0.3055
+          },
+          "confidence": 0.1483,
+          "answer_confidence": 0.5741,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.0456,
+          "confidence": 0.9544,
+          "answer_confidence": 0.9544,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 399,
+        "output_tokens": 0,
+        "state_tokens": 101,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.5802,
+            "technical": 0.0106,
+            "other": 0.4092
+          },
+          "confidence": 0.3358,
+          "answer_confidence": 0.5802,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.8377,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.2902,
+            "1": 0.5818,
+            "2": 0.128
+          },
+          "confidence": 0.1469,
+          "answer_confidence": 0.5818,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.0397,
+          "confidence": 0.9603,
+          "answer_confidence": 0.9603,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 264,
+        "output_tokens": 0,
+        "state_tokens": 56,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.8884,
+            "technical": 0.0008,
+            "other": 0.1108
+          },
+          "confidence": 0.6773,
+          "answer_confidence": 0.8884,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9908,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.2351,
+            "1": 0.539,
+            "2": 0.2259
+          },
+          "confidence": 0.0811,
+          "answer_confidence": 0.539,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.104,
+          "confidence": 0.896,
+          "answer_confidence": 0.896,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 0,
+        "state_tokens": 126,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.9148,
+            "technical": 0.0012,
+            "other": 0.084
+          },
+          "confidence": 0.7293,
+          "answer_confidence": 0.9148,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9452,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.2559,
+            "1": 0.543,
+            "2": 0.2011
+          },
+          "confidence": 0.0871,
+          "answer_confidence": 0.543,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.1766,
+          "confidence": 0.8234,
+          "answer_confidence": 0.8234,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 339,
+        "output_tokens": 0,
+        "state_tokens": 81,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.9496,
+            "technical": 0.0008,
+            "other": 0.0496
+          },
+          "confidence": 0.8143,
+          "answer_confidence": 0.9496,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.0993,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.1662,
+            "1": 0.5684,
+            "2": 0.2654
+          },
+          "confidence": 0.1158,
+          "answer_confidence": 0.5684,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.034,
+          "confidence": 0.966,
+          "answer_confidence": 0.966,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 429,
+        "output_tokens": 0,
+        "state_tokens": 111,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  ],
+  "runs": [
+    [
+      9,
+      115
+    ],
+    [
+      9,
+      160
+    ],
+    [
+      3,
+      180
+    ]
+  ]
+}

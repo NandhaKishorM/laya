@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "temperature": [1.8, 2.2, 1.3],
+  "temperature_by_options": {
+    "choice:3-5": 2.4,
+    "noul:2": 0.8,
+    "choice:6-10": 0.6,
+    "score:6-10": 3.0
+  },
+  "binning_map": {
+    "choice:3-5": {"bins": 4, "values": [0.47, 0.31, 0.92, 0.68]},
+    "noul:2": {"bins": 4, "values": [0.12, 0.34, 0.57, 0.81]},
+    "score:6-10": {"bins": 3, "values": [0.44, 0.18, 0.79]},
+    "choice:11+": {"bins": 2, "values": [0.5, 0.9]},
+    "score:2": {"bins": 1, "values": [0.5]}
+  }
+}

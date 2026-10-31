@@ -52,7 +52,7 @@ fn reproduces_the_recorded_answers() {
     let mut checked_any = false;
 
     for checkpoint in engines::checkpoints() {
-        let Some(engine) = engines::load(checkpoint) else {
+        let Some(mut engines) = engines::CaseEngines::fused(checkpoint) else {
             continue;
         };
         let golden = CheckpointGoldenData::for_checkpoint(checkpoint.subdir());
@@ -64,6 +64,7 @@ fn reproduces_the_recorded_answers() {
         for case in golden.success_cases() {
             checked_any = true;
             let root = golden.load_case(&case);
+            let engine = engines.for_case(&root);
             let state = root["state"].clone();
             let questions = golden_data::build_questions(&root["questions"])
                 .unwrap_or_else(|e| panic!("{}/{case}: {e}", checkpoint.subdir()));
@@ -166,7 +167,7 @@ fn reproduces_the_recorded_answers_for_the_split_layout() {
     let mut checked_any = false;
 
     for checkpoint in engines::checkpoints() {
-        let Some(engine) = engines::load_split(checkpoint) else {
+        let Some(mut engines) = engines::CaseEngines::split(checkpoint) else {
             continue;
         };
         let golden = CheckpointGoldenData::for_checkpoint(checkpoint.subdir());
@@ -178,6 +179,7 @@ fn reproduces_the_recorded_answers_for_the_split_layout() {
         for case in golden.success_cases() {
             checked_any = true;
             let root = golden.load_case(&case);
+            let engine = engines.for_case(&root);
             let state = root["state"].clone();
             let questions = golden_data::build_questions(&root["questions"])
                 .unwrap_or_else(|e| panic!("{}/{case}: {e}", checkpoint.subdir()));
@@ -276,6 +278,21 @@ fn rejects_the_same_questions_python_rejects() {
                 ));
             let expected_message = root["error_message"].as_str().unwrap();
             let actual_message = error.to_string();
+            // An invalid `option_order` is Python's ValueError text, whole, naming the question.
+            if golden_data::is_option_order_error(expected_message) {
+                assert!(
+                    matches!(error, LayaError::InvalidQuestion(_)),
+                    "{}/{case}: expected LayaError::InvalidQuestion, got {error:?}",
+                    checkpoint.subdir()
+                );
+                assert_eq!(
+                    expected_message,
+                    actual_message,
+                    "{}/{case}: error message",
+                    checkpoint.subdir()
+                );
+                continue;
+            }
             // A rejected threshold is Python's ValueError text, whole.
             if root
                 .get("options")

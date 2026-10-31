@@ -251,7 +251,7 @@ public static class GoldenData
                 ?? throw new InvalidOperationException($"question '{entry.Name}' has null instructions");
             var hasCriteria = def.TryGetProperty("criteria", out var criteria);
 
-            set[entry.Name] = type switch
+            var question = type switch
             {
                 "choice" => BuildChoice(entry.Name, instructions, criteria),
                 "score" => Question.Score(instructions,
@@ -259,9 +259,27 @@ public static class GoldenData
                 "noul" => BuildNoul(instructions, hasCriteria ? criteria : default),
                 _ => throw new InvalidOperationException($"unknown question type '{type}'"),
             };
+            // The recorded definition's `option_order`, exactly as the Python call carried it. It is
+            // not validated here: an invalid order must reach the engine, which is what rejects it.
+            if (def.TryGetProperty("option_order", out var order))
+                question = WithOrder(question, [.. order.EnumerateArray().Select(e => e.GetInt32())]);
+            // The recorded noul `labels`, as the Python call carried them: padding kept, and a JSON null
+            // (Python's None, a non-string) kept as null so the engine is what rejects it.
+            if (def.TryGetProperty("labels", out var labels))
+                question = ((NoulQuestion)question).WithLabels(
+                    labels.GetProperty("false").GetString(), labels.GetProperty("true").GetString());
+            set[entry.Name] = question;
         }
         return set;
     }
+
+    private static Question WithOrder(Question question, int[] order) => question switch
+    {
+        ChoiceQuestion choice => choice.WithOptionOrder(order),
+        ScoreQuestion score => score.WithOptionOrder(order),
+        NoulQuestion noul => noul.WithOptionOrder(order),
+        _ => throw new InvalidOperationException($"unknown question kind {question.GetType().Name}"),
+    };
 
     private static Question BuildChoice(string id, object instructions, JsonElement criteria) => criteria.ValueKind switch
     {

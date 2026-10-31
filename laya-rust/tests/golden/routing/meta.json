@@ -19,6 +19,8 @@
     "confidence_probe_reuse": 2,
     "confidence_probe_jev": 96,
     "lang_temperatures_probe": 84,
+    "calibration_probe_payloads": 152,
+    "calibration_probe_lookups": 62,
     "router_forwarding_probe_predict": 14,
     "router_forwarding_probe_long": 12,
     "router_forwarding_probe_batch": 7,

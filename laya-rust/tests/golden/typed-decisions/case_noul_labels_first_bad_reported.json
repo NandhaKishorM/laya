@@ -1,0 +1,37 @@
+{
+  "name": "noul_labels_first_bad_reported",
+  "state": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "department": {
+      "type": "choice",
+      "instructions": "Which department should handle this?",
+      "criteria": {
+        "billing": "invoices, payments, double charges, refunds",
+        "technical": "bugs, outages, integration errors",
+        "account": "logins, seats, plan changes"
+      }
+    },
+    "needs_human": {
+      "type": "noul",
+      "instructions": "This requires a human agent rather than an automated reply.",
+      "criteria": {
+        "false": "a template reply resolves it",
+        "true": "a person must intervene"
+      },
+      "labels": {
+        "false": "x",
+        "true": "x"
+      }
+    },
+    "churn_risk": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account.",
+      "labels": {
+        "false": "",
+        "true": "A"
+      }
+    }
+  },
+  "error_type": "ValueError",
+  "error_message": "question 'needs_human': noul labels must map exactly 'false' and 'true' to distinct non-empty strings"
+}

@@ -11,6 +11,7 @@
 
 use laya::LayaEngine;
 use laya::laya_options::{LayaCheckpoint, LayaOptions};
+use serde_json::Value;
 
 use super::golden_data::CheckpointGoldenData;
 use super::test_artifacts;
@@ -23,6 +24,91 @@ fn options_for(checkpoint: LayaCheckpoint, dir: &std::path::Path) -> LayaOptions
         model_directory: Some(dir.to_path_buf()),
         lang_temperatures: CheckpointGoldenData::for_checkpoint(checkpoint.subdir()).lang_table(),
         ..Default::default()
+    }
+}
+
+/// The hand-made calibration file the `calibration_*` golden cases were recorded with
+/// (`tools/calibration_fixture.json`), which an engine under test loads through
+/// `LayaOptions::calibration`.
+pub fn calibration_fixture() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tools/calibration_fixture.json")
+}
+
+/// Whether a recorded case was made with the calibration file.
+pub fn recorded_with_calibration(root: &Value) -> bool {
+    root.get("calibration").is_some_and(Value::is_object)
+}
+
+/// For a case recorded with a calibration file: the file it names is the fixture, and what it held
+/// then is what it holds now, so an engine loaded from the fixture is the engine that was recorded.
+pub fn assert_fixture_is_the_recorded_file(root: &Value) {
+    if !recorded_with_calibration(root) {
+        return;
+    }
+    let recorded = &root["calibration"];
+    assert_eq!(
+        Some("calibration_fixture.json"),
+        recorded["file"].as_str(),
+        "the file a calibration case names"
+    );
+    let path = calibration_fixture();
+    let text = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
+    let current: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(
+        recorded["payload"], current,
+        "calibration_fixture.json has changed since the golden was recorded; run tools/regen_golden.py"
+    );
+}
+
+/// The engines one checkpoint's recorded cases run on: the plain engine, and for a case recorded
+/// with the calibration file one loaded with it (a file replaces the checkpoint's temperatures for
+/// every question, so those cases cannot share the plain engine). At most one engine is resident:
+/// the calibration cases are the last in each index, so the plain one is released when the first of
+/// them arrives.
+pub struct CaseEngines {
+    checkpoint: LayaCheckpoint,
+    split: bool,
+    current: Option<(bool, LayaEngine)>,
+}
+
+impl CaseEngines {
+    /// The engines of `checkpoint`'s fused export, or `None` (with a skip line) without artifacts.
+    pub fn fused(checkpoint: LayaCheckpoint) -> Option<Self> {
+        load(checkpoint).map(|engine| Self {
+            checkpoint,
+            split: false,
+            current: Some((false, engine)),
+        })
+    }
+
+    /// The engines of `checkpoint`'s split export, or `None` (with a skip line) without artifacts.
+    pub fn split(checkpoint: LayaCheckpoint) -> Option<Self> {
+        load_split(checkpoint).map(|engine| Self {
+            checkpoint,
+            split: true,
+            current: Some((false, engine)),
+        })
+    }
+
+    /// The engine that answers the recorded case `root`.
+    pub fn for_case(&mut self, root: &Value) -> &LayaEngine {
+        let calibrated = recorded_with_calibration(root);
+        assert_fixture_is_the_recorded_file(root);
+        if self.current.as_ref().map(|(was, _)| *was) != Some(calibrated) {
+            self.current = None;
+            let engine = if self.split {
+                load_split_with(self.checkpoint, calibrated)
+            } else {
+                load_with(self.checkpoint, calibrated)
+            };
+            self.current = engine.map(|engine| (calibrated, engine));
+        }
+        &self
+            .current
+            .as_ref()
+            .expect("the artifacts were present when the engines were first loaded")
+            .1
     }
 }
 
@@ -56,6 +142,11 @@ pub fn load_selected(checkpoint: LayaCheckpoint) -> Option<LayaEngine> {
 /// artifacts are not available locally. Panics (rather than returning `None`) if the artifacts
 /// are present but fail to load — that is a real bug, not a missing-fixture skip.
 pub fn load(checkpoint: LayaCheckpoint) -> Option<LayaEngine> {
+    load_with(checkpoint, false)
+}
+
+/// [`load`], with the calibration fixture when `calibrated`.
+fn load_with(checkpoint: LayaCheckpoint, calibrated: bool) -> Option<LayaEngine> {
     if !(test_artifacts::has_model(checkpoint) && test_artifacts::has_tokenizer(checkpoint)) {
         eprintln!(
             "skip: no ONNX artifacts for '{}'; set LAYA_ONNX_ROOT to the parent of all \
@@ -70,15 +161,17 @@ pub fn load(checkpoint: LayaCheckpoint) -> Option<LayaEngine> {
             checkpoint.subdir()
         )
     });
-    Some(
-        LayaEngine::create(options_for(checkpoint, &dir)).unwrap_or_else(|e| {
-            panic!(
-                "failed to load engine for '{}' at {}: {e}",
-                checkpoint.subdir(),
-                dir.display()
-            )
-        }),
-    )
+    let mut options = options_for(checkpoint, &dir);
+    if calibrated {
+        options.calibration = Some(calibration_fixture());
+    }
+    Some(LayaEngine::create(options).unwrap_or_else(|e| {
+        panic!(
+            "failed to load engine for '{}' at {}: {e}",
+            checkpoint.subdir(),
+            dir.display()
+        )
+    }))
 }
 
 /// Loads the engine for `checkpoint` from its split-layout export (`<repo>/onnx-split/<ckpt>`,
@@ -89,6 +182,11 @@ pub fn load(checkpoint: LayaCheckpoint) -> Option<LayaEngine> {
 /// [`laya::model_artifacts::ModelArtifacts`]), so no separate split-aware constructor is needed
 /// here.
 pub fn load_split(checkpoint: LayaCheckpoint) -> Option<LayaEngine> {
+    load_split_with(checkpoint, false)
+}
+
+/// [`load_split`], with the calibration fixture when `calibrated`.
+fn load_split_with(checkpoint: LayaCheckpoint, calibrated: bool) -> Option<LayaEngine> {
     if !(test_artifacts::has_split_model(checkpoint)
         && test_artifacts::has_split_tokenizer(checkpoint))
     {
@@ -106,13 +204,15 @@ pub fn load_split(checkpoint: LayaCheckpoint) -> Option<LayaEngine> {
             checkpoint.subdir()
         )
     });
-    Some(
-        LayaEngine::create(options_for(checkpoint, &dir)).unwrap_or_else(|e| {
-            panic!(
-                "failed to load split-layout engine for '{}' at {}: {e}",
-                checkpoint.subdir(),
-                dir.display()
-            )
-        }),
-    )
+    let mut options = options_for(checkpoint, &dir);
+    if calibrated {
+        options.calibration = Some(calibration_fixture());
+    }
+    Some(LayaEngine::create(options).unwrap_or_else(|e| {
+        panic!(
+            "failed to load split-layout engine for '{}' at {}: {e}",
+            checkpoint.subdir(),
+            dir.display()
+        )
+    }))
 }

@@ -43,7 +43,7 @@ pub struct LayaConfig {
 /// The value of a Unicode decimal digit (`Nd`), as Python's `int()`/`float()` read it. The `Nd`
 /// characters come in runs of ten starting at zero, and runs can touch (the mathematical digits),
 /// so the value is the distance from the start of the unbroken `Nd` stretch, modulo ten.
-fn decimal_digit_value(ch: char) -> Option<u32> {
+pub(crate) fn decimal_digit_value(ch: char) -> Option<u32> {
     let is_nd = |c: char| get_general_category(c) == GeneralCategory::DecimalNumber;
     if !is_nd(ch) {
         return None;
@@ -143,7 +143,9 @@ pub(crate) fn temperature_number(raw: &PyJson) -> Option<f64> {
 
 /// Python's `OverflowError` from `clamp_temperature(<huge int>)`, which nothing catches, so the
 /// checkpoint fails to load.
-fn check_temperature_overflow<'a>(values: impl IntoIterator<Item = &'a PyJson>) -> Result<()> {
+pub(crate) fn check_temperature_overflow<'a>(
+    values: impl IntoIterator<Item = &'a PyJson>,
+) -> Result<()> {
     let overflows = |v: &PyJson| matches!(v, PyJson::Int(l) if PyJson::int_as_f64(l).is_none());
     if values.into_iter().any(overflows) {
         return Err(LayaError::InvalidConfig(
@@ -154,7 +156,7 @@ fn check_temperature_overflow<'a>(values: impl IntoIterator<Item = &'a PyJson>) 
 }
 
 /// Python's name for the type of a JSON value, as it appears in `TypeError` messages.
-fn python_type_name(value: &PyJson) -> &'static str {
+pub(crate) fn python_type_name(value: &PyJson) -> &'static str {
     match value {
         PyJson::Null => "NoneType",
         PyJson::Bool(_) => "bool",

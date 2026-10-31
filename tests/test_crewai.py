@@ -285,6 +285,12 @@ _BAD_DISTRIBUTIONS = {
     "value_str": {"probabilities": {"0": 0.1, "1": 0.1, "2": "high", "3": 0.4}, "score": 1.5},
     "value_none": {"probabilities": {"0": 0.1, "1": 0.1, "2": None, "3": 0.4}, "score": 1.5},
     "value_bool": {"probabilities": {"0": 0.1, "1": 0.1, "2": True, "3": False}, "score": 1.5},
+    "value_nan_string": {"probabilities": {"0": 0.1, "1": 0.1, "2": "NaN", "3": 0.4}, "score": 1.5},
+    "value_inf_string": {"probabilities": {"0": 0.1, "1": 0.1, "2": "Infinity", "3": 0.4}, "score": 1.5},
+    "value_neg_inf_string": {"probabilities": {"0": 0.1, "1": 0.1, "2": "-Infinity", "3": 0.4}, "score": 1.5},
+    "value_overflow_string": {"probabilities": {"0": 0.1, "1": 0.1, "2": "1e10000", "3": 0.4}, "score": 1.5},
+    "value_wide_int": {"probabilities": {"0": 0.1, "1": 0.1, "2": 10 ** 1000, "3": 0.4}, "score": 1.5},
+    "sum_overflow": {"probabilities": {"0": 0.1, "1": 0.1, "2": 1e308, "3": 1e308}, "score": 1.5},
 }
 for _label, _ans in _BAD_DISTRIBUTIONS.items():
     try:
@@ -294,7 +300,9 @@ for _label, _ans in _BAD_DISTRIBUTIONS.items():
         check_true("guardprob/%s_uses_score_fallback" % _label, False, "%s: %s" % (type(_e).__name__, _e))
 
 # A bool score is not a level, and a non-numeric score is not one either: both read as 0.0.
-for _label, _bad_score in (("bool_score_is_zero", True), ("nonnumeric_score_is_zero", "1.5")):
+for _label, _bad_score in (("bool_score_is_zero", True), ("nonnumeric_score_is_zero", "1.5"),
+                           ("nan_score_is_zero", float("nan")), ("inf_score_is_zero", float("inf")),
+                           ("neg_inf_score_is_zero", float("-inf")), ("wide_int_score_is_zero", 10 ** 1000)):
     try:
         check("guardprob/" + _label, score_violation_probability({"score": _bad_score}, 4), 0.0)
     except Exception as _e:

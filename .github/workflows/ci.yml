@@ -334,6 +334,7 @@ jobs:
   typescript-sdk:
     name: TypeScript SDK (node${{ matrix.node }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:

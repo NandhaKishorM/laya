@@ -1,7 +1,7 @@
 name: Evals
 
 # The real-checkpoint quality gate. It downloads weights and the MASSIVE dataset, so it is kept
-# out of PR CI: it runs weekly, before a release, and on demand, and compares the fresh numbers
+# out of PR CI: it runs weekly, after publication, and on demand, and compares the fresh numbers
 # to the committed baseline in research/results/. A failure is a regression in the published
 # numbers, not a blocked PR.
 on:
@@ -10,6 +10,19 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      release_candidate:
+        description: "Require a pinned, complete MASSIVE English report"
+        type: boolean
+        default: false
+      model_revision:
+        description: "Full checkpoint commit SHA for a release candidate"
+        type: string
+        required: false
+      dataset_revision:
+        description: "Full MASSIVE dataset commit SHA for a release candidate"
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -52,9 +65,20 @@ jobs:
           pip install -e ".[onnx,serve]" datasets httpx pytest
 
       - name: Evaluate the English checkpoint on MASSIVE English
+        env:
+          RELEASE_CANDIDATE: ${{ inputs.release_candidate }}
+          MODEL_REVISION: ${{ inputs.model_revision }}
+          DATASET_REVISION: ${{ inputs.dataset_revision }}
         run: |
-          python research/eval/laya_eval.py \
-            --model convaiinnovations/laya --langs en --out report.json
+          if [ "$RELEASE_CANDIDATE" = "true" ]; then
+            python research/eval/laya_eval.py \
+              --model convaiinnovations/laya --langs en --device cpu --out report.json \
+              --model-revision "$MODEL_REVISION" --dataset-revision "$DATASET_REVISION" \
+              --require-complete
+          else
+            python research/eval/laya_eval.py \
+              --model convaiinnovations/laya --langs en --out report.json
+          fi
 
       - name: Compare to the committed baseline
         run: |

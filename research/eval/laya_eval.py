@@ -36,11 +36,19 @@ be re-derived without re-running the model.
 from __future__ import annotations
 
 import argparse
+import gzip
+import hashlib
 import json
+import math
 import os
+import platform
 import random
+import re
+import subprocess
 import sys
 import time
+from datetime import datetime, timezone
+from importlib import metadata
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 # Running this file directly puts research/eval/ on sys.path, not the repo root, so
@@ -97,22 +105,32 @@ def build_suite(rows: Sequence[Dict[str, Any]], labels: Sequence[str],
     return cases, gold, option_keys
 
 
-def load_language(lang: str, split: str = "test"):
+def load_language(lang: str, split: str = "test", revision: Optional[str] = None):
     """Load one language config. Raises with a readable message if unavailable."""
-    from datasets import load_dataset
     try:
-        ds = load_dataset(DATASET, lang, split=split)
+        if revision is not None:
+            from huggingface_hub import hf_hub_download
+            # datasets may fall back to its latest prepared cache when a pin is unavailable.
+            # Hub file lookup keeps the requested revision part of the cache identity.
+            path = hf_hub_download(repo_id=DATASET, filename="%s/%s.json.gz" % (split, lang),
+                                   repo_type="dataset", revision=revision)
+            with gzip.open(path, "rt", encoding="utf-8") as source:
+                ds = [json.loads(line) for line in source]
+        else:
+            from datasets import load_dataset
+            ds = load_dataset(DATASET, lang, split=split)
+        return [{"text": r["text"], "label_text": r["label_text"]} for r in ds]
     except Exception as exc:                       # pragma: no cover - network path
         raise RuntimeError(
             "could not load %s config %r: %s" % (DATASET, lang, exc)
         ) from exc
-    return [{"text": r["text"], "label_text": r["label_text"]} for r in ds]
 
 
-def available_languages() -> List[str]:
+def available_languages(revision: Optional[str] = None) -> List[str]:
     """Language configs the dataset exposes, excluding the aggregate 'default'."""
     from datasets import get_dataset_config_names
-    names = get_dataset_config_names(DATASET)
+    kw = {"revision": revision} if revision else {}
+    names = get_dataset_config_names(DATASET, **kw)
     return sorted(n for n in names if n != "default")
 
 
@@ -244,13 +262,157 @@ def summarise(confidences, corrects, golds, preds) -> Dict[str, float]:
 
 
 # ------------------------------------------------------------------------ runner
+def input_fingerprint(records: Sequence[Dict[str, Any]]) -> str:
+    """Hash ordered, model-facing inputs without predictions or timing fields."""
+    inputs = [{key: row[key] for key in (
+        "lang", "index", "state", "instructions", "options", "option_texts", "gold_index")}
+        for row in records]
+    blob = json.dumps(inputs, ensure_ascii=False, separators=(",", ":"), sort_keys=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def source_revision() -> Tuple[Optional[str], Optional[bool]]:
+    """Identify the checked-out code, including tracked local edits."""
+    try:
+        head = subprocess.run(["git", "-C", _REPO_ROOT, "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+        status = subprocess.run(["git", "-C", _REPO_ROOT, "status", "--porcelain",
+                                 "--untracked-files=no"], capture_output=True, text=True,
+                                check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None, None
+    return head, bool(status.strip())
+
+
+def package_version(name: str) -> Optional[str]:
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def _finite_number(value: Any) -> bool:
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and (isinstance(value, int) or math.isfinite(value)))
+
+
+def validate_release_report(payload: Dict[str, Any], langs: Sequence[str]) -> List[str]:
+    """Refuse a release-candidate artifact whose inputs or cases cannot be audited."""
+    if not isinstance(payload, dict):
+        return ["release report must be an object"]
+    config, report, cases = (payload.get(key) for key in ("config", "report", "cases"))
+    if (not isinstance(config, dict) or not isinstance(report, dict)
+            or not isinstance(cases, list) or any(not isinstance(row, dict) for row in cases)):
+        return ["release report needs config, report and per-case records"]
+    errors = []
+    for key in ("requested_model_revision", "model_revision", "dataset_revision", "source_revision"):
+        if not re.fullmatch(r"[0-9a-f]{40}", str(config.get(key) or "")):
+            errors.append("%s must be a full commit SHA" % key)
+    if config.get("model_revision") != config.get("requested_model_revision"):
+        errors.append("loaded model revision differs from the requested revision")
+    if config.get("source_dirty") is not False:
+        errors.append("source checkout has tracked changes or cannot be inspected")
+    environment = config.get("environment")
+    if not isinstance(environment, dict) or any(not environment.get(name) for name in
+           ("python", "torch", "transformers", "datasets")):
+        errors.append("runtime versions are incomplete")
+    if len(set(langs)) != len(langs):
+        errors.append("requested languages contain duplicates")
+    per_lang, n_opts = config.get("per_lang"), config.get("n_opts")
+    if not isinstance(per_lang, int) or isinstance(per_lang, bool) or per_lang < 1:
+        errors.append("per_lang must be positive")
+        return errors
+    if not isinstance(n_opts, int) or isinstance(n_opts, bool) or n_opts < 2:
+        errors.append("n_opts must be an integer of at least two")
+        return errors
+    required = {
+        "lang", "index", "state", "instructions", "options", "option_texts",
+        "gold_index", "gold_label", "pred_index", "pred_label", "probability",
+        "p_gold", "confidence", "correct", "temperature",
+    }
+    for lang in langs:
+        result = report.get(lang, {})
+        records = [row for row in cases if row.get("lang") == lang]
+        if not isinstance(result, dict):
+            errors.append("%s has no metric object" % lang)
+            continue
+        if "error" in result:
+            errors.append("%s failed: %s" % (lang, result["error"]))
+            continue
+        if result.get("n") != per_lang or len(records) != per_lang:
+            errors.append("%s has incomplete metrics or per-case records" % lang)
+            continue
+        valid = True
+        for i, row in enumerate(records):
+            missing = required - set(row)
+            if missing:
+                errors.append("%s case %d is missing fields: %s" % (lang, i, ", ".join(sorted(missing))))
+                valid = False
+                continue
+            options, texts = row.get("options"), row.get("option_texts")
+            gold, pred = row.get("gold_index"), row.get("pred_index")
+            if (type(row["index"]) is not int or row["index"] != i
+                    or not isinstance(row["instructions"], str) or not isinstance(options, list)
+                    or not isinstance(texts, list) or len(options) != n_opts
+                    or any(not isinstance(option, str) for option in options)
+                    or any(not isinstance(text, str) for text in texts)
+                    or len(set(options)) != len(options) or len(texts) != len(options)
+                    or type(gold) is not int or not 0 <= gold < len(options) or type(pred) is not int
+                    or not 0 <= pred < len(options) or row.get("gold_label") != options[gold]
+                    or row.get("pred_label") != options[pred] or type(row["correct"]) is not int
+                    or row["correct"] != int(pred == gold)):
+                errors.append("%s case %d has inconsistent inputs or decision labels" % (lang, i))
+                valid = False
+                continue
+            confidence, probability, p_gold = (row[key] for key in ("confidence", "probability", "p_gold"))
+            if (any(not _finite_number(value) or not 0 <= value <= 1
+                    for value in (confidence, probability, p_gold))
+                    or not _finite_number(row["temperature"]) or row["temperature"] <= 0):
+                errors.append("%s case %d has invalid probabilities or temperature" % (lang, i))
+                valid = False
+                continue
+            # The artifact carries the chosen and gold probabilities, not the whole vector.
+            # These are the argmax facts those two numbers can establish without inventing it.
+            if (abs(probability - confidence) > 1e-12 or probability < 1.0 / n_opts - 1e-12
+                    or p_gold > probability or (pred == gold and abs(p_gold - probability) > 1e-12)
+                    or (pred != gold and p_gold + probability > 1.0 + 1e-12)
+                    or (pred != gold and 1.0 - probability - p_gold > (n_opts - 2) * probability + 1e-12)
+                    or (pred != gold and p_gold == probability and gold < pred)):
+                errors.append("%s case %d probabilities disagree with its decision" % (lang, i))
+                valid = False
+        if not valid:
+            continue
+        try:
+            fingerprint = input_fingerprint(records)
+        except (TypeError, ValueError):
+            errors.append("%s case inputs cannot be serialized" % lang)
+            continue
+        if result.get("input_sha256") != fingerprint:
+            errors.append("%s input fingerprint does not match its cases" % lang)
+        recomputed = summarise([row["confidence"] for row in records],
+                               [row["correct"] for row in records],
+                               [row["gold_index"] for row in records],
+                               [row["pred_index"] for row in records])
+        for metric, value in recomputed.items():
+            recorded = result.get(metric)
+            if (not _finite_number(recorded) or (metric != "n" and not 0 <= recorded <= 1)
+                    or abs(recorded - value) > 1e-12):
+                errors.append("%s %s does not match its cases" % (lang, metric))
+        if (not _finite_number(result.get("temperature")) or result["temperature"] <= 0
+                or any(row["temperature"] != result["temperature"] for row in records)):
+            errors.append("%s temperature does not match its cases" % lang)
+    if any(row.get("lang") not in langs for row in cases):
+        errors.append("cases include an unrequested language")
+    return errors
+
+
 def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
-                 unclamped: bool = False) -> Dict[str, Any]:
+                 unclamped: bool = False, dataset_revision: Optional[str] = None) -> Dict[str, Any]:
     """Evaluate one language and return its report plus per-case records."""
     import numpy as np
     from laya.common import QTYPES
 
-    rows = load_language(lang)
+    rows = load_language(lang, revision=dataset_revision) if dataset_revision else load_language(lang)
     cases, gold, option_keys = build_suite(
         rows, sorted({r["label_text"] for r in rows}), per_lang, n_opts, seed)
     logits = score_cases(agent, cases)
@@ -271,20 +433,23 @@ def run_language(agent, lang: str, per_lang: int, n_opts: int, seed: int = SEED,
             "state": cases[i][0],
             "instructions": INSTRUCTIONS,
             "options": option_keys[i],
+            "option_texts": [render_label(key) for key in option_keys[i]],
             "gold_index": int(gold[i]),
             "gold_label": option_keys[i][gold[i]],
             "pred_index": pred,
             "pred_label": option_keys[i][pred],
-            "probability": round(float(probs[pred]), 6),
-            "p_gold": round(float(probs[gold[i]]), 6),
-            "confidence": round(float(probs.max()), 6),
+            # Keep the scored precision: rounding here can move an ECE bin or reorder
+            # near-tied cases at the 50% coverage cutoff when a report is audited later.
+            "probability": float(probs[pred]),
+            "p_gold": float(probs[gold[i]]),
+            "confidence": float(probs.max()),
             "correct": correct,
-            "temperature": round(float(temperature), 6),
+            "temperature": float(temperature),
         })
 
     report = summarise(confidences, corrects, gold, preds)
-    report["temperature"] = round(
-        float(temperature_for(agent, QTYPES["choice"], n_opts, unclamped)), 6)
+    report["input_sha256"] = input_fingerprint(records)
+    report["temperature"] = float(temperature_for(agent, QTYPES["choice"], n_opts, unclamped))
     return {"report": report, "cases": records}
 
 
@@ -297,6 +462,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--subfolder", default=None,
                         help="checkpoint subfolder, e.g. multilingual")
     parser.add_argument("--device", default=None, help="cpu, cuda, mps (default: auto)")
+    parser.add_argument("--model-revision", default=None,
+                        help="checkpoint commit, branch or tag (release runs require a full SHA)")
+    parser.add_argument("--dataset-revision", default=None,
+                        help="dataset commit, branch or tag (release runs require a full SHA)")
     parser.add_argument("--langs", default="en",
                         help="comma-separated configs, or 'all'")
     parser.add_argument("--per-lang", type=int, default=PER_LANG)
@@ -305,15 +474,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--out", default=None, help="write the JSON report here")
     parser.add_argument("--no-cases", action="store_true",
                         help="omit per-case records (smaller file)")
+    parser.add_argument("--require-complete", action="store_true",
+                        help="fail unless a pinned, complete, auditable report is produced")
     parser.add_argument("--unclamped", action="store_true",
                         help="score with the checkpoint's RAW bucket temperatures instead "
                              "of the clamped ones Agent applies. This is what reproduces "
                              "the committed pre-#42 sweep")
     args = parser.parse_args(argv)
 
+    if args.require_complete and (not args.out or args.no_cases):
+        parser.error("--require-complete needs --out and per-case records")
+    if args.require_complete:
+        if args.per_lang < 1 or args.n_opts < 2:
+            parser.error("--require-complete needs positive --per-lang and at least two options")
+        for name, revision in (("model", args.model_revision),
+                               ("dataset", args.dataset_revision)):
+            if not re.fullmatch(r"[0-9a-f]{40}", revision or ""):
+                parser.error("--%s-revision must be a full commit SHA" % name)
+
+    code_sha, code_dirty = source_revision()
+    if args.require_complete and (not code_sha or code_dirty):
+        parser.error("--require-complete needs a Git checkout without tracked changes")
+
     if args.langs.strip().lower() == "all":
         try:
-            langs = available_languages()
+            langs = available_languages(args.dataset_revision)
         except Exception as exc:
             print("could not list dataset configs: %s" % exc, file=sys.stderr)
             return 2
@@ -325,12 +510,36 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     import laya
 
+    if args.require_complete:
+        expected = os.path.normcase(os.path.realpath(os.path.join(_REPO_ROOT, "laya", "__init__.py")))
+        loaded = os.path.normcase(os.path.realpath(getattr(laya, "__file__", None) or ""))
+        if loaded != expected:
+            parser.error("--require-complete needs laya imported from the same checkout as this harness")
+
     started = time.time()
-    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder)
+    load_kw = {"revision": args.model_revision} if args.model_revision else {}
+    agent = laya.load(args.model, device=args.device, subfolder=args.subfolder, **load_kw)
     agent.model.eval()
+    if args.require_complete and getattr(agent, "revision", None) != args.model_revision:
+        parser.error("loaded checkpoint revision differs from --model-revision")
     payload: Dict[str, Any] = {
         "config": {
             "model": args.model,
+            "requested_model_revision": args.model_revision,
+            "model_revision": getattr(agent, "revision", None),
+            "dataset_revision": args.dataset_revision,
+            "source_revision": code_sha,
+            "source_dirty": code_dirty,
+            "run_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "environment": {
+                "python": platform.python_version(),
+                "platform": platform.platform(),
+                "processor": platform.processor() or None,
+                "logical_cpus": os.cpu_count(),
+                "torch": package_version("torch"),
+                "transformers": package_version("transformers"),
+                "datasets": package_version("datasets"),
+            },
             "subfolder": args.subfolder,
             "device": str(agent.device),
             "max_len": agent.cfg.get("max_len"),
@@ -353,7 +562,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         t0 = time.time()
         try:
             out = run_language(agent, lang, args.per_lang, args.n_opts,
-                               args.seed, args.unclamped)
+                               args.seed, args.unclamped, args.dataset_revision)
         except Exception as exc:
             print("  %-8s FAILED: %s" % (lang, str(exc)[:110]), file=sys.stderr)
             payload["report"][lang] = {"error": str(exc)[:200]}
@@ -381,11 +590,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
               % (len(scored), payload["summary"]["macro_accuracy"],
                  payload["summary"]["macro_ece"], payload["summary"]["macro_f1"]))
 
+    errors = validate_release_report(payload, langs) if args.require_complete else []
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, ensure_ascii=False, indent=1)
         print("  wrote %s" % args.out)
-    return 0
+    for error in errors:
+        print("  release report invalid: %s" % error, file=sys.stderr)
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":                      # pragma: no cover

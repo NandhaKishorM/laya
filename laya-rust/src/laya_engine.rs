@@ -38,7 +38,7 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, RwLock};
 
 const MODEL_NAME: &str = "laya-rl-agent";
 
@@ -59,6 +59,17 @@ pub struct LayaOutput {
     /// Flattened `[batch.count, n_act]` raw action-head scores.
     pub act_logits: Vec<f32>,
 }
+
+/// A test seam around the forward pass: called with the collated batch and the real graph run,
+/// and returns the raw outputs. `#[doc(hidden)]` and unset in production; the parity tests use it
+/// to run byte-identical batches through the graph once while every case is still tokenized,
+/// calibrated, gated and decoded on its own. See [`LayaEngine::set_forward_hook`].
+#[doc(hidden)]
+pub type ForwardHook = Arc<
+    dyn Fn(&CollatedBatch, &dyn Fn(&CollatedBatch) -> Result<LayaOutput>) -> Result<LayaOutput>
+        + Send
+        + Sync,
+>;
 
 /// One state's tokenized question rows, plus what its truncation report says, ready to collate.
 struct EncodedState {
@@ -111,6 +122,8 @@ pub struct LayaEngine {
     deferred: Deferred,
     /// Python's `self.lang_temperatures`: the resolved per-language overrides.
     lang_temperatures: LangTemperatures,
+    /// Test seam, `None` unless a test installs one.
+    forward_hook: RwLock<Option<ForwardHook>>,
 }
 
 /// What one call may change about how its states are scored: Python's `lang`, `max_len` and
@@ -170,6 +183,7 @@ impl LayaEngine {
             artifacts,
             deferred,
             lang_temperatures,
+            forward_hook: RwLock::new(None),
         })
     }
 
@@ -591,7 +605,16 @@ impl LayaEngine {
         }
 
         let batch = Collator::collate(&items, self.tokenizer.special().pad_id)?;
-        let output = self.run(&batch)?;
+        // Cloned out of the lock so the hook (and the run it wraps) never holds it.
+        let hook = self
+            .forward_hook
+            .read()
+            .expect("forward hook lock poisoned")
+            .clone();
+        let output = match hook {
+            Some(hook) => hook(&batch, &|b| self.run(b))?,
+            None => self.run(&batch)?,
+        };
 
         // n_act is the act_logits column count, derived from the flat output length rather than
         // hardcoded so this stays correct if the graph is re-exported with a wider action head.
@@ -657,6 +680,16 @@ impl LayaEngine {
             );
         }
         Ok(results)
+    }
+
+    /// Installs (or, with `None`, removes) a [`ForwardHook`] that every prediction's forward pass
+    /// goes through. Test seam only: [`LayaEngine::run`] itself is not affected.
+    #[doc(hidden)]
+    pub fn set_forward_hook(&self, hook: Option<ForwardHook>) {
+        *self
+            .forward_hook
+            .write()
+            .expect("forward hook lock poisoned") = hook;
     }
 
     /// One forward pass over a collated batch, returning the raw graph outputs. See the

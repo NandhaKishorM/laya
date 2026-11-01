@@ -45,6 +45,83 @@ const out = await agent.predict("charged twice", {
 
 `onnxruntime-node` / `onnxruntime-web` are optional peer deps, imported lazily behind the provider you use.
 
+## Long documents (`predictLong`)
+
+`Agent.predictLong` and `Router.predictLong` scan overlapping token windows locally, in Node
+or the browser. This lets a question consider a long ticket or conversation beyond the single
+window used by `predict`. The Router chooses and loads a checkpoint once for the document.
+
+```ts
+const scanned = await router.predictLong(longTicket, {
+  refund: { type: "noul", instructions: "Does the customer request a refund?" },
+  action: { type: "choice", instructions: "Choose the next action", criteria: ["refund", "investigate"] },
+}, { window: 256, stride: 128, batchSize: 4 });
+console.log(scanned.answers.refund, scanned.usage.windows, scanned.routing);
+```
+
+The only aggregation mode is `"auto"`: `noul` takes the largest value; `choice` and `score`
+take the answer with the highest `answer_confidence`. Ties retain the first result. The
+winner keeps its metadata. Its confidence is a window score, not calibrated confidence for
+the whole document; scanning more windows can change which answer wins.
+
+The window is capped by the space left by the questions in the checkpoint's configured
+sequence budget. Its default is `max(64, max_len - head_max_len - 8)`, then capped; stride
+defaults to half that effective window. An explicit stride cannot leave gaps. `window`,
+`stride`, and `batchSize` must be positive safe integers when supplied; null/undefined use
+defaults. `maxLen`, `headMaxLen`, and `minConfidence` are deliberately absent from the long
+options. Window sizing and aggregation have different meanings from single-pass truncation
+and confidence gating. Ordinary prediction options and result types remain unchanged.
+
+Windows follow Python 0.4.18's decode → batch prediction → re-encode path. The official
+English and multilingual tokenizers support decoding. A custom encode-only tokenizer still
+supports ordinary predictions and the short-input fast path; splitting requires `decode`
+and throws if it is unavailable. Decoding and re-encoding can change the token count,
+particularly for multilingual text, so normal truncation can still occur. An answer's
+optional `window.token_start` / `token_end` identifies its **original candidate token slice**,
+not a guarantee that exactly those tokens reached the model.
+
+Agent hooks wrap one window batch; Router hooks wrap one document. Process defaults run
+once. Reordering result objects preserves identifiable origins, while rewriting/reordering
+states, replacing an answer object, or editing prediction fields removes window attribution.
+In-place reliability/action annotations preserve it. An end hook may uniformly remove its own
+temporary questions, but cannot silently remove a caller's question. Inconsistent answer
+schemas or window counts fail. A skipping hook must return exactly one document result;
+the result and usage are copied, a warning is emitted, and `usage.windows` is zero.
+The warning also covers short-input and Router cache hits, as agreed in #1316; Python
+0.4.18 itself only warns on the multi-window Agent skip path. Hook results are validated
+against the TypeScript return contract, which also rejects malformed payloads Python accepts.
+
+If a start hook changes questions or token budgets so planned windows no longer fit, the
+scan is refused **after inference**. This check is outside hook error suppression and hook
+timeouts; the forward-pass cost has already been incurred. The short path checks this too.
+`LongResult` / `RoutedLongResult` have separate usage types: `truncated` is a boolean on the
+short path and a numeric count on the multi-window path. Numeric usage is summed, dictionaries
+are shallow-merged, other values come from the last result, and `output_tokens` stays zero.
+
+Deterministic parity fixtures are recorded directly from Python `ONNXAgent.predict_long`
+at v0.4.18, with source hashes, and replayed by TypeScript tests. The generator's `--check`
+detects later reference behavior changes; these checks establish control-flow parity, not
+model quality or a speed improvement.
+
+To repeat the optional real-inference comparison with an English checkpoint and its split
+ONNX export (weights are not downloaded by these scripts):
+
+```bash
+# From laya-ts/, with numpy, torch, transformers and onnxruntime installed in Python.
+python scripts/predict_long_onnx_parity.py --python-root /path/to/laya-v0.4.18 \
+  --checkpoint /path/to/english-checkpoint --bundle /path/to/split-onnx --output python-long.json
+npm run build
+node scripts/predict_long_onnx_parity.mjs python-long.json comparison.json
+```
+
+The Python harness calls `ONNXAgent.predict_long` with an adapter joining the same encoder
+and head graphs used by TypeScript. It records source/artifact hashes and checks all three
+answer types on short, overlapping long, and structured inputs. The Node harness verifies
+artifact digests and compares actual token/marker/mask inputs, decoded answers, attribution,
+and usage at absolute tolerance
+`1e-4`, excluding the existing runtime model-name difference. It does not measure retrieval
+quality, accuracy, or performance, and does not cover browser GPU numerical differences.
+
 ## Hooks (observe or shape every decision)
 
 Port of the Python `laya.hooks` lifecycle. A hook is a `(ctx) => void` for `onPredictStart` /

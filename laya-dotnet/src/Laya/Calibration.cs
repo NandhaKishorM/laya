@@ -27,6 +27,7 @@ public static class Calibration
     /// <see cref="ClampTemperature(double)"/> for a value read from JSON, exactly as Python's
     /// <c>clamp_temperature</c> treats it: a <see cref="bool"/> is 1.0, and so is anything
     /// <c>float()</c> refuses (<see langword="null"/>, a list, a dictionary, a non-numeric string).
+    /// An integer too wide for a double (Python's <c>OverflowError</c>) is 1.0 as well.
     /// A numeric string such as <c>"2.5"</c>, <c>" 2.5 "</c> or <c>"1e1"</c> is read the way
     /// <c>float()</c> reads it.
     /// </summary>

@@ -4614,9 +4614,21 @@
           }
         }
       },
-      "error_type": "OverflowError",
-      "error_message": "int too large to convert to float",
-      "warnings": []
+      "result": {
+        "temperature": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "temperature_by_options": {},
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
     },
     {
       "label": "a bucket temperature that is a huge integer",
@@ -4639,9 +4651,23 @@
           }
         }
       },
-      "error_type": "OverflowError",
-      "error_message": "int too large to convert to float",
-      "warnings": []
+      "result": {
+        "temperature": [
+          1.5,
+          2.0,
+          1.25
+        ],
+        "temperature_by_options": {
+          "noul:2": 1.0
+        },
+        "binning_map": null
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using noul:2=10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
     },
     {
       "label": "a huge integer after an identity warning",
@@ -4664,12 +4690,25 @@
           }
         }
       },
-      "error_type": "OverflowError",
-      "error_message": "int too large to convert to float",
+      "result": {
+        "temperature": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "temperature_by_options": {
+          "choice:3-5": 2.5
+        },
+        "binning_map": null
+      },
       "warnings": [
         {
           "category": "UserWarning",
           "message": "calibration was fitted for model_id_or_path='x' subfolder='multilingual' but this agent is model_id_or_path='convaiinnovations/laya' subfolder='multilingual'. Loading the temperatures anyway."
+        },
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: calibration temperatures are invalid or outside [0.5, 5]; using temperature[0]=10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -> 1. Treat confidence from the affected entries as uncalibrated."
         }
       ]
     }

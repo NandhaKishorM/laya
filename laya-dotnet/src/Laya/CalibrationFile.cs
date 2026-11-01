@@ -182,11 +182,9 @@ internal static partial class CalibrationFile
     private static (double[] Temperature, Dictionary<string, double> ByOptions) InstallTemperatures(
         List<object?> raw, IReadOnlyDictionary<string, object?> rawByOptions, Action<string> warn)
     {
-        // `clamp_temperature(<int too large for a float>)` raises an OverflowError that nothing catches.
-        foreach (var value in raw.Concat(rawByOptions.Values))
-            if (value is BigInteger big && double.IsInfinity((double)big))
-                throw new InvalidDataException("OverflowError: int too large to convert to float");
-
+        // An integer too large for a float is an OverflowError inside `clamp_temperature` and `temperature_rejected`,
+        // which both read it as "does not convert": 1.0, and named in the warning digit for digit. TryConvert reads
+        // it as infinity, which the clamp answers with 1.0 and the rejection check reports.
         var applied = raw.Select(Calibration.ClampTemperature).ToArray();
         var appliedByOptions = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var (key, value) in rawByOptions) appliedByOptions[key] = Calibration.ClampTemperature(value);

@@ -113,20 +113,25 @@ public sealed class TemperatureConfigTests
             ["a=inf -> 1", "b=-inf -> 1", "c='NaN' -> 1", "temperature[0]=nan -> 1"], config.ClampedTemperatures);
     }
 
-    // Python: float literals that overflow read as inf; 10**308 is an int that still converts, 10**309 does not.
+    // Python 0.4.20: float literals that overflow read as inf; 10**308 is an int that still converts, and an int too wide
+    // for a double (10**309, 2**1024) is read by clamp_temperature/temperature_rejected as unreadable: 1.0, named in full.
     [Fact]
-    public void OverflowingFloatLiteralIsInfinityButAHugeIntegerFailsTheLoad()
+    public void OverflowingFloatLiteralIsInfinityAndAHugeIntegerFallsBackToOne()
     {
         var ok = LayaConfig.Parse("{\"temperature\": [1, 1e400, 1" + new string('0', 308) + "]}");
         Assert.Equal<IEnumerable<double>>(new[] { 1.0, 1.0, 5.0 }, ok.Temperature);
         Assert.Equal("temperature[1]=inf -> 1", ok.ClampedTemperatures[0]);
         Assert.Equal("temperature[2]=1" + new string('0', 308) + " -> 5", ok.ClampedTemperatures[1]);
 
-        foreach (var huge in new[] { "1" + new string('0', 309), "-1" + new string('0', 309) })
+        var wide = System.Numerics.BigInteger.Pow(2, 1024).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        foreach (var huge in new[] { "1" + new string('0', 309), "-1" + new string('0', 309), wide })
         {
-            var inList = Assert.Throws<InvalidDataException>(() => LayaConfig.Parse("{\"temperature\": [1, 1, " + huge + "]}"));
-            Assert.Equal("OverflowError: int too large to convert to float", inList.Message);
-            Assert.Throws<InvalidDataException>(() => LayaConfig.Parse("{\"temperature_by_options\": {\"x\": " + huge + "}}"));
+            var config = LayaConfig.Parse(
+                "{\"temperature\": [" + huge + ", 2.0, 3.0], \"temperature_by_options\": {\"choice:2\": " + huge + "}}");
+            Assert.Equal<IEnumerable<double>>(new[] { 1.0, 2.0, 3.0 }, config.Temperature);
+            Assert.Equal(1.0, config.TemperatureByOptions["choice:2"]);
+            Assert.Equal<IEnumerable<string>>(
+                ["choice:2=" + huge + " -> 1", "temperature[0]=" + huge + " -> 1"], config.ClampedTemperatures);
         }
     }
 }

@@ -36,11 +36,13 @@ Mirrors the [Laya Python SDK](https://github.com/NandhaKishorM/laya/blob/main/RE
 - [Long prediction](#long-prediction)
 - [Batch prediction](#batch-prediction)
 - [Per-language temperatures and per-call overrides](#per-language-temperatures-and-per-call-overrides)
+- [Calibration files and histogram binning](#calibration-files-and-histogram-binning)
 - [Abstention (`min_confidence`)](#abstention-min_confidence)
 - [Thread safety](#thread-safety)
 - [Execution providers and cargo features](#execution-providers-and-cargo-features)
 - [Async usage](#async-usage)
 - [Configuration reference](#configuration-reference-layaoptions)
+- [Pinning and verifying a download](#pinning-and-verifying-a-download)
 - [Routing, language detection, email and shortlist](#routing-language-detection-email-and-shortlist)
 - [Samples](#samples)
 - [Testing](#testing)
@@ -231,6 +233,55 @@ Question::noul("Is this email a phishing or scam attempt?", "a legitimate email"
 - All options share a fixed head budget (`head_max_len`: 256 tokens on `multilingual` and
   `typed-decisions`, 192 on `english`). If the options cannot fit even after truncation,
   `predict` returns `LayaError::NoMarkers` instead of silently answering a truncated question.
+
+### Option order
+
+Any question can show its options to the model in another order, with
+`Question::with_option_order`. Slot `s` shows option `order[s]`; `order` must be a permutation of
+`0..n`, where `n` is the number of options of a choice, the number of levels of a score, and 2 for a
+noul (slot 0 shows `false`, slot 1 `true`). Probabilities and the chosen label are still reported by
+option, never by slot, so the answer reads the same however the question was laid out. This is
+Python's question-level `option_order`, a way to average out position bias by asking the same
+question under several orders.
+
+```rust,no_run
+use laya::Question;
+
+let q = Question::choice_labels("Which team?", ["sales", "billing", "technical"])?
+    .with_option_order([2, 0, 1]); // slot 0 shows `technical`, slot 1 `sales`, slot 2 `billing`
+assert_eq!(Some(&[2, 0, 1][..]), q.option_order());
+# Ok::<(), laya::LayaError>(())
+```
+
+As in Python, an order that is not a permutation is not refused when the question is built but
+when it is predicted (`predict`, `predict_batch`, `predict_long`), with
+`LayaError::InvalidQuestion` and Python's text, naming the question. The router groups batch
+requests by their orders as well. `LayaShortlist::predict` drops the order of a choice it narrows,
+with a warning, because the order no longer fits the kept labels; a choice it forwards whole keeps
+its order.
+
+### Noul labels
+
+A noul question names its two options "false" and "true" by default. `Question::with_noul_labels`
+(or `Question::with_labels` with the JSON object `{"false": ..., "true": ...}`) renames them, so
+the model reads `"<label>: <criterion or default text>"` instead. This is Python's `labels`. The
+answer is unchanged: a noul still returns the probability of true, and temperature, `min_confidence`
+and `option_order` do not depend on the labels (a label moves with its slot).
+
+```rust,no_run
+use laya::Question;
+use serde_json::Value;
+
+let q = Question::noul("Is the service down?", Value::Null, Value::Null)
+    .with_noul_labels("healthy", "outage"); // "healthy: no, the statement does not hold", ...
+# Ok::<(), laya::LayaError>(())
+```
+
+As in Python, the labels must be exactly the keys `false` and `true`, each a distinct non-empty
+string once stripped of whitespace (the stripped text is what the model reads), and `labels` is only
+allowed on a noul. Nothing is refused when the question is built: `predict`, `predict_batch` and
+`predict_long` refuse it with `LayaError::InvalidQuestion`, Python's text, naming the question.
+The router includes the labels in its batch grouping key.
 
 ### QuestionSet
 
@@ -428,6 +479,10 @@ The same pattern applies to `ModelArtifacts::resolve` / `LayaEngine::create` wit
 | `hugging_face_token` | `Option<String>` | `None` → `HF_TOKEN` | Bearer token for gated or private repos. `Some(String::new())` disables auth. |
 | `cache_directory` | `Option<PathBuf>` | per-user cache | Root that downloads (and cache lookups) land under. |
 | `download_progress` | `Option<Arc<dyn Fn(ArtifactDownloadProgress) + Send + Sync>>` | `None` | Per-file progress sink. |
+| `lang_temperatures` | `LangTemperatureTable` | empty | Per-language temperature overrides; see [Per-language temperatures](#per-language-temperatures-and-per-call-overrides). |
+| `calibration` | `Option<PathBuf>` | `None` | A calibration file read onto the engine at construction (`set_calibration` sets it); see [Calibration files and histogram binning](#calibration-files-and-histogram-binning). |
+| `revision` | `Option<String>` | `None` → `LAYA_REVISION` | Hub commit, branch or tag to download, or `reviewed` for the pinned commit of `hugging_face_repo`. See [Pinning and verifying a download](#pinning-and-verifying-a-download). |
+| `expected_sha256` | `Option<IndexMap<String, String>>` | `None` → `LAYA_SHA256_DIGESTS` | `{path: SHA-256}` checked before anything is parsed. `Some` of an empty map masks the variable. |
 
 Every field is `pub`, including `hugging_face_subfolder`, so `LayaOptions` can be built with
 ordinary struct-update syntax as well as `LayaOptions::new()` plus field assignment:
@@ -555,8 +610,8 @@ Ports `lang_temperatures`, `lang`, `max_len` and `head_max_len` from Python's `O
 - **Per-call `lang`.** `PredictOptions::lang`, `BatchOptions::lang` and `LongOptions::lang` select
   an entry for that call. A language in the table replaces both the checkpoint's bucket map and its
   per-type temperature (there is no fallback to the checkpoint's bucket); an unknown or empty code
-  changes nothing. This port has no histogram-binning calibration, which Python skips under an
-  override. On `LayaRouter`, the explicit `lang` argument is the language (it also routes), else
+  changes nothing. Under an override the calibration file's histogram binning is skipped, as in
+  Python (see [Calibration files](#calibration-files-and-histogram-binning)). On `LayaRouter`, the explicit `lang` argument is the language (it also routes), else
   the language the routing detection found; the fields on the options are not read there (batch-wide ones are refused by `predict_batch`). In
   `predict_batch` a request's `lang` (else the detected one) joins the grouping key, raw and
   unnormalised, only when the engine has a table, so a table-less group still shares one pass.
@@ -575,6 +630,55 @@ Ports `lang_temperatures`, `lang`, `max_len` and `head_max_len` from Python's `O
   defaults, so existing implementors compile. The default drops `lang` and refuses a token-budget
   override with `LayaError::NotSupported`; Python passes the budget on and the agent raises a
   `TypeError`.
+
+---
+
+## Calibration files and histogram binning
+
+Ports `ONNXAgent(calibration=...)` / `load_calibration`, `calibrate.apply_calibration_payload` and
+`calibrate.apply_binning_map`. This crate only reads and applies a calibration file; Python's
+fitters and `save_calibration` write it.
+
+- **`LayaOptions::calibration`.** The path of a JSON file (also `LayaOptions::set_calibration`),
+  read when the engine is built, after the checkpoint's own temperatures and the `lang_temperatures`
+  table, as Python reads it. It is construction-time only: there is no per-call form. A router
+  passes it to every engine it builds. `None`, like an empty path, loads nothing. The file is read
+  with the crate's Python-json reader (what `json.load` accepts, including `NaN` and `Infinity`),
+  as strict UTF-8 like the checkpoint's config; Python opens it with the locale encoding.
+- **What it installs.** `temperature` (exactly three entries) and `temperature_by_options` replace
+  both of the checkpoint's maps; each value is clamped to `[0.5, 5]` as the checkpoint's are, and
+  what the clamp replaced is named in one warning, sent with Python's text to the `log` facade
+  (`warn`, target `laya`, once per text). `LayaEngine::config()` then shows the file's values, as
+  Python's `agent.temperature` does. A missing or `null` `temperature_by_options` is `{}`, and a
+  missing or `null` `binning_map` clears any map (the file is the whole calibration state, not a
+  patch). A `version` that is missing or `null` is 1; a `version` that is not an integer is refused.
+- **Shape checks.** A payload that is not an object, a `version` that is not an integer, a
+  `temperature` that is not a list of three, a `temperature_by_options` that is not an object, or a
+  `binning_map` that is not an object of `{bins, values}` (an integer `bins` of at least 1, `values`
+  of exactly that length, each a finite number in `[0, 1]`) is `LayaError::InvalidConfig` with
+  Python's `ValueError` text. A bad temperature is forgiven and clamped (an integer too wide for a
+  double, like `10**400`, is the neutral 1.0 and is named digit for digit in the warning, as Python
+  0.4.20 does); a bad binning value is refused, a huge integer too (`values must be numbers`, as
+  Python 0.4.21 does). An error Python raises as another type (an infinite confidence reaching a bin
+  is an `OverflowError`) carries the type's name in front. The checks are `CalibrationFile::parse`,
+  checked against `routing/calibration_probe.json`, which Python's own `apply_calibration_payload` and
+  `apply_binning_map` write over 152 payloads and 62 lookups.
+- **Histogram binning.** After the temperature softmax the unrounded
+  `answer_confidence = max(p)` is looked up in its bucket's histogram:
+  `values[min(bins - 1, max(0, int(confidence * bins)))]`, then rounded to four places. A bucket
+  with no entry keeps the temperature-scaled value. Only `answer_confidence` is recalibrated;
+  `confidence`, the probabilities, `noul` and `score` are not. It is skipped for a call whose `lang`
+  selects a `lang_temperatures` entry, since the map was fitted for the checkpoint's temperatures,
+  and an empty `binning_map` (`{}`) does nothing. The `min_confidence` gate and `predict_long`'s
+  window choice read `answer_confidence`, so they see the binned value.
+  `LayaEngine::binning_map()` returns the map.
+- **Not ported: the checkpoint-identity warning.** Python warns when a version 2 file records a
+  `model_id_or_path`, `subfolder` or `config` other than the agent's. An ONNX agent's
+  `model_id_or_path` is the string its caller passed to name the PyTorch checkpoint (a Hub id or a
+  path); this crate loads an exported artifact directory and has no such string, so there is
+  nothing faithful to compare. A version 2 file loads exactly as Python loads it, with the same
+  temperatures, binning, errors and clamp warning, but never warns about the checkpoint it was
+  fitted for. Check that the file matches the checkpoint yourself.
 
 ---
 
@@ -709,6 +813,32 @@ let kept = &result.shortlist().unwrap()["banking_intent"]; // kept.labels, kept.
 # Ok::<(), laya::LayaError>(())
 ```
 
+`LayaShortlist::cached_embed_fn(embed, 4096)` (or `CachedEmbed::new`) wraps the embedder in an LRU
+cache keyed by exact text, so a fixed label set is embedded once; call it as
+`|texts| cache.embed(texts)`. Misses go to one `embed` call, rows are stored as `f32`, non-finite
+values become `0.0` (and stay cached), and `cache_info()` / `cache_clear()` report and reset it.
+
+**Tournament** narrows a choice with more than `group_size` labels without any embedder: the model
+answers the labels in contiguous groups, and the group winners meet in one more call.
+
+```rust,no_run
+use laya::laya_shortlist::LayaShortlist;
+# use laya::{laya_router::LayaPredictor, QuestionSet}; use serde_json::json;
+# let router: &dyn LayaPredictor = todo!(); let state = json!(""); let questions = QuestionSet::new();
+
+let result = LayaShortlist::predict_tournament(router, state.clone(), &questions, 16)?;
+let meta = &result.tournament().unwrap()["banking_intent"]; // meta.labels (finalists), meta.n, meta.rounds
+// Per-call options go to every round and the final call through a closure:
+let again = LayaShortlist::predict_tournament_with(
+    |state, questions| router.predict(state, questions), // or predict_with_options(.., &options)
+    state, &questions, 16)?;
+# Ok::<(), laya::LayaError>(())
+```
+
+The result is the final call's, with its usage; `tournament()` has an entry per choice question
+only. A choice that played a round loses its `option_order`, with Python's warning (`log`, target
+`laya`).
+
 ---
 
 ## Samples
@@ -824,6 +954,33 @@ invocation that has the `download` feature enabled (the default) with no externa
 
 ---
 
+## Pinning and verifying a download
+
+Ports `laya/revisions.py`. Both controls are opt-in and work the same way: an option, else an
+environment variable, else nothing.
+
+- **Revision.** `LayaOptions::revision` (else `LAYA_REVISION`) names a commit, branch or tag; the
+  word `reviewed` means the commit this SDK's reviewed table holds for `hugging_face_repo`
+  (`laya::revisions::PINNED_REVISIONS`), and is refused for a repository without one. Both are
+  stripped, the option wins, and a blank option suppresses the variable. A pinned download is
+  fetched from `resolve/<revision>/` and cached under `<cache>/<revision>/<checkpoint>`, so two
+  revisions never share files; unpinned loads keep `<cache>/<checkpoint>` and `resolve/main/`.
+- **Digests.** `LayaOptions::expected_sha256` (else `LAYA_SHA256_DIGESTS`, a JSON object) maps paths
+  relative to the checkpoint directory to SHA-256 digests. It is checked in `ModelArtifacts::resolve` (so in `LayaEngine::create`),
+  for downloaded and local directories alike, before the config, tokenizer or model is looked for.
+  Absolute and `..` paths, missing files and mismatches are refused; case and surrounding
+  whitespace in a digest do not matter. The key `onnx` (or `onnx_path`) means the fused
+  `model.onnx`; a split checkpoint is refused for that key, so list `encoder.onnx` and `head.onnx`.
+- **Router.** `LayaRouterOptions::revisions` and `sha256_digests` pin each checkpoint;
+  `engine_options.revision` / `expected_sha256` apply to all. The two digest maps merge file by
+  file, the per-checkpoint entry winning. `LAYA_SHA256_DIGESTS` may be flat (the same files on
+  every checkpoint) or model-keyed (`{"english": {...}, ...}`); mixing the two is refused.
+- **What was loaded.** `LayaRouter::loaded_revisions()` and `LayaEngine::revision()` report the
+  commit the Hub sent (`X-Repo-Commit`, kept in a `.laya_revision` file beside the downloaded
+  files), else the pin, else `None`. Local directories report `None`.
+
+---
+
 ## Module map
 
 | Rust module | Purpose | Rust type(s) |
@@ -834,8 +991,10 @@ invocation that has the `download` feature enabled (the default) with no externa
 | `src/calibration.rs` | Temperature scaling and confidence math | `Calibration` |
 | `src/laya_config.rs` | Parsed `rl_agent_config.json` | `LayaConfig` |
 | `src/lang_temperatures.rs` | Per-language temperature table and its parser | `LangTemperature`, `TemperatureValue`, `LangTemperatures`, `resolve_lang_temperatures` |
+| `src/calibration_file.rs` | Calibration file loader and histogram binning | `CalibrationFile`, `BinningMap`, `BinningEntry` |
 | `src/laya_options.rs` | Engine construction options | `LayaOptions`, `LayaCheckpoint`, `LayaExecutionProvider`, `ArtifactDownloadProgress` |
 | `src/model_artifacts.rs` | Locating/downloading model files | `ModelArtifacts`, `ModelLayout`, `ModelPaths` (the fused/split layout enum and its resolved paths — see [Getting the model](#getting-the-model)) |
+| `src/revisions.rs` | Revision pins and SHA-256 digest checks | `resolve_revision`, `verify_digests`, `PINNED_REVISIONS`, `DigestGraph` |
 | `src/laya_presets.rs` | Built-in question presets | `LayaPresets` |
 | `src/sequence_builder.rs` | Token sequence construction | `SequenceBuilder` |
 | `src/collator.rs` | Batches sequences for one forward pass | `Collator`, `CollatedBatch`, `SequenceItem` |
@@ -876,6 +1035,12 @@ Rust port groups the corresponding functions into a unit struct with associated 
 - **Warnings use the `log` facade.** The clamped-temperature warning (`LayaConfig::parse`) and the
   two `predict_long` window warnings are sent, with Python's text, to `log` at `warn` level with
   target `laya`. `LayaConfig::clamped_temperatures` still records the clamped entries.
+- **`option_order` is a builder, not a dictionary key.** `Question::with_option_order` takes
+  integers, so Python's refusal of a bool, a float or a non-list order has nothing to refuse; the
+  permutation rule and its text are the same, and so is the timing (at prediction).
+- **`labels` is a builder, not a dictionary key.** `Question::with_labels` takes any JSON value
+  (`with_noul_labels` is the two-string shortcut), so Python's refusal of a non-dict, a missing or
+  extra key and a non-string is reproduced at prediction with the same text and timing.
 - **`QuestionType` carries no methods.** The Python type name lives on
   `SequenceBuilder::type_name` rather than on the enum, and the `qtype` tensor's integer encoding
   is a plain `qtype as i64` cast (the enum's discriminants already match `QTYPES`). The reverse
@@ -891,6 +1056,7 @@ Rust port groups the corresponding functions into a unit struct with associated 
   `max_len=-5: must be a non-negative integer`, since Python slices from the end for it. Python
   also tolerates a small fractional `head_max_len` (roughly up to 8 plus 4 per option); that is
   refused here too.
+- **Revision reporting.** Python's `snapshot_revision` (the commit a Hub snapshot directory points at) has no equivalent; the reported revision is the `X-Repo-Commit` the Hub sent, else the pin, else `None`. A pinned download is cached per revision, and the `onnx` digest key means the fused `model.onnx` and is refused on a split checkpoint.
 - **Lone surrogate escapes in config JSON are refused.** `"\ud800"` loads in Python and is an error
   here, because a Rust `String` cannot hold a lone surrogate.
 - **JSON nesting is cut off at 1000 levels.** Python's limit depends on the interpreter's
@@ -907,7 +1073,8 @@ Rust port groups the corresponding functions into a unit struct with associated 
   routing probes and a seeded differential corpus regenerated at that version
   (`tools/regen_golden.py --checkpoint routing`). A later Python change needs them regenerated.
 
-- **Opt-in features are not ported yet:** histogram-binning calibration and per-call hooks.
-  `predict_long`, `predict_batch`, the `min_confidence` gate, `lang_temperatures` and the per-call
-  `lang`, `max_len` and `head_max_len` are ported, without hooks. They are off by default in
+- **Opt-in features are not ported yet:** per-call hooks.
+  `predict_long`, `predict_batch`, the `min_confidence` gate, `lang_temperatures`, the per-call
+  `lang`, `max_len` and `head_max_len`, and calibration files with histogram binning are ported,
+  without hooks. They are off by default in
   Python, so default predictions are unaffected. They are planned as follow-ups.

@@ -6,8 +6,8 @@ All notable changes to the `Laya.Onnx` NuGet package are documented here. The fo
 
 ## [0.1.0] - unreleased
 
-First release: a port of the Laya Python SDK, tested against laya (Python) 0.4.11 (routing
-goldens: 0.4.12).
+First release: a port of the Laya Python SDK, tested against laya (Python) 0.4.14 (all
+goldens).
 
 ### Added
 

@@ -8,3 +8,10 @@
 476562743e38bfc7bfc066afae54a409148506dc:laya-ts/scripts/tokenizer_decode_fixtures.py:generic-api-key:28
 476562743e38bfc7bfc066afae54a409148506dc:laya-ts/fixtures/tokenizer-decode.json:generic-api-key:7
 476562743e38bfc7bfc066afae54a409148506dc:laya-ts/fixtures/tokenizer-decode.json:generic-api-key:8
+# The same four digests for the working-tree scan (`gitleaks dir`), whose
+# fingerprints carry no commit. The rule fires because "tokenizer" contains
+# the keyword "token" beside a 64-hex content digest.
+laya-ts/scripts/tokenizer_decode_fixtures.py:generic-api-key:27
+laya-ts/scripts/tokenizer_decode_fixtures.py:generic-api-key:28
+laya-ts/fixtures/tokenizer-decode.json:generic-api-key:7
+laya-ts/fixtures/tokenizer-decode.json:generic-api-key:8

@@ -94,24 +94,20 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.20
+## What's new in 0.4.21
 
-* **A guardrail no longer passes an answer it cannot score.** A `probabilities` value of `NaN` or
-  `-Infinity` made `score_violation_probability` return a non-finite number, and every threshold
-  comparison against it is false, so the integration guards reported such an answer as passing. The
-  non-finite cases now take the same normalised-score fallback a malformed answer already took, and
-  a probability too wide for a double falls back instead of raising (#1431).
-* **A truncated state is visible even under `LAYA_JEV_STRICT`.** `laya-serve` logs one warning when
-  a request drops state tokens, and one aggregate line per batch naming which results were cut. It
-  logs before the strict projection removes `usage.truncated`, which is the only mode where the
-  response carried no sign of the cut (#1426).
-* **A temperature too wide for a double falls back to 1.0.** JSON has no double limit, so a
-  temperature written as a 401-digit integer parses as an `int` that `float()` refuses; the clamp
-  now reads that as "not a number" like every other unreadable value, instead of raising after the
-  checkpoint was already read off disk (#1433).
-* **`laya-ts` validates `hooksTimeout`.** The port installed deadlines the Python reference refuses,
-  including an instant one for `hooksTimeout: 0`, and silently skipped the deadline for a value
-  arriving from a config body as a string, bool or object (#1432).
+* **`laya-ts` scans long documents locally.** `Agent.predictLong` and `Router.predictLong` size
+  overlapping windows from the checkpoint budget, run the existing batch path, and keep the
+  strongest per-question answer with its window of origin, matching Python's `predict_long`
+  against committed parity fixtures (#1436).
+* **A `binning_map` value wider than a double is refused by name.** `apply_calibration_payload`
+  raised a raw `OverflowError` for a 401-digit integer where every other unreadable value got the
+  named `values must be numbers` refusal; the wide integer now gets the same named refusal, in
+  Python and the .NET port (#1440).
+* **The .NET and Rust ports follow 0.4.20's temperature fallback.** A temperature too wide for a
+  double loads as the neutral 1.0 with Python's warning instead of failing the load, and the
+  .NET model-free lane is green again (#1437, #1438).
+* **`laya-ts` runs on onnxruntime-web 1.31.1** (#1429).
 
 Earlier releases are in the [GitHub releases](https://github.com/NandhaKishorM/laya/releases).
 

@@ -131,7 +131,9 @@ fn ascii_float_text(body: &str) -> Option<String> {
 }
 
 /// A JSON temperature entry as `clamp_temperature` reads it: a number as itself, a string through
-/// `float(str)`, and a bool or anything else not at all.
+/// `float(str)`, and a bool or anything else not at all. An integer too wide for a double does not
+/// convert either (Python's `OverflowError`, which `clamp_temperature` and `temperature_rejected`
+/// catch since 0.4.20), so it is `None` here and becomes the neutral 1.0, named in the warning.
 pub(crate) fn temperature_number(raw: &PyJson) -> Option<f64> {
     match raw {
         PyJson::Int(literal) => PyJson::int_as_f64(literal),
@@ -139,18 +141,6 @@ pub(crate) fn temperature_number(raw: &PyJson) -> Option<f64> {
         PyJson::Str(s) => py_float(s),
         _ => None,
     }
-}
-
-/// Python's `OverflowError` from `clamp_temperature(<huge int>)`, which nothing catches, so the
-/// checkpoint fails to load.
-fn check_temperature_overflow<'a>(values: impl IntoIterator<Item = &'a PyJson>) -> Result<()> {
-    let overflows = |v: &PyJson| matches!(v, PyJson::Int(l) if PyJson::int_as_f64(l).is_none());
-    if values.into_iter().any(overflows) {
-        return Err(LayaError::InvalidConfig(
-            "OverflowError: int too large to convert to float".to_string(),
-        ));
-    }
-    Ok(())
 }
 
 /// Python's name for the type of a JSON value, as it appears in `TypeError` messages.
@@ -403,11 +393,9 @@ impl LayaConfig {
         let root = PyJson::parse(json)?;
         check_option_layout(&root)?;
         // Python builds `[clamp_temperature(t) for t in temperature]` and then the by-options dict,
-        // so each container's error, and each overflow, comes in that order.
+        // so each container's error comes in that order.
         let elements = temperature_elements(&root)?;
-        check_temperature_overflow(&elements)?;
         let options = temperature_options(&root)?;
-        check_temperature_overflow(options.iter().map(|(_, v)| v))?;
 
         // `ONNXAgent.__init__` resolves `lang_temperatures` right after clamping the checkpoint's
         // own, and only then warns about what it clamped: an invalid table fails the load before

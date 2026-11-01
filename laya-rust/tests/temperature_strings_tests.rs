@@ -39,35 +39,46 @@ fn string_temperatures_follow_python_float_parsing() {
     assert_eq!(vec![WARNING.to_string()], *seen);
 }
 
-// Python: json.loads gives an `int` for a 400-digit literal and clamp_temperature raises
-// OverflowError("int too large to convert to float") uncaught; `1e400` is a float (inf -> 1.0);
-// 10**308 is still a valid int (-> 5.0); 10**309 overflows.
+// Python 0.4.20: json.loads gives an `int` for a 400-digit literal; `float()` raises OverflowError,
+// which `clamp_temperature` and `temperature_rejected` catch, so the entry becomes the neutral 1.0
+// and the loader's warning names it digit for digit. `1e400` is a float (inf -> 1.0); 10**308 is
+// still convertible (-> 5.0); 2**1024 is the smallest power of two that is not.
 #[test]
-fn huge_integer_temperatures_fail_to_load_as_in_python_and_float_literals_do_not() {
+fn huge_integer_temperatures_fall_back_to_neutral_like_float_literals() {
     let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let _ = log::set_logger(&LOGGER);
     log::set_max_level(log::LevelFilter::Warn);
-    SEEN.lock().unwrap().clear();
     let list = |entry: &str| format!(r#"{{"temperature": [1.0, {entry}, 1.0]}}"#);
     let by_options =
         |entry: &str| format!(r#"{{"temperature_by_options": {{"choice:2": {entry}}}}}"#);
     let huge = format!("1{}", "0".repeat(400));
-    for config in [
-        list(&huge),
-        list(&format!("-{huge}")),
-        list(&format!("1{}", "0".repeat(309))),
-        by_options(&huge),
-    ] {
-        let error = LayaConfig::parse(&config).unwrap_err();
-        assert!(
-            matches!(error, laya::error::LayaError::InvalidConfig(_)),
-            "{error:?}"
-        );
+    let two_1024 = "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137216";
+    for literal in [huge.clone(), format!("-{huge}"), two_1024.to_string()] {
+        SEEN.lock().unwrap().clear();
+        let config = LayaConfig::parse(&list(&literal)).unwrap();
+        assert_eq!(vec![1.0, 1.0, 1.0], config.temperature, "{literal}");
+        let seen = SEEN.lock().unwrap().clone();
         assert_eq!(
-            "OverflowError: int too large to convert to float",
-            error.to_string()
+            vec![format!(
+                "laya ONNX: this checkpoint ships temperatures outside [0.5, 5] which would distort \
+                 confidence; clamping temperature[1]={literal} -> 1. Treat confidence from the \
+                 affected buckets as uncalibrated."
+            )],
+            seen
+        );
+
+        SEEN.lock().unwrap().clear();
+        let config = LayaConfig::parse(&by_options(&literal)).unwrap();
+        assert_eq!(Some(&1.0), config.temperature_by_options.get("choice:2"));
+        let seen = SEEN.lock().unwrap().clone();
+        assert_eq!(1, seen.len(), "{seen:?}");
+        assert!(
+            seen[0].contains(&format!("clamping choice:2={literal} -> 1. Treat")),
+            "{}",
+            seen[0]
         );
     }
+    SEEN.lock().unwrap().clear();
     for (entry, applied) in [
         ("1e400".to_string(), 1.0),
         ("-1e400".to_string(), 1.0),

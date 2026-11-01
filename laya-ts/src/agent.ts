@@ -420,6 +420,7 @@ function tokenizerFromHF(tokenizerJson: unknown): TokenizerLike | null {
     padId: data.ids.pad,
     maskToken: data.maskToken,
     encode: (text: string) => encodeWithData(data, text),
+    ...(data.decode ? { decode: data.decode } : {}),
   };
 }
 

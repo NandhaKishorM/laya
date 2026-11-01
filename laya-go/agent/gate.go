@@ -236,3 +236,34 @@ func (g *gate) apply(preds []schema.Prediction) {
 		}
 	}
 }
+
+// Gate is a validated confidence gate for predictions made elsewhere. A Router applies one to the
+// results it returns, after its own start hooks and before its end hooks, as laya's Router does.
+// The zero value and nil are no gate.
+type Gate struct{ g *gate }
+
+// NewGate validates the WithMinConfidence or WithMinConfidenceMap in opts, with the same errors a
+// call would give; other options are ignored. With neither it returns a no-op Gate.
+func NewGate(opts ...CallOption) (*Gate, error) {
+	var c call
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&c)
+		}
+	}
+	if !c.gated {
+		return &Gate{}, nil
+	}
+	g, err := checkMinConfidence(c.minConfidence)
+	if err != nil {
+		return nil, err
+	}
+	return &Gate{g}, nil
+}
+
+// Apply gates preds in place; a no-op for a nil or empty Gate.
+func (g *Gate) Apply(preds []schema.Prediction) {
+	if g != nil && g.g != nil {
+		g.g.apply(preds)
+	}
+}

@@ -12,8 +12,10 @@ package router
 // The dispatch is internal/hookrun, the one the agent uses, so ordering, WithHookErrors,
 // WithHookTimeout and panic recovery behave as there. As in Python's Router, hooks run
 // concurrently unless WithSerialHooks is given; with it, one hook runs at a time across all
-// goroutines, and a hook must not call Route, or Load, Lease, Preload, Unload, UnloadAll or Close
-// when they would fire a hook, on the Router that is running it (Python's lock is re-entrant, this
+// goroutines, and a hook must not call Route, Predict, PredictRouted, PredictBatch, PredictLong, or Load,
+// Lease, Preload, Unload, UnloadAll or Close when they would fire a hook (a predict hook that does
+// waits for itself, and an end or error hook, which waits for the lock whatever the context says, waits
+// forever unless WithHookTimeout is set), on the Router that is running it (Python's lock is re-entrant, this
 // one is not, so the call would wait for itself until a timeout). A hook is
 // compared by identity, so pass a pointer: a value whose type cannot be compared is refused.
 //
@@ -237,8 +239,9 @@ func WithHookErrors(raise bool) Option {
 
 // WithSerialHooks runs one hook at a time across all calls, for hooks that are not safe to run
 // concurrently; the default, as in Python, lets hooks of concurrent calls overlap. A serial hook
-// must not call Route, or a Load that builds or evicts, on its own Router: the lock is not re-entrant and the call would wait for
-// itself.
+// must not call Route, Predict, PredictRouted, PredictBatch or PredictLong, or a Load that builds or
+// evicts, on its own Router: the lock is not re-entrant (Python's RLock is) and the call would wait for
+// itself; an end or error hook that does waits forever unless WithHookTimeout is set.
 func WithSerialHooks() Option {
 	return func(c *config) error { c.hooks.serial = true; return nil }
 }

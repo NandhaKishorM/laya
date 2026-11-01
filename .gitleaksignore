@@ -2,3 +2,9 @@
 # False positives: SHA-256 digests of model tokenizer files in Chinese reliability benchmark results (commit 7c8b8316)
 7c8b8316410dc391d0fb2425986ff58e76035250:research/benchmarks/zh_reliability/results/massive_alarm_2026-09-24.json:generic-api-key:53
 7c8b8316410dc391d0fb2425986ff58e76035250:research/benchmarks/zh_reliability/results/massive_alarm_2026-09-24.json:generic-api-key:54
+# False positives: SHA-256 digests of the public tokenizer files and the HF revision pin
+# in the predictLong decode fixtures (PR #1436, commit 47656274)
+476562743e38bfc7bfc066afae54a409148506dc:laya-ts/scripts/tokenizer_decode_fixtures.py:generic-api-key:27
+476562743e38bfc7bfc066afae54a409148506dc:laya-ts/scripts/tokenizer_decode_fixtures.py:generic-api-key:28
+476562743e38bfc7bfc066afae54a409148506dc:laya-ts/fixtures/tokenizer-decode.json:generic-api-key:7
+476562743e38bfc7bfc066afae54a409148506dc:laya-ts/fixtures/tokenizer-decode.json:generic-api-key:8

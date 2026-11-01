@@ -812,7 +812,7 @@ def apply_calibration_payload(obj, payload: Dict[str, Any]) -> None:
                     % (name, n_bins))
             try:
                 parsed_values = [float(v) for v in values]
-            except (TypeError, ValueError) as exc:
+            except (TypeError, ValueError, OverflowError) as exc:
                 raise ValueError(
                     "calibration JSON binning_map[%r] values must be numbers, got %r" % (name, values)) from exc
             for v in values:

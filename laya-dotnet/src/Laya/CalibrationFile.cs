@@ -155,13 +155,13 @@ internal static partial class CalibrationFile
                 throw Refused($"{at} must have \"values\" of length \"bins\" ({bins.ToString(CultureInfo.InvariantCulture)})");
 
             var numbers = $"{at} values must be numbers, got {PythonFloat.Repr(values)}";
-            // `[float(v) for v in values]` runs over every value before any type check: a value float() refuses is the
-            // ValueError, and an integer too large for a float is an OverflowError that nothing catches.
+            // `[float(v) for v in values]` runs over every value before any type check: a value float() refuses
+            // (including an integer wider than a double) raises the ValueError naming `values must be numbers`.
             var parsed = new double[values.Count];
             for (var i = 0; i < values.Count; i++)
             {
                 if (values[i] is BigInteger big && double.IsInfinity((double)big))
-                    throw new InvalidDataException("OverflowError: int too large to convert to float");
+                    throw Refused(numbers);
                 if (!PythonFloat.TryConvert(values[i], out parsed[i])) throw Refused(numbers);
             }
             foreach (var v in values)

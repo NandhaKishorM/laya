@@ -149,7 +149,6 @@ public sealed class LayaConfig
         else { temperature.AddRange([1.0, 1.0, 1.0]); temperatureSource = new List<object?>(temperature); }
         // A list shorter than three is kept as it is: Python indexes self.temperature[qtype] when a question is
         // answered and raises IndexError there, which Calibration.ResolveTemperature reproduces.
-        ThrowIfOverflow(temperature);
 
         // `{k: clamp_temperature(v) for k, v in temperature_by_options_raw.items()}`: a mapping or AttributeError.
         var byOptions = new Dictionary<string, object?>(StringComparer.Ordinal);
@@ -160,7 +159,6 @@ public sealed class LayaConfig
             foreach (var (key, value) in map)
                 byOptions[key] = value;
         }
-        ThrowIfOverflow(byOptions.Values);
 
         var lengths = Lengths(root);
         return new LayaConfig(
@@ -194,14 +192,6 @@ public sealed class LayaConfig
             else items.Add(s[i].ToString());
         }
         return items;
-    }
-
-    // clamp_temperature(<int too large for a float>) raises OverflowError, which nothing catches, so Python fails
-    // to load the checkpoint (onnx_agent.py:249-252); a float literal reads as inf instead.
-    private static void ThrowIfOverflow(IEnumerable<object?> values)
-    {
-        if (values.Any(v => v is System.Numerics.BigInteger big && double.IsInfinity((double)big)))
-            throw new InvalidDataException("OverflowError: int too large to convert to float");
     }
 
     // `cfg.get("max_len", 512)` and `cfg.get("head_max_len", 192)`. Python keeps whatever the JSON held and fails at

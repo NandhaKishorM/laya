@@ -12,7 +12,8 @@
 //! its last value) with the crate's Python-json reader, as strict UTF-8 like the checkpoint's config.
 //! A malformed payload is refused with [`LayaError::InvalidConfig`] carrying Python's `ValueError`
 //! text word for word; an error Python raises as another type is prefixed with that type's name
-//! (`OverflowError: ...`), as the config loader does.
+//! (`OverflowError: ...`). A temperature that is an integer too wide for a double is not an error:
+//! it is replaced by 1.0 and named in the clamp warning, as Python 0.4.20 does.
 //!
 //! ## Not ported: the checkpoint-identity warning
 //!

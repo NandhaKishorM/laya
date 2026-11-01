@@ -604,10 +604,12 @@ fitters and `save_calibration` write it.
   `temperature` that is not a list of three, a `temperature_by_options` that is not an object, or a
   `binning_map` that is not an object of `{bins, values}` (an integer `bins` of at least 1, `values`
   of exactly that length, each a finite number in `[0, 1]`) is `LayaError::InvalidConfig` with
-  Python's `ValueError` text. A bad temperature is forgiven and clamped; a bad binning value is
-  refused. An error Python raises as another type (a huge integer is an `OverflowError`) carries the
-  type's name in front, as the config loader's do. The checks are `CalibrationFile::parse`, checked
-  against `routing/calibration_probe.json`, which Python's own `apply_calibration_payload` and
+  Python's `ValueError` text. A bad temperature is forgiven and clamped (an integer too wide for a
+  double, like `10**400`, is the neutral 1.0 and is named digit for digit in the warning, as Python
+  0.4.20 does); a bad binning value is refused, a huge integer too (`values must be numbers`, as
+  Python 0.4.21 does). An error Python raises as another type (an infinite confidence reaching a bin
+  is an `OverflowError`) carries the type's name in front. The checks are `CalibrationFile::parse`,
+  checked against `routing/calibration_probe.json`, which Python's own `apply_calibration_payload` and
   `apply_binning_map` write over 152 payloads and 62 lookups.
 - **Histogram binning.** After the temperature softmax the unrounded
   `answer_confidence = max(p)` is looked up in its bucket's histogram:

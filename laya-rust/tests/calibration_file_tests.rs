@@ -338,6 +338,50 @@ fn installing_a_file_replaces_both_of_the_checkpoints_temperature_maps() {
     );
 }
 
+// Python 0.4.20: `clamp_temperature` and `temperature_rejected` catch the `OverflowError` of an
+// integer wider than a double, so a temperature or bucket written as one is the neutral 1.0 and
+// the warning names it digit for digit. `2**1024` is the smallest power of two `float()` refuses;
+// a bin value refuses it as `values must be numbers` (Python 0.4.21, `apply_calibration_payload`).
+#[test]
+fn an_integer_wider_than_a_double_is_a_neutral_temperature_but_refused_as_a_bin_value() {
+    let wide = format!("1{}", "0".repeat(400));
+    let two_1024 = "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137216";
+    for literal in [wide.clone(), format!("-{wide}"), two_1024.to_string()] {
+        let json = format!(
+            r#"{{"temperature": [{literal}, 1.2, 1.1], "temperature_by_options": {{"choice:2": {literal}}}}}"#
+        );
+        let (warnings, file) = CalibrationFile::parse_probe(&json);
+        let file = file.unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!([1.0, 1.2, 1.1], file.temperature);
+        assert_eq!(
+            vec![("choice:2".to_string(), 1.0)],
+            file.temperature_by_options
+        );
+        assert_eq!(1, warnings.len(), "{warnings:?}");
+        assert!(
+            warnings[0].contains(&format!(
+                "temperature[0]={literal} -> 1, choice:2={literal} -> 1"
+            )),
+            "{}",
+            warnings[0]
+        );
+    }
+    // 2**1023 converts, and is clamped to the upper bound like any large number.
+    let (_, file) =
+        CalibrationFile::parse_probe(r#"{"temperature": [8.98846567431158e307, 1.0, 1.0]}"#);
+    assert_eq!(5.0, file.unwrap().temperature[0]);
+    // A bin value is refused like a string or `null`: `float()` errors are caught since 0.4.21.
+    let json = format!(
+        r#"{{"temperature": [1.0, 1.0, 1.0], "binning_map": {{"choice:2": {{"bins": 2, "values": [0.5, {wide}]}}}}}}"#
+    );
+    let (_, file) = CalibrationFile::parse_probe(&json);
+    assert!(
+        file.unwrap_err()
+            .to_string()
+            .contains("values must be numbers, got [0.5, 1000")
+    );
+}
+
 #[test]
 fn the_clamp_warning_reaches_the_log_once_per_text_and_a_version_2_file_adds_no_other() {
     log::set_logger(&LOGGER).unwrap();

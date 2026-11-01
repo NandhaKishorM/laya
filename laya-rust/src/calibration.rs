@@ -89,6 +89,29 @@ impl Calibration {
         p
     }
 
+    /// Puts a slot-ordered probability row back into the caller's option order. Ports
+    /// `unpermute_probs` (`laya/common.py`): the model scores option `order[s]` in slot `s`, so
+    /// `canonical[order[s]] = p[s]`. A missing order, or one whose length differs from `p`,
+    /// returns `p` untouched, as does one that is not a permutation (the engine refuses those
+    /// before a prediction).
+    pub fn unpermute_probs(p: Vec<f64>, option_order: Option<&[i64]>) -> Vec<f64> {
+        let Some(order) = option_order.filter(|order| order.len() == p.len()) else {
+            return p;
+        };
+        let mut canonical = vec![f64::NAN; p.len()];
+        let mut filled = vec![false; p.len()];
+        for (&slot, &value) in order.iter().zip(&p) {
+            match usize::try_from(slot) {
+                Ok(i) if i < p.len() && !filled[i] => {
+                    canonical[i] = value;
+                    filled[i] = true;
+                }
+                _ => return p,
+            }
+        }
+        canonical
+    }
+
     /// Softmax over a whole row, used for the action head. No temperature scaling.
     pub fn softmax(logits: &[f32]) -> Vec<f64> {
         if logits.is_empty() {

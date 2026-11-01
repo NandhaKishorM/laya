@@ -25,7 +25,8 @@
 
 use crate::answers::LayaResult;
 use crate::error::{LayaError, Result};
-use crate::laya_router::LayaPredictor;
+use crate::laya_router::{LayaPredictor, python_repr_str};
+use crate::long_prediction::emit_warnings;
 use crate::python_json::PythonJson;
 use crate::questions::{Question, QuestionSet};
 use crate::sequence_builder::SequenceBuilder;
@@ -154,7 +155,31 @@ impl LayaShortlist {
                                 (label, description)
                             })
                             .collect();
-                        let reduced_choice = Question::choice(choice.instructions().clone(), kept)?;
+                        let kept_count = kept.len();
+                        let mut reduced_choice =
+                            Question::choice(choice.instructions().clone(), kept)?;
+                        // Python re-keys only the criteria and keeps every other key, so a
+                        // `labels` entry (refused later for a choice) survives the narrowing.
+                        if let Some(labels) = question.labels() {
+                            reduced_choice = reduced_choice.with_labels(labels.clone());
+                        }
+                        // The order has one slot per option, so one that fitted the caller's
+                        // labels does not fit the kept ones; it is dropped, not remapped (which
+                        // would move options between slots). Ports `_drop_stale_order`.
+                        if let Some(order) = question.option_order() {
+                            emit_warnings(
+                                &[format!(
+                                    "laya.shortlist: question {}: 'option_order' ({} slots) was \
+                                     dropped because the label set was narrowed to {}; the order \
+                                     no longer fits the kept options and remapping it onto them \
+                                     would move options between slots.",
+                                    python_repr_str(id),
+                                    order.len(),
+                                    kept_count
+                                )],
+                                stale_order_site(),
+                            );
+                        }
                         reduced.insert(id, reduced_choice)?;
                     }
                 }
@@ -167,6 +192,12 @@ impl LayaShortlist {
         let result = predictor.predict(state, &reduced)?;
         Ok(result.with_shortlist(meta))
     }
+}
+
+/// Where Python attributes the stale-order warning: the fixed line of `predict_shortlist` that
+/// calls `_drop_stale_order`, whoever called it, so the same text is shown once per process.
+fn stale_order_site() -> &'static std::panic::Location<'static> {
+    std::panic::Location::caller()
 }
 
 fn check_k(k: usize) -> Result<()> {

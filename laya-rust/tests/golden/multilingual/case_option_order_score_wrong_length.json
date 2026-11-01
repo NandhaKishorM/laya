@@ -1,0 +1,37 @@
+{
+  "name": "option_order_score_wrong_length",
+  "state": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "department": {
+      "type": "choice",
+      "instructions": "Which department should handle this?",
+      "criteria": {
+        "billing": "invoices, payments, double charges, refunds",
+        "technical": "bugs, outages, integration errors",
+        "account": "logins, seats, plan changes"
+      },
+      "option_order": [
+        2,
+        0,
+        1
+      ]
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today",
+        "drop everything"
+      ],
+      "option_order": [
+        2,
+        0,
+        1
+      ]
+    }
+  },
+  "error_type": "ValueError",
+  "error_message": "question 'urgency': 'option_order' must be a permutation of range(4) -- one slot per option, each option once -- got [2, 0, 1]"
+}

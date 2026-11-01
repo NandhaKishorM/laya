@@ -744,5 +744,156 @@
     "file": "case_calibration_long_lang_override.json",
     "expects_error": false,
     "kind": "long"
+  },
+  {
+    "name": "option_order_choice",
+    "file": "case_option_order_choice.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_score",
+    "file": "case_option_order_score.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_noul",
+    "file": "case_option_order_noul.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_identity",
+    "file": "case_option_order_identity.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_mixed",
+    "file": "case_option_order_mixed.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_choice_labels_list",
+    "file": "case_option_order_choice_labels_list.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_many_options",
+    "file": "case_option_order_many_options.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_min_confidence",
+    "file": "case_option_order_min_confidence.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_wrong_length",
+    "file": "case_option_order_wrong_length.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_duplicate",
+    "file": "case_option_order_duplicate.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_out_of_range",
+    "file": "case_option_order_out_of_range.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_negative",
+    "file": "case_option_order_negative.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_empty",
+    "file": "case_option_order_empty.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_noul_wrong_length",
+    "file": "case_option_order_noul_wrong_length.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_score_wrong_length",
+    "file": "case_option_order_score_wrong_length.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_first_bad_reported",
+    "file": "case_option_order_first_bad_reported.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_id_repr",
+    "file": "case_option_order_id_repr.json",
+    "expects_error": true
+  },
+  {
+    "name": "shortlist_option_order",
+    "file": "case_shortlist_option_order.json",
+    "expects_error": false,
+    "kind": "shortlist"
+  },
+  {
+    "name": "long_option_order_short",
+    "file": "case_long_option_order_short.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_option_order_multi_chunk",
+    "file": "case_long_option_order_multi_chunk.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_option_order_mixed",
+    "file": "case_long_option_order_mixed.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_option_order_invalid",
+    "file": "case_long_option_order_invalid.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "long_option_order_before_stride",
+    "file": "case_long_option_order_before_stride.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "batch_option_order",
+    "file": "case_batch_option_order.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_option_order_chunked",
+    "file": "case_batch_option_order_chunked.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_option_order_min_confidence",
+    "file": "case_batch_option_order_min_confidence.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_option_order_empty_states_invalid",
+    "file": "case_batch_option_order_empty_states_invalid.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_option_order_invalid",
+    "file": "case_batch_option_order_invalid.json",
+    "expects_error": true,
+    "kind": "batch"
   }
 ]

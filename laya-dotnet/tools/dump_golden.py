@@ -58,6 +58,13 @@ from golden_cases import (  # noqa: E402
     LONG_ERROR_CASES,
     MIN_CONFIDENCE_CASES,
     MIN_CONFIDENCE_ERROR_CASES,
+    OPTION_ORDER_BATCH_CASES,
+    OPTION_ORDER_BATCH_ERROR_CASES,
+    OPTION_ORDER_CASES,
+    OPTION_ORDER_ERROR_CASES,
+    OPTION_ORDER_LONG_CASES,
+    OPTION_ORDER_LONG_ERROR_CASES,
+    OPTION_ORDER_SHORTLIST_CASES,
     SHORTLIST_E2E_CASES,
 )
 
@@ -340,19 +347,24 @@ def describe_questions(agent: Agent, state, questions: dict, options: dict = Non
     out = []
     for qid, qdef in questions.items():
         q = Agent._to_internal(qdef)
-        seq, markers = build_sequence(agent.tok, state, q, max_len, head_max_len)
-        out.append(
-            {
-                "id": qid,
-                "type": q["t"],
-                "qtype": QTYPES[q["t"]],
-                "instructions": q["ins"],
-                "head_text": "%s question: %s" % (q["t"], str(q["ins"]).replace(mask_tok, " ")),
-                "options": render_options(q),
-                "input_ids": [int(i) for i in seq],
-                "markers": [int(m) for m in markers],
-            }
-        )
+        # `system_one` builds with the question's own order (agent.py:1159), so the recorded ids and
+        # markers are in slot order; `options` stays in option order, as `render_options` returns it.
+        seq, markers = build_sequence(agent.tok, state, q, max_len, head_max_len,
+                                      option_order=q.get("option_order"))
+        rec = {
+            "id": qid,
+            "type": q["t"],
+            "qtype": QTYPES[q["t"]],
+            "instructions": q["ins"],
+            "head_text": "%s question: %s" % (q["t"], str(q["ins"]).replace(mask_tok, " ")),
+            "options": render_options(q),
+            "input_ids": [int(i) for i in seq],
+            "markers": [int(m) for m in markers],
+        }
+        # Only when the question has one, so every earlier golden stays byte-identical.
+        if q.get("option_order") is not None:
+            rec["option_order"] = q["option_order"]
+        out.append(rec)
     return out
 
 
@@ -414,6 +426,8 @@ def record_shortlist_case(agent: Agent, case: dict) -> dict:
         if meta is not None and not meta["passthrough"]:
             updated = dict(qdef)
             updated["criteria"] = _subset_criteria(qdef["criteria"], meta["labels"])
+            # predict_shortlist drops an order the narrowed labels no longer fit (shortlist.py:425).
+            updated.pop("option_order", None)
             reduced[qid] = updated
         else:
             reduced[qid] = qdef
@@ -748,6 +762,32 @@ def run_checkpoint(onnx_dir: str, out_dir: str) -> int:
         index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
                       "expects_error": False, "kind": "long"})
     with_calibration(agent, {})
+
+    # Question-level `option_order`, appended after everything above so index.json's diff stays a pure
+    # append. Same kinds as their plain counterparts, so the existing parity tests pick them up.
+    for case in OPTION_ORDER_CASES + OPTION_ORDER_ERROR_CASES:
+        expects_error = case in OPTION_ORDER_ERROR_CASES
+        rec = (record_error_case if expects_error else record_case)(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": expects_error})
+    for case in OPTION_ORDER_SHORTLIST_CASES:
+        rec = record_shortlist_case(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": False, "kind": "shortlist"})
+    for cases, expects_error in ((OPTION_ORDER_LONG_CASES, False), (OPTION_ORDER_LONG_ERROR_CASES, True)):
+        for case in cases:
+            rec = record_long_case(agent, case, expects_error)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error, "kind": "long"})
+    for cases, expects_error in ((OPTION_ORDER_BATCH_CASES, False), (OPTION_ORDER_BATCH_ERROR_CASES, True)):
+        for case in cases:
+            rec = record_batch_case(agent, case, expects_error)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error, "kind": "batch"})
 
     dump(index, os.path.join(out_dir, "index.json"))
     print("done: %d cases -> %s" % (len(index), out_dir))

@@ -65,4 +65,19 @@ fn the_table_resolves_before_the_checkpoint_warning() {
         take().is_empty(),
         "the checkpoint warning must not be logged"
     );
+
+    // Python 0.4.20: a temperature too wide for a double is the neutral 1.0 and is named, digit for
+    // digit, in the checkpoint's warning; an entry that inherits the list is not reported again,
+    // and the load does not fail.
+    let wide = format!("1{}", "0".repeat(400));
+    let config = format!(r#"{{"temperature": [{wide}, 1.2, 1.1]}}"#);
+    let inherit = vec![("de".to_string(), None)];
+    let loaded = LayaConfig::parse_with_lang_temperatures(&config, &inherit).unwrap();
+    assert_eq!(vec![1.0, 1.2, 1.1], loaded.temperature);
+    let seen = take();
+    assert_eq!(1, seen.len(), "{seen:?}");
+    assert!(
+        seen[0].contains(&format!("clamping temperature[0]={wide} -> 1.")),
+        "{seen:?}"
+    );
 }

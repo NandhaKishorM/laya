@@ -1,5 +1,6 @@
 export const VERSION = "0.1.0";
 export { Agent, checkQuestion, toInternal, defaultTokenizer } from "./agent.js";
+export type { LongPredictOptions, LongResult, LongUsage, LongAnswer, LongWindow } from "./predict-long.js";
 export type {
   QuestionDef,
   SystemOneResult,
@@ -16,7 +17,7 @@ export type {
 export { createNodeProvider, createWebProvider, feed, feedHead, loadNodeBundle, loadWebBundle, PINNED_REVISIONS, resolveRevision } from "./providers.js";
 export type { Batch, SessionProvider, ProviderOptions, NodeBundle, WebBundle } from "./providers.js";
 export { Router, normaliseName, DEFAULT_MODELS, digestsFromEnv, _digestsFromEnv } from "./router.js";
-export type { RoutedResult, RouteDecision, ModelName, ModelSpec, BatchRequest, PredictBatchOptions, RouterOptions, RouteOptions } from "./router.js";
+export type { RoutedResult, RoutedLongResult, RoutedLongPredictOptions, RouteDecision, ModelName, ModelSpec, BatchRequest, PredictBatchOptions, RouterOptions, RouteOptions } from "./router.js";
 export { shortlistChoice, predictShortlist, predictTournament, embedFnFromAgent, cached, cachedEmbedFn, DEFAULT_SHORTLIST_K, DEFAULT_SHORTLIST_MAXSIZE, DEFAULT_TOURNAMENT_GROUP } from "./shortlist.js";
 export type { EmbedFn, ShortlistMeta, TournamentMeta, CacheInfo, CachedEmbedFn } from "./shortlist.js";
 export { analyse, isEnglish, guessLatinLanguage, detectScript } from "./lang.js";

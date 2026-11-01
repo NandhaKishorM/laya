@@ -225,7 +225,8 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
                   ("Router.predict", Router.predict),
                   ("Router.predict_batch", Router.predict_batch),
                   ("Router.predict_long", Router.predict_long),
-                  ("ONNXAgent.system_one", ONNXAgent.system_one)):
+                  ("ONNXAgent.system_one", ONNXAgent.system_one),
+                  ("ONNXAgent.predict_long", ONNXAgent.predict_long)):
     check_param(label, fn, "hooks", None)
     check_param(label, fn, "on_predict_start", None)
     check_param(label, fn, "on_predict_end", None)
@@ -234,10 +235,16 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
 
 # The scan sizes its windows from the checkpoint budget, so it takes `window`/`stride` instead
 # of the per-call token overrides the single-window entries take.
-check_param("Agent.predict_long", Agent.predict_long, "window", None)
-check_param("Agent.predict_long", Agent.predict_long, "stride", None)
-for param in ("max_len", "head_max_len"):
-    check("Agent.predict_long/%s not accepted" % param, param in sig(Agent.predict_long), False)
+# The TypeScript predictLong port uses these same long-only controls. Keep the
+# Python oracle's ONNX and Router surfaces pinned alongside the torch entry point.
+for label, fn in (("Agent.predict_long", Agent.predict_long),
+                  ("ONNXAgent.predict_long", ONNXAgent.predict_long),
+                  ("Router.predict_long", Router.predict_long)):
+    for param in ("window", "stride", "batch_size"):
+        check_param(label, fn, param, None)
+    check_param(label, fn, "aggregate", "auto")
+    for param in ("max_len", "head_max_len", "min_confidence"):
+        check("%s/%s not accepted" % (label, param), param in sig(fn), False)
 
 check_param("Agent.predict_batch", Agent.predict_batch, "batch_size", None)
 check_param("Agent.predict_batch", Agent.predict_batch, "sort_by_length", False)

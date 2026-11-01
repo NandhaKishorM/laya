@@ -107,7 +107,7 @@ test("the packed module installs and works in an external ESM TypeScript project
   await writeFile(
     join(consumerDir, "runtime.mjs"),
     `import assert from "node:assert/strict";
-import { Agent, VERSION, predictTournament, DEFAULT_TOURNAMENT_GROUP,
+import { Agent, Router, defaultTokenizer, VERSION, predictTournament, DEFAULT_TOURNAMENT_GROUP,
   OptionStabilityHook, calibrateReliability, decideReliability } from "laya-ts";
 
 let encoderCalls = 0;
@@ -151,6 +151,21 @@ assert.equal(stable.answers.intent.reliability.n_variants, 3);
 assert.equal(stable.answers.intent.reliability.decision, null);
 const cuts = calibrateReliability([0.80001, 0.80002], [false, true], { targetAccuracy: 1 });
 assert.equal(decideReliability(0.80002, ...cuts), "ACCEPT");
+const longAgent = new Agent({ provider, tok: {
+  ...defaultTokenizer(),
+  encode: (text) => Array.from(text, (c) => c.codePointAt(0) + 1000),
+  decode: (ids) => String.fromCodePoint(...ids.map((id) => id - 1000)),
+} });
+const longRouter = new Router();
+longRouter.attach("english", longAgent);
+const long = await longRouter.predictLong("a long document ".repeat(8), {
+  intent: { type: "choice", instructions: "Pick", criteria: ["refund", "other"] },
+}, { model: "english", window: 40, stride: 20, batchSize: 2 });
+assert(long.usage.windows > 1);
+assert.equal(typeof long.usage.truncated, "number");
+assert.equal(long.answers.intent.choice, "refund");
+assert.equal(long.answers.intent.window.token_start, 0);
+assert.equal(long.routing.model, "english");
 `,
   );
   await run(process.execPath, ["runtime.mjs"], consumerDir);
@@ -168,6 +183,7 @@ assert.equal(decideReliability(0.80002, ...cuts), "ACCEPT");
   type SessionProvider,
   type SystemOneResult,
   type TournamentMeta,
+  type LongResult,
 } from "laya-ts";
 
 const provider: SessionProvider = {
@@ -205,6 +221,8 @@ async function reliability(): Promise<OptionStabilityReport | undefined> {
   return result.answers.intent.type === "choice" ? result.answers.intent.reliability : undefined;
 }
 void reliability;
+const longPrediction: Promise<LongResult> = new Agent({ provider }).predictLong("short", questions);
+void longPrediction;
 `,
   );
   await writeFile(

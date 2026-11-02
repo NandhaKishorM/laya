@@ -568,6 +568,37 @@ describe("Router.routeBatch / predictBatch", () => {
     ).rejects.toThrow(/returned 0 results for 2 states/);
   });
 
+  it.each([false, true])("forwards fallback budgets with hook override=%s", async (override) => {
+    const calls: unknown[] = [];
+    const router = new Router({
+      loader: (() => ({
+        langTemperatures: { en: {} },
+        async systemOne(state: unknown, _questions: unknown, opts: unknown) {
+          calls.push([state, opts]);
+          return { model: "stub", answers: { seen: state }, usage: {} };
+        },
+      })) as never,
+    });
+    const results = await router.predictBatch([
+      req("budgeted", { model: "english", lang: "en", maxLen: 64, headMaxLen: 16 }),
+      req("defaults", { model: "english", lang: "en", maxLen: null, headMaxLen: null }),
+      req("zero", { model: "english", lang: "en", maxLen: 0, headMaxLen: 0 }),
+    ], 2, {
+      onPredictStart(ctx) {
+        if (override && ctx.states[0] === "budgeted") {
+          ctx.maxLen = 96;
+          ctx.headMaxLen = 24;
+        }
+      },
+    });
+    expect(calls).toEqual([
+      ["budgeted", { lang: "en", maxLen: override ? 96 : 64, headMaxLen: override ? 24 : 16 }],
+      ["defaults", { lang: "en" }],
+      ["zero", { lang: "en", maxLen: 0, headMaxLen: 0 }],
+    ]);
+    expect(results.map((r) => r.answers.seen)).toEqual(["budgeted", "defaults", "zero"]);
+  });
+
   it("falls back to systemOne for agent-like objects without predictBatch", async () => {
     const router = new Router({
       loader: (() => ({

@@ -934,7 +934,7 @@ export class Router extends HookRegistry {
         systemOne(
           state: unknown,
           questions: Record<string, QuestionDef>,
-          opts?: { lang?: string | null },
+          opts?: { lang?: string | null; maxLen?: number | null; headMaxLen?: number | null },
         ): Promise<SystemOneResult>;
         langTemperatures?: Record<string, unknown>;
       };
@@ -1037,7 +1037,10 @@ export class Router extends HookRegistry {
             // still work; their states simply share no forward pass.
             batchResults = [];
             for (const [, ctx] of group.items) {
-              const singleOpts = group.lang === null ? {} : { lang: group.lang };
+              const singleOpts: { lang?: string; maxLen?: number; headMaxLen?: number } =
+                group.lang === null ? {} : { lang: group.lang };
+              if (group.maxLen !== null) singleOpts.maxLen = group.maxLen;
+              if (group.headMaxLen !== null) singleOpts.headMaxLen = group.headMaxLen;
               markDefaultsRan(singleOpts);
               batchResults.push(
                 await agent.systemOne(

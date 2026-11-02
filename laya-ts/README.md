@@ -305,6 +305,10 @@ const results = await agent.predictBatch(states, questions, { batchSize: 32 });
 // in as few forward passes as possible. Results keep input order and carry `routing`.
 const decisions = router.routeBatch(requests);          // validate + route, nothing loads
 const routed = await router.predictBatch(requests, 32); // == router.predictMany(...)
+// Token budgets belong to each request; omitted/null values use the Agent config.
+const budgeted = await router.predictBatch([
+  { state: "ticket", questions, maxLen: 64, headMaxLen: 16 },
+]);
 // Per-call hooks are composed like predict: installed hooks first, then this list,
 // then onPredictStart / onPredictEnd. null and [] add nothing. hooksRaise overrides
 // the Router's policy for this call. The list runs once per request, including onRoute.
@@ -315,8 +319,8 @@ const traced = await router.predictBatch(requests, null, {
 });
 
 // requests routed to the same checkpoint still split into separate batches when their
-// question schemas differ (order-sensitively), when per-request start hooks set
-// different ctx.maxLen / ctx.headMaxLen overrides, or — for an agent carrying
+// question schemas differ (order-sensitively), when their maxLen / headMaxLen
+// budgets differ after start hooks (which can replace or clear them), or — for an agent carrying
 // lang_temperatures — when their languages differ: each request's effective language (an
 // explicit lang, otherwise the detected non-English one) is forwarded to the agent, so
 // the batched path scores exactly like predict. Router-level predict hooks run once per

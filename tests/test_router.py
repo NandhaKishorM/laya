@@ -175,6 +175,10 @@ check("state_text/dict", "charged twice" in state_text({"body": "charged twice",
 check("state_text/nested", "deep" in state_text({"a": {"b": ["deep"]}}), True)
 check("state_text/list", "x" in state_text(["x", {"y": "z"}]), True)
 check("state_text/none", state_text(None), "")
+check("state_text/plain string", state_text("hello world"), "hello world")
+check("state_text/plain string budget", state_text("hello world", max_chars=5), "hello")
+check("state_text/bytes budget", state_text(b"hello world", max_chars=5), "hello")
+check("state_text/budget truncation halts", state_text(["part1", "part2", "part3"], max_chars=5), "part1")
 # keys must not drive detection: English keys around Hindi content stay non-English
 check("state_text/keys ignored",
       analyse({"subject": "नमस्ते", "body": "ग्राहक से दो बार शुल्क लिया गया"})["is_english"], False)

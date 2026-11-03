@@ -108,7 +108,23 @@ test("the packed module installs and works in an external ESM TypeScript project
     join(consumerDir, "runtime.mjs"),
     `import assert from "node:assert/strict";
 import { Agent, Router, defaultTokenizer, VERSION, predictTournament, DEFAULT_TOURNAMENT_GROUP,
-  OptionStabilityHook, calibrateReliability, decideReliability } from "laya-ts";
+  OptionStabilityHook, calibrateReliability, decideReliability, analyse } from "laya-ts";
+
+const localRouter = new Router({ loader: async () => { throw new Error("routing must not load"); } });
+const ticket = {
+  note: "This is an English note about the order. ".repeat(140),
+  customer: "Ich kann mich nicht anmelden und brauche Hilfe",
+};
+const diagnostic = { stage: "value", reason: "named_value", source: { leafIndex: 1, path: ["customer"], line: 1 } };
+assert.deepEqual(analyse(ticket, { explain: true }).diagnostic, diagnostic);
+assert.equal(Object.hasOwn(analyse(ticket), "diagnostic"), false);
+assert.deepEqual(localRouter.route(ticket, {}, { explain: true }).detection.diagnostic, diagnostic);
+const routingBatch = localRouter.routeBatch([
+  { state: ticket, questions: {} }, { state: ticket, questions: {}, model: "english" },
+], { explain: true });
+assert.deepEqual(routingBatch[0].detection.diagnostic, diagnostic);
+assert.equal(routingBatch[1].detection, null);
+assert.deepEqual(localRouter.loaded, []);
 
 let encoderCalls = 0;
 let headCalls = 0;
@@ -174,6 +190,12 @@ assert.equal(long.routing.model, "english");
     join(consumerDir, "consumer.ts"),
     `import {
   Agent,
+  Router,
+  analyse,
+  type AnalyseOptions,
+  type LanguageDiagnostic,
+  type LanguageDiagnosticReason,
+  type RouteBatchOptions,
   VERSION,
   predictTournament,
   DEFAULT_TOURNAMENT_GROUP,
@@ -185,6 +207,15 @@ assert.equal(long.routing.model, "english");
   type TournamentMeta,
   type LongResult,
 } from "laya-ts";
+
+const analysisOptions: AnalyseOptions = { explain: true };
+const diagnostic: LanguageDiagnostic | undefined = analyse("Turn lights off", analysisOptions).diagnostic;
+const diagnosticReason: LanguageDiagnosticReason | undefined = diagnostic?.reason;
+const batchOptions: RouteBatchOptions = { explain: true };
+const router = new Router();
+router.route("Turn lights off", {}, analysisOptions);
+router.routeBatch([{ state: "Turn lights off", questions: {} }], batchOptions);
+void diagnosticReason;
 
 const provider: SessionProvider = {
   async runEncoder(batch) {

@@ -37,6 +37,25 @@ describe("lang", () => {
     expect(a.isEnglish).toBe(false);
     expect(a.language).toBe(null);
   });
+  // Python divides the diacritic count by len(lowered) -- code points. This port divided by
+  // `lowered.length`, which counts UTF-16 units, so every astral character (an emoji, an Old
+  // Italic letter) counted as two and understated the rate. The first case sits at the
+  // NON_EN_DIACRITIC_RATE threshold: Python's rate is 1/49 = 0.0204 >= 0.02 (non-English, off the
+  // English checkpoint), the UTF-16 rate is 1/51 = 0.0196 < 0.02, and `analyse` answered
+  // `isEnglish: true` here while Python answered `false` -- two emoji changed the routing verdict.
+  // The other two show the rate itself. Expectations from Python's laya.lang.latin_profile on the
+  // same inputs.
+  it("counts code points, not UTF-16 units, in diacriticRate", () => {
+    const flip = analyse("é\uD83D\uDE00\uD83D\uDE00" + "-".repeat(46));
+    expect(flip.diacriticRate).toBeCloseTo(0.0204, 6);
+    expect(flip.isEnglish).toBe(false);
+    const heavy = analyse("créé résumé résumé résumé " + "\uD83D\uDE00".repeat(20));
+    expect(heavy.diacriticRate).toBeCloseTo(0.1739, 4);
+    expect(heavy.isEnglish).toBe(false);
+    const spanish = analyse("día señor niño " + "\uD83D\uDE00".repeat(15));
+    expect(spanish.diacriticRate).toBeCloseTo(0.1, 6);
+    expect(spanish.isEnglish).toBe(false);
+  });
   // Vietnamese: no stopword list of its own, so NON_EN_DIACRITICS is the only signal that keeps
   // it off the English checkpoint -- and the tone-marked letters are precomposed codepoints the
   // set did not hold, so everyday sentences carried a diacritic rate of 0.0 and read as English.

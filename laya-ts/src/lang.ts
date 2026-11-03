@@ -213,6 +213,19 @@ function scriptOf(ch: string): string | null {
   return null;
 }
 
+/** Python's `len()`: the number of code points, not of UTF-16 units. Python's `lang.py` divides
+ * the diacritic count by `len(lowered)`, and every other port counts code points too (Go
+ * `utf8.RuneCountInString`, Rust `chars().count()`, Java `codePointLength`, C++ `RuneCount`), so
+ * an astral character must count as one here as well. `String.length` counts it as two, which
+ * understated `diacriticRate` on any text carrying emoji -- e.g. `analyse()` on
+ * `"é\uD83D\uDE00\uD83D\uDE00" + "-".repeat(46)` read `isEnglish: true` in this port where
+ * Python answers `false`, routing the text to the English checkpoint. */
+function width(text: string): number {
+  let count = 0;
+  for (const _ch of text) count++;
+  return count;
+}
+
 /** String leaves of a state. Keys are ignored: they are usually English field names. */
 function iterText(state: unknown, depth = 0): string[] {
   if (depth > 6 || state == null) return [];
@@ -350,7 +363,7 @@ export function latinProfile(text: string): LatinProfile {
   for (const ch of lowered) {
     if (NON_EN_DIACRITICS.has(ch)) diac += 1;
   }
-  const diacRate = diac / Math.max(1, lowered.length);
+  const diacRate = diac / Math.max(1, width(lowered));
   const nonEnglish = diacRate >= NON_EN_DIACRITIC_RATE;
   const nordicOverlap = words.some((w) => NORDIC_OVERLAP_WORDS.has(w)) &&
     !words.some((w) => EN_ONLY_WORDS.has(w));
@@ -443,12 +456,12 @@ function shouted(text: string): boolean {
 
 /** Whether an all-caps line's evidence for `lang` is more than acronym-shaped tokens. */
 function shoutedEvidence(tokens: string[], lang: string, diacriticRate: number): boolean {
-  if (!tokens.some((t) => t.length >= SHOUTED_MIN_WORD)) return false;
+  if (!tokens.some((t) => width(t) >= SHOUTED_MIN_WORD)) return false;
   if (diacriticRate >= NON_EN_DIACRITIC_RATE) return true;
   const stopSet = STOP[lang];
   if (!stopSet) return false;
   const matched = new Set(tokens.map((t) => t.toLowerCase()).filter((t) => stopSet.has(t)));
-  return [...matched].some((w) => w.length >= SHOUTED_MIN_STOPWORD);
+  return [...matched].some((w) => width(w) >= SHOUTED_MIN_STOPWORD);
 }
 
 /** Language code for one non-code line, or null when it does not name a foreign language.
@@ -586,7 +599,7 @@ function analyseText(text: string): AnalyseResult {
       // `sag mir das HEUTIGE DATUM` lost its verdict). Diacritic evidence stays measured on the
       // original text, so a shouted foreign word cannot be blanked out of the safety net.
       const caps = (text.match(LETTER_RUN_RE) ?? []).filter((m) => m === m.toUpperCase());
-      if (caps.length > 0 && !caps.some((c) => c.length >= SHOUTED_MIN_WORD)) {
+      if (caps.length > 0 && !caps.some((c) => width(c) >= SHOUTED_MIN_WORD)) {
         const blanked = text.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
         if (blanked !== text) lang = latinProfile(blanked).language;
       }

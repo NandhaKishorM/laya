@@ -1,10 +1,23 @@
 // laya-ts/tests/lang.test.ts
 import { describe, expect, it } from "vitest";
-import { analyse, detectScript, guessLatinLanguage, isEnglish } from "../src/lang.js";
+import { analyse, detectScript, guessLatinLanguage, isEnglish, stateText } from "../src/lang.js";
 import { Router } from "../src/router.js";
 describe("lang", () => {
   it("detects devanagari as non-latin", () => {
     expect(detectScript("मुझसे दो बार शुल्क लिया गया")).toBe("devanagari");
+  });
+  // Python's state_text slices its 4000-character budget by code points; this port sliced by
+  // UTF-16 units, so a state whose 4000th unit was the high half of an emoji returned text
+  // ending in an orphaned surrogate -- a malformed string Python never produces, and the same
+  // lone-surrogate shape laya-serve already refuses as a request (#454, #814). The email port
+  // carries cutCodePoints for the same reason ("a budget cut an emoji in half").
+  // Expectations from Python's laya.lang.state_text on the same input.
+  it("stateText cuts its budget at code points, never splitting a surrogate pair", () => {
+    const state = "A".repeat(3999) + "\uD83D\uDE00" + "tail text that will be cut";
+    const text = stateText(state);
+    expect([...text].length).toBe(4000);
+    expect(text.codePointAt(text.length - 2)).toBe(0x1f600); // the whole emoji survived
+    expect(text.endsWith("\uD83D\uDE00")).toBe(true);      // no orphaned high surrogate at the cut
   });
   it("routes english latin to english", () => {
     expect(analyse("Please refund the duplicate charge").isEnglish).toBe(true);

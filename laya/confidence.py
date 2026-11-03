@@ -95,6 +95,12 @@ def jev_confidence(answer: Dict[str, Any]) -> Optional[float]:
     if n == 1:
         return 1.0
     total = sum(p)
+    if not math.isfinite(total):
+        # Individually finite weights can still overflow when added. A common scale cancels
+        # in the normalization, and scaling by the maximum keeps every addend at most 1.
+        scale = max(p)
+        p = [v / scale for v in p]
+        total = sum(p)
     p = [v / total for v in p] if total else [1.0 / n] * n
     if kind == "choice":
         return (max(p) - 1.0 / n) / (1.0 - 1.0 / n)

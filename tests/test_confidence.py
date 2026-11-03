@@ -2455,6 +2455,35 @@ for _name, _answer, _want in (
     check_true("jev_confidence/%s" % _name, _got is not None and abs(_got - _want) < 1e-9,
                "got %r, want %r" % (_got, _want))
 
+# --- finite total overflow: a common scale must not change the confidence -----------------
+# Each entry below is finite and non-negative. The public helper accepts unnormalised weights,
+# but their sum can still overflow: dividing by infinity turns them all into zeros, reporting
+# negative choice confidence or maximum score confidence for an uncertain distribution.
+_JEV_FINITE_SCALE_CASES = (
+    ("overflow-uniform", (1e308, 1e308), (1.0, 1.0)),
+    ("overflow-skewed", (1e308, 8e307), (1.0, 0.8)),
+    ("overflow-with-zero", (0.0, 1e308, 1e308), (0.0, 1.0, 1.0)),
+    ("overflow-three", (1e308, 5e307, 5e307), (1.0, 0.5, 0.5)),
+    ("overflow-integers", (10 ** 308, 10 ** 308), (1.0, 1.0)),
+    ("overflow-numeric-strings", ("1e308", "1e308"), (1.0, 1.0)),
+    ("small-normal", (1e-308, 8e-309), (1.0, 0.8)),
+    ("smallest-subnormal", (5e-324, 5e-324), (1.0, 1.0)),
+    ("zero-total", (0.0, 0.0), (1.0, 1.0)),
+)
+for _name, _weights, _reference in _JEV_FINITE_SCALE_CASES:
+    for _build in (_choice, _score):
+        _answer = _build(*_weights)
+        _before = copy.deepcopy(_answer)
+        _got = jev_confidence(_answer)
+        _want = jev_confidence(_build(*_reference))
+        check_true("jev_finite_scale/%s/%s" % (_answer["type"], _name),
+                   _got is not None and abs(_got - _want) < 1e-9,
+                   "got %r, want %r" % (_got, _want))
+        check_true("jev_finite_range/%s/%s" % (_answer["type"], _name),
+                   _got is not None and 0.0 <= _got <= 1.0, repr(_got))
+        check("jev_finite_input/%s/%s" % (_answer["type"], _name), _answer, _before)
+# --- end finite total overflow -------------------------------------------------------------
+
 # Score levels are read in numeric order, not string order: "10" sorts before "2" as text.
 _levels = {str(i): 0.0 for i in range(11)}
 _levels["10"] = 1.0

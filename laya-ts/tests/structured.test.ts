@@ -644,6 +644,40 @@ describe("structured/decideBatch", () => {
 
 
 
+describe("structured/decideBatch Router token budgets", () => {
+  it.each([32, 512])("matches single encoding when overriding the Agent default of %s", async (maxLen) => {
+    const encoderLengths: number[][] = [];
+    const agent = new Agent({
+      max_len: maxLen,
+      provider: {
+        async runEncoder(batch) {
+          encoderLengths.push(batch.inputIds.map((row) => row.length));
+          return { lastHidden: batch.inputIds.map(() => [[1, 0], [0, 1]]) };
+        },
+        async runHead(_hidden, batch) {
+          return {
+            logits: batch.inputIds.map(() => [2, 0]),
+            act: batch.inputIds.map(() => [3, 0]),
+          };
+        },
+      },
+    });
+    const router = new Router({ default: "english", loader: () => agent });
+    const schema = {
+      type: "object",
+      properties: { relevant: { type: "boolean", description: "Is the request relevant?" } },
+    };
+    const state = Array.from({ length: 160 }, (_, i) => `word${i}`).join(" ");
+    const opts = { model: "english", maxLen: 64, headMaxLen: 16, returnDetails: true as const };
+    const single = await router.decide(state, schema, opts);
+    const batch = await router.decideBatch([state, state], schema, opts);
+    expect(single.usage).toMatchObject({ input_tokens: 64, state_tokens_dropped: 114, truncated: true });
+    expect(batch.map((result) => result.usage)).toEqual([single.usage, single.usage]);
+    expect(batch.map((result) => result.values)).toEqual([single.values, single.values]);
+    expect(encoderLengths).toEqual([[64], [64, 64]]);
+  });
+});
+
 // `DecideBatchOptions` documents that anything it does not read itself is forwarded to the
 // runner, hooks included. On a Router-like runner the call used to spread those options into the
 // request objects and pass no third argument, so `Router.predictBatch` -- which reads hooks from

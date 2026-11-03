@@ -189,7 +189,7 @@ export interface PredictBatchOptions {
   hooksRaise?: boolean;
 }
 
-/** One item of a Router.predictBatch/routeBatch batch: state, questions, route overrides. */
+/** One item of a Router.predictBatch/routeBatch batch: state, questions, route and budget overrides. */
 export interface BatchRequest {
   state: unknown;
   questions: Record<string, QuestionDef>;
@@ -198,6 +198,9 @@ export interface BatchRequest {
   lang?: string | null;
   langGuess?: LangGuess;
   lang_guess?: LangGuess;
+  /** Per-request token budgets; null = agent config. Start hooks may override them. */
+  maxLen?: number | null;
+  headMaxLen?: number | null;
 }
 
 function questionSchema(questions: Record<string, unknown>): string {
@@ -931,7 +934,7 @@ export class Router extends HookRegistry {
         systemOne(
           state: unknown,
           questions: Record<string, QuestionDef>,
-          opts?: { lang?: string | null },
+          opts?: { lang?: string | null; maxLen?: number | null; headMaxLen?: number | null },
         ): Promise<SystemOneResult>;
         langTemperatures?: Record<string, unknown>;
       };
@@ -945,6 +948,8 @@ export class Router extends HookRegistry {
             model: modelName,
             agent,
             router: this,
+            maxLen: requests[i].maxLen ?? null,
+            headMaxLen: requests[i].headMaxLen ?? null,
           });
           started.push(ctx);
           dispatch(active, "onPredictStart", ctx, { raiseErrors });
@@ -1032,7 +1037,10 @@ export class Router extends HookRegistry {
             // still work; their states simply share no forward pass.
             batchResults = [];
             for (const [, ctx] of group.items) {
-              const singleOpts = group.lang === null ? {} : { lang: group.lang };
+              const singleOpts: { lang?: string; maxLen?: number; headMaxLen?: number } =
+                group.lang === null ? {} : { lang: group.lang };
+              if (group.maxLen !== null) singleOpts.maxLen = group.maxLen;
+              if (group.headMaxLen !== null) singleOpts.headMaxLen = group.headMaxLen;
               markDefaultsRan(singleOpts);
               batchResults.push(
                 await agent.systemOne(

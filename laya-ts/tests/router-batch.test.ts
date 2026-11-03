@@ -498,6 +498,64 @@ describe("Router.routeBatch / predictBatch", () => {
     expect(calls[1][3]).toEqual({ batchSize: null, maxLen: 64 });
   });
 
+  it("seeds request budgets before hooks and groups by both final budgets", async () => {
+    const { router, calls } = makeRouter();
+    const seen: unknown[] = [];
+    const results = await router.predictBatch([
+      req("a", { model: "english", maxLen: 64, headMaxLen: 16 }),
+      req("b", { model: "english", maxLen: 128, headMaxLen: 16 }),
+      req("c", { model: "english", maxLen: 64, headMaxLen: 32 }),
+      req("d", { model: "english", maxLen: 64, headMaxLen: 16 }),
+    ], 2, {
+      onPredictStart(ctx) { seen.push([ctx.maxLen, ctx.headMaxLen]); },
+    });
+    expect(seen).toEqual([[64, 16], [128, 16], [64, 32], [64, 16]]);
+    expect(calls.map((c) => [c[1], c[3]])).toEqual([
+      [["a", "d"], { batchSize: 2, maxLen: 64, headMaxLen: 16 }],
+      [["b"], { batchSize: 2, maxLen: 128, headMaxLen: 16 }],
+      [["c"], { batchSize: 2, maxLen: 64, headMaxLen: 32 }],
+    ]);
+    expect(results.map((r) => r.answers.seen)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("lets hooks replace or clear explicit budgets before grouping", async () => {
+    const { router, calls } = makeRouter();
+    const seen: unknown[] = [];
+    await router.predictBatch([
+      req("replace", { model: "english", maxLen: 64, headMaxLen: 16 }),
+      req("clear", { model: "english", maxLen: 128, headMaxLen: 32 }),
+      req("defaults", { model: "english" }),
+    ], null, {
+      onPredictStart(ctx) {
+        seen.push([ctx.maxLen, ctx.headMaxLen]);
+        if (ctx.states[0] === "replace") {
+          ctx.maxLen = 96;
+          ctx.headMaxLen = 24;
+        } else if (ctx.states[0] === "clear") {
+          ctx.maxLen = ctx.headMaxLen = null;
+        }
+      },
+    });
+    expect(seen).toEqual([[64, 16], [128, 32], [null, null]]);
+    expect(calls.map((c) => [c[1], c[3]])).toEqual([
+      [["replace"], { batchSize: null, maxLen: 96, headMaxLen: 24 }],
+      [["clear", "defaults"], { batchSize: null }],
+    ]);
+  });
+
+  it("keeps absent and null budgets unset without dropping zero overrides", async () => {
+    const { router, calls } = makeRouter();
+    await router.predictBatch([
+      req("absent", { model: "english" }),
+      req("null", { model: "english", maxLen: null, headMaxLen: null }),
+      req("zero", { model: "english", maxLen: 0, headMaxLen: 0 }),
+    ]);
+    expect(calls.map((c) => [c[1], c[3]])).toEqual([
+      [["absent", "null"], { batchSize: null }],
+      [["zero"], { batchSize: null, maxLen: 0, headMaxLen: 0 }],
+    ]);
+  });
+
   it("raises when the agent returns the wrong number of results", async () => {
     const router = new Router({
       loader: (() => ({
@@ -508,6 +566,37 @@ describe("Router.routeBatch / predictBatch", () => {
     await expect(
       router.predictBatch([req("a", { model: "english" }), req("b", { model: "english" })]),
     ).rejects.toThrow(/returned 0 results for 2 states/);
+  });
+
+  it.each([false, true])("forwards fallback budgets with hook override=%s", async (override) => {
+    const calls: unknown[] = [];
+    const router = new Router({
+      loader: (() => ({
+        langTemperatures: { en: {} },
+        async systemOne(state: unknown, _questions: unknown, opts: unknown) {
+          calls.push([state, opts]);
+          return { model: "stub", answers: { seen: state }, usage: {} };
+        },
+      })) as never,
+    });
+    const results = await router.predictBatch([
+      req("budgeted", { model: "english", lang: "en", maxLen: 64, headMaxLen: 16 }),
+      req("defaults", { model: "english", lang: "en", maxLen: null, headMaxLen: null }),
+      req("zero", { model: "english", lang: "en", maxLen: 0, headMaxLen: 0 }),
+    ], 2, {
+      onPredictStart(ctx) {
+        if (override && ctx.states[0] === "budgeted") {
+          ctx.maxLen = 96;
+          ctx.headMaxLen = 24;
+        }
+      },
+    });
+    expect(calls).toEqual([
+      ["budgeted", { lang: "en", maxLen: override ? 96 : 64, headMaxLen: override ? 24 : 16 }],
+      ["defaults", { lang: "en" }],
+      ["zero", { lang: "en", maxLen: 0, headMaxLen: 0 }],
+    ]);
+    expect(results.map((r) => r.answers.seen)).toEqual(["budgeted", "defaults", "zero"]);
   });
 
   it("falls back to systemOne for agent-like objects without predictBatch", async () => {

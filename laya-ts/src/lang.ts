@@ -239,25 +239,59 @@ function cutCodePoints(text: string, count: number): string {
   return chars.slice(0, end).join("");
 }
 
-/** String leaves of a state. Keys are ignored: they are usually English field names. */
-function iterText(state: unknown, depth = 0): string[] {
+type DiagnosticPath = Array<string | number> | null;
+const ARRAY_ITERATOR = Array.prototype[Symbol.iterator];
+
+function childPath(path: DiagnosticPath, key: string | number): DiagnosticPath {
+  if (path === null) return null;
+  if (typeof key === "string") {
+    let size = 0;
+    for (const _ch of key) if (++size > 128) return null;
+  }
+  return [...path, key];
+}
+
+/** String leaves of a state. Keys are ignored as text, but can locate diagnostic evidence. */
+function iterText(state: unknown, depth = 0, paths?: DiagnosticPath[], path: DiagnosticPath = []): string[] {
   if (depth > 6 || state == null) return [];
-  if (typeof state === "string") return [state];
+  if (typeof state === "string") {
+    paths?.push(path);
+    return [state];
+  }
   if (state instanceof Uint8Array) {
     try {
-      return [new TextDecoder("utf-8", { fatal: true }).decode(state)];
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(state);
+      paths?.push(path);
+      return [text];
     } catch {
       return [];
     }
   }
   if (Array.isArray(state)) {
     const out: string[] = [];
-    for (const v of state) out.push(...iterText(v, depth + 1));
+    if (paths) {
+      // Read/call the iterator once, as for-of does. A custom iterator need not yield indices
+      // in array order; retain its traversal (including IteratorClose), but do not invent a path.
+      const iterator = state[Symbol.iterator];
+      const values = { [Symbol.iterator]: () => Reflect.apply(iterator, state, []) };
+      let index = 0;
+      for (const v of values) {
+        out.push(...iterText(v, depth + 1, paths, iterator === ARRAY_ITERATOR ? childPath(path, index) : null));
+        index++;
+      }
+    } else {
+      for (const v of state) out.push(...iterText(v, depth + 1));
+    }
     return out;
   }
   if (typeof state === "object") {
     const out: string[] = [];
-    for (const v of Object.values(state as object)) out.push(...iterText(v, depth + 1));
+    if (paths) {
+      // Like Object.values, entries snapshots all values before recursing into any of them.
+      for (const [key, v] of Object.entries(state)) out.push(...iterText(v, depth + 1, paths, childPath(path, key)));
+    } else {
+      for (const v of Object.values(state as object)) out.push(...iterText(v, depth + 1));
+    }
     return out;
   }
   return [];
@@ -368,6 +402,10 @@ export interface LatinProfile {
 }
 
 export function latinProfile(text: string): LatinProfile {
+  return latinProfileWithDiagnostic(text);
+}
+
+function latinProfileWithDiagnostic(text: string, diagnostic?: LanguageDiagnostic): LatinProfile {
   const stripped = text.replace(IDENTIFIER_RE, " ");
   const rawWords = stripped.match(WORD_RE) ?? [];
   const words = rawWords.map((w) => w.toLowerCase());
@@ -381,9 +419,11 @@ export function latinProfile(text: string): LatinProfile {
   const nordicOverlap = words.some((w) => NORDIC_OVERLAP_WORDS.has(w)) &&
     !words.some((w) => EN_ONLY_WORDS.has(w));
   if (words.length > 1 && words.length < 4 && words.some((w) => SHORT_SWEDISH_WORDS.has(w))) {
+    if (diagnostic) diagnostic.reason = "short_swedish";
     return { language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
   }
   if (words.length < 4) {
+    if (diagnostic) diagnostic.reason = "insufficient_words";
     return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap };
   }
   // A collision word counts once however often it repeats; every other word counts its hits.
@@ -417,11 +457,41 @@ export function latinProfile(text: string): LatinProfile {
   } else if (en && (!nonEnglish || englishRescuedByWords(wordSet, diacRate))) {
     lang = "en";
   }
+  if (diagnostic) diagnostic.reason = lang === null ? "no_language_evidence" : "language_evidence";
   return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish || (lang === null && nordicOverlap) };
 }
 
 export function guessLatinLanguage(text: string): string | null {
   return latinProfile(text).language;
+}
+
+export interface AnalyseOptions {
+  explain?: boolean;
+}
+
+export type LanguageDiagnosticReason =
+  | "no_letters" | "non_latin_script" | "short_swedish" | "insufficient_words"
+  | "language_evidence" | "no_language_evidence" | "caps_veto" | "caps_filtered"
+  | "non_english_markers" | "named_segment" | "named_value" | "non_latin_value" | "diacritic_value";
+
+/** The detector branch that decided the verdict; not a trace or a copy of the input text. */
+export interface LanguageDiagnostic {
+  stage: "whole_state" | "segment" | "value";
+  reason: LanguageDiagnosticReason;
+  source: {
+    leafIndex: number;
+    path: DiagnosticPath;
+    /** One-based for a segment; null for the TS whole-leaf value fallback. */
+    line: number | null;
+  } | null;
+}
+
+/** Shared runtime validation for the three routing-only explain entry points. */
+export function validateExplain(explain: unknown): boolean {
+  if (explain !== undefined && typeof explain !== "boolean") {
+    throw new TypeError("explain must be a boolean");
+  }
+  return explain === true;
 }
 
 export interface AnalyseResult {
@@ -433,6 +503,7 @@ export interface AnalyseResult {
   diacriticRate: number;
   nonLatinFraction: number;
   mixedSegment: string | null;
+  diagnostic?: LanguageDiagnostic;
 }
 
 // Code is not prose in any language, but split into words it reads as one: `os.path` is Portuguese
@@ -514,15 +585,24 @@ function namedProseLanguage(segment: string): string | null {
  * compounds are not words. This adds no new way to call English text foreign; it only stops a
  * longer English part from outvoting a foreign one. Reads at most `maxChars` characters in all.
  */
-function nonEnglishSegment(state: unknown, maxChars = 4000): [string, string] | null {
+function nonEnglishSegment(state: unknown, maxChars = 4000, diagnostic?: LanguageDiagnostic): [string, string] | null {
   let seen = 0;
-  for (const leaf of iterText(state)) {
-    for (const seg of leaf.split("\n")) {
+  const paths = diagnostic ? [] as DiagnosticPath[] : undefined;
+  const leaves = iterText(state, 0, paths);
+  for (const [leafIndex, leaf] of leaves.entries()) {
+    for (const [lineIndex, seg] of leaf.split("\n").entries()) {
       if (seen >= maxChars) return null;
       const capped = cutCodePoints(seg, maxChars - seen);
       seen += [...capped].length;
       const lang = namedProseLanguage(capped);
-      if (lang) return [lang, capped.trim()];
+      if (lang) {
+        if (diagnostic) {
+          diagnostic.stage = "segment";
+          diagnostic.reason = "named_segment";
+          diagnostic.source = { leafIndex, path: paths![leafIndex], line: lineIndex + 1 };
+        }
+        return [lang, capped.trim()];
+      }
     }
   }
   return null;
@@ -555,7 +635,7 @@ function round4(x: number): number {
   return kept / 10000;
 }
 
-function analyseText(text: string): AnalyseResult {
+function analyseText(text: string, diagnostic?: LanguageDiagnostic): AnalyseResult {
   const prof = scriptProfile(text);
   let script = detectScript(text);
   const nonLatin = prof && Object.keys(prof).length ? round4(1.0 - (prof["latin"] ?? 0.0)) : 0.0;
@@ -576,6 +656,7 @@ function analyseText(text: string): AnalyseResult {
     script = bestScript;
   }
   if (script === "unknown") {
+    if (diagnostic) diagnostic.reason = "no_letters";
     return {
       script: "unknown", scriptProfile: prof, language: null,
       isEnglish: true, languageUndecided: true, diacriticRate: 0.0,
@@ -583,13 +664,14 @@ function analyseText(text: string): AnalyseResult {
     };
   }
   if (script !== "latin") {
+    if (diagnostic) diagnostic.reason = "non_latin_script";
     return {
       script, scriptProfile: prof, language: null,
       isEnglish: false, languageUndecided: true, diacriticRate: 0.0,
       nonLatinFraction: nonLatin, mixedSegment: null,
     };
   }
-  const profLat = latinProfile(text);
+  const profLat = latinProfileWithDiagnostic(text, diagnostic);
   let lang = profLat.language;
   // The acronym bar belongs here too, not only in the segment scan. That scan runs once a state
   // already reads English overall, so a state that is *nothing but* an acronym line -- or one
@@ -604,7 +686,10 @@ function analyseText(text: string): AnalyseResult {
   // English checkpoint on the strength of disbelieving the Latin part.
   if (lang !== null && lang !== "en" && !nonLatinCarries(nonLatin, nNonLatin)) {
     if (shouted(text)) {
-      if (!shoutedEvidence(text.match(WORD_RE) ?? [], lang, profLat.diacriticRate)) lang = null;
+      if (!shoutedEvidence(text.match(WORD_RE) ?? [], lang, profLat.diacriticRate)) {
+        lang = null;
+        if (diagnostic) diagnostic.reason = "caps_veto";
+      }
     } else {
       // Mixed-case text: re-take the verdict without the all-caps runs that voted in it. Only
       // ACRONYM-SHAPED runs are blanked -- a run of SHOUTED_MIN_WORD letters is a word, and a word
@@ -614,12 +699,16 @@ function analyseText(text: string): AnalyseResult {
       const caps = (text.match(LETTER_RUN_RE) ?? []).filter((m) => m === m.toUpperCase());
       if (caps.length > 0 && !caps.some((c) => width(c) >= SHOUTED_MIN_WORD)) {
         const blanked = text.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
-        if (blanked !== text) lang = latinProfile(blanked).language;
+        if (blanked !== text) {
+          lang = latinProfile(blanked).language;
+          if (diagnostic) diagnostic.reason = "caps_filtered";
+        }
       }
     }
   }
   const undecided = lang === null;
   const english = lang === "en" || (undecided && !profLat.looksNonEnglish);
+  if (diagnostic && undecided && !english) diagnostic.reason = "non_english_markers";
   return {
     script: "latin", scriptProfile: prof, language: lang,
     isEnglish: english, languageUndecided: undecided,
@@ -635,29 +724,39 @@ function alphaCount(text: string): number {
 }
 
 /** A string value that is itself not safe for the English checkpoint, else null. */
-function leafNonEnglish(leaf: string): AnalyseResult | null {
+function leafNonEnglish(leaf: string, diagnostic?: LanguageDiagnostic): AnalyseResult | null {
   const sample = cutCodePoints(leaf, 4000);
   if (!sample.trim()) return null;
   const det = analyseText(sample);
   if (det.isEnglish) return null;
-  if (det.language !== null && det.language !== "en") return det;
+  if (det.language !== null && det.language !== "en") {
+    if (diagnostic) diagnostic.reason = "named_value";
+    return det;
+  }
   const nAlpha = alphaCount(sample);
   if (det.script !== "latin" && det.script !== "unknown") {
-    if (nonLatinWords(sample).length > 0 && nAlpha >= NON_LATIN_MIN_LETTERS) return det;
+    if (nonLatinWords(sample).length > 0 && nAlpha >= NON_LATIN_MIN_LETTERS) {
+      if (diagnostic) diagnostic.reason = "non_latin_value";
+      return det;
+    }
     return null;
   }
   const words = sample.match(WORD_RE) ?? [];
   if (det.languageUndecided && det.diacriticRate >= NON_EN_DIACRITIC_RATE && words.length >= 4) {
+    if (diagnostic) diagnostic.reason = "diacritic_value";
     return det;
   }
   return null;
 }
 
-export function analyse(state: unknown): AnalyseResult {
+export function analyse(state: unknown, opts: AnalyseOptions = {}): AnalyseResult {
+  const diagnostic: LanguageDiagnostic | undefined = validateExplain(opts.explain)
+    ? { stage: "whole_state", reason: "no_letters", source: null } : undefined;
   // One non-English string value is enough. Joining every value let a long English
   // note fill the window, or outvote a short German message, and that message was
   // then sent to the English checkpoint.
-  const result = analyseText(stateText(state));
+  const result = analyseText(stateText(state), diagnostic);
+  if (diagnostic) result.diagnostic = diagnostic;
   if (result.script === "latin" && result.isEnglish) {
     // A Portuguese ticket with an English stack trace, error payload or form template reads as
     // English as a whole, because the English part is longer -- yet the part a question is about
@@ -666,7 +765,7 @@ export function analyse(state: unknown): AnalyseResult {
     const leaves = iterText(state);
     // a single line has no other part to be outvoted by, and was just read whole
     if (leaves.length > 1 || leaves.some((leaf) => leaf.includes("\n"))) {
-      const found = nonEnglishSegment(state);
+      const found = nonEnglishSegment(state, 4000, diagnostic);
       if (found) {
         const [lang, mixed] = found;
         return {
@@ -686,16 +785,24 @@ export function analyse(state: unknown): AnalyseResult {
   }
   let best: AnalyseResult | null = null;
   let bestN = -1;
-  for (const leaf of iterText(state)) {
-    const det = leafNonEnglish(leaf);
+  let bestDiagnostic: LanguageDiagnostic | undefined;
+  const paths = diagnostic ? [] as DiagnosticPath[] : undefined;
+  const leaves = iterText(state, 0, paths);
+  for (const [leafIndex, leaf] of leaves.entries()) {
+    const valueDiagnostic: LanguageDiagnostic | undefined = diagnostic
+      ? { stage: "value", reason: "named_value", source: { leafIndex, path: paths![leafIndex], line: null } }
+      : undefined;
+    const det = leafNonEnglish(leaf, valueDiagnostic);
     if (!det) continue;
     const n = alphaCount(cutCodePoints(leaf, 4000));
     if (n > bestN) {
       bestN = n;
       best = det;
+      bestDiagnostic = valueDiagnostic;
     }
   }
   if (!best) return result;
+  if (bestDiagnostic) result.diagnostic = bestDiagnostic;
   // The value pass answers `language` and `isEnglish` for the state, and leaves the script fields
   // to the state. Returning `best` whole answered `script`, `scriptProfile` and `nonLatinFraction`
   // from one leaf instead: a long English note above a short Russian message is 98.6% Latin, and

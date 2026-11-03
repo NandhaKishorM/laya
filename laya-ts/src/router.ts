@@ -1,4 +1,4 @@
-import { analyse, type AnalyseResult } from "./lang.js";
+import { analyse, validateExplain, type AnalyseOptions, type AnalyseResult } from "./lang.js";
 import { checkQuestion, type PredictOptions, type QuestionDef, type SystemOneResult } from "./agent.js";
 import { skippedLongResult, validateLongOptions, validateLongResult, type LongPredictOptions, type LongResult } from "./predict-long.js";
 import { checkMinConfidence, flagLowConfidence } from "./common.js";
@@ -188,6 +188,9 @@ export interface PredictBatchOptions {
   onPredictEnd?: PredictHook;
   hooksRaise?: boolean;
 }
+
+/** Routing-only options; prediction batches keep their existing options. */
+export type RouteBatchOptions = PredictBatchOptions & AnalyseOptions;
 
 /** One item of a Router.predictBatch/routeBatch batch: state, questions, route and budget overrides. */
 export interface BatchRequest {
@@ -470,7 +473,7 @@ export class Router extends HookRegistry {
   route(
     state: unknown,
     questions: Record<string, unknown> | null = null,
-    opts: RouteOptions = {},
+    opts: RouteOptions & AnalyseOptions = {},
   ): RouteDecision {
     if (questions !== null && questions !== undefined) {
       if (typeof questions !== "object" || Array.isArray(questions)) {
@@ -496,8 +499,9 @@ export class Router extends HookRegistry {
   _route(
     state: unknown,
     questions: Record<string, unknown> | null = null,
-    opts: RouteOptions = {},
+    opts: RouteOptions & AnalyseOptions = {},
   ): RouteDecision {
+    const explain = validateExplain(opts.explain);
     const { model = null, task = null, lang = null } = opts;
     const langGuessOpt = opts.langGuess ?? opts.lang_guess ?? null;
 
@@ -567,7 +571,7 @@ export class Router extends HookRegistry {
       }
     }
 
-    const det = analyse(state);
+    const det = analyse(state, { explain });
     let key: ModelName;
     let reason: string;
     if (det.script === "unknown") {
@@ -835,7 +839,8 @@ export class Router extends HookRegistry {
    * validated before anything loads, so a malformed batch fails fast. Entries keep input
    * order; routing is deterministic, so repeated batches route identically.
    */
-  routeBatch(requests: BatchRequest[], opts: PredictBatchOptions = {}): RouteDecision[] {
+  routeBatch(requests: BatchRequest[], opts: RouteBatchOptions = {}): RouteDecision[] {
+    const explain = validateExplain(opts.explain);
     if (!Array.isArray(requests)) {
       throw new TypeError("requests must be an array of request objects");
     }
@@ -869,6 +874,7 @@ export class Router extends HookRegistry {
           langGuess: request.langGuess ?? request.lang_guess ?? null,
           hooks: opts.hooks,
           hooksRaise: opts.hooksRaise,
+          explain,
         }),
       );
     }

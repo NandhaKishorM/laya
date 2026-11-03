@@ -226,6 +226,19 @@ function width(text: string): number {
   return count;
 }
 
+/** Python's `text[:count]`: a prefix cut at code points, so a surrogate pair is never split
+ * in half. Python's `lang.py` slices the same budgets by code points (`state_text`,
+ * `_non_english_segment`, the 4000-character leaf samples), and the email port already cuts this
+ * way (`cutCodePoints` in `email.ts`, added when a budget cut an emoji in half). `String.slice`
+ * counts UTF-16 units, so `stateText("A".repeat(3999) + "\uD83D\uDE00" + "...")` used to return a
+ * string ending in the orphaned high half of the emoji -- text Python never produces, and a lone
+ * surrogate the serve side already refuses as malformed (#454, #814). */
+function cutCodePoints(text: string, count: number): string {
+  const chars = Array.from(text);
+  const end = count < 0 ? Math.max(0, chars.length + count) : Math.min(count, chars.length);
+  return chars.slice(0, end).join("");
+}
+
 /** String leaves of a state. Keys are ignored: they are usually English field names. */
 function iterText(state: unknown, depth = 0): string[] {
   if (depth > 6 || state == null) return [];
@@ -251,7 +264,7 @@ function iterText(state: unknown, depth = 0): string[] {
 }
 
 export function stateText(state: unknown, maxChars = 4000): string {
-  return iterText(state).join(" ").slice(0, maxChars);
+  return cutCodePoints(iterText(state).join(" "), maxChars);
 }
 
 export function detectScript(text: string): string {
@@ -506,8 +519,8 @@ function nonEnglishSegment(state: unknown, maxChars = 4000): [string, string] | 
   for (const leaf of iterText(state)) {
     for (const seg of leaf.split("\n")) {
       if (seen >= maxChars) return null;
-      const capped = seg.slice(0, maxChars - seen);
-      seen += capped.length;
+      const capped = cutCodePoints(seg, maxChars - seen);
+      seen += [...capped].length;
       const lang = namedProseLanguage(capped);
       if (lang) return [lang, capped.trim()];
     }
@@ -623,7 +636,7 @@ function alphaCount(text: string): number {
 
 /** A string value that is itself not safe for the English checkpoint, else null. */
 function leafNonEnglish(leaf: string): AnalyseResult | null {
-  const sample = leaf.slice(0, 4000);
+  const sample = cutCodePoints(leaf, 4000);
   if (!sample.trim()) return null;
   const det = analyseText(sample);
   if (det.isEnglish) return null;
@@ -676,7 +689,7 @@ export function analyse(state: unknown): AnalyseResult {
   for (const leaf of iterText(state)) {
     const det = leafNonEnglish(leaf);
     if (!det) continue;
-    const n = alphaCount(leaf.slice(0, 4000));
+    const n = alphaCount(cutCodePoints(leaf, 4000));
     if (n > bestN) {
       bestN = n;
       best = det;

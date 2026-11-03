@@ -94,20 +94,22 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.21
+## What's new in 0.4.22
 
-* **`laya-ts` scans long documents locally.** `Agent.predictLong` and `Router.predictLong` size
-  overlapping windows from the checkpoint budget, run the existing batch path, and keep the
-  strongest per-question answer with its window of origin, matching Python's `predict_long`
-  against committed parity fixtures (#1436).
-* **A `binning_map` value wider than a double is refused by name.** `apply_calibration_payload`
-  raised a raw `OverflowError` for a 401-digit integer where every other unreadable value got the
-  named `values must be numbers` refusal; the wide integer now gets the same named refusal, in
-  Python and the .NET port (#1440).
-* **The .NET and Rust ports follow 0.4.20's temperature fallback.** A temperature too wide for a
-  double loads as the neutral 1.0 with Python's warning instead of failing the load, and the
-  .NET model-free lane is green again (#1437, #1438).
-* **`laya-ts` runs on onnxruntime-web 1.31.1** (#1429).
+* **A guardrail confidence can no longer fall outside [0, 1].** `jev_confidence` accepts
+  unnormalised weights, and individually finite ones can still sum to infinity; dividing by that
+  sum turned every weight into zero, so two equally weighted choices reported -1.0 for a `choice`
+  and full confidence for a `score`. A common scale now cancels before the division, which is what
+  the docstring already promised the range was (#1442).
+* **Large and deeply nested states are flattened lazily.** Language detection reads at most the
+  first 4000 characters, but the walk materialised every leaf first; it now stops as soon as the
+  budget is met, which is about 20x faster on a 500 KB multi-turn state (#1448).
+* **`laya-ts` counts and cuts code points, like Python.** The diacritic rate divided by UTF-16
+  units, so two emoji could flip a state onto the English checkpoint that Python keeps off it, and
+  the 4000-character budgets could split a surrogate pair in half (#1445, #1446).
+* **`laya-ts` honours per-request token budgets in `Router.predictBatch`.** The grouping already
+  separated requests by budget and `decideBatch` already passed them; the Router never read them,
+  so a batch encoded at the checkpoint default (#1441).
 
 Earlier releases are in the [GitHub releases](https://github.com/NandhaKishorM/laya/releases).
 

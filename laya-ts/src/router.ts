@@ -1,7 +1,7 @@
 import { analyse, type AnalyseResult } from "./lang.js";
 import { checkQuestion, type PredictOptions, type QuestionDef, type SystemOneResult } from "./agent.js";
 import { skippedLongResult, validateLongOptions, validateLongResult, type LongPredictOptions, type LongResult } from "./predict-long.js";
-import { checkMinConfidence, flagLowConfidence } from "./common.js";
+import { checkMaxLoaded, checkMinConfidence, flagLowConfidence } from "./common.js";
 import { decide, decideBatch, type DecideOptions, type DecideBatchOptions, type DecisionResult } from "./structured.js";
 import {
   HookRegistry,
@@ -324,7 +324,9 @@ export class Router extends HookRegistry {
         this.sha256Digests[normaliseName(name)] = val;
       }
     }
-    this.maxLoaded = Math.max(1, Math.trunc(Number(opts.maxLoaded ?? opts.max_loaded ?? 2)));
+    // `max(1, int(max_loaded))`, read the way `int()` reads: a cap `Number()` turns into NaN would
+    // leave `_evict`'s `length > maxLoaded` forever false, so check it instead of disabling it.
+    this.maxLoaded = checkMaxLoaded(opts.maxLoaded ?? opts.max_loaded ?? 2);
     this.default = normaliseName(opts.default ?? "multilingual");
     this.autoTaskDetection = Boolean(opts.autoTaskDetection ?? opts.auto_task_detection ?? false);
     this.langGuess = opts.langGuess ?? opts.lang_guess ?? null;

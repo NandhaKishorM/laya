@@ -1,7 +1,19 @@
 """The shipped ONNX exporter must refuse checkpoints without safe weights, and it must
-not put a graph in ``--out-dir`` before the checks that gate it have passed."""
+not put a graph in ``--out-dir`` before the checks that gate it have passed.
 
+The last section covers ``scripts/export_onnx.py`` instead: `dynamic_axes` ships on every torch
+(#726), but the opset ceiling still varies with the installed torch, and torch 2.2 -- the
+macOS/Intel pin in LOCAL_SETUP.md, the last PyTorch with an x86_64 macOS wheel -- stops at opset
+17. A hard-coded constant is wrong on one of the two stacks: too high and the graph declares an
+opset the exporter's symbolic functions do not cover (torch warns and exports anyway, without
+the warning being visible in a captured log), too low and every newer torch is capped. The
+security workflow runs this file on a bare Python with neither torch nor laya, so that section is
+guarded and skips there.
+"""
+
+import functools
 import importlib.util
+import inspect
 import io
 import os
 import sys
@@ -223,3 +235,71 @@ with tempfile.TemporaryDirectory() as directory:
     except SystemExit as error:
         assert "verification failed" in str(error), error
     assert not os.path.exists(external_failed), os.listdir(directory)
+
+
+# ------------------------------------------- the Python exporter's opset ceiling (scripts/)
+# `scripts/export_onnx.py` ships `dynamic_axes` on every supported torch, so the shape *spelling*
+# no longer varies with the version. The opset *ceiling* still does, and getting it wrong is a hard
+# failure, not a warning: torch 2.2's TorchScript exporter stops at opset 17.
+try:
+    import torch
+
+    _py_spec = importlib.util.spec_from_file_location(
+        "laya_export_onnx", root / "scripts" / "export_onnx.py")
+    py_exporter = importlib.util.module_from_spec(_py_spec)
+    _py_spec.loader.exec_module(py_exporter)
+except ImportError as missing:          # the supply-chain job's Python has neither torch nor laya
+    torch = None
+    py_exporter = None
+    _skipped = str(missing)
+
+if py_exporter is None:
+    print("note: the Python exporter's opset check was skipped (%s)" % _skipped)
+else:
+    AXES = {"input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype",
+            "logits", "act_logits"}
+
+    # One `batch_size` symbol on every input AND output, so a feed is only valid when its rows
+    # agree -- which is what `ONNXAgent` always sends. Dropping an output from the map bakes its
+    # batch axis at the traced 2 and the graph then refuses a 3-question request.
+    assert set(py_exporter.DYNAMIC_AXES) == AXES, sorted(py_exporter.DYNAMIC_AXES)
+    assert all(axes.get(0) == "batch_size" for axes in py_exporter.DYNAMIC_AXES.values()), \
+        py_exporter.DYNAMIC_AXES
+    assert set(py_exporter.INPUT_NAMES + py_exporter.OUTPUT_NAMES) == AXES
+
+    # The default has to follow the installed torch. A hard-coded 18 makes torch 2.2 warn and
+    # write a graph declaring an opset its symbolics do not implement; a hard-coded 17 caps the
+    # opset on every newer torch. Either constant is wrong on one of the two stacks this package
+    # supports, and `torch>=2.0.0` is upstream's own floor.
+    installed = "dynamic_shapes" in inspect.signature(torch.onnx.export).parameters
+    expected = 18 if installed else 17
+    assert py_exporter.default_opset_version() == expected, (
+        py_exporter.default_opset_version(), expected, installed)
+
+    # And the choice has to reach the exporter on both paths: the default, and an explicit pin (which
+    # is what a caller downgrading for a specific runtime passes).
+    calls = []
+
+    # `default_opset_version()` probes the *installed* `torch.onnx.export` signature at call time,
+    # so the stand-in has to keep that signature: a bare `**kwargs` stub hides `dynamic_shapes`
+    # and the exporter reads the default as 17 even on a torch that supports 18.
+    @functools.wraps(torch.onnx.export)
+    def _capture(model, args, path, **kwargs):
+        calls.append(kwargs)
+        return path
+
+    real_export = torch.onnx.export
+    torch.onnx.export = _capture
+    try:
+        py_exporter.export_module(types.SimpleNamespace(), "unused.onnx")
+        py_exporter.export_module(types.SimpleNamespace(), "unused.onnx", opset_version=17)
+    finally:
+        torch.onnx.export = real_export
+
+    defaulted, pinned = calls
+    assert defaulted["opset_version"] == expected, (defaulted["opset_version"], expected)
+    assert pinned["opset_version"] == 17, pinned["opset_version"]
+    for kwargs in calls:
+        # `dynamic_shapes` is the spelling that raises on torch 2.2, and it must not come back.
+        assert "dynamic_shapes" not in kwargs, sorted(kwargs)
+        assert kwargs["dynamic_axes"] is py_exporter.DYNAMIC_AXES, sorted(kwargs)

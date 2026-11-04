@@ -7,7 +7,6 @@ with `_encode_state` / `_forward` / `_decode_answers` stubbed). The Router path 
 Run: python tests/test_hooks.py
 """
 import contextvars
-import inspect
 import os
 import sys
 import threading
@@ -1820,13 +1819,33 @@ check_raises("timeout/True at construction is rejected", ValueError,
 check("timeout/int still bounds", Router(hooks_timeout=1).hooks_timeout, 1.0)
 check("timeout/numeric string still bounds", Router(hooks_timeout="0.5").hooks_timeout, 0.5)
 
+# Whether the guard closed the coroutine, asked of the coroutine rather than of
+# `inspect.getcoroutinestate`. CPython 3.12.0 leaves `cr_frame` set on a coroutine closed before it
+# ever ran, so the state reads `CORO_CREATED` for a coroutine that is closed; 3.12.1 reads
+# `CORO_CLOSED` again. `pyproject.toml` supports 3.12, and `setup-python` resolves the matrix's
+# "3.12" to the newest patch, so a state-based check passes CI and fails for anyone whose
+# interpreter is the release one, with nothing wrong in `run_coroutine_sync`. `send(None)` asks the
+# same question of behaviour and answers it identically on every version measured -- 3.10.13,
+# 3.11.6, 3.12.0, 3.12.1, 3.12.11, 3.13.1, 3.14.8 and 3.15.2: a closed coroutine refuses with
+# `RuntimeError`, and one the guard left open runs instead, which is the leak this check exists to
+# catch.
+def _coro_closed(coro):
+    try:
+        coro.send(None)
+    except RuntimeError:
+        return True
+    except StopIteration:
+        return False
+    coro.close()  # it suspended, so it was open; leaving it that way warns at collection
+    return False
+
+
 not_running = asyncio.new_event_loop()
 try:
     c = _seven()
     check_raises("async/a non-running loop is rejected", ValueError,
                  lambda: run_coroutine_sync(c, loop=not_running))
-    check_true("async/a non-running loop closes the coroutine",
-               inspect.getcoroutinestate(c) == "CORO_CLOSED")
+    check_true("async/a non-running loop closes the coroutine", _coro_closed(c))
 finally:
     not_running.close()
 
@@ -1837,7 +1856,7 @@ async def _own_loop():
     try:
         run_coroutine_sync(c, loop=own)
     except ValueError:
-        return "closed" if inspect.getcoroutinestate(c) == "CORO_CLOSED" else "raised"
+        return "closed" if _coro_closed(c) else "raised"
     return "no"
 
 

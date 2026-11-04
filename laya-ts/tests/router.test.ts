@@ -193,4 +193,116 @@ describe("router", () => {
     expect(skipped.routing).toBeDefined();
     expect(skipped.model).toBe("cached");
   });
+
+  // Python's `Router` takes `hooks_timeout` (laya/router.py: `self.hooks_timeout = None if
+  // hooks_timeout is None else validate_timeout(hooks_timeout)`), passes it to the `on_load` and
+  // lifecycle dispatches (`timeout=self.hooks_timeout`), and in `predict` resolves
+  // `self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)`. The TS
+  // Router had no such field: only a limit the caller named on the long path was read, and a hook
+  // that never settled held `load()` or `predict()` open forever.
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const noul = { q: { type: "noul", instructions: "?" } };
+  const stubAgent = {
+    systemOne: async () => ({ model: "stub", answers: { q: "yes" }, usage: {} }),
+    predictLong: async () => ({ model: "stub", answers: {}, usage: { input_tokens: 12, output_tokens: 0, windows: 1 } }),
+  };
+
+  it("refuses a Router-level hooksTimeout the reference would refuse", () => {
+    // `validate_timeout` decides; the Router only forwards to it, on the constructor line.
+    class Ok { onPredictStart() {} }
+    expect(new Router({ hooksTimeout: 0.5 }).hooksTimeout).toBe(0.5);
+    expect(new Router({ hooks_timeout: "0.5" }).hooksTimeout).toBe(0.5);
+    expect(new Router({}).hooksTimeout).toBeNull();
+    expect(new Router({ hooksTimeout: null }).hooksTimeout).toBeNull();
+    expect(new Router({ hooksTimeout: undefined }).hooksTimeout).toBeNull();
+    expect(new Router({ hooksTimeout: 2, hooks: [new Ok()] }).hooksTimeout).toBe(2);
+    for (const bad of [true, false, NaN, Infinity, -Infinity, 0, -0.5, {}, [], "soon", () => 1]) {
+      expect(() => new Router({ hooksTimeout: bad as never })).toThrow();
+    }
+    // The two messages are the reference's own, and which one fires is the contract: a bool reads
+    // as a wrong type, an unreadable string as a failed coercion.
+    expect(() => new Router({ hooksTimeout: true as never }))
+      .toThrow("hooks_timeout must be a positive finite number or None, not a bool; got True");
+    expect(() => new Router({ hooksTimeout: "soon" as never }))
+      .toThrow("could not convert string to float: 'soon'");
+    // A string the reference can read as float is read, not refused -- `float("0.5")`.
+    expect(new Router({ hooksTimeout: "1.5" }).hooksTimeout).toBe(1.5);
+  });
+
+  it("bounds an onLoad hook that overruns the Router's limit", async () => {
+    class SlowLoad {
+      async onLoad() { await sleep(80); }
+    }
+    const timed = new Router({ hooksTimeout: 0.01, loader: async () => stubAgent, hooks: [new SlowLoad()] });
+    await expect(timed.load("english")).rejects.toThrow("laya: hook SlowLoad.onLoad exceeded 0.01s");
+    const patient = new Router({ hooksTimeout: 0.5, loader: async () => stubAgent, hooks: [new SlowLoad()] });
+    await expect(patient.load("english")).resolves.toBeDefined();
+  });
+
+  it("bounds an onEvict hook, which fires from load rather than from predict", async () => {
+    class SlowEvict {
+      async onEvict() { await sleep(80); }
+    }
+    const timed = new Router({ hooksTimeout: 0.01, maxLoaded: 1, loader: async () => stubAgent, hooks: [new SlowEvict()] });
+    await timed.load("english");
+    await expect(timed.load("multilingual")).rejects.toThrow("laya: hook SlowEvict.onEvict exceeded 0.01s");
+  });
+
+  it("bounds a per-call start hook with the Router's own limit", async () => {
+    const timed = new Router({ hooksTimeout: 0.01, loader: async () => stubAgent });
+    await expect(
+      timed.predict("text", noul, { onPredictStart: async () => { await sleep(80); } }),
+    ).rejects.toThrow(/exceeded 0\.01s/);
+    const unlimited = new Router({ loader: async () => stubAgent });
+    await expect(
+      unlimited.predict("text", noul, { onPredictStart: async () => { await sleep(20); } }),
+    ).resolves.toMatchObject({ model: "stub" });
+  });
+
+  it("lets a per-call limit replace the Router's, not shorten it", async () => {
+    // `self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)`: a caller
+    // who names a deadline on the call gets exactly that deadline, looser or tighter.
+    const tight = new Router({ hooksTimeout: 0.01, loader: async () => stubAgent });
+    await expect(
+      tight.predict("text", noul, { hooksTimeout: 0.5, onPredictStart: async () => { await sleep(60); } }),
+    ).resolves.toMatchObject({ model: "stub" });
+    const loose = new Router({ hooksTimeout: 0.5, loader: async () => stubAgent });
+    await expect(
+      loose.predict("text", noul, { hooksTimeout: 0.01, onPredictStart: async () => { await sleep(60); } }),
+    ).rejects.toThrow(/exceeded 0\.01s/);
+    await expect(loose.predict("text", noul, { hooksTimeout: true as never })).rejects.toThrow(/hooks_timeout/);
+  });
+
+  it("gives the long path the Router default it used to miss", async () => {
+    // Before, `predict` read a limit only from `scan.hooksTimeout` -- so `predictLong` with a hook
+    // that never settled ran to its own pace whatever the Router was built with.
+    const timed = new Router({ hooksTimeout: 0.01, loader: async () => stubAgent });
+    await expect(
+      timed.predictLong("text", noul, { onPredictStart: async () => { await sleep(80); } }),
+    ).rejects.toThrow(/exceeded 0\.01s/);
+    await expect(
+      timed.predictLong("text", noul, { hooksTimeout: 0.5, onPredictStart: async () => { await sleep(60); } }),
+    ).resolves.toMatchObject({ model: "stub" });
+  });
+
+  it("reports a hook timeout instead of throwing when hooksRaise is false", async () => {
+    // `raiseErrors: false` keeps the reference's behaviour: the overrun is reported, not raised,
+    // and the prediction still completes -- a hook failure is not the request's failure. The
+    // warning is the witness that the deadline fired at all, so this row fails at the base too.
+    const warned: string[] = [];
+    const spy = vi.spyOn(console, "warn").mockImplementation((...args: unknown[]) => {
+      warned.push(args.join(" "));
+    });
+    try {
+      const r = new Router({ hooksTimeout: 0.01, loader: async () => stubAgent });
+      const result = await r.predict("text", noul, {
+        hooksRaise: false,
+        onPredictStart: async () => { await sleep(80); },
+      });
+      expect(result.model).toBe("stub");
+      expect(warned.filter((line) => line.includes("exceeded 0.01s")).length, warned.join("\n")).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

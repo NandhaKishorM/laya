@@ -278,7 +278,18 @@ gate accepts nothing fails closed. Temperature scaling never changes an argmax, 
 accuracy is reported for information and gated on for nothing.
 
 There is no dashboard UI in this repo; the SQLite file is the interface. Point any
-SQLite reader (Grafana, Metabase, the `sqlite3` shell) at it:
+SQLite reader (Grafana, Metabase, the `sqlite3` shell) at it, or generate a static
+report with no server to supervise:
+
+```sh
+python scripts/outcome_report.py --db decisions.db --out report.html
+python scripts/outcome_report.py --db decisions.db --out report.html --payload calibration.json
+```
+
+The page shows volume, label coverage by source, confidence and abstentions with the
+review queue, and -- with `--payload` -- the fitted temperatures and thresholds. It
+is one self-contained HTML file with inline SVG and no JavaScript, so it opens from
+`file://`.
 
 ```sql
 -- weak-label coverage per question: what fraction of answers has a label, and from where

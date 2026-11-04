@@ -1,7 +1,7 @@
 import { analyse, type AnalyseResult } from "./lang.js";
 import { checkQuestion, type PredictOptions, type QuestionDef, type SystemOneResult } from "./agent.js";
 import { skippedLongResult, validateLongOptions, validateLongResult, type LongPredictOptions, type LongResult } from "./predict-long.js";
-import { checkMinConfidence, flagLowConfidence } from "./common.js";
+import { checkMinConfidence, flagLowConfidence, type MinConfidence } from "./common.js";
 import { decide, decideBatch, type DecideOptions, type DecideBatchOptions, type DecisionResult } from "./structured.js";
 import {
   HookRegistry,
@@ -175,19 +175,36 @@ export interface RouteOptions {
 }
 
 /**
- * Per-call options for `Router.predictBatch` / `predictMany` / `routeBatch`.
+ * Per-call options for `Router.predictBatch` / `predictMany`; `Router.routeBatch` takes the
+ * same bag less the threshold, as `RouteBatchOptions`.
  * `hooks`, `onPredictStart` and `onPredictEnd` are composed the same way as on `predict`:
  * `setDefaultHooks` defaults, then installed hooks, then this call's hooks.
  * `null`, `undefined` and `[]` add nothing.
  * `hooksRaise` overrides the Router's policy for this call, including `onRoute`.
  * The start and end callables apply to each request's predict lifecycle, not to routing.
+ * `minConfidence` (Python's `min_confidence`, #361/#394) is the opt-in abstention threshold
+ * `predict` takes: either a number in [0.0, 1.0] or a per-bucket map. Every request's answers
+ * below it come back marked `low_confidence: true`, and each request's `onPredictEnd` hooks see
+ * the mark. `null` or absent writes nothing, exactly as on `predict`.
  */
 export interface PredictBatchOptions {
   hooks?: HookArg;
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
   hooksRaise?: boolean;
+  minConfidence?: MinConfidence | null;
+  /** Python parity alias for minConfidence. */
+  min_confidence?: MinConfidence | null;
 }
+
+/**
+ * What `Router.routeBatch` takes: `PredictBatchOptions` without the abstention threshold.
+ * Routing runs no inference, so there is nothing there for a threshold to gate, and Python's
+ * `route_batch` takes no `min_confidence` either. The type says so, rather than letting
+ * `router.routeBatch(requests, { minConfidence: 0.8 })` read like a request for gating that
+ * silently asked for none.
+ */
+export type RouteBatchOptions = Omit<PredictBatchOptions, "minConfidence" | "min_confidence">;
 
 /** One item of a Router.predictBatch/routeBatch batch: state, questions, route and budget overrides. */
 export interface BatchRequest {
@@ -835,7 +852,7 @@ export class Router extends HookRegistry {
    * validated before anything loads, so a malformed batch fails fast. Entries keep input
    * order; routing is deterministic, so repeated batches route identically.
    */
-  routeBatch(requests: BatchRequest[], opts: PredictBatchOptions = {}): RouteDecision[] {
+  routeBatch(requests: BatchRequest[], opts: RouteBatchOptions = {}): RouteDecision[] {
     if (!Array.isArray(requests)) {
       throw new TypeError("requests must be an array of request objects");
     }
@@ -894,12 +911,20 @@ export class Router extends HookRegistry {
    * `null` and `[]` add nothing. `hooks`
    * also run `onRoute`. `opts.hooksRaise` overrides the Router's policy for this call, the way
    * `predict` uses `opts.hooksRaise ?? this.hooksRaise`.
+   * `opts.minConfidence` (or `min_confidence`) is the abstention threshold `predict` takes, and it
+   * gates this call the same way: validated on the entry line, before anything routes or loads,
+   * and applied to every request's answers before its `onPredictEnd` runs. A batch is not a
+   * second-class entry point for it -- an audit hook on either path sees the same marker.
    */
   async predictBatch(
     requests: BatchRequest[],
     batchSize: number | null = null,
     opts: PredictBatchOptions = {},
   ): Promise<RoutedResult[]> {
+    // Validated on the entry line, before `routeBatch`, as Python does: a threshold the caller
+    // cannot gate at must not cost a routing pass, an `onRoute` hook or a checkpoint load.
+    const mcOpt = opts.minConfidence ?? opts.min_confidence;
+    const mc = mcOpt !== undefined && mcOpt !== null ? checkMinConfidence(mcOpt) : null;
     const decisions = this.routeBatch(requests, opts);
     if (decisions.length === 0) return [];
 
@@ -918,6 +943,18 @@ export class Router extends HookRegistry {
     // `opts.hooks`; start and end are validated here, after routing and before a checkpoint loads.
     const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
+    // Marks every request that has results, once its group settles and before any end hook runs,
+    // so a request skipped by a start hook and one that just ran through inference read the same
+    // `low_confidence` the caller does. Python's `Router.predict_batch` gates `ctx.results` from
+    // both paths -- the two `apply_confidence_gate(ctx.results, mc)` calls around `_end_contexts`
+    // in `laya/router.py`. With no threshold named this writes nothing: an ungated batch returns
+    // exactly the answers it returned before, marker absent rather than marker false.
+    const gate = (contexts: PredictContext[]): void => {
+      if (mc === null) return;
+      for (const ctx of contexts) {
+        if (ctx.results !== null) flagLowConfidence(ctx.results, mc);
+      }
+    };
 
     for (const [modelName, indices] of groups) {
       const agent = (await this.load(modelName)) as {
@@ -1064,6 +1101,7 @@ export class Router extends HookRegistry {
           }
         }
       } catch (err) {
+        gate(started);
         for (const ctx of started) {
           if (ctx.results === null) {
             ctx.error = err;
@@ -1081,6 +1119,7 @@ export class Router extends HookRegistry {
         }
         throw err;
       }
+      gate(started);
       this._endContexts(active, started, raiseErrors);
       for (let s = 0; s < indices.length; s++) {
         results[indices[s]] = started[s].results![0] as unknown as RoutedResult;

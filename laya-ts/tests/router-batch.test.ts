@@ -758,3 +758,148 @@ describe("Agent.predictBatch", () => {
     expect(resGatedCamel[0].flag).toBeNull();
   });
 });
+
+// ------------------------------------------------------------------ minConfidence gating
+// TS mirror of tests/test_router_batch.py::test_router_predict_and_predict_batch_min_confidence
+// and ::test_end_hooks_see_the_low_confidence_flag. Python's `Router.predict_batch` validates
+// `min_confidence` on its first line -- before routing, so a refusal costs nothing -- and gates
+// every request's results before its end hooks run, on the success path and on the path that
+// fails the rest of the group (`laya/router.py`: `mc = check_min_confidence(...)`,
+// `apply_confidence_gate(ctx.results, mc)`). `predict` has always done the same for one request.
+
+const answerFlags = (res: unknown): Record<string, boolean> => {
+  const answers = (res as { answers: Record<string, Record<string, unknown>> }).answers;
+  return Object.fromEntries(
+    Object.entries(answers).map(([qid, a]) => [qid, a.low_confidence === true]),
+  );
+};
+
+const makeScoredRouter = (opts: Record<string, unknown> = {}) => {
+  const built: string[] = [];
+  const scored = () => ({
+    model: "fake",
+    answers: {
+      q1: { type: "choice", choice: "yes", probabilities: { yes: 0.95, no: 0.05 }, answer_confidence: 0.95 },
+      q2: { type: "choice", choice: "no", probabilities: { yes: 0.4, no: 0.6 }, answer_confidence: 0.6 },
+    },
+    usage: {},
+  });
+  const loader = () => {
+    built.push("english");
+    return {
+      async predictBatch(states: unknown[]) {
+        if (states.includes("raise")) throw new Error("inference failed");
+        return states.map(scored);
+      },
+      async systemOne() {
+        return scored();
+      },
+    };
+  };
+  const router = new Router({ default: "english", loader: loader as never, ...opts });
+  return { router, built };
+};
+
+describe("Router.predictBatch minConfidence", () => {
+  it("writes no marker at all when the caller names no threshold", async () => {
+    const { router } = makeScoredRouter();
+    const batch = await router.predictBatch([req("hello"), req("world")]);
+    expect(batch.map(answerFlags)).toEqual([{ q1: false, q2: false }, { q1: false, q2: false }]);
+  });
+
+  it("gates the batch on minConfidence the way predict gates one request", async () => {
+    const { router } = makeScoredRouter();
+    expect(answerFlags(await router.predict("hello", Q))).toEqual({ q1: false, q2: false });
+    expect(answerFlags(await router.predict("hello", Q, { minConfidence: 0.8 })))
+      .toEqual({ q1: false, q2: true });
+
+    const batch = await router.predictBatch([req("hello"), req("world")], null, { minConfidence: 0.8 });
+    expect(batch.map(answerFlags)).toEqual([{ q1: false, q2: true }, { q1: false, q2: true }]);
+    // gating marks, it does not rewrite: the scored answer is what the caller still reads
+    expect(batch[0].answers.q2.answer_confidence).toBe(0.6);
+    expect(batch[0].answers.q2.choice).toBe("no");
+    expect(await router.predictMany([req("hello")], null, { minConfidence: 0.8 }))
+      .toEqual([expect.objectContaining({ answers: expect.objectContaining({
+        q2: expect.objectContaining({ low_confidence: true }),
+      }) })]);
+  });
+
+  it("reads the snake_case min_confidence alias on the batch path", async () => {
+    const { router } = makeScoredRouter();
+    const [res] = await router.predictBatch([req("hello")], null, { min_confidence: 0.8 });
+    expect(answerFlags(res)).toEqual({ q1: false, q2: true });
+  });
+
+  it("gates a per-bucket threshold map per answer, as predict does", async () => {
+    const { router } = makeScoredRouter();
+    const [strict] = await router.predictBatch([req("hello")], null, {
+      minConfidence: { "choice:2": 0.99 },
+    });
+    expect(answerFlags(strict)).toEqual({ q1: true, q2: true });
+    const [lenient] = await router.predictBatch([req("hello")], null, {
+      minConfidence: { "choice:2": 0.8 },
+    });
+    expect(answerFlags(lenient)).toEqual({ q1: false, q2: true });
+  });
+
+  it("refuses a threshold it cannot gate at, before routing or loading anything", async () => {
+    const routed: unknown[] = [];
+    const { router, built } = makeScoredRouter({
+      hooks: [{ onRoute(ctx: never) { routed.push((ctx as { states: unknown[] }).states[0]); } }],
+    });
+    for (const bad of [1.5, -0.1, true, "0.8", Number.NaN]) {
+      await expect(router.predictBatch([req("hello")], null, { minConfidence: bad as never }))
+        .rejects.toThrow(/min_confidence must be a float/);
+    }
+    expect(routed).toEqual([]); // validated ahead of route_batch, like Python
+    expect(built).toEqual([]);
+    expect(router.loaded).toEqual([]);
+  });
+
+  it("shows the marker to onPredictEnd, not only to the caller", async () => {
+    const seen: Record<string, boolean>[] = [];
+    const { router } = makeScoredRouter({
+      hooks: [{
+        onPredictEnd(ctx: never) {
+          const c = ctx as { results: unknown[] | null };
+          seen.push(answerFlags(c.results![0]));
+        },
+      }],
+    });
+    await router.predict([("hello")], Q, { minConfidence: 0.8 });
+    expect(seen).toEqual([{ q1: false, q2: true }]);
+    seen.length = 0;
+    await router.predictBatch([req("hello")], null, { minConfidence: 0.8 });
+    expect(seen).toEqual([{ q1: false, q2: true }]);
+  });
+
+  it("gates a hook-skipped request when the rest of its group fails", async () => {
+    const ends: Record<string, boolean>[] = [];
+    const { router } = makeScoredRouter({
+      hooks: [{
+        onPredictStart(ctx: never) {
+          const c = ctx as { states: unknown[]; skip: (r: unknown[]) => void };
+          if (c.states[0] === "cached") {
+            c.skip([{
+              model: "cached",
+              answers: {
+                q1: { type: "choice", choice: "yes", probabilities: { yes: 0.95, no: 0.05 }, answer_confidence: 0.95 },
+                q2: { type: "choice", choice: "no", probabilities: { yes: 0.4, no: 0.6 }, answer_confidence: 0.6 },
+              },
+              usage: {},
+            }]);
+          }
+        },
+        onPredictEnd(ctx: never) {
+          const c = ctx as { states: unknown[]; results: unknown[] | null };
+          if (c.results !== null) ends.push(answerFlags(c.results[0]));
+        },
+      }],
+    });
+    await expect(
+      router.predictBatch([req("cached"), req("raise")], null, { minConfidence: 0.8 }),
+    ).rejects.toThrow("inference failed");
+    // the request that already had its answer still ends gated, as Python's failure path gates it
+    expect(ends).toEqual([{ q1: false, q2: true }]);
+  });
+});

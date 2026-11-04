@@ -309,6 +309,10 @@ const routed = await router.predictBatch(requests, 32); // == router.predictMany
 const budgeted = await router.predictBatch([
   { state: "ticket", questions, maxLen: 64, headMaxLen: 16 },
 ]);
+// Abstention is the same opt-in knob predict takes (`minConfidence`, or Python's
+// `min_confidence`): answers below it come back marked `low_confidence: true`, before each
+// request's onPredictEnd runs, so an audit hook sees what the caller sees. Unset writes nothing.
+const gated = await router.predictBatch(requests, null, { minConfidence: 0.8 });
 // Per-call hooks are composed like predict: installed hooks first, then this list,
 // then onPredictStart / onPredictEnd. null and [] add nothing. hooksRaise overrides
 // the Router's policy for this call. The list runs once per request, including onRoute.

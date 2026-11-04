@@ -362,6 +362,53 @@ check("single option/a run that already has two or more slots is sent as before"
       wide.session.marker_widths, [3])
 
 
+# ---------------------------------------------------------------- batch_size is a shape, not a sign
+# `ONNXAgent.predict_batch` spends `batch_size` as a `range()` step, so a value `range()` cannot
+# spend used to leak the interpreter's own error from the middle of the batch loop. Measured on the
+# stub session above at 0.4.22: `2.5` raised `TypeError: 'float' object cannot be interpreted as an
+# integer`, and `"2"` raised `TypeError: '>' not supported between instances of 'str' and 'int'` --
+# the second from the `> 0` test, before a single state was encoded. `laya/mcp/tools.py` and
+# `laya/serve.py` both refused those shapes before the call reached here, so only the Python route
+# -- the documented one, and the one with no schema in front of it -- met the raw `TypeError`.
+# `common.check_batch_size` now refuses them by name, on the same line of `predict_batch` that
+# `Agent` uses, so the two agents answer a bad cap the same way.
+for bad in (2.5, 2.0, "2", "", True, False, [2], {"n": 2}, float("nan"), float("inf")):
+    check_raises("chunk/batch_size %r is refused by name" % (bad,), ValueError,
+                 lambda b=bad: _bare_onnx().predict_batch(STATES, QUESTIONS, batch_size=b))
+
+refused = _bare_onnx()
+try:
+    refused.predict_batch(STATES, QUESTIONS, batch_size=2.5)
+except ValueError as exc:
+    check("chunk/the refusal names the value it cannot use", str(exc),
+          "batch_size must be an integer count of states, got 2.5")
+else:
+    check_true("chunk/the refusal names the value it cannot use", False, "no ValueError raised")
+check("chunk/a refused cap runs no session", refused.session.calls, [])
+
+# A `bool` was the worse failure because it does not crash: `True` *is* an `int` to `range()`, so it
+# capped every pass at one state -- measured `[2, 2, 2, 2]` where the un-capped path is one run of
+# eight rows -- and it switched `sort_by_length` off, because that knob's own gate is `1 < chunk`.
+# `False` was not a cap of zero but "unset", because the gate is `batch_size > 0`. Both were silent.
+
+# The "no cap" spellings stay legal, and stay one run over every state:
+# `laya-java/fixtures/window_plan.json`'s `batch_cap` grid replays `(None, 0, -1, 1, 8)` through the
+# Java, Go, C#, C++ and TS ports, whose typed `int` treats zero and negative as "unset". The guard
+# stops at the shape, never at the sign.
+for unset in (None, 0, -1):
+    one = _bare_onnx()
+    out = one.predict_batch(STATES, QUESTIONS, batch_size=unset)
+    check("chunk/batch_size=%r is one run over every state" % (unset,),
+          (len(out), one.session.calls), (len(STATES), [2 * len(STATES)]))
+
+# `Integral`, not `int`, is the test -- `numpy.int64` spends in `range()` exactly as well, and a
+# caller who derives the cap from an array shape is the common case. `ece_score` in the same module
+# gives the same reason for the same reason.
+np_cap = _bare_onnx()
+np_cap.predict_batch(STATES, QUESTIONS, batch_size=np.int64(2))
+check("chunk/a numpy integer cap is spent, not refused", np_cap.session.calls, [4, 4])
+
+
 # ---------------------------------------------------------------- question token reuse
 # Agent.predict_batch caches question tokenizations across states (@_reuse_question_tokens);
 # ONNXAgent.predict_batch shares that cache, so question instructions and options are encoded once

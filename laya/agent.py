@@ -35,6 +35,7 @@ from .common import (
     collate_items,
     answer_confidence,
     confidence_from_probs,
+    check_batch_size,
     _resolve_noul_labels,
     _reuse_question_tokens,
     _disable_question_token_reuse,
@@ -1489,7 +1490,9 @@ class Agent(HookRegistry):
                     The same `questions` are evaluated against every state.
             questions: Question definitions, exactly as accepted by `system_one`.
             batch_size: Optional cap on states per forward pass. `None` sends them all in one pass;
-                        set it to bound peak memory when batching many or long states.
+                        set it to bound peak memory when batching many or long states. A `float`,
+                        a `str` or a `bool` is refused by name -- the count is spent as a `range()`
+                        step, and `0` or a negative integer means the same "no cap" as `None`.
             hooks (HookArg): Per-call hooks, appended after any installed on the Agent.
                     See `laya.hooks`.
             on_predict_start (PredictHookArg): A per-call start hook. It may rewrite the
@@ -1512,6 +1515,7 @@ class Agent(HookRegistry):
             aligned with `states` by index.
         """
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
+        batch_size = check_batch_size(batch_size)
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)

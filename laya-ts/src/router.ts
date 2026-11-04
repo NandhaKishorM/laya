@@ -879,6 +879,8 @@ export class Router extends HookRegistry {
    * Route and run many requests in one call (Python `Router.predict_batch` parity).
    * Requests are routed first, then grouped by checkpoint so each loaded Agent scores its
    * requests in as few forward passes as possible; results are restored to input order.
+   * The group key is the resolved checkpoint, so an `onRoute` pin that spells it as an alias
+   * ("ml") shares the canonical group's pass instead of splitting into a second forward pass.
    * Requests routed to the same checkpoint still split into separate `predictBatch` calls
    * when their question schemas differ (order-sensitively), when per-request start hooks
    * set different maxLen/headMaxLen overrides, or — for an agent carrying
@@ -905,7 +907,13 @@ export class Router extends HookRegistry {
 
     const groups = new Map<string, number[]>();
     for (let i = 0; i < decisions.length; i++) {
-      const model = decisions[i].model;
+      // Indexed, not typed off `RouteDecision.model`: an `onRoute` hook may replace the decision
+      // with a plain object, which `predict` accepts too. Resolved, because such a hook may name
+      // the checkpoint by an alias ("ml") and that request must share its checkpoint's forward
+      // pass -- reading the raw spelling split it into a second `predictBatch` call on the same
+      // Agent. `normaliseName` is what `load` uses, so a pin naming a checkpoint this Router does
+      // not know is refused here, before any group loads or runs.
+      const model = normaliseName(decisions[i].model);
       const bucket = groups.get(model);
       if (bucket) bucket.push(i);
       else groups.set(model, [i]);

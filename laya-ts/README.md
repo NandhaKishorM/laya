@@ -140,7 +140,9 @@ await router.withHooks([auditHook], () => router.predict(state, questions)); // 
 
 // a start hook may rewrite ctx.states / ctx.questions, or serve a cached result:
 const cache = { onPredictStart(ctx) { const hit = lookup(ctx.states[0]); if (hit) ctx.skip([hit]); } };
-// an onRoute hook may replace ctx.decision (e.g. pin a checkpoint)
+// an onRoute hook may replace ctx.decision (e.g. pin a checkpoint). `predictBatch` groups by the
+// resolved checkpoint, so a pin that spells it as an alias ("ml") shares that checkpoint's batch:
+const pin = { onRoute(ctx) { if (isTicket(ctx.states[0])) ctx.decision = { ...ctx.decision, model: "ml" }; } };
 
 // subclass BaseHook to override only the events you need:
 class MetricsHook extends BaseHook {

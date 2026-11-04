@@ -450,7 +450,11 @@ def presets():
     from laya import presets as mod
 
     out = {}
-    for name in sorted(n for n in dir(mod) if n.endswith("_questions") or n.endswith("Questions")):
+    # Private locale tables use the same suffix internally. They are implementation details,
+    # not caller-visible presets and therefore must not become a porting contract.
+    for name in sorted(n for n in dir(mod)
+                       if not n.startswith("_")
+                       and (n.endswith("_questions") or n.endswith("Questions"))):
         value = getattr(mod, name)
         if callable(value):
             try:

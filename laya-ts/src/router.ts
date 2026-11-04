@@ -1,7 +1,7 @@
 import { analyse, type AnalyseResult } from "./lang.js";
 import { checkQuestion, type PredictOptions, type QuestionDef, type SystemOneResult } from "./agent.js";
 import { skippedLongResult, validateLongOptions, validateLongResult, type LongPredictOptions, type LongResult } from "./predict-long.js";
-import { checkMinConfidence, flagLowConfidence, type MinConfidence } from "./common.js";
+import { checkMinConfidence, flagLowConfidence } from "./common.js";
 import { decide, decideBatch, type DecideOptions, type DecideBatchOptions, type DecisionResult } from "./structured.js";
 import {
   HookRegistry,
@@ -192,9 +192,9 @@ export interface PredictBatchOptions {
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
   hooksRaise?: boolean;
-  minConfidence?: MinConfidence | null;
+  minConfidence?: PredictOptions["minConfidence"];
   /** Python parity alias for minConfidence. */
-  min_confidence?: MinConfidence | null;
+  min_confidence?: PredictOptions["min_confidence"];
 }
 
 /**

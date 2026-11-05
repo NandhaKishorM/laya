@@ -243,6 +243,18 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
+## What's new in 0.4.25
+
+* **The `Router` has a vega lane.** When vegaml is installed, `Router()` routes what the encoders
+  cannot read to `laya.Agent(vegaml=True)`, built on first use: `image=`, `audio=` or `video=` in
+  place of a state, a state past 8,192 tokens (`vega_over_tokens`), and any question the vega agent
+  has a fitted head for (`Router(vega=agent)` after `agent.fit(...)`). Text the encoders can read
+  keeps going to the encoders with the same decisions and reasons as before, `Router(vega=False)`
+  turns the lane off, `model="vega"` selects it, and `predict_batch` stays on the encoders. The CLI
+  gained `--image`, `--audio` and `--video` for the same lane; the HTTP server refuses the three
+  keys with a message saying where media goes. Details in
+  [the routing guide](https://nandhakishorm.github.io/laya/routing/#the-vega-lane).
+
 ## What's new in 0.4.24
 
 * **Video, through the same call: `agent.predict(video="call.mp4", questions=questions)`** on
@@ -435,6 +447,7 @@ laya --batch tickets.txt --predict                   # score a file of requests,
 cat tickets.txt | laya --batch - --predict --json    # stdin; one JSON line of answers per request
 laya "Where is my card" --questions intents.json     # answer your own questions, written in a JSON file
 laya "Refund my card" --predict --min-confidence 0.9 # mark an answer the model is unsure of
+laya --image invoice.png --preset triage              # a picture, a recording (--audio) or a clip (--video) on the vega lane
 laya                                                 # interactive mode
 ```
 
@@ -655,6 +668,8 @@ To try the Python SDK in a CPU container, see the
 downloaded models between runs.
 
 Laya ships three checkpoints. The built-in **`Router`** is the recommended entry point: it evaluates any state in any language, automatically detects scripts and languages in sub-milliseconds, and dispatches to the optimal checkpoint in a single forward pass.
+
+> **Since 0.4.25, with vegaml installed:** the same `Router` also takes `image=`, `audio=` or `video=` in place of a state and sends them, states past 8,192 tokens, and questions with fitted heads to `laya.Agent(vegaml=True)`; everything else routes exactly as below. `Router(vega=False)` turns that off. See [the vega lane](https://nandhakishorm.github.io/laya/routing/#the-vega-lane).
 
 ### Minimal example (30 seconds)
 

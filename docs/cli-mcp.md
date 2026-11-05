@@ -86,6 +86,16 @@ The main controls are:
 - `--task NAME` forces the typed-decisions workflow instead of detecting it.
 - `--device cpu|cuda|...` passes a device choice to the Router.
 - `--json` emits machine-readable output.
+- `--image FILE`, `--audio FILE` or `--video FILE` answer the questions about a picture, a recording
+  or a clip instead of a text. These go to the Router's vega lane (`laya.Agent(vegaml=True)`, on by
+  default when vegaml is installed, which it is with laya 0.4.23 and newer), imply `--predict`, and
+  take the place of the text argument. A recording is transcribed locally; a clip is decided on its
+  speech if it has any, else on sampled frames.
+
+```bash
+laya --image invoice.png --preset triage
+laya --audio call.wav --questions questions.json --json
+```
 
 ### Use a built-in preset
 

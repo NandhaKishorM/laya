@@ -55,12 +55,32 @@ DEFAULT_MODELS = {
     "typed-decisions": (BUNDLE_REPO, "typed-decisions"),
 }
 
+#: The lane for what the encoders cannot read, served by vegaml's universal reader through
+#: `laya.Agent(vegaml=True)` when the Router is built with `vega` on (the default when vegaml is
+#: installed): images, speech and video, states past the encoders' 8,192 tokens, and questions
+#: with fitted heads. Text the encoders can read keeps going to the encoders exactly as before.
+VEGA_MODEL = "vega"
+VEGA_REPO = "nandakishorm/vega-U"
+
 # The same checkpoints also live in their own repos, for anyone who prefers them.
 STANDALONE_MODELS = {
     "english": "convaiinnovations/laya",
     "multilingual": "convaiinnovations/laya-multilingual",
     "typed-decisions": "convaiinnovations/laya-typed-decisions",
 }
+
+
+def _estimate_tokens(state: Any) -> int:
+    """A cheap token estimate for routing: characters over four, over the flattened state.
+    Only the decision "can an encoder read this at all" rests on it, so a rough count is enough."""
+    if state is None:
+        return 0
+    try:
+        from .lang import state_text
+        text = state_text(state, max_chars=1 << 30)
+    except Exception:
+        text = str(state)
+    return len(text) // 4
 
 
 def _repo_str(spec):
@@ -724,6 +744,15 @@ class Router(HookRegistry):
         hooks_timeout: Optional[float] = None,
         agent_kwargs: Optional[Dict[str, Any]] = None,
         sha256_digests: Optional[Dict[str, Optional[Dict[str, str]]]] = None,
+        # The vega lane. "auto": on when the vegaml package is installed, built on first use;
+        # True: on, and an ImportError now if vegaml is missing; False or None: off, and the Router
+        # behaves exactly as it did before 0.4.25; a string: the vegaml reader to use ("4b", a Hub
+        # id, an attached local dir); an already built `laya.Agent(vegaml=...)`: used as is, and its
+        # fitted heads route the questions they were fitted for.
+        vega: Any = "auto",
+        # A state estimated past this many tokens goes to vega, because no encoder checkpoint can
+        # read it whole; 8,192 is `laya-multilingual` at `max_len=8192`, the most any encoder takes.
+        vega_over_tokens: int = 8192,
     ):
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self.hooks_raise = bool(hooks_raise)
@@ -787,8 +816,48 @@ class Router(HookRegistry):
         self._lock = threading.RLock()
         self._build_lock = threading.Lock()
         self._loading: Dict[str, _InFlightBuild] = {}
+        self.vega_over_tokens = int(vega_over_tokens)
+        self._vega_spec: Any = None
+        self._install_vega(vega)
         if preload:
             self.preload()
+
+    def _install_vega(self, vega: Any) -> None:
+        """Register the vega lane according to `vega`, without importing vegaml here: a lazy lane
+        is only looked up by `find_spec`, so building a Router stays as light as it was."""
+        if vega is None or vega is False:
+            return
+        if hasattr(vega, "predict") and not isinstance(vega, str):
+            self._add(VEGA_MODEL, None)
+            self._agents[VEGA_MODEL] = vega
+            self._order.append(VEGA_MODEL)
+            self.max_loaded = max(self.max_loaded, len(self._agents))
+            self._vega_spec = vega
+            return
+        if isinstance(vega, str) and vega != "auto":
+            self._add(VEGA_MODEL, None)
+            self._vega_spec = vega
+            return
+        import importlib.util
+        available = importlib.util.find_spec("vegaml") is not None
+        if vega is True and not available:
+            raise ImportError("Router(vega=True) needs the vegaml package: pip install -U laya "
+                              "(vegaml ships with laya 0.4.23 and newer)")
+        if available:
+            self._add(VEGA_MODEL, None)
+            self._vega_spec = True
+
+    @property
+    def vega_enabled(self) -> bool:
+        """Whether this Router has a vega lane to route media, long states and fitted heads to."""
+        return VEGA_MODEL in self.models
+
+    def _vega_heads(self) -> set:
+        """The question ids a resident vega agent has fitted heads for, or nothing."""
+        agent = self._agents.get(VEGA_MODEL)
+        engine = getattr(agent, "vega", None)
+        heads = getattr(engine, "heads", None)
+        return set(heads) if isinstance(heads, dict) else set()
 
     # ------------------------------------------------------------------ registry
     def resolve(self, name: Any) -> str:
@@ -1003,6 +1072,9 @@ class Router(HookRegistry):
     def _build(self, key: str):
         """Construct the Agent for `key`: config is read under `_lock`, the build runs outside it."""
         from .agent import Agent
+        if key == VEGA_MODEL and self._vega_spec is not None and isinstance(self._vega_spec, (bool, str)):
+            from .vega import VegaAgent
+            return VegaAgent(vegaml=self._vega_spec, device=self.device, token=self.token)
         with self._lock:
             if self.models.get(key) is None:
                 raise ValueError("checkpoint %r has no source to load from: it was attached as a built Agent "
@@ -1199,6 +1271,13 @@ class Router(HookRegistry):
             hint = hint(state)
         return _english_from_code(hint)
 
+    def _vega_repo(self) -> str:
+        spec = self._vega_spec
+        if isinstance(spec, str):
+            return spec
+        model_id = getattr(spec, "model_id", None)
+        return model_id if isinstance(model_id, str) else VEGA_REPO
+
     # ------------------------------------------------------------------ routing
     def route(
         self,
@@ -1213,8 +1292,13 @@ class Router(HookRegistry):
         hooks_timeout: Optional[float] = None,
         *,
         explain: bool = False,
+        media: Optional[str] = None,
+        allow_vega: bool = True,
     ) -> RouteDecision:
         """Decide which checkpoint to use, then let `on_route` hooks observe or replace it.
+
+        `media` is "image", "audio" or "video" when the caller is passing one of those instead of
+        a text state; see `predict`. `allow_vega=False` keeps the decision on the encoders.
 
         `ctx.decision` is the `RouteDecision`; a hook may replace it (for example to pin a
         checkpoint) and the replacement is what gets returned and used. `hooks` are per-call
@@ -1226,7 +1310,7 @@ class Router(HookRegistry):
         if questions is not None and not isinstance(questions, dict):
             raise TypeError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
         decision = self._route(state, questions, model=model, task=task, lang=lang, lang_guess=lang_guess,
-                               **({"explain": True} if explain else {}))
+                               media=media, allow_vega=allow_vega, **({"explain": True} if explain else {}))
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         active = compose_hooks(self.hooks, hooks)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
@@ -1246,11 +1330,18 @@ class Router(HookRegistry):
         lang_guess: Optional[Any] = None,
         *,
         explain: bool = False,
+        media: Optional[str] = None,
+        allow_vega: bool = True,
     ) -> RouteDecision:
         """Decide which checkpoint to use, without loading or running anything.
 
-        Precedence: explicit `model` > explicit `task` > detected workflow (opt-in) >
-        explicit `lang` > `lang_guess` > detected script/language > default.
+        Precedence: explicit `model` > explicit `task` > the vega lane (an image, a recording or a
+        clip; a question with a fitted head; a state past `vega_over_tokens`) > detected workflow
+        (opt-in) > explicit `lang` > `lang_guess` > detected script/language > default.
+
+        `media` names the kind of non-text input the caller passed ("image", "audio" or "video");
+        `allow_vega=False` keeps a decision on the encoders, which is what `predict_batch` does,
+        because a batch shares one forward pass on one checkpoint.
 
         `lang_guess` is an opt-in hint -- a language code or a callable taking the state --
         checked after an explicit `lang` and before the built-in detection. It only answers
@@ -1270,6 +1361,28 @@ class Router(HookRegistry):
             key = self.resolve("typed-decisions" if str(task).lower().replace("-", "_") == "typed_decisions" else task)
             return RouteDecision(model=key, repo=_repo_str(self.models.get(key)), reason="explicit task=%r" % task,
                                  detection=None, workflow=None)
+
+        vega_on = allow_vega and self.vega_enabled
+        if media is not None:
+            if not vega_on:
+                raise ValueError("an %s needs the vega lane, which this Router does not have: install "
+                                 "vegaml (pip install -U laya) and build the Router with vega='auto' or "
+                                 "vega=True, or pass media to laya.Agent(vegaml=True) directly" % media)
+            return RouteDecision(model=VEGA_MODEL, repo=self._vega_repo(),
+                                 reason="%s input: the encoders have no vision or speech path" % media,
+                                 detection=None, workflow=None)
+        if vega_on:
+            fitted = sorted(q for q in (questions or {}) if q in self._vega_heads())
+            if fitted:
+                return RouteDecision(model=VEGA_MODEL, repo=self._vega_repo(),
+                                     reason="vega has fitted heads for %s" % ", ".join(fitted),
+                                     detection=None, workflow=None)
+            n_tokens = _estimate_tokens(state)
+            if n_tokens > self.vega_over_tokens:
+                return RouteDecision(model=VEGA_MODEL, repo=self._vega_repo(),
+                                     reason="state is about %d tokens, past the %d the encoders can read; "
+                                            "vega reads it whole" % (n_tokens, self.vega_over_tokens),
+                                     detection=None, workflow=None)
 
         workflow = match_typed_decisions_workflow(questions or {})
         if workflow and self.auto_task_detection:
@@ -1353,16 +1466,29 @@ class Router(HookRegistry):
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
         min_confidence: Optional[float] = None,
+        image: Any = None,
+        audio: Any = None,
+        video: Any = None,
     ) -> Dict[str, Any]:
         """Route, then answer every question in one forward pass on the chosen checkpoint.
+
+        `image`, `audio` or `video` in place of `state` route to the vega lane, which is the only
+        checkpoint that can read them; so does a state past `vega_over_tokens` and a question the
+        vega agent has a fitted head for. Everything else routes exactly as before.
 
         The result is the usual `system_one` payload plus a `routing` key recording the decision.
         Router-level `on_predict_start` / `on_predict_end` hooks wrap the whole route+infer call
         and see `ctx.decision`; see `laya.hooks`. `max_len` / `head_max_len` override the agent
         token budget for this call (a start hook may set `ctx.max_len` / `ctx.head_max_len`).
         """
-        if state is None:
-            raise TypeError("state must not be None; pass a string, dict, or list")
+        media_given = [k for k, v in (("image", image), ("audio", audio), ("video", video)) if v is not None]
+        if len(media_given) > 1:
+            raise ValueError("pass one of image=, audio=, video=; got %s" % ", ".join(media_given))
+        media = media_given[0] if media_given else None
+        if state is None and media is None:
+            raise TypeError("state must not be None; pass a string, dict, or list (or image=, audio=, video=)")
+        if state is not None and media is not None:
+            raise ValueError("pass either a state or %s=, not both" % media)
         if not isinstance(questions, dict):
             raise TypeError("questions must be a dict of question id -> definition, got %s" % type(questions).__name__)
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
@@ -1389,7 +1515,7 @@ class Router(HookRegistry):
             # Per-call hooks apply to the whole call, including on_route inside route().
             decision = self.route(state, questions, model=model, task=task, lang=lang,
                                   lang_guess=lang_guess, hooks=hooks, hooks_raise=hooks_raise,
-                                  hooks_timeout=hooks_timeout)
+                                  hooks_timeout=hooks_timeout, media=media)
             ctx.decision = dict(decision)
             ctx.model = decision["model"]
             agent = self.load(decision["model"])
@@ -1421,14 +1547,20 @@ class Router(HookRegistry):
                             overrides["max_len"] = ctx.max_len
                         if ctx.head_max_len is not None:
                             overrides["head_max_len"] = ctx.head_max_len
-                        try:
-                            result = agent.system_one(ctx.states[0], ctx.questions,
-                                                      lang=effective_lang, **overrides)
-                        except TypeError as e:
-                            if "unexpected keyword argument 'lang'" in str(e):
-                                result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
-                            else:
-                                raise
+                        if decision["model"] == VEGA_MODEL:
+                            # vega's predict takes laya's shape plus the media; `max_len` and
+                            # `head_max_len` are recorded there and not applied
+                            result = agent.predict(ctx.states[0], ctx.questions, lang=effective_lang,
+                                                   image=image, audio=audio, video=video, **overrides)
+                        else:
+                            try:
+                                result = agent.system_one(ctx.states[0], ctx.questions,
+                                                          lang=effective_lang, **overrides)
+                            except TypeError as e:
+                                if "unexpected keyword argument 'lang'" in str(e):
+                                    result = agent.system_one(ctx.states[0], ctx.questions, **overrides)
+                                else:
+                                    raise
                 finally:
                     _SKIP_DEFAULTS.reset(skip)
                 if scan is not None:
@@ -1633,6 +1765,7 @@ class Router(HookRegistry):
                         hooks=hooks,
                         hooks_raise=hooks_raise,
                         hooks_timeout=hooks_timeout,
+                        allow_vega=False,
                         **({"explain": True} if explain else {}),
                     )
                 )
@@ -1645,6 +1778,7 @@ class Router(HookRegistry):
                         task=request.get("task"),
                         lang=request.get("lang"),
                         lang_guess=request.get("lang_guess"),
+                        allow_vega=False,
                         **({"explain": True} if explain else {}),
                     )
                 )
@@ -1656,6 +1790,7 @@ class Router(HookRegistry):
                     task=request.get("task"),
                     lang=request.get("lang"),
                     lang_guess=request.get("lang_guess"),
+                    allow_vega=False,
                     **({"explain": True} if explain else {}),
                 )
                 ctx = PredictContext(

@@ -122,6 +122,12 @@ which measures what the picture itself contributed.
 
 ## Model switching
 
+Since 0.4.25 the ordinary `laya.Router()` does this by itself when vegaml is installed: images,
+speech, video, states past 8,192 tokens and questions with fitted heads go to vega, everything else
+to the encoders, with `Router(vega=False)` to turn it off. See
+[the vega lane](routing.md#the-vega-lane). `laya.vega.Router` below is the explicit two-model form.
+
+
 ```python
 from laya.vega import Router
 

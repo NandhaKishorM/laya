@@ -70,6 +70,47 @@ print(decision.reason)  # why that checkpoint was selected
 `decision["model"]` and `decision["reason"]`. `Router.predict()` includes the same decision under
 the result's `"routing"` key.
 
+## The vega lane
+
+Since 0.4.25 a `Router` has a fourth lane beside the three encoder checkpoints: `vega`, served by
+`laya.Agent(vegaml=True)`, the frozen 0.8B universal reader with vegaml's decision engine. It is on
+by default when the `vegaml` package is installed (it ships with laya 0.4.23 and newer) and built
+on first use, so a Router costs nothing more to construct than before. Text the encoders can read
+keeps going to the encoders, with the same decisions and the same reasons as before. The lane only
+takes what the encoders cannot:
+
+| input | routed to vega because |
+|---|---|
+| `image=`, `audio=` or `video=` instead of a state | the encoders have no vision or speech path |
+| a state past `vega_over_tokens` (8,192, the most any encoder reads) | the encoders would truncate it; vega reads up to 73,728 tokens whole |
+| a question the vega agent has a fitted head for | the head was fitted on your rows for that question |
+
+```python
+from laya import Router
+
+router = Router()                                    # the lane is on if vegaml is installed
+router.predict(ticket, questions)                    # English text: english, as before
+router.predict(seventy_page_contract, questions)     # about 40,000 tokens: vega, read whole
+router.predict(None, questions, image="invoice.png") # vega
+router.predict(None, questions, audio="call.wav")    # vega, transcribed then decided
+router.route(long_text, questions).reason            # "state is about 40000 tokens, past the 8192 ..."
+```
+
+`Router(vega=False)` turns the lane off and the Router behaves exactly as it did before, including
+refusing media with a message that names the lane. `Router(vega=True)` insists on it and raises at
+construction when vegaml is missing. `Router(vega="4b")` names a different reader (any name
+`laya.Agent(vegaml=...)` takes), and `Router(vega=agent)` attaches an agent you already built, which
+is how fitted heads reach the Router: fit on the agent, hand it over, and the questions it serves
+route to it. `model="vega"` selects the lane explicitly like any other checkpoint name.
+
+Two things stay on the encoders on purpose. `predict_batch` never routes to vega, because a batch
+shares one forward pass on one checkpoint; send media and long states one at a time. And the HTTP
+server refuses `image`, `audio` and `video` in a body with a message saying where media goes, since
+the JSON surface has no media encoding yet.
+
+Answers from the lane carry vega's fields on top of laya's: `prediction_set`, `abstain`, `unbound`
+and `route`; see [vega inside laya](vegaml.md).
+
 ## Explain a detection result
 
 Use `explain=True` to inspect why built-in detection reached its result, without loading a

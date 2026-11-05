@@ -229,7 +229,10 @@ hook arguments `predict` also takes -- `hooks`, `on_predict_start`, `on_predict_
 that runs inside the server process, and the last two say how the hooks a deployment installed
 execute, so no value a caller sends has a meaning here. The same five are refused client-side by a
 LangChain node with a `base_url` (`laya.integrations.langchain`), so a chain and a raw HTTP client
-now get the same answer.
+now get the same answer. `image`, `audio` and `video`, which `predict` takes since 0.4.25 to route a
+picture, a recording or a clip to the vega lane, are refused with a `422` as well: this endpoint
+takes text states only, and media goes through `laya.Agent(vegaml=True)` or a `Router` with the vega
+lane in the process that holds the model.
 
 `model` is accepted so a Jev client can keep sending one. The public Hugging Face ids
 (`convaiinnovations/laya-multilingual`, `convaiinnovations/laya-typed-decisions`), the checkpoint

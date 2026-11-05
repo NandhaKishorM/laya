@@ -176,6 +176,11 @@ DEFAULT_MAX_TOKEN_BUDGET = 8192
 # language it reads, how many tokens it gets and where it abstains are all plain data.
 BODY_CONTROLS = ("model", "max_len", "head_max_len", "task", "lang", "lang_guess", "min_confidence")
 BODY_REFUSALS = ("hooks", "on_predict_start", "on_predict_end", "hooks_raise", "hooks_timeout")
+# `image`, `audio` and `video` are `Router.predict` arguments since 0.4.25 and route to the vega
+# lane; the HTTP body has no media encoding yet, so they are refused here rather than accepted as
+# strings and passed on, and the response says where media goes (laya.Agent(vegaml=True) locally).
+# A tuple of their own, because ``BODY_REFUSALS`` is pinned as the hook set LangChain refuses too.
+MEDIA_REFUSALS = ("image", "audio", "video")
 
 # ``Router.predict_batch`` reads two different kinds of control: call-level keyword arguments that
 # apply to the whole batch (chunking, padding, the abstention threshold) and per-request keys that
@@ -202,9 +207,12 @@ BATCH_BODY_OUT_PARAMETERS = ("diagnostics",)
 # Route-only requests cannot apply prediction budgets, abstention or batch controls.
 # Hook policy belongs to the operator, including the on_route callback itself.
 ROUTE_BODY_CONTROLS = ("model", "task", "lang", "lang_guess", "explain")
-ROUTE_BODY_REFUSALS = BODY_REFUSALS + (
+ROUTE_BODY_REFUSALS = BODY_REFUSALS + MEDIA_REFUSALS + (
     "on_route", "max_len", "head_max_len", "min_confidence", "batch_size",
     "sort_by_length", "diagnostics", "states",
+    # `Router.route` takes these two since 0.4.25: `media` names a non-text input and
+    # `allow_vega` is how `predict_batch` keeps a batch on the encoders; neither is a body control
+    "media", "allow_vega",
 )
 
 
@@ -672,6 +680,13 @@ def _refuse_body_refusals(body: Dict[str, Any]) -> None:
     from fastapi import HTTPException
 
     given = sorted(key for key in BODY_REFUSALS if key in body and body[key] is not None)
+    media = sorted(key for key in MEDIA_REFUSALS if key in body and body[key] is not None)
+    if media:
+        raise HTTPException(
+            status_code=422,
+            detail="%s cannot be sent to this endpoint, which takes text states only; images, "
+                   "recordings and clips go through laya.Agent(vegaml=True) or a Router with the "
+                   "vega lane, in the process that holds the model" % ", ".join(media))
     if given:
         raise HTTPException(
             status_code=422,

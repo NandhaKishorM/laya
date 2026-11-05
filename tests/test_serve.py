@@ -27,6 +27,7 @@ from laya.serve import (  # noqa: E402
     BATCH_BODY_ITEM_CONTROLS,
     BODY_CONTROLS,
     BODY_REFUSALS,
+    MEDIA_REFUSALS,
     DEFAULT_BODY_READ_TIMEOUT,
     DEFAULT_LOG_LEVEL,
     DEFAULT_MAX_TOKEN_BUDGET,
@@ -2920,8 +2921,8 @@ def test_every_predict_control_is_forwarded_or_refused():
     from laya.router import Router
 
     taken = set(inspect.signature(Router.predict).parameters) - {"self", "state", "questions"}
-    declared = set(BODY_CONTROLS) | set(BODY_REFUSALS)
-    assert not set(BODY_CONTROLS) & set(BODY_REFUSALS)
+    declared = set(BODY_CONTROLS) | set(BODY_REFUSALS) | set(MEDIA_REFUSALS)
+    assert not set(BODY_CONTROLS) & set(BODY_REFUSALS) and not set(BODY_CONTROLS) & set(MEDIA_REFUSALS)
     assert taken == declared, "predict() takes %s; serve declares %s" % (
         sorted(taken), sorted(declared))
 
@@ -3052,7 +3053,8 @@ def test_a_hook_control_is_refused_not_dropped(monkeypatch, key):
     says that itself instead of answering as though the control had been honoured.
     """
     value = {"hooks": [], "on_predict_start": "cache", "on_predict_end": "audit",
-             "hooks_raise": False, "hooks_timeout": 5.0}[key]
+             "hooks_raise": False, "hooks_timeout": 5.0,
+             "image": "invoice.png", "audio": "call.wav", "video": "clip.mp4"}[key]
     client, fake = _budget_client(monkeypatch)
     r = client.post("/v1/systemone", json={**REQ, key: value})
     assert r.status_code == 422, r.text
@@ -3331,6 +3333,23 @@ def test_bad_control_on_batch_is_refused_before_inference(monkeypatch, key, valu
     assert not fake.batch_calls, "a refused body must not reach predict_batch"
 
 
+@pytest.mark.parametrize("key", MEDIA_REFUSALS)
+def test_media_is_refused_on_both_endpoints_with_a_pointer(monkeypatch, key):
+    """`image`, `audio` and `video` are `Router.predict` arguments since 0.4.25, so the single
+    endpoint has to say it cannot take them rather than forward a file name as a state; the batch
+    endpoint refuses them for the same reason. The answer names where media goes."""
+    client, fake = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, key: "%s.bin" % key})
+    assert r.status_code == 422, r.text
+    assert key in r.json()["detail"] and "vegaml=True" in r.json()["detail"]
+    assert not fake.calls
+    client, fake = _batch_client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json={**BATCH_REQ, key: "%s.bin" % key})
+    assert r.status_code == 422, r.text
+    assert key in r.json()["detail"] and "cannot be sent to this endpoint" in r.json()["detail"]
+    assert not fake.batch_calls
+
+
 @pytest.mark.parametrize("key", BODY_REFUSALS)
 def test_batch_hook_control_is_refused_not_dropped(monkeypatch, key):
     """The batch endpoint must honour the same refusal policy the single endpoint already states.
@@ -3341,7 +3360,8 @@ def test_batch_hook_control_is_refused_not_dropped(monkeypatch, key):
     reason they are on ``/v1/systemone``: they run inside the server process.
     """
     value = {"hooks": [], "on_predict_start": "cache", "on_predict_end": "audit",
-             "hooks_raise": False, "hooks_timeout": 5.0}[key]
+             "hooks_raise": False, "hooks_timeout": 5.0,
+             "image": "invoice.png", "audio": "call.wav", "video": "clip.mp4"}[key]
     client, fake = _batch_client(monkeypatch)
     r = client.post("/v1/systemone/batch", json={**BATCH_REQ, key: value})
     assert r.status_code == 422, r.text

@@ -2000,30 +2000,26 @@ class Router(HookRegistry):
                         batch_kwargs["sort_by_length"] = True
                     skip = _SKIP_DEFAULTS.set(True)
                     try:
-                        batch_results = agent.predict_batch(
-                            [ctx.states[0] for _, ctx in items],
-                            group["questions"],
-                            batch_size=batch_size,
-                            **batch_kwargs,
-                        )
-                    except TypeError as e:
-                        # Same tolerance `predict` has for an Agent-like object whose
-                        # `predict_batch` predates the `lang` (or `sort_by_length`) argument.
-                        retried = False
-                        for kwarg in ("lang", "sort_by_length"):
-                            if batch_kwargs.get(kwarg) is not None and \
-                                    "unexpected keyword argument '%s'" % kwarg in str(e):
-                                batch_kwargs.pop(kwarg)
-                                retried = True
-                        if retried:
-                            batch_results = agent.predict_batch(
-                                [ctx.states[0] for _, ctx in items],
-                                group["questions"],
-                                batch_size=batch_size,
-                                **batch_kwargs,
-                            )
-                        else:
-                            raise
+                        while True:
+                            try:
+                                batch_results = agent.predict_batch(
+                                    [ctx.states[0] for _, ctx in items],
+                                    group["questions"],
+                                    batch_size=batch_size,
+                                    **batch_kwargs,
+                                )
+                                break
+                            except TypeError as e:
+                                # An older agent may predate both optional arguments. Remove
+                                # only the one it refused, preserving any supported argument;
+                                # each removal bounds the retry to at most two extra calls.
+                                for kwarg in ("lang", "sort_by_length"):
+                                    if kwarg in batch_kwargs and \
+                                            "unexpected keyword argument '%s'" % kwarg in str(e):
+                                        batch_kwargs.pop(kwarg)
+                                        break
+                                else:
+                                    raise
                     finally:
                         _SKIP_DEFAULTS.reset(skip)
 

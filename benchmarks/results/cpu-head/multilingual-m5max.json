@@ -49,8 +49,7 @@
       "median_ms": {
         "baseline": 208.896875,
         "selected": 201.613875
-      },
-      "latency_reduction_pct": 3.486409262943735
+      }
     },
     {
       "name": "triage/1",
@@ -85,8 +84,7 @@
       "median_ms": {
         "baseline": 207.012875,
         "selected": 196.669958
-      },
-      "latency_reduction_pct": 4.996267502685525
+      }
     },
     {
       "name": "triage/2",
@@ -121,8 +119,7 @@
       "median_ms": {
         "baseline": 195.398541,
         "selected": 186.432042
-      },
-      "latency_reduction_pct": 4.588825972861277
+      }
     },
     {
       "name": "triage/3",
@@ -157,8 +154,7 @@
       "median_ms": {
         "baseline": 177.546,
         "selected": 170.460875
-      },
-      "latency_reduction_pct": 3.9905855383956856
+      }
     },
     {
       "name": "triage/4",
@@ -193,8 +189,7 @@
       "median_ms": {
         "baseline": 179.858,
         "selected": 171.147833
-      },
-      "latency_reduction_pct": 4.842802099434007
+      }
     },
     {
       "name": "triage/5",
@@ -229,8 +224,7 @@
       "median_ms": {
         "baseline": 196.297083,
         "selected": 187.700833
-      },
-      "latency_reduction_pct": 4.379204147419758
+      }
     },
     {
       "name": "triage/6",
@@ -265,8 +259,7 @@
       "median_ms": {
         "baseline": 245.85625,
         "selected": 224.113708
-      },
-      "latency_reduction_pct": 8.843599461067186
+      }
     },
     {
       "name": "triage/7",
@@ -301,8 +294,7 @@
       "median_ms": {
         "baseline": 195.039625,
         "selected": 186.046958
-      },
-      "latency_reduction_pct": 4.610687187283102
+      }
     },
     {
       "name": "triage/8",
@@ -337,8 +329,7 @@
       "median_ms": {
         "baseline": 206.886209,
         "selected": 196.590875
-      },
-      "latency_reduction_pct": 4.976326865750624
+      }
     },
     {
       "name": "triage/9",
@@ -373,8 +364,7 @@
       "median_ms": {
         "baseline": 228.375458,
         "selected": 222.00025
-      },
-      "latency_reduction_pct": 2.79154689204828
+      }
     },
     {
       "name": "triage/10",
@@ -409,8 +399,7 @@
       "median_ms": {
         "baseline": 749.41475,
         "selected": 734.816958
-      },
-      "latency_reduction_pct": 1.9478922719362024
+      }
     },
     {
       "name": "triage/11",
@@ -445,8 +434,7 @@
       "median_ms": {
         "baseline": 657.722416,
         "selected": 633.697334
-      },
-      "latency_reduction_pct": 3.6527692253687793
+      }
     },
     {
       "name": "moderation/0",
@@ -481,8 +469,7 @@
       "median_ms": {
         "baseline": 196.319917,
         "selected": 187.952667
-      },
-      "latency_reduction_pct": 4.262048460421875
+      }
     },
     {
       "name": "moderation/1",
@@ -517,8 +504,7 @@
       "median_ms": {
         "baseline": 196.829083,
         "selected": 200.897791
-      },
-      "latency_reduction_pct": -2.0671274478274215
+      }
     },
     {
       "name": "moderation/2",
@@ -553,8 +539,7 @@
       "median_ms": {
         "baseline": 193.983416,
         "selected": 185.25575
-      },
-      "latency_reduction_pct": 4.4991815176612775
+      }
     },
     {
       "name": "moderation/3",
@@ -589,8 +574,7 @@
       "median_ms": {
         "baseline": 177.019416,
         "selected": 168.9365
-      },
-      "latency_reduction_pct": 4.566118329076407
+      }
     },
     {
       "name": "moderation/4",
@@ -625,8 +609,7 @@
       "median_ms": {
         "baseline": 176.839208,
         "selected": 169.202041
-      },
-      "latency_reduction_pct": 4.318706856004473
+      }
     },
     {
       "name": "moderation/5",
@@ -661,8 +644,7 @@
       "median_ms": {
         "baseline": 194.271959,
         "selected": 186.689666
-      },
-      "latency_reduction_pct": 3.902927133194767
+      }
     },
     {
       "name": "moderation/6",
@@ -697,8 +679,7 @@
       "median_ms": {
         "baseline": 233.064708,
         "selected": 223.062
-      },
-      "latency_reduction_pct": 4.291815816232458
+      }
     },
     {
       "name": "moderation/7",
@@ -733,8 +714,7 @@
       "median_ms": {
         "baseline": 187.439209,
         "selected": 180.672833
-      },
-      "latency_reduction_pct": 3.609904265014263
+      }
     },
     {
       "name": "moderation/8",
@@ -769,8 +749,7 @@
       "median_ms": {
         "baseline": 204.832167,
         "selected": 198.827542
-      },
-      "latency_reduction_pct": 2.931485365772657
+      }
     },
     {
       "name": "moderation/9",
@@ -805,8 +784,7 @@
       "median_ms": {
         "baseline": 209.768375,
         "selected": 201.153208
-      },
-      "latency_reduction_pct": 4.106990388803833
+      }
     },
     {
       "name": "moderation/10",
@@ -841,8 +819,7 @@
       "median_ms": {
         "baseline": 728.529375,
         "selected": 771.458333
-      },
-      "latency_reduction_pct": -5.892550043023337
+      }
     },
     {
       "name": "moderation/11",
@@ -877,8 +854,7 @@
       "median_ms": {
         "baseline": 1121.045584,
         "selected": 880.4375
-      },
-      "latency_reduction_pct": 21.462827866596367
+      }
     },
     {
       "name": "guard/0",
@@ -913,8 +889,7 @@
       "median_ms": {
         "baseline": 159.167625,
         "selected": 152.905791
-      },
-      "latency_reduction_pct": 3.9341128574356676
+      }
     },
     {
       "name": "guard/1",
@@ -949,8 +924,7 @@
       "median_ms": {
         "baseline": 166.554417,
         "selected": 160.286959
-      },
-      "latency_reduction_pct": 3.7630091791561515
+      }
     },
     {
       "name": "guard/2",
@@ -985,8 +959,7 @@
       "median_ms": {
         "baseline": 158.4645,
         "selected": 152.427458
-      },
-      "latency_reduction_pct": 3.809712585468661
+      }
     },
     {
       "name": "guard/3",
@@ -1021,8 +994,7 @@
       "median_ms": {
         "baseline": 139.063584,
         "selected": 134.213458
-      },
-      "latency_reduction_pct": 3.4877038693321705
+      }
     },
     {
       "name": "guard/4",
@@ -1057,8 +1029,7 @@
       "median_ms": {
         "baseline": 139.373792,
         "selected": 135.151833
-      },
-      "latency_reduction_pct": 3.0292345062979953
+      }
     },
     {
       "name": "guard/5",
@@ -1093,8 +1064,7 @@
       "median_ms": {
         "baseline": 158.99175,
         "selected": 152.817333
-      },
-      "latency_reduction_pct": 3.8834826335328754
+      }
     },
     {
       "name": "guard/6",
@@ -1129,8 +1099,7 @@
       "median_ms": {
         "baseline": 195.715333,
         "selected": 186.208541
-      },
-      "latency_reduction_pct": 4.85745897077976
+      }
     },
     {
       "name": "guard/7",
@@ -1165,8 +1134,7 @@
       "median_ms": {
         "baseline": 157.333542,
         "selected": 151.493708
-      },
-      "latency_reduction_pct": 3.7117539755127327
+      }
     },
     {
       "name": "guard/8",
@@ -1201,8 +1169,7 @@
       "median_ms": {
         "baseline": 169.634584,
         "selected": 159.696625
-      },
-      "latency_reduction_pct": 5.858451010202015
+      }
     },
     {
       "name": "guard/9",
@@ -1237,8 +1204,7 @@
       "median_ms": {
         "baseline": 178.369375,
         "selected": 174.58225
-      },
-      "latency_reduction_pct": 2.123192392191764
+      }
     },
     {
       "name": "guard/10",
@@ -1273,8 +1239,7 @@
       "median_ms": {
         "baseline": 677.122125,
         "selected": 637.646666
-      },
-      "latency_reduction_pct": 5.829887629207208
+      }
     },
     {
       "name": "guard/11",
@@ -1309,8 +1274,7 @@
       "median_ms": {
         "baseline": 608.924083,
         "selected": 571.995541
-      },
-      "latency_reduction_pct": 6.064555998190002
+      }
     },
     {
       "name": "router/0",
@@ -1345,8 +1309,7 @@
       "median_ms": {
         "baseline": 180.33375,
         "selected": 172.339792
-      },
-      "latency_reduction_pct": 4.432868500765952
+      }
     },
     {
       "name": "router/1",
@@ -1381,8 +1344,7 @@
       "median_ms": {
         "baseline": 188.093292,
         "selected": 180.388708
-      },
-      "latency_reduction_pct": 4.096150329486492
+      }
     },
     {
       "name": "router/2",
@@ -1417,8 +1379,7 @@
       "median_ms": {
         "baseline": 180.73525,
         "selected": 171.448958
-      },
-      "latency_reduction_pct": 5.138063548754324
+      }
     },
     {
       "name": "router/3",
@@ -1453,8 +1414,7 @@
       "median_ms": {
         "baseline": 162.286583,
         "selected": 155.349625
-      },
-      "latency_reduction_pct": 4.274511097445444
+      }
     },
     {
       "name": "router/4",
@@ -1489,8 +1449,7 @@
       "median_ms": {
         "baseline": 172.109667,
         "selected": 163.062417
-      },
-      "latency_reduction_pct": 5.256677418357903
+      }
     },
     {
       "name": "router/5",
@@ -1525,8 +1484,7 @@
       "median_ms": {
         "baseline": 179.362167,
         "selected": 171.976541
-      },
-      "latency_reduction_pct": 4.117716753500201
+      }
     },
     {
       "name": "router/6",
@@ -1561,8 +1519,7 @@
       "median_ms": {
         "baseline": 215.756625,
         "selected": 252.091375
-      },
-      "latency_reduction_pct": -16.84061845146121
+      }
     },
     {
       "name": "router/7",
@@ -1597,8 +1554,7 @@
       "median_ms": {
         "baseline": 178.98125,
         "selected": 170.568417
-      },
-      "latency_reduction_pct": 4.700399064147764
+      }
     },
     {
       "name": "router/8",
@@ -1633,8 +1589,7 @@
       "median_ms": {
         "baseline": 196.508167,
         "selected": 183.345208
-      },
-      "latency_reduction_pct": 6.698428467861072
+      }
     },
     {
       "name": "router/9",
@@ -1669,8 +1624,7 @@
       "median_ms": {
         "baseline": 193.843209,
         "selected": 182.697292
-      },
-      "latency_reduction_pct": 5.749965169014503
+      }
     },
     {
       "name": "router/10",
@@ -1705,8 +1659,7 @@
       "median_ms": {
         "baseline": 656.49525,
         "selected": 631.92175
-      },
-      "latency_reduction_pct": 3.743134470508369
+      }
     },
     {
       "name": "router/11",
@@ -1741,8 +1694,7 @@
       "median_ms": {
         "baseline": 613.731292,
         "selected": 576.225583
-      },
-      "latency_reduction_pct": 6.111096091870771
+      }
     },
     {
       "name": "email/0",
@@ -1777,8 +1729,7 @@
       "median_ms": {
         "baseline": 178.115625,
         "selected": 171.721208
-      },
-      "latency_reduction_pct": 3.590037089671394
+      }
     },
     {
       "name": "email/1",
@@ -1813,8 +1764,7 @@
       "median_ms": {
         "baseline": 202.01125,
         "selected": 182.94675
-      },
-      "latency_reduction_pct": 9.437345692380983
+      }
     },
     {
       "name": "email/2",
@@ -1849,8 +1799,7 @@
       "median_ms": {
         "baseline": 179.570917,
         "selected": 173.706833
-      },
-      "latency_reduction_pct": 3.265608985000623
+      }
     },
     {
       "name": "email/3",
@@ -1885,8 +1834,7 @@
       "median_ms": {
         "baseline": 157.721708,
         "selected": 152.361167
-      },
-      "latency_reduction_pct": 3.398733800169096
+      }
     },
     {
       "name": "email/4",
@@ -1921,8 +1869,7 @@
       "median_ms": {
         "baseline": 172.589291,
         "selected": 165.066375
-      },
-      "latency_reduction_pct": 4.358854455228056
+      }
     },
     {
       "name": "email/5",
@@ -1957,8 +1904,7 @@
       "median_ms": {
         "baseline": 186.156291,
         "selected": 178.8235
-      },
-      "latency_reduction_pct": 3.939050869895133
+      }
     },
     {
       "name": "email/6",
@@ -1993,8 +1939,7 @@
       "median_ms": {
         "baseline": 241.470083,
         "selected": 234.5355
-      },
-      "latency_reduction_pct": 2.871818700621387
+      }
     },
     {
       "name": "email/7",
@@ -2029,8 +1974,7 @@
       "median_ms": {
         "baseline": 186.970666,
         "selected": 185.142334
-      },
-      "latency_reduction_pct": 0.9778710420810022
+      }
     },
     {
       "name": "email/8",
@@ -2065,8 +2009,7 @@
       "median_ms": {
         "baseline": 200.687458,
         "selected": 189.296167
-      },
-      "latency_reduction_pct": 5.676134978001468
+      }
     },
     {
       "name": "email/9",
@@ -2101,8 +2044,7 @@
       "median_ms": {
         "baseline": 209.385875,
         "selected": 198.301791
-      },
-      "latency_reduction_pct": 5.293615913680894
+      }
     },
     {
       "name": "email/10",
@@ -2137,8 +2079,7 @@
       "median_ms": {
         "baseline": 773.934916,
         "selected": 674.850791
-      },
-      "latency_reduction_pct": 12.802643084266807
+      }
     },
     {
       "name": "email/11",
@@ -2173,8 +2114,7 @@
       "median_ms": {
         "baseline": 648.838291,
         "selected": 674.150084
-      },
-      "latency_reduction_pct": -3.9010942096202372
+      }
     },
     {
       "name": "long/512",
@@ -2209,8 +2149,7 @@
       "median_ms": {
         "baseline": 202.453583,
         "selected": 194.141667
-      },
-      "latency_reduction_pct": 4.105590959089122
+      }
     },
     {
       "name": "long/1024",
@@ -2245,8 +2184,7 @@
       "median_ms": {
         "baseline": 480.9105,
         "selected": 447.654625
-      },
-      "latency_reduction_pct": 6.915190040558484
+      }
     },
     {
       "name": "long/2048",
@@ -2281,8 +2219,7 @@
       "median_ms": {
         "baseline": 1436.54825,
         "selected": 1297.719709
-      },
-      "latency_reduction_pct": 9.66403606700994
+      }
     },
     {
       "name": "long/4096",
@@ -2317,8 +2254,7 @@
       "median_ms": {
         "baseline": 4447.221458,
         "selected": 4203.950125
-      },
-      "latency_reduction_pct": 5.470187066182297
+      }
     },
     {
       "name": "options/1",
@@ -2353,8 +2289,7 @@
       "median_ms": {
         "baseline": 23.088375,
         "selected": 23.014791
-      },
-      "latency_reduction_pct": 0.3187058422257971
+      }
     },
     {
       "name": "options/32",
@@ -2389,8 +2324,7 @@
       "median_ms": {
         "baseline": 124.400667,
         "selected": 119.752208
-      },
-      "latency_reduction_pct": 3.7366833410949485
+      }
     },
     {
       "name": "batch/padded",
@@ -2429,8 +2363,7 @@
       "median_ms": {
         "baseline": 506.232792,
         "selected": 476.905
-      },
-      "latency_reduction_pct": 5.793341020863785
+      }
     },
     {
       "name": "structured/mixed",
@@ -2465,8 +2398,7 @@
       "median_ms": {
         "baseline": 70.690125,
         "selected": 68.501166
-      },
-      "latency_reduction_pct": 3.0965555655758092
+      }
     },
     {
       "name": "structured/batch",
@@ -2501,8 +2433,7 @@
       "median_ms": {
         "baseline": 574.454375,
         "selected": 540.627583
-      },
-      "latency_reduction_pct": 5.888508029902296
+      }
     }
   ],
   "peak_rss_mib": 3602.125,

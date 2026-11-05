@@ -133,8 +133,7 @@
       "median_cpu_ms": {
         "baseline": 1344.757,
         "selected": 1256.544
-      },
-      "latency_reduction_pct": 5.601781385225879
+      }
     },
     {
       "name": "router/6",
@@ -253,8 +252,7 @@
       "median_cpu_ms": {
         "baseline": 315.615,
         "selected": 301.2
-      },
-      "latency_reduction_pct": 4.476433395550183
+      }
     },
     {
       "name": "email/11",
@@ -373,8 +371,7 @@
       "median_cpu_ms": {
         "baseline": 1126.313,
         "selected": 1050.165
-      },
-      "latency_reduction_pct": 6.118397874414461
+      }
     }
   ],
   "peak_rss_mib": 2538.25,

@@ -133,8 +133,7 @@
       "median_cpu_ms": {
         "baseline": 676.05,
         "selected": 656.481
-      },
-      "latency_reduction_pct": 3.595065231271599
+      }
     },
     {
       "name": "triage/4",
@@ -253,8 +252,7 @@
       "median_cpu_ms": {
         "baseline": 620.018,
         "selected": 604.003
-      },
-      "latency_reduction_pct": 2.7407947093609053
+      }
     },
     {
       "name": "triage/6",
@@ -373,8 +371,7 @@
       "median_cpu_ms": {
         "baseline": 1100.964,
         "selected": 1058.353
-      },
-      "latency_reduction_pct": 3.653460965261024
+      }
     }
   ],
   "peak_rss_mib": 2783.171875,

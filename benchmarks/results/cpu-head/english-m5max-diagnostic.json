@@ -133,8 +133,7 @@
       "median_cpu_ms": {
         "baseline": 2613.603,
         "selected": 2500.495
-      },
-      "latency_reduction_pct": 3.655231433615702
+      }
     },
     {
       "name": "email/10",
@@ -253,8 +252,7 @@
       "median_cpu_ms": {
         "baseline": 2629.983,
         "selected": 2539.939
-      },
-      "latency_reduction_pct": 2.7785011985242303
+      }
     },
     {
       "name": "email/11",
@@ -373,8 +371,7 @@
       "median_cpu_ms": {
         "baseline": 2659.555,
         "selected": 2547.05
-      },
-      "latency_reduction_pct": 3.6250694776966297
+      }
     }
   ],
   "peak_rss_mib": 2780.484375,

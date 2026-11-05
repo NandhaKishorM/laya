@@ -91,6 +91,72 @@ remain unchanged.
 | Typed-decisions | triage/4 | 2.74% | 2.58% |
 | Typed-decisions | triage/6 | 3.65% | 3.87% |
 
+## Linux x86-64, 2026-11-05
+
+Completed latency runs use GitHub-hosted Ubuntu 24.04 VMs with two assigned
+cores/four logical CPUs, two Torch execution threads and one interop thread.
+English ran on AMD EPYC 9V45; multilingual ran on Intel Xeon 6973P-C.
+Python 3.11.18, PyTorch 2.15.0+cpu and Transformers 5.22.1 were used for both.
+These are hosted VM measurements. Each before/after pair used the same runner;
+absolute times across checkpoints also reflect different CPU models.
+[linux-environment.json](linux-environment.json) records the environment and packages.
+
+Both runs used the same implementation commit, full corpus and five paired
+repetitions as the Mac runs. The time columns again sum per-fixture medians.
+
+| Checkpoint | Full head (s) | Selected head (s) | Reduction | Fixtures with lower median |
+|---|---:|---:|---:|---:|
+| [English](english-linux-x86_64.json) | 260.866 | 251.276 | 3.68% | 67/69 |
+| [Multilingual](multilingual-linux-x86_64.json) | 69.258 | 64.232 | 7.26% | 69/69 |
+
+Long-input public API latency:
+
+| Checkpoint | Encoder sequence tokens | Full head (ms) | Selected head (ms) | Reduction |
+|---|---:|---:|---:|---:|
+| English | 2,048 | 11,079.28 | 10,227.87 | 7.68% |
+| English | 4,096 | 30,118.74 | 27,890.42 | 7.40% |
+| Multilingual | 2,048 | 3,742.01 | 3,217.08 | 14.03% |
+| Multilingual | 4,096 | 11,903.26 | 10,179.28 | 14.48% |
+
+All 612 question rows retain their argmax; categorical/boolean answers and
+confidence-gate decisions agree. Public numeric outputs differ by at most one
+four-decimal rounding unit. Maximum differences:
+
+| Checkpoint | Option logits | Action logits | Calibrated probabilities | Public numeric fields |
+|---|---:|---:|---:|---:|
+| English | 1.907e-06 | 4.883e-04 | 1.192e-07 | 1.000e-04 |
+| Multilingual | 3.815e-06 | 2.441e-04 | 1.788e-07 | 1.000e-04 |
+
+Completed separate-process peak RSS pair:
+
+| Checkpoint | Full head (MiB) | Selected head (MiB) | Change |
+|---|---:|---:|---:|
+| Multilingual | 3,464.01 | 3,412.78 | -1.48% |
+
+The `multilingual-linux-x86_64-memory-{baseline,selected}.json` files retain the
+raw measurements, with the same process high-water-mark limitations as the Mac
+runs. To reproduce the Linux configuration, add `--threads 2` to the benchmark
+commands and set `OMP_NUM_THREADS=2 MKL_NUM_THREADS=2`.
+
+### Additional runs and time limits
+
+The [original Linux workflow](https://github.com/bahram-po/laya/actions/runs/42070073256)
+had a 60-minute job limit. Multilingual finished. English completed all latency,
+parity and post-run integrity checks, then timed out during selected-head RSS;
+its [original baseline RSS](english-linux-original-memory-baseline.json) is
+retained, but is not compared with memory measured on another runner.
+Typed-decisions completed 63 fixtures before the time limit interrupted the
+4,096-token fixture. The [partial data](typed-decisions-linux-timeout.json)
+are explicitly incomplete and excluded from all full-corpus totals.
+Neither timeout reported a parity assertion failure.
+
+Additional [typed-decisions latency/RSS](https://github.com/bahram-po/laya/actions/runs/42081564992)
+and [English RSS-only](https://github.com/bahram-po/laya/actions/runs/42082064586)
+runs were started with a 180-minute limit, preserving the source, corpus,
+repetitions and thread count. Their results are pending and are not included in
+this report. The complete three-checkpoint Mac measurements above provide the
+before/after latency, numerical and memory evidence for every checkpoint.
+
 ## Correctness and compatibility
 
 Completed on the Mac environment above:
@@ -141,6 +207,9 @@ The Windows and Linux Python 3.12/3.13 test jobs passed in the
 [fork's upstream CI workflow](https://github.com/bahram-po/laya/actions/runs/42065875065).
 These are individual completed jobs; they are not a claim that every job in
 that workflow or the upstream PR's CI has completed.
+The independent [Linux compatibility workflow](https://github.com/bahram-po/laya/actions/runs/42072391374)
+also passed its full Python 3.10, 3.11 and 3.12 matrix against `eedbe4da`, using
+the same shared suite runner and dependencies as upstream CI.
 
 ## Reproduce
 
@@ -180,6 +249,9 @@ The baseline disables only the final-head selection predicate, leaving the full
 forward in place. It shares the exact resident weights with the selected path.
 JSON artifacts record every timing sample, forward shape, maximum numerical
 delta, package versions, fixture/source hashes and pinned checkpoint SHA-256.
+Archived JSON omits the redundant per-case percentage field; calculate it as
+`100 * (1 - median_ms.selected / median_ms.baseline)`. All timing samples and
+medians are retained at their original precision.
 Parameter identities/versions and checkpoint hashes are checked after the run.
 Comparisons use `atol=1e-4, rtol=1e-5` for logits (including action logits),
 `atol=1e-5, rtol=1e-5` for calibrated probabilities, exact argmax/label/gate

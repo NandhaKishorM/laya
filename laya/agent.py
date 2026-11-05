@@ -2178,6 +2178,7 @@ def _is_local_checkpoint_arg(model_id_or_path: str) -> bool:
 
 if TYPE_CHECKING:  # pragma: no cover - the annotation below is the only use
     from .onnx_agent import ONNXAgent
+    from .vega import VegaAgent
 
 
 def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,

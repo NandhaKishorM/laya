@@ -90,15 +90,16 @@ print(out["routing"]["model"])   # vega: non-English goes to the reader
 
 The rule, in order: an image or audio goes to vega; text longer than the fast model's context goes to vega; non-English or non-Latin text goes to vega; a question with a fitted head goes to vega; everything else goes to the encoder. `model="vega"` or `model="fast"` forces one.
 
-**Images, speech, long documents.** The questions and the answer shape do not change with the input:
+**Images, speech, video, long documents.** The questions and the answer shape do not change with the input:
 
 ```python
 agent.predict(image="invoice.png", questions=questions)                 # PIL image, path or array
 agent.predict(audio=wave, questions=questions, sampling_rate=16000)     # transcribed, then decided; the transcript rides along
+agent.predict(video="call.mp4", questions=questions)                    # speech transcribed if there is any, else frames tiled into one image
 agent.predict_long(seventy_page_contract, questions)                    # up to 73,728 tokens, read whole
 ```
 
-Image, audio and video, in one paragraph: an image is a PIL image, a path or an HxWx3 array in any format Pillow opens, and it is scaled to about one megapixel (1,048,576 pixels) before the reader sees it, so a larger or sharper file costs nothing more and gains nothing; there is no file-size cap of its own, memory is the bound. Audio is a path or raw file bytes (wav, flac, ogg, mp3, with `pip install soundfile`) or a 1-D numpy waveform with `sampling_rate=`; any length works, stereo is averaged, the wave is resampled to 16 kHz and transcribed in 30-second windows, and the transcript then counts toward the 73,728-token context. The default transcriber is English-only; pass `asr="openai/whisper-tiny", language="hi"` for other languages. Video is not read by laya: split it yourself, frames go in as images and the sound track as audio.
+Image, audio and video, in one paragraph: an image is a PIL image, a path or an HxWx3 array in any format Pillow opens, and it is scaled to about one megapixel (1,048,576 pixels) before the reader sees it, so a larger or sharper file costs nothing more and gains nothing; there is no file-size cap of its own, memory is the bound. Audio is a path or raw file bytes (wav, flac, ogg, mp3, with `pip install soundfile`) or a 1-D numpy waveform with `sampling_rate=`; any length works, stereo is averaged, the wave is resampled to 16 kHz and transcribed in 30-second windows, and the transcript then counts toward the 73,728-token context. The default transcriber is English-only; pass `asr="openai/whisper-tiny", language="hi"` for other languages. Video is a path or raw file bytes in any container ffmpeg opens (mp4, mov, webm, mkv), decoded through the `ffmpeg` binary on your PATH, with no Python dependency; the sound track is extracted at 16 kHz and transcribed, and if the transcript holds real words the decision is made on it through the text path, with heads, calibration, set and route all applying. A silent clip, or one whose sound is music or noise, has `frames` (4 by default) evenly spaced frames tiled into one contact sheet and decided through the image path, which is zero-shot. Any length and resolution work, since only the frames sampled and the transcript reach the reader; `out["video"]` says which path decided, the frame times or the transcript, and the duration.
 
 **Fit and calibrate on your own labels.** Seconds, no gradient step, and the route line is placed for you:
 
@@ -156,6 +157,19 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 ## Documentation
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
+
+## What's new in 0.4.24
+
+* **Video, through the same call: `agent.predict(video="call.mp4", questions=questions)`** on
+  `Agent(vegaml=True)`. The clip is split into what the engine can already read, and the path is
+  chosen by its content: the sound track is extracted at 16 kHz and transcribed, and when the
+  transcript holds real words the decision is made on it through the text path, so fitted heads,
+  the refit calibration, the conformal set and the route all apply and the transcript rides along.
+  A silent clip, or one whose sound is music or noise, has four evenly spaced frames tiled into
+  one contact sheet and decided through the image path. `out["video"]` says which path decided,
+  with the frame times or the transcript. Decoding goes through the `ffmpeg` binary on your
+  PATH; laya takes on no Python dependency for it, and `laya.video` holds the helpers.
+  `laya.vega.Router` sends a clip to vega like an image or a recording.
 
 ## What's new in 0.4.23
 
@@ -1108,7 +1122,7 @@ ans["route"], ans["route_reason"]               # "auto" or "review", decided fo
 | learning from your labels | gradient fine-tune | `agent.fit(rows)`: a head per question over frozen features, seconds |
 | calibration | shipped temperature map | refit on your rows: temperature, conformal threshold, escalation band |
 | refusal | `min_confidence` you choose | `abstain`, `unbound`, the conformal set, the fitted band |
-| images, speech | no | `agent.predict(image=img, ...)`, `agent.predict(audio=wav, ...)` |
+| images, speech, video | no | `agent.predict(image=img, ...)`, `agent.predict(audio=wav, ...)`, `agent.predict(video=clip, ...)` |
 | speed on text (T4) | ~16 ms a decision batched | ~72 ms a decision |
 
 ```python
@@ -1118,6 +1132,7 @@ agent.save_calibration("fit/"); agent.load_calibration("fit/")
 agent.predict_long(document, questions)         # no windowing up to 73k tokens
 agent.predict(image=img, questions=questions)   # the reader's vision tower
 agent.predict(audio=wav, questions=questions, sampling_rate=16000)   # transcribed, then decided
+agent.predict(video="call.mp4", questions=questions)                  # speech if any, else frames
 
 from laya.vega import Router
 router = Router(fast=laya.Agent(), vega=agent)   # laya for short English text, vega otherwise

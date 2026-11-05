@@ -16,6 +16,7 @@
     agent.fit(rows, questions)                    # heads + temperature + conformal + band, one call
     agent.predict(image=img, questions=questions) # pictures, through the reader's vision tower
     agent.predict(audio=wav, questions=questions) # speech, transcribed then decided
+    agent.predict(video=clip, questions=questions) # the sound track if it carries speech, frames if not
     agent.predict_long(very_long_state, questions)   # 73k tokens, no windowing
     agent.save_calibration("fit/")               # heads and calibration, reloadable
     laya.vega.Router(fast=laya.Agent(), ...)     # model switching: laya for short English text,
@@ -292,14 +293,15 @@ class VegaAgent(Agent):
     # ------------------------------------------------------------------ predicting
     def predict(self, state: Any = None, questions: Optional[Mapping] = None,
                 lang: Optional[str] = None, *, image: Any = None, audio: Any = None,
+                video: Any = None, frames: int = 4,
                 mode: Optional[str] = None, views: int = 1, max_len: Optional[int] = None,
                 head_max_len: Optional[int] = None, min_confidence: Optional[float] = None,
                 asr: Optional[str] = None, language: Optional[str] = None,
                 sampling_rate: Optional[int] = None, hooks=None, on_predict_start=None,
                 on_predict_end=None, **ignored) -> Dict[str, Any]:
-        """Answer typed questions about text, an image, or a recording, in laya's shape.
+        """Answer typed questions about text, an image, a recording or a clip, in laya's shape.
 
-        One of ``state``, ``image`` or ``audio``. The modality is chosen by which you passed,
+        One of ``state``, ``image``, ``audio`` or ``video``. The modality is chosen by which you passed,
         which is the whole of "modal switching": the same questions, the same answer shape,
         the same route. ``lang`` is accepted for compatibility and recorded; the universal
         reader is multilingual and needs no checkpoint switch.
@@ -308,12 +310,23 @@ class VegaAgent(Agent):
         options at 32 tokens and instructions at 256 by itself, so they are recorded and not
         applied. ``min_confidence`` is applied on top of the automatic route when given, the
         way laya's gate applies it, and nothing here needs it.
+
+        ``video`` is a path or raw file bytes. Its sound track is transcribed and, when the
+        transcript holds real words, decided through the text path with everything that path
+        has (heads, calibration, set, route); otherwise ``frames`` evenly spaced frames are
+        tiled into one image and decided through the image path. ``out["video"]`` says which,
+        and why. See :mod:`laya.video`.
         """
         if questions is None:
             raise ValueError("predict needs `questions`")
-        given = sum(x is not None for x in (state, image, audio))
+        given = sum(x is not None for x in (state, image, audio, video))
         if given != 1:
-            raise ValueError("predict takes exactly one of state=, image=, audio=; got %d" % given)
+            raise ValueError("predict takes exactly one of state=, image=, audio=, video=; got %d"
+                             % given)
+        if video is not None:
+            return self._predict_video(video, questions, frames=frames, asr=asr, language=language,
+                                       mode=mode, views=views, min_confidence=min_confidence,
+                                       lang=lang)
         if not questions:
             return {"answers": {}, "usage": {"input_tokens": 0, "output_tokens": 0},
                     "latency_ms": 0.0, "modality": "text"}
@@ -358,6 +371,60 @@ class VegaAgent(Agent):
 
     def predict_image(self, image: Any, questions: Mapping, **kw) -> Dict[str, Any]:
         return self.predict(image=image, questions=questions, **kw)
+
+    def predict_video(self, video: Any, questions: Mapping, **kw) -> Dict[str, Any]:
+        return self.predict(video=video, questions=questions, **kw)
+
+    def _predict_video(self, video: Any, questions: Mapping, *, frames: int = 4,
+                       asr: Optional[str] = None, language: Optional[str] = None,
+                       **kw) -> Dict[str, Any]:
+        """The clip split into what the engine can read, and the path chosen by its content.
+
+        The speech test is made on the transcript the audio path produced, not before it, so a
+        sound track that is loud but wordless (music, noise) costs one audio decision and then
+        falls through to the frames. That is cheaper than a second transcriber and keeps one
+        definition of "speech" for the whole library: :func:`laya.video.has_speech`.
+        """
+        from . import video as _video
+
+        started = time.perf_counter()
+        path, tmp = _video.as_path(video)
+        try:
+            info = _video.probe(path)
+            wave = _video.extract_audio(path)
+            out = None
+            detail: Dict[str, Any] = {"duration_s": round(info["duration_s"], 3),
+                                      "has_audio": bool(info["has_audio"])}
+            if _video.has_speech(wave):
+                heard = self.predict(audio=wave, questions=questions, sampling_rate=_video.TARGET_SR,
+                                     asr=asr, language=language, **kw)
+                transcript = heard.get("transcript") or ""
+                if _video.has_speech(wave, transcript):
+                    out = heard
+                    detail.update(path="speech", transcript=transcript, asr=heard.get("asr"))
+                else:
+                    detail["transcript_rejected"] = transcript
+            if out is None:
+                if not info.get("has_video", True):
+                    raise ValueError("the clip has no video stream and no speech on its sound track; "
+                                     "there is nothing to decide on")
+                sampled, times = _video.sample_frames(path, frames, info["duration_s"])
+                sheet = _video.contact_sheet(sampled)
+                out = self.predict(image=sheet, questions=questions,
+                                   **{k: v for k, v in kw.items() if k != "views"})
+                out.pop("transcript", None); out.pop("asr", None)
+                detail.update(path="frames", frame_times=[round(t, 3) for t in times],
+                              frames=len(sampled))
+        finally:
+            if tmp:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+        out["modality"] = "video"
+        out["video"] = detail
+        out["latency_ms"] = round(1000 * (time.perf_counter() - started), 1)
+        return out
 
     def predict_image_text(self, image: Any, questions: Mapping, **kw) -> Dict[str, Any]:
         """Parity check: the vision path with the image withheld, to see what the picture
@@ -612,7 +679,7 @@ class Router:
         Router(fast=laya.Agent(), vega=laya.Agent(vegaml=True))
         router.predict(state, questions)            # -> picks, and says which under "routing"
 
-    The rule, in order: an ``image`` or ``audio`` goes to vega (the encoder has no eyes or
+    The rule, in order: an ``image``, ``audio`` or ``video`` goes to vega (the encoder has no eyes or
     ears); a state longer than the fast model's context goes to vega (73k against 512 or
     1,024); non-English or non-Latin text goes to vega (the universal reader is multilingual,
     and laya's own English checkpoint collapses on non-Latin scripts); a question with a
@@ -636,11 +703,11 @@ class Router:
         return self._vega
 
     def choose(self, state: Any = None, questions: Optional[Mapping] = None, *, image=None,
-               audio=None, lang: Optional[str] = None) -> Tuple[str, str]:
+               audio=None, video=None, lang: Optional[str] = None) -> Tuple[str, str]:
         from .lang import is_english
 
-        if image is not None or audio is not None:
-            return "vega", "image or audio: the encoder has no vision or speech path"
+        if image is not None or audio is not None or video is not None:
+            return "vega", "image, audio or video: the encoder has no vision or speech path"
         if self.fast is None:
             return "vega", "no fast model attached"
         text = state if isinstance(state, str) else json.dumps(state, ensure_ascii=False)
@@ -660,16 +727,18 @@ class Router:
         return "fast", "short English text, no fitted head: the fast encoder is enough"
 
     def predict(self, state: Any = None, questions: Optional[Mapping] = None, *,
-                model: Optional[str] = None, image=None, audio=None, lang: Optional[str] = None,
-                **kw) -> Dict[str, Any]:
+                model: Optional[str] = None, image=None, audio=None, video=None,
+                lang: Optional[str] = None, **kw) -> Dict[str, Any]:
         if model is None:
-            model, reason = self.choose(state, questions, image=image, audio=audio, lang=lang)
+            model, reason = self.choose(state, questions, image=image, audio=audio, video=video,
+                                        lang=lang)
         else:
             reason = "explicit model=%s" % model
         if model == "vega":
-            out = self.vega.predict(state, questions, lang=lang, image=image, audio=audio, **kw)
+            out = self.vega.predict(state, questions, lang=lang, image=image, audio=audio,
+                                    video=video, **kw)
         elif model == "fast":
-            if image is not None or audio is not None:
+            if image is not None or audio is not None or video is not None:
                 raise ValueError("the fast laya model takes text only; drop model= or use vega")
             out = self.fast.predict(state, questions, lang=lang, **kw)
         else:

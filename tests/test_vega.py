@@ -14,8 +14,6 @@ Two layers, so the suite is useful on every machine that runs it:
 
 Run: python -m pytest tests/test_vega.py -q
 """
-import json
-import math
 import os
 import sys
 import tempfile
@@ -331,6 +329,112 @@ def test_image_path(agent):
     assert out["modality"] == "image" and out["answers"]["kind"]["readout"] == "engine"
     assert out["answers"]["kind"]["choice"] in q["kind"]["criteria"]
     assert agent.predict_image_text(img, q)["modality"] == "image_withheld"
+
+
+# ----------------------------------------------------------------------------- video
+# The clip is split into what the engine can read (laya/video.py) and the path is chosen by
+# content. The helpers need the ffmpeg binary and nothing else, so they are tested on synthetic
+# clips ffmpeg itself generates; the model-backed tests ride the LAYA_VEGA_MEDIA_TESTS gate.
+
+needs_ffmpeg = pytest.mark.skipif(
+    __import__("shutil").which("ffmpeg") is None, reason="ffmpeg is not on the PATH")
+
+
+def _clip(tmp_path, name, audio_src, video_src="color=c=orange:s=160x120:d=3"):
+    import subprocess
+    out = str(tmp_path / ("%s.mp4" % name))
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", video_src,
+                    "-f", "lavfi", "-i", audio_src, "-t", "3", "-shortest", "-pix_fmt", "yuv420p", out],
+                   check=True)
+    return out
+
+
+@needs_ffmpeg
+def test_video_helpers_on_synthetic_clips(tmp_path):
+    import numpy as np
+    from laya import video as v
+
+    silent = _clip(tmp_path, "silent", "anullsrc=r=16000:cl=mono")
+    tone = _clip(tmp_path, "tone", "sine=f=440:r=16000", "testsrc=s=160x120:d=3")
+    for path in (silent, tone):
+        info = v.probe(path)
+        assert info["has_video"] and info["has_audio"] and 2.5 < info["duration_s"] < 3.5
+    quiet = v.extract_audio(silent)
+    loud = v.extract_audio(tone)
+    assert quiet.dtype == np.float32 and loud.dtype == np.float32
+    assert abs(len(loud) - 3 * v.TARGET_SR) < v.TARGET_SR // 10, "resampled to 16 kHz, 3 s"
+    assert not v.has_speech(quiet), "silence never reaches the transcriber"
+    assert v.has_speech(loud), "a loud track is worth transcribing"
+    # the word gate: a tone comes back from whisper as rows of dots, which are not words
+    assert not v.has_speech(loud, ". . . . . . . . . . . .")
+    assert not v.has_speech(loud, "thank you")
+    assert v.has_speech(loud, "refund the duplicate today")
+    frames, times = v.sample_frames(tone, 4)
+    assert len(frames) == 4 and [round(t, 2) for t in times] == [0.38, 1.12, 1.88, 2.62]
+    assert frames[0].size == (160, 120)
+    sheet = v.contact_sheet(frames, cell=128)
+    assert sheet.size == (256, 256), "four frames tile 2x2"
+
+
+@needs_ffmpeg
+def test_video_bytes_go_through_a_temporary_file(tmp_path):
+    from laya import video as v
+
+    path = _clip(tmp_path, "silent", "anullsrc=r=16000:cl=mono")
+    raw = open(path, "rb").read()
+    got, tmp = v.as_path(raw)
+    try:
+        assert tmp is not None and got == tmp and os.path.getsize(got) == len(raw)
+    finally:
+        os.unlink(tmp)
+    assert v.as_path(path) == (path, None)
+    with pytest.raises(TypeError, match="path or raw video-file bytes"):
+        v.as_path(3.5)
+    with pytest.raises(FileNotFoundError):
+        v.as_path(str(tmp_path / "missing.mp4"))
+
+
+def test_video_is_one_of_the_exclusive_inputs():
+    a = object.__new__(lv.VegaAgent)
+    with pytest.raises(ValueError, match="exactly one of state=, image=, audio=, video="):
+        a.predict("text", {"q": {"type": "noul", "instructions": "x"}}, video="clip.mp4")
+
+
+def test_router_sends_video_to_vega():
+    r = lv.Router(fast=_StubAgent("fast"), vega=None)
+    assert r.choose(video="clip.mp4")[0] == "vega"
+    with pytest.raises(ValueError, match="text only"):
+        r.predict(video="clip.mp4", questions={"q": {"type": "noul", "instructions": "x"}}, model="fast")
+
+
+@needs_ffmpeg
+@pytest.mark.skipif(not MEDIA_TESTS, reason="set LAYA_VEGA_MEDIA_TESTS=1 (pulls the vision tower)")
+def test_video_silent_clip_goes_to_frames(agent, tmp_path):
+    q = {"q": {"type": "noul", "instructions": "Is the picture mostly one flat colour?"}}
+    out = agent.predict(video=_clip(tmp_path, "silent", "anullsrc=r=16000:cl=mono"), questions=q)
+    assert out["modality"] == "video" and out["video"]["path"] == "frames"
+    assert len(out["video"]["frame_times"]) == 4 and "transcript" not in out
+    assert set(out["answers"]["q"]) >= {"noul", "route", "prediction_set"}
+
+
+@needs_ffmpeg
+@pytest.mark.skipif(not MEDIA_TESTS or __import__("shutil").which("say") is None,
+                    reason="needs LAYA_VEGA_MEDIA_TESTS=1 and macOS `say` to make a speech clip")
+def test_video_with_speech_decides_on_the_transcript(agent, tmp_path):
+    import subprocess
+    aiff = str(tmp_path / "speech.aiff")
+    subprocess.run(["say", "-o", aiff, "We were billed twice for March. Please refund the "
+                    "duplicate today or we will cancel our plan."], check=True)
+    clip = str(tmp_path / "speech.mp4")
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=white:s=160x120",
+                    "-i", aiff, "-shortest", "-pix_fmt", "yuv420p", "-c:a", "aac", clip], check=True)
+    q = {"dept": {"type": "choice", "instructions": "Which department should handle this?",
+                  "criteria": {"billing": "invoices, payments, refunds",
+                               "technical": "bugs, outages", "other": "everything else"}}}
+    out = agent.predict(video=clip, questions=q)
+    assert out["modality"] == "video" and out["video"]["path"] == "speech"
+    assert "billed" in out["video"]["transcript"].lower()
+    assert out["answers"]["dept"]["choice"] == "billing"
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ ans["route"], ans["route_reason"]                # "auto" or "review", decided f
 | learning from your labels | gradient fine-tune | `agent.fit(rows)`: a head per question over the frozen features, seconds |
 | calibration | a shipped temperature map | refit on your rows: temperature, conformal threshold, escalation band |
 | refusal | `min_confidence` you choose | `abstain`, `unbound`, the conformal set, the fitted band |
-| images and speech | no | `predict(image=...)`, `predict(audio=...)` |
+| images, speech, video | no | `predict(image=...)`, `predict(audio=...)`, `predict(video=...)` |
 | speed on text (T4) | ~16 ms a decision batched | ~72 ms a decision; each served head adds a read |
 | memory | under 1 GB | 2 to 4 GB |
 
@@ -76,15 +76,16 @@ Gate on `route`, not on `confidence`. A fitted head can report 1.000 on an answe
 `route` on the same answer is still right, because it comes from the set and the band rather
 than the top probability.
 
-## Images, speech, long documents
+## Images, speech, video, long documents
 
 ```python
 agent.predict(image=img, questions=questions)                        # PIL image, path, or array
 agent.predict(audio=wave, questions=questions, sampling_rate=16000)   # transcribed, then decided
+agent.predict(video="call.mp4", questions=questions)                  # speech if any, else frames
 agent.predict_long(document, questions)                               # one pass up to 73k tokens
 ```
 
-Image, audio and video, in one paragraph: an image is a PIL image, a path or an HxWx3 array in any format Pillow opens, and it is scaled to about one megapixel (1,048,576 pixels) before the reader sees it, so a larger or sharper file costs nothing more and gains nothing; there is no file-size cap of its own, memory is the bound. Audio is a path or raw file bytes (wav, flac, ogg, mp3, with `pip install soundfile`) or a 1-D numpy waveform with `sampling_rate=`; any length works, stereo is averaged, the wave is resampled to 16 kHz and transcribed in 30-second windows, and the transcript then counts toward the 73,728-token context. The default transcriber is English-only; pass `asr="openai/whisper-tiny", language="hi"` for other languages. Video is not read by laya: split it yourself, frames go in as images and the sound track as audio.
+Image, audio and video, in one paragraph: an image is a PIL image, a path or an HxWx3 array in any format Pillow opens, and it is scaled to about one megapixel (1,048,576 pixels) before the reader sees it, so a larger or sharper file costs nothing more and gains nothing; there is no file-size cap of its own, memory is the bound. Audio is a path or raw file bytes (wav, flac, ogg, mp3, with `pip install soundfile`) or a 1-D numpy waveform with `sampling_rate=`; any length works, stereo is averaged, the wave is resampled to 16 kHz and transcribed in 30-second windows, and the transcript then counts toward the 73,728-token context. The default transcriber is English-only; pass `asr="openai/whisper-tiny", language="hi"` for other languages. Video is a path or raw file bytes in any container ffmpeg opens (mp4, mov, webm, mkv), decoded through the `ffmpeg` binary on your PATH, with no Python dependency; the sound track is extracted at 16 kHz and transcribed, and if the transcript holds real words the decision is made on it through the text path, with heads, calibration, set and route all applying. A silent clip, or one whose sound is music or noise, has `frames` (4 by default) evenly spaced frames tiled into one contact sheet and decided through the image path, which is zero-shot. Any length and resolution work, since only the frames sampled and the transcript reach the reader; `out["video"]` says which path decided, the frame times or the transcript, and the duration.
 
 The modality is chosen by which argument you passed; the questions and the answer shape are the
 same. An audio answer carries `transcript` and `asr`, because a decision made on words you never

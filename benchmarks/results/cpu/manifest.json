@@ -112,5 +112,8 @@
       "raw_sha256": "4d16119b69a703076988b58ca68d2b596cf07793c20e0dc3e103b60aa7b17073",
       "archived_sha256": "4d16119b69a703076988b58ca68d2b596cf07793c20e0dc3e103b60aa7b17073"
     }
-  }
+  },
+  "rebased_upstream_commit": "3293116c89425c3d04b22aa4d9464fef82e2c858",
+  "rebased_source_commit": "ad44df6292fa7199d41f1496f6f12dab06bcc784",
+  "inference_and_harness_unchanged": true
 }

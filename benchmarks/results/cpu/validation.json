@@ -160,5 +160,31 @@
   "known_separate_workflow_failure": {
     "url": "https://github.com/bahram-po/laya/actions/runs/42089928457",
     "reason": "Security workflow flags existing subprocess.run calls in laya/video.py; both file and workflow are unchanged from upstream main."
+  },
+  "rebase": {
+    "upstream_commit": "3293116c89425c3d04b22aa4d9464fef82e2c858",
+    "source_commit": "ad44df6292fa7199d41f1496f6f12dab06bcc784",
+    "inference_and_harness_unchanged": true,
+    "shared_suites": 97,
+    "pytest_passed": 828,
+    "pytest_skipped": 13,
+    "real_e2e_passed": 37,
+    "soak_passed": true,
+    "lint_compile_passed": true,
+    "strict_docs_passed": true,
+    "logs": {
+      "tests": {
+        "sha256": "302e8fdbd4a86d88f3ab9b298ee80a0ba7afa3c0d1787c23bc67f67ff36a2a41"
+      },
+      "e2e": {
+        "sha256": "a5a6fcff7c052f6e9b2094e2f751c6a8f5c1ba55eebc1fafd5456c6e675d8f45"
+      },
+      "soak": {
+        "sha256": "4aa741e1a9192053a0cf432a1a03559605d4b72b45fd42523ed4f92ff36d8ffd"
+      },
+      "docs": {
+        "sha256": "299dad77841f6fa006ff144c5fe326e54f1ac3a9075bddc9dde8613e92ab4806"
+      }
+    }
   }
 }

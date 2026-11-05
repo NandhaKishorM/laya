@@ -187,6 +187,14 @@ See [the diagnostic samples](mac-english-diagnostic.json).
 
 ## Validation
 
+After rebasing onto upstream `3293116c89425c3d04b22aa4d9464fef82e2c858`, all
+97 updated shared suites pass locally (828 pytest checks passed, 13 skipped).
+The 37 real-checkpoint end-to-end checks, soak checks, lint/compilation and strict
+docs build also pass again. The rebased source is `ad44df62`; its CPU implementation,
+Agent inference path and benchmark harness are byte-for-byte identical to the
+measured source. The original source remains on the
+[evidence branch](https://github.com/bahram-po/laya/tree/evidence/cpu-combined-source).
+
 The measured source passes all 96 shared suites locally (818 pytest checks
 passed, 12 skipped). The [Linux compatibility matrix](https://github.com/bahram-po/laya/actions/runs/42090048166)
 passes on Python 3.10/3.11/3.12/3.13, including Transformers 5.20.2 / Torch 2.14.1
@@ -200,7 +208,7 @@ Additional local checks on the combined source:
 
 - Real-checkpoint end-to-end: 37 passed. Real-checkpoint ONNX: 2 passed.
 - All three checkpoints pass smoke, raw numerical and edge sweeps. SDPA versus
-  eager maximum relative differences remain at or below 1.54e-5, with matching labels.
+  eager maximum absolute differences remain at or below 1.54e-5, with matching labels.
 - Soak passes 200 repeated calls, the additional traced-heap checks, four reload
   cycles, and 48 concurrent calls across four threads.
 - The 100-example MASSIVE English regression gate matches the committed baseline:

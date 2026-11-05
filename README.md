@@ -93,13 +93,18 @@ The rule, in order: an image or audio goes to vega; text longer than the fast mo
 **Images, speech, video, long documents.** The questions and the answer shape do not change with the input:
 
 ```python
-agent.predict(image="invoice.png", questions=questions)                 # PIL image, path or array
-agent.predict(audio=wave, questions=questions, sampling_rate=16000)     # transcribed, then decided; the transcript rides along
-agent.predict(video="call.mp4", questions=questions)                    # speech transcribed if there is any, else frames tiled into one image
-agent.predict_long(seventy_page_contract, questions)                    # up to 73,728 tokens, read whole
+# text: up to 73,728 tokens in one pass; usage["truncated"] says if a state hit the limit
+agent.predict_long(seventy_page_contract, questions)
+# image: PIL image, path or HxWx3 array, any format Pillow opens; scaled to ~1 megapixel, no file-size cap
+agent.predict(image="invoice.png", questions=questions)
+# audio: path or bytes (wav, flac, ogg, mp3; needs soundfile) or a 1-D waveform with sampling_rate=;
+#        any length, resampled to 16 kHz, transcribed in 30 s windows, transcript counts toward the 73,728 tokens
+agent.predict(audio=wave, questions=questions, sampling_rate=16000)
+# video: path or bytes, any container ffmpeg opens, any length and resolution (needs the ffmpeg binary);
+#        speech is transcribed and decided as text, a silent clip is decided on 4 sampled frames as one image
+agent.predict(video="call.mp4", questions=questions)
 ```
 
-An image is a PIL image, a path or an HxWx3 array in any format Pillow opens; it is scaled to about one megapixel before the reader sees it, so a sharper file gains nothing, and memory is the only size bound. Audio is a path, raw file bytes (wav, flac, ogg, mp3, with `pip install soundfile`) or a 1-D numpy waveform with `sampling_rate=`, of any length: it is resampled to 16 kHz, transcribed in 30-second windows, and the transcript counts toward the 73,728-token context. The default transcriber is English-only; pass `asr="openai/whisper-tiny", language="hi"` for other languages. Video is a path or raw bytes in any container ffmpeg opens, decoded through the `ffmpeg` binary on your PATH with no Python dependency: the sound track is transcribed and, if it holds real words, decided through the text path with heads, calibration, set and route applying; a silent clip has four evenly spaced frames tiled into one image and decided through the image path, zero-shot. Any length and resolution work, and `out["video"]` says which path decided.
 
 **Fit and calibrate on your own labels.** Seconds, no gradient step, and the route line is placed for you:
 

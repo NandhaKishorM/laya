@@ -98,14 +98,7 @@ agent.predict(audio=wave, questions=questions, sampling_rate=16000)     # transc
 agent.predict_long(seventy_page_contract, questions)                    # up to 73,728 tokens, read whole
 ```
 
-What each input accepts, and where its limit is:
-
-| input | accepted | limit |
-|---|---|---|
-| image | a PIL image, a path, or an HxWx3 array; any format Pillow opens | scaled to about one megapixel (1,048,576 pixels) before the reader sees it, so a larger file costs nothing more and gains nothing; no file-size cap of its own, memory is the bound |
-| audio | a path or raw file bytes (wav, flac, ogg, mp3; needs `pip install soundfile`), or a 1-D numpy waveform with `sampling_rate=` | any length: stereo is averaged, the wave is resampled to 16 kHz and transcribed in 30 s windows, and the transcript then counts toward the 73,728-token context. The default transcriber is English-only; pass `asr="openai/whisper-tiny", language="hi"` for other languages |
-| video | not read by laya | split it yourself: frames go in as images, the sound track as audio |
-| text | a string, a dict or a list | 73,728 tokens, read whole; `usage["truncated"]` reports when a state reached the limit |
+Image, audio and video, in one paragraph: an image is a PIL image, a path or an HxWx3 array in any format Pillow opens, and it is scaled to about one megapixel (1,048,576 pixels) before the reader sees it, so a larger or sharper file costs nothing more and gains nothing; there is no file-size cap of its own, memory is the bound. Audio is a path or raw file bytes (wav, flac, ogg, mp3, with `pip install soundfile`) or a 1-D numpy waveform with `sampling_rate=`; any length works, stereo is averaged, the wave is resampled to 16 kHz and transcribed in 30-second windows, and the transcript then counts toward the 73,728-token context. The default transcriber is English-only; pass `asr="openai/whisper-tiny", language="hi"` for other languages. Video is not read by laya: split it yourself, frames go in as images and the sound track as audio.
 
 **Fit and calibrate on your own labels.** Seconds, no gradient step, and the route line is placed for you:
 

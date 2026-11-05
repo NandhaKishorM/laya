@@ -50,7 +50,18 @@ python -m pip install -U laya   # 0.4.23 or newer: vegaml comes with it
 ```python
 import laya
 
-agent = laya.Agent(vegaml=True)   # the 0.8B universal reader; vegaml="4b" for the larger one
+agent = laya.Agent(vegaml=True)   # the 0.8B universal reader (nandakishorm/vega-U), the default
+
+# Switching the model underneath is one string. Every option keeps the same engine, questions and fields:
+#   laya.Agent(vegaml="4b")                                # the Qwen3.5-4B reader from the same Hub repo
+#   laya.Agent(vegaml="gemma-1b")                          # the gemma-3-1b-it reader, same repo
+#   laya.Agent(vegaml="nandakishorm/vega-U")               # any Hub repo id holding a vega-U checkpoint
+#   laya.Agent(vegaml="./my-reader/")                      # a local dir from VegaAgent.attach(...), your own LLM ported in
+#   laya.Agent(vegaml=True, backbone="Qwen/Qwen3.5-0.8B")  # name the reader weights explicitly, e.g. a mirror
+# Without the argument, laya's own encoders, also by Hub name:
+#   laya.Agent("convaiinnovations/laya")                   # English, 33 ms on a T4
+#   laya.Agent("convaiinnovations/laya-multilingual")      # 100+ languages, up to 8,192 tokens with max_len=8192
+#   laya.Agent("convaiinnovations/laya-typed-decisions")   # fine-tuned for the typed-decisions workflows
 
 state = "Hi, we were billed twice for March. Please refund the duplicate today or we will cancel our plan."
 questions = {

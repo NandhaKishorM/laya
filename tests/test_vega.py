@@ -277,16 +277,16 @@ def test_batch_long_and_thresholds(agent):
     assert agent.thresholds()["policy"] == "conformal set + abstain + unbound"
 
 
-def _synthetic_rows(n=24):
+def _synthetic_rows(n=28):
     """Labelled rows a head can learn: two departments, two kinds of complaint."""
     rows = []
     bills = ["Charged twice for %s, refund the duplicate." % m for m in
              ("March", "April", "May", "June", "July", "August", "September", "October",
-              "November", "December", "January", "February")]
+              "November", "December", "January", "February", "the first quarter", "the renewal")]
     bugs = ["The app crashes when I open %s." % s for s in
             ("settings", "the inbox", "a report", "the dashboard", "search", "billing history",
              "my profile", "notifications", "the export page", "the login screen", "the map",
-             "attachments")]
+             "attachments", "the calendar", "the archive")]
     for i in range(n // 2):
         rows.append({"state": bills[i], "questions": {"dept": Q["dept"]}, "gold": {"dept": "billing"}})
         rows.append({"state": bugs[i], "questions": {"dept": Q["dept"]}, "expected": {"dept": "technical"}})
@@ -303,7 +303,9 @@ def test_fit_calibrate_save_reload_roundtrip():
     assert a.calibration is not None and a.thresholds()["policy"] == "band"
     out = a.predict(rows[0]["state"], {"dept": Q["dept"]})
     assert out["calibrated"] is True
-    assert out["answers"]["dept"]["route_reason"].startswith("band:")
+    # "band: ..." when the ten calibration rows could certify the line, "band could not hold ..."
+    # with the conformal rule deciding when they could not; either way the band is what spoke
+    assert out["answers"]["dept"]["route_reason"].startswith("band")
     with tempfile.TemporaryDirectory() as d:
         saved = a.save_calibration(d)
         assert saved["calibrated"] and os.path.exists(os.path.join(d, "heads.npz"))
@@ -435,6 +437,109 @@ def test_video_with_speech_decides_on_the_transcript(agent, tmp_path):
     assert out["modality"] == "video" and out["video"]["path"] == "speech"
     assert "billed" in out["video"]["transcript"].lower()
     assert out["answers"]["dept"]["choice"] == "billing"
+
+
+# ----------------------------------------------------------------------------- rows from a file
+ROUTING_CSV = os.path.join(os.path.dirname(__file__), "..", "examples", "data", "routing_labels.csv")
+ROUTING_Q = {
+    "team": {"type": "choice", "instructions": "Which team should handle this message?",
+             "criteria": {"billing": "invoices, payments, refunds", "hr": "jobs, payroll, leave, policy",
+                          "pr": "press, media, public statements", "sales": "pricing, demos, quotes, trials",
+                          "technical": "bugs, outages, API and product questions"}},
+    "urgency": {"type": "score", "instructions": "How soon does this need a reply?",
+                "criteria": ["can wait", "this week", "today"]},
+}
+
+
+def test_the_example_csv_loads_as_fit_rows():
+    rows = lv.VegaAgent.load_rows(ROUTING_CSV, ROUTING_Q)
+    assert len(rows) == 60 and all(set(r) == {"state", "gold"} for r in rows)
+    teams = {r["gold"]["team"] for r in rows}
+    assert teams == set(ROUTING_Q["team"]["criteria"]), "every team in the sheet has rows"
+    assert {r["gold"]["urgency"] for r in rows} == {"0", "1", "2"}
+    # the rows become vegaml examples with the labels in the engine's own spelling
+    a = object.__new__(lv.VegaAgent)
+    examples, sheet = a._examples(ROUTING_CSV, ROUTING_Q)
+    assert len(examples) == 60 and set(sheet) == {"team", "urgency"}
+    state, labels, _ = examples[0]
+    assert labels == {"team": "billing", "urgency": "2"} and "charged twice" in state
+
+
+def test_csv_columns_must_be_question_ids(tmp_path):
+    p = tmp_path / "bad.csv"
+    p.write_text("state,dept\nhello,billing\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="match no question id"):
+        lv.VegaAgent.load_rows(str(p), ROUTING_Q)
+    p.write_text("text,team\nhello,billing\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="needs a `state` column"):
+        lv.VegaAgent.load_rows(str(p), ROUTING_Q)
+
+
+def test_jsonl_rows_load_as_given(tmp_path):
+    p = tmp_path / "rows.jsonl"
+    p.write_text('{"state": "a", "gold": {"team": "hr"}}\n\n{"state": "b", "gold": {"team": "pr"}}\n',
+                 encoding="utf-8")
+    rows = lv.VegaAgent.load_rows(str(p))
+    assert [r["gold"]["team"] for r in rows] == ["hr", "pr"]
+
+
+@needs_model
+def test_fit_from_the_example_csv(agent):
+    report = agent.fit(ROUTING_CSV, questions=ROUTING_Q, calibrate=True)
+    assert report["n_rows"] == 60 and set(report["heads"]) == {"team", "urgency"}
+    assert "calibration" in report and set(report["calibration"]["questions"]) <= {"team", "urgency"}
+    out = agent.predict("Our trial ends tomorrow and we want to buy before it lapses.", ROUTING_Q)
+    assert out["answers"]["team"]["choice"] in ROUTING_Q["team"]["criteria"]
+    assert out["answers"]["team"]["route"] in ("auto", "review")
+
+
+# ----------------------------------------------------------------------------- fit's own rules
+def test_min_rows_counts_the_widest_question_and_the_calibration_share():
+    assert lv.VegaAgent.min_rows(ROUTING_Q) == 35            # 5 options x 5 folds, plus 10 to calibrate
+    assert lv.VegaAgent.min_rows(ROUTING_Q, calibrate=False) == 25
+    assert lv.VegaAgent.min_rows({"q": {"type": "noul", "instructions": "x"}}) == 20
+
+
+def test_split_holds_out_at_least_ten_rows_across_every_label():
+    ex = [("s%d" % i, {"team": "abcde"[i % 5]}, {}) for i in range(40)]
+    fit, cal = lv.VegaAgent._split(ex, lv.VegaAgent.CALIBRATION_SHARE)
+    assert len(cal) == 10 and len(fit) == 30
+    assert {e[1]["team"] for e in cal} == set("abcde"), "every label is on the calibration side"
+    ex2 = [("s%d" % i, {"d": "ab"[i % 2]}, {}) for i in range(24)]
+    fit2, cal2 = lv.VegaAgent._split(ex2, lv.VegaAgent.CALIBRATION_SHARE)
+    assert len(cal2) == 10 and len(fit2) == 14, "a quarter of 24 is 6, but ten is the floor"
+    assert fit2 + cal2 and lv.VegaAgent._split(ex2, 0.25) == (fit2, cal2), "deterministic"
+
+
+def test_fit_refuses_fewer_rows_than_the_minimum():
+    a = object.__new__(lv.VegaAgent)
+    a.folds = 5
+    rows = [{"state": "s%d" % i, "gold": {"team": "abcde"[i % 5], "urgency": "1"}} for i in range(30)]
+    with pytest.raises(ValueError, match="at least 35 labelled rows"):
+        a.fit(rows, questions=ROUTING_Q)
+    with pytest.raises(ValueError, match="at least 25 labelled rows"):
+        a.fit(rows[:20], questions=ROUTING_Q, calibrate=False)
+
+
+def test_an_unreachable_band_hands_the_route_to_the_conformal_rule():
+    class _Band:
+        questions = {"team": {"threshold": 1.000001, "reachable": False, "examples": 10,
+                              "target_precision": 0.95}}
+
+    class _Cal:
+        band = _Band()
+
+    a = object.__new__(lv.VegaAgent)
+    a.alpha, a.risk, a.calibration = 0.1, "0.1", _Cal()
+    raw = {"route": "review", "route_reason": "confidence 1.000 is below the 1.000 review line", "_qid": "team"}
+    single = {"abstain": False, "unbound": False, "prediction_set": ["billing"], "answer_confidence": 0.9}
+    r = a._route(raw, single, None)
+    assert r["route"] == "auto" and r["route_reason"].startswith("band could not hold precision 0.95 on 10")
+    wide = dict(single, prediction_set=["billing", "hr", "pr"])
+    assert a._route(raw, wide, None)["route"] == "review"
+    # a band that did hold keeps deciding
+    _Band.questions["team"]["reachable"] = True
+    assert a._route(raw, single, None) == {"route": "review", "route_reason": "band: confidence 1.000 is below the 1.000 review line"}
 
 
 if __name__ == "__main__":

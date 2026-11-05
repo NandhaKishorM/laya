@@ -349,7 +349,7 @@ class VegaAgent(Agent):
         answers = {}
         for qid, q in questions.items():
             a = _fold(raw["answers"][qid], q)
-            a.update(self._route(raw["answers"][qid], a, min_confidence))
+            a.update(self._route(dict(raw["answers"][qid], _qid=qid), a, min_confidence))
             answers[qid] = a
         out = {
             "answers": answers,
@@ -466,7 +466,12 @@ class VegaAgent(Agent):
     # ------------------------------------------------------------------ the route
     def _route(self, raw_answer: Mapping, folded: Mapping, min_confidence: Optional[float]) -> Dict:
         """``route`` and why, decided without a user-set number. See the module docstring."""
-        if "route" in raw_answer and raw_answer["route"] in ("auto", "review"):
+        band_q = None
+        cal = getattr(self, "calibration", None)
+        if cal is not None and getattr(cal, "band", None) is not None:
+            band_q = cal.band.questions.get(raw_answer.get("_qid", ""))
+        unreachable = bool(band_q) and band_q.get("reachable") is False
+        if "route" in raw_answer and raw_answer["route"] in ("auto", "review") and not unreachable:
             route, why = raw_answer["route"], "band: " + str(raw_answer.get("route_reason", ""))
         else:
             reasons = []
@@ -483,6 +488,13 @@ class VegaAgent(Agent):
             route = "review" if reasons else "auto"
             why = "; ".join(reasons) if reasons else (
                 "conformal singleton, not abstaining, in distribution")
+            if unreachable:
+                # The line was asked to hold target_precision with a 95% lower bound and the
+                # calibration rows could not certify it (12 for 12 certifies nothing). Sending
+                # every answer to review would make the fitted path useless, so the conformal
+                # rule decides and the reason says what the band could not do.
+                why = ("band could not hold precision %s on %s calibration rows, so the conformal "
+                       "rule decides: %s" % (band_q.get("target_precision"), band_q.get("examples"), why))
         if min_confidence is not None and route == "auto":
             c = folded.get("answer_confidence")
             if c is None or c < float(min_confidence):
@@ -507,13 +519,49 @@ class VegaAgent(Agent):
         return out
 
     # ------------------------------------------------------------------ fitting
-    def _examples(self, rows: Sequence[Mapping], questions: Optional[Mapping]) -> Tuple[list, Dict]:
+    @staticmethod
+    def load_rows(path: Any, questions: Optional[Mapping] = None) -> List[Dict[str, Any]]:
+        """Labelled rows from a file: ``.csv`` or ``.jsonl``.
+
+        A CSV has a ``state`` column and one column per question id holding that row's gold
+        label (an option id for ``choice``, a level index for ``score``, ``yes``/``no`` or
+        ``true``/``false`` for ``noul``); an empty cell means the row carries no label for that
+        question. ``examples/data/routing_labels.csv`` in the repository is the shape. JSONL
+        rows are the ``{"state", "questions"?, "gold"}`` dicts :meth:`fit` takes directly.
+        """
+        import csv
+
+        path = os.fspath(path)
+        if path.lower().endswith(".jsonl"):
+            with open(path, encoding="utf-8") as f:
+                return [json.loads(line) for line in f if line.strip()]
+        with open(path, encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames or "state" not in reader.fieldnames:
+                raise ValueError("%s needs a `state` column; the other columns are question ids" % path)
+            label_cols = [c for c in reader.fieldnames if c != "state"]
+            if questions:
+                unknown = [c for c in label_cols if c not in questions]
+                if unknown:
+                    raise ValueError("column(s) %s in %s match no question id in %s"
+                                     % (unknown, path, sorted(questions)))
+            rows = []
+            for rec in reader:
+                gold = {c: rec[c].strip() for c in label_cols if (rec.get(c) or "").strip()}
+                if rec.get("state", "").strip() and gold:
+                    rows.append({"state": rec["state"], "gold": gold})
+        return rows
+
+    def _examples(self, rows: Any, questions: Optional[Mapping]) -> Tuple[list, Dict]:
         """laya training rows as vegaml fit examples: ``(state, {qid: label}, {qid: question})``.
 
         Rows are ``{"state", "questions"?, "gold"|"expected"}``: the shape ``items_from_rows``
         reads, so a corpus prepared for laya's fine-tune fits vega's heads unchanged. A row
-        without its own ``questions`` uses ``questions``.
+        without its own ``questions`` uses ``questions``. A path to a ``.csv`` or ``.jsonl``
+        is read with :meth:`load_rows` first.
         """
+        if isinstance(rows, (str, os.PathLike)):
+            rows = self.load_rows(rows, questions)
         examples, sheet = [], {}
         for r in rows:
             qs = r.get("questions") or questions
@@ -529,9 +577,63 @@ class VegaAgent(Agent):
                 examples.append((r["state"], labels, vq))
         return examples, sheet
 
-    def fit(self, rows: Sequence[Mapping], questions: Optional[Mapping] = None,
+    #: Rows kept back from the heads so the calibration is measured on rows they never saw.
+    CALIBRATION_SHARE = 0.25
+    #: What vegaml needs to say anything: ten rows to calibrate, and for the heads at least
+    #: ``folds`` rows of every option so stratified cross-validation can score each one.
+    MIN_CALIBRATION_ROWS = 10
+
+    @classmethod
+    def min_rows(cls, questions: Mapping, folds: int = 5, calibrate: bool = True) -> int:
+        """The fewest labelled rows :meth:`fit` accepts for these questions.
+
+        Heads need ``folds`` rows per option (the widest question decides) and never fewer
+        than ``2 * folds``; with ``calibrate`` another quarter is held out for the
+        calibration, which needs ten rows of its own. A five-way choice therefore needs 35,
+        a yes/no question 24. These are floors: the example in the README fits twelve rows
+        per option, and more rows move every number in the right direction.
+        """
+        widest = max((len(_labels_for(q)) for q in questions.values()), default=2)
+        heads = max(2 * folds, folds * widest)
+        if not calibrate:
+            return heads
+        cal = max(cls.MIN_CALIBRATION_ROWS, math.ceil(heads * cls.CALIBRATION_SHARE / (1 - cls.CALIBRATION_SHARE)))
+        return heads + cal
+
+    @classmethod
+    def _split(cls, examples: Sequence[Tuple], share: float) -> Tuple[list, list]:
+        """A calibration share taken across the first question's labels in proportion, never
+        fewer than ``MIN_CALIBRATION_ROWS`` in all and at least one row from every label that
+        has two; deterministic, so a refit is the same split."""
+        by_label: Dict[str, list] = {}
+        for ex in examples:
+            first = next(iter(ex[1].values()), "")
+            by_label.setdefault(str(first), []).append(ex)
+        target = min(len(examples) // 2, max(cls.MIN_CALIBRATION_ROWS, round(len(examples) * share)))
+        take = {lab: (1 if len(m) >= 2 else 0) for lab, m in by_label.items()}
+        # the rest of the target by largest remainder of each label's proportional share
+        remaining = target - sum(take.values())
+        order = sorted(by_label, key=lambda lab: -(len(by_label[lab]) * share - take[lab]))
+        while remaining > 0:
+            moved = False
+            for lab in order:
+                if remaining <= 0:
+                    break
+                if take[lab] < len(by_label[lab]) // 2:
+                    take[lab] += 1; remaining -= 1; moved = True
+            if not moved:
+                break
+        fit_part, cal_part = [], []
+        for lab, members in by_label.items():
+            k = take[lab]
+            cal_part.extend(members[len(members) - k:])
+            fit_part.extend(members[:len(members) - k])
+        return fit_part, cal_part
+
+    def fit(self, rows: Any, questions: Optional[Mapping] = None,
             folds: Optional[int] = None, calibrate: bool = True,
-            target_precision: Optional[float] = None) -> Dict[str, Any]:
+            target_precision: Optional[float] = None,
+            calibration_rows: Any = None) -> Dict[str, Any]:
         """Heads on your labels, then the calibration and the band, in one call.
 
         What laya's fine-tune does with gradient steps, this does with a small head per
@@ -542,21 +644,61 @@ class VegaAgent(Agent):
         default) the same rows then refit a temperature and a conformal threshold per
         question and place the band, which is where the automatic ``route`` comes from.
         Nothing is scored on a fitted row by this method; held-out evaluation is yours.
+
+        ``rows`` may also be a path to a ``.csv`` (a ``state`` column plus one column per
+        question id) or a ``.jsonl``; see :meth:`load_rows`.
+
+        The calibration is measured on rows the heads never saw. By default a quarter of the
+        rows, taken evenly across the first question's labels, is held out for it; pass
+        ``calibration_rows`` to use a separate set instead and fit the heads on all of
+        ``rows``. Calibrating on the fitting rows is the one thing this method refuses to do:
+        a head is right on its own rows, so the temperature rails to its floor, every
+        confidence becomes 1.000 and the review line cannot be placed. Fewer rows than
+        :meth:`min_rows` is a ``ValueError`` naming the number.
         """
         examples, sheet = self._examples(rows, questions)
         if not examples:
             raise ValueError("no trainable rows")
+        qs = questions or {}
+        for ex in examples:
+            qs = dict(qs, **{k: v for k, v in ex[2].items() if k not in qs}) if ex[2] else qs
+        folds = folds or self.folds
+        cal_examples = None
+        if calibrate and calibration_rows is not None:
+            cal_examples, cal_sheet = self._examples(calibration_rows, questions)
+            sheet = dict(sheet, **cal_sheet)
+            need = self.min_rows(qs, folds, calibrate=False)
+            if len(examples) < need or len(cal_examples) < self.MIN_CALIBRATION_ROWS:
+                raise ValueError("fit needs at least %d rows for the heads and %d to calibrate on for "
+                                 "these questions; got %d and %d"
+                                 % (need, self.MIN_CALIBRATION_ROWS, len(examples), len(cal_examples)))
+            fit_examples = examples
+        elif calibrate:
+            need = self.min_rows(qs, folds, calibrate=True)
+            if len(examples) < need:
+                raise ValueError("fit needs at least %d labelled rows for these questions (%d for the "
+                                 "heads, the rest held out to calibrate on); got %d. Pass "
+                                 "calibrate=False to fit heads alone, or label more rows."
+                                 % (need, self.min_rows(qs, folds, calibrate=False), len(examples)))
+            fit_examples, cal_examples = self._split(examples, self.CALIBRATION_SHARE)
+        else:
+            need = self.min_rows(qs, folds, calibrate=False)
+            if len(examples) < need:
+                raise ValueError("fit needs at least %d labelled rows for these questions; got %d"
+                                 % (need, len(examples)))
+            fit_examples = examples
         with self._lock:
-            report = self.vega.fit(examples, sheet, folds=folds or self.folds)
-        self.fit_report = {"heads": report, "n_rows": len(examples),
+            report = self.vega.fit(fit_examples, sheet, folds=folds)
+        self.fit_report = {"heads": report, "n_rows": len(examples), "n_fit": len(fit_examples),
+                           "n_calibrate": len(cal_examples) if cal_examples else 0,
                            "serving": sorted(q for q, r in report.items() if r.get("used_by_auto")),
                            "kept": sorted(q for q, r in report.items() if r.get("fitted"))}
         if calibrate:
             self.fit_report["calibration"] = self.calibrate(
-                rows, questions, target_precision=target_precision, _examples=(examples, sheet))
+                None, questions, target_precision=target_precision, _examples=(cal_examples, sheet))
         return self.fit_report
 
-    def calibrate(self, rows: Sequence[Mapping], questions: Optional[Mapping] = None,
+    def calibrate(self, rows: Any, questions: Optional[Mapping] = None,
                   target_precision: Optional[float] = None, alpha: Optional[float] = None,
                   _examples=None) -> Dict[str, Any]:
         """Refit the probabilities and place the band on your labelled rows.
@@ -580,8 +722,12 @@ class VegaAgent(Agent):
                for q, r in self.calibration.report.items()}
         band = self.calibration.band
         return {"questions": rep, "target_precision": tp, "alpha": a,
+                "n_rows": len(examples),
                 "band": None if band is None else
-                {q: round(float(v["threshold"]), 4) for q, v in band.questions.items()}}
+                {q: (round(float(v["threshold"]), 4) if v.get("reachable", True) else None)
+                 for q, v in band.questions.items()},
+                "band_unreachable": [] if band is None else
+                sorted(q for q, v in band.questions.items() if v.get("reachable") is False)}
 
     fit_temperatures = calibrate
 

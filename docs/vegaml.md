@@ -50,7 +50,20 @@ agent.load_calibration("fit/")      # on a fresh VegaAgent, identical answers an
 ```
 
 Rows are the same `{"state", "questions", "gold" or "expected"}` shape laya's fine-tune reads,
-so a corpus prepared for one fits the other unchanged. A head is kept only if it beats chance
+so a corpus prepared for one fits the other unchanged. A path to a CSV works too: a `state`
+column and one column per question id holding the gold label, as in
+[`examples/data/routing_labels.csv`](https://github.com/NandhaKishorM/laya/blob/main/examples/data/routing_labels.csv),
+60 messages routed to billing, HR, PR, sales or technical with an urgency level:
+`agent.fit("examples/data/routing_labels.csv", questions=questions)`. The fewest rows `fit`
+accepts is `laya.VegaAgent.min_rows(questions)`: five per option of the widest question for the
+heads, plus a quarter held out inside `fit` to calibrate on, never fewer than ten, so 35 for a
+five-way choice and 20 for a yes/no question. A quarter held out is the rule because a head is
+right on its own rows: calibrating there rails the temperature to its floor and puts every
+confidence at 1.000. When the calibration rows cannot certify the review line at
+`target_precision`, the band is reported `None` for that question and the conformal set routes
+its answers, with `route_reason` saying so. The full measured loop, before and after on held-out
+rows with an ablation over the number of fitting rows, is `examples/42_fit_and_calibrate_vegaml.py`
+and its output is in the README. A head is kept only if it beats chance
 under cross-validation and served only if it also beats the engine on the same rows:
 `report["heads"][qid]["used_by_auto"]` is the fact to read, not `fitted`.
 

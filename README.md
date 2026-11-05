@@ -106,16 +106,85 @@ agent.predict(video="call.mp4", questions=questions)
 ```
 
 
-**Fit and calibrate on your own labels.** Seconds, no gradient step, and the route line is placed for you:
+**Fit and calibrate on your own labels.** Seconds, no gradient step, and the route is decided for you. Labels are a CSV with a `state` column and one column per question id; [`examples/data/routing_labels.csv`](https://github.com/NandhaKishorM/laya/blob/main/examples/data/routing_labels.csv) is a 60-row example that routes messages to billing, HR, PR, sales or technical and rates their urgency:
 
-```python
-rows = [{"state": "...", "questions": questions, "gold": {"department": "billing"}}, ...]
-report = agent.fit(rows)         # heads per question, then temperature, conformal threshold and review band
-print(report["serving"])         # the questions whose head beat the engine on your rows
-agent.save_calibration("fit/")   # reload later with agent.load_calibration("fit/")
+```csv
+state,team,urgency
+"We were charged twice for the March invoice, please refund the duplicate.",billing,2
+"I would like to apply for the open backend engineer role. Where do I send my CV?",hr,0
+"A journalist from the Economic Times is asking for a comment on today's outage.",pr,2
 ```
 
-A head is kept only if it beats chance under cross-validation and served only if it also beats the engine on the same rows. The band's line sits where precision holds at 0.95 on your rows with a 95% Wilson bound to spare; `agent.thresholds()` prints what decides `route` right now.
+The whole loop, from import to the answer, is [`examples/42_fit_and_calibrate_vegaml.py`](https://github.com/NandhaKishorM/laya/blob/main/examples/42_fit_and_calibrate_vegaml.py). It holds out 4 rows per team (20), fits on the other 40, and measures the same 20 rows before and after. Condensed:
+
+```python
+import csv, laya
+
+questions = {
+    "team": {"type": "choice", "instructions": "Which team should handle this message?",
+             "criteria": {"billing": "invoices, payments, refunds", "hr": "jobs, payroll, leave, policy",
+                          "pr": "press, media, public statements", "sales": "pricing, demos, quotes, trials",
+                          "technical": "bugs, outages, API and product questions"}},
+    "urgency": {"type": "score", "instructions": "How soon does this need a reply?",
+                "criteria": ["can wait", "this week", "today"]},
+}
+rows = list(csv.DictReader(open("examples/data/routing_labels.csv")))
+held, fit_rows = rows[-20:], rows[:-20]            # the script holds out 4 per team; same idea
+
+agent = laya.Agent(vegaml=True)
+print(laya.VegaAgent.min_rows(questions))         # 35: the fewest rows fit() accepts for these questions
+
+before = agent.predict(held[0]["state"], questions)["answers"]["team"]       # the cold engine
+
+report = agent.fit([{"state": r["state"], "gold": {"team": r["team"], "urgency": r["urgency"]}}
+                    for r in fit_rows], questions=questions)                # or agent.fit("examples/data/routing_labels.csv", questions=questions)
+print(report["n_fit"], report["n_calibrate"])     # 30 fit the heads, 10 are held out inside fit() to calibrate on
+print(report["serving"])                          # the questions whose head beat the engine on the same rows
+print(report["calibration"]["band"])              # the review line per question, or None where it could not hold
+
+after = agent.predict(held[0]["state"], questions)["answers"]["team"]
+agent.save_calibration("fit-routing/")            # heads + calibration; agent.load_calibration("fit-routing/") later
+```
+
+What the script printed on a laptop GPU, every number measured in that run:
+
+```
+minimum rows fit() accepts for these questions: 35 (5 per option of the widest question for the heads, plus a quarter held out to calibrate on, never fewer than 10)
+
+== before: the cold engine, 20 held-out rows
+   team accuracy      0.600   ECE 0.221   mean confidence 0.629
+   urgency accuracy   0.400   ECE 0.412   MAE 0.65 levels
+   team set sizes     {1: 13, 2: 7}   abstain 12   route {'auto': 6, 'review': 14}
+
+== fit + calibrate on 40 rows in 9s: 30 fit the heads, 10 held out to calibrate on
+   team     head cv 0.767 vs engine 0.633 on the same rows  ->  SERVED
+   urgency  head cv 0.400 vs engine 0.400 on the same rows  ->  left to the engine
+   team     temperature 0.83  conformal q-hat 0.987  ECE on the calibration rows 0.281 -> 0.241
+   urgency  temperature 6.44  conformal q-hat 0.741  ECE on the calibration rows 0.515 -> 0.142
+   review line per question: {'team': None, 'urgency': None}
+   ['team', 'urgency']: no line holds precision 0.95 with a 95% bound on 10 calibration rows, so the conformal set routes those answers
+
+== after: heads + calibration, 20 held-out rows
+   team accuracy      0.900   ECE 0.206   mean confidence 0.749
+   urgency accuracy   0.400   ECE 0.059   MAE 0.65 levels
+   team set sizes     {2: 2, 3: 2, 4: 6, 5: 10}   abstain 0   route {'review': 20}
+
+== change on held-out rows: team accuracy +0.300, team ECE -0.015, urgency MAE +0.00
+
+== one held-out message: "Why was a late fee added to this month's bill when we paid on the due "  (gold: billing)
+   before: {"choice": "billing", "probabilities": {"billing": 0.999995, "hr": 3e-06, "pr": 0.0, "sales": 1e-06, "technical": 1e-06}, "answer_confidence": 0.999995, "prediction_set": ["billing"], "abstain": false, "unbound": false, "readout": "engine", "route": "auto", "route_reason": "conformal singleton, not abstaining, in distribution"}
+   after:  {"choice": "billing", "probabilities": {"billing": 0.674496, "hr": 0.186172, "pr": 0.068743, "sales": 0.041369, "technical": 0.029221}, "answer_confidence": 0.674496, "prediction_set": ["billing", "hr", "pr", "sales", "technical"], "abstain": false, "unbound": null, "readout": "ttt", "route": "review", "route_reason": "band could not hold precision 0.95 on 10 calibration rows, so the conformal rule decides: conformal set at alpha 0.1 holds 5 options"}
+
+== ablation: fitting rows per team, same 20 held-out rows
+   per team  rows  team acc  team ECE  urg. acc  urg. MAE  route
+   cold      0     0.600     0.221     0.400     0.65      {'auto': 6, 'review': 14}
+   7         35    0.800     0.111     0.400     0.65      {'auto': 14, 'review': 6}
+   8         40    0.900     0.206     0.400     0.65      {'review': 20}
+```
+
+Read it honestly. The head took routing from 0.600 to 0.900 on rows it never saw, and was refused for urgency because it did not beat the engine on the same rows, so that question stayed exactly where it was. The urgency ECE fell from 0.412 to 0.059 from a temperature alone, with the argmax untouched. Routing is where 10 calibration rows are too few: at alpha 0.1 the conformal quantile on 10 rows is the largest score, so the sets are wide, and no review line can certify 0.95 precision with a 95% bound on fewer than about 50 rows; the output says so in `route_reason` instead of pretending. The floor of 35 rows gets you a served head; a route you can act on wants a few hundred rows, and `report["calibration"]["band"]` tells you when you are there.
+
+How this differs from fine-tuning: a fine-tune runs a gradient through the model until it agrees with your labels, which changes every answer the model gives, invalidates any calibration fitted before, and leaves you a new checkpoint to validate. `fit` never touches the reader. It fits a small logistic head per question over the frozen features, a convex problem with one solution, keeps the head only if it beats chance under cross-validation and serves it only if it also beats the zero-shot engine on the same rows, so a fit can lose and say so, as urgency did above. A quarter of the rows is held out inside `fit` and `calibrate` refits three numbers per question on them: a temperature, a conformal threshold so the prediction set covers at 90%, and the review line, placed where precision holds at 0.95 with a 95% Wilson bound to spare. Every other question is untouched by construction, nothing is forgotten, and `agent.thresholds()` prints what decides `route` right now.
 
 ### The laya checkpoints, without vegaml
 
@@ -175,6 +244,18 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
   with the frame times or the transcript. Decoding goes through the `ffmpeg` binary on your
   PATH; laya takes on no Python dependency for it, and `laya.video` holds the helpers.
   `laya.vega.Router` sends a clip to vega like an image or a recording.
+* **`fit` takes a CSV and refuses to calibrate on its own fitting rows.** `agent.fit("rows.csv",
+  questions=questions)` reads a `state` column plus one column per question id
+  (`laya.VegaAgent.load_rows`; `.jsonl` too). A quarter of the rows is now held out inside `fit`
+  and the temperature, conformal threshold and review line are measured there, because a head is
+  right on its own rows and calibrating on them put every confidence at 1.000 and the review line
+  out of reach. `laya.VegaAgent.min_rows(questions)` is the floor `fit` accepts, and below it the
+  error names the number. Where the calibration rows cannot certify the review line at
+  `target_precision`, the band is reported `None` for that question and the conformal set routes
+  its answers, with `route_reason` saying so, instead of every answer going to review.
+  [`examples/42_fit_and_calibrate_vegaml.py`](https://github.com/NandhaKishorM/laya/blob/main/examples/42_fit_and_calibrate_vegaml.py)
+  and [`examples/data/routing_labels.csv`](https://github.com/NandhaKishorM/laya/blob/main/examples/data/routing_labels.csv)
+  are the measured loop; the quickstart carries its output.
 
 ## What's new in 0.4.23
 

@@ -101,9 +101,16 @@ def answer_number(answer: Dict[str, Any], field: str, where: str = "Laya",
     a `bool` is refused too rather than read as 1.0/0.0 (`bool` subclasses `int`), because a
     spurious `true` would otherwise become a full-probability violation; and a non-finite value is
     refused because every comparison against NaN silently answers False, i.e. "safe".
+    A Python `int` may also be wider than a `float`, so `math.isfinite` raises `OverflowError` and
+    the field is refused as non-finite.
     """
     value = answer.get(field, default)
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+    try:
+        finite = (not isinstance(value, bool) and isinstance(value, (int, float))
+                  and math.isfinite(value))
+    except OverflowError:
+        finite = False
+    if not finite:
         raise RuntimeError(
             "%s from %s: %r must be a finite number, got %r"
             % (MALFORMED_PREFIX, where, field, value))

@@ -499,6 +499,16 @@ agent = laya.load("convaiinnovations/laya", device="cpu")      # or "cuda", "mps
 router = Router(preload=True, device="mps")
 ```
 
+Eager CPU fp32 inference computes only the consumed outputs of the final decision-head
+layer: the option markers and token zero for the action head. Every unmasked token still
+participates as an attention key/value. Training, autocast, other devices, compiled/exported
+models and layers with custom hooks retain the full-head path. This uses the same weights
+and calibration, adds no dependency or external service, and keeps request tensors local to
+each call. Floating-point results can differ slightly, including decisions at exact ties.
+The [CPU head benchmark](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/bench_cpu_head.py) checks unrounded outputs and public
+answers against the full-head path using public synthetic inputs; its
+[results](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/results/cpu-head/README.md) record the measured latency and memory.
+
 ### macOS, including Intel Macs
 
 PyTorch stops publishing macOS **x86_64** wheels at 2.2.2 (2.3 and later are Apple-silicon only),

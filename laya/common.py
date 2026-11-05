@@ -572,6 +572,47 @@ def unpermute_probs(p: np.ndarray, option_order: Optional[List[int]]) -> np.ndar
     return canonical
 
 
+def _can_select_head(layer, h, marker_pos):
+    # Keep training, export/compile, other devices/precisions and instrumented/custom layers
+    # on the original path. Hooks must still observe the full sequence they registered for.
+    if (torch._dynamo.is_compiling() or torch.jit.is_tracing() or torch.jit.is_scripting()
+            or h.device.type != "cpu" or h.dtype != torch.float32 or torch.is_grad_enabled()
+            or _autocast_enabled("cpu") or marker_pos.shape[1] + 1 >= h.shape[1]
+            or type(layer) is not nn.TransformerEncoderLayer or not layer.norm_first):
+        return False
+    if (type(layer.linear1) is not nn.Linear or type(layer.linear2) is not nn.Linear
+            or type(layer.norm1) is not nn.LayerNorm or type(layer.norm2) is not nn.LayerNorm
+            or layer.activation not in (F.relu, F.gelu)
+            or any(type(m) is not nn.Dropout for m in (layer.dropout, layer.dropout1, layer.dropout2))):
+        return False
+    attn = layer.self_attn
+    if (type(attn) not in (nn.MultiheadAttention, _DynamicMultiheadAttention)
+            or not attn.batch_first or not attn._qkv_same_embed_dim
+            or attn.in_proj_weight is None or attn.bias_k is not None or attn.bias_v is not None or attn.add_zero_attn
+            or type(attn.out_proj) not in (nn.Linear, nn.modules.linear.NonDynamicallyQuantizableLinear)):
+        return False
+    if (nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks):
+        return False
+    return not any(m.training or m._forward_hooks or m._forward_pre_hooks or "forward" in m.__dict__
+                   or getattr(m, "_compiled_call_impl", None) is not None for m in layer.modules())
+
+
+def _selected_head(layer, h, positions, pad):
+    # Only the final layer can drop queries: earlier outputs are still keys/values for it.
+    # All unmasked tokens remain keys/values, including the state after the option markers.
+    idx = positions[:, :, None].expand(-1, -1, h.shape[-1])
+    selected = h.gather(1, idx)
+    normalized = layer.norm1(h)
+    attn, d = layer.self_attn, h.shape[-1]
+    weight, bias = attn.in_proj_weight, attn.in_proj_bias
+    q = F.linear(normalized.gather(1, idx), weight[:d], None if bias is None else bias[:d])
+    k, v = F.linear(normalized, weight[d:], None if bias is None else bias[d:]).chunk(2, dim=-1)
+    q, k, v = (t.unflatten(-1, (attn.num_heads, attn.head_dim)).transpose(1, 2) for t in (q, k, v))
+    out = F.scaled_dot_product_attention(q, k, v, attn_mask=~pad[:, None, None, :], dropout_p=0.0)
+    selected = selected + layer.dropout1(attn.out_proj(out.transpose(1, 2).flatten(-2)))
+    return selected + layer.dropout2(layer.linear2(layer.dropout(layer.activation(layer.linear1(layer.norm2(selected))))))
+
+
 class DecisionModel(nn.Module):
     """Bidirectional transformer encoder backbone + typed decision head."""
 
@@ -620,17 +661,27 @@ class DecisionModel(nn.Module):
         if detach_encoder:
             h = h.detach()
         h = h + self.type_emb(qtype)[:, None, :]
+        selected = False
         if self.head is not None:
             pad = ~attention_mask.bool()
-            for layer in self.head.layers:
+            for i, layer in enumerate(self.head.layers):
                 if self.head_checkpointing and self.training and torch.is_grad_enabled():
                     # Non-reentrant checkpointing also trains the head when its input
                     # is frozen. Default RNG preservation keeps dropout consistent.
                     h = checkpoint(layer, h, src_key_padding_mask=pad, use_reentrant=False)
+                elif (not self.training and i == len(self.head.layers) - 1
+                      and _can_select_head(layer, h, marker_pos)):
+                    # The scorer reads the markers; the action head also needs token zero.
+                    positions = torch.cat([torch.zeros_like(marker_pos[:, :1]), marker_pos.clamp(min=0)], dim=1)
+                    h = _selected_head(layer, h, positions, pad)
+                    selected = True
                 else:
                     h = layer(h, src_key_padding_mask=pad)
-        idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
-        m = torch.gather(h, 1, idx)
+        if selected:
+            m = h[:, 1:]
+        else:
+            idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
+            m = torch.gather(h, 1, idx)
         logits = self.scorer(m).squeeze(-1).float()
         logits = logits.masked_fill(~marker_mask, -1e4)
 

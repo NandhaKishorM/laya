@@ -41,18 +41,16 @@ For TypeScript / Node.js / browser, see [`laya-ts/`](https://github.com/NandhaKi
 
 ## Quickstart
 
-> **Long documents: `laya-multilingual` reads up to 8,192 tokens.** It ships with a 1,024-token limit that cuts long documents off, so pass `max_len=8192` for them:
->
-> ```python
-> result = router.predict(long_document, questions, model="multilingual", max_len=8192)
-> ```
->
-> In the table above, 16 to 18 of 20 requests were answered correctly with up to about 4,000 tokens of text before them; beyond that results vary (8 to 17 of 20), so check long-document accuracy on your own data. Short inputs give identical answers with `max_len=8192`, and speed follows the input's real length, not the limit: short inputs are unchanged, and a 4,000-token input takes about 1.7 s on an Apple GPU. Name the checkpoint with `model="multilingual"`, since long mostly-English text would otherwise route to the English checkpoint.
+One argument puts vegaml's engine under laya's names: a frozen 0.8B reader with a small physics engine on top, so every answer carries a conformal prediction set, an abstain flag, an out-of-distribution flag and a route decided without a threshold you had to guess at. Text, images, speech and 73k-token documents go through the same call. Python 3.10 or newer; details in [vega inside laya](#vega-inside-laya-agentvegamltrue).
+
+```bash
+python -m pip install 'laya[vegaml]'
+```
 
 ```python
-from laya import Router
+import laya
 
-router = Router()  # downloads a checkpoint on first use; Router(preload=True) loads all three up front
+agent = laya.Agent(vegaml=True)   # the 0.8B universal reader; vegaml="4b" for the larger one
 
 state = "Hi, we were billed twice for March. Please refund the duplicate today or we will cancel our plan."
 questions = {
@@ -65,13 +63,68 @@ questions = {
     "churn_risk": {"type": "noul", "instructions": "Does the user threaten to cancel or leave?"},
 }
 
+out = agent.predict(state, questions)
+ans = out["answers"]["department"]
+print(ans["choice"])             # billing
+print(ans["probabilities"])      # {"billing": 0.91, "technical": 0.04, "other": 0.05}
+print(ans["prediction_set"])     # ["billing"]: the options the answer could still be, at alpha 0.1
+print(ans["abstain"])            # False: the engine is not refusing this one
+print(ans["unbound"])            # False: the state looks like something it has seen
+print(ans["route"])              # "auto"; "review" when the set, abstain or unbound say so
+print(out["answers"]["churn_risk"]["noul"])   # probability the answer is yes
+```
+
+The output keeps laya's shape (`choice`, `score`, `noul`, `probabilities`, `answer_confidence`) and adds vega's fields. Gate on `route`, not on a confidence number: it comes from the conformal set and the fitted band, which stay right on answers where the top probability does not.
+
+**Model switching.** Keep a laya encoder for short English text and let vega take the rest:
+
+```python
+from laya.vega import Router
+
+router = Router(fast=laya.Agent(), vega=agent)
+out = router.predict(state, questions)
+print(out["routing"])            # {"model": "fast", "reason": "short English text, no fitted head: the fast encoder is enough"}
+out = router.predict("मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।", questions)
+print(out["routing"]["model"])   # vega: non-English goes to the reader
+```
+
+The rule, in order: an image or audio goes to vega; text longer than the fast model's context goes to vega; non-English or non-Latin text goes to vega; a question with a fitted head goes to vega; everything else goes to the encoder. `model="vega"` or `model="fast"` forces one.
+
+**Images, speech, long documents.** The questions and the answer shape do not change with the input:
+
+```python
+agent.predict(image="invoice.png", questions=questions)                 # PIL image, path or array
+agent.predict(audio=wave, questions=questions, sampling_rate=16000)     # transcribed, then decided; the transcript rides along
+agent.predict_long(seventy_page_contract, questions)                    # up to 73,728 tokens, read whole
+```
+
+**Fit and calibrate on your own labels.** Seconds, no gradient step, and the route line is placed for you:
+
+```python
+rows = [{"state": "...", "questions": questions, "gold": {"department": "billing"}}, ...]
+report = agent.fit(rows)         # heads per question, then temperature, conformal threshold and review band
+print(report["serving"])         # the questions whose head beat the engine on your rows
+agent.save_calibration("fit/")   # reload later with agent.load_calibration("fit/")
+```
+
+A head is kept only if it beats chance under cross-validation and served only if it also beats the engine on the same rows. The band's line sits where precision holds at 0.95 on your rows with a 95% Wilson bound to spare; `agent.thresholds()` prints what decides `route` right now.
+
+### The laya checkpoints, without vegaml
+
+Leave the argument out and laya is the ModernBERT family it always was: ~150M to 421M parameters, 33 ms a decision on a T4, 100+ languages through the `Router`.
+
+```python
+from laya import Router
+
+router = Router()  # downloads a checkpoint on first use; Router(preload=True) loads all three up front
+
 result = router.predict(state, questions)
 print(result["answers"]["department"]["choice"])  # billing
 print(result["answers"]["churn_risk"]["noul"])    # probability the answer is yes
 print(result["routing"]["model"])                 # english
 ```
 
-The same call works in any of 100+ languages. The `Router` detects the script and language and sends non-English text to `laya-multilingual`:
+The `Router` detects the script and language and sends non-English text to `laya-multilingual`:
 
 ```python
 for text in ["मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
@@ -81,6 +134,14 @@ for text in ["मुझसे मार्च में दो बार शु�
 # multilingual billing
 # multilingual technical
 ```
+
+> **Long documents on the checkpoints: `laya-multilingual` reads up to 8,192 tokens.** It ships with a 1,024-token limit that cuts long documents off, so pass `max_len=8192` for them:
+>
+> ```python
+> result = router.predict(long_document, questions, model="multilingual", max_len=8192)
+> ```
+>
+> In the table above, 16 to 18 of 20 requests were answered correctly with up to about 4,000 tokens of text before them; beyond that results vary (8 to 17 of 20), so check long-document accuracy on your own data. Short inputs give identical answers with `max_len=8192`, and speed follows the input's real length, not the limit: short inputs are unchanged, and a 4,000-token input takes about 1.7 s on an Apple GPU. Name the checkpoint with `model="multilingual"`, since long mostly-English text would otherwise route to the English checkpoint. With `vegaml=True` none of this applies: the reader takes 73,728 tokens whole.
 
 From the command line, `laya "My payment failed twice" --preset triage` answers a ready-made question set. More in the [full quickstart](#quickstart-route-mode-recommended) and the [docs](https://nandhakishorm.github.io/laya/).
 

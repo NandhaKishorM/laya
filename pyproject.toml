@@ -49,6 +49,12 @@ fast = ["tilelang>=0.1.14"]
 # `pip install laya[mcp]` adds the MCP stdio server (laya.mcp / the laya-mcp-server CLI).
 mcp = ["mcp>=2.2.0"]
 
+# `pip install laya[vegaml]` puts vega's engine behind laya's surface: `laya.Agent(vegaml=True)`.
+# Conformal sets, abstain and unbound flags, heads fitted on your labels, a refit calibration,
+# 73k tokens of context, images and speech, all through laya's own method names (laya/vega.py).
+# vegaml needs Python 3.10 or newer; core laya does not, which is why this is an extra.
+vegaml = ["vegaml>=0.15.0; python_version >= '3.10'"]
+
 # `pip install laya[structured]` adds pydantic for the typed-model helpers (laya/structured.py).
 structured = ["pydantic>=2.0.0"]
 

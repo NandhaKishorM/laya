@@ -44,6 +44,7 @@ _LAZY_ATTRS = {
     # stdlib-only module, but keep it lazy so `import laya` does not pull in hashlib
     "PINNED_REVISIONS": (".revisions", "PINNED_REVISIONS"),
     "Agent": (".agent", "Agent"),
+    "VegaAgent": (".vega", "VegaAgent"),       # vegaml's engine behind laya's surface
     "RLAgent": (".agent", "RLAgent"),
     "load": (".agent", "load"),
     "fit_temperatures": (".calibrate", "fit_temperatures"),
@@ -100,6 +101,7 @@ def __dir__():
 __all__ = [
     "Agent",
     "RLAgent",
+    "VegaAgent",
     "load",
     "fit_temperatures",
     "fit_one_temperature",

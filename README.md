@@ -1018,6 +1018,58 @@ for measurements and limitations.
 
 ---
 
+## vega inside laya: `Agent(vegaml=True)`
+
+One argument swaps the engine under laya's surface for [vegaml](https://github.com/NandhaKishorM/vegaml)'s:
+a frozen 0.8B universal reader with a small physics engine on top. Every method keeps its
+laya name; the answers gain what the engine knows that an encoder does not.
+
+```python
+import laya
+
+agent = laya.Agent(vegaml=True)                  # pip install 'laya[vegaml]'  (Python 3.10+)
+out = agent.predict(state, questions)
+
+ans = out["answers"]["department"]
+ans["choice"]                                   # as always
+ans["prediction_set"]                           # the conformal set at alpha=0.1
+ans["abstain"]                                  # the engine's own refusal
+ans["unbound"]                                  # far from every well: likely off-distribution
+ans["route"], ans["route_reason"]               # "auto" or "review", decided for you
+```
+
+| | laya checkpoints | `Agent(vegaml=True)` |
+|---|---|---|
+| context | 512 or 1,024 tokens, windowed past that | 73k tokens, read whole |
+| learning from your labels | gradient fine-tune | `agent.fit(rows)`: a head per question over frozen features, seconds |
+| calibration | shipped temperature map | refit on your rows: temperature, conformal threshold, escalation band |
+| refusal | `min_confidence` you choose | `abstain`, `unbound`, the conformal set, the fitted band |
+| images, speech | no | `agent.predict(image=img, ...)`, `agent.predict(audio=wav, ...)` |
+| speed on text (T4) | ~16 ms a decision batched | ~72 ms a decision |
+
+```python
+agent.fit(rows)                                 # rows: {"state", "questions", "gold" or "expected"}
+agent.predict(state, questions)                 # heads serve where they beat the engine; route from the band
+agent.save_calibration("fit/"); agent.load_calibration("fit/")
+agent.predict_long(document, questions)         # no windowing up to 73k tokens
+agent.predict(image=img, questions=questions)   # the reader's vision tower
+agent.predict(audio=wav, questions=questions, sampling_rate=16000)   # transcribed, then decided
+
+from laya.vega import Router
+router = Router(fast=laya.Agent(), vega=agent)   # laya for short English text, vega otherwise
+router.predict(state, questions)["routing"]     # {"model": "fast" | "vega", "reason": ...}
+```
+
+**Nothing here needs a threshold from you.** `route` comes from the fitted band when you have
+run `fit` or `calibrate`, and otherwise from the engine's own conformal set, abstain flag and
+`unbound` flag. `alpha` (miscoverage, 0.1) and `target_precision` (0.95) are targets with
+defaults, not confidences to guess at. Gate on `route`, not on `confidence`: a fitted head can
+report 1.000 on an answer it gets wrong, and `route` on the same answer is still right, because
+it comes from the set and the band rather than the top probability.
+
+`laya.vega` is imported only when the argument is given; without `vegaml` installed, core laya
+is unchanged and `Agent(vegaml=True)` says what to install.
+
 ## Automated Confidence Gating
 
 Because Laya's probabilities are trained with strictly proper scoring rules (RLCD), confidence scores are statistically meaningful:

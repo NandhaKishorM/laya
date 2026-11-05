@@ -508,11 +508,13 @@ input token is removed. Training, autocast, other devices, compilation/export, c
 and unsupported encoders retain the corresponding original execution paths.
 This uses the same weights and calibration, adds no dependency or external service, and
 keeps request tensors local to each call without a shared request cache. Floating-point
-results can differ slightly, including decisions at exact ties. The
-[CPU benchmark](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/bench_cpu.py)
-checks unrounded outputs and public answers against the original execution path;
-[results](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/results/cpu/README.md)
-record latency, numerical differences and memory.
+results can differ slightly, including decisions at exact ties. The existing
+[CPU/device](https://github.com/NandhaKishorM/laya/blob/main/verify/bench_devices.py),
+[routing-latency](https://github.com/NandhaKishorM/laya/blob/main/research/scripts/bench_latency.py)
+and [long-context](https://github.com/NandhaKishorM/laya/blob/main/research/scripts/bench_long_context.py)
+benchmarks provide the [before/after evidence](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/results/cpu/README.md).
+The separate [CPU regression harness](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/bench_cpu.py)
+checks unrounded outputs and public answers against the original execution path.
 
 ### macOS, including Intel Macs
 

@@ -1,0 +1,19 @@
+{
+  "declared_at_utc": "2026-11-05T23:17:14+00:00",
+  "reason": "Original device run showed slower MPS despite CPU-only optimization guards. Repeat the complete unchanged upstream device benchmark to investigate reproducibility; retain every run.",
+  "script": "verify/bench_devices.py",
+  "orders": [
+    [
+      "pr",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "pr"
+    ]
+  ],
+  "baseline_commit": "3293116c89425c3d04b22aa4d9464fef82e2c858",
+  "pr_commit": "b4e7c9a434671e6b08daadf30c572270d015cd48",
+  "checkpoint_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "protocol": "After all six original benchmark runs complete, execute four fresh-process device runs sequentially with the original environment and defaults. No script modification, no stopping based on results, no replacement of original measurements."
+}

@@ -1,0 +1,3315 @@
+{
+ "checkpoint": "convaiinnovations/laya (multilingual/)",
+ "default_limit": 1024,
+ "device": "cpu",
+ "platform": "macOS-26.5.2-arm64-arm-64bit",
+ "torch": "2.15.0",
+ "transformers": "5.22.1",
+ "laya": "0.4.26",
+ "questions": {
+  "department": {
+   "type": "choice",
+   "instructions": "Which department should handle this request?",
+   "criteria": {
+    "billing": "invoices, payments, refunds",
+    "technical": "bugs, outages, system errors",
+    "sales": "pricing, new contracts, plan upgrades",
+    "other": "everything else"
+   }
+  }
+ },
+ "rows": [
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "n": 20,
+   "correct": 19,
+   "accuracy": 0.95,
+   "median_latency_s": 0.035,
+   "median_input_tokens": 61
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "n": 20,
+   "correct": 19,
+   "accuracy": 0.95,
+   "median_latency_s": 0.036,
+   "median_input_tokens": 61
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "n": 20,
+   "correct": 13,
+   "accuracy": 0.65,
+   "median_latency_s": 0.37,
+   "median_input_tokens": 1024
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "n": 20,
+   "correct": 16,
+   "accuracy": 0.8,
+   "median_latency_s": 0.401,
+   "median_input_tokens": 1032
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "n": 20,
+   "correct": 7,
+   "accuracy": 0.35,
+   "median_latency_s": 0.376,
+   "median_input_tokens": 1024
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "n": 20,
+   "correct": 17,
+   "accuracy": 0.85,
+   "median_latency_s": 0.897,
+   "median_input_tokens": 2040
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "n": 20,
+   "correct": 7,
+   "accuracy": 0.35,
+   "median_latency_s": 0.364,
+   "median_input_tokens": 1024
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "n": 20,
+   "correct": 18,
+   "accuracy": 0.9,
+   "median_latency_s": 2.146,
+   "median_input_tokens": 3972
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "n": 20,
+   "correct": 7,
+   "accuracy": 0.35,
+   "median_latency_s": 0.394,
+   "median_input_tokens": 1024
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "n": 20,
+   "correct": 8,
+   "accuracy": 0.4,
+   "median_latency_s": 4.836,
+   "median_input_tokens": 6912
+  }
+ ],
+ "cases": [
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 1.0,
+    "technical": 0.0,
+    "sales": 0.0,
+    "other": 0.0
+   },
+   "correct": true,
+   "input_tokens": 64,
+   "latency_s": 0.0351
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0008,
+    "technical": 0.9948,
+    "sales": 0.0006,
+    "other": 0.0038
+   },
+   "correct": true,
+   "input_tokens": 60,
+   "latency_s": 0.0342
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0483,
+    "technical": 0.012,
+    "sales": 0.9352,
+    "other": 0.0045
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.0342
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 1.0,
+    "technical": 0.0,
+    "sales": 0.0,
+    "other": 0.0
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.0339
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0022,
+    "technical": 0.993,
+    "sales": 0.0016,
+    "other": 0.0033
+   },
+   "correct": true,
+   "input_tokens": 63,
+   "latency_s": 0.0352
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0002,
+    "technical": 0.0,
+    "sales": 0.9997,
+    "other": 0.0001
+   },
+   "correct": true,
+   "input_tokens": 60,
+   "latency_s": 0.0348
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9999,
+    "technical": 0.0,
+    "sales": 0.0,
+    "other": 0.0001
+   },
+   "correct": true,
+   "input_tokens": 66,
+   "latency_s": 0.0411
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0003,
+    "technical": 0.9968,
+    "sales": 0.0005,
+    "other": 0.0024
+   },
+   "correct": true,
+   "input_tokens": 58,
+   "latency_s": 0.0336
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0018,
+    "technical": 0.0006,
+    "sales": 0.9973,
+    "other": 0.0003
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.0337
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 1.0,
+    "technical": 0.0,
+    "sales": 0.0,
+    "other": 0.0
+   },
+   "correct": true,
+   "input_tokens": 68,
+   "latency_s": 0.0543
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0752,
+    "technical": 0.8002,
+    "sales": 0.0422,
+    "other": 0.0823
+   },
+   "correct": true,
+   "input_tokens": 59,
+   "latency_s": 0.0446
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9985,
+    "technical": 0.0005,
+    "sales": 0.0003,
+    "other": 0.0007
+   },
+   "correct": true,
+   "input_tokens": 67,
+   "latency_s": 0.0414
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0091,
+    "technical": 0.9108,
+    "sales": 0.0139,
+    "other": 0.0662
+   },
+   "correct": true,
+   "input_tokens": 60,
+   "latency_s": 0.0341
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9974,
+    "technical": 0.0011,
+    "sales": 0.0002,
+    "other": 0.0013
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.0339
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0061,
+    "technical": 0.9238,
+    "sales": 0.0196,
+    "other": 0.0506
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.0341
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9932,
+    "technical": 0.0005,
+    "sales": 0.0055,
+    "other": 0.0009
+   },
+   "correct": false,
+   "input_tokens": 58,
+   "latency_s": 0.0336
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6315,
+    "technical": 0.0473,
+    "sales": 0.2452,
+    "other": 0.076
+   },
+   "correct": true,
+   "input_tokens": 71,
+   "latency_s": 0.0446
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0003,
+    "technical": 0.9949,
+    "sales": 0.0004,
+    "other": 0.0044
+   },
+   "correct": true,
+   "input_tokens": 62,
+   "latency_s": 0.058
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6582,
+    "technical": 0.0862,
+    "sales": 0.0667,
+    "other": 0.1889
+   },
+   "correct": true,
+   "input_tokens": 62,
+   "latency_s": 0.0376
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 1024,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9085,
+    "technical": 0.0131,
+    "sales": 0.0197,
+    "other": 0.0587
+   },
+   "correct": true,
+   "input_tokens": 70,
+   "latency_s": 0.0443
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 1.0,
+    "technical": 0.0,
+    "sales": 0.0,
+    "other": 0.0
+   },
+   "correct": true,
+   "input_tokens": 64,
+   "latency_s": 0.0365
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0008,
+    "technical": 0.9948,
+    "sales": 0.0006,
+    "other": 0.0038
+   },
+   "correct": true,
+   "input_tokens": 60,
+   "latency_s": 0.0356
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0483,
+    "technical": 0.012,
+    "sales": 0.9352,
+    "other": 0.0045
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.0358
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 1.0,
+    "technical": 0.0,
+    "sales": 0.0,
+    "other": 0.0
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.035
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0022,
+    "technical": 0.993,
+    "sales": 0.0016,
+    "other": 0.0033
+   },
+   "correct": true,
+   "input_tokens": 63,
+   "latency_s": 0.0355
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0002,
+    "technical": 0.0,
+    "sales": 0.9997,
+    "other": 0.0001
+   },
+   "correct": true,
+   "input_tokens": 60,
+   "latency_s": 0.0349
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9999,
+    "technical": 0.0,
+    "sales": 0.0,
+    "other": 0.0001
+   },
+   "correct": true,
+   "input_tokens": 66,
+   "latency_s": 0.0422
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0003,
+    "technical": 0.9968,
+    "sales": 0.0005,
+    "other": 0.0024
+   },
+   "correct": true,
+   "input_tokens": 58,
+   "latency_s": 0.0341
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0018,
+    "technical": 0.0006,
+    "sales": 0.9973,
+    "other": 0.0003
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.0346
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 1.0,
+    "technical": 0.0,
+    "sales": 0.0,
+    "other": 0.0
+   },
+   "correct": true,
+   "input_tokens": 68,
+   "latency_s": 0.0439
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0752,
+    "technical": 0.8002,
+    "sales": 0.0422,
+    "other": 0.0823
+   },
+   "correct": true,
+   "input_tokens": 59,
+   "latency_s": 0.0357
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9985,
+    "technical": 0.0005,
+    "sales": 0.0003,
+    "other": 0.0007
+   },
+   "correct": true,
+   "input_tokens": 67,
+   "latency_s": 0.0411
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0091,
+    "technical": 0.9108,
+    "sales": 0.0139,
+    "other": 0.0662
+   },
+   "correct": true,
+   "input_tokens": 60,
+   "latency_s": 0.0338
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9974,
+    "technical": 0.0011,
+    "sales": 0.0002,
+    "other": 0.0013
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.035
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0061,
+    "technical": 0.9238,
+    "sales": 0.0196,
+    "other": 0.0506
+   },
+   "correct": true,
+   "input_tokens": 61,
+   "latency_s": 0.0356
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9932,
+    "technical": 0.0005,
+    "sales": 0.0055,
+    "other": 0.0009
+   },
+   "correct": false,
+   "input_tokens": 58,
+   "latency_s": 0.0373
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6315,
+    "technical": 0.0473,
+    "sales": 0.2452,
+    "other": 0.076
+   },
+   "correct": true,
+   "input_tokens": 71,
+   "latency_s": 0.0439
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0003,
+    "technical": 0.9949,
+    "sales": 0.0004,
+    "other": 0.0044
+   },
+   "correct": true,
+   "input_tokens": 62,
+   "latency_s": 0.036
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6582,
+    "technical": 0.0862,
+    "sales": 0.0667,
+    "other": 0.1889
+   },
+   "correct": true,
+   "input_tokens": 62,
+   "latency_s": 0.0367
+  },
+  {
+   "pad_tokens": 0,
+   "limit": 8192,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9085,
+    "technical": 0.0131,
+    "sales": 0.0197,
+    "other": 0.0587
+   },
+   "correct": true,
+   "input_tokens": 70,
+   "latency_s": 0.0437
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9994,
+    "technical": 0.0003,
+    "sales": 0.0001,
+    "other": 0.0002
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3373
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0021,
+    "technical": 0.8932,
+    "sales": 0.0086,
+    "other": 0.096
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3387
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.1716,
+    "technical": 0.2876,
+    "sales": 0.3276,
+    "other": 0.2131
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3316
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.999,
+    "technical": 0.0006,
+    "sales": 0.0001,
+    "other": 0.0003
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3664
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.3547,
+    "technical": 0.3897,
+    "sales": 0.0574,
+    "other": 0.1982
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3523
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0755,
+    "technical": 0.0163,
+    "sales": 0.8911,
+    "other": 0.017
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.4245
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.999,
+    "technical": 0.0005,
+    "sales": 0.0002,
+    "other": 0.0003
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.406
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.2345,
+    "technical": 0.4542,
+    "sales": 0.1093,
+    "other": 0.2021
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3741
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8553,
+    "technical": 0.0473,
+    "sales": 0.0927,
+    "other": 0.0047
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3655
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.4003,
+    "technical": 0.4326,
+    "sales": 0.0737,
+    "other": 0.0935
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3579
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.011,
+    "technical": 0.96,
+    "sales": 0.0145,
+    "other": 0.0145
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3519
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0924,
+    "technical": 0.8017,
+    "sales": 0.0259,
+    "other": 0.08
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3736
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "other",
+   "probabilities": {
+    "billing": 0.0185,
+    "technical": 0.0626,
+    "sales": 0.1542,
+    "other": 0.7647
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3498
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.2715,
+    "technical": 0.5501,
+    "sales": 0.0243,
+    "other": 0.154
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3643
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0295,
+    "technical": 0.8645,
+    "sales": 0.0453,
+    "other": 0.0608
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3986
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.7892,
+    "technical": 0.0635,
+    "sales": 0.0356,
+    "other": 0.1117
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4317
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.1841,
+    "technical": 0.4925,
+    "sales": 0.0436,
+    "other": 0.2797
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4606
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0348,
+    "technical": 0.6652,
+    "sales": 0.2472,
+    "other": 0.0528
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3997
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.5482,
+    "technical": 0.2297,
+    "sales": 0.1347,
+    "other": 0.0874
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3982
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 1024,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.7625,
+    "technical": 0.149,
+    "sales": 0.0447,
+    "other": 0.0437
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3969
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9995,
+    "technical": 0.0002,
+    "sales": 0.0002,
+    "other": 0.0001
+   },
+   "correct": true,
+   "input_tokens": 1035,
+   "latency_s": 0.3814
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0016,
+    "technical": 0.9252,
+    "sales": 0.0055,
+    "other": 0.0676
+   },
+   "correct": true,
+   "input_tokens": 1031,
+   "latency_s": 0.3962
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0277,
+    "technical": 0.0961,
+    "sales": 0.6554,
+    "other": 0.2208
+   },
+   "correct": true,
+   "input_tokens": 1032,
+   "latency_s": 0.375
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9925,
+    "technical": 0.0042,
+    "sales": 0.0008,
+    "other": 0.0025
+   },
+   "correct": true,
+   "input_tokens": 1032,
+   "latency_s": 0.3847
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0206,
+    "technical": 0.913,
+    "sales": 0.025,
+    "other": 0.0415
+   },
+   "correct": true,
+   "input_tokens": 1034,
+   "latency_s": 0.3967
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0122,
+    "technical": 0.0055,
+    "sales": 0.9779,
+    "other": 0.0045
+   },
+   "correct": true,
+   "input_tokens": 1031,
+   "latency_s": 0.402
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9994,
+    "technical": 0.0004,
+    "sales": 0.0001,
+    "other": 0.0002
+   },
+   "correct": true,
+   "input_tokens": 1037,
+   "latency_s": 0.3822
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.037,
+    "technical": 0.7866,
+    "sales": 0.0766,
+    "other": 0.0998
+   },
+   "correct": true,
+   "input_tokens": 1029,
+   "latency_s": 0.4528
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.5915,
+    "technical": 0.0174,
+    "sales": 0.3814,
+    "other": 0.0097
+   },
+   "correct": false,
+   "input_tokens": 1032,
+   "latency_s": 0.462
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8398,
+    "technical": 0.0667,
+    "sales": 0.0611,
+    "other": 0.0324
+   },
+   "correct": true,
+   "input_tokens": 1039,
+   "latency_s": 0.4392
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0373,
+    "technical": 0.8791,
+    "sales": 0.0384,
+    "other": 0.0453
+   },
+   "correct": true,
+   "input_tokens": 1030,
+   "latency_s": 0.3665
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.2352,
+    "technical": 0.7265,
+    "sales": 0.018,
+    "other": 0.0204
+   },
+   "correct": false,
+   "input_tokens": 1038,
+   "latency_s": 0.4932
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "other",
+   "probabilities": {
+    "billing": 0.0653,
+    "technical": 0.3102,
+    "sales": 0.1143,
+    "other": 0.5101
+   },
+   "correct": false,
+   "input_tokens": 1031,
+   "latency_s": 0.5044
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8862,
+    "technical": 0.0806,
+    "sales": 0.0098,
+    "other": 0.0234
+   },
+   "correct": true,
+   "input_tokens": 1032,
+   "latency_s": 0.5108
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0029,
+    "technical": 0.859,
+    "sales": 0.0364,
+    "other": 0.1017
+   },
+   "correct": true,
+   "input_tokens": 1032,
+   "latency_s": 0.5249
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6815,
+    "technical": 0.0904,
+    "sales": 0.0345,
+    "other": 0.1936
+   },
+   "correct": false,
+   "input_tokens": 1029,
+   "latency_s": 0.4129
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8362,
+    "technical": 0.1059,
+    "sales": 0.0313,
+    "other": 0.0267
+   },
+   "correct": true,
+   "input_tokens": 1042,
+   "latency_s": 0.3909
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0017,
+    "technical": 0.979,
+    "sales": 0.0043,
+    "other": 0.015
+   },
+   "correct": true,
+   "input_tokens": 1033,
+   "latency_s": 0.3668
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8857,
+    "technical": 0.0726,
+    "sales": 0.0204,
+    "other": 0.0212
+   },
+   "correct": true,
+   "input_tokens": 1033,
+   "latency_s": 0.3993
+  },
+  {
+   "pad_tokens": 1000,
+   "limit": 8192,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8039,
+    "technical": 0.0569,
+    "sales": 0.0949,
+    "other": 0.0443
+   },
+   "correct": true,
+   "input_tokens": 1041,
+   "latency_s": 0.4188
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3882
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3681
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3759
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3707
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3752
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3708
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3723
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3856
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.376
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3717
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3697
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.385
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3666
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3715
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.365
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4738
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4289
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3905
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4179
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 1024,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3863
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9973,
+    "technical": 0.0011,
+    "sales": 0.001,
+    "other": 0.0005
+   },
+   "correct": true,
+   "input_tokens": 2043,
+   "latency_s": 0.9833
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0029,
+    "technical": 0.9509,
+    "sales": 0.0081,
+    "other": 0.038
+   },
+   "correct": true,
+   "input_tokens": 2039,
+   "latency_s": 0.8314
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0725,
+    "technical": 0.2498,
+    "sales": 0.3589,
+    "other": 0.3188
+   },
+   "correct": true,
+   "input_tokens": 2040,
+   "latency_s": 0.8907
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9042,
+    "technical": 0.0074,
+    "sales": 0.0837,
+    "other": 0.0047
+   },
+   "correct": true,
+   "input_tokens": 2040,
+   "latency_s": 0.8704
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0469,
+    "technical": 0.8677,
+    "sales": 0.0461,
+    "other": 0.0393
+   },
+   "correct": true,
+   "input_tokens": 2042,
+   "latency_s": 0.9025
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.457,
+    "technical": 0.0193,
+    "sales": 0.52,
+    "other": 0.0037
+   },
+   "correct": true,
+   "input_tokens": 2039,
+   "latency_s": 0.8696
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9832,
+    "technical": 0.0072,
+    "sales": 0.0068,
+    "other": 0.0027
+   },
+   "correct": true,
+   "input_tokens": 2045,
+   "latency_s": 0.965
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0431,
+    "technical": 0.6873,
+    "sales": 0.1057,
+    "other": 0.1639
+   },
+   "correct": true,
+   "input_tokens": 2037,
+   "latency_s": 0.9781
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6699,
+    "technical": 0.1689,
+    "sales": 0.0782,
+    "other": 0.083
+   },
+   "correct": false,
+   "input_tokens": 2040,
+   "latency_s": 0.9889
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8633,
+    "technical": 0.0656,
+    "sales": 0.0415,
+    "other": 0.0297
+   },
+   "correct": true,
+   "input_tokens": 2047,
+   "latency_s": 0.9299
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.22,
+    "technical": 0.486,
+    "sales": 0.0366,
+    "other": 0.2575
+   },
+   "correct": true,
+   "input_tokens": 2038,
+   "latency_s": 0.8694
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.7424,
+    "technical": 0.0671,
+    "sales": 0.1807,
+    "other": 0.0097
+   },
+   "correct": true,
+   "input_tokens": 2046,
+   "latency_s": 0.9475
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0441,
+    "technical": 0.4859,
+    "sales": 0.1138,
+    "other": 0.3562
+   },
+   "correct": true,
+   "input_tokens": 2039,
+   "latency_s": 0.8148
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.787,
+    "technical": 0.1019,
+    "sales": 0.0328,
+    "other": 0.0783
+   },
+   "correct": true,
+   "input_tokens": 2040,
+   "latency_s": 0.9475
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "other",
+   "probabilities": {
+    "billing": 0.0108,
+    "technical": 0.3056,
+    "sales": 0.0663,
+    "other": 0.6173
+   },
+   "correct": false,
+   "input_tokens": 2040,
+   "latency_s": 0.8928
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9807,
+    "technical": 0.0077,
+    "sales": 0.005,
+    "other": 0.0066
+   },
+   "correct": false,
+   "input_tokens": 2037,
+   "latency_s": 0.9142
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.7201,
+    "technical": 0.0542,
+    "sales": 0.1909,
+    "other": 0.0349
+   },
+   "correct": true,
+   "input_tokens": 2050,
+   "latency_s": 0.8329
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0257,
+    "technical": 0.5177,
+    "sales": 0.0868,
+    "other": 0.3698
+   },
+   "correct": true,
+   "input_tokens": 2041,
+   "latency_s": 0.83
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6403,
+    "technical": 0.1165,
+    "sales": 0.2153,
+    "other": 0.0279
+   },
+   "correct": true,
+   "input_tokens": 2041,
+   "latency_s": 0.8519
+  },
+  {
+   "pad_tokens": 2000,
+   "limit": 8192,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6447,
+    "technical": 0.1926,
+    "sales": 0.1146,
+    "other": 0.0482
+   },
+   "correct": true,
+   "input_tokens": 2049,
+   "latency_s": 0.9003
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4472
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3651
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3679
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3491
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3459
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.349
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3515
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.399
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.434
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4365
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.4531
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.357
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3899
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3555
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.36
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3718
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4502
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3488
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3626
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 1024,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.35
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9421,
+    "technical": 0.0374,
+    "sales": 0.0126,
+    "other": 0.0079
+   },
+   "correct": true,
+   "input_tokens": 3975,
+   "latency_s": 1.9695
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0082,
+    "technical": 0.9427,
+    "sales": 0.0171,
+    "other": 0.032
+   },
+   "correct": true,
+   "input_tokens": 3971,
+   "latency_s": 2.1801
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0094,
+    "technical": 0.2885,
+    "sales": 0.5426,
+    "other": 0.1595
+   },
+   "correct": true,
+   "input_tokens": 3972,
+   "latency_s": 1.8427
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9196,
+    "technical": 0.0349,
+    "sales": 0.0304,
+    "other": 0.0151
+   },
+   "correct": true,
+   "input_tokens": 3972,
+   "latency_s": 2.0574
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.096,
+    "technical": 0.6866,
+    "sales": 0.1003,
+    "other": 0.1171
+   },
+   "correct": true,
+   "input_tokens": 3974,
+   "latency_s": 1.8407
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.1409,
+    "technical": 0.2129,
+    "sales": 0.5327,
+    "other": 0.1135
+   },
+   "correct": true,
+   "input_tokens": 3971,
+   "latency_s": 3.0226
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8401,
+    "technical": 0.1191,
+    "sales": 0.0302,
+    "other": 0.0106
+   },
+   "correct": true,
+   "input_tokens": 3977,
+   "latency_s": 2.3637
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.099,
+    "technical": 0.58,
+    "sales": 0.1605,
+    "other": 0.1605
+   },
+   "correct": true,
+   "input_tokens": 3969,
+   "latency_s": 2.2119
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.3632,
+    "technical": 0.2684,
+    "sales": 0.3226,
+    "other": 0.0458
+   },
+   "correct": false,
+   "input_tokens": 3972,
+   "latency_s": 2.2019
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.5448,
+    "technical": 0.267,
+    "sales": 0.1085,
+    "other": 0.0797
+   },
+   "correct": true,
+   "input_tokens": 3979,
+   "latency_s": 2.2526
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.2278,
+    "technical": 0.552,
+    "sales": 0.0632,
+    "other": 0.157
+   },
+   "correct": true,
+   "input_tokens": 3970,
+   "latency_s": 1.7396
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8088,
+    "technical": 0.1081,
+    "sales": 0.0532,
+    "other": 0.0299
+   },
+   "correct": true,
+   "input_tokens": 3978,
+   "latency_s": 2.0371
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.1165,
+    "technical": 0.5871,
+    "sales": 0.1633,
+    "other": 0.1331
+   },
+   "correct": true,
+   "input_tokens": 3971,
+   "latency_s": 1.8656
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6844,
+    "technical": 0.1678,
+    "sales": 0.0759,
+    "other": 0.0719
+   },
+   "correct": true,
+   "input_tokens": 3972,
+   "latency_s": 2.071
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0421,
+    "technical": 0.5851,
+    "sales": 0.1039,
+    "other": 0.2689
+   },
+   "correct": true,
+   "input_tokens": 3972,
+   "latency_s": 1.9377
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.8505,
+    "technical": 0.0606,
+    "sales": 0.041,
+    "other": 0.0479
+   },
+   "correct": false,
+   "input_tokens": 3969,
+   "latency_s": 2.5629
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.9029,
+    "technical": 0.0489,
+    "sales": 0.0285,
+    "other": 0.0197
+   },
+   "correct": true,
+   "input_tokens": 3982,
+   "latency_s": 2.7874
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0638,
+    "technical": 0.7184,
+    "sales": 0.0949,
+    "other": 0.1229
+   },
+   "correct": true,
+   "input_tokens": 3973,
+   "latency_s": 2.3169
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.6808,
+    "technical": 0.1638,
+    "sales": 0.1272,
+    "other": 0.0282
+   },
+   "correct": true,
+   "input_tokens": 3973,
+   "latency_s": 2.1119
+  },
+  {
+   "pad_tokens": 4000,
+   "limit": 8192,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "billing",
+   "probabilities": {
+    "billing": 0.476,
+    "technical": 0.3463,
+    "sales": 0.0763,
+    "other": 0.1014
+   },
+   "correct": true,
+   "input_tokens": 3981,
+   "latency_s": 2.2645
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4795
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.4476
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4358
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.39
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3827
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3882
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3855
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3927
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3935
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4189
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3933
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3827
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3954
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4407
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.3998
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3794
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.3871
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": true,
+   "input_tokens": 1024,
+   "latency_s": 0.4273
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.4948
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 1024,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.041,
+    "technical": 0.5046,
+    "sales": 0.099,
+    "other": 0.3554
+   },
+   "correct": false,
+   "input_tokens": 1024,
+   "latency_s": 0.5694
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.2611,
+    "technical": 0.3307,
+    "sales": 0.2399,
+    "other": 0.1683
+   },
+   "correct": false,
+   "input_tokens": 6915,
+   "latency_s": 5.0727
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0334,
+    "technical": 0.8169,
+    "sales": 0.0672,
+    "other": 0.0825
+   },
+   "correct": true,
+   "input_tokens": 6911,
+   "latency_s": 5.0632
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0826,
+    "technical": 0.3564,
+    "sales": 0.2319,
+    "other": 0.3291
+   },
+   "correct": false,
+   "input_tokens": 6912,
+   "latency_s": 4.9134
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.2523,
+    "technical": 0.3692,
+    "sales": 0.1808,
+    "other": 0.1978
+   },
+   "correct": false,
+   "input_tokens": 6912,
+   "latency_s": 4.8731
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0876,
+    "technical": 0.5578,
+    "sales": 0.1794,
+    "other": 0.1752
+   },
+   "correct": true,
+   "input_tokens": 6914,
+   "latency_s": 4.9722
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.0997,
+    "technical": 0.2864,
+    "sales": 0.5092,
+    "other": 0.1047
+   },
+   "correct": true,
+   "input_tokens": 6911,
+   "latency_s": 4.833
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.1247,
+    "technical": 0.2638,
+    "sales": 0.4353,
+    "other": 0.1763
+   },
+   "correct": false,
+   "input_tokens": 6917,
+   "latency_s": 4.8661
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0919,
+    "technical": 0.5122,
+    "sales": 0.2155,
+    "other": 0.1805
+   },
+   "correct": true,
+   "input_tokens": 6909,
+   "latency_s": 4.812
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0737,
+    "technical": 0.3788,
+    "sales": 0.358,
+    "other": 0.1895
+   },
+   "correct": false,
+   "input_tokens": 6912,
+   "latency_s": 4.8385
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.171,
+    "technical": 0.3933,
+    "sales": 0.177,
+    "other": 0.2587
+   },
+   "correct": false,
+   "input_tokens": 6919,
+   "latency_s": 5.1429
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0694,
+    "technical": 0.5839,
+    "sales": 0.1421,
+    "other": 0.2046
+   },
+   "correct": true,
+   "input_tokens": 6910,
+   "latency_s": 5.1399
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.1123,
+    "technical": 0.3748,
+    "sales": 0.3121,
+    "other": 0.2008
+   },
+   "correct": false,
+   "input_tokens": 6918,
+   "latency_s": 4.9176
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0709,
+    "technical": 0.5296,
+    "sales": 0.2135,
+    "other": 0.186
+   },
+   "correct": true,
+   "input_tokens": 6911,
+   "latency_s": 4.8184
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.1701,
+    "technical": 0.4553,
+    "sales": 0.225,
+    "other": 0.1496
+   },
+   "correct": false,
+   "input_tokens": 6912,
+   "latency_s": 4.0861
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0845,
+    "technical": 0.6309,
+    "sales": 0.1467,
+    "other": 0.1378
+   },
+   "correct": true,
+   "input_tokens": 6912,
+   "latency_s": 3.9974
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales",
+   "choice": "other",
+   "probabilities": {
+    "billing": 0.0659,
+    "technical": 0.3256,
+    "sales": 0.1924,
+    "other": 0.4161
+   },
+   "correct": false,
+   "input_tokens": 6909,
+   "latency_s": 3.9459
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing",
+   "choice": "sales",
+   "probabilities": {
+    "billing": 0.2697,
+    "technical": 0.1259,
+    "sales": 0.4876,
+    "other": 0.1167
+   },
+   "correct": false,
+   "input_tokens": 6922,
+   "latency_s": 3.9844
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0623,
+    "technical": 0.4758,
+    "sales": 0.191,
+    "other": 0.271
+   },
+   "correct": true,
+   "input_tokens": 6913,
+   "latency_s": 3.9487
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.0997,
+    "technical": 0.3768,
+    "sales": 0.2603,
+    "other": 0.2632
+   },
+   "correct": false,
+   "input_tokens": 6913,
+   "latency_s": 3.9777
+  },
+  {
+   "pad_tokens": 7000,
+   "limit": 8192,
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing",
+   "choice": "technical",
+   "probabilities": {
+    "billing": 0.1085,
+    "technical": 0.4273,
+    "sales": 0.2063,
+    "other": 0.2579
+   },
+   "correct": false,
+   "input_tokens": 6921,
+   "latency_s": 3.9793
+  }
+ ]
+}

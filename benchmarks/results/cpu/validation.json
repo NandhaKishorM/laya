@@ -186,5 +186,124 @@
         "sha256": "299dad77841f6fa006ff144c5fe326e54f1ac3a9075bddc9dde8613e92ab4806"
       }
     }
+  },
+  "upstream_benchmark_source_fork_ci": {
+    "conclusion": "success",
+    "headSha": "b4e7c9a434671e6b08daadf30c572270d015cd48",
+    "jobs": [
+      {
+        "conclusion": "success",
+        "name": "evals (metric math, dataset, API guard)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Chinese benchmark audit (no models or API)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (py3.13)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (py3.12)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "TypeScript (node22)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (windows)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (py3.10)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "TypeScript SDK (node22)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (ubuntu-latest, py3.11)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "TypeScript (node20)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "TypeScript SDK (node24)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "onnx export (quantization, weight-free)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "package",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (py3.11)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (windows-latest, py3.11)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (ubuntu-latest, py3.13)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (live HTTP)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (ubuntu-latest, py3.12)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (ubuntu-latest, py3.10)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "lint",
+        "status": "completed"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/bahram-po/laya/actions/runs/42121685219"
+  },
+  "upstream_evidence_documentation_checks": {
+    "runtime_source_commit": "b4e7c9a434671e6b08daadf30c572270d015cd48",
+    "runtime_source_unchanged": true,
+    "ruff_exit_code": 0,
+    "compileall_exit_code": 0,
+    "strict_docs_exit_code": 0,
+    "griffe_warnings": false,
+    "docs_log_sha256": "b494ff31ad48a82b0196ef3dded7d9ac6c4537881a65050f5733138d1bc0b0c7",
+    "upstream_artifact_hashes_verified": 18,
+    "local_report_links_verified": true
   }
 }

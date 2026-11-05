@@ -1,0 +1,38 @@
+[
+  {
+    "name": "bench_devices-baseline",
+    "script": "verify/bench_devices.py",
+    "variant": "baseline",
+    "exit_code": 0
+  },
+  {
+    "name": "bench_devices-pr",
+    "script": "verify/bench_devices.py",
+    "variant": "pr",
+    "exit_code": 0
+  },
+  {
+    "name": "bench_long_context-pr",
+    "script": "research/scripts/bench_long_context.py",
+    "variant": "pr",
+    "exit_code": 0
+  },
+  {
+    "name": "bench_long_context-baseline",
+    "script": "research/scripts/bench_long_context.py",
+    "variant": "baseline",
+    "exit_code": 0
+  },
+  {
+    "name": "bench_latency-baseline",
+    "script": "research/scripts/bench_latency.py",
+    "variant": "baseline",
+    "exit_code": 0
+  },
+  {
+    "name": "bench_latency-pr",
+    "script": "research/scripts/bench_latency.py",
+    "variant": "pr",
+    "exit_code": 0
+  }
+]

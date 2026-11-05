@@ -84,6 +84,15 @@ agent.predict(audio=wave, questions=questions, sampling_rate=16000)   # transcri
 agent.predict_long(document, questions)                               # one pass up to 73k tokens
 ```
 
+What each input accepts, and where its limit is:
+
+| input | accepted | limit |
+|---|---|---|
+| image | a PIL image, a path, or an HxWx3 array; any format Pillow opens | scaled to about one megapixel (1,048,576 pixels) before the reader sees it, so a larger file costs nothing more and gains nothing; no file-size cap of its own, memory is the bound |
+| audio | a path or raw file bytes (wav, flac, ogg, mp3; needs `pip install soundfile`), or a 1-D numpy waveform with `sampling_rate=` | any length: stereo is averaged, the wave is resampled to 16 kHz and transcribed in 30 s windows, and the transcript then counts toward the 73,728-token context. The default transcriber is English-only; pass `asr="openai/whisper-tiny", language="hi"` for other languages |
+| video | not read by laya | split it yourself: frames go in as images, the sound track as audio |
+| text | a string, a dict or a list | 73,728 tokens, read whole; `usage["truncated"]` reports when a state reached the limit |
+
 The modality is chosen by which argument you passed; the questions and the answer shape are the
 same. An audio answer carries `transcript` and `asr`, because a decision made on words you never
 saw cannot be audited. `predict_image_text` answers the same questions with the image withheld,

@@ -674,7 +674,7 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
         groups.insert(0, {"params": [p for n, p in model.named_parameters()
                                      if n.startswith("encoder.") and p.requires_grad], "lr": config.encoder_lr})
     optimizer = torch.optim.AdamW(groups, weight_decay=config.weight_decay)
-    steps_per_epoch = math.ceil(len(items) / config.micro_batch)
+    items_per_update = config.micro_batch * config.grad_accum
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
         T_max=optimizer_updates(len(items), config.micro_batch, config.grad_accum, config.epochs),
@@ -704,9 +704,9 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
                                  config.rl_samples, config.w_sph, config.w_rps)
             else:
                 loss = soft_ce_loss(logits, target, mask)
-            window_start = (n_steps // config.grad_accum) * config.grad_accum
-            window_size = min(config.grad_accum, steps_per_epoch - window_start)
-            scaled = loss / window_size
+            window_start = start - start % items_per_update
+            window_items = min(items_per_update, len(epoch_items) - window_start)
+            scaled = loss * (len(chunk) / window_items)
             if scaler is not None:
                 scaler.scale(scaled).backward()
             else:
@@ -723,10 +723,10 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
                     optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
-            total += loss.item()
+            total += loss.item() * len(chunk)
             if config.log_every and n_steps % config.log_every == 0:
                 print("epoch %d/%d step %d loss %.4f" % (epoch + 1, config.epochs, n_steps, loss.item()), flush=True)
-        mean = total / max(1, n_steps)
+        mean = total / len(epoch_items)
         history.append(mean)
         print("epoch %d/%d mean loss %.4f" % (epoch + 1, config.epochs, mean), flush=True)
         if on_epoch_end is not None:

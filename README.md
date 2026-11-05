@@ -44,7 +44,7 @@ For TypeScript / Node.js / browser, see [`laya-ts/`](https://github.com/NandhaKi
 One argument puts vegaml's engine under laya's names: a frozen 0.8B reader with a small physics engine on top, so every answer carries a conformal prediction set, an abstain flag, an out-of-distribution flag and a route decided without a threshold you had to guess at. Text, images, speech and 73k-token documents go through the same call. Python 3.10 or newer; details in [vega inside laya](#vega-inside-laya-agentvegamltrue).
 
 ```bash
-python -m pip install 'laya[vegaml]'
+python -m pip install -U laya   # 0.4.23 or newer: vegaml comes with it
 ```
 
 ```python
@@ -155,22 +155,23 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.22
+## What's new in 0.4.23
 
-* **A guardrail confidence can no longer fall outside [0, 1].** `jev_confidence` accepts
-  unnormalised weights, and individually finite ones can still sum to infinity; dividing by that
-  sum turned every weight into zero, so two equally weighted choices reported -1.0 for a `choice`
-  and full confidence for a `score`. A common scale now cancels before the division, which is what
-  the docstring already promised the range was (#1442).
-* **Large and deeply nested states are flattened lazily.** Language detection reads at most the
-  first 4000 characters, but the walk materialised every leaf first; it now stops as soon as the
-  budget is met, which is about 20x faster on a 500 KB multi-turn state (#1448).
-* **`laya-ts` counts and cuts code points, like Python.** The diacritic rate divided by UTF-16
-  units, so two emoji could flip a state onto the English checkpoint that Python keeps off it, and
-  the 4000-character budgets could split a surrogate pair in half (#1445, #1446).
-* **`laya-ts` honours per-request token budgets in `Router.predictBatch`.** The grouping already
-  separated requests by budget and `decideBatch` already passed them; the Router never read them,
-  so a batch encoded at the checkpoint default (#1441).
+* **`laya.Agent(vegaml=True)`: vega's engine behind laya's surface.** One argument swaps the
+  encoder for vegaml's frozen 0.8B universal reader and its decision engine. Every method keeps
+  its laya name (`predict`, `system_one`, `predict_batch`, `predict_long`, `fit_temperatures`,
+  `save_calibration`, `load_calibration`, the hooks), and every answer gains a conformal
+  `prediction_set`, `abstain`, `unbound` and a `route` decided without a threshold you set:
+  a fitted band when `fit` or `calibrate` has run, otherwise the engine's own abstain, unbound
+  and set size. `fit(rows)` fits a head per question over the frozen features in seconds and
+  serves it only where it beats the engine on your rows; `predict(image=...)`,
+  `predict(audio=...)` and a 73,728-token `predict_long` go through the same call.
+  `laya.vega.Router(fast=laya.Agent(), vega=agent)` switches between the two on media, length,
+  language and fitted heads. Details in [vega inside laya](#vega-inside-laya-agentvegamltrue)
+  and the [docs page](https://nandhakishorm.github.io/laya/vegaml/).
+* **vegaml is a core dependency**, so a plain `pip install laya` carries it. `import laya` is
+  as light as before: `laya.vega` is imported only when the argument is given.
+* **The quickstart starts there**, with the laya checkpoints under their own heading below it.
 
 Earlier releases are in the [GitHub releases](https://github.com/NandhaKishorM/laya/releases).
 
@@ -1088,7 +1089,7 @@ laya name; the answers gain what the engine knows that an encoder does not.
 ```python
 import laya
 
-agent = laya.Agent(vegaml=True)                  # pip install 'laya[vegaml]'  (Python 3.10+)
+agent = laya.Agent(vegaml=True)                  # vegaml ships with laya 0.4.23 and newer
 out = agent.predict(state, questions)
 
 ans = out["answers"]["department"]

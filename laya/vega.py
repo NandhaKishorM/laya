@@ -32,7 +32,7 @@ already has, so a caller switches by changing one argument.
 
 **What it costs.** A 0.8B reader against a ~150M encoder: roughly five times the latency on
 plain text (measured 72 ms a decision against 16 ms batched on a T4), two to four gigabytes
-of memory, and Python 3.10 or newer, which vegaml needs. ``pip install laya[vegaml]``. Core laya
+of memory. vegaml ships with laya since 0.4.23 (``pip install -U laya``). Core laya
 is untouched when the argument is not given, which is why this lives in its own module and is
 imported only on demand.
 
@@ -79,7 +79,7 @@ __all__ = ["VegaAgent", "Router", "is_available", "HEAD_ARRAYS"]
 HEAD_ARRAYS = ("mu", "sd", "c", "P", "s", "W", "b")
 
 _INSTALL = ("vegaml=True needs the vegaml package, which needs Python 3.10 or newer: "
-            "pip install 'laya[vegaml]'  (or: pip install vegaml)")
+            "pip install -U laya  (vegaml ships with laya 0.4.23 and newer; or: pip install vegaml)")
 
 
 def is_available() -> bool:

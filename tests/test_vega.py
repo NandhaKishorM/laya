@@ -220,9 +220,9 @@ def test_agent_new_does_not_divert_without_the_argument():
 
 @pytest.mark.skipif(VEGA, reason="vegaml is installed here; the ImportError path needs it absent")
 def test_without_vegaml_the_argument_fails_with_the_install_hint():
-    with pytest.raises(ImportError, match=r"laya\[vegaml\]"):
+    with pytest.raises(ImportError, match=r"pip install -U laya"):
         laya.Agent(vegaml=True)
-    with pytest.raises(ImportError, match=r"laya\[vegaml\]"):
+    with pytest.raises(ImportError, match=r"pip install -U laya"):
         laya.load(vegaml=True)
 
 

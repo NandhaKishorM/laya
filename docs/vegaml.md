@@ -6,7 +6,7 @@ name, and the answers gain what that engine knows that an encoder does not. The 
 is `laya.VegaAgent`, in `laya/vega.py`.
 
 ```bash
-pip install 'laya[vegaml]'        # Python 3.10 or newer; core laya stays on 3.9
+pip install -U laya               # vegaml ships with laya 0.4.23 and newer
 ```
 
 ```python

@@ -12,7 +12,7 @@ let
     # side, where tests/test_packaging.py compares all three declarations (this one,
     # pyproject.toml and laya.__version__) and fails CI when they diverge. Nothing
     # did, which is how this sat at 0.3.4 while the package reached 0.3.20.
-    version = "0.4.22";
+    version = "0.4.23";
     src = ../.;
     format = "setuptools";
     propagatedBuildInputs = with python3Packages; [
@@ -21,6 +21,8 @@ let
       safetensors
       huggingface-hub
       numpy
+      # vegaml (a core dependency since 0.4.23) is not in nixpkgs. Everything but
+      # `laya.Agent(vegaml=True)` works without it, and that call names what to install.
     ];
     # Every test loads a checkpoint from the Hub -> needs network + a GPU.
     doCheck = false;

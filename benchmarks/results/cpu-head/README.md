@@ -1,5 +1,10 @@
 # CPU final-head measurements
 
+These are historical measurements of the initial final-head-only implementation
+at `eedbe4da`. The [combined CPU implementation](../cpu/README.md) also optimizes
+encoder windows and earlier head layers. To reproduce this historical report,
+check out `eedbe4da` before running the commands below.
+
 The eager CPU fp32 path computes only the last head layer's option-marker outputs
 and token zero. All sequence positions remain keys and values. The earlier head
 layers, encoder, weights, calibration and serialization format are unchanged.

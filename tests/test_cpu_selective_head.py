@@ -15,7 +15,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from laya.common import DecisionModel, _can_select_head, _selected_head
+from laya.common import DecisionModel, _can_use_cpu_head, _cpu_head
 
 
 class Encoder(nn.Module):
@@ -47,7 +47,7 @@ class SelectiveHeadTests(unittest.TestCase):
         self.model = DecisionModel(Encoder(), head_layers=2).eval()
 
     def reference(self, model, batch):
-        with patch("laya.common._can_select_head", return_value=False):
+        with patch("laya.common._can_use_cpu_head", return_value=False):
             return model(*batch)
 
     def test_logits_action_and_probabilities_match_full_forward(self):
@@ -58,9 +58,10 @@ class SelectiveHeadTests(unittest.TestCase):
                     with self.subTest(layers=layers, length=length, markers=markers), torch.inference_mode():
                         batch = inputs(length, markers)
                         expected = self.reference(model, batch)
-                        with patch("laya.common._selected_head", wraps=_selected_head) as selected:
+                        with patch("laya.common._cpu_head", wraps=_cpu_head) as selected:
                             actual = model(*batch)
-                        self.assertEqual(selected.call_count, int(layers > 0))
+                        self.assertEqual(selected.call_count, layers)
+                        self.assertEqual(sum(call.args[3] is not None for call in selected.call_args_list), int(layers > 0))
                         for a, b in zip(actual, expected):
                             torch.testing.assert_close(a, b, atol=2e-6, rtol=1e-5)
                         torch.testing.assert_close(actual[0].softmax(-1), expected[0].softmax(-1),
@@ -86,13 +87,23 @@ class SelectiveHeadTests(unittest.TestCase):
                     expected = layer(h, src_key_padding_mask=pad).gather(
                         1, positions[:, :, None].expand(-1, -1, 128))
                     with patch("laya.common.F.scaled_dot_product_attention", wraps=F.scaled_dot_product_attention) as sdpa:
-                        actual = _selected_head(layer, h, positions, pad)
+                        actual = _cpu_head(layer, h, pad, positions)
                     self.assertEqual(sdpa.call_args.args[0].shape[-2], 3)
                     self.assertEqual(sdpa.call_args.args[1].shape[-2], 65)
                     torch.testing.assert_close(actual, expected, atol=2e-6, rtol=1e-5)
                     changed = h.clone()
                     changed[:, 30] += torch.randn(128) * 10
-                    self.assertGreater((_selected_head(layer, changed, positions, pad) - actual).abs().max(), 1e-4)
+                    self.assertGreater((_cpu_head(layer, changed, pad, positions) - actual).abs().max(), 1e-4)
+
+    def test_dense_markers_keep_full_query_outputs(self):
+        batch = inputs(length=5, markers=4)
+        with torch.inference_mode():
+            expected = self.reference(self.model, batch)
+            with patch("laya.common._cpu_head", wraps=_cpu_head) as fast:
+                actual = self.model(*batch)
+        self.assertTrue(all(call.args[3] is None for call in fast.call_args_list))
+        for a, b in zip(actual, expected):
+            torch.testing.assert_close(a, b, atol=2e-6, rtol=1e-5)
 
     def test_training_and_gradients_use_original_forward(self):
         for training, gradients in ((True, True), (True, False), (False, True)):
@@ -102,7 +113,7 @@ class SelectiveHeadTests(unittest.TestCase):
                 torch.manual_seed(7)
                 expected = self.reference(model, batch)
                 torch.manual_seed(7)
-                with patch("laya.common._selected_head", side_effect=AssertionError("selected during training")):
+                with patch("laya.common._cpu_head", side_effect=AssertionError("selected during training")):
                     actual = model(*batch)
                 for a, b in zip(actual, expected):
                     torch.testing.assert_close(a, b, atol=0, rtol=0)
@@ -115,16 +126,17 @@ class SelectiveHeadTests(unittest.TestCase):
             calls = []
             handle = target.register_forward_pre_hook(lambda module, args: calls.append(args[0].shape[1]))
             try:
-                with torch.no_grad(), patch("laya.common._selected_head", side_effect=AssertionError("bypassed hook")):
+                with torch.no_grad(), patch("laya.common._cpu_head", wraps=_cpu_head) as fast:
                     self.model(*inputs())
                 self.assertEqual(calls, [65])
+                self.assertTrue(all(call.args[0] is not self.model.head.layers[-1] for call in fast.call_args_list))
             finally:
                 handle.remove()
 
     def test_global_hooks_use_original_forward(self):
         handle = nn.modules.module.register_module_forward_hook(lambda module, args, result: None)
         try:
-            with torch.no_grad(), patch("laya.common._selected_head", side_effect=AssertionError("bypassed global hook")):
+            with torch.no_grad(), patch("laya.common._cpu_head", side_effect=AssertionError("bypassed global hook")):
                 self.model(*inputs())
         finally:
             handle.remove()
@@ -132,25 +144,23 @@ class SelectiveHeadTests(unittest.TestCase):
     def test_unsupported_layers_and_execution_modes_fall_back(self):
         layer = self.model.head.layers[-1]
         h = torch.randn(3, 65, 64)
-        markers = inputs()[2]
         with torch.no_grad():
-            self.assertTrue(_can_select_head(layer, h, markers))
-            self.assertFalse(_can_select_head(layer, h.double(), markers))
-            self.assertFalse(_can_select_head(layer, h.to("meta"), markers))
-            self.assertFalse(_can_select_head(layer, h[:, :5], markers))
+            self.assertTrue(_can_use_cpu_head(layer, h))
+            self.assertFalse(_can_use_cpu_head(layer, h.double()))
+            self.assertFalse(_can_use_cpu_head(layer, h.to("meta")))
             with torch.autocast("cpu", dtype=torch.bfloat16):
-                self.assertFalse(_can_select_head(layer, h, markers))
+                self.assertFalse(_can_use_cpu_head(layer, h))
             for predicate in ("torch._dynamo.is_compiling", "torch.jit.is_tracing", "torch.jit.is_scripting"):
                 with patch(predicate, return_value=True):
-                    self.assertFalse(_can_select_head(layer, h, markers))
+                    self.assertFalse(_can_use_cpu_head(layer, h))
             for key, value in (("norm_first", False), ("activation", lambda x: x.mean(1, keepdim=True)),
                                ("linear1", nn.Sequential(layer.linear1)), ("dropout1", nn.Identity()),
                                ("forward", lambda x, **kwargs: x)):
                 custom = copy.deepcopy(layer)
                 setattr(custom, key, value)
-                self.assertFalse(_can_select_head(custom, h, markers))
+                self.assertFalse(_can_use_cpu_head(custom, h))
             layer.train()
-            self.assertFalse(_can_select_head(layer, h, markers))
+            self.assertFalse(_can_use_cpu_head(layer, h))
 
     def test_state_dict_and_parameter_identity_are_preserved(self):
         before = {k: v.clone() for k, v in self.model.state_dict().items()}

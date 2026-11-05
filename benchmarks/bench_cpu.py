@@ -1,16 +1,16 @@
-"""Paired CPU final-head latency, unrounded parity and peak-RSS evidence.
+"""Paired CPU inference latency, unrounded parity and peak-RSS evidence.
 
 Fetch the pinned public checkpoints with `python verify/checkpoints.py --fetch`, then run:
-    python benchmarks/bench_cpu_head.py --checkpoint multilingual --json result.json
-    python benchmarks/bench_cpu_head.py --checkpoint multilingual --memory baseline --json rss-baseline.json
-    python benchmarks/bench_cpu_head.py --checkpoint multilingual --memory selected --json rss-selected.json
+    python benchmarks/bench_cpu.py --checkpoint multilingual --json result.json
+    python benchmarks/bench_cpu.py --checkpoint multilingual --memory baseline --json rss-baseline.json
+    python benchmarks/bench_cpu.py --checkpoint multilingual --memory selected --json rss-selected.json
 
 Uses the public fast-path parity corpus plus long, wide-option and padded-batch fixtures.
 No private data, remote inference, tuning, compilation or checkpoint changes are involved.
 Run memory variants in separate processes and performance runs without competing benchmarks.
 """
 import argparse
-from contextlib import nullcontext
+from contextlib import ExitStack, contextmanager
 import hashlib
 import json
 import os
@@ -38,7 +38,24 @@ from benchmarks.parity_fast import states
 from verify.checkpoints import sha256
 
 
-def fixtures():
+def fixtures(suite="standard"):
+    if suite == "long-options":
+        topics = ("account access", "password reset", "two factor authentication", "account closure",
+                  "email changes", "phone changes", "address changes", "identity verification",
+                  "invoice corrections", "duplicate charges", "failed payments", "refund requests",
+                  "subscription cancellation", "subscription upgrades", "discount eligibility",
+                  "tax documents", "bank transfers", "card replacement", "card activation",
+                  "card limits", "cash withdrawals", "foreign exchange", "delivery delays",
+                  "order tracking", "damaged orders", "product returns", "product availability",
+                  "software crashes", "installation errors", "network failures", "data exports",
+                  "privacy requests", "general feedback")
+        question = {"topic": {"type": "choice", "instructions": "Choose the support topic matching the request.",
+                    "criteria": {topic: "Select this category when the customer needs assistance with " + topic
+                                 for topic in topics}}}
+        return [{"name": "long-options/%d" % length,
+                 "state": {"body": "My invoice contains the wrong billing address. Please correct the invoice. " * length},
+                 "questions": question, "kwargs": {"max_len": length, "head_max_len": 768}}
+                for length in (795, 910, 1200, 1499)]
     cases = [{"name": name, "state": state, "questions": qs, "kwargs": {}}
              for name, state, qs in states()]
     question = {"team": {"type": "choice", "instructions": "Which team should handle this request?",
@@ -78,8 +95,14 @@ def public_call(agent, case):
     return method(case["state"], case["questions"], min_confidence=0.8, **case["kwargs"])
 
 
-def mode(variant):
-    return patch("laya.common._can_select_head", return_value=False) if variant == "baseline" else nullcontext()
+@contextmanager
+def mode(variant, optimization="combined"):
+    with ExitStack() as stack:
+        if variant == "baseline" or optimization == "windows":
+            stack.enter_context(patch("laya.common._can_use_cpu_head", return_value=False))
+        if variant == "baseline" or optimization == "head":
+            stack.enter_context(patch("laya.common._can_use_cpu_windows", return_value=False))
+        yield
 
 
 def answers(result):
@@ -105,7 +128,7 @@ def compare_public(a, b):
     return 0.0
 
 
-def capture(agent, case, variant):
+def capture(agent, case, variant, optimization):
     rows = []
 
     def save(module, args, output):
@@ -115,7 +138,7 @@ def capture(agent, case, variant):
 
     handle = agent.model.register_forward_hook(save)
     try:
-        with mode(variant):
+        with mode(variant, optimization):
             result = public_call(agent, case)
     finally:
         handle.remove()
@@ -165,6 +188,8 @@ def main():
     parser.add_argument("--repeats", type=positive, default=5)
     parser.add_argument("--limit", type=positive, help="smoke run only; omit for the full corpus")
     parser.add_argument("--case", action="append", help="repeat to select named fixtures for diagnostic reruns")
+    parser.add_argument("--optimization", choices=("combined", "head", "windows"), default="combined")
+    parser.add_argument("--suite", choices=("standard", "long-options"), default="standard")
     parser.add_argument("--memory", choices=("baseline", "selected"))
     parser.add_argument("--json", type=Path, required=True)
     args = parser.parse_args()
@@ -182,7 +207,7 @@ def main():
     agent.amp_enabled = False
     assert next(agent.model.parameters()).dtype == torch.float32
     versions = [(id(p), p._version) for p in agent.model.parameters()]
-    cases = fixtures()
+    cases = fixtures(args.suite)
     if args.case:
         unknown = set(args.case) - {case["name"] for case in cases}
         if unknown:
@@ -194,27 +219,29 @@ def main():
               "platform": platform.platform(), "processor": platform.processor(),
               "python": platform.python_version(), "torch": torch.__version__, "transformers": transformers.__version__,
               "threads": args.threads, "interop_threads": 1, "repeats": args.repeats,
+              "optimization": args.optimization, "suite": args.suite,
               "common_sha256": sha256(ROOT / "laya/common.py"), "harness_sha256": sha256(Path(__file__)),
               "fixtures_sha256": hashlib.sha256(json.dumps(cases, sort_keys=True).encode()).hexdigest(),
               "memory_variant": args.memory, "peak_rss_after_load_mib": rss_mib(), "cases": []}
     with torch.inference_mode():
         for index, case in enumerate(cases):
             if args.memory:
-                with mode(args.memory):
+                with mode(args.memory, args.optimization):
                     public_call(agent, case)
                 row = {"name": case["name"], "peak_rss_mib": rss_mib()}
             else:
                 # These untimed parity calls also warm both variants for this input shape.
-                before, public_before = capture(agent, case, "baseline")
-                after, public_after = capture(agent, case, "selected")
+                before, public_before = capture(agent, case, "baseline", args.optimization)
+                after, public_after = capture(agent, case, "selected", args.optimization)
                 row = {"name": case["name"], **parity(agent, before, after),
                        "max_public_delta": compare_public(public_before, public_after),
-                       "forward_shapes": [r["shape"] for r in before], "ms": {"baseline": [], "selected": []},
+                       "forward_shapes": [r["shape"] for r in before],
+                       "option_counts": [r["counts"] for r in before], "ms": {"baseline": [], "selected": []},
                        "cpu_ms": {"baseline": [], "selected": []}}
                 for repeat in range(args.repeats):
                     order = ("baseline", "selected") if (repeat + index) % 2 == 0 else ("selected", "baseline")
                     for variant in order:
-                        with mode(variant):
+                        with mode(variant, args.optimization):
                             cpu_start = time.process_time_ns()
                             start = time.perf_counter_ns()
                             public_call(agent, case)

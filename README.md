@@ -499,15 +499,20 @@ agent = laya.load("convaiinnovations/laya", device="cpu")      # or "cuda", "mps
 router = Router(preload=True, device="mps")
 ```
 
-Eager CPU fp32 inference computes only the consumed outputs of the final decision-head
-layer: the option markers and token zero for the action head. Every unmasked token still
-participates as an attention key/value. Training, autocast, other devices, compiled/exported
-models and layers with custom hooks retain the full-head path. This uses the same weights
-and calibration, adds no dependency or external service, and keeps request tensors local to
-each call. Floating-point results can differ slightly, including decisions at exact ties.
-The [CPU head benchmark](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/bench_cpu_head.py) checks unrounded outputs and public
-answers against the full-head path using public synthetic inputs; its
-[results](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/results/cpu-head/README.md) record the measured latency and memory.
+Eager CPU fp32 inference combines packed decision-head projections and SDPA with selective
+outputs in the final head layer: option markers and token zero for the action head. Every
+unmasked token remains a head attention key/value. On Transformers 5, supported ModernBERT
+encoders also compute their existing local attention windows in blocks for sequences of at
+least 512 tokens; global layers retain full attention. No allowed attention connection or
+input token is removed. Training, autocast, other devices, compilation/export, custom hooks
+and unsupported encoders retain the corresponding original execution paths.
+This uses the same weights and calibration, adds no dependency or external service, and
+keeps request tensors local to each call without a shared request cache. Floating-point
+results can differ slightly, including decisions at exact ties. The
+[CPU benchmark](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/bench_cpu.py)
+checks unrounded outputs and public answers against the original execution path;
+[results](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/results/cpu/README.md)
+record latency, numerical differences and memory.
 
 ### macOS, including Intel Macs
 

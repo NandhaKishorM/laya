@@ -29,7 +29,7 @@ python -m pip install laya
 
 With [uv](https://docs.astral.sh/uv/), run `uv add laya` in a uv project or `uv pip install laya` in a virtual environment.
 
-Python 3.10 or newer. Optional extras: `laya[serve]` (HTTP server), `laya[mcp]` (MCP server), `laya[langchain]` (LangChain and LangGraph), `laya[llamaindex]` (LlamaIndex selectors), `laya[crewai]` (CrewAI routing), `laya[onnx]` (ONNX Runtime), `laya[fast]` (TileLang GPU fast path), `laya[structured]` (pydantic models in `decide`). Step-by-step setup for each platform, CPU-only or GPU PyTorch builds, and troubleshooting are in [Installation details](#installation-details).
+Python 3.10 or newer. Optional extras: `laya[serve]` (HTTP server), `laya[mcp]` (MCP server), `laya[langchain]` (LangChain and LangGraph), `laya[llamaindex]` (LlamaIndex selectors), `laya[crewai]` (CrewAI routing), `laya[onnx]` (ONNX Runtime), `laya[fast]` (TileLang GPU fast path), `laya[structured]` (pydantic models in `decide`), `laya[vision]` (Pillow and torchvision, for `predict(image=...)` and `predict(video=...)`), `laya[audio]` (soundfile, to decode audio files). Step-by-step setup for each platform, CPU-only or GPU PyTorch builds, and troubleshooting are in [Installation details](#installation-details).
 
 For TypeScript / Node.js / browser, see [`laya-ts/`](https://github.com/NandhaKishorM/laya/tree/main/laya-ts/). npm releases (`npm install laya-ts`) are published from this repository's `laya-ts-v*` release tags.
 
@@ -107,8 +107,9 @@ The rule, in order: an image or audio goes to vega; text longer than the fast mo
 # text: up to 73,728 tokens in one pass; usage["truncated"] says if a state hit the limit
 agent.predict_long(seventy_page_contract, questions)
 # image: PIL image, path or HxWx3 array, any format Pillow opens; scaled to ~1 megapixel, no file-size cap
+#        needs pip install 'laya[vision]' (Pillow and torchvision), as does video
 agent.predict(image="invoice.png", questions=questions)
-# audio: path or bytes (wav, flac, ogg, mp3; needs soundfile) or a 1-D waveform with sampling_rate=;
+# audio: path or bytes (wav, flac, ogg, mp3; needs pip install 'laya[audio]') or a 1-D waveform with sampling_rate=;
 #        any length, resampled to 16 kHz, transcribed in 30 s windows, transcript counts toward the 73,728 tokens
 agent.predict(audio=wave, questions=questions, sampling_rate=16000)
 # video: path or bytes, any container ffmpeg opens, any length and resolution (needs the ffmpeg binary);
@@ -242,6 +243,15 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 ## Documentation
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
+
+## What's new in 0.4.26
+
+* **`laya[vision]` and `laya[audio]`.** Images and video through the vega lane need Pillow and
+  torchvision, and audio files need soundfile; none of them is a core dependency, and a fresh
+  install used to fail inside transformers with a message about an image processor backend. The
+  two extras install exactly what each path needs, and `predict(image=...)`, `predict(video=...)`
+  and `predict(audio=path)` now name the extra when it is missing. Text and a numpy waveform need
+  nothing beyond `pip install laya`.
 
 ## What's new in 0.4.25
 

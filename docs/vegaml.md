@@ -7,6 +7,8 @@ is `laya.VegaAgent`, in `laya/vega.py`.
 
 ```bash
 pip install -U laya               # vegaml ships with laya 0.4.23 and newer
+pip install 'laya[vision]'        # images and video: Pillow and torchvision
+pip install 'laya[audio]'         # audio files: soundfile; a numpy waveform needs nothing
 ```
 
 ```python

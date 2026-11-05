@@ -108,6 +108,9 @@ shares one forward pass on one checkpoint; send media and long states one at a t
 server refuses `image`, `audio` and `video` in a body with a message saying where media goes, since
 the JSON surface has no media encoding yet.
 
+Images and video through the lane need `pip install 'laya[vision]'` (Pillow and torchvision) and
+audio files `pip install 'laya[audio]'` (soundfile); text and a numpy waveform need nothing more.
+
 Answers from the lane carry vega's fields on top of laya's: `prediction_set`, `abstain`, `unbound`
 and `route`; see [vega inside laya](vegaml.md).
 

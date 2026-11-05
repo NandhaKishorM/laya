@@ -334,12 +334,22 @@ class VegaAgent(Agent):
         started = time.perf_counter()
         with self._lock:
             if image is not None:
-                raw = self.vega.decide_image(image, vq, mode=mode, alpha=self.alpha, risk=self.risk)
+                try:
+                    raw = self.vega.decide_image(image, vq, mode=mode, alpha=self.alpha, risk=self.risk)
+                except ImportError as exc:
+                    # the reader's image processor wants Pillow and torchvision, which core laya
+                    # does not carry; say which extra, not which transformers backend
+                    raise ImportError("images and video need Pillow and torchvision: "
+                                      "pip install 'laya[vision]'  (%s)" % exc) from exc
                 modality = "image"
             elif audio is not None:
-                raw = self.vega.decide_audio(audio, vq, asr=asr, language=language,
-                                             sampling_rate=sampling_rate, mode=mode,
-                                             alpha=self.alpha, views=views)
+                try:
+                    raw = self.vega.decide_audio(audio, vq, asr=asr, language=language,
+                                                 sampling_rate=sampling_rate, mode=mode,
+                                                 alpha=self.alpha, views=views)
+                except ImportError as exc:
+                    raise ImportError("an audio file needs soundfile to decode: pip install 'laya[audio]'; "
+                                      "a numpy waveform with sampling_rate= needs nothing extra  (%s)" % exc) from exc
                 modality = "audio"
             else:
                 raw = self.vega.decide(state, vq, mode=mode, alpha=self.alpha, views=views)

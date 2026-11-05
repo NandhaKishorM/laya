@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.4.25"
+version = "0.4.26"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -56,6 +56,14 @@ mcp = ["mcp>=2.2.0"]
 
 # `pip install laya[structured]` adds pydantic for the typed-model helpers (laya/structured.py).
 structured = ["pydantic>=2.0.0"]
+
+# `pip install laya[vision]` is what `Agent(vegaml=True).predict(image=...)`, `predict(video=...)` and the
+# Router's `--image`/`--video` need: the reader's image processor is built on Pillow and torchvision.
+# Text and speech need neither, which is why these are an extra and not core.
+vision = ["pillow>=9.0", "torchvision>=0.19"]
+# `pip install laya[audio]` decodes audio FILES (wav, flac, ogg, mp3) for `predict(audio=path)`; a numpy
+# waveform with `sampling_rate=` needs nothing extra.
+audio = ["soundfile>=0.12"]
 
 # `pip install laya[onnx]` adds ONNX Runtime for `laya.onnx_agent` and `onnxscript`, which
 # `torch.onnx.export` requires (`scripts/export_onnx.py`, `tests/test_onnx.py`).

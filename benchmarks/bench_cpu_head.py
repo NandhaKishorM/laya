@@ -164,6 +164,7 @@ def main():
     parser.add_argument("--threads", type=positive, default=4)
     parser.add_argument("--repeats", type=positive, default=5)
     parser.add_argument("--limit", type=positive, help="smoke run only; omit for the full corpus")
+    parser.add_argument("--case", action="append", help="repeat to select named fixtures for diagnostic reruns")
     parser.add_argument("--memory", choices=("baseline", "selected"))
     parser.add_argument("--json", type=Path, required=True)
     args = parser.parse_args()
@@ -182,6 +183,11 @@ def main():
     assert next(agent.model.parameters()).dtype == torch.float32
     versions = [(id(p), p._version) for p in agent.model.parameters()]
     cases = fixtures()
+    if args.case:
+        unknown = set(args.case) - {case["name"] for case in cases}
+        if unknown:
+            parser.error("unknown cases: %s" % sorted(unknown))
+        cases = [case for case in cases if case["name"] in args.case]
     if args.limit:
         cases = cases[:args.limit]
     report = {"checkpoint": args.checkpoint, "checkpoint_sha256": digest, "hub_revision": manifest["revision"],
@@ -203,16 +209,21 @@ def main():
                 after, public_after = capture(agent, case, "selected")
                 row = {"name": case["name"], **parity(agent, before, after),
                        "max_public_delta": compare_public(public_before, public_after),
-                       "forward_shapes": [r["shape"] for r in before], "ms": {"baseline": [], "selected": []}}
+                       "forward_shapes": [r["shape"] for r in before], "ms": {"baseline": [], "selected": []},
+                       "cpu_ms": {"baseline": [], "selected": []}}
                 for repeat in range(args.repeats):
                     order = ("baseline", "selected") if (repeat + index) % 2 == 0 else ("selected", "baseline")
                     for variant in order:
                         with mode(variant):
+                            cpu_start = time.process_time_ns()
                             start = time.perf_counter_ns()
                             public_call(agent, case)
                             elapsed = (time.perf_counter_ns() - start) / 1e6
+                            cpu_elapsed = (time.process_time_ns() - cpu_start) / 1e6
                         row["ms"][variant].append(elapsed)
+                        row["cpu_ms"][variant].append(cpu_elapsed)
                 row["median_ms"] = {k: statistics.median(v) for k, v in row["ms"].items()}
+                row["median_cpu_ms"] = {k: statistics.median(v) for k, v in row["cpu_ms"].items()}
                 row["latency_reduction_pct"] = 100 * (1 - row["median_ms"]["selected"] / row["median_ms"]["baseline"])
             report["cases"].append(row)
             print(json.dumps(row), flush=True)

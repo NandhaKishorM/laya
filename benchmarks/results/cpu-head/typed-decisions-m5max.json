@@ -1,0 +1,2522 @@
+{
+  "checkpoint": "typed-decisions",
+  "checkpoint_sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+  "hub_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "processor": "arm",
+  "python": "3.11.12",
+  "torch": "2.15.0",
+  "transformers": "5.22.1",
+  "threads": 4,
+  "interop_threads": 1,
+  "repeats": 5,
+  "common_sha256": "66126698100f3955b5b0ee1eed4ea034c9075930090d1ee9c8e536b67f3f7f46",
+  "harness_sha256": "3b12fa373a73f19f6904a47da62f8694acd1befc8db4c5a96eaf88d1cbef7081",
+  "fixtures_sha256": "b8b7c51543a23daada63f9fcf7877121507a3b99697c49dcf7f17b73ae75f3cc",
+  "memory_variant": null,
+  "peak_rss_after_load_mib": 2780.4375,
+  "cases": [
+    {
+      "name": "triage/0",
+      "questions": 5,
+      "max_logit_delta": 1.7881393432617188e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          124
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          750.686708,
+          830.389334,
+          858.381708,
+          663.398625,
+          601.766417
+        ],
+        "selected": [
+          754.780709,
+          886.540125,
+          899.430375,
+          883.293125,
+          482.843167
+        ]
+      },
+      "median_ms": {
+        "baseline": 750.686708,
+        "selected": 883.293125
+      },
+      "latency_reduction_pct": -17.66468162907715
+    },
+    {
+      "name": "triage/1",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 4.6566128730773926e-09,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          129
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          516.300583,
+          591.073666,
+          517.591792,
+          517.367375,
+          516.884167
+        ],
+        "selected": [
+          508.717959,
+          548.979166,
+          507.772708,
+          502.9605,
+          502.41075
+        ]
+      },
+      "median_ms": {
+        "baseline": 517.367375,
+        "selected": 507.772708
+      },
+      "latency_reduction_pct": 1.8545172083956785
+    },
+    {
+      "name": "triage/2",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          125
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          494.390417,
+          812.46025,
+          669.667959,
+          783.983125,
+          704.345625
+        ],
+        "selected": [
+          482.662875,
+          511.23175,
+          558.99975,
+          928.845208,
+          559.32775
+        ]
+      },
+      "median_ms": {
+        "baseline": 704.345625,
+        "selected": 558.99975
+      },
+      "latency_reduction_pct": 20.635589949181565
+    },
+    {
+      "name": "triage/3",
+      "questions": 5,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          113
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          559.736541,
+          1042.685625,
+          1339.244166,
+          598.896667,
+          1085.132542
+        ],
+        "selected": [
+          765.936625,
+          908.787125,
+          930.554917,
+          927.406084,
+          573.167625
+        ]
+      },
+      "median_ms": {
+        "baseline": 1042.685625,
+        "selected": 908.787125
+      },
+      "latency_reduction_pct": 12.84169425468008
+    },
+    {
+      "name": "triage/4",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          115
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1214.233375,
+          883.621916,
+          527.929291,
+          733.993291,
+          503.458167
+        ],
+        "selected": [
+          910.3265,
+          875.687584,
+          681.409959,
+          460.662333,
+          1096.03525
+        ]
+      },
+      "median_ms": {
+        "baseline": 733.993291,
+        "selected": 875.687584
+      },
+      "latency_reduction_pct": -19.304576041417796
+    },
+    {
+      "name": "triage/5",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          123
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          641.103208,
+          826.648833,
+          733.18275,
+          1091.096792,
+          833.831833
+        ],
+        "selected": [
+          678.722875,
+          515.654125,
+          945.3175,
+          1123.78025,
+          638.956958
+        ]
+      },
+      "median_ms": {
+        "baseline": 826.648833,
+        "selected": 678.722875
+      },
+      "latency_reduction_pct": 17.89465515401023
+    },
+    {
+      "name": "triage/6",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          198
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1048.63775,
+          1124.226667,
+          2067.78025,
+          1034.754166,
+          1056.069375
+        ],
+        "selected": [
+          1442.134916,
+          928.334958,
+          1150.366666,
+          1237.043833,
+          1688.981541
+        ]
+      },
+      "median_ms": {
+        "baseline": 1056.069375,
+        "selected": 1237.043833
+      },
+      "latency_reduction_pct": -17.136606958231315
+    },
+    {
+      "name": "triage/7",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          168
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          948.764208,
+          1039.1195,
+          1207.406708,
+          906.903875,
+          665.655875
+        ],
+        "selected": [
+          953.113792,
+          867.189542,
+          1028.115917,
+          1428.287666,
+          782.835416
+        ]
+      },
+      "median_ms": {
+        "baseline": 948.764208,
+        "selected": 953.113792
+      },
+      "latency_reduction_pct": -0.4584473110730958
+    },
+    {
+      "name": "triage/8",
+      "questions": 5,
+      "max_logit_delta": 2.682209014892578e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          144
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          562.246584,
+          577.780459,
+          565.41425,
+          563.00475,
+          564.121667
+        ],
+        "selected": [
+          547.412334,
+          571.985334,
+          548.168291,
+          546.960041,
+          551.498791
+        ]
+      },
+      "median_ms": {
+        "baseline": 564.121667,
+        "selected": 548.168291
+      },
+      "latency_reduction_pct": 2.8280027046009626
+    },
+    {
+      "name": "triage/9",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          213
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          815.098083,
+          810.866583,
+          803.550458,
+          826.124042,
+          806.682458
+        ],
+        "selected": [
+          906.643875,
+          787.501166,
+          783.692542,
+          782.438209,
+          781.189083
+        ]
+      },
+      "median_ms": {
+        "baseline": 810.866583,
+        "selected": 783.692542
+      },
+      "latency_reduction_pct": 3.351234539652992
+    },
+    {
+      "name": "triage/10",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          396
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1598.059917,
+          1598.820875,
+          1606.133125,
+          1588.04725,
+          1589.969666
+        ],
+        "selected": [
+          1538.696292,
+          1537.460209,
+          1547.854708,
+          1536.472541,
+          1533.028834
+        ]
+      },
+      "median_ms": {
+        "baseline": 1598.059917,
+        "selected": 1537.460209
+      },
+      "latency_reduction_pct": 3.7920798435244096
+    },
+    {
+      "name": "triage/11",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          407
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1656.792417,
+          1643.89425,
+          1672.66375,
+          1642.061208,
+          1632.437875
+        ],
+        "selected": [
+          1611.96225,
+          1584.769541,
+          1580.082,
+          1568.195334,
+          1573.386875
+        ]
+      },
+      "median_ms": {
+        "baseline": 1643.89425,
+        "selected": 1580.082
+      },
+      "latency_reduction_pct": 3.8817734169944274
+    },
+    {
+      "name": "moderation/0",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          117
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          460.355834,
+          461.310375,
+          461.083917,
+          481.734167,
+          483.703292
+        ],
+        "selected": [
+          448.330958,
+          449.237333,
+          468.694708,
+          463.524375,
+          469.18175
+        ]
+      },
+      "median_ms": {
+        "baseline": 461.310375,
+        "selected": 463.524375
+      },
+      "latency_reduction_pct": -0.47993717895462584
+    },
+    {
+      "name": "moderation/1",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          122
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          504.754666,
+          508.77375,
+          505.371167,
+          512.041209,
+          505.29525
+        ],
+        "selected": [
+          491.273709,
+          492.544875,
+          497.189583,
+          502.4435,
+          500.884833
+        ]
+      },
+      "median_ms": {
+        "baseline": 505.371167,
+        "selected": 497.189583
+      },
+      "latency_reduction_pct": 1.6189257587780004
+    },
+    {
+      "name": "moderation/2",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          118
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          486.316667,
+          480.644042,
+          488.881458,
+          488.512166,
+          486.16575
+        ],
+        "selected": [
+          479.572375,
+          474.356958,
+          474.513709,
+          475.854,
+          478.935167
+        ]
+      },
+      "median_ms": {
+        "baseline": 486.316667,
+        "selected": 475.854
+      },
+      "latency_reduction_pct": 2.1514103278718166
+    },
+    {
+      "name": "moderation/3",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          106
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          453.740958,
+          457.072,
+          441.6905,
+          446.681167,
+          448.746959
+        ],
+        "selected": [
+          437.309042,
+          440.568333,
+          430.774833,
+          433.060417,
+          427.327708
+        ]
+      },
+      "median_ms": {
+        "baseline": 448.746959,
+        "selected": 433.060417
+      },
+      "latency_reduction_pct": 3.495631933630561
+    },
+    {
+      "name": "moderation/4",
+      "questions": 5,
+      "max_logit_delta": 1.341104507446289e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          108
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          451.353959,
+          440.297417,
+          444.635958,
+          448.824,
+          443.952209
+        ],
+        "selected": [
+          436.347292,
+          452.631042,
+          435.553125,
+          432.682375,
+          429.0425
+        ]
+      },
+      "median_ms": {
+        "baseline": 444.635958,
+        "selected": 435.553125
+      },
+      "latency_reduction_pct": 2.0427571896917907
+    },
+    {
+      "name": "moderation/5",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          116
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          486.95425,
+          485.848792,
+          493.196458,
+          480.324334,
+          481.138958
+        ],
+        "selected": [
+          472.276958,
+          476.904791,
+          476.104458,
+          474.400291,
+          650.794875
+        ]
+      },
+      "median_ms": {
+        "baseline": 485.848792,
+        "selected": 476.104458
+      },
+      "latency_reduction_pct": 2.0056310029890945
+    },
+    {
+      "name": "moderation/6",
+      "questions": 5,
+      "max_logit_delta": 2.682209014892578e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          191
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          773.172916,
+          774.131292,
+          768.161667,
+          793.610292,
+          783.849875
+        ],
+        "selected": [
+          753.300708,
+          747.272583,
+          752.427458,
+          759.143125,
+          745.540625
+        ]
+      },
+      "median_ms": {
+        "baseline": 774.131292,
+        "selected": 752.427458
+      },
+      "latency_reduction_pct": 2.8036373447619334
+    },
+    {
+      "name": "moderation/7",
+      "questions": 5,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          161
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          660.527833,
+          708.3955,
+          665.645,
+          662.053791,
+          690.4325
+        ],
+        "selected": [
+          640.861208,
+          638.1545,
+          639.550375,
+          645.728083,
+          668.860583
+        ]
+      },
+      "median_ms": {
+        "baseline": 665.645,
+        "selected": 640.861208
+      },
+      "latency_reduction_pct": 3.7232747185060977
+    },
+    {
+      "name": "moderation/8",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          137
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          566.259459,
+          559.780459,
+          737.430375,
+          564.548792,
+          568.817083
+        ],
+        "selected": [
+          551.082208,
+          548.26725,
+          563.660083,
+          550.971042,
+          551.443584
+        ]
+      },
+      "median_ms": {
+        "baseline": 566.259459,
+        "selected": 551.082208
+      },
+      "latency_reduction_pct": 2.6802644545316
+    },
+    {
+      "name": "moderation/9",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          206
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          828.7215,
+          1003.492542,
+          838.903708,
+          836.337125,
+          819.974417
+        ],
+        "selected": [
+          805.3955,
+          1032.022375,
+          954.284333,
+          812.645708,
+          798.51225
+        ]
+      },
+      "median_ms": {
+        "baseline": 836.337125,
+        "selected": 812.645708
+      },
+      "latency_reduction_pct": 2.8327592177616157
+    },
+    {
+      "name": "moderation/10",
+      "questions": 5,
+      "max_logit_delta": 2.980232238769531e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          389
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1731.846125,
+          1694.421625,
+          1714.008792,
+          1861.955459,
+          1792.669916
+        ],
+        "selected": [
+          1652.005334,
+          1663.08525,
+          1688.547333,
+          1657.758584,
+          1721.977542
+        ]
+      },
+      "median_ms": {
+        "baseline": 1731.846125,
+        "selected": 1663.08525
+      },
+      "latency_reduction_pct": 3.970380162960485
+    },
+    {
+      "name": "moderation/11",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1175870895385742e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          400
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1803.398416,
+          1824.123292,
+          1766.712791,
+          1777.820583,
+          1776.810875
+        ],
+        "selected": [
+          1775.990041,
+          1723.751167,
+          1711.394125,
+          1998.861,
+          1807.725291
+        ]
+      },
+      "median_ms": {
+        "baseline": 1777.820583,
+        "selected": 1775.990041
+      },
+      "latency_reduction_pct": 0.10296550830292128
+    },
+    {
+      "name": "guard/0",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          94
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          395.154166,
+          390.665042,
+          393.743541,
+          389.284708,
+          391.016917
+        ],
+        "selected": [
+          385.190083,
+          388.397917,
+          397.24325,
+          380.331167,
+          380.866917
+        ]
+      },
+      "median_ms": {
+        "baseline": 391.016917,
+        "selected": 385.190083
+      },
+      "latency_reduction_pct": 1.4901744008175344
+    },
+    {
+      "name": "guard/1",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          99
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          427.974875,
+          418.062292,
+          434.043083,
+          422.184958,
+          421.841083
+        ],
+        "selected": [
+          415.091833,
+          409.367,
+          418.414375,
+          412.362958,
+          410.232583
+        ]
+      },
+      "median_ms": {
+        "baseline": 422.184958,
+        "selected": 412.362958
+      },
+      "latency_reduction_pct": 2.326468485881017
+    },
+    {
+      "name": "guard/2",
+      "questions": 5,
+      "max_logit_delta": 1.7881393432617188e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          95
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          501.923,
+          454.057375,
+          392.433084,
+          391.898459,
+          391.405542
+        ],
+        "selected": [
+          387.920959,
+          394.791875,
+          396.916333,
+          382.795667,
+          383.941916
+        ]
+      },
+      "median_ms": {
+        "baseline": 392.433084,
+        "selected": 387.920959
+      },
+      "latency_reduction_pct": 1.1497820097145617
+    },
+    {
+      "name": "guard/3",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          83
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          353.852042,
+          348.82025,
+          347.08325,
+          349.828667,
+          346.039083
+        ],
+        "selected": [
+          345.008958,
+          343.631917,
+          338.129167,
+          344.698042,
+          343.866584
+        ]
+      },
+      "median_ms": {
+        "baseline": 348.82025,
+        "selected": 343.866584
+      },
+      "latency_reduction_pct": 1.4201199614987892
+    },
+    {
+      "name": "guard/4",
+      "questions": 5,
+      "max_logit_delta": 1.7881393432617188e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          85
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          383.3725,
+          366.659584,
+          365.991542,
+          370.158791,
+          371.451167
+        ],
+        "selected": [
+          355.035625,
+          358.401542,
+          358.4885,
+          359.836791,
+          361.487667
+        ]
+      },
+      "median_ms": {
+        "baseline": 370.158791,
+        "selected": 358.4885
+      },
+      "latency_reduction_pct": 3.1527796404543618
+    },
+    {
+      "name": "guard/5",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 4.470348358154297e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          93
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          387.3525,
+          388.894208,
+          396.443417,
+          397.989541,
+          390.421625
+        ],
+        "selected": [
+          382.133125,
+          381.148542,
+          384.039958,
+          389.342291,
+          384.688583
+        ]
+      },
+      "median_ms": {
+        "baseline": 390.421625,
+        "selected": 384.039958
+      },
+      "latency_reduction_pct": 1.6345577681564083
+    },
+    {
+      "name": "guard/6",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          168
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          697.09725,
+          693.328625,
+          698.420625,
+          688.099042,
+          687.229584
+        ],
+        "selected": [
+          669.895916,
+          672.436875,
+          676.834583,
+          680.987125,
+          665.583084
+        ]
+      },
+      "median_ms": {
+        "baseline": 693.328625,
+        "selected": 672.436875
+      },
+      "latency_reduction_pct": 3.013253635676738
+    },
+    {
+      "name": "guard/7",
+      "questions": 5,
+      "max_logit_delta": 1.4901161193847656e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          138
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          573.303833,
+          603.067208,
+          565.268958,
+          569.523375,
+          560.832917
+        ],
+        "selected": [
+          553.263,
+          628.59125,
+          556.867791,
+          550.255583,
+          557.649833
+        ]
+      },
+      "median_ms": {
+        "baseline": 569.523375,
+        "selected": 556.867791
+      },
+      "latency_reduction_pct": 2.222136009781861
+    },
+    {
+      "name": "guard/8",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          114
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          470.962917,
+          468.099667,
+          472.28375,
+          472.675416,
+          469.6725
+        ],
+        "selected": [
+          477.109917,
+          510.017875,
+          459.962125,
+          458.472459,
+          493.861416
+        ]
+      },
+      "median_ms": {
+        "baseline": 470.962917,
+        "selected": 477.109917
+      },
+      "latency_reduction_pct": -1.3051983029058745
+    },
+    {
+      "name": "guard/9",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 4.470348358154297e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          183
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          856.865291,
+          853.408,
+          904.250041,
+          805.086666,
+          779.059917
+        ],
+        "selected": [
+          828.060583,
+          855.607083,
+          835.131167,
+          720.080625,
+          761.515334
+        ]
+      },
+      "median_ms": {
+        "baseline": 853.408,
+        "selected": 828.060583
+      },
+      "latency_reduction_pct": 2.970140542390043
+    },
+    {
+      "name": "guard/10",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          366
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1581.9,
+          1626.474,
+          1593.507125,
+          1640.005917,
+          1567.250834
+        ],
+        "selected": [
+          1546.651583,
+          1578.846,
+          1597.565959,
+          1551.275625,
+          1532.986083
+        ]
+      },
+      "median_ms": {
+        "baseline": 1593.507125,
+        "selected": 1551.275625
+      },
+      "latency_reduction_pct": 2.650223481115599
+    },
+    {
+      "name": "guard/11",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          377
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1653.923834,
+          1649.528,
+          1674.927959,
+          1647.24375,
+          1642.901292
+        ],
+        "selected": [
+          1568.359084,
+          1577.584541,
+          1601.982041,
+          1618.743,
+          1589.964375
+        ]
+      },
+      "median_ms": {
+        "baseline": 1649.528,
+        "selected": 1589.964375
+      },
+      "latency_reduction_pct": 3.610949617102588
+    },
+    {
+      "name": "router/0",
+      "questions": 4,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          141
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          480.041166,
+          473.02225,
+          471.467167,
+          472.010541,
+          476.968625
+        ],
+        "selected": [
+          459.376417,
+          461.687333,
+          464.351834,
+          459.024,
+          457.059291
+        ]
+      },
+      "median_ms": {
+        "baseline": 473.02225,
+        "selected": 459.376417
+      },
+      "latency_reduction_pct": 2.884818420275148
+    },
+    {
+      "name": "router/1",
+      "questions": 4,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          146
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          488.41475,
+          490.513375,
+          598.538416,
+          514.509375,
+          491.402041
+        ],
+        "selected": [
+          485.552208,
+          476.893167,
+          480.413,
+          509.932958,
+          600.040166
+        ]
+      },
+      "median_ms": {
+        "baseline": 491.402041,
+        "selected": 485.552208
+      },
+      "latency_reduction_pct": 1.1904372615334724
+    },
+    {
+      "name": "router/2",
+      "questions": 4,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          142
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          490.907167,
+          477.712584,
+          487.6215,
+          492.98425,
+          511.445041
+        ],
+        "selected": [
+          720.638,
+          721.034292,
+          469.535958,
+          485.364542,
+          567.440833
+        ]
+      },
+      "median_ms": {
+        "baseline": 490.907167,
+        "selected": 567.440833
+      },
+      "latency_reduction_pct": -15.590252321575893
+    },
+    {
+      "name": "router/3",
+      "questions": 4,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          130
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          442.121542,
+          445.705792,
+          449.30325,
+          444.554166,
+          443.245625
+        ],
+        "selected": [
+          476.894167,
+          433.449542,
+          434.319958,
+          433.53725,
+          432.447167
+        ]
+      },
+      "median_ms": {
+        "baseline": 444.554166,
+        "selected": 433.53725
+      },
+      "latency_reduction_pct": 2.4781942994996142
+    },
+    {
+      "name": "router/4",
+      "questions": 4,
+      "max_logit_delta": 2.980232238769531e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          132
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          444.758167,
+          445.573708,
+          449.942958,
+          442.062292,
+          466.041208
+        ],
+        "selected": [
+          433.998292,
+          432.442542,
+          432.679,
+          430.997708,
+          451.269084
+        ]
+      },
+      "median_ms": {
+        "baseline": 445.573708,
+        "selected": 432.679
+      },
+      "latency_reduction_pct": 2.89395621161741
+    },
+    {
+      "name": "router/5",
+      "questions": 4,
+      "max_logit_delta": 1.4901161193847656e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          140
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          539.1555,
+          467.439584,
+          473.421333,
+          473.984542,
+          484.162916
+        ],
+        "selected": [
+          453.915542,
+          456.7625,
+          454.127542,
+          456.445375,
+          506.197125
+        ]
+      },
+      "median_ms": {
+        "baseline": 473.984542,
+        "selected": 456.445375
+      },
+      "latency_reduction_pct": 3.7003668782092825
+    },
+    {
+      "name": "router/6",
+      "questions": 4,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          215
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          758.336208,
+          812.641458,
+          727.298958,
+          707.389959,
+          706.695166
+        ],
+        "selected": [
+          745.346584,
+          695.310208,
+          706.777833,
+          691.723292,
+          683.576167
+        ]
+      },
+      "median_ms": {
+        "baseline": 727.298958,
+        "selected": 695.310208
+      },
+      "latency_reduction_pct": 4.398294490613031
+    },
+    {
+      "name": "router/7",
+      "questions": 4,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          185
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          619.284666,
+          618.659542,
+          623.213084,
+          621.951125,
+          678.731667
+        ],
+        "selected": [
+          602.589125,
+          618.523,
+          641.988375,
+          599.227584,
+          656.305833
+        ]
+      },
+      "median_ms": {
+        "baseline": 621.951125,
+        "selected": 618.523
+      },
+      "latency_reduction_pct": 0.5511888092492812
+    },
+    {
+      "name": "router/8",
+      "questions": 4,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 8.940696716308594e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          161
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          643.51,
+          596.347042,
+          1414.212625,
+          763.295333,
+          635.647667
+        ],
+        "selected": [
+          696.54825,
+          563.671083,
+          677.834917,
+          659.219042,
+          608.670042
+        ]
+      },
+      "median_ms": {
+        "baseline": 643.51,
+        "selected": 659.219042
+      },
+      "latency_reduction_pct": -2.4411496324843407
+    },
+    {
+      "name": "router/9",
+      "questions": 4,
+      "max_logit_delta": 1.4901161193847656e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          230
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          904.4115,
+          921.866458,
+          910.474208,
+          901.938125,
+          1042.1355
+        ],
+        "selected": [
+          855.960125,
+          1088.800667,
+          926.34275,
+          893.490375,
+          958.999584
+        ]
+      },
+      "median_ms": {
+        "baseline": 910.474208,
+        "selected": 926.34275
+      },
+      "latency_reduction_pct": -1.742887592044795
+    },
+    {
+      "name": "router/10",
+      "questions": 4,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          413
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1721.253708,
+          1746.989,
+          1747.64875,
+          1786.2825,
+          1928.177958
+        ],
+        "selected": [
+          1798.347667,
+          1687.022625,
+          1706.803041,
+          1730.227042,
+          1748.743416
+        ]
+      },
+      "median_ms": {
+        "baseline": 1747.64875,
+        "selected": 1730.227042
+      },
+      "latency_reduction_pct": 0.9968655314747887
+    },
+    {
+      "name": "router/11",
+      "questions": 4,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 2.2351741790771484e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          424
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1819.617542,
+          1757.763834,
+          1723.463459,
+          1918.632125,
+          1582.08775
+        ],
+        "selected": [
+          1747.140958,
+          1763.146583,
+          1795.482292,
+          1686.631708,
+          1530.353542
+        ]
+      },
+      "median_ms": {
+        "baseline": 1757.763834,
+        "selected": 1747.140958
+      },
+      "latency_reduction_pct": 0.6043403439372486
+    },
+    {
+      "name": "email/0",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          114
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          465.637917,
+          515.336916,
+          543.892958,
+          480.051667,
+          518.061083
+        ],
+        "selected": [
+          495.11075,
+          483.967625,
+          503.842125,
+          465.996458,
+          475.893042
+        ]
+      },
+      "median_ms": {
+        "baseline": 515.336916,
+        "selected": 483.967625
+      },
+      "latency_reduction_pct": 6.087142222118624
+    },
+    {
+      "name": "email/1",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          119
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          484.658167,
+          483.313709,
+          481.903,
+          486.874334,
+          485.149292
+        ],
+        "selected": [
+          469.535792,
+          469.522375,
+          467.582958,
+          473.901334,
+          472.043834
+        ]
+      },
+      "median_ms": {
+        "baseline": 484.658167,
+        "selected": 469.535792
+      },
+      "latency_reduction_pct": 3.120214623351225
+    },
+    {
+      "name": "email/2",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          115
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          472.711125,
+          504.336167,
+          462.670291,
+          491.172,
+          534.912583
+        ],
+        "selected": [
+          457.01775,
+          453.059458,
+          504.525833,
+          451.304792,
+          483.855417
+        ]
+      },
+      "median_ms": {
+        "baseline": 491.172,
+        "selected": 457.01775
+      },
+      "latency_reduction_pct": 6.953623170701917
+    },
+    {
+      "name": "email/3",
+      "questions": 5,
+      "max_logit_delta": 1.4901161193847656e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          103
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          440.765792,
+          455.629041,
+          452.884916,
+          598.070916,
+          465.715417
+        ],
+        "selected": [
+          426.688208,
+          517.094,
+          474.5825,
+          823.122542,
+          565.503792
+        ]
+      },
+      "median_ms": {
+        "baseline": 455.629041,
+        "selected": 517.094
+      },
+      "latency_reduction_pct": -13.490131986560549
+    },
+    {
+      "name": "email/4",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          105
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          438.082,
+          441.5545,
+          439.555833,
+          435.234209,
+          437.153083
+        ],
+        "selected": [
+          426.975625,
+          429.090917,
+          426.022917,
+          428.373208,
+          426.141083
+        ]
+      },
+      "median_ms": {
+        "baseline": 438.082,
+        "selected": 426.975625
+      },
+      "latency_reduction_pct": 2.5352274231764893
+    },
+    {
+      "name": "email/5",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          113
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          461.60675,
+          464.577375,
+          465.2345,
+          466.396417,
+          466.66225
+        ],
+        "selected": [
+          458.999334,
+          455.432958,
+          451.820084,
+          454.367708,
+          450.670083
+        ]
+      },
+      "median_ms": {
+        "baseline": 465.2345,
+        "selected": 454.367708
+      },
+      "latency_reduction_pct": 2.3357665865278765
+    },
+    {
+      "name": "email/6",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          188
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          762.147708,
+          761.754208,
+          762.565292,
+          762.067083,
+          765.577833
+        ],
+        "selected": [
+          742.3695,
+          745.876708,
+          745.899209,
+          745.684958,
+          741.988958
+        ]
+      },
+      "median_ms": {
+        "baseline": 762.147708,
+        "selected": 745.684958
+      },
+      "latency_reduction_pct": 2.160047170278956
+    },
+    {
+      "name": "email/7",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          158
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          644.302125,
+          643.659291,
+          636.06925,
+          643.666292,
+          634.039125
+        ],
+        "selected": [
+          618.81975,
+          622.79825,
+          620.700125,
+          629.405333,
+          624.0565
+        ]
+      },
+      "median_ms": {
+        "baseline": 643.659291,
+        "selected": 622.79825
+      },
+      "latency_reduction_pct": 3.241006739386909
+    },
+    {
+      "name": "email/8",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          134
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          536.740167,
+          540.793666,
+          541.244375,
+          543.484916,
+          536.445625
+        ],
+        "selected": [
+          540.218292,
+          520.138459,
+          526.929625,
+          523.400417,
+          525.301125
+        ]
+      },
+      "median_ms": {
+        "baseline": 540.793666,
+        "selected": 525.301125
+      },
+      "latency_reduction_pct": 2.864778560479675
+    },
+    {
+      "name": "email/9",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          203
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          848.995708,
+          818.550084,
+          821.192875,
+          818.813959,
+          836.834958
+        ],
+        "selected": [
+          788.839917,
+          794.732958,
+          791.705334,
+          810.377,
+          802.584666
+        ]
+      },
+      "median_ms": {
+        "baseline": 821.192875,
+        "selected": 794.732958
+      },
+      "latency_reduction_pct": 3.222131828652297
+    },
+    {
+      "name": "email/10",
+      "questions": 5,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          386
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          2616.9335,
+          1743.52275,
+          1834.17275,
+          1735.034666,
+          1917.437541
+        ],
+        "selected": [
+          1756.698875,
+          1718.679834,
+          1783.8365,
+          1717.921083,
+          1677.928416
+        ]
+      },
+      "median_ms": {
+        "baseline": 1834.17275,
+        "selected": 1718.679834
+      },
+      "latency_reduction_pct": 6.2967305560504006
+    },
+    {
+      "name": "email/11",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          397
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1935.248625,
+          1790.274667,
+          1751.016917,
+          1823.276417,
+          1768.732375
+        ],
+        "selected": [
+          2045.205791,
+          1697.805209,
+          1745.464666,
+          1708.698292,
+          1713.741958
+        ]
+      },
+      "median_ms": {
+        "baseline": 1790.274667,
+        "selected": 1713.741958
+      },
+      "latency_reduction_pct": 4.274914369885341
+    },
+    {
+      "name": "long/512",
+      "questions": 1,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          512
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          573.424292,
+          503.249042,
+          506.201042,
+          502.0655,
+          501.799792
+        ],
+        "selected": [
+          477.067375,
+          483.654667,
+          481.149,
+          486.508833,
+          482.034333
+        ]
+      },
+      "median_ms": {
+        "baseline": 503.249042,
+        "selected": 482.034333
+      },
+      "latency_reduction_pct": 4.215548809728276
+    },
+    {
+      "name": "long/1024",
+      "questions": 1,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 0.0,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          1024
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1124.623375,
+          1116.7275,
+          1122.225875,
+          1128.01975,
+          1123.035166
+        ],
+        "selected": [
+          1057.766167,
+          1061.038709,
+          1075.688792,
+          1081.353958,
+          1055.933833
+        ]
+      },
+      "median_ms": {
+        "baseline": 1123.035166,
+        "selected": 1061.038709
+      },
+      "latency_reduction_pct": 5.5204377277710215
+    },
+    {
+      "name": "long/2048",
+      "questions": 1,
+      "max_logit_delta": 5.960464477539063e-08,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 0.0,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          2048
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          3147.085833,
+          3110.261375,
+          3122.947875,
+          3108.862958,
+          3097.352875
+        ],
+        "selected": [
+          2970.450833,
+          3011.804083,
+          3067.523042,
+          3038.872791,
+          2893.959708
+        ]
+      },
+      "median_ms": {
+        "baseline": 3110.261375,
+        "selected": 3011.804083
+      },
+      "latency_reduction_pct": 3.1655632800314137
+    },
+    {
+      "name": "long/4096",
+      "questions": 1,
+      "max_logit_delta": 1.4901161193847656e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 0.0,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          4096
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          8424.499042,
+          8569.371875,
+          12737.036083,
+          14524.573958,
+          9900.455125
+        ],
+        "selected": [
+          7840.283916,
+          7939.03025,
+          8669.340792,
+          13662.702584,
+          10606.092833
+        ]
+      },
+      "median_ms": {
+        "baseline": 9900.455125,
+        "selected": 8669.340792
+      },
+      "latency_reduction_pct": 12.434926651919953
+    },
+    {
+      "name": "options/1",
+      "questions": 1,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 0.0,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          31
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          59.739625,
+          59.723708,
+          59.574625,
+          59.244042,
+          59.050958
+        ],
+        "selected": [
+          59.340292,
+          60.195416,
+          59.219791,
+          59.339959,
+          59.089167
+        ]
+      },
+      "median_ms": {
+        "baseline": 59.574625,
+        "selected": 59.339959
+      },
+      "latency_reduction_pct": 0.39390260534580834
+    },
+    {
+      "name": "options/32",
+      "questions": 1,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.2351741790771484e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          279
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          264.970375,
+          265.001334,
+          260.819875,
+          263.058042,
+          264.784667
+        ],
+        "selected": [
+          259.222375,
+          257.357458,
+          258.046875,
+          258.354834,
+          265.820417
+        ]
+      },
+      "median_ms": {
+        "baseline": 264.784667,
+        "selected": 258.354834
+      },
+      "latency_reduction_pct": 2.428325277611343
+    },
+    {
+      "name": "batch/padded",
+      "questions": 3,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          2,
+          272
+        ],
+        [
+          1,
+          782
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1274.227209,
+          1366.999625,
+          1267.9815,
+          1247.959833,
+          1265.980167
+        ],
+        "selected": [
+          1227.542291,
+          1216.271583,
+          1212.652209,
+          1273.389917,
+          1234.744333
+        ]
+      },
+      "median_ms": {
+        "baseline": 1267.9815,
+        "selected": 1227.542291
+      },
+      "latency_reduction_pct": 3.1892585972271736
+    },
+    {
+      "name": "structured/mixed",
+      "questions": 3,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          3,
+          51
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          154.266458,
+          154.809667,
+          154.601375,
+          154.584,
+          154.532833
+        ],
+        "selected": [
+          151.701125,
+          152.883167,
+          152.351167,
+          152.042166,
+          151.732583
+        ]
+      },
+      "median_ms": {
+        "baseline": 154.584,
+        "selected": 152.042166
+      },
+      "latency_reduction_pct": 1.644306008383789
+    },
+    {
+      "name": "structured/batch",
+      "questions": 6,
+      "max_logit_delta": 1.1920928955078125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          6,
+          286
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1408.412459,
+          1444.228917,
+          1390.020125,
+          1401.506333,
+          1400.515417
+        ],
+        "selected": [
+          1360.669208,
+          1364.14125,
+          1346.788291,
+          1352.301,
+          1349.93975
+        ]
+      },
+      "median_ms": {
+        "baseline": 1401.506333,
+        "selected": 1352.301
+      },
+      "latency_reduction_pct": 3.510889094212899
+    }
+  ],
+  "peak_rss_mib": 4916.953125,
+  "parameters_unchanged": true,
+  "summary": {
+    "questions": 306,
+    "argmax_flips": 0,
+    "max_logit_delta": 9.5367431640625e-07,
+    "max_action_logit_delta": 0.0009765625,
+    "max_probability_delta": 1.1920928955078125e-07,
+    "max_public_delta": 0.0,
+    "sum_median_ms": {
+      "baseline": 64782.94278900001,
+      "selected": 62393.27570599999
+    }
+  }
+}

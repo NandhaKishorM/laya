@@ -1,0 +1,276 @@
+{
+  "checkpoint": "english",
+  "checkpoint_sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+  "hub_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+  "processor": "x86_64",
+  "python": "3.11.18",
+  "torch": "2.15.0+cpu",
+  "transformers": "5.22.1",
+  "threads": 2,
+  "interop_threads": 1,
+  "repeats": 5,
+  "optimization": "combined",
+  "suite": "long-options",
+  "common_sha256": "efb8558be8246810bc0d5ef0a1d152b1cd23a8fcc886befa013fdcbe8e7346d2",
+  "harness_sha256": "4327f3b3710031cccf7b534e5108c744fb1e213c0ae8caa8ff8c5d0effb4d9de",
+  "fixtures_sha256": "054171a367f8593b4d05d9ffb37acd0427d074f39b0e160efd9320995dcc1330",
+  "memory_variant": null,
+  "peak_rss_after_load_mib": 2849.9921875,
+  "cases": [
+    {
+      "name": "long-options/795",
+      "questions": 1,
+      "max_logit_delta": 4.5299530029296875e-06,
+      "max_action_logit_delta": 0.00146484375,
+      "max_probability_delta": 9.89530235528946e-09,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          795
+        ]
+      ],
+      "option_counts": [
+        [
+          33
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          4983.743758,
+          4980.158989,
+          4987.077882,
+          4850.661101,
+          4807.392088
+        ],
+        "selected": [
+          4283.209305,
+          4361.413341,
+          4203.470926,
+          4161.902249,
+          4226.578761
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          9807.017191,
+          9843.925481,
+          9834.0198,
+          9620.386836,
+          9506.844879
+        ],
+        "selected": [
+          8438.643057,
+          8688.811753,
+          8371.21625,
+          8294.71293,
+          8369.132711
+        ]
+      },
+      "median_ms": {
+        "baseline": 4980.158989,
+        "selected": 4226.578761
+      },
+      "median_cpu_ms": {
+        "baseline": 9807.017191,
+        "selected": 8371.21625
+      }
+    },
+    {
+      "name": "long-options/910",
+      "questions": 1,
+      "max_logit_delta": 3.5762786865234375e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 6.257323548197746e-10,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          910
+        ]
+      ],
+      "option_counts": [
+        [
+          33
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          5823.64932,
+          5506.778341,
+          5804.503774,
+          5708.947092,
+          5802.247086
+        ],
+        "selected": [
+          4825.810309,
+          4891.036169,
+          4847.221775,
+          4980.313306,
+          4897.043995
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          11497.304815,
+          10936.862399,
+          11514.362528,
+          11275.354671,
+          11445.067974
+        ],
+        "selected": [
+          9616.475423,
+          9677.50556,
+          9647.391726,
+          9890.392943,
+          9659.57878
+        ]
+      },
+      "median_ms": {
+        "baseline": 5802.247086,
+        "selected": 4891.036169
+      },
+      "median_cpu_ms": {
+        "baseline": 11445.067974,
+        "selected": 9659.57878
+      }
+    },
+    {
+      "name": "long-options/1200",
+      "questions": 1,
+      "max_logit_delta": 6.198883056640625e-06,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 8.940696716308594e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          1200
+        ]
+      ],
+      "option_counts": [
+        [
+          33
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          7572.163825,
+          7552.752703,
+          7500.33389,
+          7571.950886,
+          7734.671255
+        ],
+        "selected": [
+          6433.715458,
+          6486.789133,
+          6323.748639,
+          6366.685888,
+          6589.990947
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          14995.195121,
+          15027.923435,
+          14904.343619,
+          14911.010485,
+          15287.109985
+        ],
+        "selected": [
+          12747.877502,
+          12864.862873,
+          12559.490096,
+          12598.322062,
+          12996.805101
+        ]
+      },
+      "median_ms": {
+        "baseline": 7571.950886,
+        "selected": 6433.715458
+      },
+      "median_cpu_ms": {
+        "baseline": 14995.195121,
+        "selected": 12747.877502
+      }
+    },
+    {
+      "name": "long-options/1499",
+      "questions": 1,
+      "max_logit_delta": 3.814697265625e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.4901161193847656e-06,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          1499
+        ]
+      ],
+      "option_counts": [
+        [
+          33
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          10224.565936,
+          9964.966588,
+          10020.992812,
+          10210.93054,
+          9943.040952
+        ],
+        "selected": [
+          8085.138565,
+          7879.094648,
+          7926.605975,
+          7801.024412,
+          7798.146648
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          20236.135208,
+          19786.499251,
+          19925.793513,
+          20214.775252,
+          19716.574832
+        ],
+        "selected": [
+          16072.632286,
+          15698.532141,
+          15795.525054,
+          15539.984507,
+          15507.874733
+        ]
+      },
+      "median_ms": {
+        "baseline": 10020.992812,
+        "selected": 7879.094648
+      },
+      "median_cpu_ms": {
+        "baseline": 19925.793513,
+        "selected": 15698.532141
+      }
+    }
+  ],
+  "peak_rss_mib": 2849.9921875,
+  "parameters_unchanged": true,
+  "summary": {
+    "questions": 4,
+    "argmax_flips": 0,
+    "max_logit_delta": 6.198883056640625e-06,
+    "max_action_logit_delta": 0.00146484375,
+    "max_probability_delta": 1.4901161193847656e-06,
+    "max_public_delta": 0.0,
+    "sum_median_ms": {
+      "baseline": 28375.349772999998,
+      "selected": 23430.425036
+    }
+  }
+}

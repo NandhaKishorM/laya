@@ -1,8 +1,4 @@
 {
-  "source_commit": "eedbe4dadbf9caba5002f2ce8b02ab2b3082f3c4",
-  "common_sha256": "66126698100f3955b5b0ee1eed4ea034c9075930090d1ee9c8e536b67f3f7f46",
-  "baseline": "research/results/eval_english_51_languages.json",
-  "baseline_sha256": "7965e1f683d2dbf71d2c84bc92946fb54f6c3b562ceab784c964de76e75f8358",
   "config": {
     "model": "models/laya",
     "subfolder": null,
@@ -41,7 +37,7 @@
     "macro_accuracy": 0.82,
     "macro_ece": 0.1382,
     "macro_f1": 0.7876,
-    "seconds": 61.3
+    "seconds": 22.2
   },
-  "regression_gate": "passed; accuracy, ECE and mean confidence exactly match the committed English baseline"
+  "raw_report_sha256": "af874bc8bf65aabab230f8d2e1366f2589c28397bfa38a1590447e8b5c7449fa"
 }

@@ -1,0 +1,15 @@
+{
+  "purpose": "Check whether the largest short-run regressions persist without replacing the original corpus measurements.",
+  "selection": "For each completed Mac standard-corpus checkpoint, select up to three fixtures whose selected median is more than 5% slower than baseline, ordered from largest relative regression.",
+  "repeats": 21,
+  "threads": 4,
+  "order": "Use the benchmark's alternating paired execution order and excluded warmups.",
+  "reporting": "Retain all original corpus samples and totals. Publish diagnostic runs separately, including any persisting regressions.",
+  "selected_cases": {
+    "english": [
+      "email/7"
+    ],
+    "multilingual": [],
+    "typed-decisions": []
+  }
+}

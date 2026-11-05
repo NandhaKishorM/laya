@@ -1,0 +1,276 @@
+{
+  "checkpoint": "typed-decisions",
+  "checkpoint_sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+  "hub_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "processor": "arm",
+  "python": "3.11.12",
+  "torch": "2.15.0",
+  "transformers": "5.22.1",
+  "threads": 4,
+  "interop_threads": 1,
+  "repeats": 5,
+  "optimization": "combined",
+  "suite": "long-options",
+  "common_sha256": "efb8558be8246810bc0d5ef0a1d152b1cd23a8fcc886befa013fdcbe8e7346d2",
+  "harness_sha256": "4327f3b3710031cccf7b534e5108c744fb1e213c0ae8caa8ff8c5d0effb4d9de",
+  "fixtures_sha256": "054171a367f8593b4d05d9ffb37acd0427d074f39b0e160efd9320995dcc1330",
+  "memory_variant": null,
+  "peak_rss_after_load_mib": 2783.09375,
+  "cases": [
+    {
+      "name": "long-options/795",
+      "questions": 1,
+      "max_logit_delta": 5.0067901611328125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 4.0046870708465576e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          795
+        ]
+      ],
+      "option_counts": [
+        [
+          33
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          796.286708,
+          874.220334,
+          823.02125,
+          805.363375,
+          814.438791
+        ],
+        "selected": [
+          669.088083,
+          674.174083,
+          746.649542,
+          709.239958,
+          673.004375
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1487.919,
+          1489.046,
+          1438.072,
+          1481.381,
+          1474.478
+        ],
+        "selected": [
+          1056.78,
+          1067.438,
+          1082.292,
+          1073.653,
+          1057.407
+        ]
+      },
+      "median_ms": {
+        "baseline": 814.438791,
+        "selected": 674.174083
+      },
+      "median_cpu_ms": {
+        "baseline": 1481.381,
+        "selected": 1067.438
+      }
+    },
+    {
+      "name": "long-options/910",
+      "questions": 1,
+      "max_logit_delta": 3.993511199951172e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539062e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          910
+        ]
+      ],
+      "option_counts": [
+        [
+          33
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          949.695583,
+          937.924458,
+          945.027834,
+          988.921875,
+          923.681458
+        ],
+        "selected": [
+          782.736875,
+          776.679958,
+          803.711625,
+          851.744875,
+          802.79225
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1785.292,
+          1795.397,
+          1730.857,
+          1771.363,
+          1712.608
+        ],
+        "selected": [
+          1242.512,
+          1239.097,
+          1213.085,
+          1226.102,
+          1194.739
+        ]
+      },
+      "median_ms": {
+        "baseline": 945.027834,
+        "selected": 802.79225
+      },
+      "median_cpu_ms": {
+        "baseline": 1771.363,
+        "selected": 1226.102
+      }
+    },
+    {
+      "name": "long-options/1200",
+      "questions": 1,
+      "max_logit_delta": 3.6954879760742188e-06,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 2.384185791015625e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          1200
+        ]
+      ],
+      "option_counts": [
+        [
+          33
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1325.337666,
+          1302.474167,
+          1276.0655,
+          1284.496959,
+          1276.318167
+        ],
+        "selected": [
+          1055.200792,
+          1019.688625,
+          992.069792,
+          1025.09675,
+          990.53425
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          2645.608,
+          2666.877,
+          2716.663,
+          2690.651,
+          2711.643
+        ],
+        "selected": [
+          1711.495,
+          1718.503,
+          1689.3,
+          1695.652,
+          1689.139
+        ]
+      },
+      "median_ms": {
+        "baseline": 1284.496959,
+        "selected": 1019.688625
+      },
+      "median_cpu_ms": {
+        "baseline": 2690.651,
+        "selected": 1695.652
+      }
+    },
+    {
+      "name": "long-options/1499",
+      "questions": 1,
+      "max_logit_delta": 3.427267074584961e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 8.754432201385498e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          1499
+        ]
+      ],
+      "option_counts": [
+        [
+          33
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1717.39475,
+          1698.4835,
+          1714.66225,
+          1702.669,
+          1707.445125
+        ],
+        "selected": [
+          1269.776458,
+          1258.266333,
+          1261.123583,
+          1257.707292,
+          1295.377584
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3868.698,
+          3847.099,
+          3866.166,
+          3862.208,
+          3865.89
+        ],
+        "selected": [
+          2285.462,
+          2261.653,
+          2267.072,
+          2260.395,
+          2257.57
+        ]
+      },
+      "median_ms": {
+        "baseline": 1707.445125,
+        "selected": 1261.123583
+      },
+      "median_cpu_ms": {
+        "baseline": 3865.89,
+        "selected": 2261.653
+      }
+    }
+  ],
+  "peak_rss_mib": 2964.125,
+  "parameters_unchanged": true,
+  "summary": {
+    "questions": 4,
+    "argmax_flips": 0,
+    "max_logit_delta": 5.0067901611328125e-06,
+    "max_action_logit_delta": 0.00048828125,
+    "max_probability_delta": 5.960464477539062e-07,
+    "max_public_delta": 0.0,
+    "sum_median_ms": {
+      "baseline": 4751.408709,
+      "selected": 3757.778541
+    }
+  }
+}

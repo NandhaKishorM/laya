@@ -825,17 +825,18 @@ class Router(HookRegistry):
     def _install_vega(self, vega: Any) -> None:
         """Register the vega lane according to `vega`, without importing vegaml here: a lazy lane
         is only looked up by `find_spec`, so building a Router stays as light as it was."""
+        # The lane lives beside `models`, not in it: `models` is the checkpoint registry that
+        # `registered`, `preload` and the tests pin, and the lane is not a checkpoint anyone
+        # registered. `resolve` knows the name, so `model="vega"` and `load("vega")` still work.
         if vega is None or vega is False:
             return
         if hasattr(vega, "predict") and not isinstance(vega, str):
-            self._add(VEGA_MODEL, None)
             self._agents[VEGA_MODEL] = vega
             self._order.append(VEGA_MODEL)
             self.max_loaded = max(self.max_loaded, len(self._agents))
             self._vega_spec = vega
             return
         if isinstance(vega, str) and vega != "auto":
-            self._add(VEGA_MODEL, None)
             self._vega_spec = vega
             return
         import importlib.util
@@ -844,13 +845,12 @@ class Router(HookRegistry):
             raise ImportError("Router(vega=True) needs the vegaml package: pip install -U laya "
                               "(vegaml ships with laya 0.4.23 and newer)")
         if available:
-            self._add(VEGA_MODEL, None)
             self._vega_spec = True
 
     @property
     def vega_enabled(self) -> bool:
         """Whether this Router has a vega lane to route media, long states and fitted heads to."""
-        return VEGA_MODEL in self.models
+        return self._vega_spec is not None
 
     def _vega_heads(self) -> set:
         """The question ids a resident vega agent has fitted heads for, or nothing."""
@@ -870,8 +870,11 @@ class Router(HookRegistry):
         key = canonical_name(name)
         if key in self.models:
             return key
+        if key == VEGA_MODEL and getattr(self, "_vega_spec", None) is not None:
+            return key
         raise ValueError("unknown model %r; choose one of %s (or an alias: %s)"
-                         % (name, sorted(self.models), sorted(_ALIASES)))
+                         % (name, sorted(self.models) + ([VEGA_MODEL] if getattr(self, "_vega_spec", None) is not None else []),
+                            sorted(_ALIASES)))
 
     def register(self, name: str, source: Any, description: Optional[str] = None) -> str:
         """Add a checkpoint under `name`, to be served beside the built-in ones.
@@ -960,6 +963,8 @@ class Router(HookRegistry):
                     "source": _repo_str(spec),
                     "description": self.descriptions.get(name),
                 }
+                # the vega lane is a model name (`model="vega"`, `load("vega")`) but not a checkpoint
+                # anyone registered, so it is reported by `vega_enabled`, not here
                 for name, spec in self.models.items() if name not in DEFAULT_MODELS
             }
 
@@ -973,6 +978,9 @@ class Router(HookRegistry):
             if key == "auto":
                 raise ValueError("invalid checkpoint name %r: 'auto' means automatic routing in every "
                                  "model= argument" % (name,))
+            if key == VEGA_MODEL:
+                raise ValueError("invalid checkpoint name %r: it names the vega lane; pass Router(vega=...) "
+                                 "to configure it" % (name,))
         if source is not None and not isinstance(source, (str, tuple, list)):
             raise TypeError("checkpoint source for %r must be a repo id, a local path or a (repo, subfolder) "
                             "pair, got %s" % (name, type(source).__name__))
@@ -1072,7 +1080,9 @@ class Router(HookRegistry):
     def _build(self, key: str):
         """Construct the Agent for `key`: config is read under `_lock`, the build runs outside it."""
         from .agent import Agent
-        if key == VEGA_MODEL and self._vega_spec is not None and isinstance(self._vega_spec, (bool, str)):
+        if key == VEGA_MODEL and self._vega_spec is not None:
+            if not isinstance(self._vega_spec, (bool, str)):
+                return self._vega_spec          # an attached agent, back after an eviction
             from .vega import VegaAgent
             return VegaAgent(vegaml=self._vega_spec, device=self.device, token=self.token)
         with self._lock:

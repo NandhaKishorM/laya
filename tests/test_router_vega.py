@@ -58,6 +58,8 @@ class _StubVega:
 def test_without_vegaml_the_lane_is_off_and_nothing_changes():
     r = Router()
     assert not r.vega_enabled and VEGA_MODEL not in r.models
+    with pytest.raises(ValueError, match="unknown model"):
+        r.resolve("vega")
     assert r.route(ENGLISH).model == "english"
     assert r.route(LONG).model != VEGA_MODEL, "a long state stays on the encoders when there is no lane"
     with pytest.raises(ValueError, match="needs the vega lane"):
@@ -132,8 +134,10 @@ def test_predict_batch_never_routes_to_vega():
 def test_a_reader_name_registers_a_lazy_lane():
     r = Router(vega="4b")
     assert r.vega_enabled and r.route(None, Q, media="audio")["repo"] == "4b"
-    assert r.models[VEGA_MODEL] is None, "no repo source: the lane is built by VegaAgent, not Agent"
-    assert VEGA_MODEL in r.registered
+    assert VEGA_MODEL not in r.models and VEGA_MODEL not in r.registered, "the lane is not a checkpoint"
+    assert r.resolve("vega") == VEGA_MODEL
+    with pytest.raises(ValueError, match="names the vega lane"):
+        r.register("vega", "some/repo")
 
 
 @pytest.mark.skipif(not HAS_VEGAML, reason="needs vegaml to test the auto lane")

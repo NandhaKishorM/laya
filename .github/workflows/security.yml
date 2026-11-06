@@ -207,11 +207,18 @@ jobs:
           echo "OK: no unsafe deserialization in laya/ or laya-ts/scripts/"
       - name: No shell-out or dynamic exec in the shipped package
         run: |
+          # laya/video.py is the one sanctioned shell-out: it runs the ffmpeg and ffprobe binaries
+          # that `shutil.which` resolved, always as an argv list through `subprocess.run`, never
+          # through a shell. The second grep pins that file to exactly that shape.
           if grep -rnE "os\.system\(|subprocess\.|shell=True|\beval\(|\bexec\(" laya/ \
-               | grep -v "\.eval()"; then
+               --exclude=video.py | grep -v "\.eval()"; then
             echo "::error::shell-out or dynamic execution in the shipped package"
             exit 1
           fi
-          echo "OK: no os.system/subprocess/eval/exec in laya/"
+          if grep -nE "os\.system\(|shell=True|\beval\(|\bexec\(|subprocess\.(Popen|call|check_call|check_output|getoutput|getstatusoutput)\(" laya/video.py; then
+            echo "::error::laya/video.py may only call subprocess.run on an argv list"
+            exit 1
+          fi
+          echo "OK: no os.system/subprocess/eval/exec in laya/ outside the ffmpeg calls in laya/video.py"
       - name: ONNX exporter requires safetensors weights
         run: python tests/test_export_onnx_safety.py

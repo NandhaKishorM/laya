@@ -1,4 +1,5 @@
 import argparse
+import inspect
 import os
 from typing import Optional
 
@@ -175,13 +176,47 @@ def example_inputs(batch: Optional[int] = None, seq_len: int = 16, num_markers: 
     return input_ids, attention_mask, marker_pos, marker_mask, qtype
 
 
-def export_module(model, output_path: str, opset_version: int = 18) -> str:
+def default_opset_version() -> int:
+    """The highest opset the installed `torch.onnx.export` implements: 18, or 17 on torch 2.2.
+
+    `dynamic_axes` is the declaration every torch this package supports accepts, so the shape
+    spelling no longer varies with the version -- but the *opset ceiling* still does. The current
+    default of 18 is right on the torch CI runs; the TorchScript exporter that torch 2.2 ships
+    caps at `ONNX_TORCHSCRIPT_EXPORTER_MAX_OPSET = 17`.
+
+    What the mismatch costs is quieter than a crash, which is why it is worth pinning rather than
+    leaving to chance. `torch.onnx.export` does **not** raise: it emits an `OnnxExporterWarning`
+    ("Exporting to ONNX opset version 18 is not supported ... highest opset version supported is
+    17") and then exports anyway, so the graph's `opset_import` declares 18 while the nodes were
+    built from the exporter's 17-era symbolic functions. Measured here on torch 2.2.2: requesting
+    18 declares 18 plus the warning, requesting 17 declares 17 with no warning (both load in ONNX
+    Runtime for a simple graph, so nothing fails where a user would notice). Declaring the version
+    the exporter actually implements is the honest artifact.
+
+    Upstream declares `torch>=2.0.0`, so this is not only this machine's pin: any torch whose
+    TorchScript exporter stops at 17 hits it, and the macOS/Intel setup runs torch 2.2
+    (LOCAL_SETUP.md, the last PyTorch with an x86_64 macOS wheel).
+
+    Probe the installed signature rather than `torch.__version__`, matching how `_amp_context` in
+    `laya/common.py` decides autocast support: a torch that backports either spelling is handled
+    too, and a version string cannot express that.
+    """
+    modern = "dynamic_shapes" in inspect.signature(torch.onnx.export).parameters
+    return 18 if modern else 17
+
+
+def export_module(model, output_path: str, opset_version: Optional[int] = None) -> str:
     """Write `model` to `output_path` as an ONNX graph with a symbolic batch, sequence and
     marker axis.
 
     Split out from `export_to_onnx` so the batch-dynamic contract can be checked on a small
     hand-built model, with no checkpoint to download; see `tests/test_onnx_export_batch.py`.
+
+    `opset_version` defaults to `default_opset_version()`, which follows the installed torch.
     """
+    if opset_version is None:
+        opset_version = default_opset_version()
+
     out_dir = os.path.dirname(os.path.abspath(output_path))
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)

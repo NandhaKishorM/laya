@@ -970,6 +970,20 @@ check_true("batch/a blow-up is bounded to the un-capped pass width",
            0 < (window_batch_cap(413, 23, 312) or 0) < 413, window_batch_cap(413, 23, 312))
 check("batch/an explicit batch_size is always honoured", window_batch_cap(413, 23, 312, 8), 8)
 
+# "Always honoured" needs the other half of the sentence: a value the chunker downstream cannot
+# spend is not a cap, it is a crash waiting for `range()`. Before `check_batch_size`, `2.5` was
+# returned untouched -- `predict_long` then handed it to `predict_batch(batch_size=2.5)` and the
+# pass died on `'float' object cannot be interpreted as an integer`, while `"8"` died earlier on
+# the `'>' not supported` comparison. `0`, `-1` and `None` stay legal because they mean "no cap",
+# which is what the fixture grid pins for every port -- the bound this grid point reaches is 30,
+# spelled as the literal rather than as a call to the function under test.
+for unset in (None, 0, -1):
+    check("batch/batch_size=%r leaves the un-capped pass width" % (unset,),
+          window_batch_cap(413, 23, 312, unset), 30)
+for bad in (2.5, "8", True, [8]):
+    check_raises("batch/window_batch_cap refuses batch_size=%r" % (bad,), ValueError,
+                 lambda b=bad: window_batch_cap(413, 23, 312, b))
+
 # 12g. the page that teaches the default teaches the cap as well
 window_para = README[README.index("A smaller `window` isolates"):][:900]
 check("docs/README says the window is capped at the room the questions leave",

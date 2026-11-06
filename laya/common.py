@@ -460,6 +460,36 @@ def window_budget(tok, questions, max_len: int = 512, head_max_len: int = 192,
 
 
 
+def check_batch_size(batch_size: Any) -> Optional[int]:
+    """Validate the per-call `batch_size` cap before the chunker has to spend it.
+
+    `batch_size` counts states per forward pass, and the batch loop uses it as a `range()` step.
+    A `float` -- what a JSON `2.0` parses to, and what `n / 2` yields -- reached `range()` and came
+    back as the interpreter's own `'float' object cannot be interpreted as an integer`; a `str` was
+    compared to zero first and leaked `'>' not supported between instances of 'str' and 'int'`;
+    `True` is an `int` to `range()`, so it silently capped every pass at one state and switched
+    `sort_by_length` off, because that knob's own gate is `1 < chunk`. `laya/shortlist.py`,
+    `laya/mcp/tools.py` and `laya/serve.py` already refuse these shapes; the two `predict_batch`
+    entry points and `window_batch_cap` did not, so a Python caller -- the documented route, and
+    the one with no schema in front of it -- met the raw `TypeError` instead of the named refusal.
+
+    `None`, `0` and a negative integer are **not** refused: they mean "no cap", the chunker uses
+    `len(states)` and `window_batch_cap` returns `None`. That is pinned, not incidental --
+    `laya-java/fixtures/window_plan.json`'s `batch_cap` grid replays `(None, 0, -1, 1, 8)` through
+    the Java, Go, C# and C++ ports, and those ports take a typed `int` whose zero and negative
+    values are their own "unset", so refusing here would move the oracle for every port while
+    helping no caller. Anything with `__index__` is accepted, a `numpy.int64` among them, for the
+    same reason `ece_score` in this module gives: a value `range()` can spend is a value worth
+    accepting. A `bool` is refused even though it is an `int`, because `True` is not a count that
+    anyone meant to pass.
+    """
+    if batch_size is None:
+        return None
+    if isinstance(batch_size, bool) or not isinstance(batch_size, Integral):
+        raise ValueError("batch_size must be an integer count of states, got %r" % (batch_size,))
+    return int(batch_size)
+
+
 def window_batch_cap(n_windows: int, window: int, config_budget: int,
                      batch_size: Optional[int] = None) -> Optional[int]:
     """Keep one forward pass no wider than the un-capped scan's would have been -- but only when
@@ -476,8 +506,11 @@ def window_batch_cap(n_windows: int, window: int, config_budget: int,
     those would trade a real property for no real protection. So the cap only applies past
     `_WINDOW_BATCH_BLOWUP`x, and then bounds the pass at the count the un-capped budget would have
     produced: peak memory stays at parity with the behaviour before the cap, and the scan still reads
-    the whole document, just in more passes. An explicit `batch_size` is always honoured.
+    the whole document, just in more passes. An explicit `batch_size` is always honoured --
+    `check_batch_size` decides what counts as explicit, and a value it refuses is one no chunker
+    downstream could honour either.
     """
+    batch_size = check_batch_size(batch_size)
     if batch_size and batch_size > 0:
         return batch_size
     if window >= config_budget:

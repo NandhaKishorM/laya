@@ -634,23 +634,51 @@ function alphaCount(text: string): number {
   return n;
 }
 
-/** A string value that is itself not safe for the English checkpoint, else null. */
+/** A string value that is itself not safe for the English checkpoint, else null.
+ *
+ * A one-word name ("José") and a capitalised non-Latin name stay out: the same rules
+ * `latinProfile` and `nonLatinWords` already use, so a name field cannot pull an English
+ * ticket onto the multilingual checkpoint. Code lines, acronyms and slash compounds stay out
+ * too, matching `nonEnglishSegment`, so a pasted traceback is not a message. Each line is
+ * capped at 4000 characters on its own. Unlike the segment scan, a long earlier line does
+ * not consume the budget of the next one (#384, #1449): sampling the first 4000 characters
+ * of the whole leaf hid a German line that followed a longer English prefix.
+ */
 function leafNonEnglish(leaf: string): AnalyseResult | null {
-  const sample = cutCodePoints(leaf, 4000);
-  if (!sample.trim()) return null;
-  const det = analyseText(sample);
-  if (det.isEnglish) return null;
-  if (det.language !== null && det.language !== "en") return det;
-  const nAlpha = alphaCount(sample);
-  if (det.script !== "latin" && det.script !== "unknown") {
-    if (nonLatinWords(sample).length > 0 && nAlpha >= NON_LATIN_MIN_LETTERS) return det;
-    return null;
+  let bestN = -1;
+  let best: AnalyseResult | null = null;
+  for (const line of leaf.split("\n")) {
+    // A line this short cannot be selected, so skip it before the slice, the blank check,
+    // the code-line scan and a full `analyseText` pass. Each branch below needs four word
+    // tokens or NON_LATIN_MIN_LETTERS letters. The word scan matches maximal runs of letters
+    // and letter-like numerals, so four tokens need three separators between them: seven
+    // characters, and ten letters need ten. What makes seven safe rather than six is that
+    // every one of those counts is taken on the raw line -- `İ` lowers to two code points,
+    // so counting on the lowered line would let a four-character line reach four tokens.
+    if (width(line) < 7) continue;
+    const sample = cutCodePoints(line, 4000);
+    if (!sample.trim() || CODE_LINE_RE.test(sample)) continue;
+    const det = analyseText(sample);
+    if (det.isEnglish) continue;
+    // A named language still has to survive `namedProseLanguage`: acronyms and slash
+    // compounds are not words. A veto is not a verdict of English, so a line that was named
+    // and then disbelieved falls through to the diacritic branch instead of being dropped.
+    // `languageUndecided` is not required: that line is in the same position as one never named.
+    const named = det.language !== null && det.language !== "en" && namedProseLanguage(sample) !== null;
+    const nAlpha = alphaCount(sample);
+    if (!named) {
+      if (det.script !== "latin" && det.script !== "unknown") {
+        if (nonLatinWords(sample).length === 0 || nAlpha < NON_LATIN_MIN_LETTERS) continue;
+      } else if (!(det.diacriticRate >= NON_EN_DIACRITIC_RATE && (sample.match(WORD_RE) ?? []).length >= 4)) {
+        continue;
+      }
+    }
+    if (nAlpha > bestN) {
+      bestN = nAlpha;
+      best = det;
+    }
   }
-  const words = sample.match(WORD_RE) ?? [];
-  if (det.languageUndecided && det.diacriticRate >= NON_EN_DIACRITIC_RATE && words.length >= 4) {
-    return det;
-  }
-  return null;
+  return best;
 }
 
 export function analyse(state: unknown): AnalyseResult {

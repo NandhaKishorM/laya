@@ -71,6 +71,25 @@ export function validateUsage(value: unknown): void {
   }
 }
 
+export function validateBatchPrediction(value: unknown, questions: Questions, count: number): void {
+  expect(isRecord(value), 'batch prediction');
+  expect(Array.isArray(value.results), 'results');
+  expect(value.results.length === count, 'results count does not match states');
+  expect(isRecord(value.total_usage), 'total_usage');
+  for (const key of ['input_tokens', 'output_tokens']) {
+    const tokens = value.total_usage[key];
+    expect(typeof tokens === 'number' && Number.isInteger(tokens) && tokens >= 0, `total_usage.${key}`);
+  }
+  for (const [index, result] of value.results.entries()) {
+    try {
+      validatePrediction(result, questions);
+    } catch (error) {
+      if (!(error instanceof LayaResponseError)) throw error;
+      throw new LayaResponseError(`Invalid Laya response: results[${index}]: ${error.message}`, { cause: error });
+    }
+  }
+}
+
 export function validatePrediction(value: unknown, questions: Questions): void {
   expect(isRecord(value) && typeof value.model === 'string' && isRecord(value.answers), 'prediction');
   validateUsage(value.usage);

@@ -1,0 +1,22 @@
+{
+  "format": "typed-evidence-research-v1",
+  "files": {
+    "README.md": "042d856273fa23058f5899724a9dfcaf75a00d4c8f9b6e6d9a705e1639e31f31",
+    "RESEARCH-SUMMARY.md": "6611f02783acb55d52ba4bdbcd73ba11a0503fe32081a65a34ab53893b4624f6",
+    "REVIEW-1282.md": "115e1cc0d1fae481656dfc126a4ac924bfe3524ae191d55e6c3c22e7a32d332b",
+    "archive.json": "5bc9dc0d317236334aa522ab993de3e5656dc3fd3f998dff3fd8dc1e938aa2be",
+    "audit.py": "6ca33ae8e8bcf222e2cf426a66aa67a632bdac96ac1d30d52a38e1b3e0151464",
+    "constraint_kernel_oracles.py": "1054e0f923da55e7766830f2eeeb1a4319497a047997beb782e2a054c650456c",
+    "constraint_kernel_prepared.py": "bba26c53f6945b1c8dfca77ef2e8434ae7f47863d2a90b1129f9d2c7d10132e9",
+    "constraint_kernel_v6.py": "9389548f067051735297c725bca95293ea6d698424377361a25697a9bfacb58c",
+    "test_audit.py": "055e8a54a9f6b6bc0c43e56d8237856955934a9ca9eec4a9c9ee0a17358d97bd",
+    "test_constraint_kernel_prepared.py": "777a083df324d677c82189138a7128fea64f88ff6ead532a3abc2e621a12b8ec",
+    "test_constraint_kernel_v6.py": "7c32786e428a690a9ab9608cea17ab912c7e4f478e464dc28d3991e4648f6560"
+  },
+  "protocol_sha256": "68e8dba2a0e121740b38731ccd383b0f4f19010dde22966c64cc1f73d263cddc",
+  "public_export": true,
+  "model_free": true,
+  "laya_core_changed": false,
+  "synthetic_fixtures": true,
+  "controls_sha256": "360eeb5938c36afc6f8dc6f065793d20af447c202f200b4b954c36597186c756"
+}

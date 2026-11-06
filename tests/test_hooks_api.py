@@ -300,6 +300,38 @@ check("analyse opts into one extra key", set(_explained_analysis) - set(_plain_a
 check("analyse diagnostic fields", set(_explained_analysis.pop("diagnostic")), {"stage", "reason", "source"})
 check("analyse retains original fields", _explained_analysis, _plain_analysis)
 
+# Shared reference contract for TS local diagnostics (lang-diagnostics.test.ts). Only the
+# segment contract is shared here: TS's existing value fallback reads a whole leaf and uses
+# line=None, whereas Python selects individual lines. Do not imply detector-wide parity.
+_diagnostic_state = {
+    "note": "This is an English note about the order. " * 20,
+    "payload": {"messages": [None, 42, "status\n\nIch kann mich nicht anmelden und brauche Hilfe"]},
+}
+_segment_diagnostic = {
+    "stage": "segment", "reason": "named_segment",
+    "source": {"leaf_index": 1, "path": ["payload", "messages", 2], "line": 3},
+}
+check("diagnostic nested segment source", analyse(_diagnostic_state, explain=True)["diagnostic"],
+      _segment_diagnostic)
+_diagnostic_router = Router()
+check("route carries detector diagnostic", _diagnostic_router.route(_diagnostic_state, {}, explain=True)
+      ["detection"]["diagnostic"], _segment_diagnostic)
+_diagnostic_batch = _diagnostic_router.route_batch([
+    {"state": _diagnostic_state, "questions": {}},
+    {"state": _diagnostic_state, "questions": {}, "model": "english"},
+], explain=True)
+check("route batch carries diagnostic in order", _diagnostic_batch[0]["detection"]["diagnostic"],
+      _segment_diagnostic)
+check("override bypass has no detector diagnostic", _diagnostic_batch[1]["detection"], None)
+for _key_size in (128, 129):
+    _key = "😀" * _key_size
+    _key_diagnostic = analyse({
+        "note": "This is an English note about the order. " * 20,
+        _key: "Ich kann mich nicht anmelden und brauche Hilfe",
+    }, explain=True)["diagnostic"]
+    check(f"diagnostic key bound {_key_size} code points", _key_diagnostic["source"]["path"],
+          [_key] if _key_size == 128 else None)
+
 # route() and route_batch() take per-call hooks so a hook can pin a checkpoint for one call
 for label, fn in (("Router.route", Router.route),
                   ("Router.route_batch", Router.route_batch)):

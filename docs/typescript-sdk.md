@@ -108,7 +108,10 @@ Type checks cover optional metadata, inferred
 answer types, and ESM/CommonJS consumers. The live integration test starts the
 unchanged `laya.serve` application with a tiny offline checkpoint, compares SDK
 predictions against direct Python inference, and exercises routing, presets,
-authentication and request limits. CI runs the SDK checks on Node.js 22 and 24.
+authentication and request limits. Batch parity uses the same inference batch shape, in
+extended and strict modes, and includes tournament results. CI also checks a pinned v0.4.7
+server and installs the npm tarball into an isolated ESM/CommonJS and TypeScript consumer.
+CI runs the SDK checks on Node.js 22 and 24.
 
 Tiny random weights verify transport and numerical parity, not pretrained
 quality or performance.

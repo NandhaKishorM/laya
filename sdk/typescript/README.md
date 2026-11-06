@@ -322,6 +322,7 @@ implementation. The integration fixture injects a router into that same server.
 # In sdk/typescript:
 npm ci
 npm test
+npm run test:package
 PYTHON=../../.venv/bin/python npm run test:integration
 python3 scripts/sync_presets.py --check
 ```
@@ -333,6 +334,14 @@ accuracy. Run the repository's pretrained model tests separately when those
 weights are available. Presets are generated from `laya/presets.py`; regenerate
 with `python3 scripts/sync_presets.py` after editing that source.
 
+Batch tests compare the same inference batch shape against `Router.predict_batch`, in both
+extended and strict response modes. They also exercise tournament results and the server's
+authentication and request limits. CI sets `LAYA_SDK_LEGACY_FIXTURE` to a pinned v0.4.7
+checkout's `tests/sdk_server_fixture.py` to check an older server. Set that variable to an
+absolute fixture path to include the compatibility test locally; otherwise that test skips.
+`test:package` installs the actual npm tarball into a temporary consumer and checks ESM,
+CommonJS, batch validation and strict TypeScript declarations without runtime dependencies.
+
 ## Publishing
 
 Publish `laya-client` from `sdk/typescript` using an npm account with publishing
@@ -343,6 +352,7 @@ npm login --registry=https://registry.npmjs.org
 npm whoami --registry=https://registry.npmjs.org
 npm ci
 npm test
+npm run test:package
 PYTHON=../../.venv/bin/python npm run test:integration
 python3 scripts/sync_presets.py --check
 npm publish --dry-run

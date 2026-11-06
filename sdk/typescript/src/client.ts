@@ -2,10 +2,10 @@ import {
   LayaAbortError, LayaAPIError, LayaConnectionError, LayaError, LayaResponseError,
   LayaTimeoutError, LayaValidationError,
 } from './errors.js';
-import type { Health, Prediction, PredictOptions, Questions, RequestOptions, State } from './types.js';
+import type { BatchPrediction, BatchPredictOptions, Health, Prediction, PredictOptions, Questions, RequestOptions, State } from './types.js';
 import { isMinConfidenceKey } from './buckets.js';
 import { isRecord, validateJson, validateQuestions, validateTimeout } from './validation.js';
-import { validateHealth, validatePrediction } from './response.js';
+import { validateBatchPrediction, validateHealth, validatePrediction } from './response.js';
 
 /** One threshold in `[0, 1]`: booleans are not thresholds even though they read as 0/1. */
 function isThreshold(value: unknown): value is number {
@@ -74,6 +74,34 @@ export class Laya {
     return result;
   }
 
+  /** Send independent states with one shared question set in one HTTP request. */
+  async predictBatch<const Q extends Questions>(states: readonly State[], questions: Q,
+      options: BatchPredictOptions = {}): Promise<BatchPrediction<Q>> {
+    validateQuestions(questions);
+    if (!Array.isArray(states) || states.length === 0) {
+      throw new LayaValidationError('states must be a nonempty array');
+    }
+    for (const state of states) this.validateState(state);
+    if (options.batchSize !== undefined && (!Number.isInteger(options.batchSize) || options.batchSize < 1)) {
+      throw new LayaValidationError('batchSize must be a positive integer');
+    }
+    if (options.sortByLength !== undefined && typeof options.sortByLength !== 'boolean') {
+      throw new LayaValidationError('sortByLength must be a boolean');
+    }
+    const body = { states, ...this.predictionBody(questions, options),
+      ...(options.batchSize !== undefined ? { batch_size: options.batchSize } : {}),
+      ...(options.sortByLength !== undefined ? { sort_by_length: options.sortByLength } : {}),
+    };
+    validateJson(body);
+    const serialized = JSON.stringify(body);
+    // Validate against the sent request, even if callers edit inputs while waiting.
+    const { questions: sentQuestions, states: { length: count } } = JSON.parse(serialized) as
+      { questions: Q; states: State[] };
+    const result = await this.request<BatchPrediction<Q>>('/v1/systemone/batch', serialized, options);
+    validateBatchPrediction(result, sentQuestions, count);
+    return result;
+  }
+
   /** Query the self-hosted Laya server's health probe. */
   async health(options: RequestOptions = {}): Promise<Health> {
     const result = await this.request<Health>('/health', undefined, options);
@@ -82,9 +110,19 @@ export class Laya {
   }
 
   private body(state: State, questions: Questions, options: PredictOptions): string {
+    this.validateState(state);
+    const body = { state, ...this.predictionBody(questions, options) };
+    validateJson(body);
+    return JSON.stringify(body);
+  }
+
+  private validateState(state: State): void {
     if (state !== null && typeof state !== 'string' && !Array.isArray(state) && !isRecord(state)) {
       throw new LayaValidationError('state must be text, a JSON object, an array, or null');
     }
+  }
+
+  private predictionBody(questions: Questions, options: PredictOptions) {
     if (options.task !== undefined && (typeof options.task !== 'string' || !options.task.trim())) {
       throw new LayaValidationError('task must be a nonempty string');
     }
@@ -111,12 +149,12 @@ export class Laya {
         : question,
     ]));
     const body: {
-      state: State; questions: typeof wireQuestions; model?: string; task?: string;
+      questions: typeof wireQuestions; model?: string; task?: string;
       lang?: string; lang_guess?: string; max_len?: number; head_max_len?: number;
       min_confidence?: number | Record<string, number>;
-    } = { state, questions: wireQuestions };
+    } = { questions: wireQuestions };
     if (model !== undefined) body.model = model;
-    // The per-request controls `/v1/systemone` forwards when the request sends them (see
+    // The per-request controls both prediction endpoints forward when sent (see
     // docs/http-api.md); absent options stay absent so the deployment's own Router
     // settings remain in charge.
     if (options.task !== undefined) body.task = options.task;
@@ -125,8 +163,7 @@ export class Laya {
     if (options.maxLen !== undefined) body.max_len = options.maxLen;
     if (options.headMaxLen !== undefined) body.head_max_len = options.headMaxLen;
     if (options.minConfidence !== undefined) body.min_confidence = options.minConfidence;
-    validateJson(body);
-    return JSON.stringify(body);
+    return body;
   }
 
   private async request<T>(path: string, body: string | undefined, options: RequestOptions): Promise<T> {

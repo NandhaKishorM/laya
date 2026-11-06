@@ -1,7 +1,7 @@
 # TypeScript SDK design
 
 `laya-client` is a dependency-free HTTP client for a self-hosted `laya-serve`
-server. It uses the `POST /v1/systemone` endpoint and adds no Python production
+server. It uses the existing single and batch prediction endpoints and adds no Python production
 code or server dependencies.
 The npm package starts at version `0.1.0`, independently of Python releases.
 
@@ -18,11 +18,11 @@ The npm package starts at version `0.1.0`, independently of Python releases.
 ```mermaid
 flowchart LR
     A[JavaScript or TypeScript application] --> B[laya-client]
-    B -->|POST /v1/systemone| C[Existing Laya server]
+    B -->|POST /v1/systemone or /v1/systemone/batch| C[Existing Laya server]
     C --> E[Router and local checkpoint]
 ```
 
-The SDK exports `predict` and a Laya-only `health` probe. It ships ESM,
+The SDK exports `predict`, `predictBatch` and a Laya-only `health` probe. It ships ESM,
 CommonJS and declarations, retaining inferred question IDs and choice labels.
 Use `laya-client` when a JavaScript or TypeScript application talks over HTTP to
 self-hosted Python `laya-serve`. Use `laya-ts` when inference must run directly
@@ -46,12 +46,11 @@ answers and `low_confidence: true` on the ones below the threshold; with no
 threshold set, none of those three keys are sent, and that absence is the report.
 Optional extensions are validated when present.
 
-`predict` posts `/v1/systemone` and `health` gets `/health` -- those two calls are the client's whole
-network surface, and `/v1/systemone` is the only inference endpoint among them. There is no standalone
-routing method: `laya-client` exposes `predict` and `health` and nothing else. The server separately
+`predict` posts `/v1/systemone`, `predictBatch` posts `/v1/systemone/batch`, and `health` gets `/health`.
+Each call makes one request. There is no standalone routing method. The server separately
 offers [`POST /v1/route`](http-api.md#post-v1route) for a routing snapshot without inference; call it
 with ordinary HTTP when needed. The live integration test covers this server contract without adding
-an SDK method. The controls the prediction endpoint does honour are
+an SDK method. The controls shared by both prediction endpoints are
 per-request, and each is sent only when the caller supplied the option -- an absent option leaves the
 deployment's own `Router(...)` settings in charge instead of overriding them with a client-side default:
 
@@ -81,6 +80,25 @@ messages/details. Structured error envelopes from compatible backends are also
 accepted. Requests have configurable deadlines and caller cancellation, and
 are never retried automatically.
 
+## Batch predictions
+
+`predictBatch(states, questions, options)` sends a nonempty array of independent states and one
+shared question set. The return type is `BatchPrediction<Q>`: `results[i]` belongs to `states[i]`
+and retains the same question IDs and choice labels as `predict`. `total_usage` contains only
+aggregate `input_tokens` and `output_tokens`; truncation metadata belongs to each result's `usage`.
+Counts and every prediction are validated before returning anything. A bad item reports its
+`results[i]` index in `LayaResponseError`. Unknown response extensions are preserved.
+
+All prediction controls above apply to the whole batch. `batchSize` maps to `batch_size`, and
+`sortByLength` to `sort_by_length`: these control server-side inference batching, never HTTP
+splitting, and length sorting still returns input order. Both are omitted unless supplied.
+Changing the inference batch shape can change floating-point results.
+
+The client never splits, retries, or falls back to single predictions, including on timeout or
+an unsupported endpoint's 404/405. A batch fails as a whole. Server limits remain authoritative;
+the current server's 64-state default is not a client-side cap. Cancellation stops waiting,
+not work already running on the server. See the SDK guide for an example.
+
 ## Verification and release
 
 Unit tests cover request construction, all answer shapes, Laya extensions,
@@ -90,7 +108,10 @@ Type checks cover optional metadata, inferred
 answer types, and ESM/CommonJS consumers. The live integration test starts the
 unchanged `laya.serve` application with a tiny offline checkpoint, compares SDK
 predictions against direct Python inference, and exercises routing, presets,
-authentication and request limits. CI runs the SDK checks on Node.js 22 and 24.
+authentication and request limits. Batch parity uses the same inference batch shape, in
+extended and strict modes, and includes tournament results. CI also checks a pinned v0.4.7
+server and installs the npm tarball into an isolated ESM/CommonJS and TypeScript consumer.
+CI runs the SDK checks on Node.js 22 and 24.
 
 Tiny random weights verify transport and numerical parity, not pretrained
 quality or performance.

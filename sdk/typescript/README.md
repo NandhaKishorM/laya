@@ -1,6 +1,6 @@
 # laya-client
 
-A dependency-free HTTP client for a self-hosted Laya `laya-serve` `/v1/systemone` endpoint. Supports ESM and
+A dependency-free HTTP client for self-hosted Laya `laya-serve` single and batch predictions. Supports ESM and
 CommonJS on Node.js 22+, and browsers with `fetch`, `AbortController`, and
 `structuredClone`. TypeScript consumers need TypeScript 5 or newer.
 
@@ -89,6 +89,39 @@ const laya = new Laya();
 laya.predict({ message: 'Please refund my order' }, triageQuestions())
   .then(result => console.log(result.answers));
 ```
+
+## Batch predictions
+
+`laya.predictBatch(states, questions, options)` sends one `POST /v1/systemone/batch` request.
+Each state gets an independent decision using the same question set. Putting several records
+inside one `predict` state instead asks every question about that shared context.
+
+```js
+const batch = await laya.predictBatch(
+  ['Please refund my order', { message: 'Where is my order?' }],
+  triageQuestions(),
+  { batchSize: 2, sortByLength: true },
+);
+for (const result of batch.results) console.log(result.answers.intent.choice);
+console.log(batch.total_usage.input_tokens);
+```
+
+`results[i]` belongs to `states[i]`, even when the server sorts by length. Question IDs and
+choice labels are inferred just as with `predict`. Every result is validated before the batch
+returns; a bad count or item raises `LayaResponseError`, with an item index when applicable.
+Unknown response fields are retained. `total_usage` has aggregate `input_tokens` and
+`output_tokens`; read each result's `usage` for its truncation metadata.
+
+All `predict` controls, including authentication, model selection, `minConfidence`, `timeoutMs`
+and `signal`, apply. `batchSize` must be a positive integer and `sortByLength` a boolean. These
+two options control inference batching on the server, not HTTP splitting; omitted options
+inherit server settings. Different inference batch shapes can change floating-point results.
+
+An empty array is refused locally. The server enforces request limits, including its current
+64-state cap: a larger array is sent once and a refusal is preserved as `LayaAPIError`. A server
+without the endpoint returns its original 404/405 error. No call is automatically split,
+retried or replaced with individual predictions. Cancellation and timeout stop waiting;
+they do not promise to stop inference already running on the server.
 
 ## Typed custom questions
 
@@ -258,6 +291,7 @@ and TLS at your application proxy or gateway.
 | --- | --- | --- |
 | `GET /health` | None for liveness | `{status}`, plus `loaded` and `device` with the bearer |
 | `POST /v1/systemone` | `{state, questions, model?}` | `{model, answers, usage}` plus optional `routing` |
+| `POST /v1/systemone/batch` | `{states, questions, model?, batch_size?, sort_by_length?}` | `{results, total_usage}` in input order |
 
 Laya errors use FastAPI's `{detail: ...}` body: 400 for malformed requests, 401
 for authentication, 413 for request limits, 422 for invalid questions, and 500
@@ -288,6 +322,7 @@ implementation. The integration fixture injects a router into that same server.
 # In sdk/typescript:
 npm ci
 npm test
+npm run test:package
 PYTHON=../../.venv/bin/python npm run test:integration
 python3 scripts/sync_presets.py --check
 ```
@@ -299,6 +334,14 @@ accuracy. Run the repository's pretrained model tests separately when those
 weights are available. Presets are generated from `laya/presets.py`; regenerate
 with `python3 scripts/sync_presets.py` after editing that source.
 
+Batch tests compare the same inference batch shape against `Router.predict_batch`, in both
+extended and strict response modes. They also exercise tournament results and the server's
+authentication and request limits. CI sets `LAYA_SDK_LEGACY_FIXTURE` to a pinned v0.4.7
+checkout's `tests/sdk_server_fixture.py` to check an older server. Set that variable to an
+absolute fixture path to include the compatibility test locally; otherwise that test skips.
+`test:package` installs the actual npm tarball into a temporary consumer and checks ESM,
+CommonJS, batch validation and strict TypeScript declarations without runtime dependencies.
+
 ## Publishing
 
 Publish `laya-client` from `sdk/typescript` using an npm account with publishing
@@ -309,6 +352,7 @@ npm login --registry=https://registry.npmjs.org
 npm whoami --registry=https://registry.npmjs.org
 npm ci
 npm test
+npm run test:package
 PYTHON=../../.venv/bin/python npm run test:integration
 python3 scripts/sync_presets.py --check
 npm publish --dry-run

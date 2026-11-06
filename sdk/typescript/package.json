@@ -30,6 +30,7 @@
     "typecheck": "tsc --noEmit -p test/tsconfig.json",
     "test": "npm run build && npm run typecheck && node --test test/*.test.mjs",
     "test:integration": "node --test test/integration.mjs",
+    "test:package": "node test/package.mjs",
     "prepack": "npm run build",
     "prepublishOnly": "npm test"
   },

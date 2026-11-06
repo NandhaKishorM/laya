@@ -353,6 +353,10 @@ jobs:
         node: [22, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 697d788e1c16e9cb7f736471897ab758a79c1df7 # v0.4.7, as in the Python SDK lane
+          path: .sdk-server-0.4.7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
@@ -373,10 +377,12 @@ jobs:
           python sdk/typescript/scripts/sync_presets.py --check
       - name: SDK types, transport, packaging and live inference
         working-directory: sdk/typescript
+        env:
+          LAYA_SDK_LEGACY_FIXTURE: ${{ github.workspace }}/.sdk-server-0.4.7/tests/sdk_server_fixture.py
         run: |
           npm test
           npm run test:integration
-          npm pack --dry-run
+          npm run test:package
 
   build:
     name: package

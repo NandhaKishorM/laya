@@ -119,3 +119,31 @@ void [label, arrayLabel, probability, score, noul, inlineLabel, intent, category
   actionProbability, noulConfidence, stateTokens, stateTokensDropped, truncated, truncatedQuestions,
   collapsedSpans, answeredUsage, mixedSegment, undetermined, answerConfidence,
   noulAnswerConfidence, gateState, gateThreshold, flagged, gatedAnswer];
+
+const batch = await client.predictBatch(['First', { text: 'Second' }] as const, questions,
+  { batchSize: 2, sortByLength: true, minConfidence: { default: 0.7 } });
+const batchLabel: 'billing' | 'support' = batch.results[0]!.answers.team.choice;
+const batchArrayLabel: 'a' | 'b' = batch.results[0]!.answers.arrayChoice.choice;
+const batchScore: number = batch.results[0]!.answers.priority.score;
+const batchNoul: number = batch.results[0]!.answers.refund.noul;
+const totalTokens: number = batch.total_usage.input_tokens;
+const perStateTruncated: boolean = batch.results[0]!.usage.truncated;
+// @ts-expect-error Aggregate token counts do not claim per-state truncation metadata.
+batch.total_usage.truncated;
+// @ts-expect-error Unknown question IDs stay invalid inside a batch.
+batch.results[0]!.answers.unknown;
+// @ts-expect-error Choice labels retain their literal union in a batch.
+const wrongBatchLabel: 'sales' = batch.results[0]!.answers.team.choice;
+// @ts-expect-error The outer collection must be an array of independent states.
+client.predictBatch('hello', questions);
+// @ts-expect-error batchSize is numeric.
+client.predictBatch(['hello'], questions, { batchSize: '2' });
+// @ts-expect-error sortByLength is boolean.
+client.predictBatch(['hello'], questions, { sortByLength: 1 });
+// @ts-expect-error Batch controls do not widen single prediction options.
+client.predict('hello', questions, { batchSize: 2 });
+const inlineBatch = await client.predictBatch(['hello'], {
+  q: { type: 'choice', instructions: 'Pick', criteria: ['x', 'y'] },
+});
+const inlineBatchLabel: 'x' | 'y' = inlineBatch.results[0]!.answers.q.choice;
+void [batchLabel, batchArrayLabel, batchScore, batchNoul, totalTokens, perStateTruncated, inlineBatchLabel];

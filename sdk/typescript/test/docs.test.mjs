@@ -58,7 +58,8 @@ async function attempt(run) {
   const laya = new Laya({ fetch: async (url, init) => {
     const path = new URL(url).pathname;
     seen.push([init.method, path]);
-    const payload = path === '/health' ? HEALTH : RESULT;
+    const payload = path === '/health' ? HEALTH : path === '/v1/systemone/batch'
+      ? { results: [RESULT], total_usage: { input_tokens: 4, output_tokens: 0 } } : RESULT;
     return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } });
   } });
   let error = null;
@@ -125,14 +126,16 @@ test('the client calls exactly the endpoints the page says it calls', async () =
   const page = readFileSync(PAGE, 'utf8');
   const paths = new Map();
   for (const [method, run] of [['predict', l => l.predict('the state', QUESTIONS, {})],
+                               ['predictBatch', l => l.predictBatch(['the state'], QUESTIONS)],
                                ['health', l => l.health()]]) {
     const { seen, error } = await attempt(run);
     assert.equal(error, null, `${method}() must reach the fixture, got ${error && error.name}: ${error && error.message}`);
     assert.equal(seen.length, 1, `${method}() made ${JSON.stringify(seen)}, and the page describes one request per call`);
     paths.set(method, seen[0]);
   }
-  assert.deepEqual([...paths], [['predict', ['POST', '/v1/systemone']], ['health', ['GET', '/health']]],
-    "the client's network surface moved; the page and this test describe POST /v1/systemone and GET /health");
+  assert.deepEqual([...paths], [['predict', ['POST', '/v1/systemone']],
+    ['predictBatch', ['POST', '/v1/systemone/batch']], ['health', ['GET', '/health']]],
+    "the client's network surface moved; update the page and its executable contract");
 
   // Each call has to be stated by a sentence that names the method and the path it reaches. The page
   // used to promise `/v1/systemone` was "the only endpoint the client calls" in the same sentence that
@@ -144,8 +147,8 @@ test('the client calls exactly the endpoints the page says it calls', async () =
 
   // An exclusivity claim is decidable at the same seam: "the only endpoint the client calls" holds only
   // if the client calls one path, and "the only <kind> endpoint" holds only if the sentence names the
-  // path of every method of that kind. `health` probes; only `predict` carries a decision.
-  const KINDS = { inference: ['predict'] };
+  // path of every method of that kind. `health` probes; `predict` and `predictBatch` carry decisions.
+  const KINDS = { inference: ['predict', 'predictBatch'] };
   for (const sentence of sentences(page)) {
     const claim = /\bthe only\b[^.]{0,40}?\bendpoints?\b/i.exec(sentence);
     if (!claim) continue;
@@ -191,8 +194,8 @@ test('the endpoint surface the page describes is the one the client declares',
     // A member is public if it is spelled out as a signature; `private body;` collapses to the keyword.
     const declared = [...declaration.matchAll(/^ {4}(?!constructor)(\w+)[<(]/gm)]
       .map(([, name]) => name).sort();
-    assert.deepEqual(declared, ['health', 'predict'],
-      'the client gained or lost a public method; the page describes exactly these two');
+    assert.deepEqual(declared, ['health', 'predict', 'predictBatch'],
+      'the client gained or lost a public method; the page describes exactly these three');
     for (const name of declared) {
       assert.ok(page.includes('`' + name + '`'),
         `the page never names the ${name}() method the client declares`);

@@ -67,6 +67,13 @@ export interface PredictOptions extends RequestOptions {
   minConfidence?: MinConfidence;
 }
 
+export interface BatchPredictOptions extends PredictOptions {
+  /** Server-side inference batch size; does not split the HTTP request. */
+  batchSize?: number;
+  /** Let the server group similar lengths; results still follow input order. */
+  sortByLength?: boolean;
+}
+
 interface AnswerBase {
   /** Optional action metadata returned by Laya. */
   action?: { act_probability: number };
@@ -175,6 +182,16 @@ export interface Prediction<Q extends Questions = Questions> {
   usage: Usage;
   /** Optional routing metadata returned by Laya. */
   routing?: RouteDecision;
+}
+/** Aggregate token counts. Per-state truncation metadata stays in each result's usage. */
+export interface BatchUsage {
+  input_tokens: number;
+  output_tokens: number;
+}
+export interface BatchPrediction<Q extends Questions = Questions> {
+  /** Result at index i belongs to input state i; invalid batches throw instead of returning a partial list. */
+  results: Prediction<Q>[];
+  total_usage: BatchUsage;
 }
 /** Laya's self-hosted health probe.
  *

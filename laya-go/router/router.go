@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NandhaKishorM/laya/laya-go/agent"
 	"github.com/NandhaKishorM/laya/laya-go/internal/pyjson"
 	"github.com/NandhaKishorM/laya/laya-go/internal/unicodedata"
 	"github.com/NandhaKishorM/laya/laya-go/lang"
@@ -53,6 +54,7 @@ type Router struct {
 	hk      *hookState
 	lc      lifecycle
 	digests digestTable
+	rn      runner // nil is the agent itself; a test seam (see export_test.go)
 }
 
 // Option configures New.
@@ -232,6 +234,11 @@ type call struct {
 	raise             *bool
 	timeout           *time.Duration
 	err               error
+
+	maxLen, headMaxLen    int
+	gate                  []agent.CallOption
+	window, stride, batch int
+	sort                  bool
 }
 
 // ForModel routes to the named checkpoint or alias, ahead of every other signal.

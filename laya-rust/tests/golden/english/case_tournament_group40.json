@@ -1,0 +1,245 @@
+{
+  "name": "tournament_group40",
+  "state": "I tried to withdraw cash from the ATM but it kept the card and gave me no money.",
+  "serialized_state": "I tried to withdraw cash from the ATM but it kept the card and gave me no money.",
+  "questions": {
+    "intent": {
+      "type": "choice",
+      "instructions": "What is the customer's banking intent?",
+      "criteria": {
+        "activate_my_card": "turn on a newly received card",
+        "age_limit": "minimum or maximum age to use the service",
+        "apple_pay_or_google_pay": "adding the card to a mobile wallet",
+        "atm_support": "which ATMs the card works at",
+        "automatic_top_up": "automatically topping up the balance",
+        "balance_not_updated_after_bank_transfer": "a bank transfer is missing from the balance",
+        "balance_not_updated_after_cheque_or_cash_deposit": "a deposit is missing from the balance",
+        "beneficiary_not_allowed": "cannot add a payment recipient",
+        "cancel_transfer": "wants to cancel a transfer already sent",
+        "card_about_to_expire": "the card is close to its expiry date",
+        "card_acceptance": "where the card is accepted",
+        "card_arrival": "asking when a new card will arrive",
+        "card_delivery_estimate": "asking how long delivery will take",
+        "card_linking": "linking a card to the account",
+        "card_not_working": "the card is declined or not working",
+        "card_payment_fee_charged": "an unexpected fee was charged on a card payment",
+        "card_payment_not_recognised": "a card payment the customer does not recognise",
+        "card_payment_wrong_exchange_rate": "the exchange rate used was wrong",
+        "card_swallowed": "the ATM kept the card",
+        "cash_withdrawal_charge": "an unexpected charge for a cash withdrawal",
+        "cash_withdrawal_not_recognised": "a cash withdrawal the customer does not recognise",
+        "change_pin": "wants to change the PIN",
+        "compromised_card": "the card may have been compromised",
+        "contactless_not_working": "contactless payment is not working",
+        "country_support": "which countries the service supports",
+        "declined_card_payment": "a card payment was declined",
+        "declined_cash_withdrawal": "a cash withdrawal was declined",
+        "declined_transfer": "a transfer was declined",
+        "direct_debit_payment_not_recognised": "a direct debit the customer does not recognise",
+        "disposable_card_limits": "limits on a disposable virtual card",
+        "edit_personal_details": "wants to edit name, address or other personal details",
+        "exchange_charge": "a fee charged for currency exchange",
+        "exchange_rate": "asking what the current exchange rate is",
+        "exchange_via_app": "exchanging currency inside the app",
+        "extra_charge_on_statement": "an unexplained extra charge on the statement",
+        "failed_transfer": "a transfer failed",
+        "fiat_currency_support": "which regular currencies are supported",
+        "get_disposable_virtual_card": "wants a disposable virtual card",
+        "get_physical_card": "wants a physical card",
+        "getting_spare_card": "wants a spare or backup card"
+      }
+    }
+  },
+  "group_size": 40,
+  "calls": [
+    {
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What is the customer's banking intent?",
+          "criteria": {
+            "activate_my_card": "turn on a newly received card",
+            "age_limit": "minimum or maximum age to use the service",
+            "apple_pay_or_google_pay": "adding the card to a mobile wallet",
+            "atm_support": "which ATMs the card works at",
+            "automatic_top_up": "automatically topping up the balance",
+            "balance_not_updated_after_bank_transfer": "a bank transfer is missing from the balance",
+            "balance_not_updated_after_cheque_or_cash_deposit": "a deposit is missing from the balance",
+            "beneficiary_not_allowed": "cannot add a payment recipient",
+            "cancel_transfer": "wants to cancel a transfer already sent",
+            "card_about_to_expire": "the card is close to its expiry date",
+            "card_acceptance": "where the card is accepted",
+            "card_arrival": "asking when a new card will arrive",
+            "card_delivery_estimate": "asking how long delivery will take",
+            "card_linking": "linking a card to the account",
+            "card_not_working": "the card is declined or not working",
+            "card_payment_fee_charged": "an unexpected fee was charged on a card payment",
+            "card_payment_not_recognised": "a card payment the customer does not recognise",
+            "card_payment_wrong_exchange_rate": "the exchange rate used was wrong",
+            "card_swallowed": "the ATM kept the card",
+            "cash_withdrawal_charge": "an unexpected charge for a cash withdrawal",
+            "cash_withdrawal_not_recognised": "a cash withdrawal the customer does not recognise",
+            "change_pin": "wants to change the PIN",
+            "compromised_card": "the card may have been compromised",
+            "contactless_not_working": "contactless payment is not working",
+            "country_support": "which countries the service supports",
+            "declined_card_payment": "a card payment was declined",
+            "declined_cash_withdrawal": "a cash withdrawal was declined",
+            "declined_transfer": "a transfer was declined",
+            "direct_debit_payment_not_recognised": "a direct debit the customer does not recognise",
+            "disposable_card_limits": "limits on a disposable virtual card",
+            "edit_personal_details": "wants to edit name, address or other personal details",
+            "exchange_charge": "a fee charged for currency exchange",
+            "exchange_rate": "asking what the current exchange rate is",
+            "exchange_via_app": "exchanging currency inside the app",
+            "extra_charge_on_statement": "an unexplained extra charge on the statement",
+            "failed_transfer": "a transfer failed",
+            "fiat_currency_support": "which regular currencies are supported",
+            "get_disposable_virtual_card": "wants a disposable virtual card",
+            "get_physical_card": "wants a physical card",
+            "getting_spare_card": "wants a spare or backup card"
+          }
+        }
+      },
+      "options": null,
+      "choices": {
+        "intent": "declined_cash_withdrawal"
+      },
+      "usage": {
+        "input_tokens": 194,
+        "output_tokens": 0,
+        "state_tokens": 19,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": [],
+        "options": {
+          "intent": {
+            "total": 40,
+            "distinct": 36,
+            "tokens_per_option": 4
+          }
+        }
+      }
+    }
+  ],
+  "warnings": [],
+  "result": {
+    "model": "laya-rl-agent",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "declined_cash_withdrawal",
+        "probabilities": {
+          "activate_my_card": 0.0,
+          "age_limit": 0.0,
+          "apple_pay_or_google_pay": 0.0,
+          "atm_support": 0.0001,
+          "automatic_top_up": 0.0,
+          "balance_not_updated_after_bank_transfer": 0.0,
+          "balance_not_updated_after_cheque_or_cash_deposit": 0.0,
+          "beneficiary_not_allowed": 0.0,
+          "cancel_transfer": 0.0,
+          "card_about_to_expire": 0.0,
+          "card_acceptance": 0.0,
+          "card_arrival": 0.0,
+          "card_delivery_estimate": 0.0,
+          "card_linking": 0.0,
+          "card_not_working": 0.0,
+          "card_payment_fee_charged": 0.0,
+          "card_payment_not_recognised": 0.0,
+          "card_payment_wrong_exchange_rate": 0.0,
+          "card_swallowed": 0.0,
+          "cash_withdrawal_charge": 0.0001,
+          "cash_withdrawal_not_recognised": 0.0003,
+          "change_pin": 0.0,
+          "compromised_card": 0.0,
+          "contactless_not_working": 0.0,
+          "country_support": 0.0,
+          "declined_card_payment": 0.0,
+          "declined_cash_withdrawal": 0.9987,
+          "declined_transfer": 0.0007,
+          "direct_debit_payment_not_recognised": 0.0,
+          "disposable_card_limits": 0.0,
+          "edit_personal_details": 0.0,
+          "exchange_charge": 0.0,
+          "exchange_rate": 0.0,
+          "exchange_via_app": 0.0,
+          "extra_charge_on_statement": 0.0,
+          "failed_transfer": 0.0001,
+          "fiat_currency_support": 0.0,
+          "get_disposable_virtual_card": 0.0,
+          "get_physical_card": 0.0,
+          "getting_spare_card": 0.0
+        },
+        "confidence": 0.9969,
+        "answer_confidence": 0.9987,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 194,
+      "output_tokens": 0,
+      "state_tokens": 19,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": [],
+      "options": {
+        "intent": {
+          "total": 40,
+          "distinct": 36,
+          "tokens_per_option": 4
+        }
+      }
+    },
+    "tournament": {
+      "intent": {
+        "labels": [
+          "activate_my_card",
+          "age_limit",
+          "apple_pay_or_google_pay",
+          "atm_support",
+          "automatic_top_up",
+          "balance_not_updated_after_bank_transfer",
+          "balance_not_updated_after_cheque_or_cash_deposit",
+          "beneficiary_not_allowed",
+          "cancel_transfer",
+          "card_about_to_expire",
+          "card_acceptance",
+          "card_arrival",
+          "card_delivery_estimate",
+          "card_linking",
+          "card_not_working",
+          "card_payment_fee_charged",
+          "card_payment_not_recognised",
+          "card_payment_wrong_exchange_rate",
+          "card_swallowed",
+          "cash_withdrawal_charge",
+          "cash_withdrawal_not_recognised",
+          "change_pin",
+          "compromised_card",
+          "contactless_not_working",
+          "country_support",
+          "declined_card_payment",
+          "declined_cash_withdrawal",
+          "declined_transfer",
+          "direct_debit_payment_not_recognised",
+          "disposable_card_limits",
+          "edit_personal_details",
+          "exchange_charge",
+          "exchange_rate",
+          "exchange_via_app",
+          "extra_charge_on_statement",
+          "failed_transfer",
+          "fiat_currency_support",
+          "get_disposable_virtual_card",
+          "get_physical_card",
+          "getting_spare_card"
+        ],
+        "n": 40,
+        "rounds": 0
+      }
+    }
+  }
+}

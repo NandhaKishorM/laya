@@ -18,6 +18,7 @@ use crate::answers::{
 };
 use crate::batch_prediction::{self, BatchOptions};
 use crate::calibration::Calibration;
+use crate::calibration_file::{BinningMap, CalibrationFile};
 use crate::collator::{CollatedBatch, Collator, SequenceItem};
 use crate::confidence::apply_confidence_gate;
 use crate::error::{LayaError, Result};
@@ -27,7 +28,7 @@ use crate::laya_options::{LayaCheckpoint, LayaExecutionProvider, LayaOptions};
 use crate::long_prediction::{self, LongOptions};
 use crate::model_artifacts::{ModelArtifacts, ModelPaths};
 use crate::predict_options::PredictOptions;
-use crate::questions::{Question, QuestionSet};
+use crate::questions::{Question, QuestionSet, QuestionType};
 use crate::sequence_builder::SequenceBuilder;
 use crate::tokenization::{HfTokenizer, LayaTokenizer};
 use indexmap::IndexMap;
@@ -111,6 +112,8 @@ pub struct LayaEngine {
     deferred: Deferred,
     /// Python's `self.lang_temperatures`: the resolved per-language overrides.
     lang_temperatures: LangTemperatures,
+    /// Python's `self.binning_map`: the histogram-binning map a calibration file installed, if any.
+    binning_map: Option<BinningMap>,
 }
 
 /// What one call may change about how its states are scored: Python's `lang`, `max_len` and
@@ -134,7 +137,9 @@ impl LayaEngine {
     #[track_caller]
     pub fn create(options: LayaOptions) -> Result<Self> {
         let artifacts = ModelArtifacts::resolve(&options)?;
-        let (config, mut deferred) =
+        // `resolve` has already verified `expected_sha256` (else `LAYA_SHA256_DIGESTS`), before
+        // it looked for the config or the tokenizer: nothing below runs on an unverified file.
+        let (mut config, mut deferred) =
             LayaConfig::load_deferred(&artifacts.config_path, &options.lang_temperatures)?;
         let lang_temperatures = std::mem::take(&mut deferred.lang_temperatures);
 
@@ -163,6 +168,23 @@ impl LayaEngine {
             artifacts.tokenizer_config_path.as_deref(),
         )?;
 
+        // Python reads the calibration file last in `ONNXAgent.__init__`, after the checkpoint's
+        // temperatures and the lang table, and `if calibration:` skips an empty path. A file's
+        // temperatures replace both of the checkpoint's maps and make the list three long.
+        let binning_map = match options
+            .calibration
+            .as_deref()
+            .filter(|path| !path.as_os_str().is_empty())
+        {
+            Some(path) => {
+                let file = CalibrationFile::load(path)?;
+                file.install_temperatures(&mut config);
+                deferred.short_temperature = None;
+                file.binning_map
+            }
+            None => None,
+        };
+
         Ok(LayaEngine {
             sessions: Mutex::new(sessions),
             tokenizer: Box::new(tokenizer),
@@ -170,6 +192,7 @@ impl LayaEngine {
             artifacts,
             deferred,
             lang_temperatures,
+            binning_map,
         })
     }
 
@@ -183,7 +206,14 @@ impl LayaEngine {
         })
     }
 
-    /// The loaded checkpoint's configuration.
+    /// The histogram-binning map a calibration file installed ([`LayaOptions::calibration`]);
+    /// `None` when there was no file or the file held no `binning_map`.
+    pub fn binning_map(&self) -> Option<&BinningMap> {
+        self.binning_map.as_ref()
+    }
+
+    /// The loaded checkpoint's configuration. With a calibration file its `temperature` fields are
+    /// the file's, as Python's `agent.temperature` is after `load_calibration`.
     pub fn config(&self) -> &LayaConfig {
         &self.config
     }
@@ -203,6 +233,12 @@ impl LayaEngine {
     /// where no checkpoint was inferred.
     pub fn checkpoint(&self) -> Option<LayaCheckpoint> {
         self.artifacts.checkpoint
+    }
+
+    /// The Hub revision this engine was loaded for: the pin in force when the artifacts came from
+    /// the cache or a download, `None` otherwise. See [`ModelArtifacts::revision`].
+    pub fn revision(&self) -> Option<&str> {
+        self.artifacts.revision.as_deref()
     }
 
     /// Answer every question in `questions` about `state`.
@@ -327,6 +363,7 @@ impl LayaEngine {
         // Python checks the state before the aggregate mode.
         refuse_null_states(std::slice::from_ref(&state))?;
         options.check_aggregate()?;
+        questions.check()?;
         let tokenizer = self.tokenizer.as_ref();
         let explicit_window = options.window.unwrap_or(0);
         let (budget, warnings) = long_prediction::window_budget_warned(
@@ -427,6 +464,7 @@ impl LayaEngine {
         if ids.is_empty() {
             return Ok(self.empty_results(states.len()));
         }
+        questions.check()?;
         let params = self.call_params(
             options.lang.as_deref(),
             options.max_len,
@@ -474,6 +512,7 @@ impl LayaEngine {
         if ids.is_empty() {
             return Ok(self.empty_results(states.len()));
         }
+        questions.check()?;
         let encoded = states
             .iter()
             .map(|state| self.encode_state(state, &ids, questions, params))
@@ -617,8 +656,9 @@ impl LayaEngine {
                     ));
                 }
                 // A language in the table replaces both the bucket map and the per-type
-                // temperature, with no fallback to the checkpoint's bucket map; there is no
-                // histogram binning in this port to skip for it.
+                // temperature, with no fallback to the checkpoint's bucket map, and its
+                // `answer_confidence` is not binned: the map was fitted for the checkpoint's.
+                let lang_override = self.lang_temperatures.for_lang(params.lang).is_some();
                 let temperature = self
                     .lang_temperatures
                     .temperature_for(params.lang, question.question_type(), k)
@@ -627,7 +667,11 @@ impl LayaEngine {
                     });
                 let row_start = row * batch.marker_count;
                 let row_logits = &output.logits[row_start..row_start + batch.marker_count];
-                let p = Calibration::probabilities(row_logits, k, temperature);
+                // The row comes back in slot order; everything below indexes by option.
+                let p = Calibration::unpermute_probs(
+                    Calibration::probabilities(row_logits, k, temperature),
+                    question.option_order(),
+                );
 
                 let act_start = row * n_act;
                 let act_row = &output.act_logits[act_start..act_start + n_act];
@@ -635,7 +679,15 @@ impl LayaEngine {
                     act_probability: Calibration::round4(Calibration::softmax(act_row)[0]),
                 };
 
-                answers.insert(id.clone(), build_answer(question, &p, action));
+                let answer_confidence = decoded_answer_confidence(
+                    &p,
+                    self.binning_map.as_ref().filter(|_| !lang_override),
+                    question.question_type(),
+                )?;
+                answers.insert(
+                    id.clone(),
+                    assemble_answer(question, &p, action, answer_confidence),
+                );
             }
 
             // This state's own non-padding tokens; with one state it equals `batch.input_tokens`.
@@ -905,12 +957,44 @@ const _: fn() = || {
     assert_send_sync::<LayaEngine>();
 };
 
+/// The `answer_confidence` of one decoded question, rounded to four places. `p` is the
+/// temperature-scaled distribution over the question's options (`k = p.len()`). With a binning map
+/// that has entries, the unrounded `max(p)` is recalibrated for the question's bucket first and
+/// only then rounded, as Python's `_decode_answers` does; a lang override passes `None` because the
+/// map was fitted for the checkpoint's temperatures, not the language's.
+fn decoded_answer_confidence(
+    p: &[f64],
+    binning: Option<&BinningMap>,
+    qtype: QuestionType,
+) -> Result<f64> {
+    let raw = Calibration::answer_confidence(p, p.len());
+    Ok(Calibration::round4(match binning {
+        Some(map) if !map.is_empty() => {
+            map.apply(raw, &Calibration::temp_bucket(qtype, p.len()))?
+        }
+        _ => raw,
+    }))
+}
+
+/// [`assemble_answer`] with the temperature-scaled `answer_confidence` and no binning.
+#[cfg(test)]
 fn build_answer(question: &Question, p: &[f64], action: ActionInfo) -> Answer {
+    let answer_confidence = Calibration::round4(Calibration::answer_confidence(p, p.len()));
+    assemble_answer(question, p, action, answer_confidence)
+}
+
+/// One decoded answer. `answer_confidence` arrives already rounded: Calibrated on every question
+/// type alike (`max(p)`), unlike `confidence`; it ports `answer_confidence` from `laya/common.py`
+/// (laya 0.3.21), see `Answer::answer_confidence`, and is the one value a calibration file's
+/// binning map recalibrates.
+fn assemble_answer(
+    question: &Question,
+    p: &[f64],
+    action: ActionInfo,
+    answer_confidence: f64,
+) -> Answer {
     let k = p.len();
     let confidence = Calibration::round4(Calibration::confidence_from_probs(p, k));
-    // Calibrated on every question type alike (`max(p)`), unlike `confidence` above. Ports
-    // `answer_confidence` from `laya/common.py` (laya 0.3.21); see `Answer::answer_confidence`.
-    let answer_confidence = Calibration::round4(Calibration::answer_confidence(p, k));
 
     match question {
         Question::Choice(choice) => {
@@ -1254,6 +1338,83 @@ mod tests {
 
         assert_eq!(answer.answer_confidence(), answer.confidence());
         assert_eq!(0.7, answer.answer_confidence());
+    }
+
+    fn binning(entries: &str) -> BinningMap {
+        let payload = format!(r#"{{"temperature": [1, 1, 1], "binning_map": {{{entries}}}}}"#);
+        CalibrationFile::parse_probe(&payload)
+            .1
+            .unwrap()
+            .binning_map
+            .unwrap()
+    }
+
+    #[test]
+    fn binning_recalibrates_the_unrounded_top_probability_then_rounds() {
+        // Ten bins of 0.1: 0.59999996 is in bin 5, though it rounds to 0.6, which is in bin 6.
+        let map = binning(
+            r#""choice:2": {"bins": 10, "values": [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95]}"#,
+        );
+        let p = [0.59999996, 0.40000004];
+        let binned = decoded_answer_confidence(&p, Some(&map), QuestionType::Choice).unwrap();
+        assert_eq!(0.55, binned);
+        // Without a map, or with an empty one (Python's falsy `{}`), it is round(max(p), 4).
+        let plain = decoded_answer_confidence(&p, None, QuestionType::Choice).unwrap();
+        assert_eq!(0.6, plain);
+        let empty = BinningMap::default();
+        assert_eq!(
+            0.6,
+            decoded_answer_confidence(&p, Some(&empty), QuestionType::Choice).unwrap()
+        );
+        // A bucket the map was not fitted for keeps the temperature-scaled value, rounded.
+        assert_eq!(
+            0.6,
+            decoded_answer_confidence(&p, Some(&map), QuestionType::Noul).unwrap()
+        );
+        assert_eq!(
+            0.6,
+            decoded_answer_confidence(&p, Some(&map), QuestionType::Score).unwrap()
+        );
+        // The bucket follows the question type and the option count.
+        let by_type = binning(
+            r#""score:3-5": {"bins": 1, "values": [0.5]}, "noul:2": {"bins": 1, "values": [0.25]}"#,
+        );
+        let three = [0.5, 0.3, 0.2];
+        assert_eq!(
+            0.5,
+            decoded_answer_confidence(&three, Some(&by_type), QuestionType::Score).unwrap()
+        );
+        assert_eq!(
+            0.25,
+            decoded_answer_confidence(&p, Some(&by_type), QuestionType::Noul).unwrap()
+        );
+        assert_eq!(
+            0.5,
+            decoded_answer_confidence(&three, Some(&by_type), QuestionType::Choice).unwrap()
+        );
+    }
+
+    #[test]
+    fn a_binned_answer_confidence_leaves_every_other_field_alone() {
+        let question = Question::choice(
+            "h",
+            [("a", Value::Null), ("b", Value::Null), ("c", Value::Null)],
+        )
+        .unwrap();
+        let p = [0.7, 0.2, 0.1];
+        let action = ActionInfo {
+            act_probability: 1.0,
+        };
+        let plain = build_answer(&question, &p, action);
+        let map = binning(r#""choice:3-5": {"bins": 4, "values": [0.1, 0.4, 0.6, 0.9]}"#);
+        let binned = decoded_answer_confidence(&p, Some(&map), QuestionType::Choice).unwrap();
+        let answer = assemble_answer(&question, &p, action, binned);
+        assert_eq!(0.6, answer.answer_confidence());
+        assert_eq!(plain.confidence(), answer.confidence());
+        assert_eq!(0.7, plain.answer_confidence());
+        let (before, after) = (plain.as_choice().unwrap(), answer.as_choice().unwrap());
+        assert_eq!(before.choice, after.choice);
+        assert_eq!(before.probabilities, after.probabilities);
     }
 
     #[test]

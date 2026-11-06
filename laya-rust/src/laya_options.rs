@@ -1,6 +1,7 @@
 //! Checkpoint selection and engine configuration. Ports the options `laya.load` / `laya.Agent`
 //! accept in `laya/agent.py`.
 
+use indexmap::IndexMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -108,6 +109,27 @@ pub struct LayaOptions {
     /// [`crate::lang_temperatures::resolve_lang_temperatures`] for the rules and the errors. A
     /// router passes it to every engine it builds.
     pub lang_temperatures: crate::lang_temperatures::LangTemperatureTable,
+    /// Path of a calibration file, Python's `calibration=` constructor argument: the JSON map
+    /// `Agent.save_calibration` writes, read onto the engine after the checkpoint's own temperatures
+    /// and the `lang_temperatures` table. Its `temperature` and `temperature_by_options` replace the
+    /// checkpoint's (clamped, with a warning for what the clamp changed) and its `binning_map`, when it
+    /// has one, recalibrates `answer_confidence` (see [`crate::calibration_file`]). `None`, like an
+    /// empty path, loads nothing. Construction-time only: there is no per-call form. A router passes
+    /// it to every engine it builds. A version 2 file loads as Python loads it, but the warning for a
+    /// file fitted to another checkpoint is not ported (the engine has no `model_id_or_path`).
+    pub calibration: Option<PathBuf>,
+    /// Hub revision (commit SHA, branch or tag) to download, or the word `reviewed` for the pinned
+    /// commit of [`Self::hugging_face_repo`]. Ports `revision=`: `None` or empty falls back to the
+    /// `LAYA_REVISION` environment variable, a blank value suppresses it, and nothing at all keeps
+    /// the Hub default. See [`crate::revisions::resolve_revision`]. A pinned download is cached
+    /// under `<cache>/<revision>/<checkpoint>`; an unpinned one keeps `<cache>/<checkpoint>`.
+    pub revision: Option<String>,
+    /// SHA-256 digests (`{path relative to the artifact directory: hex digest}`) checked before
+    /// the config, tokenizer or model is parsed. Ports `expected_sha256=`: `None` reads
+    /// `LAYA_SHA256_DIGESTS`, an empty map masks that variable. The key `onnx` (or `onnx_path`)
+    /// names the fused `model.onnx` and is refused on a split checkpoint. See
+    /// [`crate::revisions::verify_digests`].
+    pub expected_sha256: Option<IndexMap<String, String>>,
 }
 
 impl std::fmt::Debug for LayaOptions {
@@ -128,6 +150,9 @@ impl std::fmt::Debug for LayaOptions {
             .field("cache_directory", &self.cache_directory)
             .field("download_progress", &self.download_progress.is_some())
             .field("lang_temperatures", &self.lang_temperatures)
+            .field("calibration", &self.calibration)
+            .field("revision", &self.revision)
+            .field("expected_sha256", &self.expected_sha256)
             .finish()
     }
 }
@@ -147,6 +172,9 @@ impl Default for LayaOptions {
             cache_directory: None,
             download_progress: None,
             lang_temperatures: Vec::new(),
+            calibration: None,
+            revision: None,
+            expected_sha256: None,
         }
     }
 }
@@ -168,6 +196,11 @@ impl LayaOptions {
         self.hugging_face_subfolder
             .clone()
             .unwrap_or_else(|| self.checkpoint.subdir().to_string())
+    }
+
+    /// Set [`Self::calibration`]: the calibration file the engine reads at construction.
+    pub fn set_calibration(&mut self, path: impl Into<PathBuf>) {
+        self.calibration = Some(path.into());
     }
 
     /// Override the HuggingFace subfolder. Prefer setting `checkpoint` instead unless loading a

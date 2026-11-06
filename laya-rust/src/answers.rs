@@ -3,7 +3,7 @@
 
 use crate::confidence::{self, Gate};
 use crate::laya_router::RouteDecision;
-use crate::laya_shortlist::ShortlistInfo;
+use crate::laya_shortlist::{ShortlistInfo, TournamentInfo};
 use crate::questions::QuestionType;
 use indexmap::IndexMap;
 use serde_json::Value;
@@ -367,6 +367,7 @@ pub struct LayaResult {
     by_id: HashMap<String, Answer>,
     routing: Option<RouteDecision>,
     shortlist: Option<IndexMap<String, ShortlistInfo>>,
+    tournament: Option<IndexMap<String, TournamentInfo>>,
     state_usage: Option<StateUsage>,
     scan_usage: Option<ScanUsage>,
 }
@@ -390,6 +391,7 @@ impl LayaResult {
             by_id,
             routing: None,
             shortlist: None,
+            tournament: None,
             state_usage: None,
             scan_usage: None,
         }
@@ -409,6 +411,13 @@ impl LayaResult {
         self
     }
 
+    /// Attach tournament metadata, one entry per choice question (`LayaShortlist::
+    /// predict_tournament` calls this on the final call's result before returning it).
+    pub fn with_tournament(mut self, tournament: IndexMap<String, TournamentInfo>) -> Self {
+        self.tournament = Some(tournament);
+        self
+    }
+
     /// The routing decision that selected this result's checkpoint, when this result came from
     /// [`crate::laya_router::LayaRouter::predict`].
     pub fn routing(&self) -> Option<&RouteDecision> {
@@ -420,6 +429,13 @@ impl LayaResult {
     /// through a router carries both this and [`Self::routing`].
     pub fn shortlist(&self) -> Option<&IndexMap<String, ShortlistInfo>> {
         self.shortlist.as_ref()
+    }
+
+    /// Per-question tournament metadata (Python's `result["tournament"]`), when this result came
+    /// from [`crate::laya_shortlist::LayaShortlist::predict_tournament`]. It has an entry for each
+    /// choice question and none for a question of another type.
+    pub fn tournament(&self) -> Option<&IndexMap<String, TournamentInfo>> {
+        self.tournament.as_ref()
     }
 
     /// The model identifier, matching Python's `"laya-rl-agent"`-style `model_name`.

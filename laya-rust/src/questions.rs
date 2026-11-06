@@ -48,6 +48,8 @@ impl TryFrom<i64> for QuestionType {
 pub struct ChoiceQuestion {
     instructions: Value,
     options: Vec<(String, Value)>,
+    option_order: Option<Vec<i64>>,
+    labels: Option<Value>,
 }
 
 impl ChoiceQuestion {
@@ -73,6 +75,8 @@ impl ChoiceQuestion {
 pub struct ScoreQuestion {
     instructions: Value,
     levels: Vec<Value>,
+    option_order: Option<Vec<i64>>,
+    labels: Option<Value>,
 }
 
 impl ScoreQuestion {
@@ -93,6 +97,8 @@ pub struct NoulQuestion {
     instructions: Value,
     if_false: Value,
     if_true: Value,
+    option_order: Option<Vec<i64>>,
+    labels: Option<Value>,
 }
 
 impl NoulQuestion {
@@ -200,6 +206,8 @@ impl Question {
         Ok(Question::Choice(ChoiceQuestion {
             instructions: instructions.into(),
             options: list,
+            option_order: None,
+            labels: None,
         }))
     }
 
@@ -230,6 +238,8 @@ impl Question {
         Ok(Question::Score(ScoreQuestion {
             instructions: instructions.into(),
             levels: list,
+            option_order: None,
+            labels: None,
         }))
     }
 
@@ -245,8 +255,156 @@ impl Question {
             instructions: instructions.into(),
             if_false: if_false.into(),
             if_true: if_true.into(),
+            option_order: None,
+            labels: None,
         })
     }
+
+    /// Show the options to the model in a different order. Slot `s` shows option `order[s]`; the
+    /// answer is still reported by option, so the probabilities come back unpermuted. `order`
+    /// must be a permutation of `0..n`, one slot per option (`n` is the number of options of a
+    /// choice, the number of levels of a score, and 2 for a noul). Ports a question's
+    /// `option_order` (`laya/agent.py` `_check_question`).
+    ///
+    /// Like Python, an order that is not such a permutation is not rejected here: the question
+    /// is refused when it is predicted, with [`LayaError::InvalidQuestion`].
+    pub fn with_option_order(mut self, order: impl IntoIterator<Item = i64>) -> Question {
+        let order = Some(order.into_iter().collect());
+        match &mut self {
+            Question::Choice(q) => q.option_order = order,
+            Question::Score(q) => q.option_order = order,
+            Question::Noul(q) => q.option_order = order,
+        }
+        self
+    }
+
+    /// Name the two options of a noul question, instead of "false" / "true". `labels` is the
+    /// JSON object Python takes: `{"false": ..., "true": ...}`, exactly those two keys, each a
+    /// distinct non-empty string once stripped of whitespace. The model reads
+    /// `"<label>: <criterion or default text>"`; the answer is unchanged (the probability of
+    /// true). Ports a question's `labels` (`laya/common.py` `_resolve_noul_labels`).
+    ///
+    /// Like Python, labels that are not valid, or that sit on a question that is not a noul,
+    /// are not rejected here: the question is refused when it is predicted, with
+    /// [`LayaError::InvalidQuestion`]. `Value::Null` means the defaults.
+    pub fn with_labels(mut self, labels: impl Into<Value>) -> Question {
+        let labels = Some(labels.into());
+        match &mut self {
+            Question::Choice(q) => q.labels = labels,
+            Question::Score(q) => q.labels = labels,
+            Question::Noul(q) => q.labels = labels,
+        }
+        self
+    }
+
+    /// [`Question::with_labels`] for the usual case: the false label and the true label.
+    pub fn with_noul_labels(self, false_label: &str, true_label: &str) -> Question {
+        self.with_labels(serde_json::json!({ "false": false_label, "true": true_label }))
+    }
+
+    /// The labels set with [`Question::with_labels`], if any.
+    pub fn labels(&self) -> Option<&Value> {
+        match self {
+            Question::Choice(q) => q.labels.as_ref(),
+            Question::Score(q) => q.labels.as_ref(),
+            Question::Noul(q) => q.labels.as_ref(),
+        }
+    }
+
+    /// The option order set with [`Question::with_option_order`], if any.
+    pub fn option_order(&self) -> Option<&[i64]> {
+        match self {
+            Question::Choice(q) => q.option_order.as_deref(),
+            Question::Score(q) => q.option_order.as_deref(),
+            Question::Noul(q) => q.option_order.as_deref(),
+        }
+    }
+
+    /// Python's `_option_count`: how many options this question renders to.
+    fn option_count(&self) -> usize {
+        match self {
+            Question::Choice(q) => q.options.len(),
+            Question::Score(q) => q.levels.len(),
+            Question::Noul(_) => 2,
+        }
+    }
+
+    /// Ports the rules of `Agent._check_question` that can fail after construction:
+    /// `option_order`, then `labels`, with Python's texts.
+    pub(crate) fn check_question(&self, id: &str) -> Result<()> {
+        self.check_option_order(id)?;
+        if self.labels().is_none() {
+            return Ok(());
+        }
+        let prefix = crate::laya_router::python_repr_str(id);
+        if !matches!(self, Question::Noul(_)) {
+            return Err(LayaError::InvalidQuestion(format!(
+                "question {prefix}: 'labels' is only supported for noul questions"
+            )));
+        }
+        resolve_noul_labels(self.labels())
+            .map(|_| ())
+            .map_err(|e| LayaError::InvalidQuestion(format!("question {prefix}: {e}")))
+    }
+
+    /// Ports the `option_order` rule of `Agent._check_question`, with its text.
+    pub(crate) fn check_option_order(&self, id: &str) -> Result<()> {
+        let Some(order) = self.option_order() else {
+            return Ok(());
+        };
+        let n = self.option_count();
+        let mut seen = vec![false; n];
+        let permutation = order.len() == n
+            && order.iter().all(|&i| {
+                usize::try_from(i)
+                    .ok()
+                    .filter(|&i| i < n && !std::mem::replace(&mut seen[i], true))
+                    .is_some()
+            });
+        if permutation {
+            return Ok(());
+        }
+        let shown: Vec<String> = order.iter().map(i64::to_string).collect();
+        Err(LayaError::InvalidQuestion(format!(
+            "question {}: 'option_order' must be a permutation of range({n}) -- one slot per \
+             option, each option once -- got [{}]",
+            crate::laya_router::python_repr_str(id),
+            shown.join(", ")
+        )))
+    }
+}
+
+const NOUL_LABELS_MESSAGE: &str =
+    "noul labels must map exactly 'false' and 'true' to distinct non-empty strings";
+
+/// Python's `str.strip()`: `char::is_whitespace` plus U+001C..U+001F, which Python also counts.
+fn python_strip(text: &str) -> &str {
+    text.trim_matches(|c: char| c.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(&c))
+}
+
+/// Ports `_resolve_noul_labels` (`laya/common.py`): the (false, true) labels, stripped. `None` and
+/// `Value::Null` give the defaults. The error is Python's `ValueError` text.
+pub(crate) fn resolve_noul_labels(
+    labels: Option<&Value>,
+) -> std::result::Result<(String, String), &'static str> {
+    let labels = match labels {
+        None | Some(Value::Null) => return Ok(("false".to_string(), "true".to_string())),
+        Some(labels) => labels,
+    };
+    let Value::Object(map) = labels else {
+        return Err(NOUL_LABELS_MESSAGE);
+    };
+    if map.len() != 2 || !map.contains_key("false") || !map.contains_key("true") {
+        return Err(NOUL_LABELS_MESSAGE);
+    }
+    let (Value::String(f), Value::String(t)) = (&map["false"], &map["true"]) else {
+        return Err(NOUL_LABELS_MESSAGE);
+    };
+    let (f, t) = (python_strip(f), python_strip(t));
+    if f.is_empty() || t.is_empty() || f == t {
+        return Err(NOUL_LABELS_MESSAGE);
+    }
+    Ok((f.to_string(), t.to_string()))
 }
 
 /// An insertion-ordered set of question id to [`Question`], answered in one batch.
@@ -301,6 +459,15 @@ impl QuestionSet {
         self.map.get(id)
     }
 
+    /// Ports the per-question validation `predict_batch` and `predict_long` run first
+    /// (`Agent._check_question`), in question order; only the `option_order` and `labels` rules can fail here,
+    /// the rest being refused when the question is built.
+    pub(crate) fn check(&self) -> Result<()> {
+        self.map
+            .iter()
+            .try_for_each(|(id, question)| question.check_question(id))
+    }
+
     /// Whether the set contains this id.
     pub fn contains_id(&self, id: &str) -> bool {
         self.map.contains_key(id)
@@ -352,6 +519,20 @@ impl QuestionSet {
                         q.if_true.clone(),
                     ]),
                 };
+                let body = match (body, question.option_order()) {
+                    (Value::Array(mut parts), Some(order)) => {
+                        parts.push(Value::from(order.to_vec()));
+                        Value::Array(parts)
+                    }
+                    (body, _) => body,
+                };
+                let body = match (body, question.labels()) {
+                    (Value::Array(mut parts), Some(labels)) => {
+                        parts.push(labels.clone());
+                        Value::Array(parts)
+                    }
+                    (body, _) => body,
+                };
                 Value::Array(vec![Value::from(id.as_str()), body])
             })
             .collect();
@@ -367,5 +548,215 @@ impl std::ops::Index<&str> for QuestionSet {
         self.map
             .get(id)
             .unwrap_or_else(|| panic!("no question with id '{id}'"))
+    }
+}
+
+#[cfg(test)]
+mod option_order_tests {
+    use super::*;
+
+    fn three() -> Question {
+        Question::choice_labels("h", ["a", "b", "c"]).unwrap()
+    }
+
+    fn message(result: Result<()>) -> String {
+        match result {
+            Err(LayaError::InvalidQuestion(text)) => text,
+            other => panic!("expected InvalidQuestion, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_permutation_passes_for_each_question_type() {
+        assert!(
+            three()
+                .with_option_order([2, 0, 1])
+                .check_option_order("q")
+                .is_ok()
+        );
+        assert!(
+            Question::score("h", ["x", "y"])
+                .unwrap()
+                .with_option_order([1, 0])
+                .check_option_order("q")
+                .is_ok()
+        );
+        assert!(
+            Question::noul("h", Value::Null, Value::Null)
+                .with_option_order([1, 0])
+                .check_option_order("q")
+                .is_ok()
+        );
+        assert!(three().check_option_order("q").is_ok());
+    }
+
+    #[test]
+    fn a_non_permutation_is_refused_with_pythons_text_and_the_question_id() {
+        let text = message(
+            three()
+                .with_option_order([0, 0, 1])
+                .check_option_order("it's"),
+        );
+        assert_eq!(
+            "question \"it's\": 'option_order' must be a permutation of range(3) -- one slot per \
+             option, each option once -- got [0, 0, 1]",
+            text
+        );
+        let text = message(
+            Question::noul("h", Value::Null, Value::Null)
+                .with_option_order([0])
+                .check_option_order("q"),
+        );
+        assert!(text.ends_with("range(2) -- one slot per option, each option once -- got [0]"));
+        let text = message(
+            Question::score("h", ["x", "y"])
+                .unwrap()
+                .with_option_order([-1, 0])
+                .check_option_order("q"),
+        );
+        assert!(text.ends_with("range(2) -- one slot per option, each option once -- got [-1, 0]"));
+        let text = message(three().with_option_order([]).check_option_order("q"));
+        assert!(text.ends_with("range(3) -- one slot per option, each option once -- got []"));
+        let text = message(three().with_option_order([0, 1, 3]).check_option_order("q"));
+        assert!(text.ends_with("got [0, 1, 3]"));
+    }
+
+    #[test]
+    fn the_set_check_reports_the_first_bad_question_in_order() {
+        let set = QuestionSet::new()
+            .with("ok", three().with_option_order([1, 2, 0]))
+            .unwrap()
+            .with("bad1", three().with_option_order([0, 1]))
+            .unwrap()
+            .with("bad2", three().with_option_order([9, 9, 9]))
+            .unwrap();
+        assert!(message(set.check()).starts_with("question 'bad1':"));
+        assert!(
+            QuestionSet::new()
+                .with("ok", three())
+                .unwrap()
+                .check()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn the_schema_key_tells_two_orders_and_no_order_apart() {
+        let key = |q: Question| QuestionSet::new().with("q", q).unwrap().schema_key();
+        let plain = key(three());
+        let first = key(three().with_option_order([0, 1, 2]));
+        let second = key(three().with_option_order([2, 1, 0]));
+        assert_ne!(plain, first);
+        assert_ne!(first, second);
+        assert_eq!(first, key(three().with_option_order([0, 1, 2])));
+        let noul = Question::noul("h", Value::Null, Value::Null);
+        assert_ne!(key(noul.clone()), key(noul.with_option_order([1, 0])));
+    }
+}
+
+#[cfg(test)]
+mod labels_tests {
+    use super::*;
+    use serde_json::json;
+
+    const TEXT: &str =
+        "noul labels must map exactly 'false' and 'true' to distinct non-empty strings";
+
+    fn noul() -> Question {
+        Question::noul("h", Value::Null, Value::Null)
+    }
+
+    fn message(result: Result<()>) -> String {
+        result.unwrap_err().to_string()
+    }
+
+    #[test]
+    fn valid_labels_are_stripped_and_the_defaults_apply_without_labels() {
+        assert_eq!(
+            ("no".to_string(), "yes".to_string()),
+            resolve_noul_labels(Some(&json!({"false": " no\t", "true": "\nyes\u{1f}"}))).unwrap()
+        );
+        assert_eq!(
+            ("false".to_string(), "true".to_string()),
+            resolve_noul_labels(None).unwrap()
+        );
+        assert_eq!(
+            ("false".to_string(), "true".to_string()),
+            resolve_noul_labels(Some(&Value::Null)).unwrap()
+        );
+        assert!(
+            noul()
+                .with_noul_labels("no", "yes")
+                .check_question("q")
+                .is_ok()
+        );
+        // A null value in the labels is the default, as in Python.
+        assert!(noul().with_labels(Value::Null).check_question("q").is_ok());
+    }
+
+    #[test]
+    fn invalid_labels_are_refused_with_pythons_text_and_the_question_id() {
+        for labels in [
+            json!({"false": "no"}),
+            json!({"false": "no", "true": "yes", "maybe": "m"}),
+            json!({"False": "no", "true": "yes"}),
+            json!(["no", "yes"]),
+            json!("no/yes"),
+            json!({"false": 0, "true": "yes"}),
+            json!({"false": "no", "true": null}),
+            json!({"false": "  ", "true": "yes"}),
+            json!({"false": "no", "true": ""}),
+            json!({"false": "same", "true": " same "}),
+        ] {
+            assert_eq!(
+                format!("question \"it's\": {TEXT}"),
+                message(noul().with_labels(labels.clone()).check_question("it's")),
+                "{labels}"
+            );
+        }
+    }
+
+    #[test]
+    fn labels_on_a_non_noul_question_are_refused() {
+        let choice = Question::choice_labels("h", ["a", "b"]).unwrap();
+        for question in [
+            choice.clone().with_noul_labels("no", "yes"),
+            choice.with_labels(Value::Null),
+            Question::score("h", ["x", "y"])
+                .unwrap()
+                .with_noul_labels("no", "yes"),
+        ] {
+            assert_eq!(
+                "question 'q': 'labels' is only supported for noul questions",
+                message(question.check_question("q"))
+            );
+        }
+    }
+
+    #[test]
+    fn option_order_is_checked_before_labels_and_the_set_reports_the_first_bad_one() {
+        let both = noul().with_option_order([0]).with_labels(json!([]));
+        assert!(message(both.check_question("q")).contains("'option_order'"));
+        let set = QuestionSet::new()
+            .with("ok", noul().with_noul_labels("no", "yes"))
+            .unwrap()
+            .with("bad", noul().with_noul_labels("x", "x"))
+            .unwrap();
+        assert_eq!(format!("question 'bad': {TEXT}"), message(set.check()));
+    }
+
+    #[test]
+    fn the_schema_key_tells_labels_apart_in_value_and_order() {
+        let key = |q: Question| QuestionSet::new().with("q", q).unwrap().schema_key();
+        let plain = key(noul());
+        let yes_no = key(noul().with_noul_labels("no", "yes"));
+        assert_ne!(plain, yes_no);
+        assert_ne!(yes_no, key(noul().with_noul_labels("nope", "yes")));
+        assert_eq!(yes_no, key(noul().with_noul_labels("no", "yes")));
+        // Python dumps the dict as written, so key order separates groups too.
+        assert_ne!(
+            yes_no,
+            key(noul().with_labels(json!({"true": "yes", "false": "no"})))
+        );
     }
 }

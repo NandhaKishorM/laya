@@ -82,6 +82,95 @@ describe("router", () => {
     expect(events).toEqual(["load:english", "evict:english", "load:multilingual"]);
     expect(r.loaded).toEqual(["multilingual"]);
   });
+  function buildRouter(options: Record<string, unknown>): Router {
+    return new Router(options as never);
+  }
+  // The residency cap is the one Router option whose misread fails silently: `Number()` gives NaN
+  // for 'abc', `{}` or NaN itself, `Math.max(1, NaN)` is NaN, and `_evict`'s
+  // `while (this._order.length > this.maxLoaded)` is then forever false -- every checkpoint a
+  // process loads stays resident, which is the exact failure `maxLoaded` exists to prevent. The
+  // reference cannot reach that state: `laya/router.py`'s `Router.__init__` is
+  // `max(1, int(max_loaded))` and `int()` returns an integer or raises. Both tables are the
+  // oracle's, measured by constructing `laya.router.Router` with every value listed here.
+  const MAX_LOADED_READS: [string, unknown, number][] = [
+    ["'2'", "2", 2],
+    ["' 2 '", " 2 ", 2],
+    ["'1_0'", "1_0", 10],
+    ["'٢'", "٢", 2],
+    ["'２'", "２", 2],
+    ["'١٢'", "١٢", 12],
+    ["'١٢٣'", "١٢٣", 123],
+    ["'-٢'", "-٢", 1],
+    ["2.7", 2.7, 2],
+    ["1e300", 1e300, 1e300],
+    ["10n", 10n, 10],
+    ["0", 0, 1],
+    ["-3", -3, 1],
+    ["True", true, 1],
+    ["False", false, 1],
+    ["undefined", undefined, 2],
+    ["null", null, 2],
+  ];
+  const MAX_LOADED_REFUSALS: [string, unknown, string][] = [
+    ["'abc'", "abc", "'abc'"],
+    ["'2.5'", "2.5", "'2.5'"],
+    ["'1e3'", "1e3", "'1e3'"],
+    ["'0x10'", "0x10", "'0x10'"],
+    ["''", "", "''"],
+    ["'  '", "  ", "'  '"],
+    ["'_1'", "_1", "'_1'"],
+    ["'1_'", "1_", "'1_'"],
+    ["'1__0'", "1__0", "'1__0'"],
+    ["NaN", NaN, "nan"],
+    ["Infinity", Infinity, "inf"],
+    ["-Infinity", -Infinity, "-inf"],
+    ["1e400", 1e400, "inf"],
+    ["{}", {}, "{}"],
+    ["[]", [], "[]"],
+    ["[3]", [3], "[3]"],
+  ];
+  /** The message the constructor raises, or a failure that it raised nothing at all. */
+  function maxLoadedRefusal(options: Record<string, unknown>): string {
+    try {
+      buildRouter(options);
+    } catch (err) {
+      return (err as Error).message;
+    }
+    throw new Error("expected the Router constructor to refuse this max_loaded");
+  }
+  for (const [label, value, expected] of MAX_LOADED_READS) {
+    it(`reads maxLoaded ${label} as the reference does`, () => {
+      expect(buildRouter({ maxLoaded: value }).maxLoaded).toBe(expected);
+    });
+  }
+  for (const [label, value, repr] of MAX_LOADED_REFUSALS) {
+    it(`refuses maxLoaded ${label} instead of disabling the cap`, () => {
+      const message = `max_loaded must be a count of checkpoints to keep resident, got ${repr}`;
+      expect(maxLoadedRefusal({ maxLoaded: value })).toBe(message);
+      expect(maxLoadedRefusal({ max_loaded: value })).toBe(message);
+    });
+  }
+  it("evicts down to a cap it read from text", async () => {
+    const loads: string[] = [];
+    const r = buildRouter({
+      maxLoaded: "2",
+      loader: (name: string) => {
+        loads.push(name);
+        return { name };
+      },
+    });
+    expect(r.maxLoaded).toBe(2);
+    for (const name of ["en", "ml", "typed"]) await r.load(name);
+    expect(loads).toEqual(["english", "multilingual", "typed-decisions"]);
+    expect(r.loaded).toEqual(["multilingual", "typed-decisions"]);
+  });
+  it("raises a read cap to fit attached checkpoints", () => {
+    const r = buildRouter({ maxLoaded: "1" });
+    r.attach("en", { name: "english" });
+    expect(r.maxLoaded).toBe(1);
+    r.attach("ml", { name: "multilingual" });
+    expect(r.maxLoaded).toBe(2);
+  });
   it("clears an unsuccessful in-flight load so the model can be retried", async () => {
     const agent = { name: "english" };
     const loader = vi.fn()

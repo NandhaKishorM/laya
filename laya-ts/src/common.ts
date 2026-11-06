@@ -248,7 +248,8 @@ export function answerConfidence(p: number[]): number {
  * The value as CPython's `repr` renders it, for a refusal that has to name what was passed.
  *
  * Exported because `hooks.ts` needs it for the `hooks_timeout` refusals, whose messages are
- * compared against `laya/hooks.py::validate_timeout` character for character.
+ * compared against `laya/hooks.py::validate_timeout` character for character, and so a refusal
+ * raised here can name a container the way the reference names one.
  */
 export function pyRepr(v: unknown): string {
   if (typeof v === "boolean") return v ? "True" : "False";
@@ -350,6 +351,93 @@ export function checkMinConfidence(v: unknown): MinConfidence {
     throw new Error(`min_confidence must be a float in [0.0, 1.0], got ${pyRepr(v)}`);
   }
   return v;
+}
+
+const DECIMAL_DIGIT = /\p{Nd}/u;
+
+/**
+ * The digit value of a Unicode decimal digit.
+ *
+ * `\p{Nd}` runs are contiguous sequences of ten, so a run's first code point is its zero: ASCII
+ * takes the direct path and any other script walks back at most nine places. That is the same
+ * fact CPython reads out of its `Py_UNICODE_TODECIMAL` table, which is why `int('٢')` is 2.
+ */
+function decimalValue(ch: string): number {
+  const code = ch.codePointAt(0)!;
+  if (code >= 0x30 && code <= 0x39) return code - 0x30;
+  let zero = code;
+  while (zero > 0 && code - zero < 9 && DECIMAL_DIGIT.test(String.fromCodePoint(zero - 1))) zero--;
+  return code - zero;
+}
+
+/**
+ * CPython's `int()` applied to a string, or null where `int()` raises.
+ *
+ * Only decimal digits and single underscores between them are read: `' 2 '` is 2, `'1_0'` is 10
+ * and `'٢'` is 2, because `int()` reads any Unicode decimal digit. `'2.5'`, `'1e3'` and `'0x10'`
+ * are null: `int()` parses base 10 integers only, so a text that `Number()` would happily read is
+ * a refusal here.
+ */
+function intFromText(text: string): number | null {
+  const body = text.trim();
+  const negative = body.startsWith("-");
+  const digits = negative || body.startsWith("+") ? body.slice(1) : body;
+  const chars = [...digits];
+  if (chars.length === 0) return null;
+  let value = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (ch === "_") {
+      if (i === 0 || i === chars.length - 1 || chars[i - 1] === "_") return null;
+      continue;
+    }
+    if (!DECIMAL_DIGIT.test(ch)) return null;
+    value = value * 10 + decimalValue(ch);
+  }
+  return negative ? -value : value;
+}
+
+/** Every refusal `checkMaxLoaded` makes names the value the way CPython's `repr` would. */
+function refuseMaxLoaded(v: unknown): never {
+  throw new Error(`max_loaded must be a count of checkpoints to keep resident, got ${pyRepr(v)}`);
+}
+
+/**
+ * Validate a Router residency cap the way `int()` does, so a cap the runtime cannot read is
+ * refused instead of silently turned off.
+ *
+ * `laya/router.py`'s `Router.__init__` is `max(1, int(max_loaded))`, and `int()` either yields an
+ * integer or raises -- the reference can never hold a cap it cannot compare against. `Number()`
+ * instead gives NaN for `'abc'`, `{}` or NaN, and `Math.max(1, NaN)` is NaN, so `Router._evict`'s
+ * `while (this._order.length > this.maxLoaded)` never fires and every checkpoint loaded stays
+ * resident for the life of the process: the one failure `maxLoaded` exists to prevent.
+ * `tests/router.test.ts` replays the oracle's table, measured by constructing
+ * `laya.router.Router` with each value:
+ *
+ *   refuses `'abc'` `'2.5'` `'1e3'` `'0x10'` `''` `'  '` NaN Infinity -Infinity `{}` `[]` `[3]`
+ *   reads   `'2'` and `' 2 '` as 2, `'1_0'` as 10, `'٢'` as 2, `2.7` as 2, and `-3`/`0`/`True` as 1
+ *
+ * A boolean is read rather than refused, unlike `hooks_timeout`: `int()` has no bool guard, so
+ * `max_loaded=True` is a cap of one in the reference. `null` and `undefined` never reach here --
+ * the constructor applies its `?? 2` default first, the port's convention for an unset option.
+ */
+export function checkMaxLoaded(v: unknown): number {
+  let count: number;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) refuseMaxLoaded(v);
+    count = Math.trunc(v);
+  } else if (typeof v === "bigint") {
+    count = Math.trunc(Number(v));
+  } else if (typeof v === "boolean") {
+    count = v ? 1 : 0;
+  } else if (typeof v === "string") {
+    const read = intFromText(v);
+    if (read === null) refuseMaxLoaded(v);
+    count = read;
+  } else {
+    refuseMaxLoaded(v);
+  }
+  return Math.max(1, count);
 }
 
 export function optionBucket(answer: Record<string, unknown>): string | null {

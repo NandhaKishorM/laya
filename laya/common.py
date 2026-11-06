@@ -605,6 +605,136 @@ def unpermute_probs(p: np.ndarray, option_order: Optional[List[int]]) -> np.ndar
     return canonical
 
 
+def _can_use_cpu_head(layer, h):
+    # Keep training, export/compile, other devices/precisions and instrumented/custom layers
+    # on the original path. Hooks must still observe the full sequence they registered for.
+    if (torch._dynamo.is_compiling() or torch.jit.is_tracing() or torch.jit.is_scripting()
+            or h.device.type != "cpu" or h.dtype != torch.float32 or torch.is_grad_enabled()
+            or _autocast_enabled("cpu")
+            or type(layer) is not nn.TransformerEncoderLayer or not layer.norm_first):
+        return False
+    if (type(layer.linear1) is not nn.Linear or type(layer.linear2) is not nn.Linear
+            or type(layer.norm1) is not nn.LayerNorm or type(layer.norm2) is not nn.LayerNorm
+            or layer.activation not in (F.relu, F.gelu)
+            or any(type(m) is not nn.Dropout for m in (layer.dropout, layer.dropout1, layer.dropout2))):
+        return False
+    attn = layer.self_attn
+    if (type(attn) not in (nn.MultiheadAttention, _DynamicMultiheadAttention)
+            or not attn.batch_first or not attn._qkv_same_embed_dim
+            or attn.in_proj_weight is None or attn.bias_k is not None or attn.bias_v is not None or attn.add_zero_attn
+            or type(attn.out_proj) not in (nn.Linear, nn.modules.linear.NonDynamicallyQuantizableLinear)):
+        return False
+    if (nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks):
+        return False
+    return not any(m.training or m._forward_hooks or m._forward_pre_hooks or "forward" in m.__dict__
+                   or getattr(m, "_compiled_call_impl", None) is not None for m in layer.modules())
+
+
+def _cpu_head(layer, h, pad, positions=None):
+    normalized = layer.norm1(h)
+    attn, d = layer.self_attn, h.shape[-1]
+    weight, bias = attn.in_proj_weight, attn.in_proj_bias
+    if positions is None:
+        selected = h
+        q, k, v = F.linear(normalized, weight, bias).chunk(3, dim=-1)
+    else:
+        # Earlier layers retain every query: their outputs are keys/values for the next layer.
+        idx = positions[:, :, None].expand(-1, -1, d)
+        selected = h.gather(1, idx)
+        q = F.linear(normalized.gather(1, idx), weight[:d], None if bias is None else bias[:d])
+        k, v = F.linear(normalized, weight[d:], None if bias is None else bias[d:]).chunk(2, dim=-1)
+    q, k, v = (t.unflatten(-1, (attn.num_heads, attn.head_dim)).transpose(1, 2) for t in (q, k, v))
+    out = F.scaled_dot_product_attention(q, k, v, attn_mask=~pad[:, None, None, :], dropout_p=0.0)
+    selected = selected + layer.dropout1(attn.out_proj(out.transpose(1, 2).flatten(-2)))
+    return selected + layer.dropout2(layer.linear2(layer.dropout(layer.activation(layer.linear1(layer.norm2(selected))))))
+
+
+def _can_use_cpu_windows(encoder, input_ids, attention_mask):
+    # Transformers 4.x has a different ModernBERT layer/RoPE API. Keep its original forward.
+    if (torch._dynamo.is_compiling() or torch.jit.is_tracing() or torch.jit.is_scripting()
+            or input_ids.device.type != "cpu" or torch.is_grad_enabled() or _autocast_enabled("cpu")
+            or input_ids.ndim != 2 or input_ids.shape[1] < 512 or not isinstance(attention_mask, torch.Tensor)
+            or attention_mask.shape != input_ids.shape
+            or type(encoder).__module__ != "transformers.models.modernbert.modeling_modernbert"):
+        return False
+    from transformers import __version__ as transformers_version
+    if transformers_version.split(".")[0] != "5":
+        return False
+    from transformers.models.modernbert.modeling_modernbert import (
+        ModernBertModel, ModernBertEncoderLayer, ModernBertAttention, ALL_ATTENTION_FUNCTIONS,
+    )
+    from transformers.integrations.sdpa_attention import sdpa_attention_forward
+    from transformers.masking_utils import ALL_MASK_ATTENTION_FUNCTIONS, sdpa_mask
+    if (ALL_ATTENTION_FUNCTIONS.get("sdpa") is not sdpa_attention_forward
+            or ALL_MASK_ATTENTION_FUNCTIONS.get("sdpa") is not sdpa_mask):
+        return False
+    cfg = encoder.config
+    types = getattr(cfg, "layer_types", None)
+    radius = getattr(cfg, "sliding_window", None)
+    rope = getattr(cfg, "rope_parameters", {})
+    if (type(encoder) is not ModernBertModel or cfg._attn_implementation != "sdpa"
+            or not types or len(types) != len(encoder.layers) or "sliding_attention" not in types
+            or not isinstance(radius, int) or radius < 1 or input_ids.shape[1] <= 2 * radius
+            or set(types) - {"full_attention", "sliding_attention"} or not isinstance(rope, dict)
+            or getattr(cfg, "output_attentions", False) or getattr(cfg, "output_hidden_states", False)
+            or any(rope.get(kind, {}).get("rope_type") != "default" for kind in types)
+            or any(type(layer) is not ModernBertEncoderLayer or type(layer.attn) is not ModernBertAttention
+                   or layer.attn.config is not cfg or layer.attention_type != kind
+                   for layer, kind in zip(encoder.layers, types))):
+        return False
+    if (nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks
+            or any(m.training or m._forward_hooks or m._forward_pre_hooks or "forward" in m.__dict__
+                   or getattr(m, "_compiled_call_impl", None) is not None for m in encoder.modules())
+            or any(p.device.type != "cpu" or p.dtype != torch.float32 for p in encoder.parameters())):
+        return False
+    # The helper accepts ordinary binary key-padding masks, never arbitrary additive/dict masks.
+    return bool(((attention_mask == 0) | (attention_mask == 1)).all())
+
+
+def _cpu_window_attention(q, k, v, valid, radius, block=64):
+    # Overlapping key blocks retain the original inclusive |query - key| <= radius band.
+    batch, heads, length, dim = q.shape
+    chunks = (length + block - 1) // block
+    tail, width = chunks * block - length, block + 2 * radius
+    queries = F.pad(q, (0, 0, 0, tail)).reshape(batch, heads, chunks, block, dim)
+    queries = queries.permute(0, 2, 1, 3, 4).reshape(batch * chunks, heads, block, dim)
+
+    def windows(tensor):
+        padded = F.pad(tensor, (0, 0, radius, radius + tail))
+        return padded.unfold(2, width, block).permute(0, 2, 1, 4, 3).reshape(batch * chunks, heads, width, dim)
+
+    keys, values = windows(k), windows(v)
+    valid = F.pad(valid, (radius, radius + tail), value=False).unfold(1, width, block)
+    valid = valid.reshape(batch * chunks, width)
+    offsets = torch.arange(width, device=q.device)[None] - (torch.arange(block, device=q.device)[:, None] + radius)
+    mask = (offsets.abs() <= radius)[None, None] & valid[:, None, None, :]
+    out = F.scaled_dot_product_attention(queries, keys, values, attn_mask=mask, dropout_p=0.0)
+    return out.reshape(batch, chunks, heads, block, dim).permute(0, 2, 1, 3, 4).reshape(
+        batch, heads, chunks * block, dim)[:, :, :length]
+
+
+def _cpu_window_encoder(encoder, input_ids, attention_mask):
+    from transformers.models.modernbert.modeling_modernbert import apply_rotary_pos_emb
+
+    valid = attention_mask.bool()
+    h = encoder.embeddings(input_ids=input_ids)
+    position_ids = torch.arange(input_ids.shape[1], device=input_ids.device)[None]
+    rotary = {kind: encoder.rotary_emb(h, position_ids, kind) for kind in set(encoder.config.layer_types)}
+    full_mask = None if valid.all() else valid[:, None, None, :]
+    for layer in encoder.layers:
+        if layer.attention_type == "full_attention":
+            h = layer(h, attention_mask=full_mask, position_embeddings=rotary[layer.attention_type])
+            continue
+        attn = layer.attn
+        qkv = attn.Wqkv(layer.attn_norm(h)).view(*h.shape[:-1], 3, -1, attn.head_dim)
+        q, k, v = (part.transpose(1, 2) for part in qkv.unbind(-3))
+        q, k = apply_rotary_pos_emb(q, k, *rotary[layer.attention_type], unsqueeze_dim=1)
+        out = _cpu_window_attention(q, k, v, valid, encoder.config.sliding_window)
+        h = h + attn.out_drop(attn.Wo(out.transpose(1, 2).reshape_as(h).contiguous()))
+        h = h + layer.mlp(layer.mlp_norm(h))
+    return encoder.final_norm(h)
+
+
 class DecisionModel(nn.Module):
     """Bidirectional transformer encoder backbone + typed decision head."""
 
@@ -643,7 +773,10 @@ class DecisionModel(nn.Module):
     def forward(self, input_ids, attention_mask, marker_pos, marker_mask, qtype, detach_encoder: bool = False,
                 position_ids=None, option_ids=None):
         if option_ids is None:
-            h = self.encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
+            if not self.training and _can_use_cpu_windows(self.encoder, input_ids, attention_mask):
+                h = _cpu_window_encoder(self.encoder, input_ids, attention_mask)
+            else:
+                h = self.encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
         else:
             # Parallel option layout (`parallel_layout`). The head below has no positional
             # encoding, so with order-blind marker embeddings the logits permute with the options.
@@ -653,17 +786,28 @@ class DecisionModel(nn.Module):
         if detach_encoder:
             h = h.detach()
         h = h + self.type_emb(qtype)[:, None, :]
+        selected = False
         if self.head is not None:
             pad = ~attention_mask.bool()
-            for layer in self.head.layers:
+            for i, layer in enumerate(self.head.layers):
                 if self.head_checkpointing and self.training and torch.is_grad_enabled():
                     # Non-reentrant checkpointing also trains the head when its input
                     # is frozen. Default RNG preservation keeps dropout consistent.
                     h = checkpoint(layer, h, src_key_padding_mask=pad, use_reentrant=False)
+                elif not self.training and _can_use_cpu_head(layer, h):
+                    # The scorer reads the markers; the action head also needs token zero.
+                    positions = None
+                    if i == len(self.head.layers) - 1 and marker_pos.shape[1] + 1 < h.shape[1]:
+                        positions = torch.cat([torch.zeros_like(marker_pos[:, :1]), marker_pos.clamp(min=0)], dim=1)
+                        selected = True
+                    h = _cpu_head(layer, h, pad, positions)
                 else:
                     h = layer(h, src_key_padding_mask=pad)
-        idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
-        m = torch.gather(h, 1, idx)
+        if selected:
+            m = h[:, 1:]
+        else:
+            idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
+            m = torch.gather(h, 1, idx)
         logits = self.scorer(m).squeeze(-1).float()
         logits = logits.masked_fill(~marker_mask, -1e4)
 

@@ -499,6 +499,23 @@ agent = laya.load("convaiinnovations/laya", device="cpu")      # or "cuda", "mps
 router = Router(preload=True, device="mps")
 ```
 
+Eager CPU fp32 inference combines packed decision-head projections and SDPA with selective
+outputs in the final head layer: option markers and token zero for the action head. Every
+unmasked token remains a head attention key/value. On Transformers 5, supported ModernBERT
+encoders also compute their existing local attention windows in blocks for sequences of at
+least 512 tokens; global layers retain full attention. No allowed attention connection or
+input token is removed. Training, autocast, other devices, compilation/export, custom hooks
+and unsupported encoders retain the corresponding original execution paths.
+This uses the same weights and calibration, adds no dependency or external service, and
+keeps request tensors local to each call without a shared request cache. Floating-point
+results can differ slightly, including decisions at exact ties. The existing
+[CPU/device](https://github.com/NandhaKishorM/laya/blob/main/verify/bench_devices.py),
+[routing-latency](https://github.com/NandhaKishorM/laya/blob/main/research/scripts/bench_latency.py)
+and [long-context](https://github.com/NandhaKishorM/laya/blob/main/research/scripts/bench_long_context.py)
+benchmarks provide the [before/after evidence](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/results/cpu/README.md).
+The separate [CPU regression harness](https://github.com/NandhaKishorM/laya/blob/main/benchmarks/bench_cpu.py)
+checks unrounded outputs and public answers against the original execution path.
+
 ### macOS, including Intel Macs
 
 PyTorch stops publishing macOS **x86_64** wheels at 2.2.2 (2.3 and later are Apple-silicon only),

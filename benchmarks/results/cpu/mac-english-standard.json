@@ -1,0 +1,4419 @@
+{
+  "checkpoint": "english",
+  "checkpoint_sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+  "hub_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "processor": "arm",
+  "python": "3.11.12",
+  "torch": "2.15.0",
+  "transformers": "5.22.1",
+  "threads": 4,
+  "interop_threads": 1,
+  "repeats": 5,
+  "optimization": "combined",
+  "suite": "standard",
+  "common_sha256": "efb8558be8246810bc0d5ef0a1d152b1cd23a8fcc886befa013fdcbe8e7346d2",
+  "harness_sha256": "4327f3b3710031cccf7b534e5108c744fb1e213c0ae8caa8ff8c5d0effb4d9de",
+  "fixtures_sha256": "b8b7c51543a23daada63f9fcf7877121507a3b99697c49dcf7f17b73ae75f3cc",
+  "memory_variant": null,
+  "peak_rss_after_load_mib": 2780.796875,
+  "cases": [
+    {
+      "name": "triage/0",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          124
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          502.99275,
+          508.698709,
+          506.637792,
+          508.203,
+          511.057125
+        ],
+        "selected": [
+          491.196,
+          493.50125,
+          495.817583,
+          494.078333,
+          491.17
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          683.444,
+          688.674,
+          687.039,
+          688.994,
+          692.8
+        ],
+        "selected": [
+          666.6,
+          667.935,
+          671.4,
+          671.21,
+          665.204
+        ]
+      },
+      "median_ms": {
+        "baseline": 508.203,
+        "selected": 493.50125
+      },
+      "median_cpu_ms": {
+        "baseline": 688.674,
+        "selected": 667.935
+      }
+    },
+    {
+      "name": "triage/1",
+      "questions": 5,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.00146484375,
+      "max_probability_delta": 4.470348358154297e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          129
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          531.0085,
+          533.17975,
+          533.174709,
+          537.109083,
+          570.2865
+        ],
+        "selected": [
+          518.067583,
+          527.478875,
+          518.628291,
+          544.615541,
+          556.915875
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          729.227,
+          731.383,
+          731.711,
+          737.381,
+          779.795
+        ],
+        "selected": [
+          710.32,
+          720.928,
+          712.599,
+          736.206,
+          762.523
+        ]
+      },
+      "median_ms": {
+        "baseline": 533.17975,
+        "selected": 527.478875
+      },
+      "median_cpu_ms": {
+        "baseline": 731.711,
+        "selected": 720.928
+      }
+    },
+    {
+      "name": "triage/2",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00146484375,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          125
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          673.240375,
+          541.592541,
+          559.355583,
+          554.965958,
+          543.85125
+        ],
+        "selected": [
+          533.132625,
+          538.434875,
+          540.971,
+          526.395416,
+          527.407708
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          878.492,
+          737.435,
+          761.819,
+          753.748,
+          739.969
+        ],
+        "selected": [
+          724.97,
+          731.948,
+          733.894,
+          716.242,
+          716.601
+        ]
+      },
+      "median_ms": {
+        "baseline": 554.965958,
+        "selected": 533.132625
+      },
+      "median_cpu_ms": {
+        "baseline": 753.748,
+        "selected": 724.97
+      }
+    },
+    {
+      "name": "triage/3",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          113
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          488.381417,
+          486.939459,
+          508.363041,
+          501.34425,
+          502.430083
+        ],
+        "selected": [
+          482.219,
+          487.931334,
+          482.741667,
+          491.099416,
+          493.140708
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          661.706,
+          658.111,
+          686.401,
+          676.627,
+          680.47
+        ],
+        "selected": [
+          652.499,
+          659.119,
+          652.233,
+          664.455,
+          666.042
+        ]
+      },
+      "median_ms": {
+        "baseline": 501.34425,
+        "selected": 487.931334
+      },
+      "median_cpu_ms": {
+        "baseline": 676.627,
+        "selected": 659.119
+      }
+    },
+    {
+      "name": "triage/4",
+      "questions": 5,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.000732421875,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          115
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          500.808125,
+          614.641791,
+          588.692709,
+          499.665708,
+          509.547292
+        ],
+        "selected": [
+          486.606709,
+          482.748709,
+          495.152583,
+          531.309166,
+          505.209625
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          684.487,
+          765.254,
+          774.459,
+          678.254,
+          691.479
+        ],
+        "selected": [
+          661.644,
+          657.065,
+          673.358,
+          720.201,
+          686.651
+        ]
+      },
+      "median_ms": {
+        "baseline": 509.547292,
+        "selected": 495.152583
+      },
+      "median_cpu_ms": {
+        "baseline": 691.479,
+        "selected": 673.358
+      }
+    },
+    {
+      "name": "triage/5",
+      "questions": 5,
+      "max_logit_delta": 2.980232238769531e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 8.940696716308594e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          123
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          526.81775,
+          529.213875,
+          525.835542,
+          531.1515,
+          530.196042
+        ],
+        "selected": [
+          522.623333,
+          507.297542,
+          516.687,
+          567.202958,
+          594.785542
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          713.331,
+          716.437,
+          714.235,
+          717.827,
+          715.885
+        ],
+        "selected": [
+          707.98,
+          687.292,
+          698.389,
+          748.047,
+          784.819
+        ]
+      },
+      "median_ms": {
+        "baseline": 529.213875,
+        "selected": 522.623333
+      },
+      "median_cpu_ms": {
+        "baseline": 715.885,
+        "selected": 707.98
+      }
+    },
+    {
+      "name": "triage/6",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          198
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          868.119708,
+          853.210375,
+          846.551417,
+          861.698417,
+          856.968583
+        ],
+        "selected": [
+          837.760208,
+          843.07825,
+          881.80925,
+          902.530416,
+          806.017792
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1246.528,
+          1222.865,
+          1217.25,
+          1238.216,
+          1232.18
+        ],
+        "selected": [
+          1196.524,
+          1201.571,
+          1253.812,
+          1281.413,
+          1152.758
+        ]
+      },
+      "median_ms": {
+        "baseline": 856.968583,
+        "selected": 843.07825
+      },
+      "median_cpu_ms": {
+        "baseline": 1232.18,
+        "selected": 1201.571
+      }
+    },
+    {
+      "name": "triage/7",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          168
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          912.173708,
+          751.894791,
+          761.439125,
+          728.326167,
+          724.724208
+        ],
+        "selected": [
+          970.925208,
+          777.38275,
+          716.259,
+          737.894167,
+          799.735625
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1234.558,
+          1059.017,
+          1073.829,
+          1033.06,
+          1023.867
+        ],
+        "selected": [
+          1278.532,
+          1081.427,
+          1007.526,
+          1034.901,
+          1069.513
+        ]
+      },
+      "median_ms": {
+        "baseline": 751.894791,
+        "selected": 777.38275
+      },
+      "median_cpu_ms": {
+        "baseline": 1059.017,
+        "selected": 1069.513
+      }
+    },
+    {
+      "name": "triage/8",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 8.940696716308594e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          144
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          599.442125,
+          619.747833,
+          613.835458,
+          607.484875,
+          726.99575
+        ],
+        "selected": [
+          707.71025,
+          606.320625,
+          596.212541,
+          585.605,
+          650.689458
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          828.831,
+          855.472,
+          850.425,
+          839.872,
+          965.905
+        ],
+        "selected": [
+          949.816,
+          831.282,
+          821.883,
+          807.056,
+          895.499
+        ]
+      },
+      "median_ms": {
+        "baseline": 613.835458,
+        "selected": 606.320625
+      },
+      "median_cpu_ms": {
+        "baseline": 850.425,
+        "selected": 831.282
+      }
+    },
+    {
+      "name": "triage/9",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.000732421875,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          213
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          903.11275,
+          900.522542,
+          903.860792,
+          1067.780083,
+          935.886333
+        ],
+        "selected": [
+          874.409333,
+          945.075083,
+          1064.112917,
+          1007.56325,
+          885.036167
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1318.99,
+          1318.747,
+          1319.846,
+          1533.789,
+          1366.953
+        ],
+        "selected": [
+          1267.414,
+          1359.069,
+          1521.433,
+          1445.813,
+          1280.985
+        ]
+      },
+      "median_ms": {
+        "baseline": 903.860792,
+        "selected": 945.075083
+      },
+      "median_cpu_ms": {
+        "baseline": 1319.846,
+        "selected": 1359.069
+      }
+    },
+    {
+      "name": "triage/10",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          396
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1908.420708,
+          1983.895709,
+          1875.214083,
+          1897.35175,
+          1876.887084
+        ],
+        "selected": [
+          1856.615417,
+          1843.72525,
+          1770.615875,
+          1820.429542,
+          1777.365625
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3086.544,
+          3204.822,
+          3054.837,
+          3068.929,
+          3037.215
+        ],
+        "selected": [
+          2961.318,
+          2943.777,
+          2825.246,
+          2862.818,
+          2842.963
+        ]
+      },
+      "median_ms": {
+        "baseline": 1897.35175,
+        "selected": 1820.429542
+      },
+      "median_cpu_ms": {
+        "baseline": 3068.929,
+        "selected": 2862.818
+      }
+    },
+    {
+      "name": "triage/11",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 7.450580596923828e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          407
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          2106.180542,
+          1909.383709,
+          1897.74575,
+          1928.181708,
+          1910.255625
+        ],
+        "selected": [
+          1818.405458,
+          1814.366875,
+          1838.7565,
+          1807.001709,
+          1810.6535
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3352.72,
+          3132.216,
+          3112.228,
+          3159.832,
+          3129.766
+        ],
+        "selected": [
+          2936.078,
+          2928.681,
+          2955.515,
+          2905.796,
+          2915.749
+        ]
+      },
+      "median_ms": {
+        "baseline": 1910.255625,
+        "selected": 1814.366875
+      },
+      "median_cpu_ms": {
+        "baseline": 3132.216,
+        "selected": 2928.681
+      }
+    },
+    {
+      "name": "moderation/0",
+      "questions": 5,
+      "max_logit_delta": 3.5762786865234375e-07,
+      "max_action_logit_delta": 0.00146484375,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          117
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          497.302,
+          503.005083,
+          578.247333,
+          502.414667,
+          500.227708
+        ],
+        "selected": [
+          481.679459,
+          482.580667,
+          509.25475,
+          498.383416,
+          490.560084
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          673.74,
+          679.934,
+          766.162,
+          681.252,
+          676.795
+        ],
+        "selected": [
+          652.171,
+          652.874,
+          685.645,
+          669.895,
+          661.63
+        ]
+      },
+      "median_ms": {
+        "baseline": 502.414667,
+        "selected": 490.560084
+      },
+      "median_cpu_ms": {
+        "baseline": 679.934,
+        "selected": 661.63
+      }
+    },
+    {
+      "name": "moderation/1",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          122
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          518.745375,
+          527.791958,
+          522.813833,
+          522.473167,
+          528.238458
+        ],
+        "selected": [
+          505.454167,
+          508.449292,
+          500.686375,
+          501.818875,
+          518.900583
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          700.685,
+          711.332,
+          705.589,
+          708.148,
+          712.837
+        ],
+        "selected": [
+          681.545,
+          685.099,
+          676.613,
+          678.58,
+          696.274
+        ]
+      },
+      "median_ms": {
+        "baseline": 522.813833,
+        "selected": 505.454167
+      },
+      "median_cpu_ms": {
+        "baseline": 708.148,
+        "selected": 681.545
+      }
+    },
+    {
+      "name": "moderation/2",
+      "questions": 5,
+      "max_logit_delta": 3.814697265625e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 8.940696716308594e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          118
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          517.641958,
+          505.380708,
+          507.372625,
+          515.920875,
+          508.990375
+        ],
+        "selected": [
+          522.269083,
+          485.556625,
+          495.469292,
+          494.682417,
+          494.240042
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          698.349,
+          684.552,
+          687.523,
+          699.187,
+          687.709
+        ],
+        "selected": [
+          691.235,
+          657.731,
+          670.903,
+          669.361,
+          667.319
+        ]
+      },
+      "median_ms": {
+        "baseline": 508.990375,
+        "selected": 494.682417
+      },
+      "median_cpu_ms": {
+        "baseline": 687.709,
+        "selected": 669.361
+      }
+    },
+    {
+      "name": "moderation/3",
+      "questions": 5,
+      "max_logit_delta": 7.62939453125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          106
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          458.5735,
+          458.690208,
+          459.032667,
+          454.195292,
+          460.175959
+        ],
+        "selected": [
+          444.925833,
+          442.540666,
+          440.983625,
+          448.903625,
+          444.204167
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          615.205,
+          615.509,
+          615.692,
+          609.856,
+          617.414
+        ],
+        "selected": [
+          596.516,
+          594.284,
+          592.314,
+          601.705,
+          595.122
+        ]
+      },
+      "median_ms": {
+        "baseline": 458.690208,
+        "selected": 444.204167
+      },
+      "median_cpu_ms": {
+        "baseline": 615.509,
+        "selected": 595.122
+      }
+    },
+    {
+      "name": "moderation/4",
+      "questions": 5,
+      "max_logit_delta": 2.980232238769531e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          108
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          460.269,
+          578.279583,
+          646.55675,
+          473.283542,
+          492.576875
+        ],
+        "selected": [
+          445.231833,
+          595.737209,
+          489.252666,
+          463.647084,
+          455.19475
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          619.023,
+          770.732,
+          844.752,
+          632.557,
+          658.287
+        ],
+        "selected": [
+          598.815,
+          709.586,
+          656.116,
+          623.277,
+          609.871
+        ]
+      },
+      "median_ms": {
+        "baseline": 492.576875,
+        "selected": 463.647084
+      },
+      "median_cpu_ms": {
+        "baseline": 658.287,
+        "selected": 623.277
+      }
+    },
+    {
+      "name": "moderation/5",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.000732421875,
+      "max_probability_delta": 4.470348358154297e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          116
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          508.451792,
+          498.213458,
+          518.521708,
+          510.21075,
+          554.855625
+        ],
+        "selected": [
+          489.097958,
+          488.323292,
+          493.323916,
+          480.422375,
+          481.925166
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          683.715,
+          671.478,
+          698.516,
+          686.19,
+          739.38
+        ],
+        "selected": [
+          657.022,
+          655.08,
+          664.541,
+          645.997,
+          647.989
+        ]
+      },
+      "median_ms": {
+        "baseline": 510.21075,
+        "selected": 488.323292
+      },
+      "median_cpu_ms": {
+        "baseline": 686.19,
+        "selected": 655.08
+      }
+    },
+    {
+      "name": "moderation/6",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          191
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          810.020916,
+          800.128583,
+          813.130084,
+          813.915875,
+          805.984375
+        ],
+        "selected": [
+          892.0155,
+          915.893791,
+          782.351833,
+          783.083458,
+          781.10275
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1164.889,
+          1154.496,
+          1169.83,
+          1172.338,
+          1161.584
+        ],
+        "selected": [
+          1262.049,
+          1229.585,
+          1123.058,
+          1121.291,
+          1120.594
+        ]
+      },
+      "median_ms": {
+        "baseline": 810.020916,
+        "selected": 783.083458
+      },
+      "median_cpu_ms": {
+        "baseline": 1164.889,
+        "selected": 1123.058
+      }
+    },
+    {
+      "name": "moderation/7",
+      "questions": 5,
+      "max_logit_delta": 3.814697265625e-06,
+      "max_action_logit_delta": 0.00030517578125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          161
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          697.74125,
+          697.0945,
+          693.958417,
+          685.071792,
+          687.4045
+        ],
+        "selected": [
+          667.522791,
+          665.209541,
+          670.495792,
+          664.611,
+          666.626375
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          979.366,
+          978.9,
+          973.907,
+          963.802,
+          965.274
+        ],
+        "selected": [
+          933.868,
+          930.394,
+          937.598,
+          931.25,
+          930.482
+        ]
+      },
+      "median_ms": {
+        "baseline": 693.958417,
+        "selected": 666.626375
+      },
+      "median_cpu_ms": {
+        "baseline": 973.907,
+        "selected": 931.25
+      }
+    },
+    {
+      "name": "moderation/8",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          137
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          579.088709,
+          591.845625,
+          669.937459,
+          583.1305,
+          592.924458
+        ],
+        "selected": [
+          565.721875,
+          561.977625,
+          591.546791,
+          605.880042,
+          567.071709
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          800.078,
+          816.46,
+          919.37,
+          804.623,
+          817.305
+        ],
+        "selected": [
+          780.838,
+          772.749,
+          814.127,
+          817.836,
+          781.078
+        ]
+      },
+      "median_ms": {
+        "baseline": 591.845625,
+        "selected": 567.071709
+      },
+      "median_cpu_ms": {
+        "baseline": 816.46,
+        "selected": 781.078
+      }
+    },
+    {
+      "name": "moderation/9",
+      "questions": 5,
+      "max_logit_delta": 3.814697265625e-06,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          206
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1069.440667,
+          932.039708,
+          884.353834,
+          963.95075,
+          907.140833
+        ],
+        "selected": [
+          847.533708,
+          853.725875,
+          868.262,
+          838.989292,
+          832.481208
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1463.825,
+          1341.333,
+          1261.511,
+          1369.675,
+          1308.188
+        ],
+        "selected": [
+          1210.389,
+          1219.5,
+          1225.276,
+          1199.75,
+          1192.612
+        ]
+      },
+      "median_ms": {
+        "baseline": 932.039708,
+        "selected": 847.533708
+      },
+      "median_cpu_ms": {
+        "baseline": 1341.333,
+        "selected": 1210.389
+      }
+    },
+    {
+      "name": "moderation/10",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          389
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1741.963334,
+          1755.628084,
+          1733.660375,
+          1720.797417,
+          1788.097041
+        ],
+        "selected": [
+          1694.710375,
+          1706.078958,
+          1676.124208,
+          1657.422375,
+          1672.849583
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          2842.024,
+          2843.198,
+          2824.982,
+          2799.091,
+          2897.865
+        ],
+        "selected": [
+          2711.285,
+          2725.693,
+          2682.044,
+          2650.775,
+          2681.702
+        ]
+      },
+      "median_ms": {
+        "baseline": 1741.963334,
+        "selected": 1676.124208
+      },
+      "median_cpu_ms": {
+        "baseline": 2842.024,
+        "selected": 2682.044
+      }
+    },
+    {
+      "name": "moderation/11",
+      "questions": 5,
+      "max_logit_delta": 3.814697265625e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.5133991837501526e-09,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          400
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          2,
+          4
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1954.087541,
+          1799.03775,
+          1790.312708,
+          1776.83275,
+          2875.870333
+        ],
+        "selected": [
+          1724.188458,
+          1693.113292,
+          1695.847459,
+          1674.172458,
+          1762.742917
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3111.801,
+          2917.1,
+          2890.765,
+          2876.768,
+          3474.271
+        ],
+        "selected": [
+          2739.39,
+          2699.887,
+          2714.178,
+          2666.89,
+          2794.791
+        ]
+      },
+      "median_ms": {
+        "baseline": 1799.03775,
+        "selected": 1695.847459
+      },
+      "median_cpu_ms": {
+        "baseline": 2917.1,
+        "selected": 2714.178
+      }
+    },
+    {
+      "name": "guard/0",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 7.450580596923828e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          94
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          422.253083,
+          508.068125,
+          477.878625,
+          631.837209,
+          765.836375
+        ],
+        "selected": [
+          398.782125,
+          398.763167,
+          523.80725,
+          719.66475,
+          572.985792
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          549.651,
+          637.9,
+          615.337,
+          722.461,
+          750.572
+        ],
+        "selected": [
+          522.092,
+          519.314,
+          645.826,
+          725.216,
+          703.032
+        ]
+      },
+      "median_ms": {
+        "baseline": 508.068125,
+        "selected": 523.80725
+      },
+      "median_cpu_ms": {
+        "baseline": 637.9,
+        "selected": 645.826
+      }
+    },
+    {
+      "name": "guard/1",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          99
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          518.090959,
+          435.385916,
+          521.37925,
+          589.146292,
+          497.261834
+        ],
+        "selected": [
+          597.723209,
+          431.936583,
+          473.727541,
+          540.150375,
+          594.820375
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          680.826,
+          588.038,
+          680.926,
+          750.128,
+          656.859
+        ],
+        "selected": [
+          727.182,
+          578.024,
+          623.225,
+          700.111,
+          710.985
+        ]
+      },
+      "median_ms": {
+        "baseline": 518.090959,
+        "selected": 540.150375
+      },
+      "median_cpu_ms": {
+        "baseline": 680.826,
+        "selected": 700.111
+      }
+    },
+    {
+      "name": "guard/2",
+      "questions": 5,
+      "max_logit_delta": 3.814697265625e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.4901161193847656e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          95
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          516.33425,
+          436.806917,
+          443.506125,
+          414.227042,
+          460.803125
+        ],
+        "selected": [
+          515.569875,
+          390.650166,
+          429.784792,
+          436.269458,
+          434.325334
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          647.017,
+          567.518,
+          574.322,
+          539.451,
+          597.068
+        ],
+        "selected": [
+          640.974,
+          510.483,
+          555.803,
+          563.0,
+          554.654
+        ]
+      },
+      "median_ms": {
+        "baseline": 443.506125,
+        "selected": 434.325334
+      },
+      "median_cpu_ms": {
+        "baseline": 574.322,
+        "selected": 555.803
+      }
+    },
+    {
+      "name": "guard/3",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 8.940696716308594e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          83
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          391.556458,
+          353.517542,
+          406.016375,
+          535.488041,
+          458.720791
+        ],
+        "selected": [
+          403.249166,
+          363.75775,
+          340.7235,
+          450.83025,
+          554.160875
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          498.332,
+          457.953,
+          529.087,
+          642.535,
+          589.332
+        ],
+        "selected": [
+          509.455,
+          467.252,
+          441.663,
+          575.534,
+          654.963
+        ]
+      },
+      "median_ms": {
+        "baseline": 406.016375,
+        "selected": 403.249166
+      },
+      "median_cpu_ms": {
+        "baseline": 529.087,
+        "selected": 509.455
+      }
+    },
+    {
+      "name": "guard/4",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 4.470348358154297e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          85
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          435.776625,
+          440.244333,
+          438.543292,
+          453.38625,
+          443.994875
+        ],
+        "selected": [
+          439.384875,
+          440.888125,
+          427.9855,
+          427.5225,
+          435.862875
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          566.903,
+          572.875,
+          569.669,
+          587.743,
+          576.968
+        ],
+        "selected": [
+          568.438,
+          570.128,
+          555.203,
+          553.821,
+          565.778
+        ]
+      },
+      "median_ms": {
+        "baseline": 440.244333,
+        "selected": 435.862875
+      },
+      "median_cpu_ms": {
+        "baseline": 572.875,
+        "selected": 565.778
+      }
+    },
+    {
+      "name": "guard/5",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          93
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          483.694625,
+          475.959625,
+          483.046375,
+          503.34975,
+          477.656458
+        ],
+        "selected": [
+          470.843708,
+          480.232166,
+          463.323959,
+          463.144041,
+          460.094917
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          636.294,
+          625.526,
+          635.939,
+          649.282,
+          626.248
+        ],
+        "selected": [
+          617.728,
+          629.763,
+          609.292,
+          607.654,
+          604.696
+        ]
+      },
+      "median_ms": {
+        "baseline": 483.046375,
+        "selected": 463.323959
+      },
+      "median_cpu_ms": {
+        "baseline": 635.939,
+        "selected": 609.292
+      }
+    },
+    {
+      "name": "guard/6",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          168
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          835.895959,
+          865.361291,
+          853.635834,
+          881.23925,
+          839.20625
+        ],
+        "selected": [
+          826.391625,
+          821.362375,
+          957.074708,
+          953.137084,
+          820.1375
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1188.085,
+          1227.095,
+          1211.54,
+          1244.222,
+          1194.084
+        ],
+        "selected": [
+          1167.564,
+          1158.481,
+          1229.395,
+          1267.536,
+          1158.839
+        ]
+      },
+      "median_ms": {
+        "baseline": 853.635834,
+        "selected": 826.391625
+      },
+      "median_cpu_ms": {
+        "baseline": 1211.54,
+        "selected": 1167.564
+      }
+    },
+    {
+      "name": "guard/7",
+      "questions": 5,
+      "max_logit_delta": 1.33514404296875e-05,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 7.450580596923828e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          138
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          680.817542,
+          679.646333,
+          718.54125,
+          681.649375,
+          704.340292
+        ],
+        "selected": [
+          661.886167,
+          666.110458,
+          672.112084,
+          669.648292,
+          666.151958
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          947.689,
+          948.936,
+          988.26,
+          950.077,
+          977.564
+        ],
+        "selected": [
+          920.19,
+          925.963,
+          931.001,
+          925.93,
+          924.483
+        ]
+      },
+      "median_ms": {
+        "baseline": 681.649375,
+        "selected": 666.151958
+      },
+      "median_cpu_ms": {
+        "baseline": 950.077,
+        "selected": 925.93
+      }
+    },
+    {
+      "name": "guard/8",
+      "questions": 5,
+      "max_logit_delta": 4.470348358154297e-07,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          114
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          650.302584,
+          578.441125,
+          577.117333,
+          575.626958,
+          574.148792
+        ],
+        "selected": [
+          558.95025,
+          560.641917,
+          562.9415,
+          560.483208,
+          639.060959
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          826.857,
+          783.081,
+          782.827,
+          782.496,
+          780.832
+        ],
+        "selected": [
+          755.859,
+          758.884,
+          762.801,
+          757.248,
+          817.334
+        ]
+      },
+      "median_ms": {
+        "baseline": 577.117333,
+        "selected": 560.641917
+      },
+      "median_cpu_ms": {
+        "baseline": 782.827,
+        "selected": 758.884
+      }
+    },
+    {
+      "name": "guard/9",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          183
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          952.40825,
+          996.555833,
+          910.179667,
+          918.661041,
+          2039.979542
+        ],
+        "selected": [
+          965.049666,
+          875.225917,
+          884.265417,
+          890.123708,
+          1313.287834
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1354.241,
+          1369.358,
+          1314.072,
+          1324.156,
+          1772.479
+        ],
+        "selected": [
+          1376.047,
+          1254.429,
+          1266.934,
+          1273.988,
+          1540.894
+        ]
+      },
+      "median_ms": {
+        "baseline": 952.40825,
+        "selected": 890.123708
+      },
+      "median_cpu_ms": {
+        "baseline": 1354.241,
+        "selected": 1273.988
+      }
+    },
+    {
+      "name": "guard/10",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          366
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          3585.302333,
+          1926.496416,
+          1942.726167,
+          1983.031958,
+          2011.595375
+        ],
+        "selected": [
+          2173.401792,
+          1868.669375,
+          1868.858958,
+          1895.006958,
+          1939.574583
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3779.69,
+          3095.914,
+          3112.769,
+          3161.57,
+          3154.821
+        ],
+        "selected": [
+          3106.43,
+          2944.369,
+          2939.079,
+          2977.441,
+          3025.34
+        ]
+      },
+      "median_ms": {
+        "baseline": 1983.031958,
+        "selected": 1895.006958
+      },
+      "median_cpu_ms": {
+        "baseline": 3154.821,
+        "selected": 2977.441
+      }
+    },
+    {
+      "name": "guard/11",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 8.940696716308594e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          377
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2,
+          2,
+          4,
+          6
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          2090.997584,
+          2111.144292,
+          2063.082125,
+          2229.557083,
+          1968.030542
+        ],
+        "selected": [
+          1993.297042,
+          1944.065833,
+          1914.370791,
+          2306.803334,
+          2061.143292
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3353.444,
+          3340.885,
+          3340.851,
+          3396.358,
+          3211.149
+        ],
+        "selected": [
+          3152.816,
+          3094.239,
+          3069.12,
+          3337.137,
+          3210.248
+        ]
+      },
+      "median_ms": {
+        "baseline": 2090.997584,
+        "selected": 1993.297042
+      },
+      "median_cpu_ms": {
+        "baseline": 3340.885,
+        "selected": 3152.816
+      }
+    },
+    {
+      "name": "router/0",
+      "questions": 4,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          141
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          699.391625,
+          576.733208,
+          569.08725,
+          617.4465,
+          568.546375
+        ],
+        "selected": [
+          522.043584,
+          557.256625,
+          554.759792,
+          590.5825,
+          554.962791
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          895.444,
+          794.779,
+          783.424,
+          815.844,
+          783.622
+        ],
+        "selected": [
+          720.441,
+          766.868,
+          765.36,
+          792.285,
+          765.269
+        ]
+      },
+      "median_ms": {
+        "baseline": 576.733208,
+        "selected": 554.962791
+      },
+      "median_cpu_ms": {
+        "baseline": 794.779,
+        "selected": 765.36
+      }
+    },
+    {
+      "name": "router/1",
+      "questions": 4,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          146
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          574.566792,
+          572.083917,
+          576.430584,
+          600.56,
+          579.913208
+        ],
+        "selected": [
+          600.619917,
+          552.009916,
+          573.554292,
+          562.919291,
+          558.122875
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          798.287,
+          798.191,
+          801.27,
+          832.752,
+          803.457
+        ],
+        "selected": [
+          814.866,
+          766.249,
+          795.711,
+          780.582,
+          775.539
+        ]
+      },
+      "median_ms": {
+        "baseline": 576.430584,
+        "selected": 562.919291
+      },
+      "median_cpu_ms": {
+        "baseline": 801.27,
+        "selected": 780.582
+      }
+    },
+    {
+      "name": "router/2",
+      "questions": 4,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          142
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          561.126917,
+          575.852875,
+          566.235209,
+          560.765875,
+          558.705208
+        ],
+        "selected": [
+          549.381042,
+          538.189042,
+          548.650292,
+          542.196542,
+          549.680542
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          777.663,
+          795.146,
+          783.904,
+          776.241,
+          772.459
+        ],
+        "selected": [
+          759.676,
+          744.532,
+          759.966,
+          750.407,
+          758.737
+        ]
+      },
+      "median_ms": {
+        "baseline": 561.126917,
+        "selected": 548.650292
+      },
+      "median_cpu_ms": {
+        "baseline": 777.663,
+        "selected": 758.737
+      }
+    },
+    {
+      "name": "router/3",
+      "questions": 4,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          130
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          525.038042,
+          648.72875,
+          539.207917,
+          528.001458,
+          539.244667
+        ],
+        "selected": [
+          510.589125,
+          533.741375,
+          518.037042,
+          510.50275,
+          515.622708
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          724.25,
+          807.506,
+          742.618,
+          729.207,
+          740.311
+        ],
+        "selected": [
+          704.202,
+          730.602,
+          710.906,
+          704.27,
+          709.704
+        ]
+      },
+      "median_ms": {
+        "baseline": 539.207917,
+        "selected": 515.622708
+      },
+      "median_cpu_ms": {
+        "baseline": 740.311,
+        "selected": 709.704
+      }
+    },
+    {
+      "name": "router/4",
+      "questions": 4,
+      "max_logit_delta": 2.86102294921875e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          132
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          559.6205,
+          530.9325,
+          544.513542,
+          551.448584,
+          536.505166
+        ],
+        "selected": [
+          530.521042,
+          526.815792,
+          521.160333,
+          525.219083,
+          520.441666
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          762.291,
+          726.856,
+          743.625,
+          755.592,
+          735.486
+        ],
+        "selected": [
+          725.521,
+          722.418,
+          713.745,
+          717.959,
+          713.357
+        ]
+      },
+      "median_ms": {
+        "baseline": 544.513542,
+        "selected": 525.219083
+      },
+      "median_cpu_ms": {
+        "baseline": 743.625,
+        "selected": 717.959
+      }
+    },
+    {
+      "name": "router/5",
+      "questions": 4,
+      "max_logit_delta": 7.152557373046875e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          140
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          582.709541,
+          693.530333,
+          676.446417,
+          621.935625,
+          561.43075
+        ],
+        "selected": [
+          597.706541,
+          577.232583,
+          795.399375,
+          546.262209,
+          568.958083
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          797.003,
+          860.569,
+          886.246,
+          850.287,
+          769.59
+        ],
+        "selected": [
+          798.274,
+          792.385,
+          931.57,
+          748.878,
+          777.247
+        ]
+      },
+      "median_ms": {
+        "baseline": 621.935625,
+        "selected": 577.232583
+      },
+      "median_cpu_ms": {
+        "baseline": 850.287,
+        "selected": 792.385
+      }
+    },
+    {
+      "name": "router/6",
+      "questions": 4,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          215
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          859.230667,
+          844.763292,
+          843.30325,
+          862.972708,
+          849.190666
+        ],
+        "selected": [
+          902.532417,
+          820.205583,
+          823.619333,
+          824.063292,
+          869.842875
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1251.557,
+          1229.077,
+          1228.361,
+          1251.964,
+          1233.525
+        ],
+        "selected": [
+          1264.179,
+          1184.181,
+          1192.085,
+          1188.924,
+          1219.524
+        ]
+      },
+      "median_ms": {
+        "baseline": 849.190666,
+        "selected": 824.063292
+      },
+      "median_cpu_ms": {
+        "baseline": 1233.525,
+        "selected": 1192.085
+      }
+    },
+    {
+      "name": "router/7",
+      "questions": 4,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          185
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          803.125292,
+          816.051583,
+          874.440208,
+          855.4145,
+          786.910792
+        ],
+        "selected": [
+          845.253667,
+          787.879459,
+          762.956042,
+          886.145875,
+          942.61075
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1146.133,
+          1163.604,
+          1205.417,
+          1201.873,
+          1109.346
+        ],
+        "selected": [
+          1129.364,
+          1116.865,
+          1083.384,
+          1114.762,
+          1269.371
+        ]
+      },
+      "median_ms": {
+        "baseline": 816.051583,
+        "selected": 845.253667
+      },
+      "median_cpu_ms": {
+        "baseline": 1163.604,
+        "selected": 1116.865
+      }
+    },
+    {
+      "name": "router/8",
+      "questions": 4,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.043081283569336e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          161
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          637.604834,
+          645.953041,
+          646.303958,
+          641.95075,
+          646.38525
+        ],
+        "selected": [
+          633.508584,
+          636.854417,
+          640.560542,
+          670.848917,
+          621.206916
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          897.319,
+          906.932,
+          909.415,
+          902.02,
+          910.416
+        ],
+        "selected": [
+          885.355,
+          888.231,
+          893.784,
+          913.906,
+          872.971
+        ]
+      },
+      "median_ms": {
+        "baseline": 645.953041,
+        "selected": 636.854417
+      },
+      "median_cpu_ms": {
+        "baseline": 906.932,
+        "selected": 888.231
+      }
+    },
+    {
+      "name": "router/9",
+      "questions": 4,
+      "max_logit_delta": 1.430511474609375e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 7.450580596923828e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          230
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          916.036125,
+          921.710459,
+          914.364542,
+          914.728833,
+          918.922542
+        ],
+        "selected": [
+          931.5445,
+          915.154125,
+          883.023417,
+          866.910792,
+          887.909875
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1348.698,
+          1360.542,
+          1349.847,
+          1350.827,
+          1350.391
+        ],
+        "selected": [
+          1338.389,
+          1340.317,
+          1300.2,
+          1276.165,
+          1302.91
+        ]
+      },
+      "median_ms": {
+        "baseline": 916.036125,
+        "selected": 887.909875
+      },
+      "median_cpu_ms": {
+        "baseline": 1350.391,
+        "selected": 1302.91
+      }
+    },
+    {
+      "name": "router/10",
+      "questions": 4,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          413
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1783.881208,
+          1823.406208,
+          1769.468542,
+          1795.901,
+          1772.554833
+        ],
+        "selected": [
+          1699.416208,
+          1820.245333,
+          1663.4585,
+          1772.153,
+          1730.397417
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3029.678,
+          3009.476,
+          2998.366,
+          3009.063,
+          3003.612
+        ],
+        "selected": [
+          2837.929,
+          2873.394,
+          2774.668,
+          2829.386,
+          2850.613
+        ]
+      },
+      "median_ms": {
+        "baseline": 1783.881208,
+        "selected": 1730.397417
+      },
+      "median_cpu_ms": {
+        "baseline": 3009.063,
+        "selected": 2837.929
+      }
+    },
+    {
+      "name": "router/11",
+      "questions": 4,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          4,
+          424
+        ]
+      ],
+      "option_counts": [
+        [
+          4,
+          6,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1893.160959,
+          1913.57325,
+          1828.333375,
+          1828.513417,
+          1978.049917
+        ],
+        "selected": [
+          1754.729416,
+          1712.719583,
+          1721.902792,
+          1744.845375,
+          1872.436125
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3215.278,
+          3196.874,
+          3145.019,
+          3148.535,
+          3327.335
+        ],
+        "selected": [
+          2947.073,
+          2900.199,
+          2928.918,
+          2941.552,
+          3019.987
+        ]
+      },
+      "median_ms": {
+        "baseline": 1893.160959,
+        "selected": 1744.845375
+      },
+      "median_cpu_ms": {
+        "baseline": 3196.874,
+        "selected": 2941.552
+      }
+    },
+    {
+      "name": "email/0",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 2.2351741790771484e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          114
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          603.67275,
+          566.987,
+          559.801791,
+          564.851,
+          551.397417
+        ],
+        "selected": [
+          555.117625,
+          547.593375,
+          565.240209,
+          554.900125,
+          546.189792
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          806.345,
+          770.254,
+          763.651,
+          770.84,
+          753.59
+        ],
+        "selected": [
+          756.351,
+          743.275,
+          767.752,
+          753.952,
+          744.245
+        ]
+      },
+      "median_ms": {
+        "baseline": 564.851,
+        "selected": 554.900125
+      },
+      "median_cpu_ms": {
+        "baseline": 770.254,
+        "selected": 753.952
+      }
+    },
+    {
+      "name": "email/1",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.000732421875,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          119
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          576.081417,
+          579.5445,
+          589.933292,
+          595.56525,
+          579.91475
+        ],
+        "selected": [
+          600.087375,
+          565.940625,
+          560.933209,
+          574.90125,
+          577.634666
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          788.992,
+          793.577,
+          805.189,
+          813.401,
+          791.229
+        ],
+        "selected": [
+          817.74,
+          772.88,
+          769.074,
+          786.901,
+          786.747
+        ]
+      },
+      "median_ms": {
+        "baseline": 579.91475,
+        "selected": 574.90125
+      },
+      "median_cpu_ms": {
+        "baseline": 793.577,
+        "selected": 786.747
+      }
+    },
+    {
+      "name": "email/2",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          115
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          575.095292,
+          559.86675,
+          569.941083,
+          566.688833,
+          563.078083
+        ],
+        "selected": [
+          550.652042,
+          535.746792,
+          554.108833,
+          548.356042,
+          547.893209
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          784.123,
+          766.775,
+          778.236,
+          774.784,
+          771.35
+        ],
+        "selected": [
+          753.456,
+          735.057,
+          756.132,
+          749.05,
+          751.325
+        ]
+      },
+      "median_ms": {
+        "baseline": 566.688833,
+        "selected": 548.356042
+      },
+      "median_cpu_ms": {
+        "baseline": 774.784,
+        "selected": 751.325
+      }
+    },
+    {
+      "name": "email/3",
+      "questions": 5,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          103
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          536.608042,
+          531.453584,
+          527.365,
+          528.219917,
+          534.393833
+        ],
+        "selected": [
+          524.435167,
+          524.295584,
+          521.029625,
+          542.510708,
+          529.320416
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          719.959,
+          712.592,
+          708.345,
+          707.462,
+          716.955
+        ],
+        "selected": [
+          703.035,
+          703.826,
+          700.153,
+          717.432,
+          707.164
+        ]
+      },
+      "median_ms": {
+        "baseline": 531.453584,
+        "selected": 524.435167
+      },
+      "median_cpu_ms": {
+        "baseline": 712.592,
+        "selected": 703.826
+      }
+    },
+    {
+      "name": "email/4",
+      "questions": 5,
+      "max_logit_delta": 3.5762786865234375e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          105
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          547.386958,
+          643.070792,
+          796.200334,
+          658.788292,
+          533.46525
+        ],
+        "selected": [
+          632.035917,
+          558.798208,
+          651.4255,
+          552.320417,
+          513.42775
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          734.615,
+          816.759,
+          821.155,
+          818.666,
+          716.917
+        ],
+        "selected": [
+          791.034,
+          751.669,
+          812.508,
+          741.07,
+          692.461
+        ]
+      },
+      "median_ms": {
+        "baseline": 643.070792,
+        "selected": 558.798208
+      },
+      "median_cpu_ms": {
+        "baseline": 816.759,
+        "selected": 751.669
+      }
+    },
+    {
+      "name": "email/5",
+      "questions": 5,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          113
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          580.784417,
+          636.518083,
+          586.00125,
+          614.625333,
+          583.739
+        ],
+        "selected": [
+          554.861541,
+          707.930958,
+          676.65975,
+          597.327833,
+          574.106333
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          785.597,
+          823.528,
+          795.078,
+          828.044,
+          789.716
+        ],
+        "selected": [
+          753.09,
+          893.941,
+          838.331,
+          806.006,
+          778.282
+        ]
+      },
+      "median_ms": {
+        "baseline": 586.00125,
+        "selected": 597.327833
+      },
+      "median_cpu_ms": {
+        "baseline": 795.078,
+        "selected": 806.006
+      }
+    },
+    {
+      "name": "email/6",
+      "questions": 5,
+      "max_logit_delta": 3.814697265625e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          188
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          972.462958,
+          927.663375,
+          928.982709,
+          906.664167,
+          924.068084
+        ],
+        "selected": [
+          947.504667,
+          954.824667,
+          898.138417,
+          874.992292,
+          892.150583
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1380.84,
+          1334.109,
+          1338.484,
+          1307.244,
+          1330.946
+        ],
+        "selected": [
+          1352.596,
+          1361.645,
+          1283.714,
+          1254.132,
+          1279.476
+        ]
+      },
+      "median_ms": {
+        "baseline": 927.663375,
+        "selected": 898.138417
+      },
+      "median_cpu_ms": {
+        "baseline": 1334.109,
+        "selected": 1283.714
+      }
+    },
+    {
+      "name": "email/7",
+      "questions": 5,
+      "max_logit_delta": 3.5762786865234375e-07,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 7.450580596923828e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          158
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          767.724708,
+          764.250625,
+          896.666917,
+          1059.894583,
+          1021.498625
+        ],
+        "selected": [
+          742.013417,
+          946.482583,
+          1247.480292,
+          964.251416,
+          1469.580625
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1081.349,
+          1077.941,
+          1206.976,
+          1322.683,
+          1308.475
+        ],
+        "selected": [
+          1041.552,
+          1218.443,
+          1388.828,
+          1235.961,
+          1441.659
+        ]
+      },
+      "median_ms": {
+        "baseline": 896.666917,
+        "selected": 964.251416
+      },
+      "median_cpu_ms": {
+        "baseline": 1206.976,
+        "selected": 1235.961
+      }
+    },
+    {
+      "name": "email/8",
+      "questions": 5,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 4.470348358154297e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          134
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          3288.07625,
+          1294.554334,
+          977.159708,
+          757.787667,
+          1397.197416
+        ],
+        "selected": [
+          1266.558709,
+          1418.958416,
+          1020.763625,
+          718.555375,
+          805.223083
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1461.2,
+          1146.862,
+          1139.92,
+          1042.915,
+          1312.272
+        ],
+        "selected": [
+          1232.143,
+          1237.33,
+          1152.463,
+          952.177,
+          1003.566
+        ]
+      },
+      "median_ms": {
+        "baseline": 1294.554334,
+        "selected": 1020.763625
+      },
+      "median_cpu_ms": {
+        "baseline": 1146.862,
+        "selected": 1152.463
+      }
+    },
+    {
+      "name": "email/9",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          203
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1031.687667,
+          1022.2115,
+          1043.831167,
+          1047.762,
+          1202.54975
+        ],
+        "selected": [
+          995.748667,
+          997.455334,
+          1022.528125,
+          1046.633083,
+          1392.3955
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1492.977,
+          1479.429,
+          1503.911,
+          1514.689,
+          1619.761
+        ],
+        "selected": [
+          1426.372,
+          1422.727,
+          1455.681,
+          1448.593,
+          1667.683
+        ]
+      },
+      "median_ms": {
+        "baseline": 1043.831167,
+        "selected": 1022.528125
+      },
+      "median_cpu_ms": {
+        "baseline": 1503.911,
+        "selected": 1448.593
+      }
+    },
+    {
+      "name": "email/10",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          386
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          2522.046584,
+          2107.078333,
+          2118.26575,
+          2063.505417,
+          2057.884375
+        ],
+        "selected": [
+          2001.292084,
+          1983.17025,
+          1943.25475,
+          2000.151792,
+          1948.698708
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3685.681,
+          3400.841,
+          3420.11,
+          3374.462,
+          3372.125
+        ],
+        "selected": [
+          3227.048,
+          3191.299,
+          3134.493,
+          3189.841,
+          3135.589
+        ]
+      },
+      "median_ms": {
+        "baseline": 2107.078333,
+        "selected": 1983.17025
+      },
+      "median_cpu_ms": {
+        "baseline": 3400.841,
+        "selected": 3189.841
+      }
+    },
+    {
+      "name": "email/11",
+      "questions": 5,
+      "max_logit_delta": 2.86102294921875e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.4901161193847656e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          397
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          2,
+          3,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          2096.5105,
+          2085.190666,
+          2098.152542,
+          2121.970375,
+          2084.731125
+        ],
+        "selected": [
+          2021.068125,
+          2049.3175,
+          2033.91925,
+          2038.206208,
+          1983.146083
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          3412.052,
+          3397.996,
+          3417.199,
+          3444.426,
+          3405.942
+        ],
+        "selected": [
+          3242.038,
+          3249.425,
+          3257.294,
+          3260.586,
+          3177.55
+        ]
+      },
+      "median_ms": {
+        "baseline": 2096.5105,
+        "selected": 2033.91925
+      },
+      "median_cpu_ms": {
+        "baseline": 3412.052,
+        "selected": 3249.425
+      }
+    },
+    {
+      "name": "long/512",
+      "questions": 1,
+      "max_logit_delta": 1.4901161193847656e-07,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 0.0,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          512
+        ]
+      ],
+      "option_counts": [
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          602.204958,
+          613.735333,
+          593.841042,
+          590.625167,
+          593.5425
+        ],
+        "selected": [
+          533.97825,
+          529.292041,
+          531.039792,
+          522.817833,
+          539.284334
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1020.342,
+          1040.566,
+          1012.67,
+          1007.978,
+          1013.414
+        ],
+        "selected": [
+          790.979,
+          786.863,
+          786.429,
+          779.037,
+          798.845
+        ]
+      },
+      "median_ms": {
+        "baseline": 593.841042,
+        "selected": 531.039792
+      },
+      "median_cpu_ms": {
+        "baseline": 1013.414,
+        "selected": 786.863
+      }
+    },
+    {
+      "name": "long/1024",
+      "questions": 1,
+      "max_logit_delta": 2.9802322387695312e-06,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 2.980232238769531e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          1024
+        ]
+      ],
+      "option_counts": [
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1372.957,
+          1389.798125,
+          1376.60975,
+          1584.038916,
+          1332.146042
+        ],
+        "selected": [
+          1198.279334,
+          1091.931375,
+          1079.440459,
+          1105.133125,
+          1091.601334
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          2547.046,
+          2603.149,
+          2621.854,
+          2639.603,
+          2525.175
+        ],
+        "selected": [
+          1751.797,
+          1705.033,
+          1752.051,
+          1748.522,
+          1706.051
+        ]
+      },
+      "median_ms": {
+        "baseline": 1376.60975,
+        "selected": 1091.931375
+      },
+      "median_cpu_ms": {
+        "baseline": 2603.149,
+        "selected": 1748.522
+      }
+    },
+    {
+      "name": "long/2048",
+      "questions": 1,
+      "max_logit_delta": 1.1622905731201172e-06,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          2048
+        ]
+      ],
+      "option_counts": [
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          3510.011416,
+          3472.640709,
+          3500.1015,
+          3404.434917,
+          3470.977708
+        ],
+        "selected": [
+          2383.8275,
+          2920.632084,
+          2411.318291,
+          2332.971791,
+          2353.8255
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          7951.074,
+          7883.987,
+          8004.524,
+          7752.3,
+          7961.015
+        ],
+        "selected": [
+          4197.342,
+          4577.594,
+          4147.867,
+          4124.924,
+          4147.746
+        ]
+      },
+      "median_ms": {
+        "baseline": 3472.640709,
+        "selected": 2383.8275
+      },
+      "median_cpu_ms": {
+        "baseline": 7951.074,
+        "selected": 4147.867
+      }
+    },
+    {
+      "name": "long/4096",
+      "questions": 1,
+      "max_logit_delta": 4.559755325317383e-06,
+      "max_action_logit_delta": 0.0,
+      "max_probability_delta": 5.960464477539062e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          4096
+        ]
+      ],
+      "option_counts": [
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          10282.428959,
+          9891.787667,
+          9890.966625,
+          10045.397792,
+          10060.34425
+        ],
+        "selected": [
+          5775.882416,
+          5495.706584,
+          5502.843042,
+          5692.040291,
+          5461.261042
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          27409.281,
+          26613.795,
+          26566.732,
+          26740.755,
+          26827.169
+        ],
+        "selected": [
+          11532.825,
+          11257.733,
+          11242.364,
+          11550.522,
+          11227.367
+        ]
+      },
+      "median_ms": {
+        "baseline": 10045.397792,
+        "selected": 5502.843042
+      },
+      "median_cpu_ms": {
+        "baseline": 26740.755,
+        "selected": 11257.733
+      }
+    },
+    {
+      "name": "options/1",
+      "questions": 1,
+      "max_logit_delta": 0.0,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 0.0,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          31
+        ]
+      ],
+      "option_counts": [
+        [
+          1
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          63.846834,
+          84.552459,
+          96.986375,
+          70.277375,
+          73.499542
+        ],
+        "selected": [
+          69.481166,
+          73.014084,
+          87.676833,
+          78.419792,
+          75.51375
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          70.075,
+          92.326,
+          102.627,
+          76.751,
+          80.341
+        ],
+        "selected": [
+          75.731,
+          79.406,
+          95.306,
+          85.636,
+          81.936
+        ]
+      },
+      "median_ms": {
+        "baseline": 73.499542,
+        "selected": 75.51375
+      },
+      "median_cpu_ms": {
+        "baseline": 80.341,
+        "selected": 81.936
+      }
+    },
+    {
+      "name": "options/32",
+      "questions": 1,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.002220859751105e-12,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          279
+        ]
+      ],
+      "option_counts": [
+        [
+          32
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          327.837875,
+          320.470875,
+          308.09825,
+          317.302416,
+          319.017125
+        ],
+        "selected": [
+          316.954417,
+          305.942459,
+          307.192375,
+          310.9715,
+          309.127792
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          465.324,
+          456.596,
+          440.782,
+          453.299,
+          454.269
+        ],
+        "selected": [
+          444.296,
+          431.183,
+          431.891,
+          435.596,
+          432.414
+        ]
+      },
+      "median_ms": {
+        "baseline": 319.017125,
+        "selected": 309.127792
+      },
+      "median_cpu_ms": {
+        "baseline": 454.269,
+        "selected": 432.414
+      }
+    },
+    {
+      "name": "batch/padded",
+      "questions": 3,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          2,
+          272
+        ],
+        [
+          1,
+          512
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1159.595416,
+          1143.920333,
+          1179.276791,
+          1172.931792,
+          1159.561666
+        ],
+        "selected": [
+          1107.948083,
+          1056.54325,
+          1134.633333,
+          1085.146875,
+          1045.622292
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1819.833,
+          1803.437,
+          1853.28,
+          1837.457,
+          1817.164
+        ],
+        "selected": [
+          1588.416,
+          1544.627,
+          1651.971,
+          1584.341,
+          1541.479
+        ]
+      },
+      "median_ms": {
+        "baseline": 1159.595416,
+        "selected": 1085.146875
+      },
+      "median_cpu_ms": {
+        "baseline": 1819.833,
+        "selected": 1584.341
+      }
+    },
+    {
+      "name": "structured/mixed",
+      "questions": 3,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.00048828125,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          3,
+          51
+        ]
+      ],
+      "option_counts": [
+        [
+          3,
+          2,
+          5
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          177.849167,
+          180.516583,
+          181.148167,
+          190.447458,
+          192.244041
+        ],
+        "selected": [
+          176.349666,
+          176.389125,
+          180.778542,
+          185.520792,
+          185.979042
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          218.505,
+          221.579,
+          222.414,
+          233.644,
+          236.034
+        ],
+        "selected": [
+          217.015,
+          216.939,
+          222.019,
+          227.402,
+          228.181
+        ]
+      },
+      "median_ms": {
+        "baseline": 181.148167,
+        "selected": 180.778542
+      },
+      "median_cpu_ms": {
+        "baseline": 222.414,
+        "selected": 222.019
+      }
+    },
+    {
+      "name": "structured/batch",
+      "questions": 6,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0009765625,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          6,
+          286
+        ]
+      ],
+      "option_counts": [
+        [
+          3,
+          2,
+          5,
+          3,
+          2,
+          5
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          1699.188458,
+          1730.22575,
+          1814.281583,
+          1687.757,
+          1784.515167
+        ],
+        "selected": [
+          1681.194,
+          1630.763833,
+          1612.766167,
+          1610.364167,
+          1700.388708
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          2556.888,
+          2595.421,
+          2619.961,
+          2536.962,
+          2578.551
+        ],
+        "selected": [
+          2510.315,
+          2451.64,
+          2420.777,
+          2420.476,
+          2499.985
+        ]
+      },
+      "median_ms": {
+        "baseline": 1730.22575,
+        "selected": 1630.763833
+      },
+      "median_cpu_ms": {
+        "baseline": 2578.551,
+        "selected": 2451.64
+      }
+    }
+  ],
+  "peak_rss_mib": 5009.09375,
+  "parameters_unchanged": true,
+  "summary": {
+    "questions": 306,
+    "argmax_flips": 0,
+    "max_logit_delta": 1.33514404296875e-05,
+    "max_action_logit_delta": 0.00146484375,
+    "max_probability_delta": 5.960464477539062e-07,
+    "max_public_delta": 0.0,
+    "sum_median_ms": {
+      "baseline": 70687.47771100001,
+      "selected": 62648.35642
+    }
+  }
+}

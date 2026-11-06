@@ -1,0 +1,309 @@
+{
+  "implementation_commit": "6290eed206fc2ab3beefedf6abb191319d547d41",
+  "local_steps": [
+    {
+      "name": "shared-suites",
+      "exit_code": 0,
+      "elapsed_seconds": 143.3,
+      "log_sha256": "966bb8b2434047db520d84d70f424b518ccfe23830c8d05da78f9959db9a1586"
+    },
+    {
+      "name": "mac-english-standard",
+      "exit_code": 0,
+      "elapsed_seconds": 824.1,
+      "log_sha256": "d5817a87ee175d9ebb3908224e545f759c0989247da4837a1fd0cb38f61a701c"
+    },
+    {
+      "name": "mac-multilingual-standard",
+      "exit_code": 0,
+      "elapsed_seconds": 318.5,
+      "log_sha256": "6f404af9e902c36ce9eddd76e244123bd5d23053619bc74ffeacbc2a442a6f9d"
+    },
+    {
+      "name": "mac-typed-decisions-standard",
+      "exit_code": 0,
+      "elapsed_seconds": 752.7,
+      "log_sha256": "93790b5316faf2c7fb1a2cade68d29a8c558f59282032eba4cf5d376a0259a35"
+    },
+    {
+      "name": "mac-english-long-options",
+      "exit_code": 0,
+      "elapsed_seconds": 54.6,
+      "log_sha256": "36ec0b07aa1f9e5e1da3c2ffa3dd68e4267c5a0db4725fcb0ad904205090a15a"
+    },
+    {
+      "name": "mac-multilingual-long-options",
+      "exit_code": 0,
+      "elapsed_seconds": 29.1,
+      "log_sha256": "b1409b2a6016fba6ed3396e6c6f89f4dce843e43af11586a2813d01b8cd943a5"
+    },
+    {
+      "name": "mac-typed-decisions-long-options",
+      "exit_code": 0,
+      "elapsed_seconds": 55.2,
+      "log_sha256": "ff9f612ff9306569adc1b48abd0cb825a30833a9343c20e6366ae34230b3900a"
+    },
+    {
+      "name": "mac-english-memory-baseline",
+      "exit_code": 0,
+      "elapsed_seconds": 62.5,
+      "log_sha256": "3a313a7d23a8c62cde13660e7ba8d79a85d5b066c1a21b095d21cb15152ba12a"
+    },
+    {
+      "name": "mac-english-memory-selected",
+      "exit_code": 0,
+      "elapsed_seconds": 60.6,
+      "log_sha256": "f3564f1a106f90d0af1d3193750a3ab454098442d75c7e1aaa2d6693988a12bc"
+    },
+    {
+      "name": "mac-multilingual-memory-baseline",
+      "exit_code": 0,
+      "elapsed_seconds": 30.1,
+      "log_sha256": "c22c95b4d4e2031365bb61ba1a48cd8ee4226224c7e9a147ee5031d16ef2e2f1"
+    },
+    {
+      "name": "mac-multilingual-memory-selected",
+      "exit_code": 0,
+      "elapsed_seconds": 25.7,
+      "log_sha256": "47365e667e93c52809c83508b8543e1727db4d507072d39a9d61a9a4b5e6ca87"
+    },
+    {
+      "name": "mac-typed-decisions-memory-baseline",
+      "exit_code": 0,
+      "elapsed_seconds": 67.2,
+      "log_sha256": "45518810bd3b9c690ebbc2c78fad9c75e02d049eb3c372c4a2e9d2391555e407"
+    },
+    {
+      "name": "mac-typed-decisions-memory-selected",
+      "exit_code": 0,
+      "elapsed_seconds": 60.4,
+      "log_sha256": "cd934199a0c7e042fce4accdcb607c1bd507d84e90a36288faf473c3c5cd4242"
+    },
+    {
+      "name": "mac-multilingual-ablation-head",
+      "exit_code": 0,
+      "elapsed_seconds": 32.7,
+      "log_sha256": "76c41ce0b20b0c9cd2f64dfb885bc24e4bcad7f9961e7416dd2a42a605fbb77c"
+    },
+    {
+      "name": "mac-multilingual-ablation-windows",
+      "exit_code": 0,
+      "elapsed_seconds": 29.0,
+      "log_sha256": "c1b4ab1bc4b3ceaf49d805c543ab86ac79e0befe3e93672b617648d976a8bf17"
+    },
+    {
+      "name": "real-e2e",
+      "exit_code": 0,
+      "elapsed_seconds": 15.3,
+      "log_sha256": "509ecd172a88ace3c74d5b85b01dd401f2774bd3314183a0d8d25e9f82ca64a9"
+    },
+    {
+      "name": "real-onnx",
+      "exit_code": 0,
+      "elapsed_seconds": 36.3,
+      "log_sha256": "f3dea72680aee39d825789a6379a45428c7a0f2286440d421187733df91126ae"
+    },
+    {
+      "name": "smoke",
+      "exit_code": 0,
+      "elapsed_seconds": 10.9,
+      "log_sha256": "c6e2f188dda111353fa5da78a88a06ca91f3c868dccbc14c32a67fe2ba562168"
+    },
+    {
+      "name": "numerics",
+      "exit_code": 0,
+      "elapsed_seconds": 8.9,
+      "log_sha256": "984ad880730606cb1133ebdef76b8255615865c182c532d71cef3a06b11392de"
+    },
+    {
+      "name": "edges",
+      "exit_code": 0,
+      "elapsed_seconds": 14.2,
+      "log_sha256": "fe7114bde84fef042cbb5806b41bb8d675ec7317cef8a4be305894136d2f6a15"
+    },
+    {
+      "name": "soak",
+      "exit_code": 0,
+      "elapsed_seconds": 29.3,
+      "log_sha256": "50294e87329c92d1d436394da722a5d6f0c1baf1fa9d0176b72ed6db82e5aa8e"
+    },
+    {
+      "name": "massive",
+      "exit_code": 0,
+      "elapsed_seconds": 22.7,
+      "log_sha256": "d92ecb43343eb3874853ada7aecd6a211081d2633e802c6a40df4290a9e8f79f"
+    },
+    {
+      "name": "regression",
+      "exit_code": 0,
+      "elapsed_seconds": 0.1,
+      "log_sha256": "54ce69f29309e6d435e90e2b0afa5c8ebd7bc6a1225af467aec5cb53edb126d0"
+    },
+    {
+      "name": "packaging",
+      "exit_code": 0,
+      "elapsed_seconds": 0.4,
+      "log_sha256": "51e894c3480bc7004606f7daf3ddd56711febe583e1fc95b506696fdc49fe458"
+    },
+    {
+      "name": "docs",
+      "exit_code": 0,
+      "elapsed_seconds": 2.9,
+      "log_sha256": "4c4211bc2d58022087f7898e533317afd4c73c6fe860394fe89ab4ef65a7c225"
+    }
+  ],
+  "fork_ci": "https://github.com/bahram-po/laya/actions/runs/42089928651",
+  "fork_compatibility": "https://github.com/bahram-po/laya/actions/runs/42090048166",
+  "fork_benchmarks": "https://github.com/bahram-po/laya/actions/runs/42090052470",
+  "fork_docs": "https://github.com/bahram-po/laya/actions/runs/42089928791",
+  "fork_docker": "https://github.com/bahram-po/laya/actions/runs/42089928703",
+  "known_separate_workflow_failure": {
+    "url": "https://github.com/bahram-po/laya/actions/runs/42089928457",
+    "reason": "Security workflow flags existing subprocess.run calls in laya/video.py; both file and workflow are unchanged from upstream main."
+  },
+  "rebase": {
+    "upstream_commit": "3293116c89425c3d04b22aa4d9464fef82e2c858",
+    "source_commit": "ad44df6292fa7199d41f1496f6f12dab06bcc784",
+    "inference_and_harness_unchanged": true,
+    "shared_suites": 97,
+    "pytest_passed": 828,
+    "pytest_skipped": 13,
+    "real_e2e_passed": 37,
+    "soak_passed": true,
+    "lint_compile_passed": true,
+    "strict_docs_passed": true,
+    "logs": {
+      "tests": {
+        "sha256": "302e8fdbd4a86d88f3ab9b298ee80a0ba7afa3c0d1787c23bc67f67ff36a2a41"
+      },
+      "e2e": {
+        "sha256": "a5a6fcff7c052f6e9b2094e2f751c6a8f5c1ba55eebc1fafd5456c6e675d8f45"
+      },
+      "soak": {
+        "sha256": "4aa741e1a9192053a0cf432a1a03559605d4b72b45fd42523ed4f92ff36d8ffd"
+      },
+      "docs": {
+        "sha256": "299dad77841f6fa006ff144c5fe326e54f1ac3a9075bddc9dde8613e92ab4806"
+      }
+    }
+  },
+  "upstream_benchmark_source_fork_ci": {
+    "conclusion": "success",
+    "headSha": "b4e7c9a434671e6b08daadf30c572270d015cd48",
+    "jobs": [
+      {
+        "conclusion": "success",
+        "name": "evals (metric math, dataset, API guard)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Chinese benchmark audit (no models or API)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (py3.13)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (py3.12)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "TypeScript (node22)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (windows)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (py3.10)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "TypeScript SDK (node22)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (ubuntu-latest, py3.11)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "TypeScript (node20)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "TypeScript SDK (node24)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "onnx export (quantization, weight-free)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "package",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "tests (py3.11)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (windows-latest, py3.11)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (ubuntu-latest, py3.13)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (live HTTP)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (ubuntu-latest, py3.12)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python SDK (ubuntu-latest, py3.10)",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "lint",
+        "status": "completed"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/bahram-po/laya/actions/runs/42121685219"
+  },
+  "upstream_evidence_documentation_checks": {
+    "runtime_source_commit": "b4e7c9a434671e6b08daadf30c572270d015cd48",
+    "runtime_source_unchanged": true,
+    "ruff_exit_code": 0,
+    "compileall_exit_code": 0,
+    "strict_docs_exit_code": 0,
+    "griffe_warnings": false,
+    "docs_log_sha256": "b494ff31ad48a82b0196ef3dded7d9ac6c4537881a65050f5733138d1bc0b0c7",
+    "upstream_artifact_hashes_verified": 18,
+    "local_report_links_verified": true
+  }
+}

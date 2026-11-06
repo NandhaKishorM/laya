@@ -1,0 +1,43 @@
+{
+  "config": {
+    "model": "models/laya",
+    "subfolder": null,
+    "device": "cpu",
+    "max_len": 512,
+    "head_max_len": 192,
+    "dataset": "mteb/amazon_massive_intent",
+    "split": "test",
+    "per_lang": 100,
+    "n_opts": 20,
+    "seed": 13,
+    "instructions": "What is the user asking for in `utterance`?",
+    "temperatures": {
+      "choice:3-5": 1.7601518630981445,
+      "choice:6-10": 1.0000158548355103,
+      "score:3-5": 1.2514300346374512,
+      "noul:2": 1.983399510383606,
+      "choice:11+": 0.5,
+      "choice:2": 1.9063563346862793
+    },
+    "laya_version": "0.4.24"
+  },
+  "report": {
+    "en": {
+      "n": 100,
+      "accuracy": 0.82,
+      "macro_f1": 0.7876,
+      "ece": 0.1382,
+      "mean_confidence": 0.9582,
+      "acc_at_50_coverage": 0.98,
+      "temperature": 0.5
+    }
+  },
+  "summary": {
+    "languages": 1,
+    "macro_accuracy": 0.82,
+    "macro_ece": 0.1382,
+    "macro_f1": 0.7876,
+    "seconds": 22.2
+  },
+  "raw_report_sha256": "af874bc8bf65aabab230f8d2e1366f2589c28397bfa38a1590447e8b5c7449fa"
+}

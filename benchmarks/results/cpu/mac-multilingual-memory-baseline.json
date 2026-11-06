@@ -1,0 +1,300 @@
+{
+  "checkpoint": "multilingual",
+  "checkpoint_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+  "hub_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "processor": "arm",
+  "python": "3.11.12",
+  "torch": "2.15.0",
+  "transformers": "5.22.1",
+  "threads": 4,
+  "interop_threads": 1,
+  "repeats": 5,
+  "optimization": "combined",
+  "suite": "standard",
+  "common_sha256": "efb8558be8246810bc0d5ef0a1d152b1cd23a8fcc886befa013fdcbe8e7346d2",
+  "harness_sha256": "4327f3b3710031cccf7b534e5108c744fb1e213c0ae8caa8ff8c5d0effb4d9de",
+  "fixtures_sha256": "b8b7c51543a23daada63f9fcf7877121507a3b99697c49dcf7f17b73ae75f3cc",
+  "memory_variant": "baseline",
+  "peak_rss_after_load_mib": 2529.359375,
+  "cases": [
+    {
+      "name": "triage/0",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/1",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/2",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/3",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/4",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/5",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/6",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/7",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/8",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/9",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/10",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "triage/11",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/0",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/1",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/2",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/3",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/4",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/5",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/6",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/7",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/8",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/9",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/10",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "moderation/11",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/0",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/1",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/2",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/3",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/4",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/5",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/6",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/7",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/8",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/9",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/10",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "guard/11",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/0",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/1",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/2",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/3",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/4",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/5",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/6",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/7",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/8",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/9",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/10",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "router/11",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/0",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/1",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/2",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/3",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/4",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/5",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/6",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/7",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/8",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/9",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/10",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "email/11",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "long/512",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "long/1024",
+      "peak_rss_mib": 2529.359375
+    },
+    {
+      "name": "long/2048",
+      "peak_rss_mib": 2721.703125
+    },
+    {
+      "name": "long/4096",
+      "peak_rss_mib": 3088.671875
+    },
+    {
+      "name": "options/1",
+      "peak_rss_mib": 3088.671875
+    },
+    {
+      "name": "options/32",
+      "peak_rss_mib": 3088.671875
+    },
+    {
+      "name": "batch/padded",
+      "peak_rss_mib": 3088.671875
+    },
+    {
+      "name": "structured/mixed",
+      "peak_rss_mib": 3091.921875
+    },
+    {
+      "name": "structured/batch",
+      "peak_rss_mib": 3093.046875
+    }
+  ],
+  "peak_rss_mib": 3093.046875,
+  "parameters_unchanged": true
+}

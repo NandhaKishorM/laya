@@ -259,6 +259,36 @@ check_true("guard/score_fallback_flagged",
            harm_result({"type": "score", "score": 1.5, "confidence": 0.5})["passed"] is False)
 check_true("guard/score_fallback_passes", harm_result({"type": "score", "score": 0.53, "confidence": 0.5})["passed"])
 
+from laya.integrations._guard import probability_map
+
+# A remote JSON integer may be wider than a Python float. Refuse it as a malformed numeric field
+# instead of leaking OverflowError from the shared answer guard.
+_wide_guard = LayaTaskGuard(
+    agent=MockLayaAgent(lambda state, questions: {
+        "answers": {"jailbreak": {"type": "noul", "noul": 10 ** 400}}
+    }),
+    action="annotate",
+)
+try:
+    _wide_guard.screen("Summarize this report")
+    check_true("guard/wide_integer_is_malformed", False, "no error raised")
+except RuntimeError as _exc:
+    check_true("guard/wide_integer_is_malformed",
+               "Malformed decision response" in str(_exc), str(_exc))
+except Exception as _exc:
+    check_true("guard/wide_integer_is_malformed", False,
+               "%s: %s" % (type(_exc).__name__, _exc))
+
+try:
+    probability_map({"probabilities": {"choice_0": 10 ** 400}}, ["choice_0"])
+    check_true("guard/wide_probability_is_malformed", False, "no error raised")
+except RuntimeError as _exc:
+    check_true("guard/wide_probability_is_malformed",
+               "Malformed decision response" in str(_exc), str(_exc))
+except Exception as _exc:
+    check_true("guard/wide_probability_is_malformed", False,
+               "%s: %s" % (type(_exc).__name__, _exc))
+
 # --------------------------------------------------------------- 3b. Guard probabilities are robust to a malformed answer
 #
 # `score_violation_probability` reads `probabilities` (and `score`) straight from a decision answer,

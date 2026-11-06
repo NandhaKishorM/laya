@@ -4,13 +4,14 @@ Everything on this page is importable from `laya` (the common names) or `laya.ho
 whole surface).
 
 ```python
-from laya import PredictContext, PredictHook, Hook, OptionStabilityHook
+from laya import PredictContext, PredictHook, Hook, OptionStabilityHook, OutcomeLogHook
 from laya.hooks import HOOK_EVENTS, normalise_hooks, dispatch, aggregate_usage
 ```
 
 - [PredictContext](#predictcontext)
 - [Hook protocol](#hook-protocol)
 - [OptionStabilityHook](#optionstabilityhook)
+- [OutcomeLogHook](#outcomeloghook)
 - [Convenience types](#convenience-types)
 - [Configuration surface](#configuration-surface)
 - [Event payloads](#event-payloads)
@@ -219,6 +220,88 @@ of 15 calls after 4 warmups:
 
 So on CPU this is a diagnostic to enable deliberately, per request or on a sample of traffic,
 rather than everywhere by default. Scale the row counts by option count from the table in #908.
+
+## OutcomeLogHook
+
+`OutcomeLogHook` records every decision to a local SQLite file -- one row per answered
+question -- so a later job can join outcomes and fit per-question calibration offline
+with `laya.calibrate`. It only observes `on_predict_end` and never raises: a full disk
+or a closed database costs a warning, never a decision.
+
+```python
+from laya import OutcomeLogHook
+
+hook = OutcomeLogHook("/var/lib/laya/decisions.db")
+agent = laya.load("convaiinnovations/laya", hooks=[hook])
+# ... later, after joining labels ...
+hook.record_outcome(run_id, "dept", "billing", source="review")
+```
+
+Privacy is structural: raw state text is never stored unless the deployment opts in with
+`OutcomeLogHook(path, include_state=True)`. What is always stored is a SHA-256 over the
+canonical JSON of the state (enough to join replays and deduplicate), the checkpoint
+name, the question id and type, the answer with its confidence, and any abstention or
+error. The `outcomes` table takes one label per `(run_id, qid)` cell with its source
+(`stability`, `review`, `shadow-eval`), so weak signals and human review share it.
+
+`laya.outcome_labels` derives the first labels without a human in the loop:
+
+- `export_stability_labels(hook, min_stability=1.0)` records the logged answer itself
+  as a weak label, weighted by its stability, for every row whose stored answer carries
+  a `reliability` block at or above the threshold. That block comes from an annotating
+  hook such as `OptionStabilityHook` -- install it *before* the log hook so the block
+  is in the answer when it is stored. Rows that already have an outcome are never
+  overwritten: a human or shadow-eval label always wins over a weak one.
+- `export_review_queue(hook, min_confidence=None)` returns the worklist a human should
+  look at: rows the gate abstained on or could not evaluate, plus rows under
+  `min_confidence` when given, minus rows that already carry an outcome.
+
+`laya.outcome_fit` closes the loop offline. `build_fit_pairs(hook, items)` joins the
+outcomes with the deployment's own copy of what it asked (`{"state", "questions"}` items,
+matched by state hash) and builds the sum-to-1 target vectors `laya.calibrate` fits on,
+grouped per checkpoint with a skip report. The deployment then runs the one step that
+needs the weights -- `records_from_labeled(agent, pairs)` per model group, exactly as
+`Agent.fit_temperatures` does -- and `fit_payload_from_records(records)` fits
+temperatures and abstention thresholds and returns the `calibration_payload` JSON to
+write to disk and apply at load with `Agent.load_calibration`. A `{"correct": true}`
+label adopts the logged answer, which is a valid target for `choice`; for `score` and
+`noul` record the explicit level or probability instead. Thresholds come back `{}` on a
+set too small to fill a bucket -- pass no gate then, not an empty map.
+
+`laya.outcome_shadow` decides whether a fitted payload may ship.
+`evaluate_records(records, temperature, temperature_by_options, thresholds=None)`
+scores eval records under one temperature map -- calibrated max-probability rounded
+the way the runtime reports it, so the gate sees what a deployment would gate on --
+and `should_ship(before, after)` ships only when nothing regresses: ECE within
+tolerance, gated error within tolerance, coverage within tolerance. A candidate whose
+gate accepts nothing fails closed. Temperature scaling never changes an argmax, so
+accuracy is reported for information and gated on for nothing.
+
+There is no dashboard UI in this repo; the SQLite file is the interface. Point any
+SQLite reader (Grafana, Metabase, the `sqlite3` shell) at it, or generate a static
+report with no server to supervise:
+
+```sh
+python scripts/outcome_report.py --db decisions.db --out report.html
+python scripts/outcome_report.py --db decisions.db --out report.html --payload calibration.json
+```
+
+The page shows volume, label coverage by source, confidence and abstentions with the
+review queue, and -- with `--payload` -- the fitted temperatures and thresholds. It
+is one self-contained HTML file with inline SVG and no JavaScript, so it opens from
+`file://`.
+
+```sql
+-- weak-label coverage per question: what fraction of answers has a label, and from where
+SELECT qid, COUNT(*) AS answers, COUNT(o.label_json) AS labeled,
+       GROUP_CONCAT(DISTINCT o.source) AS sources
+FROM decisions d LEFT JOIN outcomes o USING (run_id, qid)
+GROUP BY qid;
+-- the current review queue: passed rows excluded, labeled rows excluded
+SELECT run_id, qid, confidence, abstention FROM decisions
+WHERE abstention IN ('abstained', 'unevaluated')
+  AND (run_id, qid) NOT IN (SELECT run_id, qid FROM outcomes);
+```
 
 ## Convenience types
 

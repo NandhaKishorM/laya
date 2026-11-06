@@ -33,14 +33,20 @@ from laya.serve import (  # noqa: E402
     DEFAULT_MAX_TOKEN_BUDGET,
     DEFAULT_PORT,
     MAX_BODY_BYTES,
+    MAX_QUESTIONS,
     MAX_STATE_CHARS,
     _add_jev_confidence,
     _apply_thread_limit,
     _check_request_limits,
     _env_bool,
     _LONE_SURROGATE_DETAIL,
+    _merge_single_results,
+    _merge_single_usages,
+    _outcome_log_hook,
+    _plan_single_question_chunks,
     _resolve_body_read_timeout,
     _resolve_log_level,
+    _resolve_max_questions,
     _resolve_max_token_budget,
     _resolve_idle_unload_seconds,
     _resolve_max_loaded,
@@ -5117,3 +5123,385 @@ def test_http_route_validation_and_failure_release_admission(monkeypatch, caplog
         assert failed.status_code == 500 and "private hook error" not in failed.text
         assert client.post("/v1/route", json=_ROUTE_REQ).status_code == 200
     assert len(fake.route_calls) == 1
+# ------------------------------------------------------------------ single-request chunking
+#
+# A single `/v1/systemone` request holding more questions than one forward pass fits is split
+# into passes that each fit -- the single-request form of the batch endpoint's token-budget
+# chunking -- instead of refused with 413. What chunking cannot fix (a missing or oversized
+# state, a per-question option cap, a null score level) is still refused, with the same status
+# and message a small request gets.
+
+def _score_questions(n):
+    """`n` score questions, the shape a token-budgeted caller sends (one per candidate)."""
+    return {"score%03d" % i: {"type": "score", "instructions": "How urgent is this?",
+                              "criteria": ["calm", "firm", "angry"]} for i in range(n)}
+
+
+class ChunkEchoRouter:
+    """Answers every question it is asked and reports 10 input tokens per question.
+
+    Records each call's question set, so a test can count the passes a request took and check
+    that their usage was summed. Score answers carry a per-question legend, like the real one.
+    """
+
+    loaded = ["english"]
+
+    def __init__(self):
+        self.calls = []
+
+    def predict(self, state, questions, model=None, **kwargs):
+        self.calls.append({"state": state, "questions": dict(questions), "model": model, **kwargs})
+        answers = {}
+        for qid in questions:
+            answers[qid] = {"type": "score", "score": 1.0,
+                            "probabilities": {"0": 0.2, "1": 0.6, "2": 0.2},
+                            "confidence": 0.5, "legend": {"0": "calm", "1": "firm", "2": "angry"}}
+        n = len(questions)
+        return {"model": "laya-rl-agent", "answers": answers,
+                "usage": {"input_tokens": 10 * n, "output_tokens": 0, "state_tokens": 7,
+                          "state_tokens_dropped": 0, "truncated": False,
+                          "truncated_questions": []},
+                "routing": {"model": "english", "reason": "English Latin text"}}
+
+
+def _chunk_client(monkeypatch, **env):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    if "LAYA_MAX_QUESTIONS" in env:
+        monkeypatch.setenv("LAYA_MAX_QUESTIONS", env["LAYA_MAX_QUESTIONS"])
+    else:
+        monkeypatch.delenv("LAYA_MAX_QUESTIONS", raising=False)
+    if "LAYA_MAX_BATCH_TOKENS" in env:
+        monkeypatch.setenv("LAYA_MAX_BATCH_TOKENS", env["LAYA_MAX_BATCH_TOKENS"])
+    else:
+        monkeypatch.delenv("LAYA_MAX_BATCH_TOKENS", raising=False)
+    fake = ChunkEchoRouter()
+    return TestClient(create_app(router=fake)), fake
+
+
+def test_a_large_single_request_is_split_not_refused(monkeypatch):
+    """112 score questions -- the caller that sizes by tokens, not by count -- answer 200."""
+    client, fake = _chunk_client(monkeypatch)
+    r = client.post("/v1/systemone", json={"state": "billed twice, refund please",
+                                           "questions": _score_questions(112)})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert sorted(body["answers"]) == sorted("score%03d" % i for i in range(112))
+    # two passes under the default 64-per-pass cap, and usage summed over both
+    assert [len(call["questions"]) for call in fake.calls] == [64, 48]
+    assert body["usage"]["input_tokens"] == 1120
+    assert body["usage"]["output_tokens"] == 0
+    assert body["model"] == "laya-rl-agent"
+
+
+def test_a_chunked_answer_matches_the_same_questions_sent_in_fitting_pieces(monkeypatch):
+    """A chunked answer is indistinguishable from the same questions sent as fitting requests."""
+    client, _ = _chunk_client(monkeypatch)
+    questions = _score_questions(112)
+    whole = client.post("/v1/systemone", json={"state": "billed twice", "questions": questions})
+    assert whole.status_code == 200, whole.text
+    first = client.post("/v1/systemone", json={"state": "billed twice",
+                                               "questions": dict(list(questions.items())[:64])})
+    second = client.post("/v1/systemone", json={"state": "billed twice",
+                                                "questions": dict(list(questions.items())[64:])})
+    assert first.status_code == 200 and second.status_code == 200
+    assert whole.json()["answers"] == {**first.json()["answers"], **second.json()["answers"]}
+    assert whole.json()["usage"]["input_tokens"] == (
+        first.json()["usage"]["input_tokens"] + second.json()["usage"]["input_tokens"])
+
+
+def test_a_fitting_single_request_is_still_one_pass(monkeypatch):
+    """A request inside the caps is the one forward pass it has always been -- byte-identical."""
+    client, fake = _chunk_client(monkeypatch)
+    r = client.post("/v1/systemone", json={"state": "billed twice",
+                                           "questions": _score_questions(3)})
+    assert r.status_code == 200, r.text
+    assert len(fake.calls) == 1
+    assert sorted(fake.calls[0]["questions"]) == ["score000", "score001", "score002"]
+    assert r.json()["usage"] == {"input_tokens": 30, "output_tokens": 0, "state_tokens": 7,
+                                 "state_tokens_dropped": 0, "truncated": False,
+                                 "truncated_questions": []}
+
+
+def test_an_oversized_state_is_still_refused_on_a_large_request(monkeypatch):
+    """Chunking splits questions, not the state: a >50k-char state still 413s, before inference."""
+    client, fake = _chunk_client(monkeypatch)
+    r = client.post("/v1/systemone", json={"state": "x" * (MAX_STATE_CHARS + 1),
+                                           "questions": _score_questions(112)})
+    assert r.status_code == 413, r.text
+    assert "state too large" in r.json()["detail"]
+    assert fake.calls == []
+
+
+def test_a_missing_state_is_still_a_400_on_a_large_request(monkeypatch):
+    client, fake = _chunk_client(monkeypatch)
+    r = client.post("/v1/systemone", json={"questions": _score_questions(112)})
+    assert r.status_code == 400, r.text
+    assert "'state' is required" in r.json()["detail"]
+    assert fake.calls == []
+
+
+def test_a_per_question_option_cap_is_still_refused_on_a_large_request(monkeypatch):
+    """One choice over the one-pass cap cannot be fixed by splitting questions: still 413."""
+    client, fake = _chunk_client(monkeypatch)
+    questions = _score_questions(70)
+    questions["queue"] = {"type": "choice", "instructions": "Which queue?",
+                          "criteria": {"q%03d" % i: None for i in range(101)}}
+    r = client.post("/v1/systemone", json={"state": "billed twice", "questions": questions})
+    assert r.status_code == 413, r.text
+    assert "too many choice options" in r.json()["detail"]
+    assert fake.calls == []
+
+
+def test_a_null_score_level_is_still_a_422_on_a_large_request(monkeypatch):
+    """A hole in a rubric is malformed, not oversized: still 422, naming the question."""
+    client, fake = _chunk_client(monkeypatch)
+    questions = _score_questions(70)
+    questions["score070"] = {"type": "score", "instructions": "How urgent?",
+                             "criteria": ["low", None, "high"]}
+    r = client.post("/v1/systemone", json={"state": "billed twice", "questions": questions})
+    assert r.status_code == 422, r.text
+    assert "null level" in r.json()["detail"] and "score070" in r.json()["detail"]
+    assert fake.calls == []
+
+
+def test_chunking_follows_a_lowered_max_questions(monkeypatch):
+    """`LAYA_MAX_QUESTIONS` sizes the pass the way `LAYA_MAX_BATCH_TOKENS` sizes a batch pass."""
+    client, fake = _chunk_client(monkeypatch, LAYA_MAX_QUESTIONS="8")
+    r = client.post("/v1/systemone", json={"state": "billed twice",
+                                           "questions": _score_questions(9)})
+    assert r.status_code == 200, r.text
+    assert [len(call["questions"]) for call in fake.calls] == [8, 1]
+    assert r.json()["usage"]["input_tokens"] == 90
+
+
+def test_chunking_follows_a_raised_max_questions(monkeypatch):
+    """And a raised one stops a request that fits it from being split."""
+    client, fake = _chunk_client(monkeypatch, LAYA_MAX_QUESTIONS="200")
+    r = client.post("/v1/systemone", json={"state": "billed twice",
+                                           "questions": _score_questions(112)})
+    assert r.status_code == 200, r.text
+    assert len(fake.calls) == 1
+    assert r.json()["usage"]["input_tokens"] == 1120
+
+
+def test_a_wide_max_len_chunks_a_fitting_count(monkeypatch):
+    """Row width is tokens, not questions: 60 questions at max_len=8192 exceed the token budget."""
+    import laya.serve as serve_mod
+
+    client, fake = _chunk_client(monkeypatch)
+    r = client.post("/v1/systemone", json={"state": "billed twice",
+                                           "questions": _score_questions(60),
+                                           "max_len": serve_mod.DEFAULT_MAX_TOKEN_BUDGET})
+    assert r.status_code == 200, r.text
+    rows_per_pass = serve_mod.DEFAULT_MAX_BATCH_TOKENS // serve_mod.DEFAULT_MAX_TOKEN_BUDGET
+    assert rows_per_pass == 16, rows_per_pass
+    assert [len(call["questions"]) for call in fake.calls] == [16, 16, 16, 12]
+    assert all(call["max_len"] == serve_mod.DEFAULT_MAX_TOKEN_BUDGET for call in fake.calls)
+    assert r.json()["usage"]["input_tokens"] == 600
+
+
+def test_resolve_max_questions_falls_back(monkeypatch, caplog):
+    """Unset, blank, unparsable and non-positive all mean the documented default -- loudly."""
+    monkeypatch.delenv("LAYA_MAX_QUESTIONS", raising=False)
+    assert _resolve_max_questions() == MAX_QUESTIONS == 64
+    monkeypatch.setenv("LAYA_MAX_QUESTIONS", "")
+    assert _resolve_max_questions() == 64
+    for bad in ("nonsense", "0", "-5", "3.5"):
+        monkeypatch.setenv("LAYA_MAX_QUESTIONS", bad)
+        with caplog.at_level(logging.WARNING, logger="laya.serve"):
+            assert _resolve_max_questions() == 64, bad
+        assert "LAYA_MAX_QUESTIONS" in caplog.text, (bad, caplog.text)
+    monkeypatch.setenv("LAYA_MAX_QUESTIONS", " 200 ")
+    assert _resolve_max_questions() == 200
+
+
+def test_single_chunk_plan_is_none_when_everything_fits(monkeypatch):
+    """The byte-identical promise, at the planner: no split, no new code path, no `batch_size`."""
+    import laya.serve as serve_mod
+
+    monkeypatch.delenv("LAYA_MAX_QUESTIONS", raising=False)
+    monkeypatch.delenv("LAYA_MAX_BATCH_TOKENS", raising=False)
+    assert _plan_single_question_chunks({}) is None
+    assert _plan_single_question_chunks(_score_questions(64)) is None
+    # 64 questions fit the count but 64 x 8192 tokens do not fit the budget: split on tokens
+    assert [len(c) for c in _plan_single_question_chunks(
+        _score_questions(64), serve_mod.DEFAULT_MAX_TOKEN_BUDGET)] == [16, 16, 16, 16]
+    assert _plan_single_question_chunks(_score_questions(65)) is not None
+
+
+def test_single_chunk_plan_splits_on_each_cap(monkeypatch):
+    """Count, cross-question options and token budget each split on their own."""
+    import laya.serve as serve_mod
+
+    monkeypatch.delenv("LAYA_MAX_QUESTIONS", raising=False)
+    monkeypatch.delenv("LAYA_MAX_BATCH_TOKENS", raising=False)
+    # count: 65 questions over the 64 cap
+    assert [len(c) for c in _plan_single_question_chunks(_score_questions(65))] == [64, 1]
+    # options: nine 60-option choices are 540 > 512, so the ninth starts a second chunk
+    wide = {"q%02d" % i: {"type": "choice", "instructions": "Which?",
+                          "criteria": {"o%02d" % j: None for j in range(60)}}
+            for i in range(9)}
+    assert [len(c) for c in _plan_single_question_chunks(wide)] == [8, 1]
+    # tokens: covered at the HTTP layer by test_a_wide_max_len_chunks_a_fitting_count
+    assert serve_mod.MAX_TOTAL_OPTIONS == 512
+
+
+def test_merge_single_usages_combines_the_known_keys():
+    """Summed tokens, carried state length, worst-case truncation, ordered union, merged options."""
+    first = {"input_tokens": 640, "output_tokens": 0, "state_tokens": 7,
+             "state_tokens_dropped": 3, "truncated": True, "truncated_questions": ["score001"],
+             "options": {"a": {"total": 2}}}
+    second = {"input_tokens": 480, "output_tokens": 0, "state_tokens": 7,
+              "state_tokens_dropped": 0, "truncated": False, "truncated_questions": [],
+              "options": {"b": {"total": 3}}}
+    merged = _merge_single_usages([first, second])
+    assert merged["input_tokens"] == 1120
+    assert merged["output_tokens"] == 0
+    assert merged["state_tokens"] == 7
+    assert merged["state_tokens_dropped"] == 3
+    assert merged["truncated"] is True
+    assert merged["truncated_questions"] == ["score001"]
+    assert merged["options"] == {"a": {"total": 2}, "b": {"total": 3}}
+    assert _merge_single_usages([{"input_tokens": 42, "output_tokens": 0}]) == \
+        {"input_tokens": 42, "output_tokens": 0}
+
+
+def test_merge_single_results_keeps_the_single_shape():
+    """One model, all answers by id, merged usage, and the routing one pass would report."""
+    parts = [{"model": "laya-rl-agent", "answers": {"a": {"type": "noul", "noul": 0.9}},
+              "usage": {"input_tokens": 10, "output_tokens": 0},
+              "routing": {"model": "english", "reason": "r"}},
+             {"model": "laya-rl-agent", "answers": {"b": {"type": "noul", "noul": 0.1}},
+              "usage": {"input_tokens": 10, "output_tokens": 0},
+              "routing": {"model": "english", "reason": "r"}}]
+    out = _merge_single_results(parts)
+    assert set(out) == {"model", "answers", "usage", "routing"}
+    assert sorted(out["answers"]) == ["a", "b"]
+    assert out["usage"]["input_tokens"] == 20
+    assert out["routing"] == {"model": "english", "reason": "r"}
+
+
+class TournamentEchoRouter(ChunkEchoRouter):
+    """ChunkEchoRouter that also answers choice questions, for tournament rounds."""
+
+    def predict(self, state, questions, model=None, **kwargs):
+        self.calls.append({"state": state, "questions": dict(questions), "model": model, **kwargs})
+        answers = {}
+        for qid, qdef in questions.items():
+            if isinstance(qdef, dict) and qdef.get("type") == "choice":
+                labels = list(qdef.get("criteria", {}))
+                winner = labels[0] if labels else None
+                answers[qid] = {"type": "choice", "choice": winner,
+                                "probabilities": {label: (1.0 if label == winner else 0.0)
+                                                  for label in labels},
+                                "confidence": 0.5}
+            else:
+                answers[qid] = {"type": "score", "score": 1.0,
+                                "probabilities": {"0": 0.2, "1": 0.6, "2": 0.2},
+                                "confidence": 0.5, "legend": {"0": "low", "1": "high"}}
+        n = len(questions)
+        return {"model": "laya-rl-agent", "answers": answers,
+                "usage": {"input_tokens": 10 * n, "output_tokens": 0},
+                "routing": {"model": "english", "reason": "English Latin text"}}
+
+
+def test_chunking_narrows_a_large_choice_per_chunk(monkeypatch):
+    """Tournament and chunking compose: a 128-option choice is narrowed inside its chunk."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    monkeypatch.delenv("LAYA_MAX_QUESTIONS", raising=False)
+    monkeypatch.delenv("LAYA_MAX_BATCH_TOKENS", raising=False)
+    monkeypatch.setenv("LAYA_TOURNAMENT_GROUP", "16")
+    fake = TournamentEchoRouter()
+    client = TestClient(create_app(router=fake))
+    questions = _score_questions(70)
+    questions["queue"] = {"type": "choice", "instructions": "Which queue?",
+                          "criteria": {"Queue %03d" % i: None for i in range(128)}}
+    r = client.post("/v1/systemone", json={"state": "billed twice", "questions": questions})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert sorted(body["answers"]) == sorted(questions)
+    answer = body["answers"]["queue"]
+    assert answer["choice"] == "Queue 000"
+    assert len(answer["probabilities"]) == 128
+    assert answer["x_tournament"]["rounds"] == 1
+    # two chunks: 64 scores in one pass, then 6 scores plus the large choice, whose
+    # tournament runs 8 group questions and a final call inside that second chunk
+    assert [len(call["questions"]) for call in fake.calls] == [64, 8, 7]
+
+
+# ------------------------------------------------- outcome-log wiring -----------
+
+def test_outcome_log_hook_is_off_unless_configured(monkeypatch):
+    """No `LAYA_OUTCOME_LOG` means no hook: logging is opt-in, not a default reader."""
+    monkeypatch.delenv("LAYA_OUTCOME_LOG", raising=False)
+    assert _outcome_log_hook() is None
+    monkeypatch.setenv("LAYA_OUTCOME_LOG", "   ")
+    assert _outcome_log_hook() is None
+
+
+def test_outcome_log_hook_opens_the_configured_file(monkeypatch, tmp_path):
+    """A set path opens a hook on it, installed on the Router the server builds."""
+    from laya.outcome_log import OutcomeLogHook
+    from laya.serve import build_router
+
+    db = str(tmp_path / "decisions.db")
+    monkeypatch.setenv("LAYA_OUTCOME_LOG", db)
+    monkeypatch.setenv("LAYA_PRELOAD", "0")
+    router = build_router()
+    try:
+        installed = [h for h in router.hooks if isinstance(h, OutcomeLogHook)]
+        assert len(installed) == 1
+        assert installed[0].path == db
+    finally:
+        for h in router.hooks:
+            close = getattr(h, "close", None)
+            if callable(close):
+                close()
+
+
+def test_outcome_log_hook_warns_and_serves_without_it(monkeypatch, caplog):
+    """A path that cannot be opened costs a warning, not the server."""
+    import logging
+
+    monkeypatch.setenv("LAYA_OUTCOME_LOG", "/nonexistent-dir/decisions.db")
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        assert _outcome_log_hook() is None
+    assert "LAYA_OUTCOME_LOG" in caplog.text and "disabled" in caplog.text
+
+
+class _SystemOneStub:
+    """An attached agent answering one fixed choice, recording nothing."""
+
+    loaded = ["english"]
+
+    def system_one(self, state, questions, **overrides):
+        return {"model": "laya-rl-agent",
+                "answers": {qid: {"type": "choice", "choice": "billing",
+                                   "probabilities": {"billing": 1.0}, "confidence": 1.0}
+                            for qid in questions},
+                "usage": {"input_tokens": 1, "output_tokens": 0}}
+
+
+def test_outcome_log_hook_records_a_live_request(monkeypatch, tmp_path):
+    """End to end through the Router the server builds: one request, one row."""
+    from laya.outcome_log import OutcomeLogHook
+    from laya.serve import build_router
+
+    db = str(tmp_path / "decisions.db")
+    monkeypatch.setenv("LAYA_OUTCOME_LOG", db)
+    monkeypatch.setenv("LAYA_PRELOAD", "0")
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = build_router()
+    router.attach("english", _SystemOneStub())
+    hook = next(h for h in router.hooks if isinstance(h, OutcomeLogHook))
+    try:
+        client = TestClient(create_app(router=router))
+        r = client.post("/v1/systemone", json={**REQ, "model": "english"})
+        assert r.status_code == 200, r.text
+        rows = hook.decisions()
+        assert len(rows) == 1 and rows[0]["run_id"]
+        assert rows[0]["model"] == "english" and rows[0]["qid"] == "dept"
+    finally:
+        hook.close()

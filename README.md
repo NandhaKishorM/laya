@@ -244,88 +244,26 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.26
+## What's new in 0.4.27
 
-* **`laya[vision]` and `laya[audio]`.** Images and video through the vega lane need Pillow and
-  torchvision, and audio files need soundfile; none of them is a core dependency, and a fresh
-  install used to fail inside transformers with a message about an image processor backend. The
-  two extras install exactly what each path needs, and `predict(image=...)`, `predict(video=...)`
-  and `predict(audio=path)` now name the extra when it is missing. Text and a numpy waveform need
-  nothing beyond `pip install laya`.
-
-## What's new in 0.4.25
-
-* **The `Router` has a vega lane.** When vegaml is installed, `Router()` routes what the encoders
-  cannot read to `laya.Agent(vegaml=True)`, built on first use: `image=`, `audio=` or `video=` in
-  place of a state, a state past 8,192 tokens (`vega_over_tokens`), and any question the vega agent
-  has a fitted head for (`Router(vega=agent)` after `agent.fit(...)`). Text the encoders can read
-  keeps going to the encoders with the same decisions and reasons as before, `Router(vega=False)`
-  turns the lane off, `model="vega"` selects it, and `predict_batch` stays on the encoders. The CLI
-  gained `--image`, `--audio` and `--video` for the same lane; the HTTP server refuses the three
-  keys with a message saying where media goes. Details in
-  [the routing guide](https://nandhakishorm.github.io/laya/routing/#the-vega-lane).
-
-## What's new in 0.4.24
-
-* **Video, through the same call: `agent.predict(video="call.mp4", questions=questions)`** on
-  `Agent(vegaml=True)`. The clip is split into what the engine can already read, and the path is
-  chosen by its content: the sound track is extracted at 16 kHz and transcribed, and when the
-  transcript holds real words the decision is made on it through the text path, so fitted heads,
-  the refit calibration, the conformal set and the route all apply and the transcript rides along.
-  A silent clip, or one whose sound is music or noise, has four evenly spaced frames tiled into
-  one contact sheet and decided through the image path. `out["video"]` says which path decided,
-  with the frame times or the transcript. Decoding goes through the `ffmpeg` binary on your
-  PATH; laya takes on no Python dependency for it, and `laya.video` holds the helpers.
-  `laya.vega.Router` sends a clip to vega like an image or a recording.
-* **`fit` takes a CSV and refuses to calibrate on its own fitting rows.** `agent.fit("rows.csv",
-  questions=questions)` reads a `state` column plus one column per question id
-  (`laya.VegaAgent.load_rows`; `.jsonl` too). A quarter of the rows is now held out inside `fit`
-  and the temperature, conformal threshold and review line are measured there, because a head is
-  right on its own rows and calibrating on them put every confidence at 1.000 and the review line
-  out of reach. `laya.VegaAgent.min_rows(questions)` is the floor `fit` accepts, and below it the
-  error names the number. Where the calibration rows cannot certify the review line at
-  `target_precision`, the band is reported `None` for that question and the conformal set routes
-  its answers, with `route_reason` saying so, instead of every answer going to review.
-  [`examples/42_fit_and_calibrate_vegaml.py`](https://github.com/NandhaKishorM/laya/blob/main/examples/42_fit_and_calibrate_vegaml.py)
-  and [`examples/data/routing_labels.csv`](https://github.com/NandhaKishorM/laya/blob/main/examples/data/routing_labels.csv)
-  are the measured loop; the quickstart carries its output.
-
-## What's new in 0.4.23
-
-* **`laya.Agent(vegaml=True)`: vega's engine behind laya's surface.** One argument swaps the
-  encoder for vegaml's frozen 0.8B universal reader and its decision engine. Every method keeps
-  its laya name (`predict`, `system_one`, `predict_batch`, `predict_long`, `fit_temperatures`,
-  `save_calibration`, `load_calibration`, the hooks), and every answer gains a conformal
-  `prediction_set`, `abstain`, `unbound` and a `route` decided without a threshold you set:
-  a fitted band when `fit` or `calibrate` has run, otherwise the engine's own abstain, unbound
-  and set size. `fit(rows)` fits a head per question over the frozen features in seconds and
-  serves it only where it beats the engine on your rows; `predict(image=...)`,
-  `predict(audio=...)` and a 73,728-token `predict_long` go through the same call.
-  `laya.vega.Router(fast=laya.Agent(), vega=agent)` switches between the two on media, length,
-  language and fitted heads. Details in [vega inside laya](#vega-inside-laya-agentvegamltrue)
-  and the [docs page](https://nandhakishorm.github.io/laya/vegaml/).
-* **vegaml is a core dependency**, so a plain `pip install laya` carries it. `import laya` is
-  as light as before: `laya.vega` is imported only when the argument is given.
-* **The quickstart starts there**, with the laya checkpoints under their own heading below it.
-
-Earlier releases are in the [GitHub releases](https://github.com/NandhaKishorM/laya/releases).
-
----
-
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/laya_vs_jev_full.png" alt="Laya versus TypeSafe Jev: accuracy on shared public datasets, every application workflow, all 51 languages, speed, calibration, and the cost of not preloading" width="100%" />
-</p>
-
-Laya evaluates typed questions (`choice`, `score`, `noul`) over any state (text, email, ticket or JSON document) in **a single forward pass** — 33 ms for one question, 7.2 ms/question batched, measured on a T4. No text generation, so nothing to parse and nothing to hallucinate.
-
-Three checkpoints, and a `Router` that picks between them per request:
-
-| | encoder | params | context | use it for |
-|---|---|---|---|---|
-| [`laya`](https://huggingface.co/convaiinnovations/laya) | ModernBERT-large | 421M | 512 | English |
-| [`laya-multilingual`](https://huggingface.co/convaiinnovations/laya-multilingual) | mmBERT-base | 322M | 1024 (up to 8,192) | 100+ languages, 2x faster |
-| [`laya-typed-decisions`](https://huggingface.co/convaiinnovations/laya-typed-decisions) | ModernBERT-large | 421M | 1024 | the typed-decisions workflows |
+* **Faster CPU inference on long inputs.** On transformers 5, ModernBERT's local attention
+  layers compute their window in blocks instead of full-sequence attention masked afterwards,
+  and the decision head packs its projections and, in its final layer, scores only the marker
+  and pooled positions. Same weights, same answers: a 186-key real-weights comparison across
+  the three checkpoints, short and long states, batches and `predict_long` matched 0.4.26 to
+  six decimals. Measured 26 to 55 percent lower latency between 2k and 7k tokens (#1467).
+* **Named refusals instead of leaked errors.** `predict_batch` and `predict_long` refuse a
+  float, string or boolean `batch_size` with a `ValueError` before any state is encoded, and
+  `None`, `0` and negatives still mean no cap (#1458); a wide integer in an adapter answer is
+  refused as malformed rather than raising `OverflowError` (#1466); the Router's fallback for
+  older agents composes both legacy keywords (#1468); the ONNX exporter's default opset
+  follows the installed torch (#1451).
+* **`laya-ts` Router parity.** `leafNonEnglish` reads each line on its own, as Python does
+  (#1450, fixes #1449); `maxLoaded` is read as `int()` reads it, so an unreadable cap cannot
+  disable eviction (#1457); `hooksTimeout` bounds the Router's own hooks (#1459);
+  `predictBatch` gates on `minConfidence` (#1460) and groups by the resolved checkpoint (#1461).
+* **TypeScript HTTP SDK: `predictBatch`** sends independent states with one question set to
+  `/v1/systemone/batch` in one request (#1471).
 
 ## Where to go next
 

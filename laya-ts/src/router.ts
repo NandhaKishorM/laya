@@ -162,6 +162,13 @@ export interface RouterOptions {
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
   hooksRaise?: boolean;
+  /**
+   * Per-hook time limit in seconds, applied to every hook this Router waits for; null or absent
+   * means no limit. Python's `Router(hooks_timeout=...)`, the same bound `Agent` applies.
+   */
+  hooksTimeout?: number | null;
+  /** Python-parity snake_case alias for `hooksTimeout`. */
+  hooks_timeout?: number | null;
 }
 
 export interface RouteOptions {
@@ -272,6 +279,7 @@ function repoStr(spec: ModelSpec): string {
 
 export class Router extends HookRegistry {
   hooksRaise: boolean;
+  hooksTimeout: number | null;
   models: Record<string, ModelSpec>;
   device: string | null;
   token: string | null | undefined;
@@ -296,6 +304,9 @@ export class Router extends HookRegistry {
     // onPredictEnd hooks wrap the whole route+infer call and see ctx.decision; see hooks.ts.
     this.hooks = normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     this.hooksRaise = opts.hooksRaise ?? true;
+    // `None if hooks_timeout is None else validate_timeout(hooks_timeout)` (laya/router.py): read
+    // the limit on the constructor line, so a caller who sets a deadline knows now that it is one.
+    this.hooksTimeout = validateHooksTimeout(opts.hooksTimeout ?? opts.hooks_timeout ?? null);
     const base: Record<string, string | ModelSpec> = opts.standaloneRepos ?? opts.standalone_repos
       ? { ...STANDALONE_MODELS }
       : Object.fromEntries(Object.entries(DEFAULT_MODELS).map(([k, v]) => [k, { ...v }]));
@@ -336,6 +347,11 @@ export class Router extends HookRegistry {
     } else if (Array.isArray(opts.preload)) {
       void this.preload(opts.preload);
     }
+  }
+
+  /** `hooksTimeout` in the milliseconds `dispatchAsync` races against; null starts no timer. */
+  private get hooksTimeoutMs(): number | null {
+    return this.hooksTimeout === null ? null : this.hooksTimeout * 1000;
   }
 
   async load(name: string): Promise<unknown> {
@@ -379,14 +395,14 @@ export class Router extends HookRegistry {
           composeHooks(this.hooks),
           "onEvict",
           new PredictContext({ states: [], questions: {}, model: victim, router: this }),
-          { raiseErrors: this.hooksRaise },
+          { raiseErrors: this.hooksRaise, timeoutMs: this.hooksTimeoutMs },
         );
       }
       await dispatchAsync(
         composeHooks(this.hooks),
         "onLoad",
         new PredictContext({ states: [], questions: {}, model: key, agent, router: this }),
-        { raiseErrors: this.hooksRaise },
+        { raiseErrors: this.hooksRaise, timeoutMs: this.hooksTimeoutMs },
       );
       return agent;
     });
@@ -646,8 +662,13 @@ export class Router extends HookRegistry {
     const mc = mcOpt !== undefined && mcOpt !== null ? checkMinConfidence(mcOpt) : null;
     const active = composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
-    const timeout = scan ? validateHooksTimeout(scan.hooksTimeout) : null;
-    const timeoutMs = timeout === null ? null : timeout * 1000;
+    // `self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)`
+    // (laya/router.py predict): a per-call limit replaces the Router's, it does not shorten it.
+    // One read covers both paths because `predictLong` hands the same object as `opts` and `scan`,
+    // and it gives the long path the Router default it did not have -- before, a limit there came
+    // only from `scan.hooksTimeout`, never from the Router the caller built.
+    const hooksTimeout = validateHooksTimeout(opts.hooksTimeout ?? this.hooksTimeout);
+    const timeoutMs = hooksTimeout === null ? null : hooksTimeout * 1000;
     const hasStart = active.some((h) => typeof h.onPredictStart === "function");
     // The per-call token-budget overrides seed the context, so a start hook can read and rewrite
     // them exactly as it can `states`/`questions`; the values it leaves are what reaches the agent

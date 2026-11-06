@@ -159,7 +159,12 @@ export interface PredictOptions {
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
   hooksRaise?: boolean;
-  /** Timeout for each hook call in seconds (null = no limit). */
+  /**
+   * Timeout for each hook call in seconds (null = no limit). Applies on the paths that wait for
+   * their hooks -- `Agent.systemOne`/`predict` and `Router.load`/`Router.predict`. `Router`'s batch
+   * and routing paths dispatch hooks without waiting for a promise, so a limit there is not a
+   * deadline the request can miss.
+   */
   hooksTimeout?: number | null;
   /** Per-call token-budget overrides; null = agent config. A start hook may also set them. */
   maxLen?: number | null;

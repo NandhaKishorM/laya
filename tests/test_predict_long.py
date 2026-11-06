@@ -2144,6 +2144,27 @@ for _doc_name, _doc, _stop in _WINDOW_DOCSTRINGS[1:]:
                "default" in _bullet[:120].lower(), _bullet[:140])
 
 
+# The sliding windows passed to predict_batch carry their pre-sliced tokens on _state_ids
+# so _encode_state does not re-decode or re-tokenize them, while still subclassing str.
+from laya.common import _WindowStr
+
+_test_agent = make_agent(canned)
+_test_agent.predict_long({"body": "y" * 300}, Q)
+_batch_windows = _test_agent._calls["batch_states"]
+check_true("window-carrier/windows are _WindowStr", all(isinstance(w, _WindowStr) for w in _batch_windows))
+check_true("window-carrier/windows are str instances", all(isinstance(w, str) for w in _batch_windows))
+check_true("window-carrier/windows carry _state_ids", all(len(getattr(w, "_state_ids", [])) > 0 for w in _batch_windows))
+
+# _encode_state reuses _state_ids when present and falls back to encode_text when absent
+_real_agent = make_real_agent()
+_w0 = _batch_windows[0]
+_q_internal = {"dept": _real_agent._to_internal(Q["dept"])}
+_enc_with_ids = Agent._encode_state(_real_agent, _w0, ["dept"], _q_internal, 100, 20)
+_enc_plain = Agent._encode_state(_real_agent, str(_w0), ["dept"], _q_internal, 100, 20)
+check_true("window-carrier/_encode_state accepts _WindowStr", len(_enc_with_ids) == 1)
+check_true("window-carrier/_encode_state accepts plain str fallback", len(_enc_plain) == 1)
+
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

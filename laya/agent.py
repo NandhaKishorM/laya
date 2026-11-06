@@ -48,7 +48,7 @@ from .common import (
     uses_parallel_layout,
     window_batch_cap,
     state_room,
-    window_budget,
+    window_budget, _WindowStr,
 )
 from .confidence import apply_confidence_gate, check_min_confidence
 from .hooks import (
@@ -1223,11 +1223,11 @@ class Agent(HookRegistry):
         # re-serializing and re-tokenizing it inside build_sequence per question was pure
         # duplicated work. Tokenize in full and let build_sequence slice per question, so
         # left-truncation for conversation lists keeps its meaning.
-        state_ids = encode_text(
-            self.tok,
-            serialize_state(state).replace(self.tok.mask_token, " "),
-            add_special_tokens=False,
-        )["input_ids"]
+        state_ids = getattr(state, "_state_ids", None)
+        if state_ids is None:
+            state_ids = encode_text(
+                self.tok, serialize_state(state).replace(self.tok.mask_token, " "),
+                add_special_tokens=False)["input_ids"]
         items = []
         for qid in ids:
             q = internal[qid]
@@ -1849,7 +1849,8 @@ class Agent(HookRegistry):
             # Decode each token window back to text so predict_batch re-tokenizes it as a normal
             # state. For BPE tokenizers the re-tokenized boundaries can shift by a token or two vs
             # this split; harmless for aggregation since the 50% default overlap absorbs it.
-            windows.append(self.tok.decode(state_ids[i:i + budget]))
+            span = state_ids[i:i + budget]
+            windows.append(_WindowStr(self.tok.decode(span), span))
             starts.append(i)
             if i + budget >= n:
                 break

@@ -1037,3 +1037,16 @@ def collate_items(batch, pad_id: int):
             opt[i, :l_ids] = it["layout"]["option_ids"]
         res["position_ids"], res["option_ids"] = torch.from_numpy(pos), torch.from_numpy(opt)
     return res
+
+
+class _WindowStr(str):
+    """String carrier for sliding windows that preserves pre-sliced token ids."""
+    __slots__ = ("_state_ids",)
+
+    def __new__(cls, text: str, state_ids: Optional[List[int]] = None):
+        instance = super().__new__(cls, text)
+        instance._state_ids = state_ids
+        return instance
+
+    def __reduce__(self):
+        return (_WindowStr, (str(self), self._state_ids))

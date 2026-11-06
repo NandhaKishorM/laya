@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np  # noqa: E402
 
 from laya.agent import Agent  # noqa: E402
-from laya.common import window_budget  # noqa: E402
+from laya.common import window_budget, _WindowStr  # noqa: E402
 from laya.hooks import OptionStabilityHook  # noqa: E402
 from _long_attribution import check_long_attribution
 from laya.onnx_agent import ONNXAgent  # noqa: E402
@@ -495,6 +495,14 @@ for malformed in (None, [], {"bad": None}, {"bad": {}}, {"bad": {"type": "unknow
         else:
             errors.append(None)
     check("questions/invalid input keeps the validator's error: %r" % malformed, errors[1], errors[0])
+
+# Sliced windows carry pre-tokenized IDs via _WindowStr
+check_true("window-carrier/onnx windows are _WindowStr",
+           all(isinstance(w, _WindowStr) for w in stability_windows))
+check_true("window-carrier/onnx windows are str instances",
+           all(isinstance(w, str) for w in stability_windows))
+check_true("window-carrier/onnx windows carry _state_ids",
+           all(len(getattr(w, "_state_ids", [])) > 0 for w in stability_windows))
 
 
 # ---------------------------------------------------------------- report

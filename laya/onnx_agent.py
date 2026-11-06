@@ -25,7 +25,7 @@ from laya.common import (
     resolve_lang_temperatures,
     serialize_state,
     window_batch_cap,
-    window_budget,
+    window_budget, _WindowStr,
     temp_bucket,
     temperature_rejected,
     unpermute_probs,
@@ -575,7 +575,8 @@ class ONNXAgent(HookRegistry):
         while i < n:
             # Decode each token window back to text so predict_batch re-tokenizes it as a normal
             # state; the 50% default overlap absorbs any boundary drift on re-tokenization.
-            windows.append(self.tok.decode(state_ids[i:i + budget]))
+            span = state_ids[i:i + budget]
+            windows.append(_WindowStr(self.tok.decode(span), span))
             starts.append(i)
             if i + budget >= n:
                 break
@@ -695,11 +696,13 @@ class ONNXAgent(HookRegistry):
         # Tokenize the shared state once and reuse it across questions, instead of
         # re-serializing and re-tokenizing the same document inside build_sequence per
         # question (the PyTorch Agent already does this via `state_ids`).
-        state_ids = encode_text(
-            self.tok,
-            serialize_state(state).replace(self.tok.mask_token, " "),
-            add_special_tokens=False,
-        )["input_ids"]
+        state_ids = getattr(state, "_state_ids", None)
+        if state_ids is None:
+            state_ids = encode_text(
+                self.tok,
+                serialize_state(state).replace(self.tok.mask_token, " "),
+                add_special_tokens=False,
+            )["input_ids"]
 
         items = []
         for qid in ids:

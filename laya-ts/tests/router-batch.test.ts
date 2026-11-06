@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Agent, Router, clearDefaultHooks, setDefaultHooks } from "../src/index.js";
-import type { BatchRequest } from "../src/index.js";
+import type { BatchRequest, PredictContext } from "../src/index.js";
 
 // TS mirror of tests/test_router_batch.py and the orchestration part of tests/test_batch.py.
 
@@ -610,6 +610,60 @@ describe("Router.routeBatch / predictBatch", () => {
     const results = await router.predictBatch([req("a", { model: "english" }), req("b", { model: "english" })]);
     expect(results.map((r) => r.answers.seen)).toEqual(["a", "b"]);
     expect(results.every((r) => r.routing.model === "english")).toBe(true);
+  });
+
+  // TS mirror of tests/test_hooks.py:1407-1420 (class AliasPin).
+  it("shares one forward pass with requests whose on_route pin names the checkpoint by alias", async () => {
+    const models: unknown[] = [];
+    const { router, built, calls } = makeRouter({
+      hooks: [
+        {
+          onRoute(ctx: PredictContext) {
+            if (ctx.states[0] === "alias") ctx.decision = { ...ctx.decision, model: "ml" };
+          },
+        },
+      ],
+      onPredictStart(ctx: PredictContext) {
+        models.push(ctx.model);
+      },
+    });
+    const results = await router.predictBatch([req("alias"), req("full", { model: "multilingual" })]);
+    // One `multilingual` group, not one per spelling: the alias and the canonical name are
+    // the same checkpoint, so both states share the agent's single forward pass.
+    expect(calls.map(([checkpoint, states]) => [checkpoint, states])).toEqual([
+      ["multilingual", ["alias", "full"]],
+    ]);
+    expect(built).toEqual(["multilingual"]);
+    // The context reports the resolved checkpoint, as Python's PredictContext.model does.
+    expect(models).toEqual(["multilingual", "multilingual"]);
+    // `routing` is still the decision the caller's hook wrote, unnormalised.
+    expect(results.map((r) => r.routing.model)).toEqual(["ml", "multilingual"]);
+    expect(results.map((r) => r.answers.seen)).toEqual(["alias", "full"]);
+    // predictMany is the same code path; the pin shares its pass there too.
+    calls.length = 0;
+    await router.predictMany([req("alias"), req("full", { model: "multilingual" })]);
+    expect(calls.map(([checkpoint, states]) => [checkpoint, states])).toEqual([
+      ["multilingual", ["alias", "full"]],
+    ]);
+  });
+
+  // Python builds the groups with `Router.resolve`, so an unresolvable pin is refused before
+  // any checkpoint loads; reading the raw name deferred it to the first `load` of that group.
+  it("refuses an on_route pin naming a checkpoint the Router does not know, before loading anything", async () => {
+    const { router, built, calls } = makeRouter({
+      hooks: [
+        {
+          onRoute(ctx: PredictContext) {
+            if (ctx.states[0] === "bogus") ctx.decision = { ...ctx.decision, model: "not-a-checkpoint" };
+          },
+        },
+      ],
+    });
+    await expect(
+      router.predictBatch([req("fine", { model: "english" }), req("bogus")]),
+    ).rejects.toThrow(/unknown model/);
+    expect(built).toEqual([]);
+    expect(calls).toEqual([]);
   });
 });
 

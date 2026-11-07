@@ -78,7 +78,7 @@ jobs:
       # once after a pause, then fall back to the runner image's own .NET 10 SDK, which global.json
       # (10.0.100, rollForward latestFeature) accepts; fail with a clear message only if neither works.
       - id: setup_dotnet
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         continue-on-error: true
         with:
           global-json-file: laya-dotnet/global.json
@@ -87,7 +87,7 @@ jobs:
         run: sleep 60
       - id: setup_dotnet_retry
         if: ${{ steps.setup_dotnet.outcome == 'failure' }}
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         continue-on-error: true
         with:
           global-json-file: laya-dotnet/global.json
@@ -327,7 +327,7 @@ jobs:
       # once after a pause, then fall back to the runner image's own .NET 10 SDK, which global.json
       # (10.0.100, rollForward latestFeature) accepts; fail with a clear message only if neither works.
       - id: setup_dotnet
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         continue-on-error: true
         with:
           global-json-file: laya-dotnet/global.json
@@ -336,7 +336,7 @@ jobs:
         run: sleep 60
       - id: setup_dotnet_retry
         if: ${{ steps.setup_dotnet.outcome == 'failure' }}
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         continue-on-error: true
         with:
           global-json-file: laya-dotnet/global.json

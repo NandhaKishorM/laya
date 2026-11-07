@@ -352,6 +352,27 @@ def _clip(tmp_path, name, audio_src, video_src="color=c=orange:s=160x120:d=3"):
 
 
 @needs_ffmpeg
+def test_probe_survives_a_banner_that_reports_no_duration(monkeypatch):
+    # an elementary .h264 has no container duration, so ffmpeg banners "Duration: N/A" and the
+    # fallback used to crash the three-way unpack. 0.0 is what an absent `format.duration`
+    # already gets on the ffprobe path. Weight-free: ffprobe is hidden and the banner is fed in.
+    import types
+
+    from laya import video as v
+
+    banner = (b"Input #0, h264, from 'clip.h264':\n"
+              b"  Duration: N/A, bitrate: N/A\n"
+              b"  Stream #0:0: Video: h264 (High), yuv420p, 64x64, 10 fps\n")
+    monkeypatch.setattr(v.shutil, "which", lambda name: "/usr/bin/true" if name == "ffmpeg" else None)
+    monkeypatch.setattr(v.subprocess, "run",
+                        lambda args, **kw: types.SimpleNamespace(returncode=1, stdout=b"", stderr=banner))
+    assert v.probe("clip.h264") == {"duration_s": 0.0, "has_audio": False, "has_video": True}
+    timed = banner.replace(b"Duration: N/A", b"Duration: 00:01:02.50")
+    monkeypatch.setattr(v.subprocess, "run",
+                        lambda args, **kw: types.SimpleNamespace(returncode=1, stdout=b"", stderr=timed))
+    assert v.probe("clip.h264")["duration_s"] == 62.5
+
+
 def test_video_helpers_on_synthetic_clips(tmp_path):
     import numpy as np
     from laya import video as v

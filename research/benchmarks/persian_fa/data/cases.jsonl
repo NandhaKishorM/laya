@@ -1,0 +1,64 @@
+{"id": "fm01", "family": "formal", "label": "billing", "text": "با سلام و احترام، مبلغ اشتراک ماه جاری دو مرتبه از حساب اینجانب کسر گردیده است. خواهشمند است نسبت به استرداد وجه اضافی اقدام فرمایید.", "rationale": "کسر دوباره‌ی وجه و درخواست استرداد", "trap": null}
+{"id": "fm02", "family": "formal", "label": "billing", "text": "احتراماً، فاکتور رسمی خرید اخیر را جهت ارائه به واحد حسابداری شرکت نیاز دارم. لطفاً نسخه‌ی دارای کد اقتصادی را ارسال نمایید.", "rationale": "درخواست فاکتور", "trap": null}
+{"id": "fm03", "family": "formal", "label": "technical", "text": "با سلام، از صبح امروز امکان ورود به حساب کاربری وجود ندارد و پیام «خطای داخلی سرور» نمایش داده می‌شود. لطفاً بررسی فرمایید.", "rationale": "خطای ورود و خطای سرور", "trap": null}
+{"id": "fm04", "family": "formal", "label": "technical", "text": "ضمن عرض سلام، نسخه‌ی جدید برنامه پس از به‌روزرسانی در هنگام باز شدن متوقف می‌شود. گوشی اینجانب سامسونگ است.", "rationale": "کرش برنامه بعد از به‌روزرسانی", "trap": null}
+{"id": "fm05", "family": "formal", "label": "cancel", "text": "با سلام، بدین‌وسیله درخواست لغو اشتراک و غیرفعال‌سازی حساب کاربری خود را اعلام می‌دارم.", "rationale": "درخواست صریح لغو و غیرفعال‌سازی", "trap": null}
+{"id": "fm06", "family": "formal", "label": "cancel", "text": "احتراماً، با توجه به عدم نیاز، خواهشمند است تمدید خودکار اشتراک اینجانب متوقف و حساب کاربری بسته شود.", "rationale": "توقف تمدید و بستن حساب", "trap": null}
+{"id": "fm07", "family": "formal", "label": "other", "text": "با سلام و وقت بخیر، آیا امکان همکاری در قالب نمایندگی فروش در شهر اصفهان وجود دارد؟", "rationale": "درخواست همکاری تجاری", "trap": null}
+{"id": "fm08", "family": "formal", "label": "other", "text": "ضمن تشکر از خدمات شما، لطفاً ساعات کاری دفتر مرکزی را اعلام فرمایید.", "rationale": "سؤال عمومی", "trap": null}
+{"id": "cl01", "family": "colloquial", "label": "billing", "text": "سلام، پولم کم شده ولی اشتراکم فعال نشده، چی شد پس؟", "rationale": "پرداخت انجام شده ولی سرویس فعال نشده", "trap": null}
+{"id": "cl02", "family": "colloquial", "label": "billing", "text": "ببخشید چرا این ماه قیمت رو بردین بالا؟ من که همون پلن قبلی رو دارم", "rationale": "اعتراض به افزایش مبلغ", "trap": null}
+{"id": "cl03", "family": "colloquial", "label": "technical", "text": "برنامه‌تون هی قطع و وصل می‌شه، اصلاً نمی‌شه باهاش کار کرد", "rationale": "ناپایداری اتصال", "trap": null}
+{"id": "cl04", "family": "colloquial", "label": "technical", "text": "کد تأیید برام نمیاد، ده بار زدم ارسال مجدد", "rationale": "نرسیدن کد تأیید", "trap": null}
+{"id": "cl05", "family": "colloquial", "label": "cancel", "text": "می‌خوام اکانتمو پاک کنم، از کجا باید این کارو بکنم؟", "rationale": "حذف حساب", "trap": null}
+{"id": "cl06", "family": "colloquial", "label": "cancel", "text": "دیگه لازمش ندارم، اشتراکمو ببندید لطفاً", "rationale": "لغو اشتراک", "trap": null}
+{"id": "cl07", "family": "colloquial", "label": "other", "text": "سلام، یه پیشنهاد داشتم: اگه حالت شب هم اضافه کنین خیلی خوب می‌شه", "rationale": "پیشنهاد قابلیت", "trap": null}
+{"id": "cl08", "family": "colloquial", "label": "other", "text": "مرسی از پشتیبانی دیروزتون، مشکلم حل شد", "rationale": "تشکر", "trap": null}
+{"id": "fg01", "family": "finglish", "label": "billing", "text": "salam, pardakht kardam vali pool 2 bar az hesabam kam shod", "rationale": "کسر دوباره‌ی وجه (فینگلیش)", "trap": null}
+{"id": "fg02", "family": "finglish", "label": "billing", "text": "factor e kharidam ro mikham, kojast?", "rationale": "درخواست فاکتور (فینگلیش)", "trap": null}
+{"id": "fg03", "family": "finglish", "label": "technical", "text": "app baz nemishe, safhe sefid mimoone", "rationale": "باز نشدن برنامه (فینگلیش)", "trap": null}
+{"id": "fg04", "family": "finglish", "label": "technical", "text": "ramz ro avaz kardam vali bazam login nemishe", "rationale": "مشکل ورود (فینگلیش)", "trap": null}
+{"id": "fg05", "family": "finglish", "label": "cancel", "text": "mikham eshterakam ro laghv konam", "rationale": "لغو اشتراک (فینگلیش)", "trap": null}
+{"id": "fg06", "family": "finglish", "label": "cancel", "text": "lotfan account mo delete konid, dige estefade nemikonam", "rationale": "حذف حساب (فینگلیش)", "trap": null}
+{"id": "fg07", "family": "finglish", "label": "other", "text": "saat kari poshtibani ta chande?", "rationale": "سؤال عمومی (فینگلیش)", "trap": null}
+{"id": "fg08", "family": "finglish", "label": "other", "text": "kheili mamnoon, poshtibanitoon aali bood", "rationale": "تشکر (فینگلیش)", "trap": null}
+{"id": "or01", "family": "orthography", "label": "billing", "text": "ميخواستم بدونم چرا مبلغ اشتراكم دوبار كسر شده", "rationale": "ی و ک عربی، بدون نیم‌فاصله", "trap": "arabic_yeh_kaf"}
+{"id": "or02", "family": "orthography", "label": "billing", "text": "هزینه ی تمدید رو پرداخت کردم ولی رسید برام نیومد", "rationale": "فاصله به‌جای نیم‌فاصله", "trap": "space_instead_of_zwnj"}
+{"id": "or03", "family": "orthography", "label": "technical", "text": "نرم افزار روی ويندوز نصب نميشه و ارور ميده", "rationale": "ی عربی، بدون نیم‌فاصله", "trap": "arabic_yeh_kaf"}
+{"id": "or04", "family": "orthography", "label": "technical", "text": "پیامک های تایید دیر میرسن و کد منقضی میشه", "rationale": "فاصله به‌جای نیم‌فاصله", "trap": "space_instead_of_zwnj"}
+{"id": "or05", "family": "orthography", "label": "cancel", "text": "لطفا حسابم رو غيرفعال كنيد، نميخوام ادامه بدم", "rationale": "ی و ک عربی", "trap": "arabic_yeh_kaf"}
+{"id": "or06", "family": "orthography", "label": "cancel", "text": "میخوام اشتراک ماهیانه م رو کنسل کنم", "rationale": "بدون نیم‌فاصله", "trap": "space_instead_of_zwnj"}
+{"id": "or07", "family": "orthography", "label": "other", "text": "آيا نسخه ی انگليسي سايت هم داريد؟", "rationale": "سؤال عمومی با ی عربی", "trap": "arabic_yeh_kaf"}
+{"id": "or08", "family": "orthography", "label": "other", "text": "یه پیشنهاد: ای کاش امکان خروجی پی دی اف هم اضافه کنید", "rationale": "پیشنهاد قابلیت", "trap": "space_instead_of_zwnj"}
+{"id": "cm01", "family": "code_mixed", "label": "billing", "text": "کارت بانکیم دیکلاین شد ولی invoice صادر شده، refund می‌کنید؟", "rationale": "پرداخت و استرداد با واژه‌های انگلیسی", "trap": null}
+{"id": "cm02", "family": "code_mixed", "label": "billing", "text": "پلن Pro رو گرفتم ولی هنوز مبلغ Basic ازم charge می‌شه", "rationale": "مبلغ اشتباه", "trap": null}
+{"id": "cm03", "family": "code_mixed", "label": "technical", "text": "بعد از آپدیت، API ارور 500 میده و دیتابیس سینک نمی‌شه", "rationale": "خطای API", "trap": null}
+{"id": "cm04", "family": "code_mixed", "label": "technical", "text": "اکانتم لاگ‌اوت شد، ریست پسورد هم کار نمی‌کنه", "rationale": "مشکل ورود", "trap": "account_word_not_cancel"}
+{"id": "cm05", "family": "code_mixed", "label": "cancel", "text": "لطفاً subscription من رو cancel کنید و auto-renew رو خاموش کنید", "rationale": "لغو اشتراک", "trap": null}
+{"id": "cm06", "family": "code_mixed", "label": "cancel", "text": "می‌خوام اکانت رو کامل deactivate کنم و دیتام حذف بشه", "rationale": "غیرفعال‌سازی حساب", "trap": null}
+{"id": "cm07", "family": "code_mixed", "label": "other", "text": "برای partnership و همکاری B2B با کی باید صحبت کنم؟", "rationale": "همکاری تجاری", "trap": null}
+{"id": "cm08", "family": "code_mixed", "label": "other", "text": "یه feature request داشتم: dark mode اضافه کنین", "rationale": "پیشنهاد قابلیت", "trap": null}
+{"id": "ng01", "family": "negation", "label": "billing", "text": "نمی‌خوام اشتراکم رو لغو کنم، فقط بگید چرا دو بار پول ازم کم شد", "rationale": "لغو منفی شده؛ موضوع اصلی مالی است", "trap": "negated_cancel"}
+{"id": "ng02", "family": "negation", "label": "billing", "text": "مشکل فنی ندارم و برنامه خوب کار می‌کنه؛ فقط فاکتور این ماه رو لازم دارم", "rationale": "مشکل فنی منفی شده", "trap": "negated_technical"}
+{"id": "ng03", "family": "negation", "label": "technical", "text": "مشکل پرداخت نیست، پول درست کم شده؛ ولی برنامه باز نمی‌شه", "rationale": "مشکل مالی منفی شده", "trap": "negated_billing"}
+{"id": "ng04", "family": "negation", "label": "technical", "text": "قصد لغو ندارم، ولی اگه باگ ذخیره نشدن فایل‌ها درست نشه کارم لنگ می‌مونه", "rationale": "لغو منفی شده؛ موضوع اصلی باگ است", "trap": "negated_cancel"}
+{"id": "ng05", "family": "negation", "label": "cancel", "text": "دیگه نمی‌خوام ازتون سرویس بگیرم، حسابم رو ببندید", "rationale": "فعل منفی ولی درخواست لغو", "trap": "negative_verb_true_cancel"}
+{"id": "ng06", "family": "negation", "label": "cancel", "text": "تمدید خودکار رو نمی‌خوام، اشتراکم رو همین‌جا تموم کنید", "rationale": "فعل منفی ولی درخواست لغو", "trap": "negative_verb_true_cancel"}
+{"id": "ng07", "family": "negation", "label": "other", "text": "نه مشکل پرداخت دارم نه مشکل فنی، فقط می‌خواستم بگم کارتون عالیه", "rationale": "هر دو دسته منفی شده؛ تشکر", "trap": "negated_billing_technical"}
+{"id": "ng08", "family": "negation", "label": "other", "text": "سؤالم درباره‌ی لغو نیست؛ می‌خواستم بدونم در تهران هم شعبه دارید؟", "rationale": "لغو منفی شده؛ سؤال عمومی", "trap": "negated_cancel"}
+{"id": "st01", "family": "sarcasm_taarof", "label": "billing", "text": "دستتون درد نکنه، سه ماهه دارم پول دو تا اشتراک رو می‌دم و کسی جواب نمی‌ده!", "rationale": "تشکر کنایه‌آمیز؛ شکایت مالی", "trap": "sarcastic_thanks"}
+{"id": "st02", "family": "sarcasm_taarof", "label": "billing", "text": "واقعاً ممنون که بدون اطلاع قیمت رو دو برابر کردین، خیلی لطف کردین", "rationale": "تشکر کنایه‌آمیز؛ اعتراض به قیمت", "trap": "sarcastic_thanks"}
+{"id": "st03", "family": "sarcasm_taarof", "label": "technical", "text": "به‌به، چه برنامه‌ی سریعی! فقط پنج دقیقه طول می‌کشه یه صفحه باز شه", "rationale": "تعریف کنایه‌آمیز؛ کندی برنامه", "trap": "sarcastic_praise"}
+{"id": "st04", "family": "sarcasm_taarof", "label": "technical", "text": "عالیه، بعد از آپدیت جدید همه‌ی یادداشت‌هام غیب شدن. خسته نباشید!", "rationale": "تعریف کنایه‌آمیز؛ از دست رفتن داده", "trap": "sarcastic_praise"}
+{"id": "st05", "family": "sarcasm_taarof", "label": "cancel", "text": "از همکاری با شما خیلی خوشحال بودم؛ لطف کنید اشتراکم رو هم لغو کنید که این خوشحالی دیگه ادامه پیدا نکنه", "rationale": "تعارف کنایه‌آمیز؛ درخواست لغو", "trap": "sarcastic_thanks"}
+{"id": "st06", "family": "sarcasm_taarof", "label": "cancel", "text": "قربون دستتون، اکانت منو ببندید، دیگه تحمل ندارم", "rationale": "تعارف همراه با درخواست بستن حساب", "trap": "taarof"}
+{"id": "st07", "family": "sarcasm_taarof", "label": "other", "text": "خدا قوت، واقعاً پشتیبانی‌تون عالی بود، تشکر ویژه از همکارتون", "rationale": "تشکر واقعی (کنایه نیست)", "trap": "genuine_thanks_control"}
+{"id": "st08", "family": "sarcasm_taarof", "label": "other", "text": "زحمت می‌کشید بگید برای استخدام تو شرکتتون رزومه رو کجا بفرستم؟ ممنون می‌شم", "rationale": "تعارف مؤدبانه؛ سؤال استخدام", "trap": "taarof"}
+{"id": "dg01", "family": "digits", "label": "billing", "text": "مبلغ ۱۲۹,۰۰۰ تومان در تاریخ ۱۴۰۵/۰۷/۰۲ دو بار کسر شده", "rationale": "ارقام فارسی؛ کسر دوباره", "trap": "persian_digits"}
+{"id": "dg02", "family": "digits", "label": "billing", "text": "کد پیگیری 842137، مبلغ 250000 ریال واریز شده ولی حسابم شارژ نشده", "rationale": "ارقام انگلیسی؛ پرداخت بدون اعتبار", "trap": "latin_digits"}
+{"id": "dg03", "family": "digits", "label": "technical", "text": "خطای کد 403 می‌گیرم وقتی می‌خوام فایل بالای ۲۰ مگ آپلود کنم", "rationale": "ارقام ترکیبی؛ خطای آپلود", "trap": "mixed_digits"}
+{"id": "dg04", "family": "digits", "label": "technical", "text": "نسخه‌ی 3.2.1 روی اندروید ۱۴ کرش می‌کنه", "rationale": "ارقام ترکیبی؛ کرش", "trap": "mixed_digits"}
+{"id": "dg05", "family": "digits", "label": "cancel", "text": "اشتراک ۱۲ ماهه‌م رو که ۱۴۰۵/۰۵/۱۰ گرفتم می‌خوام لغو کنم", "rationale": "ارقام فارسی؛ لغو", "trap": "persian_digits"}
+{"id": "dg06", "family": "digits", "label": "cancel", "text": "شماره‌ی کاربری 55821 — لطفاً این حساب رو برای همیشه حذف کنید", "rationale": "ارقام انگلیسی؛ حذف حساب", "trap": "latin_digits"}
+{"id": "dg07", "family": "digits", "label": "other", "text": "ساعت ۹ تا ۱۷ جواب می‌دید یا ۲۴ ساعته هستید؟", "rationale": "ارقام فارسی؛ سؤال عمومی", "trap": "persian_digits"}
+{"id": "dg08", "family": "digits", "label": "other", "text": "برای همایش ۱۵ مهر، امکان حمایت مالی (اسپانسری) از رویدادمون رو دارید؟", "rationale": "«مالی» در متن ولی درخواست اسپانسری است", "trap": "billing_word_not_billing"}

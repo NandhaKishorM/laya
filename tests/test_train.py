@@ -5,6 +5,8 @@ in a temp directory, so nothing is downloaded.
 
 Run: python tests/test_train.py
 """
+import ast
+import inspect
 import json
 import math
 import os
@@ -30,7 +32,7 @@ from tokenizers.models import WordLevel  # noqa: E402
 from tokenizers.pre_tokenizers import Whitespace  # noqa: E402
 from transformers import BertConfig, BertModel, PreTrainedTokenizerFast  # noqa: E402
 
-from laya import load  # noqa: E402
+from laya import load, train  # noqa: E402
 from laya.common import (  # noqa: E402
     DecisionModel,
     QTYPES,
@@ -113,6 +115,58 @@ def rows(n_repeats=6):
                         "gold": {"department": {"probabilities": {"billing": 0.05, "technical": 0.9, "other": 0.05}},
                                  "urgent": {"probabilities": {"false": 0.2, "true": 0.8}},
                                  "level": {"probabilities": {"0": 0.2, "1": 0.8}}}})
+    return out
+
+
+def reason_literals(func):
+    """The skip reasons `func` can hand back, read off its own source.
+
+    The vocabulary is copied into both docstrings and into the table in `docs/finetune.md`, so the
+    code is the one place a check can read it from without trusting a copy.
+    """
+    out = set()
+    for node in ast.walk(ast.parse(inspect.getsource(func))):
+        if isinstance(node, ast.Return) and isinstance(node.value, ast.Tuple) \
+                and len(node.value.elts) == 2:
+            value = node.value.elts[1]                          # `return None, "reason"`
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                out.add(value.value)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                key = None
+                if isinstance(target, ast.Name) and target.id == "reason" \
+                        and isinstance(node.value, ast.Constant):
+                    key = node.value                            # `reason = "invalid_target"`
+                elif isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name) \
+                        and target.value.id == "skipped":
+                    key = target.slice                          # `skipped["empty_text"] = ...`
+                if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                    out.add(key.value)
+    return out
+
+
+def doc_reasons(func):
+    """The backticked `snake_case` names a docstring presents as data, minus the code references.
+
+    `laya.train`'s own attributes and the function's own parameters are named *as* code inside the
+    prose; what survives is the skip-reason vocabulary the docstring claims.
+    """
+    names = set(re.findall(r"`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`", inspect.getdoc(func) or ""))
+    return names - set(dir(train)) - set(inspect.signature(func).parameters)
+
+
+def table_reasons():
+    """The reason column of the `--dry-run` table in `docs/finetune.md`."""
+    docs = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "docs", "finetune.md")
+    with open(docs, encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    header = [i for i, line in enumerate(lines) if line.startswith("| reason |")]
+    assert len(header) == 1, "docs/finetune.md no longer has the one `| reason |` table"
+    out = set()
+    for line in lines[header[0] + 2:]:
+        if not line.startswith("|"):
+            break
+        out.update(re.findall(r"`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`", line.split("|")[1]))
     return out
 
 
@@ -348,6 +402,164 @@ class DataTests(unittest.TestCase):
         state_ids = encode_state(self.tok, "app", 64)
         self.assertEqual(make_item(self.tok, to_internal("q", DEPARTMENT), [0.5, 0.5], state_ids, 40),
                          (None, "target_mismatch"))
+
+    def bad_rows(self):
+        """One row per reason the `--dry-run` table carries, with the budget that triggers it."""
+        from laya.common import build_head
+
+        collapsed = {"type": "choice", "instructions": "which ?",
+                     "criteria": {"one two three four five six": "", "one two three four five seven": ""}}
+        seven = {"type": "choice", "instructions": "which ?",
+                 "criteria": ["one", "two", "three", "four", "five", "six", "seven"]}
+        beyond = build_head(self.tok, to_internal("q", seven), 64)[1][-1]
+        return {
+            "empty_text": ({"state": "", "questions": {"department": DEPARTMENT},
+                            "expected": {"department": "billing"}}, 64, 40),
+            "empty_label": ({"state": "app crash", "questions": {"department": DEPARTMENT},
+                             "expected": {"department": ""}}, 64, 40),
+            "invalid_question": ({"state": "app crash",
+                                  "questions": {"department": {"type": "choice",
+                                                               "instructions": "which ?", "criteria": []}},
+                                  "expected": {"department": "billing"}}, 64, 40),
+            "invalid_target": ({"state": "app crash", "questions": {"department": DEPARTMENT},
+                                "gold": {"department": {"probabilities": {"billing": -2.0}}}}, 64, 40),
+            "options_collapsed": ({"state": "app", "questions": {"q": collapsed},
+                                   "expected": {"q": "one two three four five six"}}, 64, 20),
+            "options_beyond_max_len": ({"state": "app", "questions": {"q": seven},
+                                        "gold": {"q": {"probabilities": {"one": 1.0}}}}, beyond, 64),
+        }
+
+    def test_the_skip_reason_vocabulary_is_one_list_in_code_docstrings_and_docs(self):
+        # The reason a skipped question is filed under is written down four times: `make_item` and
+        # `items_from_rows` return them, both docstrings list them, and `docs/finetune.md` gives the
+        # table a reader of `--dry-run` output is sent to (`:216` prints `report["skipped"]`). Nothing
+        # checked the copies against each other, so `target_mismatch` sat in the code and in
+        # `make_item`'s docstring with no row in the table, while `items_from_rows` promised only a
+        # `ValueError` and catches three types from two call sites.
+        item_reasons = reason_literals(make_item)
+        row_reasons = reason_literals(items_from_rows)
+        self.assertEqual(item_reasons, {"target_mismatch", "options_collapsed", "options_beyond_max_len"})
+        self.assertEqual(row_reasons, {"empty_text", "empty_label", "invalid_question", "invalid_target"})
+        self.assertEqual(doc_reasons(make_item), item_reasons)
+        self.assertEqual(doc_reasons(items_from_rows),
+                         row_reasons | {"options_collapsed", "options_beyond_max_len"})
+        self.assertEqual(table_reasons(), doc_reasons(items_from_rows))
+        # The exception types get the same treatment: the docstring used to promise "a `ValueError`
+        # from `to_internal`, `target_from_gold` or `target_from_expected`", one type for three call
+        # sites, while the code catches three types and attributes each pair of reasons to its own
+        # call. A type that is caught but not named is a type a reader thinks will escape the run.
+        caught = set()
+        for node in ast.walk(ast.parse(inspect.getsource(items_from_rows))):
+            if isinstance(node, ast.ExceptHandler):
+                self.assertIsNotNone(node.type, "items_from_rows catches everything")
+                for exc in (node.type.elts if isinstance(node.type, ast.Tuple) else [node.type]):
+                    self.assertIsInstance(exc, ast.Name, "items_from_rows catches a non-name")
+                    caught.add(exc.id)
+        self.assertEqual(caught, {"ValueError", "TypeError", "KeyError"})
+        doc = inspect.getdoc(items_from_rows)
+        # Pin the clause that states the catch, not the docstring at large: naming a type in some
+        # other sentence would let prose that contradicts itself pass.
+        self.assertIn("caught on", doc, "items_from_rows no longer states its catch in prose")
+        clause = doc.split("caught on", 1)[1].split("--", 1)[0]
+        for exc in sorted(caught):
+            self.assertIn("`%s`" % exc, clause, "%s is caught but not named where the catch is" % exc)
+        self.assertEqual(set(re.findall(r"`([A-Z][A-Za-z]*Error)`", clause)) - caught, set())
+        # The table is the pipeline's list, not `make_item`'s, and the one reason it drops has to stay
+        # droppable: `target_mismatch` needs a target whose length is not the option count, and both
+        # builders return one entry per option whatever the label shape, so no row can reach it.
+        self.assertEqual(item_reasons - table_reasons(), {"target_mismatch"})
+        for question, expected in ((DEPARTMENT, "billing"), (URGENT, True), (LEVEL, 0)):
+            q = to_internal("q", question)
+            k = len(render_options(q))
+            for probs in ({}, {"nonexistent": 1.0},
+                          {"billing": 1.0, "technical": 0.0, "other": 0.0}):
+                self.assertEqual(len(target_from_gold(q, {"probabilities": probs})), k, probs)
+            self.assertEqual(len(target_from_expected(q, expected)), k)
+        # every reason the table carries is a reason a row actually produces, and nothing else is
+        reported = set()
+        for reason, (row, max_len, head_max_len) in sorted(self.bad_rows().items()):
+            with self.subTest(reason=reason):
+                items, skipped = items_from_rows(self.tok, [row], max_len, head_max_len)
+                self.assertEqual((items, set(skipped)), ([], {reason}), skipped)
+            reported.add(reason)
+        self.assertEqual(reported, table_reasons())
+
+    def test_each_caught_exception_shape_is_counted_at_its_own_call_site(self):
+        # The catch is `(ValueError, TypeError, KeyError)` at both call sites, and each type is here
+        # because a row really raises it: `target_from_gold` is read with `gold_q["probabilities"]`,
+        # so a gold entry that omits the key is a KeyError, and `float()` of a probability that is a
+        # dict is a TypeError. Removing either type from either clause turns one of these rows into
+        # an exception that escapes `items_from_rows` and aborts the run.
+        for label, gold, exc in (
+                ("gold entry with no probabilities", {"department": {}}, KeyError),
+                ("probability that is not a number",
+                 {"department": {"probabilities": {"billing": {}}}}, TypeError),
+                ("negative probability",
+                 {"department": {"probabilities": {"billing": -2.0}}}, ValueError)):
+            with self.subTest(shape=label):
+                with self.assertRaises(exc):
+                    target_from_gold(to_internal("q", DEPARTMENT), gold["department"])
+                row = {"state": "app crash", "questions": {"department": DEPARTMENT}, "gold": gold}
+                self.assertEqual(items_from_rows(self.tok, [row], 64, 40), ([], {"invalid_target": 1}))
+        # the question site: `Agent._check_question` validates the shape, so an unreadable question
+        # is a ValueError there, and `empty_label`/`invalid_question` never borrow the other's count
+        with self.assertRaises(ValueError):
+            to_internal("department", {"type": "choice", "instructions": "which ?", "criteria": []})
+        row = {"state": "app crash",
+               "questions": {"department": {"type": "choice", "instructions": "which ?", "criteria": []}},
+               "expected": {"department": "billing"}}
+        self.assertEqual(items_from_rows(self.tok, [row], 64, 40), ([], {"invalid_question": 1}))
+        # an unhashable `expected` reaches `target_from_expected` as the TypeError it documents
+        with self.assertRaises(TypeError):
+            target_from_expected(to_internal("q", DEPARTMENT), {"billing", "technical"})
+        row = {"state": "app crash", "questions": {"department": DEPARTMENT},
+               "expected": {"department": {"billing", "technical"}}}
+        self.assertEqual(items_from_rows(self.tok, [row], 64, 40), ([], {"invalid_target": 1}))
+
+    def test_a_teacher_written_in_option_order_is_counted_not_fatal(self):
+        # `docs/finetune.md:67` shows gold probabilities keyed by option. Writing them in option
+        # order is the same mistake in the shape a teacher file usually has, and it died inside
+        # `target_from_gold` on "AttributeError: 'list' object has no attribute 'get'" -- a type
+        # `items_from_rows` does not catch, so the whole data check reported nothing:
+        # `laya-train --dry-run` returned 1 with no row count, no item count and no skip table.
+        for bad in ([0.9, 0.05, 0.05], "billing", 3, None):
+            with self.subTest(probabilities=bad):
+                with self.assertRaises(ValueError):
+                    target_from_gold(to_internal("q", DEPARTMENT), {"probabilities": bad})
+                row = {"state": "app crash", "questions": {"department": DEPARTMENT},
+                       "gold": {"department": {"probabilities": bad}}}
+                self.assertEqual(items_from_rows(self.tok, [row], 64, 40), ([], {"invalid_target": 1}))
+        # a mapping that is not a `dict` is still a mapping: the guard may not narrow what a caller
+        # is allowed to hand in.
+        from types import MappingProxyType
+        self.assertEqual(target_from_gold(to_internal("q", DEPARTMENT),
+                                         {"probabilities": MappingProxyType({"billing": 1.0})}),
+                         [1.0, 0.0, 0.0])
+
+    def test_dry_run_reports_the_row_that_used_to_abort_it(self):
+        import contextlib
+        import io
+
+        from laya.train import dry_run
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            make_checkpoint(root / "base", make_tokenizer())
+            lines = [json.dumps(row) for row in rows(1)]
+            lines.insert(2, json.dumps({"state": "please refund invoice",
+                                        "questions": {"department": DEPARTMENT},
+                                        "gold": {"department": {"probabilities": [0.9, 0.05, 0.05]}}}))
+            data = root / "tickets.jsonl"
+            data.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            config = TrainConfig(epochs=3, micro_batch=4, grad_accum=2, calib_frac=0.25, log_every=0)
+
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                summary = dry_run(str(data), str(root / "base"), config)
+            # read_data -> read_jsonl -> items_from_rows, the same file a user would pass on the CLI
+            self.assertEqual(summary["skipped"], {"invalid_target": 1})
+            self.assertEqual(summary["valid_items"], 24)
+            self.assertIn("skipped: {'invalid_target': 1}", buf.getvalue())
 
     def test_canonical_encoding_matches_build_sequence(self):
         item = self.item(DEPARTMENT, [0.8, 0.1, 0.1])

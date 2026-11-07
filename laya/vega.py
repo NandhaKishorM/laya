@@ -569,6 +569,10 @@ class VegaAgent(Agent):
         reads, so a corpus prepared for laya's fine-tune fits vega's heads unchanged. A row
         without its own ``questions`` uses ``questions``. A path to a ``.csv`` or ``.jsonl``
         is read with :meth:`load_rows` first.
+
+        A gold keyed to no question id of that row is refused, as ``load_rows`` refuses an
+        unknown CSV column: dropped, it made ``fit`` report success on a corpus whose labels
+        never trained anything. Naming only some of the questions is fine.
         """
         if isinstance(rows, (str, os.PathLike)):
             rows = self.load_rows(rows, questions)
@@ -582,7 +586,11 @@ class VegaAgent(Agent):
             gold = r.get("gold") if r.get("gold") is not None else r.get("expected")
             if not isinstance(gold, Mapping):
                 raise ValueError("each row needs `gold` or `expected` as {question_id: answer}")
-            labels = {qid: _gold_label(qs[qid], g) for qid, g in gold.items() if qid in qs}
+            unknown = [qid for qid in gold if qid not in qs]
+            if unknown:
+                raise ValueError("gold key(s) %s match no question id in %s"
+                                 % (unknown, sorted(qs)))
+            labels = {qid: _gold_label(qs[qid], g) for qid, g in gold.items()}
             if labels:
                 examples.append((r["state"], labels, vq))
         return examples, sheet

@@ -284,10 +284,17 @@ calibration — the model is near-certain and near-correct on them, so the optim
 to soften and returns a degenerate scale.
 
 After the last epoch, rank 0 fits **one temperature per question type** (`choice`, `score`,
-`noul`) by LBFGS on the log-temperature, clamped to `[0.1, 10]` (`1.0` for a slice under ten
-items, `1.2` if the fit raises). The values go into `rl_agent_config.json` as `temperature`,
-and the notebook **removes any inherited `temperature_by_options`** in the same write: those
-old bucket values take precedence at inference and would silently mask the new fit.
+`noul`) by LBFGS on the log-temperature, clamped to `[0.5, 5.0]` — the same
+`laya.common.TEMP_MIN`/`TEMP_MAX` window checkpoint load applies, so a fitted value and a
+loaded one are bounded alike. A type with fewer than `MIN_TYPE_N` (10) items in the slice
+keeps the neutral `1.0`, and one the optimiser wants to sharpen below the floor or flatten
+past the ceiling gets the bound rather than its own number. If the fit raises, rank 0 keeps
+the **inherited checkpoint temperature**: the notebook catches the failure and skips the
+write below, so a run that could not calibrate ships what it started with instead of a
+partially calibrated config. On that success path the values go into `rl_agent_config.json`
+as `temperature`, and the same write **removes any inherited `temperature_by_options`**, and
+only there: those old bucket values take precedence at inference and would silently mask the
+new fit.
 
 Temperature scaling leaves the argmax — and accuracy — unchanged; what moves is the
 confidence. The checkpoints as shipped are over-confident, so fit before relying on any

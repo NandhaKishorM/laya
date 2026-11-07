@@ -72,6 +72,7 @@ import time
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from .agent import Agent
+from .hooks import PredictContext, compose_hooks, dispatch, validate_timeout
 
 __all__ = ["VegaAgent", "Router", "is_available", "HEAD_ARRAYS"]
 
@@ -244,7 +245,8 @@ class VegaAgent(Agent):
                  alpha: float = 0.1, risk: Union[str, float] = "0.1",
                  target_precision: float = 0.95, folds: int = 5,
                  mode: str = "auto", revision: Optional[str] = None,
-                 hooks=None, on_predict_start=None, on_predict_end=None, **ignored):
+                 hooks=None, on_predict_start=None, on_predict_end=None,
+                 hooks_raise: bool = True, hooks_timeout: Optional[float] = None, **ignored):
         """Load vega.
 
         ``vegaml`` is the argument that got us here: ``True`` loads the default 0.8B reader,
@@ -259,7 +261,7 @@ class VegaAgent(Agent):
             import vegaml as _vegaml_pkg
         except ImportError as exc:
             raise ImportError(_INSTALL) from exc
-        from .hooks import normalise_hooks
+        from .hooks import normalise_hooks, validate_timeout
 
         which = vegaml if isinstance(vegaml, str) and vegaml else model_id_or_path
         self.vega = _vegaml_pkg.load(which, device=device, backbone=backbone, max_len=max_len,
@@ -273,6 +275,8 @@ class VegaAgent(Agent):
         self.calibration = None          # a vegaml Calibration, applied on every predict
         self.fit_report: Dict[str, Any] = {}
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
+        self.hooks_raise = bool(hooks_raise)
+        self.hooks_timeout = None if hooks_timeout is None else validate_timeout(hooks_timeout)
         self._lock = threading.RLock()
         self.device = getattr(self.vega.engine, "device", device)
         cfg = getattr(self.vega.engine, "cfg", {}) or {}
@@ -298,7 +302,8 @@ class VegaAgent(Agent):
                 head_max_len: Optional[int] = None, min_confidence: Optional[float] = None,
                 asr: Optional[str] = None, language: Optional[str] = None,
                 sampling_rate: Optional[int] = None, hooks=None, on_predict_start=None,
-                on_predict_end=None, **ignored) -> Dict[str, Any]:
+                on_predict_end=None, hooks_raise: Optional[bool] = None,
+                hooks_timeout: Optional[float] = None, **ignored) -> Dict[str, Any]:
         """Answer typed questions about text, an image, a recording or a clip, in laya's shape.
 
         One of ``state``, ``image``, ``audio`` or ``video``. The modality is chosen by which you passed,
@@ -316,6 +321,13 @@ class VegaAgent(Agent):
         has (heads, calibration, set, route); otherwise ``frames`` evenly spaced frames are
         tiled into one image and decided through the image path. ``out["video"]`` says which,
         and why. See :mod:`laya.video`.
+
+        The hook lifecycle is the one :meth:`laya.Agent.predict_batch` runs: ``on_predict_start``
+        fires before the decision (``ctx.skip(...)`` short-circuits it, and a hook may rewrite
+        ``ctx.questions``), ``on_error`` on a failure, ``on_predict_end`` on the finished
+        answer and may rewrite ``ctx.results``. The video path decides recursively through
+        this method, so its hooks fire there too. ``hooks_raise`` and ``hooks_timeout``
+        override the agent's for this call, as on every laya surface.
         """
         if questions is None:
             raise ValueError("predict needs `questions`")
@@ -323,6 +335,54 @@ class VegaAgent(Agent):
         if given != 1:
             raise ValueError("predict takes exactly one of state=, image=, audio=, video=; got %d"
                              % given)
+        active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
+        raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
+        timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
+        ctx = PredictContext(states=state, questions=questions, model=self.model_id, agent=self,
+                             max_len=max_len, head_max_len=head_max_len)
+        try:
+            dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors,
+                     lock=self._hooks_lock, timeout=timeout)
+            if ctx.results is not None:
+                out = ctx.results
+                if isinstance(out, list) and len(out) == 1:
+                    out = out[0]        # ctx.skip()'s whole-call list, as predict_long takes it
+                if isinstance(out, dict):
+                    ctx.usage = out.get("usage")
+            else:
+                out = self._decide(ctx.states, ctx.questions, lang=lang, image=image,
+                                   audio=audio, video=video, frames=frames, mode=mode,
+                                   views=views, min_confidence=min_confidence, asr=asr,
+                                   language=language, sampling_rate=sampling_rate)
+                ctx.results = out
+                ctx.usage = out.get("usage")
+        except BaseException as exc:
+            ctx.error = exc
+            try:
+                dispatch(active, "on_error", ctx, raise_errors=raise_errors,
+                         lock=self._hooks_lock, timeout=timeout)
+            except BaseException as hook_exc:
+                # A failing on_error hook must not hide the failure that triggered it.
+                exc.__context__ = hook_exc
+            raise
+        finally:
+            ctx.elapsed_ms = (time.perf_counter() - ctx.started_at) * 1000.0
+            try:
+                dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors,
+                         lock=self._hooks_lock, timeout=timeout)
+            except BaseException as hook_exc:
+                # End hooks run on the failure path too; do not let one mask the real error.
+                if ctx.error is not None:
+                    ctx.error.__context__ = hook_exc
+                else:
+                    raise
+        return ctx.results
+
+    def _decide(self, state: Any, questions: Mapping, *, lang: Optional[str], image: Any,
+                audio: Any, video: Any, frames: int, mode: Optional[str], views: int,
+                min_confidence: Optional[float], asr: Optional[str],
+                language: Optional[str], sampling_rate: Optional[int]) -> Dict[str, Any]:
+        """The decision itself, without the hook lifecycle around it."""
         if video is not None:
             return self._predict_video(video, questions, frames=frames, asr=asr, language=language,
                                        mode=mode, views=views, min_confidence=min_confidence,

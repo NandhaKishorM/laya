@@ -27,6 +27,7 @@ from laya import Agent, AsyncHook, BaseHook, OptionStabilityHook, PredictContext
 from laya.hooks import HOOK_EVENTS, Hook, calibrate_reliability, decide_reliability  # noqa: E402
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 from laya.router import _question_schema  # noqa: E402
+from laya.vega import VegaAgent  # noqa: E402
 
 PASS, FAIL = [], []
 
@@ -229,7 +230,8 @@ for label, fn in (("Agent.predict_batch", Agent.predict_batch),
                   ("Router.predict_batch", Router.predict_batch),
                   ("Router.predict_long", Router.predict_long),
                   ("ONNXAgent.system_one", ONNXAgent.system_one),
-                  ("ONNXAgent.predict_long", ONNXAgent.predict_long)):
+                  ("ONNXAgent.predict_long", ONNXAgent.predict_long),
+                  ("VegaAgent.system_one", VegaAgent.system_one)):
     check_param(label, fn, "hooks", None)
     check_param(label, fn, "on_predict_start", None)
     check_param(label, fn, "on_predict_end", None)

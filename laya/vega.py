@@ -769,7 +769,6 @@ class VegaAgent(Agent):
 
     def load_calibration(self, path: str) -> Dict[str, Any]:
         import numpy as np
-        from vegaml.calibrate import Calibration
         from vegaml.ttt import TTTHead
 
         z = np.load(os.path.join(path, "heads.npz"), allow_pickle=False)
@@ -785,7 +784,16 @@ class VegaAgent(Agent):
             loaded.append(qid)
         cal_path = os.path.join(path, "calibration.json")
         if os.path.exists(cal_path):
+            from vegaml.calibrate import Calibration
             self.calibration = Calibration.load(cal_path)
+        else:
+            # `save_calibration` writes calibration.json only when the agent was calibrated, so a
+            # heads-only directory is a valid artefact, not a broken one. Loading it onto an agent
+            # that still carried a previous fit used to keep that fit's calibration and report
+            # `calibrated: True` for a state this directory never held -- and the route then rode
+            # a band the directory's heads were never measured against. What was loaded is what
+            # the directory holds.
+            self.calibration = None
         return {"heads": loaded, "calibrated": self.calibration is not None}
 
     # ------------------------------------------------------------------ readers

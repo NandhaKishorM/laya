@@ -317,6 +317,83 @@ def test_fit_calibrate_save_reload_roundtrip():
     assert again["answers"]["dept"]["route"] == out["answers"]["dept"]["route"]
 
 
+def _fake_vegaml(monkeypatch, calibration_cls=None):
+    # load_calibration imports vegaml's own types; the reset is testable without the package
+    # by putting stand-ins where the import looks.
+    import types
+
+    class FakeHead:
+        def __init__(self, labels, k=2, l2=1.0):
+            self.labels, self.k, self.l2 = labels, k, l2
+
+    ttt = types.ModuleType("vegaml.ttt")
+    ttt.TTTHead = FakeHead
+    pkg = types.ModuleType("vegaml")
+    pkg.ttt = ttt
+    monkeypatch.setitem(sys.modules, "vegaml", pkg)
+    monkeypatch.setitem(sys.modules, "vegaml.ttt", ttt)
+    if calibration_cls is not None:
+        cal = types.ModuleType("vegaml.calibrate")
+        cal.Calibration = calibration_cls
+        pkg.calibrate = cal
+        monkeypatch.setitem(sys.modules, "vegaml.calibrate", cal)
+
+
+def _heads_dir(tmp_path, qid="dept"):
+    import json
+
+    import numpy as np
+
+    meta = {"heads": {qid: {"labels": ["billing", "hr"], "k": 2, "l2": 1.0, "cv": 0.8,
+                            "engine_accuracy": 0.9}},
+            "model": "vegaml-0.8b", "alpha": 0.1, "risk": "0.1", "target_precision": 0.95}
+    arrays = {"meta": np.array(json.dumps(meta))}
+    for name in lv.HEAD_ARRAYS:
+        arrays["%s::%s" % (qid, name)] = np.zeros(2)
+    np.savez(os.path.join(str(tmp_path), "heads.npz"), **arrays)
+    return str(tmp_path)
+
+
+def test_load_calibration_resets_a_calibration_the_directory_does_not_hold(tmp_path, monkeypatch):
+    # `save_calibration` writes calibration.json only when the agent was calibrated, so a
+    # heads-only directory is a valid artefact. Loading one onto an agent that still carried a
+    # previous fit used to keep that fit's calibration and report `calibrated: True`.
+    a = object.__new__(lv.VegaAgent)
+    a.calibration = object()
+    import types
+    a.vega = types.SimpleNamespace(heads={})
+    # the calibrate stand-in is never used on the fixed code (no calibration.json here); it lets
+    # the pre-fix import complete so the mutation run reaches the stale-calibration assertions
+    _fake_vegaml(monkeypatch, type("FakeCal", (), {}))
+    out = a.load_calibration(_heads_dir(tmp_path))
+    assert out == {"heads": ["dept"], "calibrated": False}
+    assert a.calibration is None, "a heads-only directory does not vouch for a band"
+    assert set(a.vega.heads) == {"dept"}
+
+
+def test_load_calibration_loads_the_calibration_the_directory_holds(tmp_path, monkeypatch):
+    class FakeCal:
+        loaded_from = None
+
+        @classmethod
+        def load(cls, path):
+            cls.loaded_from = path
+            return cls()
+
+    _fake_vegaml(monkeypatch, FakeCal)
+    a = object.__new__(lv.VegaAgent)
+    a.calibration = None
+    import types
+    a.vega = types.SimpleNamespace(heads={})
+    d = _heads_dir(tmp_path)
+    with open(os.path.join(d, "calibration.json"), "w", encoding="utf-8") as f:
+        f.write("{}")
+    out = a.load_calibration(d)
+    assert out == {"heads": ["dept"], "calibrated": True}
+    assert isinstance(a.calibration, FakeCal)
+    assert FakeCal.loaded_from.endswith("calibration.json")
+
+
 @pytest.mark.skipif(not MEDIA_TESTS, reason="set LAYA_VEGA_MEDIA_TESTS=1 (pulls the vision tower)")
 def test_image_path(agent):
     from PIL import Image, ImageDraw

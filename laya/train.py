@@ -370,6 +370,12 @@ def rows_from_csv(path: str, text_column: str = "text", label_column: str = "lab
     Discovers distinct labels in `label_column` (preserving order of appearance) and
     builds a choice question with those labels as a list of criteria to render each option once.
     Uses `utf-8-sig` encoding so UTF-8 BOM headers from Excel are handled transparently.
+
+    A row shorter than the header is read, not refused: `csv.DictReader` reports the absent
+    cells as `None`, and those become the empty strings this loader already gives an empty cell
+    -- `items_from_rows` counts them as `empty_text`/`empty_label`. Reaching `.strip()` on the
+    `None` used to escape as a bare `AttributeError`, which `laya-train` printed as an
+    "unexpected error" naming neither the file nor the row.
     """
     import csv
 
@@ -393,7 +399,7 @@ def rows_from_csv(path: str, text_column: str = "text", label_column: str = "lab
     labels = []
     seen = set()
     for r in rows_raw:
-        val = r.get(label_column, "").strip()
+        val = (r.get(label_column) or "").strip()
         if val and val not in seen:
             seen.add(val)
             labels.append(val)
@@ -413,8 +419,8 @@ def rows_from_csv(path: str, text_column: str = "text", label_column: str = "lab
 
     output_rows = []
     for r in rows_raw:
-        text = r.get(text_column, "")
-        lbl = r.get(label_column, "").strip()
+        text = r.get(text_column) or ""
+        lbl = (r.get(label_column) or "").strip()
         output_rows.append({
             "state": text,
             "questions": questions,

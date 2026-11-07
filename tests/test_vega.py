@@ -542,5 +542,29 @@ def test_an_unreachable_band_hands_the_route_to_the_conformal_rule():
     assert a._route(raw, single, None) == {"route": "review", "route_reason": "band: confidence 1.000 is below the 1.000 review line"}
 
 
+# -----------------------------------------------------------------------------
+# frame sampling: the times must be the ones the frames came from, weight-free
+
+def test_sample_frames_reports_the_time_each_frame_came_from(monkeypatch):
+    pytest.importorskip("PIL")
+    import io
+    from PIL import Image
+    from laya import video as v
+
+    buf = io.BytesIO()
+    Image.new("RGB", (2, 2)).save(buf, "PNG")
+    png = buf.getvalue()
+
+    def fake_run(args, what):
+        return png if float(args[4]) in (1.25, 6.25, 8.75) else b""   # t=3.75 yields nothing
+
+    monkeypatch.setattr(v, "_run", fake_run)
+    monkeypatch.setattr(v.shutil, "which", lambda name: "/usr/bin/ffmpeg")
+
+    frames, times = v.sample_frames("unused.mp4", n=4, duration_s=10.0)
+    assert len(frames) == 3
+    assert [round(t, 3) for t in times] == [1.25, 6.25, 8.75]
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

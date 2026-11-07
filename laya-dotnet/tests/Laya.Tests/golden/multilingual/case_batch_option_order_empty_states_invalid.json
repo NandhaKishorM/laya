@@ -1,0 +1,24 @@
+{
+  "name": "batch_option_order_empty_states_invalid",
+  "states": [],
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      },
+      "option_order": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "options": {},
+  "state_widths": [],
+  "results": [],
+  "runs": []
+}

@@ -478,6 +478,28 @@ public sealed class BatchPredictionTests
         Assert.Equal(["b"], calls[1].States);
     }
 
+    [Fact]
+    public void OptionOrderIsPartOfTheGroupingKey()
+    {
+        using var rig = new Rig();
+        QuestionSet WithOrder(params int[]? order) => new()
+        {
+            ["q"] = order is null ? Question.Choice("x", "a", "b") : Question.Choice("x", "a", "b").WithOptionOrder(order),
+        };
+        rig.Router.PredictBatch(
+        [
+            Request("a", WithOrder(1, 0), model: "english"),
+            Request("b", WithOrder(0, 1), model: "english"),
+            Request("c", WithOrder(1, 0), model: "english"),
+            Request("d", WithOrder(null), model: "english"),
+        ]);
+        var calls = rig.Predictors[LayaCheckpoint.English].Calls;
+        Assert.Equal(3, calls.Count);
+        Assert.Equal(["a", "c"], calls[0].States);
+        Assert.Equal(["b"], calls[1].States);
+        Assert.Equal(["d"], calls[2].States);
+    }
+
     // ── route_batch against the Python recording ──────────────────────────────
 
     public static IEnumerable<object[]> RouteBatchCases()

@@ -462,9 +462,21 @@ class LossTests(unittest.TestCase):
 
     def test_config_rejects_unknown_values(self):
         for bad in (TrainConfig(loss="mse"), TrainConfig(shuffle_options=("choise",)),
-                    TrainConfig(epochs=0), TrainConfig(calib_frac=1.0)):
+                    TrainConfig(epochs=0), TrainConfig(calib_frac=1.0),
+                    TrainConfig(patience=0), TrainConfig(patience=-1),
+                    TrainConfig(val_frac=1.0), TrainConfig(val_frac=-0.1),
+                    TrainConfig(val_max=0), TrainConfig(warmup_steps=-1),
+                    TrainConfig(sigma_anneal_epochs=0), TrainConfig(lr_schedule="exponential"),
+                    TrainConfig(early_stopping=True, lr_schedule="cosine")):
             with self.assertRaises(ValueError):
                 bad.validate()
+        cfg_es = TrainConfig(early_stopping=True, patience=3)
+        cfg_es.validate()
+        self.assertEqual(cfg_es.lr_schedule, "constant")
+
+        cfg_std = TrainConfig()
+        cfg_std.validate()
+        self.assertEqual(cfg_std.lr_schedule, "cosine")
 
 
 class TrainingLoopTests(unittest.TestCase):
@@ -508,6 +520,125 @@ class TrainingLoopTests(unittest.TestCase):
         # The full two-step window and the final one-step window each contribute one update.
         self.assertAlmostEqual(model.value.item(), -2.0)
 
+    def test_early_stopping_terminates_and_restores_best_checkpoint(self):
+        class ScalarModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.encoder = torch.nn.Identity()
+                self.value = torch.nn.Parameter(torch.tensor(0.0))
+
+        model = ScalarModel()
+        tok = type("Tokenizer", (), {"pad_token_id": 0})()
+        item = {"q": {"t": "choice"}, "k": 2, "target": [1.0, 0.0]}
+        batch = {
+            "marker_mask": torch.ones((1, 1), dtype=torch.bool),
+            "target": torch.ones((1, 1)),
+        }
+        config = TrainConfig(
+            epochs=10,
+            micro_batch=1,
+            grad_accum=1,
+            head_lr=1.0,
+            min_lr=1.0,
+            loss="soft-ce",
+            freeze_encoder=True,
+            amp=False,
+            log_every=0,
+            early_stopping=True,
+            patience=2,
+        )
+
+        eval_losses = [0.5, 0.4, 0.6, 0.7, 0.8]
+        call_count = [0]
+
+        def mock_eval(*_args, **_kwargs):
+            loss = eval_losses[min(call_count[0], len(eval_losses) - 1)]
+            call_count[0] += 1
+            return {"loss": loss, "accuracy": 1.0}
+
+        with patch("laya.train.encode_item", return_value={}), \
+                patch("laya.train.collate_items", return_value=batch), \
+                patch("laya.train._forward", side_effect=lambda current, *_args: current.value), \
+                patch("laya.train.soft_ce_loss", side_effect=lambda logits, *_args: logits), \
+                patch("laya.train.evaluate_items", side_effect=mock_eval), \
+                patch("laya.train.torch.optim.AdamW",
+                      side_effect=lambda groups, weight_decay: torch.optim.SGD(
+                          groups, weight_decay=weight_decay)):
+            history = train_model(model, tok, [item], config, torch.device("cpu"), 1, 1, val_items=[item])
+
+        # Stopped after 4 epochs instead of all 10
+        self.assertEqual(len(history), 4)
+        # Best epoch was epoch 2 (1-indexed; index 1 had loss 0.4)
+        self.assertEqual(model.best_epoch, 2)
+
+    def test_schedule_independence_for_early_stopping(self):
+        from laya.train import sigma_at
+
+        # #963: Checkpoint after epoch E must follow the same trajectory independent of max epochs budget
+        horizon = 4
+        # At epoch 0, 1, 2, 3 the noise schedule is strictly identical for 4 max epochs and 32 max epochs
+        sigmas_4 = [sigma_at(e, horizon, 0.4, 0.1) for e in range(4)]
+        sigmas_32 = [sigma_at(e, horizon, 0.4, 0.1) for e in range(4)]
+        self.assertEqual(sigmas_4, sigmas_32)
+        # Beyond the fixed horizon, noise stays clamped at sigma_end
+        self.assertAlmostEqual(sigma_at(3, horizon, 0.4, 0.1), 0.1)
+        self.assertAlmostEqual(sigma_at(10, horizon, 0.4, 0.1), 0.1)
+        self.assertAlmostEqual(sigma_at(31, horizon, 0.4, 0.1), 0.1)
+
+    def test_split_validation_calibration_disjoint(self):
+        from laya.train import split_validation_calibration
+
+        items = list(range(100))
+        train, val, calib = split_validation_calibration(
+            items, calib_max=20, calib_frac=0.2, val_max=20, val_frac=0.2, seed=42
+        )
+        self.assertEqual(len(val), 20)
+        self.assertEqual(len(calib), 20)
+        self.assertEqual(len(train), 60)
+        # Model selection and temperature calibration slices are mutually disjoint
+        self.assertTrue(set(val).isdisjoint(set(calib)))
+        self.assertTrue(set(train).isdisjoint(set(val)))
+        self.assertTrue(set(train).isdisjoint(set(calib)))
+
+    def test_early_stopping_warns_on_empty_validation_slice(self):
+        class ScalarModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.encoder = torch.nn.Identity()
+                self.value = torch.nn.Parameter(torch.tensor(0.0))
+
+        model = ScalarModel()
+        tok = type("Tokenizer", (), {"pad_token_id": 0})()
+        item = {"q": {"t": "choice"}, "k": 2, "target": [1.0, 0.0]}
+        batch = {
+            "marker_mask": torch.ones((1, 1), dtype=torch.bool),
+            "target": torch.ones((1, 1)),
+        }
+        config = TrainConfig(
+            epochs=1,
+            micro_batch=1,
+            grad_accum=1,
+            head_lr=1.0,
+            min_lr=1.0,
+            loss="soft-ce",
+            freeze_encoder=True,
+            amp=False,
+            log_every=0,
+            early_stopping=True,
+            patience=2,
+        )
+        with patch("laya.train.encode_item", return_value={}), \
+                patch("laya.train.collate_items", return_value=batch), \
+                patch("laya.train._forward", side_effect=lambda current, *_args: current.value), \
+                patch("laya.train.soft_ce_loss", side_effect=lambda logits, *_args: logits), \
+                patch("laya.train.torch.optim.AdamW",
+                      side_effect=lambda groups, weight_decay: torch.optim.SGD(
+                          groups, weight_decay=weight_decay)):
+            with warnings.catch_warnings(record=True) as recorded:
+                warnings.simplefilter("always")
+                train_model(model, tok, [item], config, torch.device("cpu"), 1, 1, val_items=[])
+                self.assertTrue(any("val_items is empty" in str(w.message) for w in recorded))
+
 
 class EndToEndTests(unittest.TestCase):
     @classmethod
@@ -535,6 +666,8 @@ class EndToEndTests(unittest.TestCase):
         report = self.run_finetune("out")
         self.assertEqual(report["train_items"] + report["calibration_items"], len(rows()) * 3)
         self.assertLess(report["epoch_loss"][-1], report["epoch_loss"][0])
+        self.assertIn("best_epoch", report)
+        self.assertEqual(report["best_epoch"], len(report["epoch_loss"]))
 
         saved = json.loads((self.root / "out" / "rl_agent_config.json").read_text())
         self.assertTrue(saved["fine_tuned"])
@@ -551,6 +684,23 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(answers["department"]["choice"], "billing")
         answers = agent.predict("app crash error", {"department": DEPARTMENT})["answers"]
         self.assertEqual(answers["department"]["choice"], "technical")
+
+    def test_finetune_with_early_stopping(self):
+        report = self.run_finetune("out_early_stopping", epochs=4, early_stopping=True, patience=2)
+        self.assertIn("best_epoch", report)
+        self.assertGreaterEqual(report["best_epoch"], 1)
+        self.assertLessEqual(report["best_epoch"], len(report["epoch_loss"]))
+        saved = json.loads((self.root / "out_early_stopping" / "rl_agent_config.json").read_text())
+        self.assertEqual(saved["training"]["best_epoch"], report["best_epoch"])
+        self.assertEqual(saved["training"]["laya_train"]["lr_schedule"], "constant")
+
+        # #963: Checkpoint artifact consistency - checkpoint_latest must match final restored weights
+        ckpt_weights = load_file(str(self.root / "out_early_stopping" / "checkpoint_latest" / "model.safetensors"))
+        final_weights = load_file(str(self.root / "out_early_stopping" / "model.safetensors"))
+        for k in final_weights:
+            self.assertTrue(torch.equal(final_weights[k], ckpt_weights[k]))
+        saved_latest = json.loads((self.root / "out_early_stopping" / "checkpoint_latest" / "rl_agent_config.json").read_text())
+        self.assertEqual(saved_latest["training"]["best_epoch"], report["best_epoch"])
 
     def test_shuffled_run_saves_a_loadable_checkpoint(self):
         report = self.run_finetune("out_shuffled", shuffle_options=("choice",), epochs=1)

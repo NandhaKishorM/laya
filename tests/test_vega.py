@@ -230,6 +230,95 @@ def test_vega_agent_is_exported_and_is_an_agent_subclass():
     assert "VegaAgent" in laya.__all__
 
 
+# ----------------------------------------------------------------- the hook lifecycle
+def _hook_agent(monkeypatch, answer, calls):
+    a = object.__new__(lv.VegaAgent)
+    a.model_id = "vega-test"
+    a.hooks = []
+    a.hooks_raise = True
+    a.hooks_timeout = None
+
+    def fake_decide(self, state, questions, **kw):
+        calls.append((state, questions))
+        return answer
+
+    monkeypatch.setattr(lv.VegaAgent, "_decide", fake_decide)
+    return a
+
+
+def test_predict_runs_the_hook_lifecycle(monkeypatch):
+    answer = {"answers": {}, "usage": {"input_tokens": 3, "output_tokens": 0}, "modality": "text"}
+    calls, events = [], []
+    a = _hook_agent(monkeypatch, answer, calls)
+
+    class Probe:
+        def on_predict_start(self, ctx):
+            events.append(("start", ctx.states, dict(ctx.questions)))
+
+        def on_predict_end(self, ctx):
+            events.append(("end", ctx.results))
+
+        def on_error(self, ctx):
+            events.append(("error", ctx.error))
+
+    q = {"dept": {"type": "choice", "instructions": "x", "criteria": ["a", "b"]}}
+    out = a.predict("s", q, hooks=Probe())
+    assert out is answer
+    assert [e[0] for e in events] == ["start", "end"]
+    assert events[0][1] == "s" and events[0][2] == q, "the hook sees the call's state and questions"
+    assert events[1][1] is answer, "the end hook sees the finished answer"
+    assert calls == [("s", q)]
+
+
+def test_a_start_hook_can_short_circuit_and_rewrite_questions(monkeypatch):
+    answer = {"answers": {}, "usage": {"input_tokens": 3, "output_tokens": 0}, "modality": "text"}
+    calls = []
+    a = _hook_agent(monkeypatch, answer, calls)
+    other = {"dept": {"type": "noul", "instructions": "will they churn?"}}
+    given = {"dept": {"type": "noul", "instructions": "x"}}
+
+    class Skipper:
+        def on_predict_start(self, ctx):
+            ctx.questions = other
+            ctx.skip({"answers": {}, "cached": True})
+
+    assert a.predict("s", given, hooks=Skipper()) == {"answers": {}, "cached": True}
+    assert calls == [], "skip() short-circuits the decision"
+
+    class Rewriter:
+        def on_predict_start(self, ctx):
+            ctx.questions = other
+
+    a.predict("s", given, hooks=Rewriter())
+    assert calls and calls[0][1] is other, "the rewritten questions are what decide on"
+
+
+def test_a_failing_hook_follows_the_raise_policy(monkeypatch):
+    answer = {"answers": {}, "usage": {"input_tokens": 3, "output_tokens": 0}, "modality": "text"}
+    calls, events = [], []
+    a = _hook_agent(monkeypatch, answer, calls)
+
+    class Boom:
+        def on_predict_start(self, ctx):
+            raise RuntimeError("boom")
+
+        def on_error(self, ctx):
+            events.append("error")
+
+        def on_predict_end(self, ctx):
+            events.append("end")
+
+    q = {"dept": {"type": "noul", "instructions": "x"}}
+    with pytest.raises(RuntimeError, match="boom"):
+        a.predict("s", q, hooks=Boom())
+    assert events == ["error", "end"], "on_error fired, then on_predict_end on the failure path"
+    events.clear()
+    with pytest.raises(RuntimeError, match="boom"):
+        a.predict("s", q, hooks=Boom(), hooks_raise=True)
+    assert a.predict("s", q, hooks=Boom(), hooks_raise=False) is answer, \
+        "hooks_raise=False warns and continues"
+
+
 # ----------------------------------------------------------------------------- with weights
 needs_model = pytest.mark.skipif(
     not MODEL_TESTS, reason="set LAYA_VEGA_TESTS=1 with vegaml installed (downloads the 0.8B reader)")

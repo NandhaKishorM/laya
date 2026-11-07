@@ -36,6 +36,7 @@ Mirrors the [Laya Python SDK](https://github.com/NandhaKishorM/laya/blob/main/RE
 - [Long prediction](#long-prediction)
 - [Batch prediction](#batch-prediction)
 - [Per-language temperatures and per-call overrides](#per-language-temperatures-and-per-call-overrides)
+- [Calibration files and histogram binning](#calibration-files-and-histogram-binning)
 - [Abstention (`min_confidence`)](#abstention-min_confidence)
 - [Thread safety](#thread-safety)
 - [Execution providers and cargo features](#execution-providers-and-cargo-features)
@@ -428,6 +429,8 @@ The same pattern applies to `ModelArtifacts::resolve` / `LayaEngine::create` wit
 | `hugging_face_token` | `Option<String>` | `None` → `HF_TOKEN` | Bearer token for gated or private repos. `Some(String::new())` disables auth. |
 | `cache_directory` | `Option<PathBuf>` | per-user cache | Root that downloads (and cache lookups) land under. |
 | `download_progress` | `Option<Arc<dyn Fn(ArtifactDownloadProgress) + Send + Sync>>` | `None` | Per-file progress sink. |
+| `lang_temperatures` | `LangTemperatureTable` | empty | Per-language temperature overrides; see [Per-language temperatures](#per-language-temperatures-and-per-call-overrides). |
+| `calibration` | `Option<PathBuf>` | `None` | A calibration file read onto the engine at construction (`set_calibration` sets it); see [Calibration files and histogram binning](#calibration-files-and-histogram-binning). |
 
 Every field is `pub`, including `hugging_face_subfolder`, so `LayaOptions` can be built with
 ordinary struct-update syntax as well as `LayaOptions::new()` plus field assignment:
@@ -555,8 +558,8 @@ Ports `lang_temperatures`, `lang`, `max_len` and `head_max_len` from Python's `O
 - **Per-call `lang`.** `PredictOptions::lang`, `BatchOptions::lang` and `LongOptions::lang` select
   an entry for that call. A language in the table replaces both the checkpoint's bucket map and its
   per-type temperature (there is no fallback to the checkpoint's bucket); an unknown or empty code
-  changes nothing. This port has no histogram-binning calibration, which Python skips under an
-  override. On `LayaRouter`, the explicit `lang` argument is the language (it also routes), else
+  changes nothing. Under an override the calibration file's histogram binning is skipped, as in
+  Python (see [Calibration files](#calibration-files-and-histogram-binning)). On `LayaRouter`, the explicit `lang` argument is the language (it also routes), else
   the language the routing detection found; the fields on the options are not read there (batch-wide ones are refused by `predict_batch`). In
   `predict_batch` a request's `lang` (else the detected one) joins the grouping key, raw and
   unnormalised, only when the engine has a table, so a table-less group still shares one pass.
@@ -575,6 +578,55 @@ Ports `lang_temperatures`, `lang`, `max_len` and `head_max_len` from Python's `O
   defaults, so existing implementors compile. The default drops `lang` and refuses a token-budget
   override with `LayaError::NotSupported`; Python passes the budget on and the agent raises a
   `TypeError`.
+
+---
+
+## Calibration files and histogram binning
+
+Ports `ONNXAgent(calibration=...)` / `load_calibration`, `calibrate.apply_calibration_payload` and
+`calibrate.apply_binning_map`. This crate only reads and applies a calibration file; Python's
+fitters and `save_calibration` write it.
+
+- **`LayaOptions::calibration`.** The path of a JSON file (also `LayaOptions::set_calibration`),
+  read when the engine is built, after the checkpoint's own temperatures and the `lang_temperatures`
+  table, as Python reads it. It is construction-time only: there is no per-call form. A router
+  passes it to every engine it builds. `None`, like an empty path, loads nothing. The file is read
+  with the crate's Python-json reader (what `json.load` accepts, including `NaN` and `Infinity`),
+  as strict UTF-8 like the checkpoint's config; Python opens it with the locale encoding.
+- **What it installs.** `temperature` (exactly three entries) and `temperature_by_options` replace
+  both of the checkpoint's maps; each value is clamped to `[0.5, 5]` as the checkpoint's are, and
+  what the clamp replaced is named in one warning, sent with Python's text to the `log` facade
+  (`warn`, target `laya`, once per text). `LayaEngine::config()` then shows the file's values, as
+  Python's `agent.temperature` does. A missing or `null` `temperature_by_options` is `{}`, and a
+  missing or `null` `binning_map` clears any map (the file is the whole calibration state, not a
+  patch). A `version` that is missing or `null` is 1; a `version` that is not an integer is refused.
+- **Shape checks.** A payload that is not an object, a `version` that is not an integer, a
+  `temperature` that is not a list of three, a `temperature_by_options` that is not an object, or a
+  `binning_map` that is not an object of `{bins, values}` (an integer `bins` of at least 1, `values`
+  of exactly that length, each a finite number in `[0, 1]`) is `LayaError::InvalidConfig` with
+  Python's `ValueError` text. A bad temperature is forgiven and clamped (an integer too wide for a
+  double, like `10**400`, is the neutral 1.0 and is named digit for digit in the warning, as Python
+  0.4.20 does); a bad binning value is refused, a huge integer too (`values must be numbers`, as
+  Python 0.4.21 does). An error Python raises as another type (an infinite confidence reaching a bin
+  is an `OverflowError`) carries the type's name in front. The checks are `CalibrationFile::parse`,
+  checked against `routing/calibration_probe.json`, which Python's own `apply_calibration_payload` and
+  `apply_binning_map` write over 152 payloads and 62 lookups.
+- **Histogram binning.** After the temperature softmax the unrounded
+  `answer_confidence = max(p)` is looked up in its bucket's histogram:
+  `values[min(bins - 1, max(0, int(confidence * bins)))]`, then rounded to four places. A bucket
+  with no entry keeps the temperature-scaled value. Only `answer_confidence` is recalibrated;
+  `confidence`, the probabilities, `noul` and `score` are not. It is skipped for a call whose `lang`
+  selects a `lang_temperatures` entry, since the map was fitted for the checkpoint's temperatures,
+  and an empty `binning_map` (`{}`) does nothing. The `min_confidence` gate and `predict_long`'s
+  window choice read `answer_confidence`, so they see the binned value.
+  `LayaEngine::binning_map()` returns the map.
+- **Not ported: the checkpoint-identity warning.** Python warns when a version 2 file records a
+  `model_id_or_path`, `subfolder` or `config` other than the agent's. An ONNX agent's
+  `model_id_or_path` is the string its caller passed to name the PyTorch checkpoint (a Hub id or a
+  path); this crate loads an exported artifact directory and has no such string, so there is
+  nothing faithful to compare. A version 2 file loads exactly as Python loads it, with the same
+  temperatures, binning, errors and clamp warning, but never warns about the checkpoint it was
+  fitted for. Check that the file matches the checkpoint yourself.
 
 ---
 
@@ -834,6 +886,7 @@ invocation that has the `download` feature enabled (the default) with no externa
 | `src/calibration.rs` | Temperature scaling and confidence math | `Calibration` |
 | `src/laya_config.rs` | Parsed `rl_agent_config.json` | `LayaConfig` |
 | `src/lang_temperatures.rs` | Per-language temperature table and its parser | `LangTemperature`, `TemperatureValue`, `LangTemperatures`, `resolve_lang_temperatures` |
+| `src/calibration_file.rs` | Calibration file loader and histogram binning | `CalibrationFile`, `BinningMap`, `BinningEntry` |
 | `src/laya_options.rs` | Engine construction options | `LayaOptions`, `LayaCheckpoint`, `LayaExecutionProvider`, `ArtifactDownloadProgress` |
 | `src/model_artifacts.rs` | Locating/downloading model files | `ModelArtifacts`, `ModelLayout`, `ModelPaths` (the fused/split layout enum and its resolved paths — see [Getting the model](#getting-the-model)) |
 | `src/laya_presets.rs` | Built-in question presets | `LayaPresets` |
@@ -907,7 +960,8 @@ Rust port groups the corresponding functions into a unit struct with associated 
   routing probes and a seeded differential corpus regenerated at that version
   (`tools/regen_golden.py --checkpoint routing`). A later Python change needs them regenerated.
 
-- **Opt-in features are not ported yet:** histogram-binning calibration and per-call hooks.
-  `predict_long`, `predict_batch`, the `min_confidence` gate, `lang_temperatures` and the per-call
-  `lang`, `max_len` and `head_max_len` are ported, without hooks. They are off by default in
+- **Opt-in features are not ported yet:** per-call hooks.
+  `predict_long`, `predict_batch`, the `min_confidence` gate, `lang_temperatures`, the per-call
+  `lang`, `max_len` and `head_max_len`, and calibration files with histogram binning are ported,
+  without hooks. They are off by default in
   Python, so default predictions are unaffected. They are planned as follow-ups.

@@ -247,6 +247,21 @@ class DataTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 rows_from_csv(str(p), text_column="text", label_column="dept")
 
+    def test_read_jsonl_reads_a_dataset_saved_with_a_bom(self):
+        # A dataset written by Notepad or re-saved by a spreadsheet starts with a UTF-8 BOM. The
+        # CSV loader above reads `utf-8-sig` for exactly that reason, and so do the CLI's file
+        # readers and `laya.evals.Dataset.from_jsonl`; the JSONL loader read plain `utf-8`, so
+        # line 1 kept U+FEFF and `json` refused a file whose rows are all valid JSON.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / "train.jsonl"
+            row = {"state": "refund invoice", "questions": {"label": DEPARTMENT},
+                   "expected": {"label": "billing"}}
+            p.write_bytes(("\ufeff" + json.dumps(row) + "\n" + json.dumps(row) + "\n").encode("utf-8"))
+            rows = read_data(str(p))
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(rows[0]["state"], "refund invoice")
+            self.assertEqual(rows[1]["expected"]["label"], "billing")
+
     def test_items_from_rows_supports_expected(self):
         exp_rows = [
             {"state": "please refund invoice", "questions": {"department": DEPARTMENT},

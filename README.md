@@ -244,6 +244,27 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
+## What's new in 0.4.28
+
+* **Load a trained policy straight from its `.zip`, verified.** `Agent(vegaml=True).load_calibration`
+  takes the folder or the downloaded `.zip` itself, nothing to unpack, and returns the questions
+  ready for `predict`:
+
+  ```python
+  agent = laya.Agent(vegaml=True)
+  info = agent.load_calibration("acme-policy.zip")
+  agent.predict("the message to decide", info["questions"])
+  ```
+
+  Before anything is installed it checks that every file has the SHA-256 its manifest states,
+  that a signed policy's Ed25519 signature verifies against a key laya trusts (Embedding Space's
+  key is pinned in `laya.policy.TRUSTED_KEYS`), and that the loaded engine is the one the policy
+  was trained on. Any failure raises `laya.policy.PolicyError` naming the file, the key or the
+  engine. `verify="signed"` also refuses an unsigned policy; `verify=False` skips the checks.
+  `save_calibration` now writes an unsigned manifest of hashes, so laya's own folders are
+  integrity-checked on load, and folders written before 0.4.28 still load, reported as
+  unverified. `cryptography` is a new dependency.
+
 ## What's new in 0.4.27
 
 * **Faster CPU inference on long inputs.** On transformers 5, ModernBERT's local attention

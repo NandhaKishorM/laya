@@ -764,15 +764,50 @@ class VegaAgent(Agent):
         np.savez(os.path.join(path, "heads.npz"), **arrays)
         if self.calibration is not None:
             self.calibration.save(os.path.join(path, "calibration.json"))
+        # A manifest of hashes, unsigned: load_calibration checks the folder was not changed.
+        from . import policy
+
+        files = {n: open(os.path.join(path, n), "rb").read()
+                 for n in ("heads.npz", "calibration.json") if os.path.exists(os.path.join(path, n))}
+        try:
+            engine = self.vega.engine.base_sha256()
+        except Exception:
+            engine = None
+        with open(os.path.join(path, "manifest.json"), "wb") as f:
+            f.write(policy.manifest_for(files, format="laya-policy/1", engine_sha256=engine,
+                                        model=self.model_id))
         return {"path": path, "heads": sorted(meta["heads"]),
                 "calibrated": self.calibration is not None}
 
-    def load_calibration(self, path: str) -> Dict[str, Any]:
-        import numpy as np
+    def load_calibration(self, path: str, verify: Union[bool, str] = True) -> Dict[str, Any]:
+        """Install a trained policy from a folder or straight from Studio's downloaded ``.zip``.
+
+        ``verify=True`` (the default) checks before anything is installed: every file has the
+        SHA-256 its manifest states, a signed policy's signature verifies against a key laya
+        trusts, and this agent's engine is the one the policy was trained on. Any failure raises
+        :class:`laya.policy.PolicyError` naming what failed. ``verify="signed"`` also refuses a
+        policy that is not signed. ``verify=False`` skips all of it.
+
+        Returns the questions (laya's spelling, ready for :meth:`predict`) and what was verified.
+        """
         from vegaml.calibrate import Calibration
         from vegaml.ttt import TTTHead
 
-        z = np.load(os.path.join(path, "heads.npz"), allow_pickle=False)
+        from . import policy
+
+        files = policy.read(path)
+        report: Dict[str, Any] = {"status": "skipped"}
+        if verify:
+            report = policy.verify(files, require_signature=(verify == "signed"))
+            try:
+                actual = self.vega.engine.base_sha256()
+            except Exception:  # an engine that cannot hash itself is reported, not guessed
+                actual = None
+            expected = policy.expected_engine(files, report)
+            policy.check_engine(expected, actual)
+            report = dict(report, engine="matches" if (expected and actual) else "not checked")
+            report.pop("manifest", None)
+        z = policy.npz(files)
         meta = json.loads(str(z["meta"]))
         loaded = []
         for qid, m in meta["heads"].items():
@@ -783,10 +818,14 @@ class VegaAgent(Agent):
             head.engine_accuracy = m.get("engine_accuracy")
             self.vega.heads[qid] = (head, m.get("cv"))
             loaded.append(qid)
-        cal_path = os.path.join(path, "calibration.json")
-        if os.path.exists(cal_path):
-            self.calibration = Calibration.load(cal_path)
-        return {"heads": loaded, "calibrated": self.calibration is not None}
+        if "calibration.json" in files:
+            self.calibration = Calibration.from_payload(json.loads(files["calibration.json"]))
+        out: Dict[str, Any] = {"heads": loaded, "calibrated": self.calibration is not None,
+                               "verified": report}
+        if "questions.json" in files:
+            out["questions"] = json.loads(files["questions.json"])
+            self.policy_questions = out["questions"]
+        return out
 
     # ------------------------------------------------------------------ readers
     @staticmethod

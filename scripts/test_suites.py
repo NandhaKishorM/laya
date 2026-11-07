@@ -131,6 +131,7 @@ PYTEST_SUITES = [
     "tests/test_finetune_entrypoints.py",
     "tests/test_vega.py",
     "tests/test_router_vega.py",
+    "tests/test_policy.py",
 ]
 
 

@@ -84,7 +84,9 @@ if len(od) > 1:
     for m in re.finditer(r"^([A-Za-z0-9_-]+) = \[(.*?)\]", table, re.S | re.M):
         extras[m.group(1)] = array(m.group(2))
 
-check_true("pyproject/core parses", len(core) == 6, core)
+# Seven since 0.4.28: cryptography verifies the Ed25519 signature on policies exported from
+# Embedding Studio, and as a core dependency it is in the shipped (blocking) audit scope below.
+check_true("pyproject/core parses", len(core) == 7, core)
 check("pyproject/extra tables found", sorted(extras),
       ["agno", "audio", "crewai", "fast", "langchain", "langgraph", "llamaindex", "mcp", "onnx", "serve",
        "structured", "vision"])

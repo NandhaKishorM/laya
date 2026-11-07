@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.4.27"
+version = "0.4.28"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,6 +35,8 @@ dependencies = [
     # images and speech. A core dependency since 0.4.23 so a plain `pip install laya` carries it; the
     # module itself is imported only when the argument is given, so `import laya` stays as light as before.
     "vegaml>=0.15.0",
+    # Verifies the Ed25519 signature on policies exported from Embedding Studio (laya/policy.py).
+    "cryptography>=41",
 ]
 
 [tool.setuptools]

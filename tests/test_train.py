@@ -247,6 +247,24 @@ class DataTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 rows_from_csv(str(p), text_column="text", label_column="dept")
 
+    def test_rows_from_csv_reads_a_row_shorter_than_the_header(self):
+        # A hand-edited CSV can lose a trailing cell, and `csv.DictReader` reports the missing
+        # column as `None` rather than leaving the key out. `None.strip()` raised a bare
+        # `AttributeError`, which `laya-train` printed as "unexpected error" with no file or row;
+        # an absent cell means the same "this row names no label" an empty one already means, and
+        # `items_from_rows` counts that as `empty_label` (see test_items_from_rows_skip_tracking).
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / "short.csv"
+            p.write_text("body,department\nrefund invoice,billing\n"
+                         "app crash,technical\nlogin broken\n", encoding="utf-8")
+            data = read_data(str(p), text_column="body", label_column="department")
+            self.assertEqual(len(data), 3)
+            self.assertEqual([row["state"] for row in data],
+                             ["refund invoice", "app crash", "login broken"])
+            self.assertEqual([row["expected"]["label"] for row in data], ["billing", "technical", ""])
+            # The absent cell is not a new label: the question still carries the two it saw.
+            self.assertEqual(data[0]["questions"]["label"]["criteria"], ["billing", "technical"])
+
     def test_items_from_rows_supports_expected(self):
         exp_rows = [
             {"state": "please refund invoice", "questions": {"department": DEPARTMENT},

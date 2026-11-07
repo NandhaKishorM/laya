@@ -1350,3 +1350,113 @@ SAMPLE_BANKING_CRITERIA = {
     "get_physical_card": "wants a physical card",
     "getting_spare_card": "wants a spare or backup card",
 }
+
+
+# ============================================================================ tournament_probe / cached_embed_probe
+#
+# TOURNAMENT_PROBE_CASES -> tournament_probe.json: `predict_tournament` (shortlist.py:139-227) over a scripted
+# predictor, so no model is needed (see `_ScriptedAgent` in dump_routing_golden.py for the answers). `mode`
+# names how the predictor misbehaves: "normal", "omit_group" (round 1 leaves group "1" out), "score_group"
+# (round 1 answers group "1" with a score), "bad_winner" (round 1 picks a label no question has) or "none"
+# (it returns None). `group_size` is passed only when named; `kwargs` are forwarded to every call.
+_TP_BANKING = {"type": "choice", "instructions": SAMPLE_BANKING_INSTRUCTIONS, "criteria": SAMPLE_BANKING_CRITERIA}
+_TP_LIST = {"type": "choice", "instructions": "Which item?", "criteria": ["item_%02d" % i for i in range(20)]}
+_TP_AREA = {
+    "type": "choice",
+    "instructions": "Which product area does the request touch?",
+    "criteria": {label: SAMPLE_BANKING_CRITERIA[label] for label in list(SAMPLE_BANKING_CRITERIA)[:25]},
+}
+_TP_SMALL = {"type": "choice", "instructions": "Which channel?",
+             "criteria": {"app": "mobile app", "web": "website", "branch": "in person"}}
+_TP_SCORE = {"type": "score", "instructions": "How urgent?", "criteria": ["low", "mid", "high", "now"]}
+_TP_NOUL = {"type": "noul", "instructions": "Is the customer angry?"}
+
+
+def _tp(name, questions, mode="normal", **extra):
+    return dict({"name": name, "state": SAMPLE_BANKING_STATE, "questions": questions, "mode": mode}, **extra)
+
+
+TOURNAMENT_PROBE_CASES = [
+    _tp("group4_two_rounds", {"intent": _TP_BANKING}, group_size=4),
+    _tp("group7_uneven", {"intent": _TP_BANKING}, group_size=7),
+    _tp("group8", {"intent": _TP_BANKING}, group_size=8),
+    _tp("default_group", {"intent": _TP_BANKING}),
+    _tp("group40_no_round", {"intent": _TP_BANKING}, group_size=40),
+    _tp("group39_two_halves", {"intent": _TP_BANKING}, group_size=39),
+    _tp("group2_many_rounds", {"intent": _TP_BANKING}, group_size=2),
+    _tp("list_criteria", {"item": _TP_LIST}, group_size=6),
+    _tp("multi", {"intent": _TP_BANKING, "area": _TP_AREA, "channel": _TP_SMALL, "urgency": _TP_SCORE,
+                  "angry": _TP_NOUL}, group_size=6, kwargs={"tag": "x", "n": 3}),
+    _tp("option_order_dropped",
+        {"intent": dict(_TP_BANKING, option_order=list(range(39, -1, -1))),
+         "area": dict(_TP_AREA, option_order=list(range(24, -1, -1))),
+         "channel": dict(_TP_SMALL, option_order=[1, 2, 0]),
+         "urgency": dict(_TP_SCORE, option_order=[3, 1, 0, 2]),
+         "angry": dict(_TP_NOUL, option_order=[1, 0])}),
+    # Several groups and several rounds, still one warning per question per call.
+    _tp("option_order_two_rounds", {"intent": dict(_TP_BANKING, option_order=list(range(40)))}, group_size=4),
+    _tp("option_order_kept_without_a_round", {"intent": dict(_TP_BANKING, option_order=list(range(40)))},
+        group_size=40),
+    _tp("only_non_choice", {"urgency": _TP_SCORE, "angry": _TP_NOUL}),
+    _tp("no_questions", {}),
+    _tp("group_size_1", {"intent": _TP_BANKING}, group_size=1),
+    _tp("group_size_0", {"intent": _TP_BANKING}, group_size=0),
+    _tp("group_size_negative", {"intent": _TP_BANKING}, group_size=-3),
+    _tp("missing_group", {"intent": _TP_BANKING}, mode="omit_group", group_size=8),
+    _tp("non_choice_group_answer", {"intent": _TP_BANKING}, mode="score_group", group_size=8),
+    _tp("unknown_winner", {"intent": _TP_BANKING}, mode="bad_winner", group_size=8),
+    _tp("predict_returns_none", {"intent": _TP_BANKING}, mode="none", group_size=8),
+]
+
+# CACHED_EMBED_SCENARIOS -> cached_embed_probe.json: `cached_embed_fn(embedder, maxsize)` driven through
+# these steps, over `hashing_embedder.embed(texts) / 3.0` (non-integer values, so the float32 storage shows).
+# Step ops: "call" (texts; a None text is allowed; optional `mode` of the embedder for that step: "normal",
+# "raise", "short" (one row short) or "dim32" (width 32 instead of 64) and `bad` = texts whose row is
+# injected with NaN, +inf and -inf), "clear". Each step records the texts the embedder saw, the rows (or
+# the error) and `cache_info()` afterwards.
+CACHED_EMBED_SCENARIOS = [
+    {"name": "hits_misses_duplicates_eviction", "maxsize": 4, "steps": [
+        {"op": "call", "texts": ["a", "b", "c"]},
+        {"op": "call", "texts": ["a", "b", "a", "d"]},
+        {"op": "call", "texts": ["c", "e", "e", "f"]},
+        {"op": "call", "texts": ["a", "f"]},
+        {"op": "call", "texts": ["", None]},
+        {"op": "call", "texts": []},
+        {"op": "call", "texts": ["café", "café", "Café", "café"]},
+    ]},
+    {"name": "non_finite_row_is_cached_as_zeros", "maxsize": 8, "steps": [
+        {"op": "call", "texts": ["ok", "bad"], "bad": ["bad"]},
+        {"op": "call", "texts": ["bad", "ok"]},
+        {"op": "clear"},
+        {"op": "call", "texts": ["bad"]},
+    ]},
+    {"name": "dim_guard_and_bad_shapes", "maxsize": 8, "steps": [
+        {"op": "call", "texts": ["a", "b"]},
+        {"op": "call", "texts": ["c"], "mode": "dim32"},
+        {"op": "call", "texts": ["c", "d"], "mode": "short"},
+        {"op": "call", "texts": ["c"], "mode": "short"},
+        {"op": "call", "texts": ["c"], "mode": "raise"},
+        {"op": "call", "texts": ["c", "a"]},
+        {"op": "clear"},
+        {"op": "call", "texts": ["c"], "mode": "dim32"},
+        {"op": "call", "texts": ["a"]},
+    ]},
+    # A hit makes the row the most recently used: "a" survives "d" because it was read after "b" and "c" were stored.
+    {"name": "lru_recency", "maxsize": 3, "steps": [
+        {"op": "call", "texts": ["a", "b", "c"]},
+        {"op": "call", "texts": ["a"]},
+        {"op": "call", "texts": ["d"]},
+        {"op": "call", "texts": ["a"]},
+        {"op": "call", "texts": ["b"]},
+        {"op": "call", "texts": ["c", "d", "c"]},
+    ]},
+    {"name": "maxsize_one", "maxsize": 1, "steps": [
+        {"op": "call", "texts": ["a", "b"]},
+        {"op": "call", "texts": ["b"]},
+        {"op": "call", "texts": ["a"]},
+        {"op": "call", "texts": ["a", "a"]},
+    ]},
+]
+
+# maxsize values the constructor refuses, with Python's ValueError text recorded.
+CACHED_EMBED_BAD_MAXSIZE = [0, -1, -4096]

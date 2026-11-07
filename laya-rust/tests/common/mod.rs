@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 
 pub mod engines;
+pub mod forward_memo;
 pub mod golden_data;
 pub mod hashing_embedder;
 pub mod result_compare;

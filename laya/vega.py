@@ -99,9 +99,16 @@ def _to_vega_questions(questions: Mapping[str, Mapping]) -> Dict[str, Dict]:
     The two schemas are the same typed-decision design and differ in one word: laya's yes/no
     is ``noul``, vegaml's is ``boolean``. laya's noul-only ``labels`` (the two sides named)
     becomes vegaml's boolean ``criteria``, which is the same information under the other key.
+
+    Each question goes through :meth:`laya.agent.Agent._check_question` first. The translation
+    reads ``q["type"]`` / ``q["instructions"]`` / ``q["criteria"]`` directly, so a malformed
+    definition used to surface as a bare ``KeyError`` or ``TypeError: string indices must be
+    integers`` that names neither the question nor what to fix, on ``fit`` as well as on
+    ``predict``.
     """
     out = {}
     for qid, q in questions.items():
+        Agent._check_question(qid, q)
         t = q["type"]
         vq: Dict[str, Any] = {"instructions": q["instructions"]}
         if t == "noul":

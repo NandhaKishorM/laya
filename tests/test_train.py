@@ -1039,6 +1039,22 @@ class CalibrationReportTests(unittest.TestCase):
         p = torch.softmax(torch.tensor([1.0, 0.0, 0.0]) / 1.3, -1)
         self.assertAlmostEqual(report["score"]["mean_confidence"], p.max().item(), places=6)
 
+    def test_metric_keys_follow_the_data(self):
+        # The docstring lists `accuracy` and `mean_confidence` as per-type entries, but only a
+        # type that has calibration items gets them; reading one off an absent type is a
+        # KeyError, so the whole key surface is pinned here rather than one key at a time.
+        from laya.train import calibration_report
+
+        report = calibration_report(self.records(QTYPES["score"], 60), [1.0, 1.3, 1.0])
+        self.assertEqual(sorted(report["score"]),
+                         ["accuracy", "issues", "items", "mean_confidence", "temperature"])
+        for absent in ("choice", "noul"):
+            self.assertEqual(sorted(report[absent]), ["issues", "items", "temperature"], absent)
+            with self.assertRaises(KeyError):
+                report[absent]["accuracy"]
+            with self.assertRaises(KeyError):
+                report[absent]["mean_confidence"]
+
     def test_finetune_warns_and_records_a_weak_calibration(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

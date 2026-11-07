@@ -182,6 +182,30 @@ public sealed class LayaOptions
     /// </remarks>
     public string? Calibration { get; set; }
 
+    /// <summary>
+    /// Hub revision (commit SHA, branch or tag) to download, Python's <c>revision=</c>. When
+    /// <see langword="null"/> or empty, <c>LAYA_REVISION</c> applies; the word <c>reviewed</c> means the
+    /// reviewed SHA of <see cref="HuggingFaceRepo"/> (see <see cref="LayaRevisions"/>). A pin downloads
+    /// from <c>resolve/&lt;revision&gt;/</c> and is cached under
+    /// <c>&lt;cache&gt;/&lt;revision&gt;/&lt;checkpoint&gt;</c>; with no pin the layout and URL are unchanged.
+    /// Applies only to the cache and download steps, not to an explicit directory,
+    /// <c>LAYA_ONNX_DIR</c> or <c>LAYA_ONNX_ROOT</c>.
+    /// </summary>
+    public string? Revision { get; set; }
+
+    /// <summary>
+    /// SHA-256 digests <c>{path relative to the artifact directory: hex digest}</c> verified once the
+    /// artifact directory is resolved (a local directory too) and before the config, tokenizer or
+    /// session is loaded; Python's <c>expected_sha256</c>. <see langword="null"/> reads the
+    /// <c>LAYA_SHA256_DIGESTS</c> environment variable (a JSON object) and an empty map masks it.
+    /// The key <c>onnx</c> (or <c>onnx_path</c>) names the fused <c>model.onnx</c> and is refused on a
+    /// split checkpoint; list <c>encoder.onnx</c> and <c>head.onnx</c> by path there.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? ExpectedSha256 { get; set; }
+
+    /// <summary>Hub origin for downloads; tests point it at a local server.</summary>
+    internal string HubEndpoint { get; set; } = "https://huggingface.co";
+
     // ── internal helpers ──────────────────────────────────────────────────────
 
     /// <summary>

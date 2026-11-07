@@ -1,0 +1,18 @@
+{
+  "name": "batch_noul_labels_empty_states_invalid",
+  "states": [],
+  "questions": {
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account.",
+      "labels": {
+        "false": "x",
+        "true": "x"
+      }
+    }
+  },
+  "options": {},
+  "state_widths": [],
+  "results": [],
+  "runs": []
+}

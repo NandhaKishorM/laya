@@ -189,6 +189,13 @@ On typed-decisions (6,000 training decisions, all 2,000 test decisions, one seed
 | `--loss soft-ce` | 0.790 | 0.157 | 0.078 |
 | `--loss soft-ce --shuffle-options` | 0.7875 | 0.159 | 0.062 |
 
+The gap between `--loss soft-ce` and `rlcd` in that table is one seed and did not hold up. Over
+three seeds on the same split ([#1012](https://github.com/NandhaKishorM/laya/pull/1012),
+[results](https://github.com/NandhaKishorM/laya/blob/main/research/scripts/step4_benchmark/GATE_D_RESULTS.md)),
+`rlcd` averaged 0.7762 (std 0.0016) and `soft-ce` 0.7763 (std 0.0155), and the paired difference
+changed sign between seeds. `soft-ce` is not more accurate, only less stable from run to run, so
+`rlcd` stays the default.
+
 On MASSIVE intent in English, with 20 options per question (11,514 training rows, all 2,974 test
 cases, each also answered in 3 shuffled orders; `--loss soft-ce`, two seeds per row):
 
@@ -212,7 +219,7 @@ import laya
 from laya.train import TrainConfig, finetune
 
 report = finetune("train.jsonl", "english", "./my-checkpoint",
-                  TrainConfig(loss="soft-ce", shuffle_options=("choice",)))
+                  TrainConfig(shuffle_options=("choice",)))
 print(report["train_items"], report["skipped"], report["calibration"])
 
 agent = laya.load("./my-checkpoint")

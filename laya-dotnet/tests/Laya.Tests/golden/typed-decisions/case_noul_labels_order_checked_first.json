@@ -1,0 +1,20 @@
+{
+  "name": "noul_labels_order_checked_first",
+  "state": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "churn_risk": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account.",
+      "labels": {
+        "false": "",
+        "true": ""
+      },
+      "option_order": [
+        0,
+        0
+      ]
+    }
+  },
+  "error_type": "ValueError",
+  "error_message": "question 'churn_risk': 'option_order' must be a permutation of range(2) -- one slot per option, each option once -- got [0, 0]"
+}

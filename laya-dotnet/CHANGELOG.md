@@ -11,6 +11,21 @@ goldens: 0.4.12).
 
 ### Added
 
+- Question-level option ordering, Python's `option_order` (agent.py `_check_question`, common.py
+  `build_sequence` / `unpermute_probs`): `ChoiceQuestion`, `ScoreQuestion` and `NoulQuestion` gain
+  `WithOptionOrder(...)` (a copy of the question) and `Question.OptionOrder`. Slot `s` shows option
+  `order[s]`; the softmax runs over the row in slot order and is scattered back to option order before the
+  answer, the temperature bucket and the abstention gate are computed. An order that is not a permutation of
+  the option indices is rejected by `Predict`, `PredictBatch` and `PredictLong` with Python's text, naming
+  the question. `LayaRouter` batch grouping includes the order, and `LayaShortlist.Predict` drops the order of a
+  choice it narrows with Python's warning. Existing signatures are unchanged.
+- Custom noul labels, Python's `labels` key (agent.py `_check_question`, common.py `_resolve_noul_labels` /
+  `render_options`): `NoulQuestion.WithLabels(falseLabel, trueLabel)`, `WithoutLabels()` and
+  `NoulQuestion.Labels` (`NoulLabels`). The model reads `<label>: <wording>` in place of `false: ...` /
+  `true: ...`; the labels are stripped, must be distinct and non-empty, and are checked when the question is
+  answered (`Predict`, `PredictBatch`, `PredictLong`) with Python's text, naming the question. The answer is
+  still P(true), and the temperature and `min_confidence` buckets and `OptionOrder` do not depend on them.
+  `LayaRouter` batch grouping includes the labels. Existing signatures are unchanged.
 - `LayaEngine.PredictBatch` (`ILayaBatchPredictor`), `LayaBatchOptions` (`BatchSize`, `SortByLength`),
   `LayaRouter.PredictBatch` and `LayaRouter.RouteBatch` over `LayaBatchRequest`, ported from Python
   `ONNXAgent.predict_batch` and `Router.predict_batch` / `route_batch`: shared forward passes, `batch_size`
@@ -147,5 +162,5 @@ goldens: 0.4.12).
 
 ### Known gaps
 
-- Python-only opt-in features are not yet ported: hooks, question option ordering, digest controls and
+- Python-only opt-in features are not yet ported: hooks, digest controls and
   calibration binning (`load_calibration`). Batching is ported without hooks.

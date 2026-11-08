@@ -244,6 +244,23 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
+## What's new in 0.4.29
+
+* **Off-topic records go to a person.** A policy
+  exported from Studio now carries the off-topic limit its routing question measured on the
+  calibration rows. After `load_calibration`, a record that lies further outside the policy's
+  space than any calibration row did comes back with `outbound` on every answer and
+  `route: "review"`. `thresholds()` and the `load_calibration` result report the limit; a policy
+  exported before the limit existed has none, and the check is off for it.
+* **Asking with an option the policy never saw no longer crashes.** It used to raise inside the
+  calibration ("probability key names no option"). Now that question skips the calibration,
+  says `calibrated: False`, and routes to `review` with the new option named. Every answer of a
+  loaded policy carries `calibrated`.
+* **`unbound` no longer routes.** It is still on every answer, but with the published threshold
+  it fired on 71% of in-domain banking77 rows and 26% of typed-decisions rows (93% of
+  off-topic ones), so it sent most good answers to review. The engine rule is now the conformal
+  set and abstain.
+
 ## What's new in 0.4.28
 
 * **Load a trained policy straight from its `.zip`, verified.** `Agent(vegaml=True).load_calibration`

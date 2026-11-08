@@ -44,8 +44,21 @@ sets a confidence number. ``route`` is decided per answer, in this order:
    line for that question decides: it was placed where precision holds at
    ``target_precision`` (default 0.95) on your rows, with a 95% Wilson bound to spare.
 2. Otherwise the engine's own machinery decides, no labels required: ``review`` when it
-   abstains at the configured risk, when the answer is ``unbound``, or when the conformal set
-   at ``alpha`` (default 0.10) holds more than one option; ``auto`` only when all three agree.
+   abstains at the configured risk, or when the conformal set at ``alpha`` (default 0.10) holds
+   more than one option; ``auto`` only when both agree. ``unbound`` is still reported on every
+   answer but no longer routes: measured with the published threshold (Embedding Space study,
+   2026-11-08) it fired on 71% of in-domain banking77 rows and 26% of typed-decisions rows,
+   against 93% of off-topic ones, so it sent most good answers to review.
+
+Two more reasons apply to a policy loaded with :meth:`load_calibration` (0.4.29+):
+
+* **outbound**: the policy's routing head measures how much of a record lies outside the space
+  it was trained on; past the limit Studio measured on the calibration rows, every answer of
+  that record goes to ``review``. Policies exported before Studio wrote the limit carry none,
+  and then this check is off.
+* **options changed**: a question asked with an option the policy was never trained on is not
+  calibrated (``calibrated: False`` on that answer) and goes to ``review``; the policy's
+  calibration is not applied to it. It used to raise inside the calibration instead.
 
 Both are targets, not thresholds: ``alpha`` is the miscoverage the sets are allowed, and
 ``target_precision`` is the precision the band is held to. Neither is a confidence a human had
@@ -271,6 +284,7 @@ class VegaAgent(Agent):
         self.target_precision = float(target_precision)
         self.folds = int(folds)
         self.calibration = None          # a vegaml Calibration, applied on every predict
+        self._novelty = None             # (routing question, limit) from a loaded policy
         self.fit_report: Dict[str, Any] = {}
         self.hooks = normalise_hooks(hooks, on_predict_start, on_predict_end)
         self._lock = threading.RLock()
@@ -333,6 +347,9 @@ class VegaAgent(Agent):
         vq = _to_vega_questions(questions)
         started = time.perf_counter()
         with self._lock:
+            novelty = getattr(self, "_novelty", None)
+            if novelty and novelty[0] in self.vega.heads:
+                self.vega.heads[novelty[0]][0].last_residual = None
             if image is not None:
                 try:
                     raw = self.vega.decide_image(image, vq, mode=mode, alpha=self.alpha, risk=self.risk)
@@ -354,12 +371,28 @@ class VegaAgent(Agent):
             else:
                 raw = self.vega.decide(state, vq, mode=mode, alpha=self.alpha, views=views)
                 modality = "text"
+            stale: Dict[str, List[str]] = {}
             if self.calibration is not None:
-                raw = self.calibration.apply(_pad_for_calibration(raw, self.calibration))
+                stale = _stale_for_calibration(raw, self.calibration)
+                raw = _apply_calibration(raw, self.calibration, stale)
+            outbound = self._read_novelty()
         answers = {}
         for qid, q in questions.items():
             a = _fold(raw["answers"][qid], q)
             a.update(self._route(dict(raw["answers"][qid], _qid=qid), a, min_confidence))
+            if self.calibration is not None:
+                a["calibrated"] = qid in self.calibration.questions and qid not in stale
+            if qid in stale:
+                a["route"] = "review"
+                a["route_reason"] = ("options changed since this policy was trained (%s not in it), "
+                                     "so it is not calibrated; train it again"
+                                     % ", ".join(stale[qid]))
+            if outbound is not None:
+                a["outbound"] = outbound
+                a["route"] = "review"
+                a["route_reason"] = ("outbound: %.3f of this record lies outside the policy's space, "
+                                     "over the limit %.3f; %s" % (outbound["residual"], outbound["limit"],
+                                                                  a["route_reason"]))
             answers[qid] = a
         out = {
             "answers": answers,
@@ -473,6 +506,17 @@ class VegaAgent(Agent):
                        "applied": False, "why": "read whole, within %d tokens" % self.max_len}
         return out
 
+    def _read_novelty(self) -> Optional[Dict[str, Any]]:
+        """The routing head's residual for the record just read, when it passed the limit."""
+        novelty = getattr(self, "_novelty", None)
+        if not novelty or novelty[0] not in self.vega.heads:
+            return None
+        r = getattr(self.vega.heads[novelty[0]][0], "last_residual", None)
+        if r is None or r <= novelty[1]:
+            return None
+        return {"residual": round(float(r), 4), "limit": round(float(novelty[1]), 4),
+                "question": novelty[0]}
+
     # ------------------------------------------------------------------ the route
     def _route(self, raw_answer: Mapping, folded: Mapping, min_confidence: Optional[float]) -> Dict:
         """``route`` and why, decided without a user-set number. See the module docstring."""
@@ -487,8 +531,6 @@ class VegaAgent(Agent):
             reasons = []
             if folded.get("abstain"):
                 reasons.append("the engine abstains at risk %s" % self.risk)
-            if folded.get("unbound"):
-                reasons.append("unbound: far from every well, likely off-distribution")
             pset = folded.get("prediction_set")
             if pset is not None and len(pset) > 1:
                 reasons.append("conformal set at alpha %s holds %d options" % (self.alpha, len(pset)))
@@ -496,8 +538,7 @@ class VegaAgent(Agent):
                 # a head-served answer with no band fitted: nothing here can vouch for it
                 reasons.append("head answer with no fitted band; fit() or calibrate() first")
             route = "review" if reasons else "auto"
-            why = "; ".join(reasons) if reasons else (
-                "conformal singleton, not abstaining, in distribution")
+            why = "; ".join(reasons) if reasons else "conformal singleton, not abstaining"
             if unreachable:
                 # The line was asked to hold target_precision with a 95% lower bound and the
                 # calibration rows could not certify it (12 for 12 certifies nothing). Sending
@@ -516,7 +557,10 @@ class VegaAgent(Agent):
         out: Dict[str, Any] = {"alpha": self.alpha, "risk": self.risk,
                                "target_precision": self.target_precision,
                                "policy": ("band" if self.calibration is not None
-                                          else "conformal set + abstain + unbound")}
+                                          else "conformal set + abstain")}
+        novelty = getattr(self, "_novelty", None)
+        if novelty:
+            out["outbound"] = {"question": novelty[0], "limit": novelty[1]}
         if self.calibration is not None:
             band = self.calibration.band
             out["band"] = ({"default": band.default, "questions": band.questions}
@@ -809,15 +853,18 @@ class VegaAgent(Agent):
             report.pop("manifest", None)
         z = policy.npz(files)
         meta = json.loads(str(z["meta"]))
-        loaded = []
+        guarded = _guarded_head_class(TTTHead)
+        loaded, limits = [], {}
         for qid, m in meta["heads"].items():
-            head = TTTHead(m["labels"], k=m["k"], l2=m["l2"])
+            head = guarded(m["labels"], k=m["k"], l2=m["l2"])
             for name in HEAD_ARRAYS:
                 setattr(head, name, z["%s::%s" % (qid, name)])
             head.ready = True
             head.engine_accuracy = m.get("engine_accuracy")
             self.vega.heads[qid] = (head, m.get("cv"))
             loaded.append(qid)
+            if m.get("novelty_max") is not None:
+                limits[qid] = float(m["novelty_max"])
         if "calibration.json" in files:
             self.calibration = Calibration.from_payload(json.loads(files["calibration.json"]))
         out: Dict[str, Any] = {"heads": loaded, "calibrated": self.calibration is not None,
@@ -825,6 +872,12 @@ class VegaAgent(Agent):
         if "questions.json" in files:
             out["questions"] = json.loads(files["questions.json"])
             self.policy_questions = out["questions"]
+        # The routing question is the policy's first; Studio measures the limit on its head.
+        order = list(out.get("questions") or {}) or loaded
+        routing = next((q for q in order if q in limits), None)
+        self._novelty = (routing, limits[routing]) if routing else None
+        out["outbound"] = ({"question": routing, "limit": limits[routing]} if routing
+                           else None)
         return out
 
     # ------------------------------------------------------------------ readers
@@ -839,6 +892,60 @@ class VegaAgent(Agent):
     def fit_binning(self, *a, **kw):
         raise NotImplementedError("histogram binning is laya's own calibration; on vega the "
                                   "calibrated probabilities come from calibrate()")
+
+
+def _residual(head, x) -> float:
+    """The share of a record's standardised signal the head's projection does not hold: what
+    Studio's outbound check measures (studio/heads.py ``residual``)."""
+    import numpy as np
+
+    Z = (np.asarray(x, dtype=np.float32).reshape(1, -1) - head.mu) / head.sd
+    Zc = Z - head.c
+    total = float((Zc ** 2).sum())
+    if total <= 0:
+        return 0.0
+    inside = float(((Zc @ head.P) ** 2).sum())
+    return max(0.0, 1.0 - inside / total)
+
+
+def _guarded_head_class(base):
+    """A head that remembers how far outside its space the last record it read was."""
+    class GuardedHead(base):
+        last_residual = None
+
+        def predict(self, x, allowed=None):
+            self.last_residual = _residual(self, x)
+            return super().predict(x, allowed)
+
+    return GuardedHead
+
+
+def _stale_for_calibration(result: Mapping, cal) -> Dict[str, List[str]]:
+    """Questions whose answer names an option the calibration was never fitted on, with those
+    options. Applying the calibration to them raised "probability key names no option"."""
+    out: Dict[str, List[str]] = {}
+    for qid, ans in (result.get("answers") or {}).items():
+        fitted = cal.questions.get(qid)
+        if fitted is None or not ans.get("probs"):
+            continue
+        known = {str(o).lower() for o in fitted["labels"]}
+        new = [str(k) for k in ans["probs"] if str(k).lower() not in known]
+        if new:
+            out[qid] = new
+    return out
+
+
+def _apply_calibration(result: Mapping, cal, stale: Mapping) -> Dict:
+    """The calibration on every answer it covers; stale answers pass through untouched."""
+    if not stale:
+        return cal.apply(_pad_for_calibration(result, cal))
+    answers = result["answers"]
+    sub = dict(result)
+    sub["answers"] = {q: a for q, a in answers.items() if q not in stale}
+    done = cal.apply(_pad_for_calibration(sub, cal))
+    merged = dict(done)
+    merged["answers"] = {q: (answers[q] if q in stale else done["answers"][q]) for q in answers}
+    return merged
 
 
 def _pad_for_calibration(result: Mapping, cal) -> Dict:

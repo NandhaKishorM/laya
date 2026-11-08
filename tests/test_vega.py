@@ -146,7 +146,6 @@ def test_route_is_auto_only_when_everything_agrees():
 
 @pytest.mark.parametrize("field, value, word", [
     ("abstain", True, "abstains"),
-    ("unbound", True, "unbound"),
     ("prediction_set", ["x", "y"], "holds 2 options"),
 ])
 def test_route_reviews_on_each_engine_signal(field, value, word):
@@ -155,6 +154,13 @@ def test_route_reviews_on_each_engine_signal(field, value, word):
     folded[field] = value
     r = a._route({}, folded, None)
     assert r["route"] == "review" and word in r["route_reason"]
+
+
+def test_unbound_is_reported_but_does_not_route():
+    """It fired on 71% of in-domain banking77 rows with the published threshold."""
+    a = _bare_agent()
+    folded = {"abstain": False, "unbound": True, "prediction_set": ["x"], "answer_confidence": 0.8}
+    assert a._route({}, folded, None)["route"] == "auto"
 
 
 def test_route_prefers_a_fitted_band_and_reviews_unvouched_heads():
@@ -274,7 +280,7 @@ def test_batch_long_and_thresholds(agent):
     lg = agent.predict_long(STATE * 20, Q)
     assert lg["usage"]["windows"] == 1 and lg["long"]["applied"] is False
     assert lg["usage"]["input_tokens"] > 500
-    assert agent.thresholds()["policy"] == "conformal set + abstain + unbound"
+    assert agent.thresholds()["policy"] == "conformal set + abstain"
 
 
 def _synthetic_rows(n=28):
@@ -544,3 +550,63 @@ def test_an_unreachable_band_hands_the_route_to_the_conformal_rule():
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+# ----------------------------------------------------------------------------- 0.4.29: policies
+class _Cal:
+    """The two things the helpers read off a vegaml Calibration."""
+
+    def __init__(self, labels):
+        self.questions = {"team": {"labels": labels, "type": "choice"}}
+
+    def apply(self, result):
+        out = dict(result)
+        out["answers"] = {q: dict(a, calibrated_by_test=True) for q, a in result["answers"].items()}
+        return out
+
+
+def test_an_option_the_policy_never_saw_skips_its_calibration():
+    cal = _Cal(["billing", "technical"])
+    raw = {"answers": {"team": {"probs": {"billing": 0.2, "technical": 0.3, "refunds": 0.5}},
+                       "urgent": {"probs": {"false": 0.4, "true": 0.6}}}}
+    stale = lv._stale_for_calibration(raw, cal)
+    assert stale == {"team": ["refunds"]}
+    done = lv._apply_calibration(raw, cal, stale)
+    assert "calibrated_by_test" not in done["answers"]["team"]
+    assert done["answers"]["urgent"]["calibrated_by_test"] is True
+    # a strict subset of the fitted options is padded and calibrated, as before
+    sub = {"answers": {"team": {"probs": {"billing": 1.0}}}}
+    assert lv._stale_for_calibration(sub, cal) == {}
+
+
+def test_the_guarded_head_records_its_residual():
+    import numpy as np
+
+    class _Head:
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, x, allowed=None):
+            return {"a": 1.0}
+
+    head = lv._guarded_head_class(_Head)()
+    head.mu, head.sd, head.c = np.zeros(3, np.float32), np.ones(3, np.float32), np.zeros(3, np.float32)
+    head.P = np.array([[1.0], [0.0], [0.0]], np.float32)
+    head.predict(np.array([1.0, 0.0, 0.0]))
+    assert head.last_residual == 0.0
+    head.predict(np.array([0.0, 1.0, 0.0]))
+    assert abs(head.last_residual - 1.0) < 1e-6
+
+
+def test_a_record_past_the_limit_is_outbound():
+    a = _bare_agent()
+
+    class _V:
+        heads = {"team": (type("H", (), {"last_residual": 0.9})(), 0.8)}
+
+    a.vega, a._novelty = _V(), ("team", 0.7)
+    assert a._read_novelty() == {"residual": 0.9, "limit": 0.7, "question": "team"}
+    a._novelty = ("team", 0.95)
+    assert a._read_novelty() is None
+    a._novelty = None
+    assert a._read_novelty() is None

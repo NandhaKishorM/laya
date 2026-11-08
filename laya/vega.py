@@ -169,6 +169,14 @@ def _gold_label(q: Mapping, gold: Any) -> str:
 
     Accepts laya's three shapes for an answer: a bare value, ``{"label": value}`` (the
     typed-decisions dataset), or ``{"probabilities": {...}}`` where the argmax is taken.
+
+    A value that cannot be placed on this question is refused, as
+    :func:`laya.train.target_from_expected` refuses it for the same rows on laya's own fine-tune
+    path. The quiet one is a yes/no written as a float: ``str(1.0)`` is ``"1.0"``, which is not
+    one of the true-words, so the row landed on the **false** side of its own label and the head
+    learned the reverse of what was labelled. A score level outside the question or between two
+    levels, and a choice label the question never offered, are the same class of mistake: the
+    fit takes the string, so nothing downstream can tell it from a real answer.
     """
     if isinstance(gold, dict):
         if "label" in gold:
@@ -179,14 +187,43 @@ def _gold_label(q: Mapping, gold: Any) -> str:
             gold = bool(float(gold["noul"]) >= 0.5)
     t = q["type"]
     if t == "noul":
-        s = str(gold).strip().lower()
-        return "true" if s in ("true", "yes", "1", "t", "y") else "false"
+        if isinstance(gold, bool):
+            return "true" if gold else "false"
+        if isinstance(gold, (int, float)):
+            if gold in (0, 0.0):
+                return "false"
+            if gold in (1, 1.0):
+                return "true"
+        elif isinstance(gold, str):
+            s = gold.strip().lower()
+            if s in ("true", "yes", "1", "t", "y"):
+                return "true"
+            if s in ("false", "no", "0", "f", "n"):
+                return "false"
+        raise ValueError("a noul gold must be true/false, yes/no or 0/1, got %r" % (gold,))
     if t == "score":
+        crit = list(q["criteria"])
+        if isinstance(gold, bool):
+            raise ValueError("a score gold is a level index or a level description, not %r" % (gold,))
         if isinstance(gold, str) and not gold.isdigit():
-            crit = list(q["criteria"])
+            if gold not in crit:
+                raise ValueError("a score gold must be a level index in [0, %d] or one of %r, got %r"
+                                 % (len(crit) - 1, crit, gold))
             return str(crit.index(gold))
-        return str(int(gold))
-    return str(gold)
+        try:
+            level = float(gold)
+        except (TypeError, ValueError, OverflowError):
+            level = None
+        if level is None or not level.is_integer():
+            raise ValueError("a score gold must name one whole level of %r, got %r" % (crit, gold))
+        if not 0 <= level <= len(crit) - 1:
+            raise ValueError("a score gold must be a level index in [0, %d], got %r"
+                             % (len(crit) - 1, gold))
+        return str(int(level))
+    labels = _labels_for(q)
+    if str(gold) in labels:
+        return str(gold)
+    raise ValueError("a choice gold must be one of the question's options %r, got %r" % (labels, gold))
 
 
 def _fold(answer: Mapping, q: Mapping) -> Dict[str, Any]:

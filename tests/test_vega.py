@@ -74,6 +74,40 @@ def test_gold_label_accepts_every_laya_answer_shape():
     assert lv._gold_label(Q["dept"], {"label": "other"}) == "other"
 
 
+def test_gold_label_reads_a_yes_no_number_the_way_the_fine_tune_does():
+    # `str(1.0)` is "1.0", which is not one of the true-words, so a float yes/no used to train the
+    # head on the false side of its own label. `target_from_expected` takes 1 and 1.0 as true.
+    assert lv._gold_label(Q["churn"], 1.0) == "true"
+    assert lv._gold_label(Q["churn"], 0.0) == "false"
+    assert lv._gold_label(Q["churn"], "YES") == "true"
+    assert lv._gold_label(Q["churn"], {"label": 1}) == "true"
+    for unreadable in ("maybe", "", None, 0.5, 2, "11", {"probabilities": {}}):
+        with pytest.raises(ValueError, match="noul gold"):
+            lv._gold_label(Q["churn"], unreadable)
+
+
+def test_gold_label_refuses_a_score_level_the_question_does_not_have():
+    assert lv._gold_label(Q["urgency"], "2") == "2"
+    assert lv._gold_label(Q["urgency"], 2.0) == "2"
+    for outside in (9, "9", -1):
+        with pytest.raises(ValueError, match=r"level index in \[0, 2\]"):
+            lv._gold_label(Q["urgency"], outside)
+    with pytest.raises(ValueError, match="one whole level"):
+        lv._gold_label(Q["urgency"], 1.5)           # used to truncate to level 1
+    with pytest.raises(ValueError, match="one of \\['not urgent', 'soon', 'blocking'\\]"):
+        lv._gold_label(Q["urgency"], "urgent")      # used to raise list.index(x): x not in list
+    with pytest.raises(ValueError, match="not True"):
+        lv._gold_label(Q["urgency"], True)          # used to read as level 1
+
+
+def test_gold_label_refuses_a_choice_label_the_question_never_offered():
+    assert lv._gold_label(Q["dept"], "other") == "other"
+    assert lv._gold_label(Q["dept"], {"probabilities": {"billing": 1.0}}) == "billing"
+    for unknown in ("nope", "Billing", None, True, 1):
+        with pytest.raises(ValueError, match="choice gold"):
+            lv._gold_label(Q["dept"], unknown)
+
+
 # ----------------------------------------------------------------------------- the fold
 def _engine_answer(**kw):
     base = {"confidence": 0.9, "prediction_set": None, "abstain": False, "unbound": False,
@@ -520,7 +554,9 @@ def test_split_holds_out_at_least_ten_rows_across_every_label():
 def test_fit_refuses_fewer_rows_than_the_minimum():
     a = object.__new__(lv.VegaAgent)
     a.folds = 5
-    rows = [{"state": "s%d" % i, "gold": {"team": "abcde"[i % 5], "urgency": "1"}} for i in range(30)]
+    # spread over the sheet's own five teams: `fit` reads every row's gold before it counts rows
+    teams = list(ROUTING_Q["team"]["criteria"])
+    rows = [{"state": "s%d" % i, "gold": {"team": teams[i % 5], "urgency": "1"}} for i in range(30)]
     with pytest.raises(ValueError, match="at least 35 labelled rows"):
         a.fit(rows, questions=ROUTING_Q)
     with pytest.raises(ValueError, match="at least 25 labelled rows"):

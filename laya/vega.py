@@ -150,6 +150,32 @@ def _labels_for(q: Mapping) -> List[str]:
     return [str(k) for k in (crit if isinstance(crit, dict) else crit)]
 
 
+def _engine_number(value: Any, where: str) -> float:
+    """One number off the engine's answer, refused rather than rounded when it is not one.
+
+    ``float()`` reads ``True`` as 1.0 and waves ``nan`` and ``inf`` through, and every comparison
+    against a NaN answers False -- so a NaN ``answer_confidence`` clears ``min_confidence``
+    untouched (``nan < 0.9`` is False) and the answer leaves with ``route: "auto"``, which is the
+    one field this module tells callers to gate on. The same reasoning is already the rule twice
+    over: :func:`laya.train.target_from_gold` raises "probabilities must be finite and
+    non-negative" for a training row, and
+    :func:`laya.integrations._guard.answer_number` refuses a bool and a non-finite for the same
+    gate on the remote-body path. A corrupt distribution is not a decision, and rounding it is
+    how it becomes one.
+    """
+    if isinstance(value, bool):
+        raise ValueError("%s is %r: the engine's numbers must be finite numbers, not a bool"
+                         % (where, value))
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("%s is %r: the engine's numbers must be finite numbers"
+                         % (where, value)) from exc
+    if not math.isfinite(number):
+        raise ValueError("%s is %r: the engine's numbers must be finite numbers" % (where, value))
+    return number
+
+
 def _entropy_confidence(probs: Mapping[str, float]) -> float:
     """``1 - H(p)/log(k)``: what laya reports as ``confidence``. Not an error rate.
 
@@ -235,7 +261,8 @@ def _fold(answer: Mapping, q: Mapping) -> Dict[str, Any]:
     every yes/no task at 0.000 for a day.
     """
     t = q["type"]
-    probs = {str(k): float(v) for k, v in (answer.get("probs") or {}).items()}
+    probs = {str(k): _engine_number(v, "the probability of %r" % (k,))
+             for k, v in (answer.get("probs") or {}).items()}
     if t == "noul":
         low = {k.lower(): v for k, v in probs.items()}
         probs = {"false": low.get("false", 0.0), "true": low.get("true", 0.0)}
@@ -245,7 +272,7 @@ def _fold(answer: Mapping, q: Mapping) -> Dict[str, Any]:
     out: Dict[str, Any] = {
         "type": t,
         "probabilities": {k: round(v, 6) for k, v in probs.items()},
-        "answer_confidence": (round(float(answer["confidence"]), 6)
+        "answer_confidence": (round(_engine_number(answer["confidence"], "the engine's confidence"), 6)
                               if answer.get("confidence") is not None
                               else (round(max(probs.values()), 6) if probs else None)),
         "confidence": _entropy_confidence(probs) if probs else None,
@@ -259,9 +286,11 @@ def _fold(answer: Mapping, q: Mapping) -> Dict[str, Any]:
     elif t == "score":
         best = max(probs, key=probs.get) if probs else None
         level = answer.get("score")
-        out["score"] = int(level) if level is not None else (int(best) if best else None)
+        out["score"] = (int(_engine_number(level, "the engine's score")) if level is not None
+                        else (int(best) if best else None))
         if answer.get("expected_score") is not None:
-            out["expected_score"] = round(float(answer["expected_score"]), 4)
+            out["expected_score"] = round(_engine_number(answer["expected_score"],
+                                                         "the engine's expected score"), 4)
         out["legend"] = {str(i): c for i, c in enumerate(q["criteria"])}
     else:
         ch = answer.get("choice")

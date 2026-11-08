@@ -142,6 +142,34 @@ def test_fold_confidence_is_entropy_and_answer_confidence_is_max_p():
                  {"type": "choice", "instructions": "x", "criteria": {"a": None, "b": None}})
     assert a["confidence"] == pytest.approx(0.0, abs=1e-6)        # an even split has no information
     assert a["answer_confidence"] == pytest.approx(0.9)            # what the engine reported
+
+
+def test_fold_refuses_an_answer_number_that_is_not_a_finite_number():
+    # `float()` reads True as 1.0 and lets nan/inf through, and every comparison against a NaN
+    # answers False: the answer used to clear a min_confidence gate of 0.9 and leave as route
+    # "auto", which is the one field this module tells callers to gate on.
+    for unreadable in (float("nan"), float("inf"), float("-inf"), True, "high", None, 10 ** 400):
+        with pytest.raises(ValueError, match="the probability of 'billing'"):
+            lv._fold(_engine_answer(probs={"billing": unreadable, "technical": 0.0}), Q["dept"])
+    for unreadable in (float("nan"), float("inf"), True, "high"):
+        with pytest.raises(ValueError, match="the engine's confidence"):
+            lv._fold(_engine_answer(probs={"billing": 0.5, "technical": 0.5}, confidence=unreadable),
+                     Q["dept"])
+    # a numeric string is a number here, as `float()` has always read it on every laya path
+    readable = lv._fold(_engine_answer(probs={"billing": 0.5, "technical": 0.5}, confidence="0.9"),
+                        Q["dept"])
+    assert readable["answer_confidence"] == pytest.approx(0.9)
+    with pytest.raises(ValueError, match="the engine's score"):
+        lv._fold(_engine_answer(probs={"0": 0.5, "1": 0.5}, score=float("nan")), Q["urgency"])
+    with pytest.raises(ValueError, match="the engine's expected score"):
+        lv._fold(_engine_answer(probs={"0": 0.5, "1": 0.5}, expected_score=float("nan")), Q["urgency"])
+    # the engine answers in numpy float32, which is a real number and must keep working
+    import numpy as np
+
+    ok = lv._fold(_engine_answer(probs={"billing": np.float32(0.7), "technical": np.float32(0.3),
+                                        "other": np.float32(0.0)}, choice="billing"), Q["dept"])
+    assert ok["probabilities"] == {"billing": 0.7, "technical": 0.3, "other": 0.0}
+    assert ok["confidence"] == pytest.approx(0.444, abs=1e-4)
     assert lv._entropy_confidence({"a": 1.0, "b": 0.0}) == 1.0
 
 

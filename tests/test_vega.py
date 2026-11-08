@@ -580,6 +580,19 @@ def test_jsonl_rows_load_as_given(tmp_path):
     assert [r["gold"]["team"] for r in rows] == ["hr", "pr"]
 
 
+def test_a_gold_keyed_to_no_question_id_is_refused_not_dropped():
+    # load_rows refuses an unknown CSV column; the dict form of the same mistake used to be
+    # filtered out by `if qid in qs`, so fit reported success on labels that trained nothing.
+    a = object.__new__(lv.VegaAgent)
+    rows = [{"state": "s", "questions": ROUTING_Q, "gold": {"team": "hr", "dept": "billing"}}]
+    with pytest.raises(ValueError, match=r"gold key\(s\) \['dept'\] match no question id"):
+        a._examples(rows, None)
+    with pytest.raises(ValueError, match=r"gold key\(s\) \['dept', 'x'\]"):
+        a._examples([{"state": "s", "gold": {"dept": "billing", "x": "y"}}], ROUTING_Q)
+    examples, sheet = a._examples([{"state": "s", "gold": {"team": "hr"}}], ROUTING_Q)
+    assert examples[0][1] == {"team": "hr"}, "a gold naming only some of the questions still fits"
+
+
 @needs_model
 def test_fit_from_the_example_csv(agent):
     report = agent.fit(ROUTING_CSV, questions=ROUTING_Q, calibrate=True)

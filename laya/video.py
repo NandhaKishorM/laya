@@ -154,7 +154,9 @@ def sample_frames(path: str, n: int = 4, duration_s: Optional[float] = None) -> 
     """``n`` frames at evenly spaced times, as PIL RGB images, with the times they came from.
 
     Times sit at the centres of ``n`` equal slices, so a two-frame sample of a ten-second clip
-    reads 2.5 s and 7.5 s rather than the first and last frame, which are often black.
+    reads 2.5 s and 7.5 s rather than the first and last frame, which are often black. A time
+    whose frame ffmpeg cannot produce is skipped, and the times returned are the ones the
+    frames actually came from.
     """
     exe = _need_ffmpeg()
     try:
@@ -168,7 +170,7 @@ def sample_frames(path: str, n: int = 4, duration_s: Optional[float] = None) -> 
         times = [0.0]
     else:
         times = [duration_s * (i + 0.5) / n for i in range(n)]
-    frames = []
+    frames, got = [], []
     for t in times:
         png = _run([exe, "-v", "error", "-ss", "%.3f" % t, "-i", path, "-frames:v", "1",
                     "-f", "image2pipe", "-vcodec", "png", "-"], "read a frame at %.1fs" % t)
@@ -176,9 +178,10 @@ def sample_frames(path: str, n: int = 4, duration_s: Optional[float] = None) -> 
             continue
         with Image.open(io.BytesIO(png)) as im:
             frames.append(im.convert("RGB"))
+        got.append(t)
     if not frames:
         raise RuntimeError("no frame could be read from %r" % path)
-    return frames, times[:len(frames)]
+    return frames, got
 
 
 def contact_sheet(frames: Sequence, cell: int = 512):

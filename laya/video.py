@@ -92,8 +92,8 @@ def as_path(video) -> Tuple[str, Optional[str]]:
 
 
 def probe(path: str) -> dict:
-    """Duration in seconds and whether the clip has an audio stream, from ffprobe when it is
-    there and from ffmpeg's own banner when it is not."""
+    """Duration in seconds (0.0 when the tool reports none) and whether the clip has an audio
+    stream, from ffprobe when it is there and from ffmpeg's own banner when it is not."""
     _need_ffmpeg()
     ffprobe = shutil.which("ffprobe")
     if ffprobe is not None:
@@ -110,8 +110,15 @@ def probe(path: str) -> dict:
     for line in text.splitlines():
         line = line.strip()
         if line.startswith("Duration:"):
-            h, m, s = line.split(",")[0].split("Duration:")[1].strip().split(":")
-            dur = int(h) * 3600 + int(m) * 60 + float(s)
+            # A stream with no container duration -- an elementary .h264, a live capture --
+            # banners "Duration: N/A". Leave 0.0, the same answer an absent `format.duration`
+            # gets on the ffprobe path, instead of crashing the unpack or the int() reads.
+            fields = line.split(",")[0].split("Duration:")[1].strip().split(":")
+            if len(fields) == 3:
+                try:
+                    dur = int(fields[0]) * 3600 + int(fields[1]) * 60 + float(fields[2])
+                except ValueError:
+                    pass
     return {"duration_s": dur, "has_audio": "Audio:" in text, "has_video": "Video:" in text}
 
 

@@ -58,6 +58,35 @@ def test_list_form_choice_and_unknown_type():
         lv._to_vega_questions({"k": {"type": "ranking", "instructions": "x"}})
 
 
+def test_a_malformed_question_is_refused_by_layas_own_check():
+    # the translation reads `q["type"]` and `q["instructions"]` directly: a missing key used to
+    # surface as a bare `KeyError: 'type'` and a non-dict as `TypeError: string indices must be
+    # integers`, naming neither the question nor what to fix, on fit as well as predict.
+    # vega's own unknown-type message already names the question; the check changes only the wording
+    with pytest.raises(ValueError):
+        lv._to_vega_questions({"dept": {"type": "ranking", "instructions": "x"}})
+    with pytest.raises(ValueError, match=r"question 'dept': definition must be a dict"):
+        lv._to_vega_questions({"dept": "the billing team"})
+    with pytest.raises(ValueError, match="question 'dept': no 'instructions'"):
+        lv._to_vega_questions({"dept": {"type": "choice", "criteria": Q["dept"]["criteria"]}})
+    with pytest.raises(ValueError, match="question 'urgency': a score question takes 'criteria'"):
+        lv._to_vega_questions({"urgency": {"type": "score", "instructions": "x"}})
+    with pytest.raises(ValueError, match=r"question 'dept': a choice question takes 'criteria'"):
+        lv._to_vega_questions({"dept": {"type": "choice", "instructions": "x"}})
+
+
+def test_the_question_check_keeps_every_shape_the_translation_supports():
+    vq = lv._to_vega_questions(Q)
+    assert vq["churn"]["criteria"] == {"false": "stays", "true": "threatens to leave"}, "noul labels"
+    assert vq["urgency"]["criteria"] == ["not urgent", "soon", "blocking"], "score levels"
+    assert vq["dept"]["type"] == "choice" and vq["dept"]["criteria"] == Q["dept"]["criteria"]
+    bare = {"type": "noul", "instructions": "x"}
+    assert lv._to_vega_questions({"k": bare})["k"] == {"instructions": "x", "type": "boolean"}
+    ints = {"type": "choice", "instructions": "x", "criteria": [1, 2]}
+    assert lv._to_vega_questions({"k": ints})["k"]["criteria"] == {"1": None, "2": None}, \
+        "laya allows number labels; vega stringifies them into answer keys"
+
+
 def test_labels_for_each_type():
     assert lv._labels_for(Q["churn"]) == ["false", "true"]
     assert lv._labels_for(Q["urgency"]) == ["0", "1", "2"]

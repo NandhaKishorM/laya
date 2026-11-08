@@ -537,7 +537,6 @@ def _clip(tmp_path, name, audio_src, video_src="color=c=orange:s=160x120:d=3"):
     return out
 
 
-@needs_ffmpeg
 def test_probe_survives_a_banner_that_reports_no_duration(monkeypatch):
     # an elementary .h264 has no container duration, so ffmpeg banners "Duration: N/A" and the
     # fallback used to crash the three-way unpack. 0.0 is what an absent `format.duration`
@@ -559,6 +558,7 @@ def test_probe_survives_a_banner_that_reports_no_duration(monkeypatch):
     assert v.probe("clip.h264")["duration_s"] == 62.5
 
 
+@needs_ffmpeg
 def test_video_helpers_on_synthetic_clips(tmp_path):
     import numpy as np
     from laya import video as v

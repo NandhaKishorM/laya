@@ -452,6 +452,23 @@ def test_predict_long_counts_an_uncached_read(monkeypatch):
     assert answer["usage"] == {"input_tokens": 5, "output_tokens": 0}
 
 
+
+def test_predict_long_with_timeout_does_not_dispatch_an_internal_hook(monkeypatch):
+    from laya import hooks
+
+    def no_hook_thread(*args, **kwargs):
+        raise AssertionError("there is no user hook to dispatch")
+
+    monkeypatch.setattr(hooks.threading.Thread, "start", no_hook_thread)
+    answer = {"answers": {}, "usage": {"input_tokens": 5}}
+    calls = []
+    a = _hook_agent(monkeypatch, answer, calls)
+    a.max_len = 10
+
+    assert a.predict_long("s", {}, hooks_timeout=1)["usage"]["windows"] == 1
+    assert calls == [("s", {})]
+
+
 def test_a_failing_hook_follows_the_raise_policy(monkeypatch):
     answer = {"answers": {}, "usage": {"input_tokens": 3, "output_tokens": 0}, "modality": "text"}
     calls, events = [], []

@@ -84,7 +84,7 @@ import threading
 import time
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
-from .agent import Agent, _with_start_probe
+from .agent import Agent
 from .hooks import PredictContext, compose_hooks, dispatch, validate_timeout
 
 __all__ = ["VegaAgent", "Router", "is_available", "HEAD_ARRAYS"]
@@ -430,6 +430,9 @@ class VegaAgent(Agent):
         try:
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors,
                      lock=self._hooks_lock, timeout=timeout)
+            long_read = ignored.get("_vega_long_read")
+            if long_read is not None:
+                long_read["skipped"] = ctx.results is not None
             if ctx.results is not None:
                 out = ctx.results
                 if isinstance(out, (list, tuple)) and len(out) == 1:
@@ -633,13 +636,10 @@ class VegaAgent(Agent):
         truncates, and ``usage.truncated`` says so, which is the one case where the caller may
         still want to window and vote.
         """
-        skipped = False
-
-        def record_skip(ctx):
-            nonlocal skipped
-            skipped = ctx.results is not None
-
-        out = dict(self.predict(state, questions, **_with_start_probe(kw, record_skip)))
+        long_read = {}
+        kw["_vega_long_read"] = long_read
+        out = dict(self.predict(state, questions, **kw))
+        skipped = long_read.get("skipped", False)
         usage = dict(out.get("usage") or {})
         usage["windows"] = 0 if skipped else 1
         usage["context_tokens"] = self.max_len

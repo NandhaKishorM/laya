@@ -137,3 +137,18 @@ def test_the_engine_a_policy_was_trained_on_must_be_the_one_loaded():
 def test_the_pinned_key_id_is_the_hash_of_its_public_key():
     for kid, pub in policy.TRUSTED_KEYS.items():
         assert kid == hashlib.sha256(base64.b64decode(pub)).hexdigest()[:16]
+
+
+def test_a_manifest_that_is_not_a_json_object_is_refused_by_name():
+    files = {"heads.npz": b"heads-bytes", "manifest.json": b"[]"}
+    with pytest.raises(policy.PolicyError, match="manifest.json is not a JSON object"):
+        policy.verify(files)
+
+
+def test_manifest_files_that_is_not_a_name_to_hash_map_is_refused_by_name():
+    files = {"heads.npz": b"heads-bytes", "manifest.json": b'{"files": {"heads.npz": 5}}'}
+    with pytest.raises(policy.PolicyError, match="files is not a map"):
+        policy.verify(files)
+    files["manifest.json"] = b'{"files": "heads.npz"}'
+    with pytest.raises(policy.PolicyError, match="files is not a map"):
+        policy.verify(files)

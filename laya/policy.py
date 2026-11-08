@@ -99,7 +99,15 @@ def verify(files: Mapping[str, bytes], trusted: Optional[Mapping[str, str]] = No
         manifest = json.loads(raw)
     except ValueError as e:
         raise PolicyError("manifest.json is not valid JSON: %s" % e) from e
-    for name, want in (manifest.get("files") or {}).items():
+    if not isinstance(manifest, dict):
+        raise PolicyError("manifest.json is not a JSON object")
+    hashes = manifest.get("files")
+    if hashes is None:
+        hashes = {}
+    if not isinstance(hashes, dict) or not all(
+            isinstance(name, str) and isinstance(want, str) for name, want in hashes.items()):
+        raise PolicyError("manifest.json's files is not a map of file names to SHA-256 hashes")
+    for name, want in hashes.items():
         have = files.get(name)
         if have is None:
             raise PolicyError("the manifest lists %s but the policy does not contain it" % name)
@@ -108,7 +116,7 @@ def verify(files: Mapping[str, bytes], trusted: Optional[Mapping[str, str]] = No
             raise PolicyError("%s has been changed: its SHA-256 is %s, the manifest says %s"
                               % (name, got[:16], want[:16]))
     for name in ("heads.npz", "calibration.json"):
-        if name in files and name not in (manifest.get("files") or {}):
+        if name in files and name not in hashes:
             raise PolicyError("%s is in the policy but not in its manifest" % name)
     kid = manifest.get("key_id")
     if not kid:

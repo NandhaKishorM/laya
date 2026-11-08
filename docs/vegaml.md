@@ -89,9 +89,13 @@ Nothing here needs a confidence number from you. `route` is decided per answer, 
 
 1. A fitted band, if `fit` or `calibrate` has run: its line for that question was placed where
    precision holds at `target_precision` (0.95) on your rows, with a Wilson bound to spare.
-2. Otherwise the engine's own machinery, with no labels at all: `review` when it abstains,
-   when the answer is `unbound`, or when the conformal set at `alpha` (0.1) holds more than
-   one option; `auto` only when all three agree.
+2. Otherwise the engine's own machinery, with no labels at all: `review` when it abstains or
+   when the conformal set at `alpha` (0.1) holds more than one option; `auto` only when both
+   agree. `unbound` is still reported on every answer but no longer routes: with the published
+   threshold it fired on 71% of in-domain banking77 rows, so it sent most good answers to review.
+3. On a loaded policy, a record further outside the policy's space than any of its calibration
+   rows comes back with `outbound` and `review`, and an answer naming an option the policy never
+   saw skips the calibration, says `calibrated: False` and routes to `review`.
 
 `alpha` and `target_precision` are targets with defaults, not thresholds to guess at.
 `agent.thresholds()` prints what is deciding right now. laya's `min_confidence` is still
@@ -100,6 +104,25 @@ accepted and applied on top when given.
 Gate on `route`, not on `confidence`. A fitted head can report 1.000 on an answer it gets wrong;
 `route` on the same answer is still right, because it comes from the set and the band rather
 than the top probability.
+
+## Loading a trained policy
+
+`load_calibration` takes a policy folder, or the `.zip` Studio downloads, as it is, and returns
+the questions ready for `predict`:
+
+```python
+agent = laya.Agent(vegaml=True)
+info = agent.load_calibration("acme-policy.zip")
+agent.predict("the message to decide", info["questions"])
+```
+
+Before anything is installed it checks that every file has the SHA-256 its manifest states, that
+a signed policy's Ed25519 signature verifies against a key laya trusts
+(`laya.policy.TRUSTED_KEYS`), and that the loaded engine is the one the policy was trained on.
+Any failure raises `laya.policy.PolicyError` naming the file, the key or the engine.
+`verify="signed"` also refuses an unsigned policy, and `verify=False` skips the checks.
+`save_calibration` writes an unsigned manifest of hashes, so laya's own folders are
+integrity-checked on load; folders written before 0.4.28 still load, reported as unverified.
 
 ## Images, speech, video, long documents
 

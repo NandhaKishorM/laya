@@ -5,6 +5,25 @@
   </picture>
 </p>
 
+> **Cite this work.** M, N.; M, A. From Laya to Vega: Open Non-Autoregressive Decision Models with Calibrated Probabilities. *Preprints* **2026**, 2026110781. [https://doi.org/10.20944/preprints202611.0781.v1](https://doi.org/10.20944/preprints202611.0781.v1)
+
+<details>
+<summary>BibTeX</summary>
+
+```bibtex
+@article{m2026laya_vega,
+  title   = {From Laya to Vega: Open Non-Autoregressive Decision Models with Calibrated Probabilities},
+  author  = {M, N. and M, A.},
+  journal = {Preprints},
+  year    = {2026},
+  pages   = {2026110781},
+  doi     = {10.20944/preprints202611.0781.v1},
+  url     = {https://doi.org/10.20944/preprints202611.0781.v1}
+}
+```
+
+</details>
+
 **Multilingual, non-autoregressive System 1 decision engine.** Typed decisions over 100+ languages in a single forward pass — 33 ms — trained with reinforcement learning against strictly proper scoring rules (RLCD), with a router that picks the right checkpoint per request.
 
 <div align="center">

@@ -2,7 +2,7 @@
 
 Laya provides fast, non-autoregressive decision components for **LangChain** and **LangGraph** (single-question latency measured at **32.8 ms** with `laya-multilingual` and **39.5 ms** with `laya` on a Tesla T4 GPU; 193–464 ms on CPU):
 
-* **`LayaRouter`**: Conditional edge and branch router with confidence fallback gating.
+* **`LayaRouter`**: Conditional edge and branch router with confidence fallback gating or a native `auto`/`review` policy.
 * **`LayaGuardrail`**: Sub-40ms inline screening for prompt injections, jailbreaks, and sensitive data.
 * **`LayaTriage`**: Support ticket triage node evaluating intent, urgency, frustration, and churn risk in one forward pass.
 * **`LayaEvaluator`**: Rubric-based output grading and hallucination evaluation.
@@ -85,6 +85,64 @@ It is not calibrated as shipped: `laya-multilingual` ships `temperature: [1.0, 1
 loader's own clamp with a warning that says to treat it as uncalibrated. Fit and validate the
 threshold on held-out data at the option counts your workload uses -- see the README's
 [Calibration](https://github.com/NandhaKishorM/laya#calibration) section.
+
+### Following the backend's native review policy
+
+A Vega decision can have a confident business `choice` and still require `route="review"`
+because of its prediction set, abstention, or fitted policy. The default
+`decision_policy="confidence"` keeps the threshold behavior above. To honor the backend's
+final route instead, opt in with the keyword-only `decision_policy="native"`:
+
+```python
+from typing import TypedDict
+from langgraph.graph import END, StateGraph
+from laya import Agent
+from laya.integrations.langchain import LayaRouter
+
+class NativeState(TypedDict):
+    input: str
+    response: str
+
+router = LayaRouter(
+    criteria={"billing_agent": "invoices and refunds", "tech": "bugs and crashes"},
+    agent=Agent(vegaml=True),  # loads the Vega reader
+    decision_policy="native",
+    fallback="human_agent",
+)
+
+workflow = StateGraph(NativeState)
+workflow.add_node("billing_agent", lambda state: {"response": "Handling billing..."})
+workflow.add_node("tech", lambda state: {"response": "Handling tech support..."})
+workflow.add_node("human_agent", lambda state: {"response": "Queued for human review."})
+destinations = {
+    "billing_agent": "billing_agent", "tech": "tech", "human_agent": "human_agent",
+}
+for name in destinations:
+    workflow.add_edge(name, END)
+workflow.set_conditional_entry_point(router.invoke, destinations)
+app = workflow.compile()
+result = app.invoke({"input": "I was billed twice; the app also keeps crashing."})
+print(result["response"])
+```
+
+The fallback must be an explicit, non-empty string naming the application's review destination.
+The adapter selects that destination; your graph supplies the human-review node or workflow.
+For each answer:
+
+- `route="review"` returns `fallback`, even when `choice` is missing or confidence is high.
+- `route="auto"` returns `choice` only when it names a key in `criteria`.
+- A missing/unknown route, malformed answer, or invalid automatic choice raises
+  `RuntimeError` with `Malformed decision response`; it does not silently authorize a branch.
+
+Native mode requires `confidence_threshold=0` (the default): a second adapter threshold would
+conflict with the backend's policy. Use `min_confidence` on the backend when needed; it is still
+forwarded by the adapter. The adapter reads the final `route`, without recomputing it from
+confidence, prediction sets, or abstention flags. The same rule applies to `invoke`, `batch`,
+`ainvoke`, and `abatch`, using each call's result rather than shared `last_decision`.
+
+Use native mode only with a backend that returns `auto`/`review` metadata for every routed
+answer. A mixed-checkpoint Router or remote service that sometimes omits it will raise on
+those answers; the adapter does not invent a policy for older backends.
 
 ### Routing with the full conversation
 
@@ -318,8 +376,8 @@ routes = router.batch(["refund my invoice", "the app crashes", "change my passwo
 graded = asyncio.run(evaluator.abatch(predictions))   # the async entry point, same batch
 ```
 
-The outputs are the same as calling `invoke` on each input in turn, including the confidence
-fallback on `LayaRouter` and the `action` (`raise` / `filter` / `annotate`) on `LayaGuardrail`. Two
+The outputs are the same as calling `invoke` on each input in turn, including the selected routing
+policy on `LayaRouter` and the `action` (`raise` / `filter` / `annotate`) on `LayaGuardrail`. Two
 differences are worth knowing:
 
 - With `action="raise"`, the first violating input raises, so the batch stops there. Pass
@@ -399,9 +457,11 @@ the state is routed and answered in -- select the answering checkpoint's per-lan
 rather than relying on built-in detection -- and `min_confidence` is core's abstention gate, which
 marks rather than withholds: an answer under it comes back carrying `low_confidence: true`,
 `abstention: "abstained"` and `abstention_threshold` on the raw decision kept in `last_decision`,
-while the branch label the runnable returns is still the argmax. The label is changed by
-`confidence_threshold` and its `fallback`, not by the gate; a `min_confidence` on its own reports
-the abstention and routes anyway. Both are forwarded on the
+while the default `decision_policy="confidence"` still returns the argmax. In that mode the
+label is changed by `confidence_threshold` and its `fallback`, not by the gate; a
+`min_confidence` on its own reports the abstention and routes anyway. With
+`decision_policy="native"`, the backend's final `route` determines whether the adapter returns
+the business choice or its review fallback, as described above. Both controls are forwarded on the
 local and the remote path, and an unset one is omitted rather than sent as `None` so it cannot
 shadow a checkpoint's own default. `min_confidence=0.0` and `lang=""` are real values, not absences,
 and are forwarded as given.

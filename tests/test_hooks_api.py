@@ -438,6 +438,10 @@ from laya.integrations.langchain import (  # noqa: E402
     LayaTriage,
 )
 
+check_param("LayaRouter", LayaRouter.__init__, "decision_policy", "confidence", inspect.Parameter.KEYWORD_ONLY)
+check_param("LayaRouter", LayaRouter.__init__, "confidence_threshold", 0.0, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+check_param("LayaRouter", LayaRouter.__init__, "fallback", None, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+
 for label, cls in (("LayaRouter", LayaRouter), ("LayaGuardrail", LayaGuardrail),
                    ("LayaTriage", LayaTriage), ("LayaEvaluator", LayaEvaluator)):
     for method in ("invoke", "batch", "abatch"):

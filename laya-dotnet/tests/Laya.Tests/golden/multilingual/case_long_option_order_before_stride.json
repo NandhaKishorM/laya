@@ -1,0 +1,20 @@
+{
+  "name": "long_option_order_before_stride",
+  "state": "short",
+  "questions": {
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account.",
+      "option_order": [
+        2,
+        0
+      ]
+    }
+  },
+  "options": {
+    "window": 32,
+    "stride": 33
+  },
+  "error_type": "ValueError",
+  "error_message": "question 'cancel': 'option_order' must be a permutation of range(2) -- one slot per option, each option once -- got [2, 0]"
+}

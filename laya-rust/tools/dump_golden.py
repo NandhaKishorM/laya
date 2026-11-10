@@ -45,6 +45,9 @@ from golden_cases import (  # noqa: E402
     BATCH_ERROR_CASES,
     BUDGET_CASES,
     BUDGET_ERROR_CASES,
+    CALIBRATION_BATCH_CASES,
+    CALIBRATION_CASES,
+    CALIBRATION_LONG_CASES,
     CASES,
     ERROR_CASES,
     LANG_BATCH_CASES,
@@ -269,6 +272,31 @@ def with_lang_temperatures(target, case: dict) -> None:
         case.get("lang_temperatures"), target.cfg.get("temperature", [1.0, 1.0, 1.0]))
 
 
+def with_calibration(target, case: dict) -> None:
+    """Install the case's calibration file exactly as the `calibration=` constructor option does.
+
+    `load_calibration` is the method both `Agent` and `ONNXAgent` expose: it reads the file and hands the payload to
+    `apply_calibration_payload`, which installs the temperatures and the binning map. The checkpoint's own
+    temperatures are put back first, and the binning map cleared, so a case without a file is answered as an agent
+    built without the option -- the agent and its shims are shared by every case. The file is looked for next to
+    this script.
+    """
+    cfg = target.cfg
+    target.temperature = [clamp_temperature(t) for t in cfg.get("temperature", [1.0, 1.0, 1.0])]
+    target.temperature_by_options = {
+        k: clamp_temperature(v) for k, v in cfg.get("temperature_by_options", {}).items()
+    }
+    target.binning_map = None
+    if case.get("calibration"):
+        target.load_calibration(os.path.join(TOOLS, case["calibration"]))
+
+
+def calibration_record(case: dict) -> dict:
+    """The file a case was recorded with: its name under tools/ and its parsed content."""
+    with open(os.path.join(TOOLS, case["calibration"]), encoding="utf-8") as f:
+        return {"file": case["calibration"], "payload": json.load(f)}
+
+
 def self_check(agent: Agent, onnx_dir: str) -> dict:
     """Refuse to emit goldens unless the session reproduces the bundled PyTorch reference."""
     path = os.path.join(onnx_dir, "fixtures.npz")
@@ -350,6 +378,7 @@ def record_case(agent: Agent, case: dict) -> dict:
     options = case.get("options")
     per_question = describe_questions(agent, state, questions, options)
     with_lang_temperatures(agent, case)
+    with_calibration(agent, case)
     result = agent.system_one(state, questions, **(options or {}))
     last = agent.model.last
     rec = {
@@ -375,6 +404,8 @@ def record_case(agent: Agent, case: dict) -> dict:
     # Only for a case that carries a table, so every earlier golden stays byte-identical.
     if case.get("lang_temperatures") is not None:
         rec["lang_temperatures"] = case["lang_temperatures"]
+    if case.get("calibration"):
+        rec["calibration"] = calibration_record(case)
     return rec
 
 
@@ -431,6 +462,7 @@ def record_shortlist_case(agent: Agent, case: dict) -> dict:
 def record_error_case(agent: Agent, case: dict) -> dict:
     options = case.get("options")
     with_lang_temperatures(agent, case)
+    with_calibration(agent, case)
     try:
         agent.system_one(case["state"], case["questions"], **(options or {}))
     except ValueError as e:
@@ -445,6 +477,8 @@ def record_error_case(agent: Agent, case: dict) -> dict:
             rec["options"] = options
         if case.get("lang_temperatures") is not None:
             rec["lang_temperatures"] = case["lang_temperatures"]
+        if case.get("calibration"):
+            rec["calibration"] = calibration_record(case)
         return rec
     raise SystemExit("case %r was expected to raise ValueError but did not" % case["name"])
 
@@ -459,11 +493,14 @@ def record_long_case(agent: Agent, case: dict, expects_error: bool = False) -> d
     onnx.temperature = agent.temperature
     onnx.temperature_by_options = agent.temperature_by_options
     with_lang_temperatures(onnx, case)
+    with_calibration(onnx, case)
     options = case.get("options", {})
     state, questions = case.get("state"), case["questions"]
     rec = {"name": case["name"], "state": state, "questions": questions, "options": options}
     if case.get("lang_temperatures") is not None:
         rec["lang_temperatures"] = case["lang_temperatures"]
+    if case.get("calibration"):
+        rec["calibration"] = calibration_record(case)
     if expects_error:
         try:
             onnx.predict_long(state, questions, **options)
@@ -529,6 +566,7 @@ def record_batch_case(agent: Agent, case: dict, expects_error: bool = False) -> 
     onnx.temperature = agent.temperature
     onnx.temperature_by_options = agent.temperature_by_options
     with_lang_temperatures(onnx, case)
+    with_calibration(onnx, case)
     onnx.hooks = []
     onnx.model_id = "golden"
     states, questions = case["states"], case["questions"]
@@ -536,6 +574,8 @@ def record_batch_case(agent: Agent, case: dict, expects_error: bool = False) -> 
     rec = {"name": case["name"], "states": states, "questions": questions, "options": options}
     if case.get("lang_temperatures") is not None:
         rec["lang_temperatures"] = case["lang_temperatures"]
+    if case.get("calibration"):
+        rec["calibration"] = calibration_record(case)
     if expects_error:
         expected = {"TypeError": TypeError, "ValueError": ValueError}[case["error_type"]]
         try:
@@ -705,6 +745,26 @@ def run_checkpoint(onnx_dir: str, out_dir: str) -> int:
         dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
         index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
                       "expects_error": False, "kind": "long"})
+
+    # Calibration files and histogram binning, appended last for the same reason. The shared agent and shims have the
+    # file reset by the next case; this puts the checkpoint's own temperatures back for whatever runs after.
+    for cases, expects_error in ((CALIBRATION_CASES, False),):
+        for case in cases:
+            rec = (record_error_case if expects_error else record_case)(agent, case)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error})
+    for case in CALIBRATION_BATCH_CASES:
+        rec = record_batch_case(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": False, "kind": "batch"})
+    for case in CALIBRATION_LONG_CASES:
+        rec = record_long_case(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": False, "kind": "long"})
+    with_calibration(agent, {})
 
     dump(index, os.path.join(out_dir, "index.json"))
     dump(build_repr_probe(), os.path.join(out_dir, "repr_probe.json"))

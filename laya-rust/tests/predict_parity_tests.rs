@@ -52,7 +52,7 @@ fn reproduces_the_recorded_answers() {
     let mut checked_any = false;
 
     for checkpoint in engines::checkpoints() {
-        let Some(engine) = engines::load(checkpoint) else {
+        let Some(mut engines) = engines::CaseEngines::fused(checkpoint) else {
             continue;
         };
         let golden = CheckpointGoldenData::for_checkpoint(checkpoint.subdir());
@@ -64,6 +64,7 @@ fn reproduces_the_recorded_answers() {
         for case in golden.success_cases() {
             checked_any = true;
             let root = golden.load_case(&case);
+            let engine = engines.for_case(&root);
             let state = root["state"].clone();
             let questions = golden_data::build_questions(&root["questions"])
                 .unwrap_or_else(|e| panic!("{}/{case}: {e}", checkpoint.subdir()));
@@ -166,7 +167,7 @@ fn reproduces_the_recorded_answers_for_the_split_layout() {
     let mut checked_any = false;
 
     for checkpoint in engines::checkpoints() {
-        let Some(engine) = engines::load_split(checkpoint) else {
+        let Some(mut engines) = engines::CaseEngines::split(checkpoint) else {
             continue;
         };
         let golden = CheckpointGoldenData::for_checkpoint(checkpoint.subdir());
@@ -178,6 +179,7 @@ fn reproduces_the_recorded_answers_for_the_split_layout() {
         for case in golden.success_cases() {
             checked_any = true;
             let root = golden.load_case(&case);
+            let engine = engines.for_case(&root);
             let state = root["state"].clone();
             let questions = golden_data::build_questions(&root["questions"])
                 .unwrap_or_else(|e| panic!("{}/{case}: {e}", checkpoint.subdir()));

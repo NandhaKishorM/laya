@@ -21,7 +21,7 @@ export type { RoutedResult, RoutedLongResult, RoutedLongPredictOptions, RouteDec
 export { shortlistChoice, predictShortlist, predictTournament, embedFnFromAgent, cached, cachedEmbedFn, DEFAULT_SHORTLIST_K, DEFAULT_SHORTLIST_MAXSIZE, DEFAULT_TOURNAMENT_GROUP } from "./shortlist.js";
 export type { EmbedFn, ShortlistMeta, TournamentMeta, CacheInfo, CachedEmbedFn } from "./shortlist.js";
 export { analyse, isEnglish, guessLatinLanguage, detectScript } from "./lang.js";
-export type { AnalyseResult, LatinProfile } from "./lang.js";
+export type { AnalyseOptions, AnalyseResult, LanguageDiagnostic, LanguageDiagnosticReason, LatinProfile } from "./lang.js";
 export { cleanEmailBody, emailState } from "./email.js";
 export {
   PredictContext,

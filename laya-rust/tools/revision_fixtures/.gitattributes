@@ -1,0 +1,2 @@
+# The fixture bytes are hashed by revision_probe.json; a checkout must not rewrite them.
+* -text

@@ -653,5 +653,437 @@
     "file": "case_long_lang_miss.json",
     "expects_error": false,
     "kind": "long"
+  },
+  {
+    "name": "calibration_plain",
+    "file": "case_calibration_plain.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_buckets",
+    "file": "case_calibration_buckets.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_lang_override_skips_binning",
+    "file": "case_calibration_lang_override_skips_binning.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_lang_miss_bins",
+    "file": "case_calibration_lang_miss_bins.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_lang_null_entry_inherits_checkpoint",
+    "file": "case_calibration_lang_null_entry_inherits_checkpoint.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_lang_buckets_skip_binning",
+    "file": "case_calibration_lang_buckets_skip_binning.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_table_without_lang",
+    "file": "case_calibration_table_without_lang.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_min_confidence",
+    "file": "case_calibration_min_confidence.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_min_confidence_map",
+    "file": "case_calibration_min_confidence_map.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_min_confidence_buckets",
+    "file": "case_calibration_min_confidence_buckets.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_min_confidence_lang_override",
+    "file": "case_calibration_min_confidence_lang_override.json",
+    "expects_error": false
+  },
+  {
+    "name": "calibration_batch",
+    "file": "case_calibration_batch.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "calibration_batch_lang_override",
+    "file": "case_calibration_batch_lang_override.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "calibration_batch_min_confidence",
+    "file": "case_calibration_batch_min_confidence.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "calibration_long_scan",
+    "file": "case_calibration_long_scan.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "calibration_long_single_window",
+    "file": "case_calibration_long_single_window.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "calibration_long_lang_override",
+    "file": "case_calibration_long_lang_override.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "option_order_choice",
+    "file": "case_option_order_choice.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_score",
+    "file": "case_option_order_score.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_noul",
+    "file": "case_option_order_noul.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_identity",
+    "file": "case_option_order_identity.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_mixed",
+    "file": "case_option_order_mixed.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_choice_labels_list",
+    "file": "case_option_order_choice_labels_list.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_many_options",
+    "file": "case_option_order_many_options.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_min_confidence",
+    "file": "case_option_order_min_confidence.json",
+    "expects_error": false
+  },
+  {
+    "name": "option_order_wrong_length",
+    "file": "case_option_order_wrong_length.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_duplicate",
+    "file": "case_option_order_duplicate.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_out_of_range",
+    "file": "case_option_order_out_of_range.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_negative",
+    "file": "case_option_order_negative.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_empty",
+    "file": "case_option_order_empty.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_noul_wrong_length",
+    "file": "case_option_order_noul_wrong_length.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_score_wrong_length",
+    "file": "case_option_order_score_wrong_length.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_first_bad_reported",
+    "file": "case_option_order_first_bad_reported.json",
+    "expects_error": true
+  },
+  {
+    "name": "option_order_id_repr",
+    "file": "case_option_order_id_repr.json",
+    "expects_error": true
+  },
+  {
+    "name": "shortlist_option_order",
+    "file": "case_shortlist_option_order.json",
+    "expects_error": false,
+    "kind": "shortlist"
+  },
+  {
+    "name": "long_option_order_short",
+    "file": "case_long_option_order_short.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_option_order_multi_chunk",
+    "file": "case_long_option_order_multi_chunk.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_option_order_mixed",
+    "file": "case_long_option_order_mixed.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_option_order_invalid",
+    "file": "case_long_option_order_invalid.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "long_option_order_before_stride",
+    "file": "case_long_option_order_before_stride.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "batch_option_order",
+    "file": "case_batch_option_order.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_option_order_chunked",
+    "file": "case_batch_option_order_chunked.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_option_order_min_confidence",
+    "file": "case_batch_option_order_min_confidence.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_option_order_empty_states_invalid",
+    "file": "case_batch_option_order_empty_states_invalid.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_option_order_invalid",
+    "file": "case_batch_option_order_invalid.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "noul_labels",
+    "file": "case_noul_labels.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_padded",
+    "file": "case_noul_labels_padded.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_default_spelling",
+    "file": "case_noul_labels_default_spelling.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_option_order",
+    "file": "case_noul_labels_option_order.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_mixed_min_confidence",
+    "file": "case_noul_labels_mixed_min_confidence.json",
+    "expects_error": false
+  },
+  {
+    "name": "noul_labels_blank_false",
+    "file": "case_noul_labels_blank_false.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_blank_after_strip",
+    "file": "case_noul_labels_blank_after_strip.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_equal",
+    "file": "case_noul_labels_equal.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_equal_after_strip",
+    "file": "case_noul_labels_equal_after_strip.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_non_string_false",
+    "file": "case_noul_labels_non_string_false.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_non_string_true",
+    "file": "case_noul_labels_non_string_true.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_first_bad_reported",
+    "file": "case_noul_labels_first_bad_reported.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_order_checked_first",
+    "file": "case_noul_labels_order_checked_first.json",
+    "expects_error": true
+  },
+  {
+    "name": "noul_labels_id_repr",
+    "file": "case_noul_labels_id_repr.json",
+    "expects_error": true
+  },
+  {
+    "name": "long_noul_labels_short",
+    "file": "case_long_noul_labels_short.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_noul_labels_multi_chunk",
+    "file": "case_long_noul_labels_multi_chunk.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_noul_labels_invalid",
+    "file": "case_long_noul_labels_invalid.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "long_noul_labels_before_stride",
+    "file": "case_long_noul_labels_before_stride.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "batch_noul_labels",
+    "file": "case_batch_noul_labels.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_noul_labels_chunked",
+    "file": "case_batch_noul_labels_chunked.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_noul_labels_min_confidence",
+    "file": "case_batch_noul_labels_min_confidence.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_noul_labels_empty_states_invalid",
+    "file": "case_batch_noul_labels_empty_states_invalid.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_noul_labels_invalid",
+    "file": "case_batch_noul_labels_invalid.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "tournament_group4",
+    "file": "case_tournament_group4.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group7",
+    "file": "case_tournament_group7.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group8",
+    "file": "case_tournament_group8.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_default_group",
+    "file": "case_tournament_default_group.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group40",
+    "file": "case_tournament_group40.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_multi",
+    "file": "case_tournament_multi.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_option_order",
+    "file": "case_tournament_option_order.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_min_confidence",
+    "file": "case_tournament_min_confidence.json",
+    "expects_error": false,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group_size_1",
+    "file": "case_tournament_group_size_1.json",
+    "expects_error": true,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group_size_0",
+    "file": "case_tournament_group_size_0.json",
+    "expects_error": true,
+    "kind": "tournament"
+  },
+  {
+    "name": "tournament_group_size_negative",
+    "file": "case_tournament_group_size_negative.json",
+    "expects_error": true,
+    "kind": "tournament"
   }
 ]

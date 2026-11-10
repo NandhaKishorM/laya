@@ -717,3 +717,496 @@ LANG_LONG_CASES = [
                + QUICKSTART_STATE),
      "options": {"window": 96, "batch_size": 3, "lang": "ja"}},
 ]
+
+
+# ---------------------------------------------------------------------------------------------
+# Calibration files (`calibration=` / `load_calibration`) and histogram binning.
+#
+# The cases below are SDK-neutral: the Rust SDK keeps a verbatim copy. `calibration` names a file under
+# tools/ (here `calibration_fixture.json`, hand-made: temperatures, per-bucket temperatures and a binning map
+# with several buckets) that `dump_golden.with_calibration` reads through Python's own `load_calibration` on the
+# torch Agent and on every ONNX shim, and the file name and its parsed content are recorded in the case JSON
+# (`"calibration": {"file", "payload"}`), so a port loads the very same file. The file is installed for these
+# cases only, so a port builds one extra engine per checkpoint with it. A binned bucket is a hit, any other
+# (here `choice:2`, `choice:6-10`, `score:3-5`) is a miss that keeps the temperature-scaled value. The map is
+# deliberately not monotone, so binning changes which window `predict_long` picks and whether an answer passes
+# the `min_confidence` gate. Edge values of the lookup (0.0, 1.0, bin edges) are pinned model-free by
+# `routing/calibration_probe.json`.
+# ---------------------------------------------------------------------------------------------
+
+CALIBRATION_FILE = "calibration_fixture.json"
+
+# `system_one` with the file: hit and miss buckets, a language the table holds (temperatures replaced, binning
+# skipped), a language it does not (calibration kept, binned), a null entry (inherits the *checkpoint's*
+# temperature, not the file's), and the abstention gate on binned values.
+CALIBRATION_CASES = [
+    {"name": "calibration_plain", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE},
+    {"name": "calibration_buckets", "state": QUICKSTART_STATE, "questions": LANG_BUCKET_QUESTIONS,
+     "calibration": CALIBRATION_FILE},
+    {"name": "calibration_lang_override_skips_binning", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES, "options": {"lang": "de"}},
+    {"name": "calibration_lang_miss_bins", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES, "options": {"lang": "ja"}},
+    {"name": "calibration_lang_null_entry_inherits_checkpoint", "state": QUICKSTART_STATE,
+     "questions": LANG_QUESTIONS, "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES,
+     "options": {"lang": "fr"}},
+    {"name": "calibration_lang_buckets_skip_binning", "state": QUICKSTART_STATE,
+     "questions": LANG_BUCKET_QUESTIONS, "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES,
+     "options": {"lang": "it"}},
+    {"name": "calibration_table_without_lang", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES},
+    {"name": "calibration_min_confidence", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "options": {"min_confidence": 0.6}},
+    {"name": "calibration_min_confidence_map", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE,
+     "options": {"min_confidence": {"choice:3-5": 0.7, "score:3-5": 0.5, "noul:2": 0.6}}},
+    {"name": "calibration_min_confidence_buckets", "state": QUICKSTART_STATE, "questions": LANG_BUCKET_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "options": {"min_confidence": 0.5}},
+    {"name": "calibration_min_confidence_lang_override", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES,
+     "options": {"lang": "de", "min_confidence": 0.6}},
+]
+
+# `predict_batch` with the file: plain, a language it overrides, and the gate.
+CALIBRATION_BATCH_CASES = [
+    {"name": "calibration_batch", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "options": {"batch_size": 3, "sort_by_length": True}},
+    {"name": "calibration_batch_lang_override", "states": BATCH_MIXED_STATES[:5], "questions": BATCH_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES, "options": {"lang": "pt"}},
+    {"name": "calibration_batch_min_confidence", "states": BATCH_MIXED_STATES[:5], "questions": BATCH_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "options": {"min_confidence": 0.6}},
+]
+
+# `predict_long` with the file: a multi-window scan (the best window is chosen on the binned value), a state that
+# fits one window, and a language that skips the binning.
+CALIBRATION_LONG_CASES = [
+    {"name": "calibration_long_scan", "calibration": CALIBRATION_FILE, "questions": LONG_QUESTIONS,
+     "state": ("The agent checked the account and recorded routine status updates. " * 180
+               + QUICKSTART_STATE),
+     "options": {"window": 96, "batch_size": 3}},
+    {"name": "calibration_long_single_window", "calibration": CALIBRATION_FILE, "questions": LONG_QUESTIONS,
+     "state": QUICKSTART_STATE, "options": {}},
+    {"name": "calibration_long_lang_override", "calibration": CALIBRATION_FILE,
+     "lang_temperatures": LANG_TEMPERATURES, "questions": LONG_QUESTIONS,
+     "state": ("The agent checked the account and recorded routine status updates. " * 180
+               + QUICKSTART_STATE),
+     "options": {"window": 96, "batch_size": 3, "lang": "de"}},
+]
+
+
+# Question-level `option_order` (agent.py:1089-1100, common.py:237-241 and :558-571): slot `s` shows
+# option `option_order[s]`, the model row comes back in slot order and is scattered back to option
+# order before the answer is built. Kept in lists of their own, processed after every earlier case,
+# so the existing goldens and index.json stay byte-identical (the dump only appends).
+def _ordered(question, order):
+    """`question` with an `option_order`, spelled as the README does: the key comes last."""
+    return dict(question, option_order=order)
+
+
+_ORDER_CHOICE = CASES[0]["questions"]["department"]
+_ORDER_SCORE = CASES[0]["questions"]["urgency"]
+_ORDER_NOUL = CASES[0]["questions"]["churn_risk"]
+_ORDER_NOUL_WORDED = CASES[0]["questions"]["needs_human"]
+_ORDER_MANY = next(c for c in CASES if c["name"] == "many_options")
+
+OPTION_ORDER_CASES = [
+    {
+        "name": "option_order_choice",
+        "state": QUICKSTART_STATE,
+        "questions": {"department": _ordered(_ORDER_CHOICE, [2, 0, 1])},
+    },
+    {
+        "name": "option_order_score",
+        "state": QUICKSTART_STATE,
+        "questions": {"urgency": _ordered(_ORDER_SCORE, [3, 1, 0, 2])},
+    },
+    # A noul with default wording and one with its own wording; slot 0 shows "true", slot 1 "false".
+    {
+        "name": "option_order_noul",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _ordered(_ORDER_NOUL, [1, 0]),
+            "needs_human": _ordered(_ORDER_NOUL_WORDED, [1, 0]),
+        },
+    },
+    # The identity permutation is a valid order: same sequence and answers as no order at all.
+    {
+        "name": "option_order_identity",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "department": _ordered(_ORDER_CHOICE, [0, 1, 2]),
+            "urgency": _ordered(_ORDER_SCORE, [0, 1, 2, 3]),
+            "churn_risk": _ordered(_ORDER_NOUL, [0, 1]),
+        },
+    },
+    # Some questions with an order and some without, in one forward pass.
+    {
+        "name": "option_order_mixed",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "department": _ordered(_ORDER_CHOICE, [1, 2, 0]),
+            "urgency": _ORDER_SCORE,
+            "churn_risk": _ordered(_ORDER_NOUL, [1, 0]),
+            "needs_human": _ORDER_NOUL_WORDED,
+        },
+    },
+    # Choice labels given as a list (normalised to {label: None}), and a single-option choice.
+    {
+        "name": "option_order_choice_labels_list",
+        "state": "I would like to upgrade to the enterprise plan.",
+        "questions": {
+            "intent": {
+                "type": "choice",
+                "instructions": "What does the customer want?",
+                "criteria": ["upgrade", "downgrade", "cancel", "other"],
+                "option_order": [3, 1, 0, 2],
+            },
+            "only": {
+                "type": "choice",
+                "instructions": "Only one label.",
+                "criteria": {"single": "the only option"},
+                "option_order": [0],
+            },
+        },
+    },
+    # Enough options to force per-option truncation (opt_budget < 16), listed in reverse.
+    {
+        "name": "option_order_many_options",
+        "state": _ORDER_MANY["state"],
+        "questions": {
+            "wide": _ordered(_ORDER_MANY["questions"]["wide"], list(range(39, -1, -1))),
+        },
+    },
+    # The abstention gate and the temperature bucket see the unpermuted result.
+    {
+        "name": "option_order_min_confidence",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "department": _ordered(_ORDER_CHOICE, [2, 0, 1]),
+            "urgency": _ordered(_ORDER_SCORE, [3, 1, 0, 2]),
+            "churn_risk": _ordered(_ORDER_NOUL, [1, 0]),
+        },
+        "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}},
+    },
+]
+
+# An invalid order raises ValueError from `_check_question` with the question id in the text. Only
+# lists of ints are recorded: a typed SDK cannot spell a bool, a float or a non-list order.
+OPTION_ORDER_ERROR_CASES = [
+    {"name": "option_order_wrong_length", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [0, 1])}},
+    {"name": "option_order_duplicate", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [0, 0, 1])}},
+    {"name": "option_order_out_of_range", "state": QUICKSTART_STATE,
+     "questions": {"urgency": _ordered(_ORDER_SCORE, [0, 1, 2, 4])}},
+    {"name": "option_order_negative", "state": QUICKSTART_STATE,
+     "questions": {"urgency": _ordered(_ORDER_SCORE, [-1, 0, 1, 2])}},
+    {"name": "option_order_empty", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [])}},
+    # A noul has two options, whatever its wording.
+    {"name": "option_order_noul_wrong_length", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _ordered(_ORDER_NOUL, [0, 1, 2])}},
+    # A score order must cover its levels (4 here), not the 3 slots of the choice before it.
+    {"name": "option_order_score_wrong_length", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [2, 0, 1]),
+                   "urgency": _ordered(_ORDER_SCORE, [2, 0, 1])}},
+    # Questions are checked in declaration order, so the first bad one is the one named.
+    {"name": "option_order_first_bad_reported", "state": QUICKSTART_STATE,
+     "questions": {"department": _ordered(_ORDER_CHOICE, [1, 2, 0]),
+                   "churn_risk": _ordered(_ORDER_NOUL, [1, 1]),
+                   "urgency": _ordered(_ORDER_SCORE, [0, 0, 0, 0])}},
+    # `%r` of the id: a quote in it switches repr to double quotes.
+    {"name": "option_order_id_repr", "state": QUICKSTART_STATE,
+     "questions": {"it's": _ordered(_ORDER_NOUL, [0, 0])}},
+]
+
+# predict_long (ONNXAgent): the order is checked before the window budget, and carried by every window.
+OPTION_ORDER_LONG_QUESTIONS = {
+    "topic": _ordered(LONG_QUESTIONS["topic"], [2, 0, 1]),
+    "urgency": _ordered(LONG_QUESTIONS["urgency"], [2, 1, 0]),
+    "cancel": _ordered(LONG_QUESTIONS["cancel"], [1, 0]),
+}
+
+OPTION_ORDER_LONG_CASES = [
+    {"name": "long_option_order_short", "state": QUICKSTART_STATE,
+     "questions": OPTION_ORDER_LONG_QUESTIONS},
+    {
+        "name": "long_option_order_multi_chunk",
+        "state": ("The agent checked the account and recorded routine status updates. " * 180
+                  + QUICKSTART_STATE),
+        "questions": OPTION_ORDER_LONG_QUESTIONS,
+        "options": {"batch_size": 2},
+    },
+    {
+        "name": "long_option_order_mixed",
+        "state": {"notes": "Routine checks completed. " * 22, "message": QUICKSTART_STATE},
+        "questions": {"topic": OPTION_ORDER_LONG_QUESTIONS["topic"],
+                      "urgency": LONG_QUESTIONS["urgency"],
+                      "cancel": OPTION_ORDER_LONG_QUESTIONS["cancel"]},
+        "options": {"window": 96},
+    },
+]
+
+OPTION_ORDER_LONG_ERROR_CASES = [
+    {"name": "long_option_order_invalid", "state": "short",
+     "questions": {"topic": _ordered(LONG_QUESTIONS["topic"], [0, 1]),
+                   "urgency": LONG_QUESTIONS["urgency"]}},
+    # Checked before the stride, as Python validates the questions first.
+    {"name": "long_option_order_before_stride", "state": "short",
+     "questions": {"cancel": _ordered(LONG_QUESTIONS["cancel"], [2, 0])},
+     "options": {"window": 32, "stride": 33}},
+]
+
+# predict_batch (ONNXAgent): one order per question, shared by every state.
+OPTION_ORDER_BATCH_CASES = [
+    {"name": "batch_option_order", "states": BATCH_MIXED_STATES,
+     "questions": OPTION_ORDER_LONG_QUESTIONS},
+    {"name": "batch_option_order_chunked", "states": BATCH_SORT_STATES[:7],
+     "questions": OPTION_ORDER_LONG_QUESTIONS,
+     "options": {"batch_size": 3, "sort_by_length": True}},
+    {"name": "batch_option_order_min_confidence", "states": BATCH_MIXED_STATES[:4],
+     "questions": OPTION_ORDER_LONG_QUESTIONS,
+     "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}}},
+    # No states: answered without looking at the questions, so a bad order is not reported.
+    {"name": "batch_option_order_empty_states_invalid",
+     "states": [], "questions": {"topic": _ordered(LONG_QUESTIONS["topic"], [0, 0, 0])}},
+]
+
+OPTION_ORDER_BATCH_ERROR_CASES = [
+    {"name": "batch_option_order_invalid", "states": [QUICKSTART_STATE, "short"],
+     "questions": {"topic": _ordered(LONG_QUESTIONS["topic"], [0, 1, 3]),
+                   "cancel": LONG_QUESTIONS["cancel"]},
+     "error_type": "ValueError"},
+]
+
+# predict_shortlist: a choice narrowed below its label count loses its order (with a RuntimeWarning);
+# a passthrough choice and non-choice questions keep theirs. 40 labels are cut to k=20; the second
+# choice has 3 labels and is forwarded whole.
+OPTION_ORDER_SHORTLIST_CASES = [
+    {
+        "name": "shortlist_option_order",
+        "state": SAMPLE_BANKING_STATE,
+        "questions": {
+            "intent": {
+                "type": "choice",
+                "instructions": SAMPLE_BANKING_INSTRUCTIONS,
+                "criteria": SAMPLE_BANKING_CRITERIA,
+                "option_order": list(range(len(SAMPLE_BANKING_CRITERIA) - 1, -1, -1)),
+            },
+            "channel": _ordered(
+                {"type": "choice", "instructions": "Which channel is the customer using?",
+                 "criteria": {"app": "mobile app", "web": "website", "branch": "in person"}},
+                [1, 2, 0]),
+            "urgency": _ordered(_ORDER_SCORE, [3, 1, 0, 2]),
+            "frustrated": _ordered(_ORDER_NOUL, [1, 0]),
+        },
+        "k": 20,
+    },
+]
+
+# Custom noul `labels` (common.py:114-125 and :147-153, agent.py:1101-1106): the false/true option texts
+# the model reads become "<label>: <criterion or default text>"; the answer is still P(true), and the
+# temperature and min_confidence buckets (`noul:2`) do not look at them. Validated and stripped in
+# `_check_question` / `_resolve_noul_labels`. Kept in lists of their own, processed after every earlier
+# case, so the existing goldens and index.json stay byte-identical (the dump only appends).
+def _labelled(question, false_label, true_label, **extra):
+    """`question` with `labels`, spelled as agent.py:1907 documents it: after `criteria`, before `option_order`."""
+    return dict(question, labels={"false": false_label, "true": true_label}, **extra)
+
+
+_LABEL_PLAIN = CASES[0]["questions"]["churn_risk"]          # no criteria
+_LABEL_WORDED = CASES[0]["questions"]["needs_human"]        # false/true criteria
+
+NOUL_LABELS_CASES = [
+    # With and without criteria: "B: no, the statement does not hold" / "A: yes, ..." and the worded form.
+    {
+        "name": "noul_labels",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _labelled(_LABEL_PLAIN, "B", "A"),
+            "needs_human": _labelled(_LABEL_WORDED, "no", "yes"),
+        },
+    },
+    # Padding is stripped before rendering (Python str.strip, so tabs and newlines go too).
+    {
+        "name": "noul_labels_padded",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _labelled(_LABEL_PLAIN, "  low risk ", "\thigh risk\n"),
+            "needs_human": _labelled(_LABEL_WORDED, " bot ", " human "),
+        },
+    },
+    # Labels spelled like the defaults render exactly as no labels at all; non-ASCII labels pass through.
+    {
+        "name": "noul_labels_default_spelling",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _labelled(_LABEL_PLAIN, "false", "true"),
+            "needs_human": _labelled(_LABEL_WORDED, "não", "是"),
+        },
+    },
+    # The labels travel with their slot: slot 0 shows the true option under `option_order` [1, 0].
+    {
+        "name": "noul_labels_option_order",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "churn_risk": _labelled(_LABEL_PLAIN, "B", "A", option_order=[1, 0]),
+            "needs_human": _labelled(_LABEL_WORDED, "no", "yes", option_order=[1, 0]),
+        },
+    },
+    # Mixed with unlabelled questions of every type, and the noul:2 abstention bucket.
+    {
+        "name": "noul_labels_mixed_min_confidence",
+        "state": QUICKSTART_STATE,
+        "questions": {
+            "department": _ORDER_CHOICE,
+            "urgency": _ORDER_SCORE,
+            "churn_risk": _labelled(_LABEL_PLAIN, "B", "A"),
+            "needs_human": _LABEL_WORDED,
+        },
+        "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}},
+    },
+]
+
+# A typed SDK can express only these invalid shapes: a blank label, two equal labels (after strip), and a
+# non-string (None). A missing or extra key, a non-dict, and `labels` on a non-noul question cannot be
+# spelled with typed questions, so they are not recorded here.
+NOUL_LABELS_ERROR_CASES = [
+    {"name": "noul_labels_blank_false", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "", "A")}},
+    {"name": "noul_labels_blank_after_strip", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "B", " \t\n ")}},
+    {"name": "noul_labels_equal", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "same", "same")}},
+    {"name": "noul_labels_equal_after_strip", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "yes", "  yes ")}},
+    {"name": "noul_labels_non_string_false", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, None, "A")}},
+    {"name": "noul_labels_non_string_true", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "B", None)}},
+    # Questions are checked in declaration order, so the first bad one is the one named, and within one
+    # question `option_order` is checked before `labels`.
+    {"name": "noul_labels_first_bad_reported", "state": QUICKSTART_STATE,
+     "questions": {"department": _ORDER_CHOICE,
+                   "needs_human": _labelled(_LABEL_WORDED, "x", "x"),
+                   "churn_risk": _labelled(_LABEL_PLAIN, "", "A")}},
+    {"name": "noul_labels_order_checked_first", "state": QUICKSTART_STATE,
+     "questions": {"churn_risk": _labelled(_LABEL_PLAIN, "", "", option_order=[0, 0])}},
+    # `%r` of the id: a quote in it switches repr to double quotes.
+    {"name": "noul_labels_id_repr", "state": QUICKSTART_STATE,
+     "questions": {"it's": _labelled(_LABEL_PLAIN, "a", " a")}},
+]
+
+# predict_long (ONNXAgent): checked before the window budget, rendered in every window.
+NOUL_LABELS_LONG_QUESTIONS = dict(LONG_QUESTIONS, cancel=_labelled(LONG_QUESTIONS["cancel"], "B", "A"))
+
+NOUL_LABELS_LONG_CASES = [
+    {"name": "long_noul_labels_short", "state": QUICKSTART_STATE,
+     "questions": NOUL_LABELS_LONG_QUESTIONS},
+    {
+        "name": "long_noul_labels_multi_chunk",
+        "state": ("The agent checked the account and recorded routine status updates. " * 180
+                  + QUICKSTART_STATE),
+        "questions": dict(NOUL_LABELS_LONG_QUESTIONS,
+                          cancel=_labelled(LONG_QUESTIONS["cancel"], " B ", "A", option_order=[1, 0])),
+        "options": {"batch_size": 2},
+    },
+]
+
+NOUL_LABELS_LONG_ERROR_CASES = [
+    {"name": "long_noul_labels_invalid", "state": "short",
+     "questions": dict(LONG_QUESTIONS, cancel=_labelled(LONG_QUESTIONS["cancel"], "a", "a "))},
+    # Checked before the stride, as Python validates the questions first.
+    {"name": "long_noul_labels_before_stride", "state": "short",
+     "questions": {"cancel": _labelled(LONG_QUESTIONS["cancel"], "", "A")},
+     "options": {"window": 32, "stride": 33}},
+]
+
+# predict_batch (ONNXAgent): one set of labels per question, shared by every state.
+NOUL_LABELS_BATCH_CASES = [
+    {"name": "batch_noul_labels", "states": BATCH_MIXED_STATES,
+     "questions": NOUL_LABELS_LONG_QUESTIONS},
+    {"name": "batch_noul_labels_chunked", "states": BATCH_SORT_STATES[:7],
+     "questions": NOUL_LABELS_LONG_QUESTIONS,
+     "options": {"batch_size": 3, "sort_by_length": True}},
+    {"name": "batch_noul_labels_min_confidence", "states": BATCH_MIXED_STATES[:4],
+     "questions": NOUL_LABELS_LONG_QUESTIONS,
+     "options": {"min_confidence": {"choice:3-5": 0.9, "score:3-5": 0.5, "noul:2": 0.7}}},
+    # No states: answered without looking at the questions, so bad labels are not reported.
+    {"name": "batch_noul_labels_empty_states_invalid",
+     "states": [], "questions": {"cancel": _labelled(LONG_QUESTIONS["cancel"], "x", "x")}},
+]
+
+NOUL_LABELS_BATCH_ERROR_CASES = [
+    {"name": "batch_noul_labels_invalid", "states": [QUICKSTART_STATE, "short"],
+     "questions": {"topic": LONG_QUESTIONS["topic"],
+                   "cancel": _labelled(LONG_QUESTIONS["cancel"], "", "A")},
+     "error_type": "ValueError"},
+]
+
+# predict_tournament (shortlist.py:139-227), run by dump_golden.py through Python's own function on the real
+# checkpoint. `group_size` is passed only when a case names it (the default 16 otherwise) and `options` go to
+# every round and to the final call as `**predict_kwargs`. 40 labels at group size g take ceil(40/g) groups of
+# 40*i//parts slices: g=4 -> 10 groups of 4, then 3 groups (3, 3, 4), then the final call (two rounds); g=7 -> 6
+# uneven groups (6 or 7 labels); g=8 -> 5 groups; g=16 -> 3 groups (13, 13, 14); g=40 -> no round at all.
+# Kept in lists of their own, processed after every earlier case, so the existing goldens and index.json stay
+# byte-identical (the dump only appends).
+_T_LABELS = list(SAMPLE_BANKING_CRITERIA)
+_T_BANK = {"type": "choice", "instructions": SAMPLE_BANKING_INSTRUCTIONS, "criteria": SAMPLE_BANKING_CRITERIA}
+_T_SECOND = {
+    "type": "choice",
+    "instructions": "Which product area does the request touch?",
+    "criteria": {label: SAMPLE_BANKING_CRITERIA[label] for label in reversed(_T_LABELS[:25])},
+}
+_T_SMALL = {
+    "type": "choice",
+    "instructions": "Which channel is the customer using?",
+    "criteria": {"app": "mobile app", "web": "website", "branch": "in person"},
+}
+
+TOURNAMENT_CASES = [
+    {"name": "tournament_group4", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK}, "group_size": 4},
+    {"name": "tournament_group7", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK}, "group_size": 7},
+    {"name": "tournament_group8", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK}, "group_size": 8},
+    # No group_size: the default of 16.
+    {"name": "tournament_default_group", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK}},
+    # 40 labels do not exceed 40: no round, one call, the request unchanged.
+    {"name": "tournament_group40", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK},
+     "group_size": 40},
+    # Two large choices, a small one, a score and a noul together at g=6: the 40-label choice plays two rounds,
+    # the 25-label one plays one, the others pass through to the final call unchanged.
+    {"name": "tournament_multi", "state": SAMPLE_BANKING_STATE,
+     "questions": {
+         "intent": _T_BANK,
+         "area": _T_SECOND,
+         "channel": _T_SMALL,
+         "urgency": CASES[0]["questions"]["urgency"],
+         "churn_risk": CASES[0]["questions"]["churn_risk"],
+     },
+     "group_size": 6},
+    # option_order: dropped (with a RuntimeWarning) from both choices that played a round; kept on the choice
+    # that needed none, on the score and on the noul.
+    {"name": "tournament_option_order", "state": SAMPLE_BANKING_STATE,
+     "questions": {
+         "intent": dict(_T_BANK, option_order=list(range(len(_T_LABELS) - 1, -1, -1))),
+         "area": dict(_T_SECOND, option_order=list(range(24, -1, -1))),
+         "channel": dict(_T_SMALL, option_order=[1, 2, 0]),
+         "urgency": dict(CASES[0]["questions"]["urgency"], option_order=[3, 1, 0, 2]),
+         "churn_risk": dict(CASES[0]["questions"]["churn_risk"], option_order=[1, 0]),
+     }},
+    # Per-call options reach every round and the final call.
+    {"name": "tournament_min_confidence", "state": SAMPLE_BANKING_STATE,
+     "questions": {"intent": _T_BANK, "urgency": CASES[0]["questions"]["urgency"]},
+     "group_size": 8, "options": {"min_confidence": 0.6}},
+]
+
+# Raised before any call, so the model is never asked.
+TOURNAMENT_ERROR_CASES = [
+    {"name": "tournament_group_size_1", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK},
+     "group_size": 1, "error_type": "ValueError"},
+    {"name": "tournament_group_size_0", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK},
+     "group_size": 0, "error_type": "ValueError"},
+    {"name": "tournament_group_size_negative", "state": SAMPLE_BANKING_STATE, "questions": {"intent": _T_BANK},
+     "group_size": -3, "error_type": "ValueError"},
+]

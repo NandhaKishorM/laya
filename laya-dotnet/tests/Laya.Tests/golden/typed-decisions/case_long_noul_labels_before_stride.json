@@ -1,0 +1,20 @@
+{
+  "name": "long_noul_labels_before_stride",
+  "state": "short",
+  "questions": {
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account.",
+      "labels": {
+        "false": "",
+        "true": "A"
+      }
+    }
+  },
+  "options": {
+    "window": 32,
+    "stride": 33
+  },
+  "error_type": "ValueError",
+  "error_message": "question 'cancel': noul labels must map exactly 'false' and 'true' to distinct non-empty strings"
+}

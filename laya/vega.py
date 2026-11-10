@@ -430,10 +430,13 @@ class VegaAgent(Agent):
         try:
             dispatch(active, "on_predict_start", ctx, raise_errors=raise_errors,
                      lock=self._hooks_lock, timeout=timeout)
+            long_read = ignored.get("_vega_long_read")
+            if long_read is not None:
+                long_read["skipped"] = ctx.results is not None
             if ctx.results is not None:
                 out = ctx.results
-                if isinstance(out, list) and len(out) == 1:
-                    out = out[0]        # ctx.skip()'s whole-call list, as predict_long takes it
+                if isinstance(out, (list, tuple)) and len(out) == 1:
+                    out = out[0]
                 if isinstance(out, dict):
                     ctx.usage = out.get("usage")
             else:
@@ -463,7 +466,10 @@ class VegaAgent(Agent):
                     ctx.error.__context__ = hook_exc
                 else:
                     raise
-        return ctx.results
+        out = ctx.results
+        if isinstance(out, (list, tuple)) and len(out) == 1:
+            return out[0]
+        return out
 
     def _decide(self, state: Any, questions: Mapping, *, lang: Optional[str], image: Any,
                 audio: Any, video: Any, frames: int, mode: Optional[str], views: int,
@@ -630,13 +636,22 @@ class VegaAgent(Agent):
         truncates, and ``usage.truncated`` says so, which is the one case where the caller may
         still want to window and vote.
         """
-        out = self.predict(state, questions, **kw)
-        n = int(out["usage"].get("input_tokens") or 0)
-        out["usage"]["windows"] = 1
-        out["usage"]["context_tokens"] = self.max_len
-        out["usage"]["truncated"] = bool(self.max_len and n >= self.max_len)
+        long_read = {}
+        kw["_vega_long_read"] = long_read
+        out = dict(self.predict(state, questions, **kw))
+        skipped = long_read.get("skipped", False)
+        usage = dict(out.get("usage") or {})
+        usage["windows"] = 0 if skipped else 1
+        usage["context_tokens"] = self.max_len
+        if skipped:
+            usage.setdefault("truncated", False)
+        else:
+            n = int(usage.get("input_tokens") or 0)
+            usage["truncated"] = bool(self.max_len and n >= self.max_len)
+        out["usage"] = usage
+        why = "answered by a start hook" if skipped else "read whole, within %d tokens" % self.max_len
         out["long"] = {"window": window, "stride": stride, "aggregate": aggregate,
-                       "applied": False, "why": "read whole, within %d tokens" % self.max_len}
+                       "applied": False, "why": why}
         return out
 
     def _read_novelty(self) -> Optional[Dict[str, Any]]:

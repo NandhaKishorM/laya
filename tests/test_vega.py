@@ -390,6 +390,85 @@ def test_a_start_hook_can_short_circuit_and_rewrite_questions(monkeypatch):
     assert calls and calls[0][1] is other, "the rewritten questions are what decide on"
 
 
+
+@pytest.mark.parametrize("method", ["predict", "system_one", "predict_long"])
+@pytest.mark.parametrize("cache_shape", ["dict", "list", "tuple"])
+def test_cached_single_result_hook_contract(monkeypatch, method, cache_shape):
+    cached = {"answers": {}, "cached": True}
+    payload = {"dict": cached, "list": [cached], "tuple": (cached,)}[cache_shape]
+    calls, events = [], []
+    a = _hook_agent(monkeypatch, {}, calls)
+    a.max_len = 2048
+
+    def start(ctx):
+        events.append("start")
+        ctx.skip(payload)
+
+    def end(ctx):
+        events.append("end")
+        assert ctx.results is payload
+
+    result = getattr(a, method)("s", {}, on_predict_start=start, on_predict_end=end)
+    assert result["cached"] is True
+    assert calls == []
+    assert events == ["start", "end"]
+    if method == "predict_long":
+        assert result["usage"] == {"windows": 0, "context_tokens": 2048, "truncated": False}
+        assert result["long"]["why"] == "answered by a start hook"
+        assert "usage" not in cached
+    else:
+        assert result is cached
+
+
+def test_predict_long_preserves_end_hook_replacement_and_copies_usage(monkeypatch):
+    original = {"answers": {}, "cached": True}
+    replacement = {"answers": {}, "usage": {"input_tokens": 15, "truncated": True}}
+    calls = []
+    a = _hook_agent(monkeypatch, {}, calls)
+    a.max_len = 2048
+
+    def replace(ctx):
+        ctx.results = [replacement]
+
+    out = a.predict_long("s", {}, on_predict_start=lambda ctx: ctx.skip([original]),
+                         on_predict_end=replace)
+    assert out["usage"] == {"input_tokens": 15, "truncated": True, "windows": 0,
+                            "context_tokens": 2048}
+    assert replacement["usage"] == {"input_tokens": 15, "truncated": True}
+    assert "long" not in replacement
+    assert calls == []
+
+
+def test_predict_long_counts_an_uncached_read(monkeypatch):
+    answer = {"answers": {}, "usage": {"input_tokens": 5, "output_tokens": 0}}
+    calls = []
+    a = _hook_agent(monkeypatch, answer, calls)
+    a.max_len = 5
+
+    out = a.predict_long("s", {})
+    assert calls == [("s", {})]
+    assert out["usage"] == {"input_tokens": 5, "output_tokens": 0, "windows": 1,
+                            "context_tokens": 5, "truncated": True}
+    assert answer["usage"] == {"input_tokens": 5, "output_tokens": 0}
+
+
+
+def test_predict_long_with_timeout_does_not_dispatch_an_internal_hook(monkeypatch):
+    from laya import hooks
+
+    def no_hook_thread(*args, **kwargs):
+        raise AssertionError("there is no user hook to dispatch")
+
+    monkeypatch.setattr(hooks.threading.Thread, "start", no_hook_thread)
+    answer = {"answers": {}, "usage": {"input_tokens": 5}}
+    calls = []
+    a = _hook_agent(monkeypatch, answer, calls)
+    a.max_len = 10
+
+    assert a.predict_long("s", {}, hooks_timeout=1)["usage"]["windows"] == 1
+    assert calls == [("s", {})]
+
+
 def test_a_failing_hook_follows_the_raise_policy(monkeypatch):
     answer = {"answers": {}, "usage": {"input_tokens": 3, "output_tokens": 0}, "modality": "text"}
     calls, events = [], []

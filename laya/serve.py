@@ -53,6 +53,11 @@ env var                    meaning                                        defaul
 ``LAYA_BODY_READ_TIMEOUT`` seconds a request may spend delivering its body   10
                            before the server answers 408 and releases its
                            admission slot (see below)
+``LAYA_MAX_QUESTIONS``     questions per forward pass on a single         64
+                           request; a larger one is split, not refused
+``LAYA_OUTCOME_LOG``       SQLite file recording every decision for       (none)
+                           offline calibration (`OutcomeLogHook`);
+                           unset disables logging
 ``LAYA_JEV_STRICT``        if set, serve the strict Jev wire contract: no   0
                            root `routing`, no per-answer `action` /
                            `answer_confidence`, no `confidence` on noul
@@ -645,6 +650,52 @@ def _resolve_max_batch_tokens() -> int:
     return n
 
 
+def _resolve_max_questions() -> int:
+    """Questions one single-request FORWARD PASS may answer, from LAYA_MAX_QUESTIONS.
+
+    Sizes the chunk, it does not refuse on its own: a single `/v1/systemone` request holding more
+    questions than this is split into passes that each fit, the way `_batch_chunk_size` splits a
+    batch that exceeds the token budget. A value the server cannot parse, or one that is not
+    positive, falls back to `MAX_QUESTIONS` the way `_resolve_max_batch_tokens` does: a typo in a
+    deployment file must not stop the server, and must not be read as "no limit" either.
+    """
+    raw = os.environ.get("LAYA_MAX_QUESTIONS")
+    if not raw:
+        return MAX_QUESTIONS
+    try:
+        n = int(str(raw).strip())
+    except (TypeError, ValueError):
+        _log.warning("invalid LAYA_MAX_QUESTIONS %r; falling back to %d", raw, MAX_QUESTIONS)
+        return MAX_QUESTIONS
+    if n <= 0:
+        _log.warning("LAYA_MAX_QUESTIONS must be positive (got %d); falling back to %d", n,
+                     MAX_QUESTIONS)
+        return MAX_QUESTIONS
+    return n
+
+
+def _outcome_log_hook() -> Optional[Any]:
+    """Decision-log hook from `LAYA_OUTCOME_LOG`, or None when logging is off.
+
+    The variable names a SQLite file every decision is recorded in for offline
+    calibration (`laya.outcome_log.OutcomeLogHook`); unset or blank means no logging.
+    A path that cannot be opened warns and serves without logging: the log is
+    auxiliary, and a full disk or a bad mount must not stop decisions. Imported
+    here rather than at module scope, the way this module's other `laya` imports
+    are, so `import laya.serve` stays cheap and touches no GPU.
+    """
+    from .outcome_log import OutcomeLogHook
+
+    raw = os.environ.get("LAYA_OUTCOME_LOG", "").strip()
+    if not raw:
+        return None
+    try:
+        return OutcomeLogHook(raw)
+    except Exception as exc:  # noqa: BLE001 -- auxiliary: a bad log path must not stop serving
+        _log.warning("invalid LAYA_OUTCOME_LOG %r (%s); decision logging disabled", raw, exc)
+        return None
+
+
 def _validate_budget_param(body: Dict[str, Any], key: str, max_cap: int) -> Optional[int]:
     """Validate optional integer budget parameters (max_len / head_max_len) from request body (422)."""
     from fastapi import HTTPException
@@ -1071,7 +1122,8 @@ def _state_length(state: Any) -> int:
         raise HTTPException(status_code=400, detail="'state' must be JSON-serializable")
 
 
-def _check_request_limits(state: Any, questions: Any, max_choice_options: int = MAX_CHOICE_OPTIONS) -> None:
+def _check_request_limits(state: Any, questions: Any, max_choice_options: int = MAX_CHOICE_OPTIONS,
+                          max_questions: int = MAX_QUESTIONS) -> None:
     """Reject absent or oversized inference requests before tokenization (400/413)."""
     from fastapi import HTTPException
 
@@ -1085,9 +1137,9 @@ def _check_request_limits(state: Any, questions: Any, max_choice_options: int = 
         raise HTTPException(status_code=400, detail="'state' is required")
     if not isinstance(questions, dict):
         raise HTTPException(status_code=400, detail="'questions' must be an object")
-    if len(questions) > MAX_QUESTIONS:
+    if len(questions) > max_questions:
         raise HTTPException(status_code=413,
-                            detail="too many questions (%d > %d)" % (len(questions), MAX_QUESTIONS))
+                            detail="too many questions (%d > %d)" % (len(questions), max_questions))
 
     total_options = 0
     for qid, question in questions.items():
@@ -1152,6 +1204,142 @@ def _batch_chunk_size(n_states: int, n_questions: int, max_len: Any = None) -> O
         return None
     rows_per_pass = max(1, _resolve_max_batch_tokens() // width)
     return max(1, min(n_states, rows_per_pass // n_questions))
+
+
+def _question_option_count(question: Any) -> int:
+    """Answer rows one question contributes to `MAX_TOTAL_OPTIONS`, mirroring `_check_request_limits`.
+
+    Kept as the single place that counting lives for the single-request planner: the gate above
+    counts a `choice` with dict or list criteria and a `score` with list criteria, and this must
+    agree with it, or a chunk the planner calls "fitting" is refused on the way in.
+    """
+    if not isinstance(question, dict):
+        return 0
+    crit = question.get("criteria")
+    qtype = question.get("type")
+    if qtype == "choice" and isinstance(crit, (dict, list)):
+        return len(crit)
+    if qtype == "score" and isinstance(crit, list):
+        return len(crit)
+    return 0
+
+
+def _plan_single_question_chunks(questions: Dict[str, Any], max_len: Any = None,
+                                 max_questions: int = MAX_QUESTIONS) -> Optional[List[Dict[str, Any]]]:
+    """Split a single request's questions so one forward pass fits every cap, or None to change nothing.
+
+    `None` means "answer them all in one pass", which is the call every request has always made --
+    the single-request form of `_batch_chunk_size`'s guarantee: a request that fits is passed no
+    differently than before, byte-identical, because splitting forward passes can move
+    floating-point results. Only a request that exceeds a cap is split: more than `max_questions`
+    questions, more than `MAX_TOTAL_OPTIONS` options across them, or more rows times row width than
+    `_resolve_max_batch_tokens` allows (one row per question, at `max_len` when the request sets one
+    and `_BATCH_ROW_TOKENS_ASSUMED` otherwise -- the same width rule the batch planner uses).
+
+    Chunks preserve question order, so the merged answers read in the order the caller sent. A chunk
+    boundary is only ever drawn where every chunk so far fits all three caps; a single question can
+    never exceed the count or token share of its own chunk, and one that alone exceeds the option
+    cap is placed alone so the per-chunk gate refuses it by name rather than hanging the planner.
+    """
+    n = len(questions)
+    if n == 0:
+        return None
+    width = (max_len if isinstance(max_len, int) and not isinstance(max_len, bool) and max_len > 0
+             else _BATCH_ROW_TOKENS_ASSUMED)
+    per_pass = max(1, _resolve_max_batch_tokens() // width)
+    per_chunk = max(1, min(max_questions, per_pass))
+    total_options = sum(_question_option_count(q) for q in questions.values())
+    if n <= per_chunk and total_options <= MAX_TOTAL_OPTIONS:
+        return None
+    chunks: List[Dict[str, Any]] = []
+    current: Dict[str, Any] = {}
+    current_options = 0
+    for qid, question in questions.items():
+        options = _question_option_count(question)
+        if current and (len(current) + 1 > per_chunk or current_options + options > MAX_TOTAL_OPTIONS):
+            chunks.append(current)
+            current = {}
+            current_options = 0
+        current[qid] = question
+        current_options += options
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _merge_single_usages(usages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """One usage block for a chunked single request, indistinguishable in shape from one pass.
+
+    `input_tokens` and `output_tokens` are summed: every question's rows are scored exactly once
+    across the chunks, and padding is never counted (the agent sums its attention mask), so the
+    total is what one pass over all questions would have reported. `state_tokens` is the same full
+    state length in every chunk and is carried, not summed; `state_tokens_dropped` is the worst
+    chunk's, `truncated` whether any chunk cut, and `truncated_questions` the ordered union, which
+    is the per-question report one pass would have given. `options` is keyed per question and the
+    chunks hold disjoint questions, so it merges. Any other numeric field sums and any other dict
+    field merges, the way `Agent.predict_long` already combines per-call usage; anything else is
+    carried from the first chunk.
+    """
+    merged: Dict[str, Any] = {}
+    order: List[str] = []
+    for usage in usages:
+        for key in usage:
+            if key not in merged and key not in order:
+                order.append(key)
+    for key in order:
+        values = [u[key] for u in usages if key in u]
+        first = values[0]
+        if key in ("input_tokens", "output_tokens"):
+            merged[key] = sum(v if isinstance(v, (int, float)) else 0 for v in values)
+        elif key == "state_tokens":
+            merged[key] = first
+        elif key == "state_tokens_dropped":
+            merged[key] = max([v for v in values if isinstance(v, (int, float))] or [0])
+        elif key == "truncated":
+            merged[key] = any(bool(v) for v in values)
+        elif key == "truncated_questions":
+            seen = []
+            for v in values:
+                for qid in (v if isinstance(v, list) else []):
+                    if qid not in seen:
+                        seen.append(qid)
+            merged[key] = seen
+        elif key == "options":
+            combined: Dict[str, Any] = {}
+            for v in values:
+                if isinstance(v, dict):
+                    combined.update(v)
+            merged[key] = combined
+        elif all(isinstance(v, (int, float)) for v in values):
+            merged[key] = sum(values)
+        elif all(isinstance(v, dict) for v in values):
+            combined = {}
+            for v in values:
+                combined.update(v)
+            merged[key] = combined
+        else:
+            merged[key] = first
+    return merged
+
+
+def _merge_single_results(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """One single-request payload from per-chunk `predict` payloads, in chunk order.
+
+    Answers are keyed by question id and the chunks hold disjoint questions, so the merge is an
+    update in order. `model` and `routing` are the first chunk's: every chunk is answered on the
+    same state with the same routing hints, so they agree the way one pass would have reported
+    once. `usage` is `_merge_single_usages`.
+    """
+    first = results[0]
+    answers: Dict[str, Any] = {}
+    for result in results:
+        answers.update(result.get("answers") or {})
+    out = {"model": first.get("model"), "answers": answers,
+           "usage": _merge_single_usages([r.get("usage") or {} for r in results])}
+    for key, value in first.items():
+        if key not in out:
+            out[key] = value
+    return out
 
 
 def _check_batch_limits(states: Any, questions: Any, max_choice_options: int = MAX_CHOICE_OPTIONS) -> None:
@@ -1306,6 +1494,9 @@ def build_router():
     max_loaded = _resolve_max_loaded()
     if max_loaded is not None:
         options["max_loaded"] = max_loaded
+    outcome_log = _outcome_log_hook()
+    if outcome_log is not None:
+        options["hooks"] = [outcome_log]
     # Resolved before the Router is built: a name `Router` would reject is a configuration error,
     # and `_resolve_port`'s idiom applies -- exit with the message, not a traceback.
     extra_models = _extra_models_option()
@@ -1609,11 +1800,26 @@ def create_app(router: Optional[Any] = None):
             raise HTTPException(status_code=400, detail="request body must be an object with a 'questions' field")
         state = body.get("state")
         questions = body["questions"]
-        _check_request_limits(state, questions, MAX_TOURNAMENT_CHOICE_OPTIONS if tournament_group
+        # The per-pass caps, resolved once for the checks and the planner below so the two cannot
+        # disagree about what fits. A request that exceeds only the question count or the
+        # cross-question option total is not refused here: the planner splits it into passes that
+        # each fit, the single-request form of the batch endpoint's token-budget chunking. Anything
+        # chunking cannot fix -- a missing state, an oversized state, a per-question option cap, a
+        # null score level -- is still refused with the same status and message as before.
+        max_choice_options = (MAX_TOURNAMENT_CHOICE_OPTIONS if tournament_group
                               else MAX_CHOICE_OPTIONS)
+        max_questions = _resolve_max_questions()
+        try:
+            _check_request_limits(state, questions, max_choice_options, max_questions)
+        except HTTPException as exc:
+            if (exc.status_code != 413 or ("too many questions" not in exc.detail
+                                           and "too many answer options" not in exc.detail)):
+                raise
         _refuse_body_refusals(body)
         # After the size checks, so an oversized body is refused before anything walks it, and
-        # `MAX_STATE_CHARS`/`MAX_QUESTIONS` bound what the walk can reach. A `\udXXX` escape with
+        # `MAX_STATE_CHARS` plus the 2 MiB body cap bound what the walk can reach -- the question
+        # count no longer does, now that a large single request is split instead of refused.
+        # A `\udXXX` escape with
         # no pair is legal JSON that cannot be UTF-8 encoded, so the tokenizer raised `TypeError`
         # from inside `build_sequence` and the client's own mistake came back as a 500
         # "inference failed". A *paired* surrogate is an ordinary astral character (an emoji) by
@@ -1648,6 +1854,16 @@ def create_app(router: Optional[Any] = None):
         min_confidence = _validate_min_confidence(body)
         if min_confidence is not None:
             predict_kwargs["min_confidence"] = min_confidence
+        # Split before the gate, so what holds the inference slot is decided up front: `None`
+        # answers everything in the one forward pass it always has, byte-identical, while a list
+        # answers each chunk in order and merges the answers by question id. Every chunk already
+        # fits the count, option and token caps by construction; the per-chunk gate re-checks the
+        # rest (per-question caps, null levels, state size) with the same messages, before any
+        # inference runs, so a request chunking cannot save is still refused and never half-answered.
+        chunks = _plan_single_question_chunks(questions, max_len, max_questions)
+        if chunks is not None:
+            for chunk in chunks:
+                _check_request_limits(state, chunk, max_choice_options, max_questions)
         if gate is None:
             gate = asyncio.Lock()
         try:
@@ -1656,12 +1872,28 @@ def create_app(router: Optional[Any] = None):
             async with gate:
                 loop = asyncio.get_running_loop()
                 t0 = time.perf_counter()
-                if tournament_group:
-                    run = partial(_predict_with_tournament, router, state, questions, tournament_group,
-                                  model=model, **predict_kwargs)
+                if chunks is None:
+                    if tournament_group:
+                        run = partial(_predict_with_tournament, router, state, questions,
+                                      tournament_group, model=model, **predict_kwargs)
+                    else:
+                        run = partial(router.predict, state, questions, model=model, **predict_kwargs)
+                    result = await loop.run_in_executor(pool, _run_inference, run)
                 else:
-                    run = partial(router.predict, state, questions, model=model, **predict_kwargs)
-                result = await loop.run_in_executor(pool, _run_inference, run)
+                    def _run_chunked():
+                        parts = []
+                        for chunk in chunks:
+                            if (tournament_group
+                                    and _tournament_plan(chunk, tournament_group) is not None):
+                                parts.append(_predict_with_tournament(router, state, chunk,
+                                                                      tournament_group,
+                                                                      model=model, **predict_kwargs))
+                            else:
+                                parts.append(router.predict(state, chunk, model=model,
+                                                            **predict_kwargs))
+                        return _merge_single_results(parts)
+
+                    result = await loop.run_in_executor(pool, _run_inference, _run_chunked)
                 infer_ms = (time.perf_counter() - t0) * 1000.0
                 # Log while `usage` still carries the truncation report. `_project_jev_strict`
                 # drops it, and a strict client then has no other signal (#1425).

@@ -23,6 +23,7 @@ _os.environ.setdefault("USE_TF", "0")
 
 from .email import clean_email_body, email_state
 from .hooks import AsyncHook, BaseHook, Hook, OptionStabilityHook, PredictContext, PredictHook
+from .outcome_log import OutcomeLogHook
 from .lang import analyse as detect_language
 from .lang import detect_script, is_english
 from .presets import (
@@ -154,6 +155,7 @@ __all__ = [
     "BaseHook",
     "AsyncHook",
     "OptionStabilityHook",
+    "OutcomeLogHook",
     "decide",
     "decide_batch",
     "DecisionResult",

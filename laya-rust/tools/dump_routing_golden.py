@@ -26,6 +26,11 @@ corpus from `laya-rust/tools/routing_cases.py` and writes one JSON file per prob
                                   _map, with the error text), _option_bucket, resolve_min_confidence,
                                   apply_confidence_gate (incl. reused payloads, #910) and jev_confidence.
                                   Non-finite floats are written as "nan"/"inf"/"-inf" strings.
+    calibration_probe.json       laya.calibrate.apply_calibration_payload and apply_binning_map over the synthetic
+                                  inputs of tools/calibration_cases.py: what a payload installs (clamped temperatures,
+                                  binning map) or the exception (type and text), every warning raised (text and
+                                  category), and the recalibrated confidence per lookup (bin edges, 0.0, 1.0, a
+                                  bucket the map lacks). No model.
     lang_temperatures_probe.json laya.common.resolve_lang_temperatures over the synthetic inputs of
                                   tools/lang_temperature_cases.py: the resolved table (key normalisation, last
                                   duplicate wins, inheriting the checkpoint's temperature, clamping) or the
@@ -36,6 +41,15 @@ corpus from `laya-rust/tools/routing_cases.py` and writes one JSON file per prob
                                   token budgets, the batch grouping), from tools/lang_temperature_cases.py. No model.
     hashing_embedder_probe.json  Exact laya-rust/tools/hashing_embedder.embed() vectors for a fixed probe
                                   list of strings, including non-ASCII and astral input.
+    tournament_probe.json        predict_tournament (shortlist.py:139-227) over a scripted predictor, model-free: for
+                                  every TOURNAMENT_PROBE_CASES entry the calls it made (the questions and kwargs
+                                  of each round and of the final call), the RuntimeWarnings it raised, and either
+                                  the result (tournament metadata, answers, usage) or the error type and text.
+    cached_embed_probe.json      cached_embed_fn (shortlist.py:287-400) driven through the CACHED_EMBED_SCENARIOS
+                                  call sequences over hashing_embedder.embed / 3.0: per step the texts the embedder
+                                  saw, the float32 rows returned (or the error) and cache_info() afterwards; plus
+                                  the maxsize values it refuses. tournament_probe.json and cached_embed_probe.json
+                                  are not counted in meta.json, so the earlier files stay byte-identical.
     sample_inputs.json           The combined routing sample's fixed inputs (detection states,
                                   routing-decision examples, support questions/emails, a raw
                                   email, and the banking shortlist demo), plus the
@@ -58,6 +72,7 @@ import json
 import math
 import os
 import sys
+import types
 import warnings
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
@@ -66,6 +81,8 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, TOOLS)
 
 from routing_cases import (  # noqa: E402
+    CACHED_EMBED_BAD_MAXSIZE,
+    CACHED_EMBED_SCENARIOS,
     EMAIL_CLEAN_CASES,
     EMAIL_STATE_CASES,
     LANG_STATES,
@@ -84,18 +101,26 @@ from routing_cases import (  # noqa: E402
     SAMPLE_SUPPORT_EMAIL_HI,
     SAMPLE_SUPPORT_QUESTIONS,
     SHORTLIST_CASES,
+    TOURNAMENT_PROBE_CASES,
 )
 
+import calibration_cases as calc  # noqa: E402
 import confidence_cases as cc  # noqa: E402
 import lang_temperature_cases as ltc  # noqa: E402
 import hashing_embedder  # noqa: E402
 
 from laya import confidence  # noqa: E402
+from laya.calibrate import CALIBRATION_VERSION, apply_binning_map, apply_calibration_payload  # noqa: E402
 from laya.common import TEMP_MAX, TEMP_MIN, resolve_lang_temperatures  # noqa: E402
 from laya.email import clean_email_body, email_state  # noqa: E402
 from laya.lang import analyse, detect_script, latin_profile, script_profile, state_text  # noqa: E402
 from laya.router import Router  # noqa: E402
-from laya.shortlist import DEFAULT_SHORTLIST_K, shortlist_choice  # noqa: E402
+from laya.shortlist import (  # noqa: E402
+    DEFAULT_SHORTLIST_K,
+    cached_embed_fn,
+    predict_tournament,
+    shortlist_choice,
+)
 
 OUT_DIR_DEFAULT = os.path.join(REPO, "laya-rust", "tests", "golden", "routing")
 
@@ -340,6 +365,50 @@ def build_lang_temperatures_probe():
     return {"temp_min": TEMP_MIN, "temp_max": TEMP_MAX, "cases": cases}
 
 
+# ============================================================================ calibration_probe
+def _recorded_warnings(caught):
+    return [{"category": w.category.__name__, "message": str(w.message)} for w in caught]
+
+
+def _apply_recorded(text, identity):
+    """`apply_calibration_payload` on `json.loads(text)` for an agent with `identity`: what it installed, or the error."""
+    agent = types.SimpleNamespace(**identity)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            apply_calibration_payload(agent, json.loads(text))
+            outcome = {"result": {
+                "temperature": agent.temperature,
+                "temperature_by_options": agent.temperature_by_options,
+                "binning_map": agent.binning_map,
+            }}
+        except Exception as e:  # ValueError by contract; an OverflowError is a finding, so everything is recorded
+            outcome = {"error_type": type(e).__name__, "error_message": str(e)}
+    outcome["warnings"] = _recorded_warnings(caught)
+    return outcome
+
+
+def _lookup_recorded(binning_map, bucket, confidence_value):
+    try:
+        return {"result": apply_binning_map(confidence_value, bucket, binning_map)}
+    except Exception as e:
+        return {"error_type": type(e).__name__, "error_message": str(e)}
+
+
+def build_calibration_probe():
+    payloads = [
+        dict(label=label, json=text, identity=calc.IDENTITIES[identity], **_apply_recorded(text, calc.IDENTITIES[identity]))
+        for label, text, identity in calc.PAYLOAD_CASES
+    ]
+    lookups = [
+        dict(label=label, map=name, bucket=bucket, confidence=value,
+             **_lookup_recorded(calc.MAPS[name], bucket, value))
+        for label, name, bucket, value in calc.LOOKUP_CASES
+    ]
+    return {"temp_min": TEMP_MIN, "temp_max": TEMP_MAX, "version": CALIBRATION_VERSION,
+            "maps": calc.MAPS, "payloads": payloads, "lookups": lookups}
+
+
 # ============================================================================ router_forwarding_probe
 class _StubAgent:
     """An agent that answers nothing and records the keyword arguments each entry point received.
@@ -521,6 +590,134 @@ def build_hashing_embedder_probe():
     ]
 
 
+# ============================================================================ tournament_probe
+class _ScriptedAgent:
+    """A model-free predictor for `predict_tournament`: every choice question is answered with the label at
+    index `len(labels) * 2 // 3`, a score with 1.5 and a noul with 0.7, and the usage counts the call
+    (`100 * call_number + len(questions)` input tokens), so the final call's usage is told apart from a
+    round's. `mode` makes it misbehave once, in the first call (see TOURNAMENT_PROBE_CASES)."""
+
+    def __init__(self, mode):
+        self.mode = mode
+        self.calls = []
+
+    def predict(self, state, questions, **kwargs):
+        self.calls.append({"questions": copy.deepcopy(questions), "kwargs": dict(kwargs)})
+        number = len(self.calls)
+        if self.mode == "none":
+            return None
+        answers = {}
+        for qid, qdef in questions.items():
+            if qdef["type"] == "choice":
+                labels = list(qdef["criteria"])
+                pick = labels[len(labels) * 2 // 3]
+                if self.mode == "bad_winner" and number == 1:
+                    pick = "no-such-label"
+                answers[qid] = {"choice": pick}
+            elif qdef["type"] == "score":
+                answers[qid] = {"score": 1.5}
+            else:
+                answers[qid] = {"noul": 0.7}
+        if self.mode == "omit_group" and number == 1:
+            answers.pop("1")
+        if self.mode == "score_group" and number == 1:
+            answers["1"] = {"score": 1.5}
+        return {"model": "scripted", "answers": answers,
+                "usage": {"input_tokens": 100 * number + len(questions), "output_tokens": 0}}
+
+
+def build_tournament_probe():
+    out = []
+    for case in TOURNAMENT_PROBE_CASES:
+        agent = _ScriptedAgent(case["mode"])
+        kwargs = dict(case.get("kwargs") or {})
+        if "group_size" in case:
+            kwargs["group_size"] = case["group_size"]
+        rec = {"name": case["name"], "state": case["state"], "questions": case["questions"], "mode": case["mode"]}
+        if "group_size" in case:
+            rec["group_size"] = case["group_size"]
+        if case.get("kwargs"):
+            rec["kwargs"] = case["kwargs"]
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            try:
+                result = predict_tournament(agent, case["state"], case["questions"], **kwargs)
+                rec["result"] = result
+                rec["error"] = None
+            except Exception as e:  # noqa: BLE001 -- the type and text are what is recorded
+                rec["result"] = None
+                rec["error"] = {"type": type(e).__name__, "message": str(e)}
+        rec["calls"] = agent.calls
+        rec["warnings"] = [{"category": w.category.__name__, "message": str(w.message)} for w in caught]
+        out.append(rec)
+    return out
+
+
+# ============================================================================ cached_embed_probe
+class _SwitchableEmbedder:
+    """`hashing_embedder.embed / 3.0`, with the misbehaviours a cache step can ask for."""
+
+    def __init__(self):
+        self.calls = []
+        self.mode = "normal"
+        self.bad = ()
+
+    def __call__(self, texts):
+        self.calls.append([t for t in texts])
+        if self.mode == "raise":
+            raise RuntimeError("boom")
+        vecs = hashing_embedder.embed(list(texts)) / 3.0
+        if self.mode == "short":
+            return vecs[:-1].tolist()
+        if self.mode == "dim32":
+            vecs = vecs[:, :32]
+        for i, text in enumerate(texts):
+            if text in self.bad:
+                vecs[i, 0] = float("nan")
+                vecs[i, 1] = float("inf")
+                vecs[i, 2] = float("-inf")
+        return vecs
+
+
+def build_cached_embed_probe():
+    scenarios = []
+    for scenario in CACHED_EMBED_SCENARIOS:
+        embedder = _SwitchableEmbedder()
+        cached = cached_embed_fn(embedder, maxsize=scenario["maxsize"])
+        steps = []
+        for step in scenario["steps"]:
+            embedder.calls = []
+            if step["op"] == "clear":
+                cached.cache_clear()
+                steps.append({"op": "clear", "info": cached.cache_info()})
+                continue
+            embedder.mode = step.get("mode", "normal")
+            embedder.bad = tuple(step.get("bad", ()))
+            rec = {"op": "call", "texts": step["texts"], "mode": embedder.mode, "bad": list(embedder.bad)}
+            try:
+                rows = cached(step["texts"])
+                rec["rows"] = [[float(x) for x in row] for row in rows]
+                rec["shape"] = list(rows.shape)
+                rec["dtype"] = str(rows.dtype)
+                rec["error"] = None
+            except Exception as e:  # noqa: BLE001 -- the type and text are what is recorded
+                rec["rows"] = None
+                rec["error"] = {"type": type(e).__name__, "message": str(e)}
+            rec["embed_calls"] = embedder.calls
+            rec["info"] = cached.cache_info()
+            steps.append(rec)
+        scenarios.append({"name": scenario["name"], "maxsize": scenario["maxsize"], "steps": steps})
+    bad_maxsize = []
+    for maxsize in CACHED_EMBED_BAD_MAXSIZE:
+        try:
+            cached_embed_fn(hashing_embedder.embed, maxsize=maxsize)
+        except ValueError as e:
+            bad_maxsize.append({"maxsize": maxsize, "type": "ValueError", "message": str(e)})
+        else:
+            raise SystemExit("cached_embed_fn accepted maxsize=%r" % (maxsize,))
+    return {"scenarios": scenarios, "bad_maxsize": bad_maxsize}
+
+
 # ============================================================================ sample_inputs
 def build_sample_inputs():
     detection = []
@@ -596,11 +793,14 @@ def main() -> int:
     route_batch_probe = build_route_batch_probe()
     confidence_probe = build_confidence_probe()
     lang_temperatures_probe = build_lang_temperatures_probe()
+    calibration_probe = build_calibration_probe()
     router_forwarding_probe = build_router_forwarding_probe()
     email_probe = build_email_probe()
     shortlist_probe = build_shortlist_probe()
     hashing_probe = build_hashing_embedder_probe()
     sample_inputs = build_sample_inputs()
+    tournament_probe = build_tournament_probe()
+    cached_embed_probe = build_cached_embed_probe()
 
     meta = {
         "generator": "tools/dump_routing_golden.py",
@@ -627,6 +827,8 @@ def main() -> int:
             "confidence_probe_reuse": len(confidence_probe["reuse"]),
             "confidence_probe_jev": len(confidence_probe["jev"]),
             "lang_temperatures_probe": len(lang_temperatures_probe["cases"]),
+            "calibration_probe_payloads": len(calibration_probe["payloads"]),
+            "calibration_probe_lookups": len(calibration_probe["lookups"]),
             "router_forwarding_probe_predict": len(router_forwarding_probe["predict"]),
             "router_forwarding_probe_long": len(router_forwarding_probe["long"]),
             "router_forwarding_probe_batch": len(router_forwarding_probe["batch"]),
@@ -649,6 +851,9 @@ def main() -> int:
     results["lang_temperatures_probe.json"] = dump(
         _encode_floats(lang_temperatures_probe), os.path.join(out_dir, "lang_temperatures_probe.json"), args.force
     )
+    results["calibration_probe.json"] = dump(
+        _encode_floats(calibration_probe), os.path.join(out_dir, "calibration_probe.json"), args.force
+    )
     results["router_forwarding_probe.json"] = dump(
         router_forwarding_probe, os.path.join(out_dir, "router_forwarding_probe.json"), args.force
     )
@@ -658,6 +863,12 @@ def main() -> int:
         hashing_probe, os.path.join(out_dir, "hashing_embedder_probe.json"), args.force
     )
     results["sample_inputs.json"] = dump(sample_inputs, os.path.join(out_dir, "sample_inputs.json"), args.force)
+    results["tournament_probe.json"] = dump(
+        tournament_probe, os.path.join(out_dir, "tournament_probe.json"), args.force
+    )
+    results["cached_embed_probe.json"] = dump(
+        cached_embed_probe, os.path.join(out_dir, "cached_embed_probe.json"), args.force
+    )
     results["meta.json"] = dump(meta, os.path.join(out_dir, "meta.json"), args.force)
 
     print("\nrouting golden vectors -> %s" % out_dir)

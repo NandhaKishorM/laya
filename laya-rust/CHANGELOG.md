@@ -29,6 +29,51 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
   where they belong. API notes: **breaking:** the `max_len` and `head_max_len` fields of
   `LayaError::NoMarkers` change from `usize` to `i64`, so code that reads or builds them must adapt;
   `LayaOptions` has a new public field, and `LayaPredictor` gained the provided methods `predict_with_options` and `has_lang_temperatures`.
+- Calibration files and histogram binning, ported from `ONNXAgent(calibration=...)`,
+  `calibrate.apply_calibration_payload` and `calibrate.apply_binning_map`:
+  `LayaOptions::calibration` (a path; `LayaOptions::set_calibration`) is read when the engine is
+  built, after the checkpoint's temperatures and the `lang_temperatures` table, and the router
+  passes it to every engine it builds. The file's `temperature` and `temperature_by_options`
+  replace the checkpoint's (clamped, with Python's warning through the `log` facade), a missing or
+  `null` `binning_map` clears the map, and a payload Python refuses is `LayaError::InvalidConfig`
+  with its `ValueError` text (`CalibrationFile::parse`, checked against
+  `routing/calibration_probe.json`). A `binning_map` recalibrates `answer_confidence` only, from
+  the unrounded temperature-scaled value and before the four-place rounding, so the
+  `min_confidence` gate and `predict_long`'s window choice see the binned value; a call whose `lang`
+  selects a `lang_temperatures` entry skips it, as in Python. Not ported: the warning for a version
+  2 file fitted to another checkpoint, because an ONNX agent has no `model_id_or_path` to compare
+  (such a file loads as Python loads it, without that warning). API notes: `LayaOptions` has a new
+  public field, `calibration`, so code that builds it without `..Default::default()` must add it;
+  `LayaEngine::binning_map` and the public `calibration_file` module are new.
+- `LayaShortlist::predict_tournament`, Python's `predict_tournament`: a choice with more than
+  `group_size` labels (default 16, `DEFAULT_TOURNAMENT_GROUP`) is answered in contiguous groups,
+  round by round, and the winners meet in one final predict, with no embedder. The result is the
+  final call's, plus `LayaResult::tournament()` (`labels`, `n`, `rounds` per choice question). A
+  narrowed choice loses its `option_order` with Python's warning. `predict_tournament_with` takes
+  the predict call as a closure, so per-call options reach every round and the final call. Errors
+  carry Python's text: `group_size` below 2, a reply without a group's answer (`'1'`), and an
+  answer that is not a choice (`'choice'`).
+- `LayaShortlist::cached_embed_fn` / `CachedEmbed`, Python's `cached_embed_fn`: an LRU cache
+  (4096 texts by default) around an embedding function, with exact-text keys, de-duplicated
+  misses in one call, `f32` storage, non-finite values cached as `0.0`, Python's shape and
+  dimension errors, `cache_info` and `cache_clear`. Safe to share between threads.
+- Noul custom labels, Python's `labels`: `Question::with_noul_labels` and `Question::with_labels`
+  (plus `Question::labels`) rename a noul question's two options, rendered as
+  `"<label>: <criterion or default text>"`. The labels must be exactly `false` and `true`, distinct
+  non-empty strings once stripped; invalid labels, and labels on a choice or score, are refused at
+  `predict`, `predict_batch` and `predict_long` with `LayaError::InvalidQuestion` and Python's
+  text, naming the question. The answer, the temperature bucket and the abstention gate are
+  unchanged, a label moves with its slot under `option_order`, and the router includes the labels
+  in its batch grouping key. `Question::noul` is unchanged.
+- Question-level `option_order`, Python's way to lay a question's options out in another order:
+  `Question::with_option_order` and `Question::option_order` on choice, score and noul questions.
+  Slot `s` shows option `order[s]`; the model's row is softmaxed in slot order and scattered back
+  by option before the temperature bucket, the abstention gate and the answer see it
+  (`Calibration::unpermute_probs`). An order that is not a permutation of `0..n` is refused at
+  `predict`, `predict_batch` and `predict_long` with `LayaError::InvalidQuestion` and Python's
+  text, naming the question. The router includes the order in its batch grouping key, and
+  `LayaShortlist::predict` drops the order of a choice it narrows, with Python's warning (`log`,
+  target `laya`). Existing constructors are unchanged.
 - The abstention gate, ported from `laya/confidence.py`: `PredictOptions::min_confidence` with
   `LayaEngine::predict_with_options` and `LayaRouter::predict_with_options`, and
   `BatchOptions::min_confidence` for `predict_batch` on the engine and the router (one threshold
@@ -156,4 +201,4 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
 
 - Language detection, routing and email cleaning follow the regenerated Python 0.4.14 probes; a
   later Python change needs the probes regenerated.
-- Not yet ported: histogram-binning calibration and per-call hooks.
+- Not yet ported: per-call hooks.

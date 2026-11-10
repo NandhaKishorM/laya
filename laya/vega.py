@@ -1008,6 +1008,13 @@ class VegaAgent(Agent):
                 limits[qid] = float(m["novelty_max"])
         if "calibration.json" in files:
             self.calibration = Calibration.from_payload(json.loads(files["calibration.json"]))
+        else:
+            # A heads-only policy is a valid artefact (`save_calibration` omits calibration.json
+            # when the agent was never calibrated). Loading one onto an agent that carried a
+            # previous fit used to keep that fit's calibration and report `calibrated: True` for
+            # a state this directory never held -- and the route then rode a band the directory's
+            # heads were never measured against. What was loaded is what the directory holds.
+            self.calibration = None
         out: Dict[str, Any] = {"heads": loaded, "calibrated": self.calibration is not None,
                                "verified": report}
         if "questions.json" in files:

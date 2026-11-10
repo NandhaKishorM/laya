@@ -61,6 +61,7 @@ from .common import (
 )
 
 LOSSES = ("soft-ce", "rlcd")
+LR_SCHEDULES = ("cosine", "constant", "warmup_constant")
 # Below this many calibration items of a type, a fitted temperature is reported as resting on
 # little evidence. MIN_TYPE_N (laya.calibrate) is the floor below which it is not fitted at all.
 CALIB_WARN_N = 50
@@ -122,6 +123,13 @@ class TrainConfig:
     eval_data: Optional[str] = None
     target_error: float = 0.10
     min_abstain_n: int = 10
+    early_stopping: bool = False
+    patience: Optional[int] = None
+    val_frac: Optional[float] = None
+    val_max: int = 400
+    lr_schedule: Optional[str] = None
+    warmup_steps: int = 0
+    sigma_anneal_epochs: Optional[int] = None
 
     def validate(self) -> None:
         if self.loss not in LOSSES:
@@ -146,6 +154,30 @@ class TrainConfig:
             raise ValueError("min_abstain_n must be a positive integer, got %r" % (self.min_abstain_n,))
         if self.eval_data is not None and not isinstance(self.eval_data, str):
             raise ValueError("eval_data must be a string path, got %r" % (self.eval_data,))
+        if self.val_frac is not None and not (0.0 <= self.val_frac < 1.0):
+            raise ValueError("val_frac must be in [0, 1), got %r" % (self.val_frac,))
+        if self.patience is not None:
+            if isinstance(self.patience, bool) or not isinstance(self.patience, int) or self.patience < 1:
+                raise ValueError("patience must be a positive integer, got %r" % (self.patience,))
+        if self.val_max is not None:
+            if isinstance(self.val_max, bool) or not isinstance(self.val_max, int) or self.val_max < 1:
+                raise ValueError("val_max must be a positive integer, got %r" % (self.val_max,))
+        if self.warmup_steps is not None:
+            if isinstance(self.warmup_steps, bool) or not isinstance(self.warmup_steps, int) or self.warmup_steps < 0:
+                raise ValueError("warmup_steps must be a non-negative integer, got %r" % (self.warmup_steps,))
+        if self.sigma_anneal_epochs is not None:
+            if (isinstance(self.sigma_anneal_epochs, bool)
+                    or not isinstance(self.sigma_anneal_epochs, int) or self.sigma_anneal_epochs < 1):
+                raise ValueError("sigma_anneal_epochs must be a positive integer, got %r" % (self.sigma_anneal_epochs,))
+
+        if self.lr_schedule is None:
+            self.lr_schedule = "constant" if (self.early_stopping or self.patience is not None) else "cosine"
+        elif self.lr_schedule not in LR_SCHEDULES:
+            raise ValueError("lr_schedule must be one of %s, got %r" % (", ".join(LR_SCHEDULES), self.lr_schedule))
+
+        if (self.early_stopping or self.patience is not None) and self.lr_schedule == "cosine":
+            raise ValueError("early stopping requires a budget-independent schedule "
+                             "('constant' or 'warmup_constant'), got 'cosine'")
 
 
 # ------------------------------------------------------------------------------------- data
@@ -471,6 +503,27 @@ def draw_option_order(item: Dict[str, Any], rng: random.Random,
     return order
 
 
+def split_validation_calibration(items: Sequence[Any],
+                                 calib_max: int, calib_frac: float,
+                                 val_max: int, val_frac: float,
+                                 seed: int) -> Tuple[List[Any], List[Any], List[Any]]:
+    """`(train, val, calib)` with disjoint validation and calibration slices held out before training.
+
+    Model selection across epochs must not evaluate on the slice used to fit temperatures:
+    optimising checkpoint choice on calibration items invalidates the calibration evidence (#963).
+    """
+    n_val = min(val_max, int(len(items) * val_frac)) if val_frac > 0 else 0
+    n_calib = min(calib_max, int(len(items) * calib_frac)) if calib_frac > 0 else 0
+    order = list(range(len(items)))
+    random.Random(seed).shuffle(order)
+    val_set = set(order[:n_val])
+    calib_set = set(order[n_val:n_val + n_calib])
+    train = [it for i, it in enumerate(items) if i not in val_set and i not in calib_set]
+    val = [it for i, it in enumerate(items) if i in val_set]
+    calib = [it for i, it in enumerate(items) if i in calib_set]
+    return train, val, calib
+
+
 def split_calibration(items: Sequence[Any], calib_max: int, calib_frac: float,
                       seed: int) -> Tuple[List[Any], List[Any]]:
     """`(train, calibration)`, with the calibration slice taken before any training.
@@ -520,7 +573,8 @@ def rlcd_loss(logits: torch.Tensor, target: torch.Tensor, mask: torch.Tensor, qt
 
 def sigma_at(epoch: int, epochs: int, start: float, end: float) -> float:
     """Exploration noise for `epoch`, annealed linearly from `start` to `end`."""
-    return start + (end - start) * (epoch / max(1, epochs - 1))
+    frac = min(1.0, max(0.0, epoch / max(1, epochs - 1)))
+    return start + (end - start) * frac
 
 
 # ------------------------------------------------------------------------------- checkpoint
@@ -646,10 +700,44 @@ def _forward(model, batch, device, amp: bool, detach_encoder: bool):
     return logits.float()
 
 
+@torch.no_grad()
+def evaluate_items(model, tok, items: Sequence[Dict[str, Any]], device: torch.device,
+                   max_len: int, head_max_len: int, batch_size: int = 16, parallel: bool = False) -> Dict[str, float]:
+    """Compute mean validation loss and accuracy over `items` without gradient tracking."""
+    if not items:
+        return {"loss": 0.0, "accuracy": 0.0}
+    was_training = model.training
+    model.eval()
+    total_loss, correct, total = 0.0, 0, 0
+    for start in range(0, len(items), batch_size):
+        chunk = items[start:start + batch_size]
+        batch = collate_items([[encode_item(tok, it, max_len, head_max_len, parallel=parallel) for it in chunk]],
+                              tok.pad_token_id)
+        logits = _forward(model, batch, device, amp=False, detach_encoder=False)
+        mask = batch["marker_mask"].to(device)
+        target = batch["target"].to(device)
+        loss = soft_ce_loss(logits, target, mask)
+        total_loss += loss.item() * len(chunk)
+        for row_logits, it in zip(logits.cpu(), chunk):
+            k = it["k"]
+            target_slice = it["target"][:k]
+            target_idx = max(range(len(target_slice)), key=lambda idx: target_slice[idx])
+            if int(row_logits[:k].argmax().item()) == target_idx:
+                correct += 1
+            total += 1
+    if was_training:
+        model.train()
+    return {
+        "loss": total_loss / max(1, total),
+        "accuracy": correct / max(1, total),
+    }
+
+
 def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig, device: torch.device,
                 max_len: int, head_max_len: int,
                 on_epoch_end: Optional[Callable[[int, float], None]] = None,
-                parallel: bool = False) -> List[float]:
+                parallel: bool = False,
+                val_items: Optional[Sequence[Dict[str, Any]]] = None) -> List[float]:
     """Train `model` in place on `items`; returns the mean loss of each epoch."""
     config.validate()
     if not items:
@@ -675,20 +763,45 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
                                      if n.startswith("encoder.") and p.requires_grad], "lr": config.encoder_lr})
     optimizer = torch.optim.AdamW(groups, weight_decay=config.weight_decay)
     steps_per_epoch = math.ceil(len(items) / config.micro_batch)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer,
-        T_max=optimizer_updates(len(items), config.micro_batch, config.grad_accum, config.epochs),
-        eta_min=config.min_lr)
+    # #963: Early stopping requires a budget-independent schedule so epoch E does not depend on max epochs.
+    if config.lr_schedule == "constant":
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda _step: 1.0)
+    elif config.lr_schedule == "warmup_constant":
+        warmup_steps = config.warmup_steps if config.warmup_steps > 0 else steps_per_epoch
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, lr_lambda=lambda step: min(1.0, float(step + 1) / float(max(1, warmup_steps)))
+        )
+    else:
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=optimizer_updates(len(items), config.micro_batch, config.grad_accum, config.epochs),
+            eta_min=config.min_lr,
+        )
     scaler = torch.amp.GradScaler("cuda") if amp and device.type == "cuda" else None
 
     torch.manual_seed(config.seed)
     order_rng = random.Random(config.seed)
     params = [p for g in groups for p in g["params"]]
     history = []
+    do_early_stopping = bool(config.early_stopping or config.patience is not None)
+    patience = config.patience if config.patience is not None else 3
+    best_loss = float("inf")
+    best_epoch = 0
+    best_state_dict = None
+    no_improve_count = 0
+
+    if config.lr_schedule in ("constant", "warmup_constant") or do_early_stopping:
+        sigma_horizon = config.sigma_anneal_epochs if config.sigma_anneal_epochs is not None else 4
+    else:
+        sigma_horizon = config.epochs
+
+    if do_early_stopping and not val_items:
+        warnings.warn("Early stopping was requested but val_items is empty; early stopping will not evaluate.")
+
     for epoch in range(config.epochs):
         epoch_items = list(items)
         random.Random(config.seed + epoch).shuffle(epoch_items)
-        sigma = sigma_at(epoch, config.epochs, config.sigma_start, config.sigma_end)
+        sigma = sigma_at(epoch, sigma_horizon, config.sigma_start, config.sigma_end)
         total, n_steps = 0.0, 0
         optimizer.zero_grad(set_to_none=True)
         for start in range(0, len(epoch_items), config.micro_batch):
@@ -731,6 +844,31 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
         print("epoch %d/%d mean loss %.4f" % (epoch + 1, config.epochs, mean), flush=True)
         if on_epoch_end is not None:
             on_epoch_end(epoch, mean)
+
+        if do_early_stopping and val_items:
+            eval_res = evaluate_items(model, tok, val_items, device, max_len, head_max_len, parallel=parallel)
+            val_loss = eval_res["loss"]
+            val_acc = eval_res["accuracy"]
+            print("epoch %d/%d val loss %.4f val acc %.2f" % (epoch + 1, config.epochs, val_loss, val_acc), flush=True)
+            if val_loss < best_loss - 1e-4:
+                best_loss = val_loss
+                best_epoch = epoch
+                no_improve_count = 0
+                best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            else:
+                no_improve_count += 1
+                if no_improve_count >= patience:
+                    print("early stopping triggered at epoch %d (best epoch was %d with val loss %.4f)"
+                          % (epoch + 1, best_epoch + 1, best_loss), flush=True)
+                    break
+
+    if best_state_dict is not None:
+        model.load_state_dict(best_state_dict)
+        model.best_epoch = best_epoch + 1
+        print("restored best checkpoint from epoch %d (val loss %.4f)" % (best_epoch + 1, best_loss), flush=True)
+    else:
+        model.best_epoch = len(history)
+
     model.eval()
     return history
 
@@ -1012,9 +1150,18 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
                      question_id=config.question_id, instructions=config.instructions)
     items, skipped = items_from_rows(tok, rows, max_len, head_max_len,
                                      label_smoothing=config.label_smoothing)
-    if not items:
-        raise ValueError("%s produced no training items (skipped: %r)" % (data, skipped))
-    train_items, calib_items = split_calibration(items, config.calib_max, config.calib_frac, config.calib_seed)
+    if config.early_stopping or config.patience is not None:
+        val_frac = config.val_frac if config.val_frac is not None else config.calib_frac
+        train_items, val_items, calib_items = split_validation_calibration(
+            items, config.calib_max, config.calib_frac, config.val_max, val_frac, config.calib_seed
+        )
+        if len(val_items) == 0:
+            warnings.warn("Early stopping was requested but validation slice rounded to 0 items "
+                          "(dataset has %d items, val_frac=%.2f); early stopping will not evaluate."
+                          % (len(items), val_frac))
+    else:
+        train_items, calib_items = split_calibration(items, config.calib_max, config.calib_frac, config.calib_seed)
+        val_items = []
 
     eval_skipped = {}
     eval_mode = None
@@ -1109,8 +1256,8 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
                       "skipping evaluation to avoid reporting training fit as generalization.",
                       RuntimeWarning, stacklevel=2)
 
-    print("train items %d, calibration items %d, eval items %d%s, skipped %r, device %s"
-          % (len(train_items), len(calib_items), len(eval_items),
+    print("train items %d, val items %d, calibration items %d, eval items %d%s, skipped %r, device %s"
+          % (len(train_items), len(val_items), len(calib_items), len(eval_items),
              (" (" + str(eval_source) + ")") if eval_source else "", skipped, dev), flush=True)
     print(update_budget_message(len(train_items), config), flush=True)
 
@@ -1123,11 +1270,13 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
         before_eval = evaluate_records(base_records, base_temp, base_temp_by_options)
 
     def checkpoint_latest(epoch, _loss):
-        save_checkpoint(model, tok, dict(cfg, max_len=max_len, head_max_len=head_max_len),
+        save_checkpoint(model, tok, dict(cfg, max_len=max_len, head_max_len=head_max_len, epoch=epoch + 1),
                         os.path.join(output_dir, "checkpoint_latest"))
 
     history = train_model(model, tok, train_items, config, dev, max_len, head_max_len,
-                          on_epoch_end=checkpoint_latest, parallel=parallel)
+                          on_epoch_end=checkpoint_latest, parallel=parallel,
+                          val_items=val_items)
+    best_epoch = getattr(model, "best_epoch", len(history))
 
     records = calibration_records(model, tok, calib_items, dev, max_len, head_max_len, parallel=parallel)
     collapse_msg = prior_collapse_message(records)
@@ -1213,6 +1362,8 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
         "comparison": comparison,
         "calibration": calibration,
         "abstention_thresholds": abstention_thresholds,
+        "best_epoch": best_epoch,
+        "epochs_trained": len(history),
         "training": asdict(config),
     }
 
@@ -1223,18 +1374,16 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
         out_cfg["temperature_by_options"] = fitted["temperature_by_options"]
     out_cfg["training"] = dict(out_cfg.get("training") or {}, laya_train=asdict(config),
                                laya_train_calibration=calibration,
+                               best_epoch=best_epoch,
+                               epochs_trained=len(history),
                                train_report=train_report)
     if abstention_thresholds:
         out_cfg["training"]["abstention_thresholds"] = abstention_thresholds
     save_checkpoint(model, tok, out_cfg, output_dir)
 
     checkpoint_latest_dir = os.path.join(output_dir, "checkpoint_latest")
-    if os.path.isdir(checkpoint_latest_dir):
-        # Synchronize final calibrated config so checkpoint_latest matches the final artifact
-        tmp_cfg = os.path.join(checkpoint_latest_dir, "rl_agent_config.json.tmp")
-        with open(tmp_cfg, "w", encoding="utf-8") as f:
-            json.dump(out_cfg, f, indent=2)
-        os.replace(tmp_cfg, os.path.join(checkpoint_latest_dir, "rl_agent_config.json"))
+    # #963: Keep checkpoint_latest weights and config consistent with restored best checkpoint
+    save_checkpoint(model, tok, dict(out_cfg, epoch=best_epoch), checkpoint_latest_dir)
 
     # Save the questions schema alongside the checkpoint for inference reuse
     sample_questions = {}
@@ -1263,12 +1412,14 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
                 json.dump(train_report, f, indent=2)
             os.replace(tmp_report, os.path.join(d, "train_report.json"))
 
-    return {
+    summary = {
         "train_items": len(train_items),
         "calibration_items": len(calib_items),
         "eval_items": len(eval_items),
         "skipped": skipped,
         "epoch_loss": history,
+        "best_epoch": best_epoch,
+        "epochs_trained": len(history),
         "temperature": fitted["temperature"],
         "temperature_by_options": fitted["temperature_by_options"],
         "n_by_bucket": fitted["n_by_bucket"],
@@ -1277,6 +1428,9 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
         "train_report": train_report,
         "output_dir": output_dir,
     }
+    if val_items:
+        summary["val_items"] = len(val_items)
+    return summary
 
 
 def dry_run(data: str, model_dir: str, config: Optional[TrainConfig] = None) -> Dict[str, Any]:
@@ -1300,7 +1454,14 @@ def dry_run(data: str, model_dir: str, config: Optional[TrainConfig] = None) -> 
                                      label_smoothing=config.label_smoothing)
     # The training budget is set by the post-calibration item count, so split the same way
     # finetune does rather than report on the raw valid-item count.
-    train_items, calib_items = split_calibration(items, config.calib_max, config.calib_frac, config.calib_seed)
+    if config.early_stopping or config.patience is not None:
+        val_frac = config.val_frac if config.val_frac is not None else config.calib_frac
+        train_items, val_items, calib_items = split_validation_calibration(
+            items, config.calib_max, config.calib_frac, config.val_max, val_frac, config.calib_seed
+        )
+    else:
+        train_items, calib_items = split_calibration(items, config.calib_max, config.calib_frac, config.calib_seed)
+        val_items = []
     summary = {
         "data": data,
         "rows_read": len(rows),
@@ -1314,6 +1475,8 @@ def dry_run(data: str, model_dir: str, config: Optional[TrainConfig] = None) -> 
         "max_len": max_len,
         "head_max_len": head_max_len,
     }
+    if val_items:
+        summary["validation_items"] = len(val_items)
     if config.eval_data:
         eval_rows = read_data(config.eval_data, text_column=config.text_column, label_column=config.label_column,
                               question_id=config.question_id, instructions=config.instructions)

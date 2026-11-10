@@ -756,9 +756,10 @@ def calibration_report(records: Sequence[Tuple[int, Any, Any, int]],
     """Per question type: how many calibration items there were, what was fitted, and what to doubt.
 
     `records` are the `calibration_records` the temperatures were fitted on, and `temperature`
-    the per-type scalars `fit_temperature_map` returned. Each type gets `items`, `temperature`,
-    `accuracy` and `mean_confidence` (top probability at the fitted temperature) on the
-    calibration items, and a list of `issues`, empty when nothing looks wrong:
+    the per-type scalars `fit_temperature_map` returned. Each type gets `items`, `temperature`
+    and a list of `issues`, empty when nothing looks wrong, and a type that has items also gets
+    `accuracy` and `mean_confidence` (top probability at the fitted temperature) on them. The
+    issues:
 
     - fewer than `MIN_TYPE_N` items: the temperature was not fitted and stays 1.0;
     - fewer than `CALIB_WARN_N` items: it was fitted, on little evidence;
@@ -766,7 +767,8 @@ def calibration_report(records: Sequence[Tuple[int, Any, Any, int]],
     - it came back unchanged at 1.0 although it was fitted, which usually means the items gave
       the fit nothing to correct -- what a model already certain and right on them produces.
 
-    A type with no calibration items at all has no issues; it was not in the data.
+    A type with no calibration items at all has no issues and no metric keys; it was not in the
+    data, so there is nothing to score it on.
     """
     import numpy as np
 

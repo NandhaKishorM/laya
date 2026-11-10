@@ -1,0 +1,16 @@
+{
+  "name": "option_order_id_repr",
+  "state": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "it's": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account.",
+      "option_order": [
+        0,
+        0
+      ]
+    }
+  },
+  "error_type": "ValueError",
+  "error_message": "question \"it's\": 'option_order' must be a permutation of range(2) -- one slot per option, each option once -- got [0, 0]"
+}

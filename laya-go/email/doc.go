@@ -8,8 +8,8 @@
 // (often a different request) weighed on the answer as much as the new message.
 //
 // CleanBody removes quoted history, signatures, device footers and disclaimers, and keeps the
-// first maxChars characters. State wraps it in the state the agent reads; EmailQuestions, the
-// preset questions for mail, is not part of this package yet.
+// first maxChars characters. State wraps it in the state the agent reads. The preset questions for
+// mail live in package presets (Email and EmailWith).
 //
 // # Why the patterns are not plain regexp
 //

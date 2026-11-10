@@ -225,6 +225,18 @@ func WithBatchSize(states int) CallOption { return func(c *call) { c.batch = sta
 // step. WithSortByLength(false) is the default.
 func WithSortByLength(on bool) CallOption { return func(c *call) { c.sort = on } }
 
+// WithMaxLen overrides the checkpoint's sequence budget for this call (Python's max_len); 0 or less
+// means no override. A start hook may still replace it through PredictContext.MaxLen.
+func WithMaxLen(tokens int) CallOption { return func(c *call) { c.maxLen = tokens } }
+
+// WithHeadMaxLen overrides the question half of the budget for this call (Python's head_max_len);
+// 0 or less means no override.
+func WithHeadMaxLen(tokens int) CallOption { return func(c *call) { c.headMaxLen = tokens } }
+
+// HasLangTemperatures reports whether the agent has per-language temperatures, so the language of
+// a call can change its answers. A Router groups batch requests by language only for such an agent.
+func (a *Agent) HasLangTemperatures() bool { return a.temps != nil && len(a.temps.ByLanguage) > 0 }
+
 // Predict answers every question about one state. Its errors are those of PredictBatch, except
 // that a failing state's error is returned without the *StateError around it.
 func (a *Agent) Predict(ctx context.Context, state any, qs schema.Questions, opts ...CallOption) (schema.Prediction, error) {

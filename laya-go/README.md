@@ -5,7 +5,7 @@ modules. Running the model needs the nested `onnx` module, which uses cgo.
 
 The foundation (language detection, questions, sequences, the tokenizer) and the predict path
 (`infer`, `agent`) are here, and the `onnx` module runs the graph. The router's pure routing half
-(`router`) and its `on_route` hooks are here; loading and routed inference come in later changes.
+(`router`) and its `on_route` hooks are here; loading and routed inference follow below.
 
 | Package | What it is |
 | --- | --- |
@@ -18,7 +18,7 @@ The foundation (language detection, questions, sequences, the tokenizer) and the
 | `sequence` | `build_sequence`, `build_head`, `state_room`, `window_budget` and `window_batch_cap`: `EncodeState`, `Build`, `StateRoom`, `PlanWindows`, `BatchCap`. |
 | `infer` | The seam to a model runtime: `Batch` (the graph's five inputs), `Output` (its two), `Session`, and the shape checks `Batch.Validate` and `Output.Check`. |
 | `agent` | `ONNXAgent.predict` and `predict_batch` over an `infer.Session`: `Open`, `Predict`, `PredictBatch`, `LoadConfig`, `WithCalibration` (installs a `calibrate` payload at `Open`) and `CalibrationPayload` (writes one), with batch size, sort-by-length and context cancellation between runs. |
-| `router` | Which checkpoint reads a request, the port of the routing half of `laya/router.py`: `New`, `Route`, `RouteBatch`, `NormaliseName`, `EnglishFromCode`, `MatchTypedDecisionsWorkflow`, `QuestionSchema`. Decisions carry laya's reason strings. `OnRoute` hooks (`AddHook`, `WithInstalledHooks`, `ForHooks`) may observe or replace a decision, under the agent's hook dispatcher. With `WithAgentFactory` it also loads: `Load`, `Lease` (an evicted agent closes after its last lease), `Attach`, `Preload`, `Unload`, `UnloadAll`, `Close`, LRU `WithMaxLoaded`, single-flight builds, `OnLoad`/`OnEvict` hooks. `WithSHA256Digests`, a nested `LAYA_SHA256_DIGESTS` and `ExpectedSHA256` give each checkpoint its own digest pins. |
+| `router` | Which checkpoint reads a request, the port of the routing half of `laya/router.py`: `New`, `Route`, `RouteBatch`, `NormaliseName`, `EnglishFromCode`, `MatchTypedDecisionsWorkflow`, `QuestionSchema`. Decisions carry laya's reason strings. `OnRoute` hooks (`AddHook`, `WithInstalledHooks`, `ForHooks`) may observe or replace a decision, under the agent's hook dispatcher. With `WithAgentFactory` it also loads: `Load`, `Lease` (an evicted agent closes after its last lease), `Attach`, `Preload`, `Unload`, `UnloadAll`, `Close`, LRU `WithMaxLoaded`, single-flight builds, `OnLoad`/`OnEvict` hooks. Routed inference: `Predict`, `PredictRouted`, `PredictBatch` (grouped per checkpoint, then per question schema, token budgets and language; results in input order), `PredictLong`; each returns a `Routed` with the decision (laya's `routing` key). The agent is leased for the whole call, and `agent.Hook`s on the Router wrap route, load and inference. `Decide`/`DecideBatch` are not ported. `WithSHA256Digests`, a nested `LAYA_SHA256_DIGESTS` and `ExpectedSHA256` give each checkpoint its own digest pins. |
 | `onnx` | A nested module (cgo, its own `go.mod`): `onnx.Open` runs a fused `laya.onnx` on ONNX Runtime and implements `infer.Session`, for `agent.Open`. Needs an ONNX Runtime 1.29+ shared library; `CGO_ENABLED=0` builds and `Open` returns `ErrNoCGO`. |
 | `tokenizer` | A reader and runner for Hugging Face `tokenizer.json` (BPE): normalizer, pre-tokenizer, added tokens, byte fallback, decoder. |
 | `internal/unicodedata` | The character predicates `laya/lang.py` leans on, recorded from CPython. |

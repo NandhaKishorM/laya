@@ -64,6 +64,10 @@ func (a *Agent) PredictLong(ctx context.Context, state any, qs schema.Questions,
 		// would return ungated answers to a caller who asked for a gate.
 		return LongPrediction{}, errors.New("agent: PredictLong takes no confidence gate; use Predict or PredictBatch with WithMinConfidence")
 	}
+	if c.maxLen > 0 || c.headMaxLen > 0 {
+		// Python's predict_long has no max_len: a scan sizes its windows with WithWindow.
+		return LongPrediction{}, errors.New("agent: PredictLong takes no WithMaxLen or WithHeadMaxLen; size the windows with WithWindow")
+	}
 	if c.hooked {
 		return LongPrediction{}, errors.New("agent: PredictLong runs no hooks; use Predict or PredictBatch with WithHooks")
 	}

@@ -48,6 +48,8 @@ Everything is environment variables, so one image serves a laptop dev run and a 
 | `LAYA_MAX_CONCURRENT` | requests admitted past auth at once; excess gets `503` | `16` |
 | `LAYA_BODY_READ_TIMEOUT` | seconds a request may spend delivering its body before the server answers `408` and releases the admission slot it was holding. Unparseable, non-positive or infinite input falls back | `10` |
 | `LAYA_MAX_BATCH_TOKENS` | tokens one `/v1/systemone/batch` FORWARD PASS may collate (`states` x questions x row width); a larger batch is split into several passes, not refused | `131072` |
+| `LAYA_MAX_QUESTIONS` | questions answered per forward pass on a single `/v1/systemone` request; a larger one is split into passes that each fit, not refused. Unparseable or non-positive input logs a warning and falls back | `64` |
+| `LAYA_OUTCOME_LOG` | SQLite file recording every decision for offline calibration (`OutcomeLogHook`); unset disables logging. Raw state text is never stored | none |
 | `LAYA_JEV_STRICT` | serve the strict Jev wire contract: no root `routing`, no per-answer `action` / `answer_confidence`, no `confidence` on noul answers, and `usage` reduced to `input_tokens` + `output_tokens`. For clients that validate the response against the Jev contract with no extra fields | `0` |
 | `LAYA_TOURNAMENT_GROUP` | answer a `choice` with more options than this by elimination, in groups of this size, on `/v1/systemone` and `/v1/systemone/batch`, and raise their option cap from 100 to 255. See [Large choices](#large-choices-laya_tournament_group). Unset, or outside 2 to 100, is off | `0` |
 
@@ -448,7 +450,7 @@ it answers `503` with `Retry-After: 1`.
 |---|---|
 | request body | 2 MiB, enforced while streaming -- a chunked or understated `Content-Length` cannot bypass it |
 | `state` | 50,000 characters of the text the model is given -- the string itself for a string state, `json.dumps(state, ensure_ascii=False)` for an object or array |
-| questions per request | 64 |
+| questions per request | 64 per forward pass (`LAYA_MAX_QUESTIONS`); a single request holding more is split into passes that each fit, not refused |
 | `states` per batch request | 64 |
 | options per `choice` question | 100; 255 with `LAYA_TOURNAMENT_GROUP` set |
 | levels per `score` question | 32 |
@@ -472,6 +474,14 @@ batches are split, and raising `max_len` makes each pass narrower rather than co
 work. What this does not bound is how long one request occupies the server; that is
 `LAYA_MAX_CONCURRENT` and the single inference worker, and is already true of one `/v1/systemone`
 request over a 50,000-character state.
+
+A single `/v1/systemone` request is split the same way: each forward pass answers at most
+`LAYA_MAX_QUESTIONS` questions (64 by default) holding at most 512 options across them and at most
+`LAYA_MAX_BATCH_TOKENS` tokens of rows, and the answers are merged by question id with the usage
+summed -- `input_tokens` and `output_tokens` added, `state_tokens` carried, truncation reported
+across the passes. What splitting cannot fix is still refused: a missing or oversized `state`, a
+per-question option cap, a null score level, an oversized body. A request that fits in one pass
+goes through exactly as before, in a single forward pass.
 
 The option caps are HTTP-only amplification guards -- `MAX_CHOICE_OPTIONS` per question (100, or
 `MAX_TOURNAMENT_CHOICE_OPTIONS` = 255 with `LAYA_TOURNAMENT_GROUP` set) and `MAX_TOTAL_OPTIONS`

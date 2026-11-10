@@ -267,6 +267,19 @@ in
       '';
     };
 
+    maxQuestions = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.positive;
+      default = null;
+      example = 128;
+      description = ''
+        Questions one /v1/systemone FORWARD PASS may answer (sets
+        `LAYA_MAX_QUESTIONS`). A single request holding more is split into
+        passes that each fit -- the question count, the cross-question option
+        total and the token budget all bound one pass -- not refused. null
+        leaves the server's own default (64).
+      '';
+    };
+
     tournamentGroup = lib.mkOption {
       type = lib.types.nullOr (lib.types.ints.between 2 100);
       default = null;
@@ -347,6 +360,19 @@ in
       '';
     };
 
+    outcomeLog = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "/var/lib/laya-serve/decisions.db";
+      description = ''
+        SQLite file recording every decision for offline calibration (sets
+        `LAYA_OUTCOME_LOG`). Raw state text is never stored, only a hash of
+        each state with the answers and confidences; see `OutcomeLogHook`.
+        The file must be writable by the service user, so under the default
+        `StateDirectory` it needs no extra setup. null disables logging.
+      '';
+    };
+
     apiKeyFile = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
@@ -411,6 +437,10 @@ in
         LAYA_MAX_TOKEN_BUDGET = toString cfg.maxTokenBudget;
       } // lib.optionalAttrs (cfg.maxBatchTokens != null) {
         LAYA_MAX_BATCH_TOKENS = toString cfg.maxBatchTokens;
+      } // lib.optionalAttrs (cfg.maxQuestions != null) {
+        LAYA_MAX_QUESTIONS = toString cfg.maxQuestions;
+      } // lib.optionalAttrs (cfg.outcomeLog != null) {
+        LAYA_OUTCOME_LOG = cfg.outcomeLog;
       } // lib.optionalAttrs (cfg.tournamentGroup != null) {
         LAYA_TOURNAMENT_GROUP = toString cfg.tournamentGroup;
       } // lib.optionalAttrs (cfg.revision != null) {

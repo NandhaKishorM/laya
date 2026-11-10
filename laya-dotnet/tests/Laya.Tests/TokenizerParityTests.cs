@@ -124,6 +124,13 @@ public sealed class TokenizerParityTests
             var id       = recorded.GetProperty("id").GetString()!;
             var question = questions[id];
 
+            // The order the sequence was recorded with (only written when the question has one): the
+            // markers and ids below are in slot order, so they are only comparable if it was applied.
+            if (recorded.TryGetProperty("option_order", out var recordedOrder))
+                Assert.Equal(GoldenData.Ints(recordedOrder), question.OptionOrder);
+            else
+                Assert.Null(question.OptionOrder);
+
             // The rendered option strings come first: they are the readable form of the divergence,
             // so a mismatch here explains a mismatch in the ids below.
             Assert.Equal([.. recorded.GetProperty("options").EnumerateArray().Select(e => e.GetString()!)],

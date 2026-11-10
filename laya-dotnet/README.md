@@ -215,6 +215,31 @@ Question.Noul(
     ifTrue:  "phishing, scam, or fraud");
 ```
 
+### Option order
+
+Every question type can carry an `OptionOrder`, Python's `option_order`: a permutation of the option
+indices saying which option goes in which slot. Slot `s` shows option `OptionOrder[s]`. Answers still come
+back in your own option order: the model's row is read in slot order and scattered back before the answer
+is built, so `Choice`, `Probabilities` and `Score` mean what they always did. Use it to counter the
+encoder's preference for the first or last slot, for example by asking the same question under a few
+rotations.
+
+```csharp
+// Slot 0 shows "sales", slot 1 "billing", slot 2 "technical".
+var q = Question.Choice("Which team?", "billing", "technical", "sales").WithOptionOrder(2, 0, 1);
+Question.Score("How urgent?", "low", "mid", "high").WithOptionOrder([2, 0, 1]);
+Question.Noul("Is it spam?").WithOptionOrder(1, 0);   // slot 0 shows "true", slot 1 "false"
+```
+
+The order needs `n` entries, each of `0..n-1` once: `n` is the number of choice options, score levels, or 2
+for a noul. It is checked when the question is answered (`Predict`, `PredictBatch`, `PredictLong`), not
+when it is built, and an invalid one throws `ArgumentException` with Python's text, naming the question:
+`question 'dept': 'option_order' must be a permutation of range(3) -- one slot per option, each option
+once -- got [0, 0, 1]`. `LayaShortlist.Predict` drops the order of a choice it narrows (with one warning
+naming the question) because it no longer fits the kept labels; a choice it forwards whole keeps it. The
+router's batch grouping treats a different order as a different question set. Questions are copied by
+`WithOptionOrder`; the original is unchanged.
+
 ### Instructions
 
 `instructions` is `object`, not `string`. A string is used exactly as written, which is what you
@@ -860,11 +885,14 @@ foreach (var warning in engine.Config.ClampedTemperatures)
 | `static NoulQuestion Noul(object instructions, object? ifFalse = null, object? ifTrue = null)` | Yes/no, with optional wording for each side. |
 | `QuestionType Type` | `Choice`, `Score` or `Noul`. |
 | `object Instructions` | The prompt, as supplied. |
+| `IReadOnlyList<int>? OptionOrder` | Which option each slot shows, or `null` for the canonical order. See [Option order](#option-order). |
 
 - **`ChoiceQuestion`**: `IReadOnlyList<KeyValuePair<string, object?>> Options` (index N is the
-  label for logit N), `IReadOnlyList<string> Labels`.
-- **`ScoreQuestion`**: `IReadOnlyList<object?> Levels`, lowest first.
-- **`NoulQuestion`**: `object? IfFalse`, `object? IfTrue` (`null` means the default wording).
+  label for logit N), `IReadOnlyList<string> Labels`, `ChoiceQuestion WithOptionOrder(params int[] order)`
+  and `WithOptionOrder(IEnumerable<int>? order)` (a copy with that order; `null` clears it).
+- **`ScoreQuestion`**: `IReadOnlyList<object?> Levels`, lowest first, and the same `WithOptionOrder`.
+- **`NoulQuestion`**: `object? IfFalse`, `object? IfTrue` (`null` means the default wording), and the same
+  `WithOptionOrder` (0 is the false option, 1 the true one).
 
 Questions are immutable. You can reuse the same instance across calls, sets and threads.
 
@@ -969,6 +997,7 @@ foreach (var line in SequenceBuilder.RenderOptions(Question.Noul("Is this spam?"
 | `InvalidOperationException` | `Create` | `tokenizer.json` belongs to a different checkpoint (special-token id mismatch). |
 | `OnnxRuntimeException` | `Create` | ORT couldn't load the graph, or the requested execution provider isn't installed. |
 | `ArgumentException` | `Predict` | Empty `QuestionSet`, or a question whose options can't fit in `HeadMaxLen`. |
+| `ArgumentException` | `Predict`, `PredictBatch`, `PredictLong` | A question's `OptionOrder` is not a permutation of its option indices; the message is Python's and names the question. |
 | `ArgumentException` | `Question.*`, `QuestionSet` | Duplicate choice label or question id, no options or levels, empty id. |
 | `System.Text.Json.JsonException` | `Predict` | State contains a value with no JSON equivalent (a POCO, for example), or a circular reference. |
 | `ObjectDisposedException` | `Predict` | The engine has been disposed. |
@@ -1119,7 +1148,7 @@ disclaimer, signature and reply-header rules, including Portuguese, Spanish and 
   (`lang_temperatures`, with per-call `lang`) are ported (see "Abstention" and "Per-language temperatures" above).
   Calibration files and histogram binning (`calibration=` / `load_calibration`) are ported too (see "Calibration files and
   histogram binning" above); fitting and saving one (`fit_binning`, `save_calibration`) is not.
-- **Other Python-only APIs are not ported:** hooks, question option ordering and digest controls.
+- **Other Python-only APIs are not ported:** hooks and digest controls.
   Batching is ported (`PredictBatch`, `LayaRouter.PredictBatch` / `RouteBatch`) without hooks and the router
   `diagnostics` dictionary.
 - **Usage diagnostics:** Python's `state_tokens`, `truncated`, `state_tokens_dropped`, `truncated_questions`

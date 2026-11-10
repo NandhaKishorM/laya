@@ -15,10 +15,10 @@ namespace Laya.Tests;
 public sealed partial class PredictParityTests(AllEnginesFixture fixture)
 {
     /// <summary>Probabilities and confidences: 4-dp values, so a rounding boundary is 1e-4 wide.</summary>
-    private const double ProbTolerance = 2e-4;
+    internal const double ProbTolerance = 2e-4;
 
     /// <summary>A score is a weighted sum over level indices, so it carries several of those errors.</summary>
-    private const double ScoreTolerance = 2e-3;
+    internal const double ScoreTolerance = 2e-3;
 
     // ── cross-checkpoint theory data ──────────────────────────────────────────
 
@@ -242,7 +242,7 @@ public sealed partial class PredictParityTests(AllEnginesFixture fixture)
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private static void AssertChoice(JsonElement want, ChoiceAnswer got, string where)
+    internal static void AssertChoice(JsonElement want, ChoiceAnswer got, string where)
     {
         var probabilities = want.GetProperty("probabilities");
         // Labels in order, because the entire marker layout rests on labels being positional.
@@ -258,7 +258,7 @@ public sealed partial class PredictParityTests(AllEnginesFixture fixture)
         AssertClose(1.0, got.Probabilities.Sum(p => p.Value), 1e-3, $"{where}.probabilities sum");
     }
 
-    private static void AssertScore(JsonElement want, ScoreAnswer got, string where)
+    internal static void AssertScore(JsonElement want, ScoreAnswer got, string where)
     {
         // Python's JSON keys both the legend and the distribution by the stringified level index.
         var legend = want.GetProperty("legend");
@@ -278,7 +278,7 @@ public sealed partial class PredictParityTests(AllEnginesFixture fixture)
         AssertClose(want.GetProperty("score").GetDouble(), got.Score, ScoreTolerance, $"{where}.score");
     }
 
-    private static void AssertClose(double expected, double actual, double tolerance, string what) =>
+    internal static void AssertClose(double expected, double actual, double tolerance, string what) =>
         Assert.True(Math.Abs(expected - actual) <= tolerance,
             $"{what}: python {expected}, dotnet {actual} (tolerance {tolerance})");
 }

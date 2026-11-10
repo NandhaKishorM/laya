@@ -173,7 +173,15 @@ public static class LayaShortlist
                 reduced[qid] = question;
                 continue;
             }
-            reduced[qid] = Question.Choice(choice.Instructions, SubsetOptions(choice.Options, labels));
+            var narrowed = Question.Choice(choice.Instructions, SubsetOptions(choice.Options, labels));
+            // shortlist.py:425-448: an order over the caller's label set no longer fits the kept labels, so it
+            // is dropped (not remapped) with one RuntimeWarning naming the question.
+            if (choice.OptionOrder is { } order)
+                WarnOnce.Warn(
+                    $"laya.shortlist: question {PythonStr.Repr(qid)}: 'option_order' ({order.Count} slots) was dropped because the label "
+                    + $"set was narrowed to {labels.Count}; the order no longer fits the kept options and remapping "
+                    + "it onto them would move options between slots.");
+            reduced[qid] = narrowed;
         }
 
         var result = predictor.Predict(state, reduced);

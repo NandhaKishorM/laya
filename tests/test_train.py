@@ -468,6 +468,35 @@ class LossTests(unittest.TestCase):
 
 
 class TrainingLoopTests(unittest.TestCase):
+    def test_uneven_micro_batches_match_one_soft_ce_batch(self):
+        tok = make_tokenizer()
+        rows = [{"state": "invoice", "questions": {"urgent": URGENT}, "expected": {"urgent": label}}
+                for label in (False, False, True)]
+        items, skipped = items_from_rows(tok, rows, 64, 40)
+        self.assertFalse(skipped)
+
+        def train(micro_batch):
+            model = torch.nn.Module()
+            model.encoder = torch.nn.Identity()
+            model.score = torch.nn.Parameter(torch.tensor(-0.2))
+
+            def forward(model, batch, *_args):
+                return torch.stack((torch.zeros_like(model.score), model.score)).expand(len(batch["qtype"]), -1)
+
+            config = TrainConfig(epochs=1, micro_batch=micro_batch, grad_accum=2, loss="soft-ce",
+                                 freeze_encoder=True, head_lr=0.1, weight_decay=0.0, seed=42, log_every=0)
+            with patch("laya.train._forward", side_effect=forward):
+                history = train_model(model, tok, items, config, torch.device("cpu"), 64, 40)
+            return model.score.item(), history[0]
+
+        # Seed 42 leaves the positive example alone in the last micro-batch.
+        split_weight, split_loss = train(2)
+        full_weight, full_loss = train(3)
+        with self.subTest("optimizer update"):
+            self.assertAlmostEqual(split_weight, full_weight, places=6)
+        with self.subTest("epoch loss"):
+            self.assertAlmostEqual(split_loss, full_loss, places=6)
+
     def test_partial_accumulation_window_averages_its_own_steps(self):
         class ScalarModel(torch.nn.Module):
             def __init__(self):

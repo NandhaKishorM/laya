@@ -168,8 +168,19 @@ impl SequenceBuilder {
         );
         let mut header_ids: Vec<u32> = tokenizer.encode(&header_text)?;
 
+        // Slot s shows option `order[s]`; the markers follow slot order. Python's `build_head`
+        // walks `option_order` as given, so an order that is not a permutation of the options
+        // (which the engine refuses first) is walked as far as it is valid here.
+        let canonical: Vec<usize> = (0..options.len()).collect();
+        let slots: Vec<usize> = match question.option_order() {
+            Some(order) if order.len() == options.len() => order
+                .iter()
+                .map_while(|&i| usize::try_from(i).ok().filter(|&i| i < options.len()))
+                .collect(),
+            _ => canonical,
+        };
         let mut option_ids: Vec<Vec<u32>> = Vec::with_capacity(options.len());
-        for option in &options {
+        for option in slots.iter().map(|&i| &options[i]) {
             let encoded = tokenizer.encode(&format!(" {}", Self::scrub(option, mask_token)))?;
             let take = Self::MAX_OPTION_TOKENS.min(encoded.len());
             let mut fragment = Vec::with_capacity(take + 1);

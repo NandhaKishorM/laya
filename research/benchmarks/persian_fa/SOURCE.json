@@ -1,0 +1,88 @@
+{
+  "source_repository": "https://github.com/alipyth/laya-persian-benchmark",
+  "source_commit": "e307e54029da7d5c9da72b54b4211378490cf34c",
+  "author": "Ali Jahani (alipyth)",
+  "scope": "Frozen fixtures, prompts, normalization, metric definitions and historical v1 answer records. Runner and audit adapted for Laya. Historical responses are projected answer records, not complete SDK responses.",
+  "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "20996e98a4541eb1bdf9a5bde002e35995a8c7ca883df6012d12557269e84c79"
+    },
+    {
+      "path": "data/cases.jsonl",
+      "sha256": "32141393d78cfe78740ce88487a5e11b554c2d47d6a1809cf0bab8637c4e12e3"
+    },
+    {
+      "path": "data/manifest.json",
+      "sha256": "27233b9fbe3d718946d08ed201865528fa1f4fef6610a76220e016449c3342e2"
+    },
+    {
+      "path": "metrics.py",
+      "sha256": "7aca8ff569b30fe4e08a60cd859ba911a3efb9c573699d8ad277e6c0b9d1930b"
+    },
+    {
+      "path": "normalize.py",
+      "sha256": "f433f925324bfd798087f4d57f15ba8f38e3915c8593aa4bb30be8860abea76c"
+    },
+    {
+      "path": "prompts.py",
+      "sha256": "871cc7517c01eb68bb899d3251161d1bf81c809e9f768a2d08597f4024168e13"
+    },
+    {
+      "path": "results/v1/comparison_choice_en.md",
+      "sha256": "aa9d3ac09f61dbf530e40c57f3f16291e840087a9a2411d8b8189844d4103d5b"
+    },
+    {
+      "path": "results/v1/comparison_choice_fa.md",
+      "sha256": "c762b421a3cbfec6958a9e19a22b943b0659ef189d8d423efd0b5ad15994ce03"
+    },
+    {
+      "path": "results/v1/english/metadata.json",
+      "sha256": "84ad499a60abcbd8bef8bf4dfc4bb1e810ea3a669a23b082de4a3a08a69474c4"
+    },
+    {
+      "path": "results/v1/english/responses.jsonl",
+      "sha256": "aa5887f92abbc1610c26633999f704081fe15595610a8cec4d862a7dd48017d5"
+    },
+    {
+      "path": "results/v1/english/summary.json",
+      "sha256": "1c906f725de5ad2d45cc14b34c79ad7f6cee14f2c1e687e67884290c7669280d"
+    },
+    {
+      "path": "results/v1/english/summary.md",
+      "sha256": "db9ff0502f203e82524a4d98c25828abdcbee197918423f41a7ab6c155347f4b"
+    },
+    {
+      "path": "results/v1/multilingual/metadata.json",
+      "sha256": "fe8f36e7634fb951472c715c18ca09f253ba5aecaf92372c5e108967b5b36cb6"
+    },
+    {
+      "path": "results/v1/multilingual/responses.jsonl",
+      "sha256": "a04e7b0ccc4343d4b614a343f8db51fcf923c72277211b5e65bbbed121072931"
+    },
+    {
+      "path": "results/v1/multilingual/summary.json",
+      "sha256": "5d4f967b33db72f0284a8e5cefc1fbcd5bcbeae6ae89e953a7ed7d7e39c07b43"
+    },
+    {
+      "path": "results/v1/multilingual/summary.md",
+      "sha256": "978fc23dd2aaac27631785f0295f1cc6d10f150c7c9e6ee70b837fa4d26dfb86"
+    },
+    {
+      "path": "results/v1/multilingual_norm/metadata.json",
+      "sha256": "b35d057a0b823ba157f2a82da57911b60f3cd009b157edc80905ff48cc2e1baf"
+    },
+    {
+      "path": "results/v1/multilingual_norm/responses.jsonl",
+      "sha256": "984e618d87f72e266a3a5de47318855cbdee73e9355968075ace073e5b790e90"
+    },
+    {
+      "path": "results/v1/multilingual_norm/summary.json",
+      "sha256": "cd4bf66e2208770b0528744f948ada16bc759aa34fbab18371a916888e60dac8"
+    },
+    {
+      "path": "results/v1/multilingual_norm/summary.md",
+      "sha256": "6de2ca7b9a3da251794a17ebb656ae2d92890cce18f32666447359c937b9bd40"
+    }
+  ]
+}

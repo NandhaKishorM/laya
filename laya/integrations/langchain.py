@@ -38,6 +38,7 @@ from ._controls import reject_remote_lang_guess as _reject_remote_lang_guess
 from ._controls import require_router_controls as _require_router_controls, router_kwargs as _router_kwargs
 from ._guard import answer_number as _answer_number
 from ._guard import answers_map as _answers_map
+from ._guard import malformed as _malformed
 from ._guard import score_violation_probability as _score_violation_probability
 
 
@@ -441,13 +442,14 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
     """Zero-latency LangGraph conditional edge and LangChain LCEL routing runnable.
 
     Evaluates user input against typed criteria in ~33 ms without token generation.
-    Supports confidence threshold gating and fallback routing, and answers a list of
-    inputs in one shared forward pass through `batch`.
+    Supports confidence threshold gating or an opt-in native auto/review policy,
+    and answers a list of inputs in one shared forward pass through `batch`.
     """
 
     criteria: Dict[str, str]
     instructions: str = "Which route should handle this request?"
     confidence_threshold: float = 0.0
+    decision_policy: str = "confidence"
     fallback: Optional[str] = None
     state_key: Optional[Union[str, Callable[[Any], Any]]] = None
     agent: Optional[Any] = None
@@ -494,6 +496,8 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
         on_predict_end: Optional[Any] = None,
         hooks_raise: Optional[bool] = None,
         hooks_timeout: Optional[float] = None,
+        *,
+        decision_policy: str = "confidence",
         **kwargs: Any,
     ):
         if _RUNNABLE_AVAILABLE:
@@ -501,6 +505,7 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
                 criteria=criteria,
                 instructions=instructions,
                 confidence_threshold=confidence_threshold,
+                decision_policy=decision_policy,
                 fallback=fallback,
                 state_key=state_key,
                 agent=agent,
@@ -524,6 +529,7 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
             self.criteria = criteria
             self.instructions = instructions
             self.confidence_threshold = confidence_threshold
+            self.decision_policy = decision_policy
             self.fallback = fallback
             self.state_key = state_key
             self.agent = agent
@@ -543,8 +549,21 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
             self.hooks_timeout = hooks_timeout
         self.question_id = "route"
         self.last_decision: Optional[Dict[str, Any]] = None
+        self._validate_decision_policy()
+
+    def _validate_decision_policy(self) -> None:
+        if self.decision_policy not in ("confidence", "native"):
+            raise ValueError("decision_policy must be 'confidence' or 'native'")
+        if self.decision_policy == "native":
+            if not isinstance(self.fallback, str) or not self.fallback.strip():
+                raise ValueError("native decision_policy requires a non-empty fallback")
+            if self.confidence_threshold != 0.0:
+                raise ValueError("native decision_policy requires confidence_threshold=0; "
+                                 "configure the backend's min_confidence instead")
 
     def _questions(self) -> Dict[str, Any]:
+        # Fields are mutable (including via Pydantic copies); refuse invalid policy before inference.
+        self._validate_decision_policy()
         return {
             self.question_id: {
                 "type": "choice",
@@ -555,6 +574,22 @@ class LayaRouter(_BatchedRunnable, RunnableSerializable):
 
     def _finish(self, result: Dict[str, Any], input: Any) -> str:
         self.last_decision = result
+        self._validate_decision_policy()
+        if self.decision_policy == "native":
+            ans = _answers_map(result, "LayaRouter").get(self.question_id)
+            if ans is None:
+                raise _malformed("LayaRouter", "missing answer for %r" % self.question_id)
+            route = ans.get("route")
+            # Review need not carry a usable business choice. The backend has already
+            # combined its signals; do not reconstruct them or consult shared last_decision.
+            if route == "review":
+                return self.fallback
+            if route != "auto":
+                raise _malformed("LayaRouter", "native route must be 'auto' or 'review'")
+            choice = ans.get("choice")
+            if not isinstance(choice, str) or choice not in self.criteria:
+                raise _malformed("LayaRouter", "native auto choice must name a configured criterion")
+            return choice
         ans = result["answers"][self.question_id]
         choice = ans["choice"]
         # Gate on the same number core's `flag_low_confidence` gates on: `answer_confidence`

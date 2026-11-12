@@ -25,16 +25,19 @@ def build_tiny_repo(repo: Path):
     from safetensors.torch import save_file
     from tokenizers import Tokenizer
     from tokenizers.models import WordLevel
+    from tokenizers.pre_tokenizers import Whitespace
     from transformers import BertConfig, BertModel, PreTrainedTokenizerFast
 
     repo.mkdir(parents=True)
     config = BertConfig(vocab_size=6, hidden_size=64, num_hidden_layers=1,
                         num_attention_heads=2, intermediate_size=128)
     config.save_pretrained(repo / "encoder")
+    tok_obj = Tokenizer(WordLevel(
+        {"[PAD]": 0, "[UNK]": 1, "[CLS]": 2, "[SEP]": 3, "[MASK]": 4, "hello": 5},
+        unk_token="[UNK]"))
+    tok_obj.pre_tokenizer = Whitespace()
     tokenizer = PreTrainedTokenizerFast(
-        tokenizer_object=Tokenizer(WordLevel(
-            {"[PAD]": 0, "[UNK]": 1, "[CLS]": 2, "[SEP]": 3, "[MASK]": 4, "hello": 5},
-            unk_token="[UNK]")),
+        tokenizer_object=tok_obj,
         pad_token="[PAD]", unk_token="[UNK]", cls_token="[CLS]",
         sep_token="[SEP]", mask_token="[MASK]",
     )
@@ -182,6 +185,76 @@ class RouterPredictBatchTests(unittest.TestCase):
             for qid in single["answers"]:
                 self.assertEqual(single["answers"][qid]["probabilities"],
                                  result["answers"][qid]["probabilities"])
+
+    def test_interleaved_schemas_chunking_and_length_sort_order_match_single(self):
+        """Interleaved schemas, multi-chunk execution, and length-sort order in Router.predict_batch.
+
+        Verifies that when heterogeneous schemas are interleaved across requests:
+        1. Router groups requests by schema, giving each group enough states (> batch_size)
+           to trigger multiple forward-pass chunks and within-group length sorting.
+        2. Within each group, states arrive in non-sorted length order. With sort_by_length=True,
+           states are reordered by length internally and restored to the exact original input index.
+        3. Every batched result matches its single-request predict() call in schema keys,
+           token sequence usage (state_tokens, input_tokens), and answer probability distributions.
+        """
+        schema_a = {"intent": QUESTIONS["intent"]}
+        schema_b = {"mentions_hello": QUESTIONS["mentions_hello"]}
+
+        # Group A lengths: [12, 2, 6] (non-sorted)
+        states_a = [
+            "hello goodbye hello goodbye hello goodbye hello goodbye hello goodbye hello goodbye",
+            "hello goodbye",
+            "hello goodbye hello goodbye hello goodbye",
+        ]
+        # Group B lengths: [5, 14, 1] (non-sorted)
+        states_b = [
+            "goodbye hello goodbye hello goodbye",
+            "hello goodbye hello goodbye hello goodbye hello goodbye hello goodbye hello goodbye hello goodbye",
+            "hello",
+        ]
+
+        # Interleave schemas so neither group forms a contiguous batch
+        requests = [
+            {"state": states_a[0], "questions": schema_a},  # index 0: schema_a, 12 tokens
+            {"state": states_b[0], "questions": schema_b},  # index 1: schema_b, 5 tokens
+            {"state": states_a[1], "questions": schema_a},  # index 2: schema_a, 2 tokens
+            {"state": states_b[1], "questions": schema_b},  # index 3: schema_b, 14 tokens
+            {"state": states_a[2], "questions": schema_a},  # index 4: schema_a, 6 tokens
+            {"state": states_b[2], "questions": schema_b},  # index 5: schema_b, 1 token
+        ]
+
+        for sort_by_length in (False, True):
+            diag = {}
+            batched = self.router.predict_batch(requests, batch_size=2, sort_by_length=sort_by_length,
+                                                diagnostics=diag)
+            self.assertEqual(len(batched), len(requests))
+
+            if sort_by_length:
+                # Both 3-item groups cleared 1 < batch_size < len(group) and reordered internally
+                self.assertEqual(diag.get("sort_by_length", {}).get("groups"), 2)
+                self.assertEqual(diag.get("sort_by_length", {}).get("reordered"), 2)
+                self.assertEqual(diag.get("sort_by_length", {}).get("smallest"), 3)
+                self.assertEqual(diag.get("sort_by_length", {}).get("largest"), 3)
+            else:
+                self.assertNotIn("sort_by_length", diag)
+
+            for i, (req, result) in enumerate(zip(requests, batched)):
+                single = self.router.predict(req["state"], req["questions"])
+                # Exact schema keys match request
+                self.assertEqual(set(result["answers"]), set(req["questions"]),
+                                 f"Schema mismatch at index {i} (sort_by_length={sort_by_length})")
+                # Token counts are distinct per state within each group, detecting same-schema swaps
+                self.assertEqual(result["usage"]["state_tokens"], single["usage"]["state_tokens"],
+                                 f"State token mismatch at index {i} (sort_by_length={sort_by_length})")
+                self.assertEqual(result["usage"]["input_tokens"], single["usage"]["input_tokens"],
+                                 f"Input token mismatch at index {i} (sort_by_length={sort_by_length})")
+                # Probability distribution and confidence match single predict() call
+                self.assertEqual(PredictBatchTests._flatten(single), PredictBatchTests._flatten(result),
+                                 f"Prediction mismatch at index {i} (sort_by_length={sort_by_length})")
+                for qid in single["answers"]:
+                    if "probabilities" in single["answers"][qid]:
+                        self.assertEqual(single["answers"][qid]["probabilities"],
+                                         result["answers"][qid]["probabilities"])
 
     def test_empty_router_batch(self):
         self.assertEqual(self.router.predict_batch([]), [])

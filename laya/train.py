@@ -35,6 +35,7 @@ import math
 import os
 import random
 import warnings
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -171,9 +172,14 @@ def target_from_gold(q: Dict[str, Any], gold_q: Dict[str, Any]) -> List[float]:
     the level index as a string for score -- the `{state, questions, gold}` schema in
     `docs/finetune.md`. A choice label that is not a string is also looked up as its JSON key.
     A row whose probabilities sum to zero becomes uniform, as in the scripts. A negative or
-    non-finite probability raises `ValueError`.
+    non-finite probability raises `ValueError`, and so does a `probabilities` that is not a mapping
+    -- a teacher written as a list in option order is the common mistake, and reading it as a list
+    would raise `AttributeError` from `.get`, which `items_from_rows` does not catch.
     """
     probs = gold_q["probabilities"]
+    if not isinstance(probs, Mapping):
+        raise ValueError("gold probabilities must be a mapping keyed by option, got %s: %r"
+                         % (type(probs).__name__, probs))
 
     def get(key, default):
         return probs.get(key, probs.get(str(key), default))
@@ -320,10 +326,14 @@ def items_from_rows(tok, rows: Iterable[Dict[str, Any]], max_len: int,
     """Items from `{state, questions, gold}` or `{state, questions, expected}` rows; returns `(items, skipped)`.
 
     `skipped` counts, by reason, questions that were labelled but could not become an item:
-    `empty_text`, `empty_label`, `invalid_question` and `invalid_target` (a `ValueError` from
-    `to_internal`, `target_from_gold` or `target_from_expected`), plus the reasons `make_item`
-    gives. Questions with neither a `gold` nor an `expected` entry are not counted -- the row
-    simply does not label them.
+    `empty_text`, `empty_label`, `invalid_question` (from `to_internal`) and `invalid_target` (from
+    `target_from_gold` or `target_from_expected`), plus the reasons `make_item` gives, of which only
+    `options_collapsed` and `options_beyond_max_len` can reach this count: both target builders
+    return exactly one entry per option. Either call is caught on `ValueError`, `TypeError` or
+    `KeyError`, so a row that names a type the reader would not expect is still counted -- a `gold`
+    entry with no `probabilities` is a `KeyError`, an unhashable `expected` a `TypeError`. Questions
+    with neither a `gold` nor an `expected` entry are not counted -- the row simply does not label
+    them.
     """
     items, skipped = [], {}
     for row in rows:

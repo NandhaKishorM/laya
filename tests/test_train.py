@@ -550,7 +550,7 @@ class DataTests(unittest.TestCase):
                                         "questions": {"department": DEPARTMENT},
                                         "gold": {"department": {"probabilities": [0.9, 0.05, 0.05]}}}))
             data = root / "tickets.jsonl"
-            # lgtm[py/clear-text-storage-sensitive-data] Synthetic rows stay in TemporaryDirectory.
+            # codeql[py/clear-text-storage-sensitive-data] Synthetic rows stay in TemporaryDirectory.
             data.write_text("\n".join(lines) + "\n", encoding="utf-8")
             config = TrainConfig(epochs=3, micro_batch=4, grad_accum=2, calib_frac=0.25, log_every=0)
 

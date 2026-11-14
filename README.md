@@ -263,18 +263,16 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.31
+## What's new in 0.4.32
 
-* **LangChain and LangGraph can follow vega's own route.** `LayaRouter(decision_policy="native")`
-  returns the fallback branch whenever the answer says `route: "review"`, even at high
-  confidence, and a business branch only on `auto`. The default stays `"confidence"` (#1489).
-* **Cached answers through hooks work on vega.** A start hook's `ctx.skip([result])` returns the
-  answer itself from `predict`, and `predict_long` no longer raises on a cached answer or alters
-  it (#1488). Loading a heads-only policy clears a previous calibration instead of keeping it
-  and reporting `calibrated: True` (#1479).
-* **`laya-ts` explains its routing.** An opt-in diagnostic says which field and line decided the
-  language, matching Python's `analyse(..., explain=True)`. Off by default, and decisions are
-  unchanged (#1447).
+* **Calibration fits about 2.4x faster.** Fitting temperatures, abstention thresholds and the
+  binning map over 100,000 records went from 6.4 s to 2.7 s, with byte-identical results (#1496).
+* **`LayaToolSelector` takes a per-bucket `min_confidence` map.** It used to crash comparing a
+  number with the map; it now gates each answer at its own bucket's threshold, as the core gate
+  does (#1494).
+* **`OptionStabilityHook` no longer counts the original question twice** when the option keys
+  are already `A`, `B`, ...; that doubled one rendering's weight and could turn a `VERIFY`
+  into an `ACCEPT` (#1498).
 
 ## Where to go next
 

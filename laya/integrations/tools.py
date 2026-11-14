@@ -29,7 +29,7 @@ from ._controls import hook_kwargs as _hook_kwargs
 from ._controls import predict_kwargs as _predict_kwargs
 from ._controls import reject_remote_hooks as _reject_remote_hooks
 from ._errors import LayaLowConfidenceError
-from ..confidence import _gate_confidence, check_min_confidence
+from ..confidence import _gate_confidence, check_min_confidence, resolve_min_confidence
 
 
 def _gated_confidence(answer: Dict[str, Any]) -> Optional[float]:
@@ -435,6 +435,11 @@ class LayaToolSelector:
 
         # Check confidence gating: unusable, missing, or NaN confidence fails closed
         threshold = self.confidence_threshold if self.confidence_threshold is not None else self.min_confidence
+        # `min_confidence` may be a per-bucket map (#394), which `check_min_confidence` accepts in
+        # `__init__`. Compare against the threshold this answer's bucket is gated at, the way
+        # `flag_low_confidence` does, rather than against the dict itself.
+        if isinstance(threshold, dict):
+            threshold = resolve_min_confidence(answer, threshold)
         is_low_confidence = (
             bool(answer.get("low_confidence"))
             or conf is None

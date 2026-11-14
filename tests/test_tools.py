@@ -286,6 +286,66 @@ selector_nan_fb = LayaToolSelector(tools=tools_list, fallback_tool=fallback_tool
 dec_nan_fb = selector_nan_fb.select("Query")
 check("fail_closed/nan_confidence_fallback_used", dec_nan_fb.is_fallback, True)
 
+# A per-bucket `min_confidence` map (#394) is accepted by `check_min_confidence` in `__init__`, so
+# `select` has to gate on the threshold of the answer's own bucket. It used to compare the float
+# confidence against the dict and leak `TypeError: '<' not supported between 'float' and 'dict'`.
+# The mock answers carry three probabilities, so their bucket is "choice:3-5".
+map_cases = (
+    ("bucket_pass", {"choice:3-5": 0.80}, 0.95, None),
+    ("bucket_abstain", {"choice:3-5": 0.80}, 0.45, 0.80),
+    ("default_abstain", {"default": 0.60}, 0.45, 0.60),
+    ("bucket_over_default", {"choice:3-5": 0.40, "default": 0.99}, 0.45, None),
+    ("unnamed_bucket", {"choice:2": 0.99}, 0.45, None),
+)
+for label, mc, conf_value, want_threshold in map_cases:
+    map_agent = MockLayaAgent(lambda s, q, c=conf_value: make_mock_response("tool_0", confidence=c))
+    name = "min_conf_map/%s" % label
+    try:
+        dec_map = LayaToolSelector(tools=tools_list, agent=map_agent, min_confidence=mc).select("Query")
+        if want_threshold is None:
+            check("%s_selects" % name, (dec_map.tool_name, dec_map.is_fallback), ("web_search", False))
+        else:
+            FAIL.append("%s: expected LayaLowConfidenceError, selected %r" % (name, dec_map.tool_name))
+    except LayaLowConfidenceError as e:
+        if want_threshold is None:
+            FAIL.append("%s: unexpected LayaLowConfidenceError (%s)" % (name, e))
+        else:
+            check("%s_threshold" % name, e.threshold, want_threshold)
+            check("%s_confidence" % name, e.confidence, conf_value)
+    except TypeError as e:
+        FAIL.append("%s: leaked TypeError (%s)" % (name, e))
+    if want_threshold is not None:
+        try:
+            dec_map_fb = LayaToolSelector(tools=tools_list, agent=map_agent, min_confidence=mc,
+                                          fallback_tool=fallback_tool).select("Query")
+            check("%s_fallback_used" % name, dec_map_fb.is_fallback, True)
+            check_true("%s_fallback_reason" % name,
+                       "below threshold %s" % want_threshold in dec_map_fb.reason, dec_map_fb.reason)
+        except TypeError as e:
+            FAIL.append("%s_fallback: leaked TypeError (%s)" % (name, e))
+
+# The runner applied the map itself and flagged the answer: still the low-confidence path.
+flagged_agent = MockLayaAgent(lambda s, q: {
+    "model": "laya-multilingual",
+    "answers": {"tool_select": dict(make_mock_response("tool_0", confidence=0.45)["answers"]["tool_select"],
+                                    low_confidence=True)},
+})
+try:
+    LayaToolSelector(tools=tools_list, agent=flagged_agent, min_confidence={"choice:3-5": 0.80}).select("Query")
+    FAIL.append("min_conf_map/flagged: expected LayaLowConfidenceError")
+except LayaLowConfidenceError as e:
+    check("min_conf_map/flagged_threshold", e.threshold, 0.80)
+except TypeError as e:
+    FAIL.append("min_conf_map/flagged: leaked TypeError (%s)" % (e,))
+
+# The map is still forwarded to the runner unchanged, so the core gate sees it too.
+fwd_agent = MockLayaAgent(lambda s, q: make_mock_response("tool_0", confidence=0.95))
+try:
+    LayaToolSelector(tools=tools_list, agent=fwd_agent, min_confidence={"choice:3-5": 0.80}).select("Query")
+except TypeError as e:
+    FAIL.append("min_conf_map/forwarded: leaked TypeError (%s)" % (e,))
+check("min_conf_map/forwarded", fwd_agent.calls[-1]["kwargs"].get("min_confidence"), {"choice:3-5": 0.80})
+
 # Fail-closed protects executable call(): never runs tool_0 on missing/malformed/unknown decisions
 tool_exec_counter = {"calls": 0}
 def dangerous_tool():

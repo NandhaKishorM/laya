@@ -622,6 +622,64 @@ check("precision/zero is accepted at a zero cutoff", decide_reliability(0.0, 0.0
 check("precision/sentinel accepts no probability", decide_reliability(1.0, 1.01, 0.0), "VERIFY")
 
 
+# --------------------------------------------------------------- issue #1493: no-op rename probe
+# When the option keys are already A, B, ... the "letters" rewrite maps every label onto
+# itself and renders the original question again. make_variants only dedups (order, relabel),
+# so the duplicate survived and weighted the original rendering twice in soft_stability.
+q_upper = {"type": "choice", "instructions": "Is this review positive?",
+           "criteria": {"A": "yes, the review is positive", "B": "no, the review is negative"}}
+_noop = []
+for _name, _order, _rel in make_variants(list(q_upper["criteria"]), "issue-1493"):
+    _vq, _back = OptionStabilityHook._variant_question(q_upper, _order, _rel)
+    if _name != "original" and list(_vq["criteria"].items()) == list(q_upper["criteria"].items()):
+        _noop.append(_name)
+check("issue1493/no-op rename is the letters variant", _noop, ["letters"])
+
+hook_upper = OptionStabilityHook(accept=0.77, escalate=0.61, seed="issue-1493")
+ctx_upper = PredictContext(states=["The review is great."], questions={"review": dict(q_upper)})
+hook_upper.on_predict_start(ctx_upper)
+check("issue1493/duplicate probe dropped", len([k for k in ctx_upper.questions if k.startswith("review::rel")]), 2)
+check("issue1493/injected questions render distinct options",
+      len({tuple(qv["criteria"].items()) for qv in ctx_upper.questions.values()}), len(ctx_upper.questions))
+
+answers_upper = {}
+for _qk, _qv in ctx_upper.questions.items():
+    _crit = _qv["criteria"]
+    _yes = [k for k, d in _crit.items() if d == "yes, the review is positive"][0]
+    _no = [k for k in _crit if k != _yes][0]
+    # stub scorer from the report: 0.95 on the original rendering, 0.65 on every real variant
+    _support = 0.95 if list(_crit.items()) == list(q_upper["criteria"].items()) else 0.65
+    answers_upper[_qk] = {"type": "choice", "choice": _yes,
+                          "probabilities": {_yes: _support, _no: round(1 - _support, 4)}}
+ctx_upper.results = [{"model": "fake", "answers": answers_upper, "usage": {}}]
+hook_upper.on_predict_end(ctx_upper)
+rel_upper = ctx_upper.results[0]["answers"]["review"]["reliability"]
+check("issue1493/original weighted once", rel_upper["n_variants"], 3)
+check_true("issue1493/soft_stability no longer double-weights the original",
+           abs(rel_upper["soft_stability"] - 0.75) < 1e-9, repr(rel_upper["soft_stability"]))
+check("issue1493/borderline answer stays VERIFY", rel_upper["decision"], "VERIFY")
+
+# If the dropped duplicate was the only rename probe, nothing was probed and the signal is None.
+hook_only_letters = OptionStabilityHook(accept=0.77, escalate=0.61, n_shuffles=0, variants=["letters"])
+ctx_only_letters = PredictContext(states=["s"], questions={"review": dict(q_upper)})
+hook_only_letters.on_predict_start(ctx_only_letters)
+check("issue1493/no usable probe injected", len(ctx_only_letters.questions), 1)
+answers_only = {}
+for _qk, _qv in ctx_only_letters.questions.items():
+    _crit = _qv["criteria"]
+    _yes = [k for k, d in _crit.items() if d == "yes, the review is positive"][0]
+    _no = [k for k in _crit if k != _yes][0]
+    _support = 0.95 if list(_crit.items()) == list(q_upper["criteria"].items()) else 0.65
+    answers_only[_qk] = {"type": "choice", "choice": _yes,
+                         "probabilities": {_yes: _support, _no: round(1 - _support, 4)}}
+ctx_only_letters.results = [{"model": "fake", "answers": answers_only, "usage": {}}]
+hook_only_letters.on_predict_end(ctx_only_letters)
+rel_only = ctx_only_letters.results[0]["answers"]["review"]["reliability"]
+check("issue1493/no probe means no probes reported", rel_only["probes"], [])
+check("issue1493/no probe means no stability signal", rel_only["soft_stability"], None)
+check("issue1493/no probe means no decision", rel_only["decision"], None)
+
+
 # --------------------------------------------------------------- report
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

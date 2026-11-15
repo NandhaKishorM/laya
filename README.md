@@ -62,6 +62,8 @@ For TypeScript / Node.js / browser, see [`laya-ts/`](https://github.com/NandhaKi
 
 One argument puts vegaml's engine under laya's names: a frozen 0.8B reader with a small physics engine on top, so every answer carries a conformal prediction set, an abstain flag, an out-of-distribution flag and a route decided without a threshold you had to guess at. Text, images, speech and 73k-token documents go through the same call. Python 3.10 or newer; details in [vega inside laya](#vega-inside-laya-agentvegamltrue).
 
+> **A policy for your own decisions.** [Embedding Studio](https://studio.embedding.in) drafts, fits and calibrates a vega policy from a description of your company and the decisions you need, then gives you a signed policy file that runs on your own machine with `vegaml`. You can start with no labelled data and add your own rows later.
+
 ```bash
 python -m pip install -U laya   # 0.4.23 or newer: vegaml comes with it
 ```

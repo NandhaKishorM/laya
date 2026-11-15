@@ -26,6 +26,8 @@
 
 **Multilingual, non-autoregressive System 1 decision engine.** Typed decisions over 100+ languages in a single forward pass — 33 ms — trained with reinforcement learning against strictly proper scoring rules (RLCD), with a router that picks the right checkpoint per request.
 
+> **Train your own decision engine at [studio.embedding.in](https://studio.embedding.in).** Studio, from Embedding Space, trains a System 1 decision engine from a description of your company: it writes the questions and the examples, fits and calibrates a vega model, and gives you a signed policy file that runs on your own machine with `vegaml`. No labelled data is needed to start, and a new workspace gets $10 of free credit.
+
 <div align="center">
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/15d4Yv__KHeHjshVb-6PRTfqVllxih2S3?usp=sharing)
@@ -61,8 +63,6 @@ For TypeScript / Node.js / browser, see [`laya-ts/`](https://github.com/NandhaKi
 ## Quickstart
 
 One argument puts vegaml's engine under laya's names: a frozen 0.8B reader with a small physics engine on top, so every answer carries a conformal prediction set, an abstain flag, an out-of-distribution flag and a route decided without a threshold you had to guess at. Text, images, speech and 73k-token documents go through the same call. Python 3.10 or newer; details in [vega inside laya](#vega-inside-laya-agentvegamltrue).
-
-> **A policy for your own decisions.** [Embedding Studio](https://studio.embedding.in) drafts, fits and calibrates a vega policy from a description of your company and the decisions you need, then gives you a signed policy file that runs on your own machine with `vegaml`. You can start with no labelled data and add your own rows later.
 
 ```bash
 python -m pip install -U laya   # 0.4.23 or newer: vegaml comes with it
@@ -265,11 +265,10 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.33
+## What's new in 0.4.34
 
-* **Documentation only; the code is the same as 0.4.32.** The vega quickstart and the
-  [vegaml guide](https://nandhakishorm.github.io/laya/vegaml/) now say where a calibrated policy of
-  your own comes from: [Embedding Studio](https://studio.embedding.in).
+* **Documentation only; the code is the same as 0.4.32.** The README opens with where to train
+  your own decision engine: [studio.embedding.in](https://studio.embedding.in).
 
 From 0.4.32:
 

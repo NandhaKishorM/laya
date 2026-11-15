@@ -5,7 +5,7 @@ a frozen 0.8B universal reader with a small physics engine on top. Every method 
 name, and the answers gain what that engine knows that an encoder does not. The class behind it
 is `laya.VegaAgent`, in `laya/vega.py`.
 
-> **A policy for your own decisions.** [Embedding Studio](https://studio.embedding.in) drafts, fits and calibrates a vega policy from a description of your company and the decisions you need, then gives you a signed policy file that runs on your own machine with `vegaml`. You can start with no labelled data and add your own rows later.
+> **Train your own decision engine at [studio.embedding.in](https://studio.embedding.in).** Studio, from Embedding Space, trains a System 1 decision engine from a description of your company: it writes the questions and the examples, fits and calibrates a vega model, and gives you a signed policy file that runs on your own machine with `vegaml`. No labelled data is needed to start, and a new workspace gets $10 of free credit.
 
 ```bash
 pip install -U laya               # vegaml ships with laya 0.4.23 and newer

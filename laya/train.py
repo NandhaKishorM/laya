@@ -47,6 +47,7 @@ from .common import (
     QTYPES,
     TEMP_MAX,
     TEMP_MIN,
+    _reuse_question_tokens,
     build_head,
     build_model,
     build_sequence,
@@ -314,6 +315,7 @@ def make_item(tok, q: Dict[str, Any], target: Sequence[float], state_ids: List[i
             "qtype": QTYPES[q["t"]], "k": k}, None
 
 
+@_reuse_question_tokens
 def items_from_rows(tok, rows: Iterable[Dict[str, Any]], max_len: int,
                     head_max_len: int,
                     label_smoothing: float = 0.0) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
@@ -646,12 +648,14 @@ def _forward(model, batch, device, amp: bool, detach_encoder: bool):
     return logits.float()
 
 
+@_reuse_question_tokens
 def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig, device: torch.device,
                 max_len: int, head_max_len: int,
                 on_epoch_end: Optional[Callable[[int, float], None]] = None,
                 parallel: bool = False) -> List[float]:
     """Train `model` in place on `items`; returns the mean loss of each epoch."""
     config.validate()
+    items = list(items)
     if not items:
         raise ValueError("no training items")
     amp = (device.type == "cuda") if config.amp is None else bool(config.amp)
@@ -685,6 +689,7 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
     order_rng = random.Random(config.seed)
     params = [p for g in groups for p in g["params"]]
     history = []
+    seq_cache: Dict[int, Dict[str, Any]] = {}
     for epoch in range(config.epochs):
         epoch_items = list(items)
         random.Random(config.seed + epoch).shuffle(epoch_items)
@@ -692,9 +697,17 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
         total, n_steps = 0.0, 0
         optimizer.zero_grad(set_to_none=True)
         for start in range(0, len(epoch_items), config.micro_batch):
-            chunk = [encode_item(tok, it, max_len, head_max_len,
-                                 draw_option_order(it, order_rng, config.shuffle_options), parallel)
-                     for it in epoch_items[start:start + config.micro_batch]]
+            chunk = []
+            for it in epoch_items[start:start + config.micro_batch]:
+                order = draw_option_order(it, order_rng, config.shuffle_options)
+                if order is None:
+                    seq = seq_cache.get(id(it))
+                    if seq is None:
+                        seq = encode_item(tok, it, max_len, head_max_len, None, parallel)
+                        seq_cache[id(it)] = seq
+                else:
+                    seq = encode_item(tok, it, max_len, head_max_len, order, parallel)
+                chunk.append(seq)
             batch = collate_items([chunk], tok.pad_token_id)
             logits = _forward(model, batch, device, amp, config.freeze_encoder)
             mask = batch["marker_mask"].to(device)
@@ -736,6 +749,7 @@ def train_model(model, tok, items: Sequence[Dict[str, Any]], config: TrainConfig
 
 
 @torch.no_grad()
+@_reuse_question_tokens
 def calibration_records(model, tok, items: Sequence[Dict[str, Any]], device: torch.device,
                         max_len: int, head_max_len: int, batch_size: int = 16, parallel: bool = False):
     """`(qtype, logits, target, k)` records for `fit_temperature_map`, options in canonical order."""

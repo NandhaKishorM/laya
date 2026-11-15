@@ -265,7 +265,13 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.32
+## What's new in 0.4.33
+
+* **Documentation only; the code is the same as 0.4.32.** The vega quickstart and the
+  [vegaml guide](https://nandhakishorm.github.io/laya/vegaml/) now say where a calibrated policy of
+  your own comes from: [Embedding Studio](https://studio.embedding.in).
+
+From 0.4.32:
 
 * **Calibration fits about 2.4x faster.** Fitting temperatures, abstention thresholds and the
   binning map over 100,000 records went from 6.4 s to 2.7 s, with byte-identical results (#1496).

@@ -1,7 +1,7 @@
 # TypeScript SDK design
 
 `laya-client` is a dependency-free HTTP client for a self-hosted `laya-serve`
-server. It uses the existing single and batch prediction endpoints and adds no Python production
+server. It uses the existing prediction and routing endpoints and adds no Python production
 code or server dependencies.
 The npm package starts at version `0.1.0`, independently of Python releases.
 
@@ -18,11 +18,11 @@ The npm package starts at version `0.1.0`, independently of Python releases.
 ```mermaid
 flowchart LR
     A[JavaScript or TypeScript application] --> B[laya-client]
-    B -->|POST /v1/systemone or /v1/systemone/batch| C[Existing Laya server]
+    B -->|POST /v1/systemone, /v1/systemone/batch or /v1/route| C[Existing Laya server]
     C --> E[Router and local checkpoint]
 ```
 
-The SDK exports `predict`, `predictBatch` and a Laya-only `health` probe. It ships ESM,
+The SDK exports `predict`, `predictBatch`, `route` and a Laya-only `health` probe. It ships ESM,
 CommonJS and declarations, retaining inferred question IDs and choice labels.
 Use `laya-client` when a JavaScript or TypeScript application talks over HTTP to
 self-hosted Python `laya-serve`. Use `laya-ts` when inference must run directly
@@ -46,11 +46,25 @@ answers and `low_confidence: true` on the ones below the threshold; with no
 threshold set, none of those three keys are sent, and that absence is the report.
 Optional extensions are validated when present.
 
-`predict` posts `/v1/systemone`, `predictBatch` posts `/v1/systemone/batch`, and `health` gets `/health`.
-Each call makes one request. There is no standalone routing method. The server separately
-offers [`POST /v1/route`](http-api.md#post-v1route) for a routing snapshot without inference; call it
-with ordinary HTTP when needed. The live integration test covers this server contract without adding
-an SDK method. The controls shared by both prediction endpoints are
+`predict` posts `/v1/systemone`, `predictBatch` posts `/v1/systemone/batch`, `route` posts `/v1/route`, and `health` gets `/health`.
+Each call makes one request. `route(state, questions = {}, options = {})` reads the deployed
+Router's current selection without requesting inference. Its `RouteSnapshot` contains `model`,
+`repo` and `reason`, with `diagnostic` when `explain: true`. Registered names are valid and
+`repo` can be null for a source-less attached model. This is separate from prediction's richer
+`RouteDecision`; the snapshot does not include `detection` or `workflow`.
+
+Routing accepts `model`, `task`, `lang`, `langGuess`, boolean `explain`, `signal` and `timeoutMs`.
+Unsupported option keys are refused locally. Questions may be empty; only their JSON/object
+shape and choice-array shorthand are checked locally, so a route result does not validate a
+later prediction. The server still enforces its request limits. An explanation is the final
+post-hook JSON value, including null, rather than a closed set of detector reasons. Missing
+requested diagnostics are refused as an invalid response. Diagnostics can carry caller-chosen
+field names, and route reasons can reflect control values; operator hooks can add their own JSON.
+This is a snapshot, not a promise that a later prediction will choose the same checkpoint.
+Older servers without the endpoint preserve their 404/405 errors; no call falls back to prediction
+or local detection. Abort and timeout stop waiting and do not cancel server-side routing or hooks.
+
+The controls shared by both prediction endpoints are
 per-request, and each is sent only when the caller supplied the option -- an absent option leaves the
 deployment's own `Router(...)` settings in charge instead of overriding them with a client-side default:
 

@@ -265,21 +265,12 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.4.34
+## What's new in 0.4.35
 
-* **Documentation only; the code is the same as 0.4.32.** The README opens with where to train
-  your own decision engine: [studio.embedding.in](https://studio.embedding.in).
-
-From 0.4.32:
-
-* **Calibration fits about 2.4x faster.** Fitting temperatures, abstention thresholds and the
-  binning map over 100,000 records went from 6.4 s to 2.7 s, with byte-identical results (#1496).
-* **`LayaToolSelector` takes a per-bucket `min_confidence` map.** It used to crash comparing a
-  number with the map; it now gates each answer at its own bucket's threshold, as the core gate
-  does (#1494).
-* **`OptionStabilityHook` no longer counts the original question twice** when the option keys
-  are already `A`, `B`, ...; that doubled one rendering's weight and could turn a `VERIFY`
-  into an `ACCEPT` (#1498).
+* **The TypeScript HTTP client can ask the server which model it would route to.**
+  `client.route(state, questions, { explain: true })` calls the server's existing `/v1/route`
+  endpoint with the client's auth, timeout and cancellation, and runs no prediction (#1503).
+  The Python package code is the same as 0.4.32.
 
 ## Where to go next
 

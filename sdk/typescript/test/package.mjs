@@ -41,6 +41,13 @@ try {
       assert.deepEqual((await client.predictBatch(['hello'], questions)).results, [result]);
       await assert.rejects(client.predictBatch(['hello'], questions), sdk.LayaResponseError);
       assert.equal(calls, 2);
+      const snapshot = { model: 'custom', repo: null, reason: 'attached', diagnostic: { source: null } };
+      const routing = new sdk.Laya({ fetch: async (url, init) => {
+        assert.equal(new URL(url).pathname, '/v1/route');
+        assert.deepEqual(JSON.parse(init.body), { state: 'hello', questions: {}, explain: true });
+        return new Response(JSON.stringify(snapshot));
+      } });
+      assert.deepEqual(await routing.route('hello', {}, { explain: true }), snapshot);
     })().catch(error => { console.error(error); process.exitCode = 1; });
   `;
   writeFileSync(join(consumer, 'esm.mjs'),
@@ -56,7 +63,7 @@ try {
     include: ['*.ts', '*.cts'],
   }));
   run([join(sdk, 'node_modules/typescript/bin/tsc'), '-p', join(consumer, 'tsconfig.json')], consumer);
-  console.log('Installed tarball: ESM, CommonJS, strict consumer types, and batch validation passed.');
+  console.log('Installed tarball: ESM, CommonJS, strict consumer types, batch validation and routing passed.');
 } finally {
   assert.equal(dirname(resolve(work)), temporary);
   assert.ok(basename(work).startsWith('laya-client-consumer-'));

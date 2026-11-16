@@ -158,3 +158,29 @@ python examples/01_first_call_minimal.py         # any Python with torch + trans
 
 `run_all.sh` exits non-zero if any example fails, so it doubles as a smoke test over the whole API
 surface. It needs the checkpoints, so it is not part of CI; `python -m compileall examples/` is.
+
+## Optional hosted decisions through Monid
+
+`monid.py` is a standalone adapter for TypeSafe typed judgments through Monid
+(one API key, pay per call). It uses Python's standard library and stays outside
+Laya's local engines. From the repository root:
+
+```python
+from laya import Router
+from examples.monid import attach_monid
+
+router = attach_monid(Router())  # attaches "monid" only when MONID_API_KEY is set
+questions = {"urgent": {"type": "noul", "instructions": "Is this urgent?"}}
+# Explicitly select the hosted adapter after setting MONID_API_KEY:
+out = router.predict("Production is down", questions, model="monid")
+```
+
+Existing routing defaults stay local, including when a key is set. The adapter
+forwards state and questions to TypeSafe and returns its decision response;
+it does not reproduce a local checkpoint's predictions. `MonidAgent` accepts
+`model` (default `jev-latest`) and `timeout` (60 seconds for submission and polling).
+Local token-budget and media controls are unsupported. Keep the attached adapter
+resident; after unloading it, attach it again before use. Docs: https://docs.monid.ai
+
+Run the adapter's offline request-contract checks with
+`pytest -q -rfE --no-header -p no:cacheprovider examples/test_monid.py`.

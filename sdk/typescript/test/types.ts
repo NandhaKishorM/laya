@@ -66,8 +66,24 @@ const mixedAsNumber: number = result.routing?.detection?.mixed_segment;
 // @ts-expect-error Every branch of analyse() reports the key, so the type does not make it optional.
 const undetermined: LanguageDetection = { script: 'latin', script_profile: { latin: 1.0 }, language: 'de',
   is_english: false, language_undecided: false, diacritic_rate: 0.0083, non_latin_fraction: 0.0 };
-// @ts-expect-error /v1/systemone does not expose standalone routing.
-client.route('hello');
+const snapshot = await client.route('hello');
+const selectedModel: string = snapshot.model;
+const selectedRepo: string | null = snapshot.repo;
+// @ts-expect-error A source-less attached model has no repo string.
+const requiredRepo: string = snapshot.repo;
+// @ts-expect-error A routing snapshot has no inference answers.
+snapshot.answers;
+// @ts-expect-error Explanations are opt-in booleans.
+client.route('hello', {}, { explain: 'true' });
+// @ts-expect-error Routing cannot apply prediction budgets.
+client.route('hello', {}, { maxLen: 128 });
+// @ts-expect-error Routing cannot apply abstention gates.
+client.route('hello', {}, { minConfidence: 0.9 });
+// @ts-expect-error State must be JSON text, an object, an array or null.
+client.route(new Date());
+client.route({ text: 'hello' }, questions, { model: 'my-custom-model', task: 'support',
+  lang: 'de', langGuess: 'fr', explain: true, signal: new AbortController().signal, timeoutMs: 0 });
+void [selectedModel, selectedRepo];
 // @ts-expect-error task must be a string.
 client.predict('hello', questions, { task: 12 });
 // @ts-expect-error maxLen must be a number.

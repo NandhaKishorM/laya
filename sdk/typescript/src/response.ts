@@ -10,6 +10,27 @@ const count = (value: unknown): value is number => Number.isInteger(value);
 const probability = (value: unknown) => number(value) && value >= 0 && value <= 1;
 const model = (value: unknown) => typeof value === 'string' && ['english', 'multilingual', 'typed-decisions'].includes(value);
 
+export function validateRouteSnapshot(value: unknown, explain: boolean): void {
+  expect(isRecord(value), 'route snapshot');
+  expect(typeof value.model === 'string' && (value.repo === null || typeof value.repo === 'string') &&
+    typeof value.reason === 'string', 'route model/repo/reason');
+  if (explain) expect(Object.hasOwn(value, 'diagnostic'), 'route diagnostic missing for explain=true');
+  if (Object.hasOwn(value, 'diagnostic')) {
+    // The transport already parsed JSON. Check finite numbers without imposing the outgoing
+    // request's nesting limit on operator-defined output (JSON.parse can overflow 1e309 to Infinity).
+    const pending = [value.diagnostic];
+    while (pending.length) {
+      const item = pending.pop();
+      if (item === null || typeof item === 'string' || typeof item === 'boolean') continue;
+      if (typeof item === 'number') expect(number(item), 'route diagnostic');
+      else {
+        expect(typeof item === 'object' && item !== null, 'route diagnostic');
+        for (const child of Object.values(item)) pending.push(child);
+      }
+    }
+  }
+}
+
 export function validateRoute(value: unknown): void {
   expect(isRecord(value), 'routing');
   expect(model(value.model) && typeof value.repo === 'string' && typeof value.reason === 'string', 'routing model/repo/reason');

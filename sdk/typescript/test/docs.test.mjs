@@ -58,7 +58,8 @@ async function attempt(run) {
   const laya = new Laya({ fetch: async (url, init) => {
     const path = new URL(url).pathname;
     seen.push([init.method, path]);
-    const payload = path === '/health' ? HEALTH : path === '/v1/systemone/batch'
+    const payload = path === '/v1/route' ? { model: 'english', repo: 'local', reason: 'fixture' }
+      : path === '/health' ? HEALTH : path === '/v1/systemone/batch'
       ? { results: [RESULT], total_usage: { input_tokens: 4, output_tokens: 0 } } : RESULT;
     return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } });
   } });
@@ -127,14 +128,14 @@ test('the client calls exactly the endpoints the page says it calls', async () =
   const paths = new Map();
   for (const [method, run] of [['predict', l => l.predict('the state', QUESTIONS, {})],
                                ['predictBatch', l => l.predictBatch(['the state'], QUESTIONS)],
-                               ['health', l => l.health()]]) {
+                               ['route', l => l.route('the state')], ['health', l => l.health()]]) {
     const { seen, error } = await attempt(run);
     assert.equal(error, null, `${method}() must reach the fixture, got ${error && error.name}: ${error && error.message}`);
     assert.equal(seen.length, 1, `${method}() made ${JSON.stringify(seen)}, and the page describes one request per call`);
     paths.set(method, seen[0]);
   }
   assert.deepEqual([...paths], [['predict', ['POST', '/v1/systemone']],
-    ['predictBatch', ['POST', '/v1/systemone/batch']], ['health', ['GET', '/health']]],
+    ['predictBatch', ['POST', '/v1/systemone/batch']], ['route', ['POST', '/v1/route']], ['health', ['GET', '/health']]],
     "the client's network surface moved; update the page and its executable contract");
 
   // Each call has to be stated by a sentence that names the method and the path it reaches. The page
@@ -194,14 +195,13 @@ test('the endpoint surface the page describes is the one the client declares',
     // A member is public if it is spelled out as a signature; `private body;` collapses to the keyword.
     const declared = [...declaration.matchAll(/^ {4}(?!constructor)(\w+)[<(]/gm)]
       .map(([, name]) => name).sort();
-    assert.deepEqual(declared, ['health', 'predict', 'predictBatch'],
-      'the client gained or lost a public method; the page describes exactly these three');
+    assert.deepEqual(declared, ['health', 'predict', 'predictBatch', 'route'],
+      'the client gained or lost a public method; update the endpoint inventory');
     for (const name of declared) {
       assert.ok(page.includes('`' + name + '`'),
         `the page never names the ${name}() method the client declares`);
     }
-    // The page's negative claim, on the code side: there is no standalone routing call to make.
-    for (const absent of ['route', 'decide', 'classify']) {
+    for (const absent of ['decide', 'classify']) {
       assert.equal(Laya.prototype[absent], undefined, `Laya unexpectedly exposes ${absent}()`);
     }
   });

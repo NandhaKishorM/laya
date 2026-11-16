@@ -1,6 +1,6 @@
 # laya-client
 
-A dependency-free HTTP client for self-hosted Laya `laya-serve` single and batch predictions. Supports ESM and
+A dependency-free HTTP client for self-hosted Laya `laya-serve` predictions and routing snapshots. Supports ESM and
 CommonJS on Node.js 22+, and browsers with `fetch`, `AbortController`, and
 `structuredClone`. TypeScript consumers need TypeScript 5 or newer.
 
@@ -122,6 +122,44 @@ An empty array is refused locally. The server enforces request limits, including
 without the endpoint returns its original 404/405 error. No call is automatically split,
 retried or replaced with individual predictions. Cancellation and timeout stop waiting;
 they do not promise to stop inference already running on the server.
+
+## Inspect server-side routing
+
+`laya.route(state, questions = {}, options = {})` sends one `POST /v1/route` to inspect the
+deployed Router without requesting inference. It uses the client's authentication, proxy path,
+timeout and cancellation settings. A local Router can have different models or defaults, so its
+selection is not a substitute for this server snapshot.
+
+```js
+const snapshot = await laya.route(
+  { message: 'Turn lights off' },
+  {},
+  { explain: true },
+);
+console.log(snapshot.model, snapshot.repo, snapshot.reason);
+console.log(snapshot.diagnostic); // JSON or null; omitted when explain is false or absent
+```
+
+`RouteOptions` accepts `model`, `task`, `lang`, `langGuess`, boolean `explain`, `signal` and
+`timeoutMs`. Model selection follows `predict`: a per-call model overrides the configured client
+model; otherwise omitted controls leave the deployment in charge. Unsupported option keys,
+including prediction budgets, abstention and hook controls, raise `LayaValidationError`.
+
+Questions may be empty. Routing checks JSON/object shape and normalizes choice arrays as prediction
+does, without requiring a complete inference schema. The server enforces its request limits;
+a successful snapshot does not prove that a later prediction is valid or will select the same model.
+
+`RouteSnapshot` contains `model: string`, `repo: string | null` and `reason: string`. Custom names
+are valid; a source-less attached model has a null repo. With `explain: true`, the snapshot includes
+the final post-hook `diagnostic`, or null when unavailable. It is extensible JSON, so check its shape
+before reading fields. A response missing a requested diagnostic raises `LayaResponseError`.
+Core diagnostics omit input values but can include caller-chosen field names; reasons can reflect
+routing controls, and operator hooks can supply their own JSON. No detector is rerun by the client.
+
+Servers before 0.4.19 lack this endpoint and return their original 404/405 error. An injected Router
+without explanation support returns its 422 when asked for `explain: true`. The client does not retry,
+fall back to local routing or request inference. Abort/timeout stop waiting, not server-side routing
+or hooks that have already started. This is a routing snapshot, not a health probe.
 
 ## Typed custom questions
 

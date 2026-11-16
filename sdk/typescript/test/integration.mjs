@@ -103,9 +103,10 @@ async function startServer(t, args = [],
     });
   });
   const client = new Laya({ baseURL: fixture.baseURL, apiKey: 'integration-test', timeoutMs: 10_000 });
+  const liveness = new Laya({ baseURL: fixture.baseURL, timeoutMs: 1000 });
   let ready = false;
   for (let i = 0; i < 100; i++) {
-    try { await client.health(); ready = true; break; } catch { await delay(50); }
+    try { await liveness.health(); ready = true; break; } catch { await delay(50); }
   }
   assert.ok(ready, `Server never became ready: ${stderr}`);
   return { client, fixture };
@@ -137,13 +138,7 @@ test('JavaScript → HTTP → Python Router → real offline Agent inference', {
   assert.equal((await fetch(`${fixture.baseURL}/v1/predict`, { method: 'POST' })).status, 404);
   assert.equal((await fetch(`${fixture.baseURL}/v1/route`, { method: 'POST' })).status, 401);
   for (const explain of [false, true]) {
-    const response = await fetch(`${fixture.baseURL}/v1/route`, {
-      method: 'POST',
-      headers: { authorization: 'Bearer integration-test', 'content-type': 'application/json' },
-      body: JSON.stringify({ state: 'hello', questions: {}, explain }),
-    });
-    assert.equal(response.status, 200);
-    const route = await response.json();
+    const route = await client.route('hello', {}, { explain });
     assert.deepEqual(Object.keys(route).sort(),
       (explain ? ['model', 'repo', 'reason', 'diagnostic'] : ['model', 'repo', 'reason']).sort());
     assert.equal(route.model, 'multilingual');
@@ -227,6 +222,7 @@ test('batch HTTP works with the pinned v0.4.7 server',
   { timeout: 90_000, skip: !process.env.LAYA_SDK_LEGACY_FIXTURE && 'set LAYA_SDK_LEGACY_FIXTURE to v0.4.7 fixture' },
   async t => {
     const { client, fixture } = await startServer(t, [], process.env.LAYA_SDK_LEGACY_FIXTURE);
+    await assert.rejects(client.route('hello'), error => error instanceof LayaAPIError && error.status === 404);
     const states = ['hello', fixture.state, ['hello']];
     const expected = [];
     for (const state of states) expected.push(await client.predict(state, fixture.questions, { model: 'english' }));
@@ -236,4 +232,42 @@ test('batch HTTP works with the pinned v0.4.7 server',
     assert.equal(actual.total_usage.input_tokens, expected.reduce((n, r) => n + r.usage.input_tokens, 0));
     const singleton = await client.predictBatch(states.slice(0, 1), fixture.questions, { model: 'english' });
     assert.deepEqual(singleton.results, expected.slice(0, 1));
+  });
+
+const routeFixture = fileURLToPath(new URL('../../../tests/sdk_route_server_fixture.py', import.meta.url));
+
+test('route reads the deployed Router, custom models and final hooks without inference',
+  { timeout: 90_000 }, async t => {
+    const { client, fixture } = await startServer(t, [], routeFixture);
+    for (const item of fixture.route_cases) {
+      const options = Object.fromEntries(Object.entries(item.options).map(([key, value]) =>
+        [key === 'lang_guess' ? 'langGuess' : key, value]));
+      assert.deepEqual(await client.route(item.state, item.questions, options), item.expected);
+    }
+    // The deployed default is English even though the local library default is multilingual.
+    assert.equal(fixture.route_cases[0].expected.model, 'english');
+    for (const diagnostic of [null, { source: null, custom: [false, 'operator'] }]) {
+      assert.deepEqual(await client.route({ operator_diagnostic: diagnostic }, {}, { explain: true }),
+        { model: 'support', repo: null, reason: 'operator override', diagnostic });
+    }
+    const anonymous = new Laya({ baseURL: fixture.baseURL });
+    await assert.rejects(anonymous.route('hello'), error => error instanceof LayaAPIError && error.status === 401);
+    for (const [state, options, status] of [
+      [null, {}, 400], ['x'.repeat(50_001), {}, 413], ['hello', { model: 'unregistered/checkpoint' }, 422],
+    ]) {
+      await assert.rejects(client.route(state, {}, options), error => error instanceof LayaAPIError && error.status === status);
+    }
+    const counts = await (await fetch(`${fixture.baseURL}/fixture-counts`)).json();
+    assert.deepEqual(counts, { route: fixture.route_cases.length + 2, hook: fixture.route_cases.length + 2,
+      load: 0, predict: 0 });
+  });
+
+test('route preserves an injected legacy Router refusal of explain without retrying',
+  { timeout: 90_000 }, async t => {
+    const { client, fixture } = await startServer(t, ['--legacy-router'], routeFixture);
+    assert.equal((await client.route('hello')).model, 'english');
+    await assert.rejects(client.route('hello', {}, { explain: true }), error =>
+      error instanceof LayaAPIError && error.status === 422 && error.message.includes('explain'));
+    assert.deepEqual(await (await fetch(`${fixture.baseURL}/fixture-counts`)).json(),
+      { route: 1, hook: 1, load: 0, predict: 0 });
   });

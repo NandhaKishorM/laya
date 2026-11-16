@@ -62,7 +62,6 @@ test('Laya health uses GET and accepts the existing server response', async () =
   } });
   assert.deepEqual(await client.health(), health);
   assert.deepEqual(calls, [['/health', 'GET', undefined]]);
-  assert.equal(client.route, undefined);
 });
 
 const allAnswerQuestions = {

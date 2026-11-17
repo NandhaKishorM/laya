@@ -152,3 +152,41 @@ def test_manifest_files_that_is_not_a_name_to_hash_map_is_refused_by_name():
     files["manifest.json"] = b'{"files": "heads.npz"}'
     with pytest.raises(policy.PolicyError, match="files is not a map"):
         policy.verify(files)
+
+
+def test_an_unlisted_questions_json_cannot_ride_alongside_a_signed_manifest():
+    k, pub, kid = _key()
+    base = {"heads.npz": b"heads-bytes", "calibration.json": b'{"alpha": 0.1}'}
+    signed = _signed(base, k, kid)
+    signed["questions.json"] = b'{"injected": {"type": "choice"}}'
+    with pytest.raises(policy.PolicyError, match="questions.json is in the policy but not in its manifest"):
+        policy.verify(signed, trusted={kid: pub}, require_signature=True)
+
+
+def test_a_manifest_key_id_that_is_not_a_string_is_refused_by_name():
+    _, pub, kid = _key()
+    for bad in ([kid], {"id": kid}, 123, False):
+        raw = policy.manifest_for({"heads.npz": b"heads-bytes"}, key_id=bad)
+        files = {"heads.npz": b"heads-bytes", "manifest.json": raw, "manifest.sig": b"x"}
+        with pytest.raises(policy.PolicyError, match="key_id"):
+            policy.verify(files, trusted={kid: pub})
+
+
+def test_deeply_nested_manifest_json_raises_policy_error():
+    nested = b"[" * 2000 + b"]" * 2000
+    with pytest.raises(policy.PolicyError, match="manifest.json is not valid JSON"):
+        policy.verify({"heads.npz": b"heads-bytes", "manifest.json": nested})
+
+
+def test_expected_engine_ignores_non_object_or_non_string_provenance():
+    for bad_cal in (
+        b"[]",
+        b'{"provenance": []}',
+        b'{"provenance": {"engine_sha256": ["not-a-digest"]}}',
+        b"[" * 2000 + b"]" * 2000,
+    ):
+        assert policy.expected_engine({"heads.npz": b"h", "calibration.json": bad_cal}, {}) is None
+    assert policy.expected_engine(
+        _files(engine="d" * 64), {"manifest": {"engine_sha256": ["not-a-digest"]}}
+    ) == "d" * 64
+

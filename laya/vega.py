@@ -968,7 +968,8 @@ class VegaAgent(Agent):
         from . import policy
 
         files = {n: open(os.path.join(path, n), "rb").read()
-                 for n in ("heads.npz", "calibration.json") if os.path.exists(os.path.join(path, n))}
+                 for n in ("heads.npz", "calibration.json", "questions.json")
+                 if os.path.exists(os.path.join(path, n))}
         try:
             engine = self.vega.engine.base_sha256()
         except Exception:

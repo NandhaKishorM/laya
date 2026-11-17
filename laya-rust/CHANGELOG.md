@@ -11,6 +11,7 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
 
 ### Added
 
+- Cargo features `download-binaries` (on by default) and `load-dynamic`. `download-binaries` forwards `ort`'s `download-binaries`, `tls-native` and `copy-dylibs`, so a default build still fetches a prebuilt ONNX Runtime. `load-dynamic` forwards `ort`'s `load-dynamic`: `--no-default-features --features load-dynamic` skips that download and loads the shared library from `ORT_DYLIB_PATH` (offline builds, and Windows-GNU, which has no prebuilt binary). The existing `download` feature stays on by default.
 - Per-language temperatures and per-call overrides, ported from `laya/common.py`
   `resolve_lang_temperatures` and `ONNXAgent`: `LayaOptions::lang_temperatures` (a table of
   `LangTemperature` entries, resolved with Python's key normalisation `lang.split('-')[0].lower()`,

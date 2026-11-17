@@ -34,9 +34,12 @@ ureq = { version = "3", optional = true }
 # with `ort-sys`'s prebuilt ONNX Runtime binaries (/MD) on Windows. `esaxx_fast` only accelerates
 # the BPE trainer/encoder; dropping it changes performance, not tokenization output.
 tokenizers = { version = "0.23", default-features = false, features = ["onig", "progressbar"] }
-# `ort`: latest 2.x (still pre-1.0 upstream); default features include `download-binaries`, which
-# fetches a prebuilt CPU ONNX Runtime at build time so no system install is required.
-ort = "2.0.0-rc.13"
+# `ort`: 2.0.0-rc.13 (still pre-1.0 upstream). Defaults are off so the prebuilt-binary
+# download can be declined. The features here are ort's other defaults (`std`, `ndarray`,
+# `tracing`, `api-27`). Linking (`download-binaries`, `tls-native`, `copy-dylibs`) is this
+# crate's default `download-binaries` feature, so a default build still fetches a prebuilt
+# CPU ONNX Runtime and needs no system install.
+ort = { version = "2.0.0-rc.13", default-features = false, features = ["std", "ndarray", "tracing", "api-27"] }
 # Routing port (`language_detection.rs`): Python's `str.isalpha()` is Unicode general category
 # L* only, which `char::is_alphabetic` does not match (it also accepts combining marks). This
 # crate gives a direct category lookup instead of hand-rolling Unicode tables.
@@ -59,9 +62,16 @@ tempfile = "3"
 
 [features]
 # Opt-in artifact download (HuggingFace Hub), via `ureq` (TLS through its default `rustls`
-# feature, so no system OpenSSL is needed). On by default.
-default = ["download"]
+# feature, so no system OpenSSL is needed). On by default, together with `download-binaries`,
+# which is the prebuilt ONNX Runtime fetch — the same two things a default build did before
+# linking was optional.
+default = ["download", "download-binaries"]
 download = ["dep:ureq"]
+# ort 2.0.0-rc.13's linking defaults, as one feature. Opt out with `--no-default-features`.
+download-binaries = ["ort/download-binaries", "ort/tls-native", "ort/copy-dylibs"]
+# Load the ONNX Runtime shared library at runtime (`ORT_DYLIB_PATH`) instead of linking one.
+# Use with default features off: `--no-default-features --features load-dynamic`.
+load-dynamic = ["ort/load-dynamic"]
 # GPU execution providers, forwarded to `ort`'s own features of the same name.
 cuda = ["ort/cuda"]
 directml = ["ort/directml"]

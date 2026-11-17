@@ -26,7 +26,7 @@
 
 **Multilingual, non-autoregressive System 1 decision engine.** Typed decisions over 100+ languages in a single forward pass — 33 ms — trained with reinforcement learning against strictly proper scoring rules (RLCD), with a router that picks the right checkpoint per request.
 
-> **Train your own decision engine at [studio.embedding.in](https://studio.embedding.in).** Studio, from Embedding Space, trains a System 1 decision engine from a description of your company: it writes the questions and the examples, fits and calibrates a vega model, and gives you a signed policy file that runs on your own machine with `vegaml`. No labelled data is needed to start, and a new workspace gets $10 of free credit.
+> **Your own decision model, and it keeps learning: [studio.embedding.in](https://studio.embedding.in).** Studio, from Embedding Space, writes your questions into an open-source laya model that you run on your own machines. It answers like laya from the first minute and learns from every decision you confirm, and your records never leave your machines. Pick a template or write your own questions, buy, and download in seconds.
 
 <div align="center">
 

@@ -998,7 +998,167 @@ fn validate_encoder(
     Ok(())
 }
 
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+enum DynamicOrtState {
+    Uninitialized,
+    Loaded,
+    // `ort` 2.0.0-rc.13 backs `G_ORT_LIB` with `std::sync::Once::call_once_force` without
+    // tracking whether its closure returned `Err`, so calling `ort::init_from` or
+    // `Session::builder()` a second time after an in-`ort` failure reads uninitialized memory.
+    // Recording that terminal state here keeps subsequent calls memory-safe and surfaces the
+    // original `LayaError::Onnx` instead of panicking or invoking UB.
+    Failed(String),
+}
+
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+static DYNAMIC_ORT_STATE: Mutex<DynamicOrtState> = Mutex::new(DynamicOrtState::Uninitialized);
+
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+fn has_valid_shared_lib_magic(header: &[u8]) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        header.len() >= 2 && &header[..2] == b"MZ"
+    }
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    {
+        if header.len() < 4 {
+            return false;
+        }
+        let magic = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
+        matches!(
+            magic,
+            0xfeed_face | 0xfeed_facf | 0xcefa_edfe | 0xcffa_edfe | 0xcafe_babe | 0xbeba_feca
+        )
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "ios")))]
+    {
+        header.len() >= 4 && &header[..4] == b"\x7fELF"
+    }
+}
+
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+fn precheck_dylib_path(path: &Path) -> Result<std::path::PathBuf> {
+    use std::io::Read;
+
+    let resolved = if path.is_absolute() {
+        path.to_path_buf()
+    } else if let Some(exe_dir) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(Path::to_path_buf))
+    {
+        let candidate = exe_dir.join(path);
+        if candidate.exists() {
+            candidate
+        } else {
+            path.to_path_buf()
+        }
+    } else {
+        path.to_path_buf()
+    };
+
+    let has_dir_component = path.components().count() > 1;
+    if resolved.exists() || has_dir_component {
+        let mut file = std::fs::File::open(&resolved).map_err(|e| {
+            LayaError::Onnx(format!(
+                "failed to load ONNX Runtime from `{}`: {e}",
+                resolved.display()
+            ))
+        })?;
+        let meta = file.metadata().map_err(|e| {
+            LayaError::Onnx(format!(
+                "failed to load ONNX Runtime from `{}`: {e}",
+                resolved.display()
+            ))
+        })?;
+        if !meta.is_file() {
+            return Err(LayaError::Onnx(format!(
+                "failed to load ONNX Runtime from `{}`: path is not a regular file",
+                resolved.display()
+            )));
+        }
+        let mut header = [0u8; 4];
+        let n = file.read(&mut header).map_err(|e| {
+            LayaError::Onnx(format!(
+                "failed to load ONNX Runtime from `{}`: {e}",
+                resolved.display()
+            ))
+        })?;
+        if !has_valid_shared_lib_magic(&header[..n]) {
+            return Err(LayaError::Onnx(format!(
+                "failed to load ONNX Runtime from `{}`: file is not a valid native shared library",
+                resolved.display()
+            )));
+        }
+    }
+    Ok(resolved)
+}
+
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+fn load_dynamic_ort(path: &Path) -> Result<bool> {
+    let mut state = DYNAMIC_ORT_STATE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match &*state {
+        DynamicOrtState::Loaded => return Ok(false),
+        DynamicOrtState::Failed(msg) => return Err(LayaError::Onnx(msg.clone())),
+        DynamicOrtState::Uninitialized => {}
+    }
+
+    // Validate missing or non-library paths before entering `ort::init_from` so a recoverable
+    // path mistake leaves `ort`'s `Once` untouched for a subsequent retry (e.g. download on
+    // first use).
+    let resolved = precheck_dylib_path(path)?;
+    match ort::init_from(&resolved) {
+        Ok(env) => {
+            let committed = env.commit();
+            *state = DynamicOrtState::Loaded;
+            Ok(committed)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            *state = DynamicOrtState::Failed(msg.clone());
+            Err(LayaError::Onnx(msg))
+        }
+    }
+}
+
+/// Initializes ONNX Runtime from the shared library (`.so`, `.dylib`, or `.dll`) at `path` when
+/// built with the `load-dynamic` feature.
+///
+/// Call this before building the first [`LayaEngine`] (or [`crate::LayaRouter`] session) when the
+/// library is not pointed to by `ORT_DYLIB_PATH`. Returns `Ok(true)` if this call configured the
+/// process-wide ONNX Runtime environment, `Ok(false)` if an environment had already been
+/// committed earlier in the process, or [`LayaError::Onnx`] if the library could not be opened or
+/// is older than the ONNX Runtime API version `ort` expects.
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+pub fn init_onnx_runtime_from(path: impl AsRef<Path>) -> Result<bool> {
+    load_dynamic_ort(path.as_ref())
+}
+
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+fn default_ort_dylib_path() -> std::path::PathBuf {
+    match std::env::var("ORT_DYLIB_PATH") {
+        Ok(s) if !s.is_empty() => s.into(),
+        #[cfg(target_os = "windows")]
+        _ => "onnxruntime.dll".into(),
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        _ => "libonnxruntime.dylib".into(),
+        #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "ios")))]
+        _ => "libonnxruntime.so".into(),
+    }
+}
+
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+fn ensure_dynamic_runtime_loaded() -> Result<()> {
+    let path = default_ort_dylib_path();
+    let _ = load_dynamic_ort(&path)?;
+    Ok(())
+}
+
 fn build_session(options: &LayaOptions, model_path: &Path) -> Result<Session> {
+    #[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+    ensure_dynamic_runtime_loaded()?;
+
     let mut builder = Session::builder().map_err(onnx_err)?;
     if let Some(intra) = options.intra_op_threads {
         builder = builder
@@ -1148,8 +1308,32 @@ mod tests {
             .expect("qtype should extract as an integer tensor")
     }
 
+    fn ort_runtime_available() -> bool {
+        #[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+        {
+            let already_loaded = matches!(
+                &*DYNAMIC_ORT_STATE
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner()),
+                DynamicOrtState::Loaded
+            );
+            if already_loaded {
+                return true;
+            }
+            std::env::var("ORT_DYLIB_PATH").is_ok_and(|s| !s.is_empty())
+                && ensure_dynamic_runtime_loaded().is_ok()
+        }
+        #[cfg(not(all(feature = "load-dynamic", not(target_arch = "wasm32"))))]
+        {
+            true
+        }
+    }
+
     #[test]
     fn qtype_rank_one_declared_yields_a_one_dimensional_shape() {
+        if !ort_runtime_available() {
+            return;
+        }
         let batch = tiny_batch();
         let mut hidden = None;
         let value = value_for_input("qtype", TensorElementType::Int64, 1, &batch, &mut hidden)
@@ -1160,6 +1344,9 @@ mod tests {
 
     #[test]
     fn qtype_rank_two_declared_yields_a_batch_by_one_shape() {
+        if !ort_runtime_available() {
+            return;
+        }
         // The split layout's head declares qtype as rank 2 ([B, 1]), matching the exporter's
         // dummy input `[[0]] * batch`.
         let batch = tiny_batch();
@@ -1172,6 +1359,9 @@ mod tests {
 
     #[test]
     fn qtype_rank_selection_is_independent_of_element_type() {
+        if !ort_runtime_available() {
+            return;
+        }
         // Rank drives the shape regardless of which integer dtype the graph declares.
         let batch = tiny_batch();
         let mut hidden = None;
@@ -1183,6 +1373,9 @@ mod tests {
 
     #[test]
     fn hidden_states_input_is_taken_exactly_once() {
+        if !ort_runtime_available() {
+            return;
+        }
         let batch = tiny_batch();
         let mut hidden = Some(HiddenStates {
             shape: vec![2, 3, 4],
@@ -1281,5 +1474,25 @@ mod tests {
         )
         .expect("unknown names are not themselves an error");
         assert!(result.is_none());
+    }
+
+    #[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+    #[test]
+    fn precheck_dylib_path_rejects_missing_and_non_library_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("missing-onnxruntime.so");
+        let err = precheck_dylib_path(&missing)
+            .expect_err("missing dynamic library must return LayaError::Onnx");
+        match err {
+            LayaError::Onnx(msg) => assert!(
+                msg.contains("missing-onnxruntime.so"),
+                "expected missing path in error, got: {msg}"
+            ),
+            other => panic!("expected LayaError::Onnx, got {other:?}"),
+        }
+
+        let directory_err = precheck_dylib_path(dir.path())
+            .expect_err("directory path must return LayaError::Onnx");
+        assert!(matches!(directory_err, LayaError::Onnx(_)));
     }
 }

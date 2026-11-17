@@ -81,6 +81,8 @@ pub use language_detection::{LanguageAnalysis, LanguageDetection, LatinProfile};
 pub use laya_config::LayaConfig;
 pub use laya_email::LayaEmail;
 pub use laya_engine::LayaEngine;
+#[cfg(all(feature = "load-dynamic", not(target_arch = "wasm32")))]
+pub use laya_engine::init_onnx_runtime_from;
 pub use laya_options::{
     ArtifactDownloadProgress, LayaCheckpoint, LayaExecutionProvider, LayaOptions,
 };

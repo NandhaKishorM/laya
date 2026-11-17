@@ -11,6 +11,13 @@ regenerated from laya (Python) 0.4.14 for the supported paths (see the known gap
 
 ### Added
 
+- Optional `load-dynamic` and `download-binaries` cargo features on `laya-onnx`: `download-binaries`
+  (`ort/download-binaries`, `ort/tls-native`, `ort/copy-dylibs`) stays enabled in `default` so
+  existing builds do not change, while downstream crates that build offline or target toolchains
+  without prebuilt `ort` binaries (`x86_64-pc-windows-gnu`, CRAN, Nix, conda-forge) can set
+  `default-features = false, features = ["load-dynamic"]` and supply ONNX Runtime at runtime via
+  `ORT_DYLIB_PATH` or `laya::init_onnx_runtime_from`, with missing or incompatible libraries
+  reported as `LayaError::Onnx` instead of panicking.
 - Per-language temperatures and per-call overrides, ported from `laya/common.py`
   `resolve_lang_temperatures` and `ONNXAgent`: `LayaOptions::lang_temperatures` (a table of
   `LangTemperature` entries, resolved with Python's key normalisation `lang.split('-')[0].lower()`,

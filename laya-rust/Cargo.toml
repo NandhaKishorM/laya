@@ -34,9 +34,10 @@ ureq = { version = "3", optional = true }
 # with `ort-sys`'s prebuilt ONNX Runtime binaries (/MD) on Windows. `esaxx_fast` only accelerates
 # the BPE trainer/encoder; dropping it changes performance, not tokenization output.
 tokenizers = { version = "0.23", default-features = false, features = ["onig", "progressbar"] }
-# `ort`: latest 2.x (still pre-1.0 upstream); default features include `download-binaries`, which
-# fetches a prebuilt CPU ONNX Runtime at build time so no system install is required.
-ort = "2.0.0-rc.13"
+# `ort`: latest 2.x (still pre-1.0 upstream). Keep the non-linking defaults here and expose the
+# linking mode (`download-binaries` vs `load-dynamic`) as crate features so downstream crates can
+# opt out of build-time downloads via `default-features = false, features = ["load-dynamic"]`.
+ort = { version = "2.0.0-rc.13", default-features = false, features = ["std", "ndarray", "tracing", "api-27"] }
 # Routing port (`language_detection.rs`): Python's `str.isalpha()` is Unicode general category
 # L* only, which `char::is_alphabetic` does not match (it also accepts combining marks). This
 # crate gives a direct category lookup instead of hand-rolling Unicode tables.
@@ -59,9 +60,17 @@ tempfile = "3"
 
 [features]
 # Opt-in artifact download (HuggingFace Hub), via `ureq` (TLS through its default `rustls`
-# feature, so no system OpenSSL is needed). On by default.
-default = ["download"]
+# feature, so no system OpenSSL is needed), plus `download-binaries` for build-time ONNX Runtime
+# fetching. Both are on by default so existing callers need no changes.
+default = ["download", "download-binaries"]
 download = ["dep:ureq"]
+# Fetch a prebuilt ONNX Runtime binary at build time (`ort`'s default linking mode). Disable with
+# `default-features = false` and enable `load-dynamic` instead for offline builds or targets
+# without prebuilt `ort` binaries (`x86_64-pc-windows-gnu`).
+download-binaries = ["ort/download-binaries", "ort/tls-native", "ort/copy-dylibs"]
+# Load ONNX Runtime at runtime via `dlopen`/`LoadLibrary` from `ORT_DYLIB_PATH` or an explicit
+# path passed to `init_onnx_runtime_from` before the first session is built.
+load-dynamic = ["ort/load-dynamic"]
 # GPU execution providers, forwarded to `ort`'s own features of the same name.
 cuda = ["ort/cuda"]
 directml = ["ort/directml"]

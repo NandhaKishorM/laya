@@ -5,6 +5,8 @@
   </picture>
 </p>
 
+> **[Studio, from Embedding Space](https://studio.embedding.in): decision models that learn on the job.** Pick your questions and get a vega model that runs on your own servers (`pip install vegaml` plus the licensed learner). It answers from day one and learns from every answer your team confirms: across Studio's 14 templates, 85% right on day one and 96% after 120 confirmed answers. Learning takes seconds on a CPU, with no GPU and no fine-tuning, and your records never leave your network. ₹99,000 or $1,188 a year per decision engine.
+
 > **Cite this work.** M, N.; M, A. From Laya to Vega: Open Non-Autoregressive Decision Models with Calibrated Probabilities. *Preprints* **2026**, 2026110781. [https://doi.org/10.20944/preprints202611.0781.v1](https://doi.org/10.20944/preprints202611.0781.v1)
 
 <details>
@@ -25,8 +27,6 @@
 </details>
 
 **Multilingual, non-autoregressive System 1 decision engine.** Typed decisions over 100+ languages in a single forward pass — 33 ms — trained with reinforcement learning against strictly proper scoring rules (RLCD), with a router that picks the right checkpoint per request.
-
-> **Your own decision model, and it keeps learning: [studio.embedding.in](https://studio.embedding.in).** Studio, from Embedding Space, writes your questions into an open-source laya model that you run on your own machines. It answers like laya from the first minute and learns from every decision you confirm, and your records never leave your machines. Pick a template or write your own questions, buy, and download in seconds.
 
 <div align="center">
 
@@ -264,6 +264,11 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 ## Documentation
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
+
+## What's new in 0.4.36
+
+* **The README now opens with Studio, from Embedding Space**, and cites the paper for laya and vega.
+  The Python package code is the same as 0.4.32.
 
 ## What's new in 0.4.35
 

@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-> **[Studio, from Embedding Space](https://studio.embedding.in): decision models that learn on the job.** Pick your questions and get a vega model that runs on your own servers (`pip install vegaml` plus the licensed learner). It answers from day one and learns from every answer your team confirms: across Studio's 14 templates, 85% right on day one and 96% after 120 confirmed answers. Learning takes seconds on a CPU, with no GPU and no fine-tuning, and your records never leave your network. ₹99,000 or $1,188 a year per decision engine.
+> **[Studio, from Embedding Space](https://studio.embedding.in): decision models that learn on the job.** Pick your questions and get a vega model that runs on your own servers (`pip install vegaml` plus the licensed learner). It answers from day one and learns from every answer your team confirms: across Studio's 14 templates, 85% right on day one and 96% after 120 confirmed answers. Learning takes seconds on a CPU, with no GPU and no fine-tuning, and your records never leave your network. Pricing at [studio.embedding.in](https://studio.embedding.in).
 
 > **Cite this work.** M, N.; M, A. From Laya to Vega: Open Non-Autoregressive Decision Models with Calibrated Probabilities. *Preprints* **2026**, 2026110781. [https://doi.org/10.20944/preprints202611.0781.v1](https://doi.org/10.20944/preprints202611.0781.v1)
 
@@ -264,6 +264,11 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 ## Documentation
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
+
+## What's new in 0.4.37
+
+* **The Studio line at the top points to Studio's own page for pricing.** The Python package code is the
+  same as 0.4.32.
 
 ## What's new in 0.4.36
 

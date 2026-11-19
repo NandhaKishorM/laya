@@ -5,6 +5,8 @@
   </picture>
 </p>
 
+<p align="center"><img src="https://raw.githubusercontent.com/NandhaKishorM/vegaml/main/assets/vega-valleys.svg" width="900" alt="How vega decides: a frozen LLM reads the message once, every answer is a valley, and a particle rolls and settles in one. Where it settles is the answer, with its probability, conformal set, abstain and unbound flags." /></p>
+
 **New in 0.5: laya runs on vega by default, and everything from vega is here, open source under Apache 2.0** (`pip install -U laya`). `laya.Agent()` now loads vega; name a checkpoint (`laya.Agent("convaiinnovations/laya")`) or pass `vegaml=False` for the classic encoder.
 
 - **Text, images, audio and video.** `agent.predict(...)` with `image=`, `audio=` or `video=` gives the same typed answers as for text.

@@ -1048,7 +1048,10 @@ def test_no_checkpoint_named_means_vega(monkeypatch):
     _vegaml_present(monkeypatch)
     assert wants_vega((), {}) is True
     assert wants_vega((), {"device": "cpu", "hooks": []}) is True
-    assert isinstance(laya.Agent.__new__(laya.Agent), lv.VegaAgent)
+    built = []
+    monkeypatch.setattr(lv.VegaAgent, "__init__", lambda self, *a, **k: built.append(k))
+    assert isinstance(laya.Agent(device="cpu"), lv.VegaAgent) and built == [{"device": "cpu"}]
+    assert type(laya.Agent.__new__(laya.Agent)) is laya.Agent             # the bare-object idiom still works
 
 
 def test_the_classic_encoder_is_one_argument_away(monkeypatch):

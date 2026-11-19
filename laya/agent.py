@@ -534,7 +534,19 @@ def wants_vega(args=(), kwargs=None) -> bool:
         return False
     return True
 
-class Agent(HookRegistry):
+class _AgentMeta(type):
+    """Since 0.5.0 `laya.Agent(...)` with no checkpoint named loads the new engine (VegaAgent). Decided
+    at the call rather than in __new__, so `Agent.__new__(Agent)` keeps making a bare classic agent."""
+
+    def __call__(cls, *args, **kwargs):
+        if cls is Agent and "vegaml" not in kwargs and wants_vega(args, kwargs):
+            from .vega import VegaAgent
+
+            return VegaAgent(*args, **kwargs)
+        return super().__call__(*args, **kwargs)
+
+
+class Agent(HookRegistry, metaclass=_AgentMeta):
     """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions.
 
     `dtype` is the autocast target, not the precision of every call. On MPS a call
@@ -570,12 +582,14 @@ class Agent(HookRegistry):
     _gate = _InferenceGate()
 
     def __new__(cls, *args, **kwargs):
-        # Since 0.5.0 `laya.Agent()` with no checkpoint named builds a VegaAgent: vegaml's engine
-        # behind laya's surface. Naming a checkpoint, `vegaml=False` or a classic-only option keeps
-        # the classic encoder. The dispatch is here rather than in a
-        # factory so `isinstance(agent, laya.Agent)` stays true either way. VegaAgent overrides
-        # __new__ itself, so there is no recursion through this branch.
-        if cls is Agent and wants_vega(args, kwargs):
+        # `laya.Agent(vegaml=True)` builds a VegaAgent: vegaml's engine behind laya's surface.
+        # The dispatch is here rather than in a factory so that the one argument is the whole
+        # change for a caller, and `isinstance(agent, laya.Agent)` stays true either way.
+        # VegaAgent overrides __new__ itself, so there is no recursion through this branch.
+        # The 0.5.0 default (no checkpoint named: the new engine) is decided in _AgentMeta.__call__,
+        # so `Agent.__new__(Agent)` still makes a bare classic agent.
+        vegaml = kwargs.get("vegaml")
+        if vegaml is not None and vegaml is not False and cls is Agent:
             from .vega import VegaAgent
             return VegaAgent.__new__(VegaAgent)
         return object.__new__(cls)

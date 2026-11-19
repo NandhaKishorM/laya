@@ -955,7 +955,7 @@ def test_page_qualifies_the_banner_and_derives_its_numbers():
 # `examples/03_reading_the_result.py` is the page a reader comes back to "when writing your own
 # glue code", and its field tour closed with "`confidence` is 1 minus normalised entropy -- a scale
 # that moves with the option count on the same answer". `Agent._decode_answers` runs two formulas
-# and picks by question type (`laya/agent.py:1484-1516`):
+# and picks by question type (`laya/agent.py:1498-1530`):
 #   * `choice` and `score`  ->  `round(confidence_from_probs(p, k), 4)` = `1 - H(p) / log(k)`
 #   * `noul`                ->  `round(max(float(p[1]), 1.0 - float(p[1])), 4)`
 # The page calls all three types in one `predict()`, so no single sentence covers `confidence` --
@@ -2240,7 +2240,7 @@ for _fn in (test_tl_kernels_drops_the_wrong_row_claim,
 # --------------------------------------- DecisionResult's docstring must split confidence by question type
 # `laya/structured.py`'s `DecisionResult` closed with "confidence keeps the **normalized-entropy
 # value** it has always had, because that is a different quantity on a scale that depends on the
-# label count". `Agent._decode_answers` (`laya/agent.py:1444-1473`) uses two different formulas:
+# label count". `Agent._decode_answers` (`laya/agent.py:1458-1487`) uses two different formulas:
 #   * `choice` and `score`  ->  `confidence_from_probs(p, k)` = `1 - H(p) / log(k)`
 #   * `noul`                ->  `max(p_true, 1 - p_true)`  (its own comment: "identical here:
 #                               over two options `max(p_true, 1 - p_true)` is `max(p)`")

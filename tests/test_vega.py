@@ -1031,3 +1031,43 @@ def test_a_record_past_the_limit_is_outbound():
     assert a._read_novelty() is None
     a._novelty = None
     assert a._read_novelty() is None
+
+
+# ----------------------------------------------------------------- vega is the default (0.5.0)
+def _vegaml_present(monkeypatch, present=True):
+    import importlib.util
+
+    real = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, "find_spec",
+                        lambda name, *a: (object() if present else None) if name == "vegaml" else real(name, *a))
+
+
+def test_no_checkpoint_named_means_vega(monkeypatch):
+    from laya.agent import wants_vega
+
+    _vegaml_present(monkeypatch)
+    assert wants_vega((), {}) is True
+    assert wants_vega((), {"device": "cpu", "hooks": []}) is True
+    assert isinstance(laya.Agent.__new__(laya.Agent), lv.VegaAgent)
+
+
+def test_the_classic_encoder_is_one_argument_away(monkeypatch):
+    from laya.agent import wants_vega
+
+    _vegaml_present(monkeypatch)
+    assert wants_vega(("convaiinnovations/laya",), {}) is False          # a checkpoint named
+    assert wants_vega((), {"model_id_or_path": "multilingual"}) is False
+    assert wants_vega((), {"vegaml": False}) is False                    # said so
+    assert wants_vega((), {"backend": "onnx"}) is False                  # a classic-only option
+    assert wants_vega((), {"subfolder": "multilingual"}) is False
+    assert type(laya.Agent.__new__(laya.Agent, vegaml=False)) is laya.Agent
+    assert wants_vega((), {"vegaml": "4b"}) is True                      # an explicit ask names a reader
+
+
+def test_without_vegaml_the_default_falls_back_to_the_classic_encoder(monkeypatch):
+    import laya.agent as la
+
+    _vegaml_present(monkeypatch, present=False)
+    monkeypatch.setattr(la, "_warned_no_vegaml", [])
+    with pytest.warns(UserWarning, match="vegaml is not installed"):
+        assert la.wants_vega((), {}) is False

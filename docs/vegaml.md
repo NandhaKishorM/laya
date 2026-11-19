@@ -187,7 +187,7 @@ to the encoders, with `Router(vega=False)` to turn it off. See
 ```python
 from laya.vega import Router
 
-router = Router(fast=laya.Agent(), vega=agent)
+router = Router(fast=laya.Agent("convaiinnovations/laya"), vega=agent)
 out = router.predict(state, questions)
 out["routing"]                     # {"model": "fast" | "vega", "reason": "..."}
 ```

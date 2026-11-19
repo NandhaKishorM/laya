@@ -154,7 +154,7 @@ from laya.evals import Dataset
 from laya.evals_shortlist import evaluate_shortlist
 from laya.shortlist import embed_fn_from_agent
 
-agent = laya.load()
+agent = laya.load("laya")   # the classic encoder: the shortlist reads its embeddings
 dataset_path = "intents.jsonl"
 dataset = Dataset.from_jsonl(dataset_path)
 report = evaluate_shortlist(
@@ -195,7 +195,7 @@ import laya
 from laya.evals import Dataset
 from laya.evals_tournament import evaluate_tournament
 
-agent = laya.load()
+agent = laya.load("laya")   # the classic encoder
 dataset_path = "intents.jsonl"
 report = evaluate_tournament(
     agent, Dataset.from_jsonl(dataset_path), group_size=16,

@@ -5,7 +5,16 @@
   </picture>
 </p>
 
-> **[Studio, from Embedding Space](https://studio.embedding.in): decision models that learn on the job.** Pick your questions and get a vega model that runs on your own servers (`pip install vegaml` plus the licensed learner). It answers from day one and learns from every answer your team confirms: across Studio's 14 templates, 85% right on day one and 96% after 120 confirmed answers. Learning takes seconds on a CPU, with no GPU and no fine-tuning, and your records never leave your network. Pricing at [studio.embedding.in](https://studio.embedding.in).
+**New: laya now carries everything from vega, all open source under Apache 2.0** (`pip install -U laya`):
+
+- **Text, images, audio and video.** `laya.Agent(vegaml=True).predict(...)` with `image=`, `audio=` or `video=` gives the same typed answers as for text.
+- **73,728 tokens of context** through vega's reader. Whole contracts, threads and logs in one read.
+- **Abstain and unbound.** Every vega answer carries a calibrated probability, a conformal answer set, an `abstain` flag when it should not commit, and an `unbound` flag when the input sits far from every answer (likely off-distribution).
+- **Physics, not text generation.** In vega each candidate answer is a well in an energy landscape, and the input is a particle that rolls and settles in one. Deterministic, constant cost, nothing generated.
+- **Any LLM as the reader.** vega-U is one small engine over any frozen reader from 0.8B to 27B.
+- **Continuous learning.** `from laya import Learner`: it answers from day one and learns from every answer your team confirms, on your own machine. Across 14 decision templates, 85% right on day one and 96% after 120 confirmed answers, learning in seconds on a CPU with no fine-tuning. [Guide](https://github.com/NandhaKishorM/laya/blob/main/docs/vegaml.md#continuous-learning).
+
+> **[Studio, from Embedding Space](https://studio.embedding.in)** builds the starting set for your questions and runs it for you.
 
 > **Cite this work.** M, N.; M, A. From Laya to Vega: Open Non-Autoregressive Decision Models with Calibrated Probabilities. *Preprints* **2026**, 2026110781. [https://doi.org/10.20944/preprints202611.0781.v1](https://doi.org/10.20944/preprints202611.0781.v1)
 
@@ -264,6 +273,16 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 ## Documentation
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
+
+## What's new in 0.4.38
+
+* **Continuous learning: `from laya import Learner`.** vegaml 0.17's open-source learner, re-exported:
+  it answers from day one, takes the right answer whenever you know it (`learner.feedback`), and learns
+  from it every 50 answers in the background, on your own machine. A batch that sharply disagrees with
+  what it learned is held for you to accept or discard, one step can be undone, and state is saved and
+  resumed. `python -m vegaml.learn serve` runs it as a REST API with JWT. It reads with vega, not with
+  laya's own encoder. Guide in [docs/vegaml.md](https://github.com/NandhaKishorM/laya/blob/main/docs/vegaml.md#continuous-learning).
+* vegaml 0.17 or newer is now required.
 
 ## What's new in 0.4.37
 

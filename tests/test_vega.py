@@ -321,6 +321,24 @@ def test_without_vegaml_the_argument_fails_with_the_install_hint():
         laya.load(vegaml=True)
 
 
+def test_learner_is_vegamls_continuous_learner():
+    import laya.learn as ll
+
+    assert "Learner" in laya.__all__ and laya.Learner is ll.Learner
+    learn = pytest.importorskip("vegaml.learn")
+    assert ll._learner() is learn.Learner
+
+
+def test_learner_without_vegaml_says_what_to_install(monkeypatch):
+    import sys
+
+    import laya.learn as ll
+
+    monkeypatch.setitem(sys.modules, "vegaml.learn", None)
+    with pytest.raises(ImportError, match=r"vegaml 0.17"):
+        ll.Learner({"q": {"type": "boolean", "instructions": "x"}})
+
+
 def test_vega_agent_is_exported_and_is_an_agent_subclass():
     assert laya.VegaAgent is lv.VegaAgent
     assert issubclass(lv.VegaAgent, laya.Agent)

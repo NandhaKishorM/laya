@@ -5,6 +5,10 @@
   </picture>
 </p>
 
+<p align="center"><a href="https://github.com/sponsors/NandhaKishorM"><img src="https://img.shields.io/badge/Sponsor-laya-ea4aaa?logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub" /></a></p>
+
+<p align="center">laya is free and open source. If it helps you, <a href="https://github.com/sponsors/NandhaKishorM">sponsor the work on GitHub</a>.</p>
+
 <p align="center"><img src="https://raw.githubusercontent.com/NandhaKishorM/vegaml/main/assets/vega-valleys.svg" width="900" alt="How it decides: a frozen LLM reads the message once, every answer is a valley, and a particle rolls and settles in one. Where it settles is the answer, with its probability, conformal set, abstain and unbound flags." /></p>
 
 **New in 0.5: laya reads images, audio and video, takes 73k tokens, says when it should not decide, and keeps learning.** All open source under Apache 2.0 (`pip install -U laya`).

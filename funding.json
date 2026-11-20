@@ -1,0 +1,113 @@
+{
+  "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+  "version": "v1.1.0",
+  "entity": {
+    "type": "individual",
+    "role": "owner",
+    "name": "Nandakishor M",
+    "email": "nandakishor@embedding.in",
+    "phone": "",
+    "description": "AI researcher and engineer from Kerala, India. I build decision models: models that read a message once and answer typed questions (which team, how urgent, is this an attack) with calibrated probabilities, instead of generating text.\n\nI published the idea in two papers (arXiv:2503.23303 in March 2025, arXiv:2510.01237 in September 2025) with open weights, data and code. In September 2026 I released laya under Apache 2.0, and later vegaml, its physics-based decision engine. Both are built and maintained by me, and every checkpoint and benchmark run is paid for out of my own pocket.",
+    "webpageUrl": {
+      "url": "https://github.com/NandhaKishorM"
+    }
+  },
+  "projects": [
+    {
+      "guid": "laya",
+      "name": "laya",
+      "description": "laya is an open-source System 1 decision model. It reads a message once and answers typed questions (a choice, a score or yes/no) in a single forward pass, about 33 ms on one T4 GPU, with calibrated probabilities you can branch on. It runs on a laptop, a CPU, a phone or an edge board, so the data never leaves the machine.\n\nSince its release in September 2026: 35,000+ GitHub stars and 3,200+ forks, the front page of Hacker News, #1 trending on Hugging Face with 370+ community models built on it, and 250,000+ PyPI downloads a month. It is built into the open-source projects of 43+ teams, including Microsoft PyRIT, NVIDIA TensorRT-Model-Connect, Tencent tRPC, Spring AI, Mozilla.ai llamafile, Tether QVAC, LiteLLM, Unsloth and Ollama.\n\nlaya 0.5 reads images, audio and video, takes 73k tokens of context, says when it should not decide (abstain and unbound flags), and keeps learning from the answers a team confirms, in seconds on a CPU. Weights, training code, benchmarks and notebooks are all open under Apache 2.0.\n\nFunding pays for GPU time to train and openly benchmark checkpoints, Indian and low-resource languages, maintenance of the integrations and ports, and small models for phones and CPUs.",
+      "webpageUrl": {
+        "url": "https://github.com/NandhaKishorM/laya"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/NandhaKishorM/laya"
+      },
+      "licenses": [
+        "spdx:Apache-2.0"
+      ],
+      "tags": [
+        "artificial-intelligence",
+        "machine-learning",
+        "nlp",
+        "classification",
+        "calibration",
+        "multilingual",
+        "multimodal",
+        "decision-model",
+        "python",
+        "edge-ai"
+      ]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "github-sponsors",
+        "type": "payment-provider",
+        "address": "https://github.com/sponsors/NandhaKishorM",
+        "description": "One-time or monthly sponsorship through GitHub Sponsors."
+      },
+      {
+        "guid": "bank",
+        "type": "bank",
+        "address": "",
+        "description": "Direct bank transfer to an account in India (INR, or USD by international wire). Email for details."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "maintainer-time",
+        "status": "active",
+        "name": "Maintainer time",
+        "description": "One maintainer working full time on laya: issues, releases, the 43+ integrations, ports, docs and notebooks.",
+        "amount": 3000,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": [
+          "github-sponsors",
+          "bank"
+        ]
+      },
+      {
+        "guid": "gpu-compute",
+        "status": "active",
+        "name": "GPU compute",
+        "description": "Training new checkpoints and rerunning every benchmark in the open.",
+        "amount": 1500,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": [
+          "github-sponsors",
+          "bank"
+        ]
+      },
+      {
+        "guid": "indic-languages",
+        "status": "active",
+        "name": "Indian and low-resource languages",
+        "description": "Training data, an open evaluation set and checkpoints for Indian and low-resource languages, where English models fail at high confidence.",
+        "amount": 15000,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": [
+          "github-sponsors",
+          "bank"
+        ]
+      },
+      {
+        "guid": "goodwill",
+        "status": "active",
+        "name": "Goodwill",
+        "description": "Any amount, to keep the weights open for everyone.",
+        "amount": 0,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": [
+          "github-sponsors",
+          "bank"
+        ]
+      }
+    ]
+  }
+}

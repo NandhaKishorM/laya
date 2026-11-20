@@ -1040,28 +1040,25 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
             # Build input signatures from normalized, usable items:
             # (state token ids, normalized question schema).
             # Checked separately from targets to detect shared inputs even when labels differ (#967).
-            train_input_sigs = {
-                (tuple(it["state_ids"]), json.dumps(it["q"], sort_keys=True))
-                for it in train_items
-            }
-            calib_input_sigs = {
-                (tuple(it["state_ids"]), json.dumps(it["q"], sort_keys=True))
-                for it in calib_items
-            }
+            def _item_input_sig(it: dict) -> tuple:
+                return (tuple(it["state_ids"]), json.dumps(it["q"], sort_keys=True))
 
-            train_overlap_count = sum(
-                1 for it in eval_items
-                if (tuple(it["state_ids"]), json.dumps(it["q"], sort_keys=True)) in train_input_sigs
-            )
-            calib_overlap_count = sum(
-                1 for it in eval_items
-                if (tuple(it["state_ids"]), json.dumps(it["q"], sort_keys=True)) in calib_input_sigs
-            )
-            total_overlap_count = sum(
-                1 for it in eval_items
-                if (tuple(it["state_ids"]), json.dumps(it["q"], sort_keys=True)) in train_input_sigs
-                or (tuple(it["state_ids"]), json.dumps(it["q"], sort_keys=True)) in calib_input_sigs
-            )
+            train_input_sigs = {_item_input_sig(it) for it in train_items}
+            calib_input_sigs = {_item_input_sig(it) for it in calib_items}
+
+            train_overlap_count = 0
+            calib_overlap_count = 0
+            total_overlap_count = 0
+            for it in eval_items:
+                sig = _item_input_sig(it)
+                in_train = sig in train_input_sigs
+                in_calib = sig in calib_input_sigs
+                if in_train:
+                    train_overlap_count += 1
+                if in_calib:
+                    calib_overlap_count += 1
+                if in_train or in_calib:
+                    total_overlap_count += 1
 
             if total_overlap_count > 0:
                 eval_mode = "overlapping_eval"

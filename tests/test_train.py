@@ -972,6 +972,38 @@ class EndToEndTests(unittest.TestCase):
         self.assertFalse(report["is_held_out"])
         self.assertIn("overlap calibration data", report["note"])
 
+    def test_overlap_detection_mixed_train_and_calibration(self):
+        # Training set has multiple items split into train and calib.
+        # Eval set contains an item from train_items, an item from calib_items, and a novel held-out item.
+        train_file = self.root / "train_mixed_split.jsonl"
+        eval_file = self.root / "eval_mixed_split.jsonl"
+        q_def = {"type": "choice", "instructions": "Classify", "criteria": ["billing", "technical"]}
+
+        states = ["refund please", "charged twice", "crash app", "screen error"]
+        rows = [
+            {"state": s, "questions": {"label": q_def}, "expected": {"label": "billing" if "refund" in s or "charged" in s else "technical"}}
+            for s in states
+        ]
+        train_file.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+        import random
+        order = list(range(len(rows)))
+        random.Random(42).shuffle(order)
+        calib_row = rows[order[0]]
+        train_row = rows[order[2]]
+        novel_row = {"state": "novel query", "questions": {"label": q_def}, "expected": {"label": "technical"}}
+
+        eval_rows = [calib_row, train_row, novel_row]
+        eval_file.write_text("\n".join(json.dumps(r) for r in eval_rows) + "\n", encoding="utf-8")
+
+        out_dir = self.root / "out_mixed_overlap"
+        cfg = TrainConfig(epochs=1, micro_batch=1, grad_accum=1, calib_frac=0.5, calib_max=2, calib_seed=42, eval_data=str(eval_file))
+        finetune(str(train_file), str(self.root / "base"), str(out_dir), cfg, device="cpu")
+        report = json.loads((out_dir / "train_report.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["eval_mode"], "overlapping_eval")
+        self.assertFalse(report["is_held_out"])
+        self.assertIn("overlap training data (1) and calibration data (1) (total 2/3 items)", report["note"])
+
     def test_laya_train_in_sample_calibration_mode(self):
         csv_path = self.root / "calib_tickets.csv"
         lines = ["text,department"]

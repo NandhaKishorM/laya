@@ -938,7 +938,7 @@ def _resolve_log_level() -> str:
     """Log level from LAYA_LOG_LEVEL, validated. Exits with a message instead of a traceback.
 
     The accepted names are uvicorn's own ``LOG_LEVELS``, not a list restated here, so the two cannot
-    drift. uvicorn lowercases the value but does not strip it, so both a typo and a value copied out
+    drift. uvicorn does not lowercase or strip the value, so a typo, an uppercase name, and a value copied out
     of a ``.env`` with padding reach ``LOG_LEVELS[...]`` and die inside ``Config.configure_logging``
     with a bare ``KeyError`` naming the value -- a traceback that reads as a uvicorn bug, from the
     one variable whose sibling in this file promises a message. A blank value is "not specified",

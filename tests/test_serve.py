@@ -2032,10 +2032,10 @@ def test_uvicorn_dies_on_the_values_the_resolver_refuses():
     async def app():
         return None
 
-    for value in ("", " ", "verbose", "notset", "INFO "):
+    for value in ("", " ", "verbose", "notset", "INFO ", "INFO"):
         with pytest.raises(KeyError):
             uvicorn.Config(app, host="127.0.0.1", port=0, log_level=value)
-    for accepted in ("info", "warning", "INFO"):
+    for accepted in ("info", "warning"):
         uvicorn.Config(app, host="127.0.0.1", port=0, log_level=accepted)
 
 BATCH_REQ = {

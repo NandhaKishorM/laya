@@ -247,6 +247,44 @@ class DataTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 rows_from_csv(str(p), text_column="text", label_column="dept")
 
+    def test_rows_from_tsv_and_custom_delimiter(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 1. Standard TSV file
+            tsv_path = Path(tmpdir) / "tickets.tsv"
+            tsv_path.write_text("body\tdepartment\nrefund my invoice\tbilling\napp crash on startup\ttechnical\n",
+                                encoding="utf-8")
+            data = read_data(str(tsv_path), text_column="body", label_column="department")
+            self.assertEqual(len(data), 2)
+            self.assertEqual(data[0]["state"], "refund my invoice")
+            self.assertEqual(data[0]["expected"]["label"], "billing")
+            q = data[0]["questions"]["label"]
+            self.assertEqual(q["type"], "choice")
+            self.assertEqual(q["criteria"], ["billing", "technical"])
+
+            # 2. TSV with Excel UTF-8 BOM
+            bom_tsv = Path(tmpdir) / "bom.tsv"
+            bom_tsv.write_bytes("\ufeffbody\tdepartment\nrefund invoice\tbilling\ncrash\ttechnical\n".encode("utf-8"))
+            bom_data = read_data(str(bom_tsv), text_column="body", label_column="department")
+            self.assertEqual(len(bom_data), 2)
+            self.assertEqual(bom_data[0]["state"], "refund invoice")
+
+            # 3. Custom delimiter (semicolon-separated values)
+            semi_path = Path(tmpdir) / "tickets.txt"
+            semi_path.write_text("body;department\nrefund my invoice;billing\napp crash on startup;technical\n",
+                                 encoding="utf-8")
+            semi_data = read_data(str(semi_path), text_column="body", label_column="department", delimiter=";")
+            self.assertEqual(len(semi_data), 2)
+            self.assertEqual(semi_data[1]["state"], "app crash on startup")
+            self.assertEqual(semi_data[1]["expected"]["label"], "technical")
+
+            # 4. TSV validation error messages reflect TSV format name
+            bad_tsv = Path(tmpdir) / "bad.tsv"
+            bad_tsv.write_text("text\tdept\nhi\tbilling\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as cm:
+                rows_from_csv(str(bad_tsv), text_column="missing", label_column="dept")
+            self.assertIn("TSV file", str(cm.exception))
+            self.assertIn("missing text column", str(cm.exception))
+
     def test_items_from_rows_supports_expected(self):
         exp_rows = [
             {"state": "please refund invoice", "questions": {"department": DEPARTMENT},

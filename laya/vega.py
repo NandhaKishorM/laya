@@ -737,8 +737,9 @@ class VegaAgent(Agent):
         if path.lower().endswith(".jsonl"):
             with open(path, encoding="utf-8") as f:
                 return [json.loads(line) for line in f if line.strip()]
+        delim = "\t" if path.lower().endswith(".tsv") else ","
         with open(path, encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
+            reader = csv.DictReader(f, delimiter=delim)
             if not reader.fieldnames or "state" not in reader.fieldnames:
                 raise ValueError("%s needs a `state` column; the other columns are question ids" % path)
             label_cols = [c for c in reader.fieldnames if c != "state"]

@@ -24,14 +24,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data",
         required=True,
-        help="Path to training data file (.jsonl or .csv).",
+        help="Path to training data file (.jsonl, .csv, or .tsv).",
     )
     parser.add_argument(
         "--eval",
         "--eval-data",
         dest="eval_data",
         default=None,
-        help="Path to evaluation dataset (.jsonl or .csv) for before/after assessment.",
+        help="Path to evaluation dataset (.jsonl, .csv, or .tsv) for before/after assessment.",
     )
     parser.add_argument(
         "--out",
@@ -69,6 +69,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--instructions",
         default=None,
         help="Instructions string for synthesized choice question.",
+    )
+    parser.add_argument(
+        "--delimiter",
+        default=None,
+        help="Custom field delimiter for tabular data (defaults to tab for .tsv, comma for .csv).",
     )
 
     # Training hyperparameters
@@ -205,6 +210,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         question_id=args.question_id,
         instructions=args.instructions,
         eval_data=args.eval_data,
+        delimiter=args.delimiter,
         target_error=args.target_error,
         min_abstain_n=args.min_abstain_n,
     )

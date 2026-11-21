@@ -97,7 +97,7 @@ def verify(files: Mapping[str, bytes], trusted: Optional[Mapping[str, str]] = No
         return {"status": "unverified", "reason": "no manifest (a policy from before laya 0.4.28)"}
     try:
         manifest = json.loads(raw)
-    except ValueError as e:
+    except (ValueError, RecursionError) as e:
         raise PolicyError("manifest.json is not valid JSON: %s" % e) from e
     if not isinstance(manifest, dict):
         raise PolicyError("manifest.json is not a JSON object")
@@ -115,10 +115,12 @@ def verify(files: Mapping[str, bytes], trusted: Optional[Mapping[str, str]] = No
         if got != want:
             raise PolicyError("%s has been changed: its SHA-256 is %s, the manifest says %s"
                               % (name, got[:16], want[:16]))
-    for name in ("heads.npz", "calibration.json"):
+    for name in ("heads.npz", "calibration.json", "questions.json"):
         if name in files and name not in hashes:
             raise PolicyError("%s is in the policy but not in its manifest" % name)
     kid = manifest.get("key_id")
+    if kid is not None and not isinstance(kid, str):
+        raise PolicyError("manifest.json's key_id is not a string")
     if not kid:
         if require_signature:
             raise PolicyError("this policy is not signed, so its origin cannot be verified")
@@ -147,14 +149,22 @@ def verify(files: Mapping[str, bytes], trusted: Optional[Mapping[str, str]] = No
 
 def expected_engine(files: Mapping[str, bytes], report: Mapping[str, Any]) -> Optional[str]:
     """The engine SHA-256 the policy was trained on: the manifest's, else the calibration's own."""
-    m = report.get("manifest") or {}
-    if m.get("engine_sha256"):
-        return str(m["engine_sha256"])
+    m = report.get("manifest")
+    if isinstance(m, Mapping):
+        eng = m.get("engine_sha256")
+        if isinstance(eng, str) and eng:
+            return eng
     try:
         cal = json.loads(files.get("calibration.json") or b"{}")
-    except ValueError:
+    except (ValueError, RecursionError):
         return None
-    return ((cal.get("provenance") or {}).get("engine_sha256")) or None
+    if not isinstance(cal, dict):
+        return None
+    prov = cal.get("provenance")
+    if not isinstance(prov, dict):
+        return None
+    eng = prov.get("engine_sha256")
+    return eng if isinstance(eng, str) and eng else None
 
 
 def check_engine(expected: Optional[str], actual: Optional[str]) -> None:

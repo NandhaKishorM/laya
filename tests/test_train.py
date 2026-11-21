@@ -902,6 +902,44 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("delta_brier", report["comparison"])
         self.assertIn("delta_brier_top1", report["comparison"])
 
+    def test_laya_train_cli_with_eval_file_tsv(self):
+        train_path = self.root / "train_eval.tsv"
+        eval_path = self.root / "eval_eval.tsv"
+        train_lines = ["text\tdepartment"]
+        eval_lines = ["text\tdepartment"]
+        for s in BILLING_STATES:
+            train_lines.append(f"{s}\tbilling")
+        for s in TECH_STATES:
+            train_lines.append(f"{s}\ttechnical")
+        eval_lines.append("Need to pay monthly subscription\tbilling")
+        eval_lines.append("Server connection refused on port 8080\ttechnical")
+        train_path.write_text("\n".join(train_lines), encoding="utf-8")
+        eval_path.write_text("\n".join(eval_lines), encoding="utf-8")
+
+        out_dir = self.root / "out_cli_eval_tsv"
+        code = train_cli_main([
+            "--data", str(train_path),
+            "--eval", str(eval_path),
+            "--base", str(self.root / "base"),
+            "--out", str(out_dir),
+            "--text-column", "text",
+            "--label-column", "department",
+            "--epochs", "1",
+            "--micro-batch", "4",
+            "--grad-accum", "1",
+            "--loss", "soft-ce",
+            "--device", "cpu",
+        ])
+        self.assertEqual(code, 0)
+        report = json.loads((out_dir / "train_report.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["eval_source"], str(eval_path))
+        self.assertEqual(report["eval_mode"], "held_out")
+        self.assertTrue(report["is_held_out"])
+        self.assertEqual(report["eval_items"], 2)
+        self.assertIn("before", report)
+        self.assertIn("after", report)
+        self.assertIn("comparison", report)
+
     def test_laya_train_cli_with_overlapping_eval_file(self):
         train_path = self.root / "train_overlap.csv"
         eval_path = self.root / "eval_overlap.csv"

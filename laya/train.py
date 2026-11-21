@@ -435,7 +435,11 @@ def read_data(path: str, text_column: str = "text", label_column: str = "label",
 
 def read_jsonl(path: str) -> List[Dict[str, Any]]:
     rows = []
-    with open(path, encoding="utf-8") as f:
+    # `utf-8-sig`, not `utf-8`: a dataset saved by Notepad or a spreadsheet starts with a UTF-8
+    # BOM, and a plain `utf-8` read leaves it as U+FEFF on line 1, so `json` refuses a file whose
+    # rows are all valid JSON -- with its own "decode using utf-8-sig" hint. `rows_from_csv` above,
+    # `laya/evals.py::Dataset.from_jsonl` and `laya/cli.py` open a caller's file this way already.
+    with open(path, encoding="utf-8-sig") as f:
         for line in f:
             line = line.strip()
             if line and not line.startswith("#"):

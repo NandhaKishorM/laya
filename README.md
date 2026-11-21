@@ -19,6 +19,7 @@
 - **Physics, not text generation.** Each candidate answer is a valley; the input is a particle that rolls and settles in one. Deterministic, constant cost, nothing generated.
 - **Any LLM as the reader.** One small decision engine on top of a frozen reader, from 0.8B to 27B.
 - **Continuous learning.** `from laya import Learner`: it answers from day one and learns from every answer your team confirms, on your own machine, in seconds on a CPU with no fine-tuning.
+- **A teacher for what it is unsure of.** `laya.Escalator(learner, teacher)` sends only the records it abstains on, finds unbound or is not yet sure of to your teacher (a review queue, a rules engine, a model you run), serves that answer and learns from it, so the teacher is needed less and less. [Guide](https://github.com/NandhaKishorM/laya/blob/main/docs/vegaml.md#a-teacher-for-what-it-is-unsure-of).
 
 ### How abstain and unbound work
 

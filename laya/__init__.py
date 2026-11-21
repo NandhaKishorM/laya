@@ -46,6 +46,7 @@ _LAZY_ATTRS = {
     "Agent": (".agent", "Agent"),
     "VegaAgent": (".vega", "VegaAgent"),       # vegaml's engine behind laya's surface
     "Learner": (".learn", "Learner"),           # vegaml's continuous learner
+    "Escalator": (".learn", "Escalator"),       # and its teacher for what it is unsure of
     "RLAgent": (".agent", "RLAgent"),
     "load": (".agent", "load"),
     "fit_temperatures": (".calibrate", "fit_temperatures"),
@@ -104,6 +105,7 @@ __all__ = [
     "RLAgent",
     "VegaAgent",
     "Learner",
+    "Escalator",
     "load",
     "fit_temperatures",
     "fit_one_temperature",

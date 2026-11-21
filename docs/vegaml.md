@@ -173,6 +173,36 @@ learner.feedback("I was charged twice this month", {"team": "billing"})
 Measured across 14 decision templates: 85% right on day one, 92% after 40 confirmed answers and 96%
 after 120. On 8 CPU threads, 0.72 s an answer, 6.4 GB of RAM, and 34 s to learn from 300 answers.
 
+### A teacher for what it is unsure of
+
+When nobody confirms answers by hand, give the learner a teacher: any function that answers a record
+better than it can yet (your review queue, a rules engine, a model you run). `laya.Escalator` sends it
+only what the learner is unsure of, serves the teacher's answer, and learns from it, so the share that
+needs the teacher falls as the learner learns.
+
+```python
+from laya import Escalator, Learner
+
+def teacher(text, questions):          # {question id: answer}; leave out what it cannot answer
+    return {"team": my_review_queue.answer(text)}
+
+learner = Learner(questions, workdir="./state")
+desk = Escalator(learner, teacher)
+out = desk.decide("I was charged twice this month")
+out["answers"]["team"]["source"]       # "teacher" while it is still learning, "vega" once it is sure
+desk.report()["teacher_share_recent"]  # the share of the last 100 records the teacher still saw
+```
+
+- Sent to the teacher: an answer that abstains or is unbound, a learned answer below its confidence
+  line (`line=0.8`), and a small random share of the rest as an audit (`audit=0.05`).
+- Audits are how trust is earned. While the learner's answers agree with the teacher's less often than
+  `trust` (0.95), the line rises and more goes to the teacher; once they agree, it falls back.
+- A learned answer takes over only when it beats the engine on balanced accuracy, so on a question where
+  one answer is rare (a jailbreak, a fraud), a learner that always gives the common answer never
+  replaces one that catches the rare ones.
+- A teacher that fails or answers something unusable is skipped: the learner's own answer is served and
+  nothing is learned from that record.
+
 It reads with vega (the 0.8B reader by default), not with laya's own encoder. The full guide is
 [vegaml's docs/learn.md](https://github.com/NandhaKishorM/vegaml/blob/main/docs/learn.md).
 

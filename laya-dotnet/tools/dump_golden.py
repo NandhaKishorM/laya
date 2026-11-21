@@ -27,9 +27,11 @@ Usage:
 """
 
 import argparse
+import copy
 import json
 import os
 import sys
+import warnings
 
 import numpy as np
 import onnxruntime as ort
@@ -58,7 +60,22 @@ from golden_cases import (  # noqa: E402
     LONG_ERROR_CASES,
     MIN_CONFIDENCE_CASES,
     MIN_CONFIDENCE_ERROR_CASES,
+    NOUL_LABELS_BATCH_CASES,
+    NOUL_LABELS_BATCH_ERROR_CASES,
+    NOUL_LABELS_CASES,
+    NOUL_LABELS_ERROR_CASES,
+    NOUL_LABELS_LONG_CASES,
+    NOUL_LABELS_LONG_ERROR_CASES,
+    OPTION_ORDER_BATCH_CASES,
+    OPTION_ORDER_BATCH_ERROR_CASES,
+    OPTION_ORDER_CASES,
+    OPTION_ORDER_ERROR_CASES,
+    OPTION_ORDER_LONG_CASES,
+    OPTION_ORDER_LONG_ERROR_CASES,
+    OPTION_ORDER_SHORTLIST_CASES,
     SHORTLIST_E2E_CASES,
+    TOURNAMENT_CASES,
+    TOURNAMENT_ERROR_CASES,
 )
 
 import hashing_embedder  # noqa: E402
@@ -340,19 +357,24 @@ def describe_questions(agent: Agent, state, questions: dict, options: dict = Non
     out = []
     for qid, qdef in questions.items():
         q = Agent._to_internal(qdef)
-        seq, markers = build_sequence(agent.tok, state, q, max_len, head_max_len)
-        out.append(
-            {
-                "id": qid,
-                "type": q["t"],
-                "qtype": QTYPES[q["t"]],
-                "instructions": q["ins"],
-                "head_text": "%s question: %s" % (q["t"], str(q["ins"]).replace(mask_tok, " ")),
-                "options": render_options(q),
-                "input_ids": [int(i) for i in seq],
-                "markers": [int(m) for m in markers],
-            }
-        )
+        # `system_one` builds with the question's own order (agent.py:1159), so the recorded ids and
+        # markers are in slot order; `options` stays in option order, as `render_options` returns it.
+        seq, markers = build_sequence(agent.tok, state, q, max_len, head_max_len,
+                                      option_order=q.get("option_order"))
+        rec = {
+            "id": qid,
+            "type": q["t"],
+            "qtype": QTYPES[q["t"]],
+            "instructions": q["ins"],
+            "head_text": "%s question: %s" % (q["t"], str(q["ins"]).replace(mask_tok, " ")),
+            "options": render_options(q),
+            "input_ids": [int(i) for i in seq],
+            "markers": [int(m) for m in markers],
+        }
+        # Only when the question has one, so every earlier golden stays byte-identical.
+        if q.get("option_order") is not None:
+            rec["option_order"] = q["option_order"]
+        out.append(rec)
     return out
 
 
@@ -414,6 +436,8 @@ def record_shortlist_case(agent: Agent, case: dict) -> dict:
         if meta is not None and not meta["passthrough"]:
             updated = dict(qdef)
             updated["criteria"] = _subset_criteria(qdef["criteria"], meta["labels"])
+            # predict_shortlist drops an order the narrowed labels no longer fit (shortlist.py:425).
+            updated.pop("option_order", None)
             reduced[qid] = updated
         else:
             reduced[qid] = qdef
@@ -440,6 +464,83 @@ def record_shortlist_case(agent: Agent, case: dict) -> dict:
         "act_logits": last["act_logits"].tolist(),
         "result": result,
     }
+
+
+class TournamentRecorder:
+    """The agent behind `predict_tournament`, recording every call it receives.
+
+    `predict_tournament` calls `agent.predict` (or `system_one`) once per elimination round and once for the
+    final, forwarding its `**predict_kwargs`. This wrapper answers each call with the genuine
+    `Agent.system_one` and keeps what the call was asked (a deep copy: the module builds fresh dicts per
+    call, but the record must not alias them), the options it carried, the choice it gave each question and
+    its usage, so a port can be checked call by call and not only on the final result.
+    """
+
+    def __init__(self, agent):
+        self.agent = agent
+        self.calls = []
+
+    def predict(self, state, questions, **kwargs):
+        asked = copy.deepcopy(questions)
+        result = self.agent.system_one(state, questions, **kwargs)
+        self.calls.append({
+            "questions": asked,
+            "options": dict(kwargs) if kwargs else None,
+            "choices": {qid: a["choice"] for qid, a in result["answers"].items() if "choice" in a},
+            "usage": result["usage"],
+        })
+        return result
+
+
+def record_tournament_case(agent: Agent, case: dict) -> dict:
+    """`predict_tournament` (shortlist.py:139-227) end to end on the real checkpoint, with the options and
+    group size the case names. Records every call, the RuntimeWarnings it raised (as Python's own
+    `warnings` module saw them) and the result the caller gets."""
+    from laya.shortlist import predict_tournament
+
+    state, questions = case["state"], case["questions"]
+    options = case.get("options") or {}
+    kwargs = dict(options)
+    if "group_size" in case:
+        kwargs["group_size"] = case["group_size"]
+    recorder = TournamentRecorder(agent)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = predict_tournament(recorder, state, questions, **kwargs)
+    rec = {
+        "name": case["name"],
+        "state": state,
+        "serialized_state": serialize_state(state),
+        "questions": questions,
+    }
+    if "group_size" in case:
+        rec["group_size"] = case["group_size"]
+    if options:
+        rec["options"] = options
+    rec["calls"] = recorder.calls
+    rec["warnings"] = [{"category": w.category.__name__, "message": str(w.message)} for w in caught]
+    rec["result"] = result
+    return rec
+
+
+def record_tournament_error_case(agent: Agent, case: dict) -> dict:
+    from laya.shortlist import predict_tournament
+
+    recorder = TournamentRecorder(agent)
+    try:
+        predict_tournament(recorder, case["state"], case["questions"], group_size=case["group_size"])
+    except ValueError as e:
+        if recorder.calls:
+            raise SystemExit("case %r reached the model before raising" % case["name"])
+        return {
+            "name": case["name"],
+            "state": case["state"],
+            "questions": case["questions"],
+            "group_size": case["group_size"],
+            "error_type": "ValueError",
+            "error_message": str(e),
+        }
+    raise SystemExit("case %r was expected to raise ValueError but did not" % case["name"])
 
 
 def record_error_case(agent: Agent, case: dict) -> dict:
@@ -748,6 +849,68 @@ def run_checkpoint(onnx_dir: str, out_dir: str) -> int:
         index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
                       "expects_error": False, "kind": "long"})
     with_calibration(agent, {})
+
+    # Question-level `option_order`, appended after everything above so index.json's diff stays a pure
+    # append. Same kinds as their plain counterparts, so the existing parity tests pick them up.
+    for case in OPTION_ORDER_CASES + OPTION_ORDER_ERROR_CASES:
+        expects_error = case in OPTION_ORDER_ERROR_CASES
+        rec = (record_error_case if expects_error else record_case)(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": expects_error})
+    for case in OPTION_ORDER_SHORTLIST_CASES:
+        rec = record_shortlist_case(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": False, "kind": "shortlist"})
+    for cases, expects_error in ((OPTION_ORDER_LONG_CASES, False), (OPTION_ORDER_LONG_ERROR_CASES, True)):
+        for case in cases:
+            rec = record_long_case(agent, case, expects_error)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error, "kind": "long"})
+    for cases, expects_error in ((OPTION_ORDER_BATCH_CASES, False), (OPTION_ORDER_BATCH_ERROR_CASES, True)):
+        for case in cases:
+            rec = record_batch_case(agent, case, expects_error)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error, "kind": "batch"})
+
+    # Custom noul `labels`, appended after the option_order cases for the same reason. `describe_questions`
+    # needs no change: `Agent._to_internal` copies `labels` into the internal question, and `render_options`
+    # and `build_sequence` read them from there, so `options` / `input_ids` / `markers` are the labelled text.
+    for case in NOUL_LABELS_CASES + NOUL_LABELS_ERROR_CASES:
+        expects_error = case in NOUL_LABELS_ERROR_CASES
+        rec = (record_error_case if expects_error else record_case)(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": expects_error})
+    for cases, expects_error in ((NOUL_LABELS_LONG_CASES, False), (NOUL_LABELS_LONG_ERROR_CASES, True)):
+        for case in cases:
+            rec = record_long_case(agent, case, expects_error)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error, "kind": "long"})
+    for cases, expects_error in ((NOUL_LABELS_BATCH_CASES, False), (NOUL_LABELS_BATCH_ERROR_CASES, True)):
+        for case in cases:
+            rec = record_batch_case(agent, case, expects_error)
+            dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+            index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                          "expects_error": expects_error, "kind": "batch"})
+
+    # predict_tournament, appended after the custom noul labels for the same reason (index.json stays a pure
+    # append). `kind: "tournament"` keeps the plain parity tests off them: `result` is the final call's, over
+    # finalists, and `calls` holds the rounds.
+    for case in TOURNAMENT_CASES:
+        rec = record_tournament_case(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": False, "kind": "tournament"})
+    for case in TOURNAMENT_ERROR_CASES:
+        rec = record_tournament_error_case(agent, case)
+        dump(rec, os.path.join(out_dir, "case_%s.json" % case["name"]))
+        index.append({"name": case["name"], "file": "case_%s.json" % case["name"],
+                      "expects_error": True, "kind": "tournament"})
 
     dump(index, os.path.join(out_dir, "index.json"))
     print("done: %d cases -> %s" % (len(index), out_dir))

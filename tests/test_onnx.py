@@ -143,3 +143,42 @@ def test_onnx_numerical_parity(exported):
         )
 
     print("ONNX numerical parity test passed for all 3 question types!")
+
+
+@pytest.mark.skipif(not HAS_ONNX, reason="onnx and onnxruntime are required")
+@pytest.mark.parametrize("sdk", ["laya-rust", "laya-dotnet"])
+def test_fused_export_verifies_selected_checkpoint(sdk, tmp_path, monkeypatch, capsys):
+    """A compatible cached checkpoint has different logits from the one being exported."""
+    import importlib.util
+    import re
+    from functools import partial
+    from pathlib import Path
+
+    import huggingface_hub
+    from safetensors.torch import load_file, save_file
+    from test_predict_batch import build_tiny_repo
+
+    script = Path(__file__).resolve().parents[1] / sdk / "tools" / "export_onnx.py"
+    spec = importlib.util.spec_from_file_location("fused_exporter", script)
+    exporter = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(exporter)
+
+    selected = tmp_path / "typed-decisions"
+    build_tiny_repo(selected)
+    weights = load_file(selected / "model.safetensors")
+    weights["scorer.3.bias"] += 1.0
+    cache = tmp_path / "hub"
+    english = cache / "models--test--english" / "snapshots" / ("a" * 40)
+    english.mkdir(parents=True)
+    save_file(weights, english / "model.safetensors")
+
+    # Keep both the cache and the encoder used to construct either model local to the test.
+    monkeypatch.setattr(huggingface_hub, "scan_cache_dir", partial(huggingface_hub.scan_cache_dir, cache))
+    monkeypatch.setattr(exporter, "build_model", partial(exporter.build_model, encoder_dir=str(selected / "encoder")))
+    exporter.export_one(str(selected), str(tmp_path / "out"), token=None, opset=18, do_verify=True)
+
+    output = capsys.readouterr().out
+    gaps = re.search(r"shape sweep done: [1-9]\d* combos, max diff\s+logits (\S+)\s+act_logits (\S+)", output)
+    assert gaps, output
+    assert float(gaps[1]) <= 1e-3, gaps.group()
+    assert float(gaps[2]) <= 1e-2, gaps.group()

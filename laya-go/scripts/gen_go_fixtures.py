@@ -2008,6 +2008,173 @@ def _accepted(definition):
     return True
 
 
+ROUTED_POOLS = {
+    "A": {"urgency": {"type": "choice", "instructions": "How urgent?", "criteria": {"low": "no", "high": "yes"}}},
+    "B": {"urgency": {"type": "choice", "instructions": "How urgent?", "criteria": {"high": "yes", "low": "no"}}},
+    "C": {"angry": {"type": "noul", "instructions": "Angry?"}},
+    "TD": {i: {"type": "noul", "instructions": "x"} for i in ROUTER_TD["customer_service"]},
+}
+ROUTED_STATES = {
+    "en": "please refund my order", "en2": "where is my parcel", "de": "bitte erstatten Sie mir das Geld für die Bestellung",
+    "zh": "请退款给我", "ru": "верните деньги пожалуйста",
+}
+ROUTED_LABELS = {"english": 1, "multilingual": 2, "typed-decisions": 3}
+
+
+def _routed_hook(name, behaviour, log):
+    """One hook implementing all three predict events; `behaviour` is ";"-joined kind:arg."""
+    parts = [p.partition(":")[::2] for p in behaviour.split(";") if p]
+
+    def hit(ctx, arg):
+        return arg in str(ctx.states[0])
+
+    def start(self, ctx):
+        log.append("%s.start:%s:%s:%s" % (name, ctx.model, ctx.decision["model"], ctx.states[0]))
+        for kind, arg in parts:
+            if kind == "skip" and hit(ctx, arg):
+                ctx.skip([{"model": "stub", "answers": {}, "usage": {"input_tokens": 7, "output_tokens": 0}}])
+            elif kind == "raise" and hit(ctx, arg):
+                raise RuntimeError("boom from %s" % name)
+            elif kind == "rewrite" and hit(ctx, arg):
+                ctx.questions = ROUTED_POOLS["B"]
+            elif kind == "maxlen":
+                ctx.max_len = int(arg)
+
+    def end(self, ctx):
+        log.append("%s.end:%s:%s:%s" % (name, ctx.states[0], (ctx.usage or {}).get("input_tokens"),
+                                       "err" if ctx.error is not None else "ok"))
+        for kind, arg in parts:
+            if kind == "raise_end" and hit(ctx, arg):
+                raise RuntimeError("boom from %s" % name)
+
+    def error(self, ctx):
+        log.append("%s.error:%s:%s" % (name, ctx.states[0], ctx.error))
+
+    return type(name, (), {"on_predict_start": start, "on_predict_end": end, "on_error": error})()
+
+
+def _routed_case(label, method, requests, hooks=(), temps=False, call=None, batch_size=None, sort=False,
+                 min_confidence=None, preload=()):
+    """Run one Router call over stub agents that log what they were asked."""
+    from laya import hooks as pyhooks
+    from laya.router import Router
+
+    log, calls = [], []
+    call = dict(call or {})
+
+    def name_of(questions):
+        for key, pool in ROUTED_POOLS.items():
+            if json.dumps(questions) == json.dumps(pool):
+                return key
+        return "?"
+
+    class Stub:
+        def __init__(self, idx):
+            self.idx = idx
+            self.lang_temperatures = {"de": {}} if temps else None
+
+        def _res(self, state, extra=0):
+            return {"model": "stub", "answers": {},
+                    "usage": {"input_tokens": 10 * len(state) + self.idx + extra, "output_tokens": 1}}
+
+        def system_one(self, state, questions, lang=None, **ov):
+            calls.append({"agent": self.idx, "m": "predict", "states": [state], "q": name_of(questions),
+                          "lang": lang, **ov})
+            return self._res(state)
+
+        def predict_batch(self, states, questions, batch_size=None, lang=None, sort_by_length=False, **ov):
+            calls.append({"agent": self.idx, "m": "batch", "states": list(states), "q": name_of(questions),
+                          "lang": lang, "batch_size": batch_size, "sort": bool(sort_by_length), **ov})
+            return [self._res(x) for x in states]
+
+        def predict_long(self, state, questions, window=None, stride=None, aggregate="auto",
+                         batch_size=None, lang=None):
+            calls.append({"agent": self.idx, "m": "long", "states": [state], "q": name_of(questions),
+                          "lang": lang, "window": window, "stride": stride, "batch_size": batch_size})
+            return self._res(state, 5)
+
+    pyhooks.clear_default_hooks()
+    record = {"case": label, "method": method, "requests": requests, "hooks": [list(h) for h in hooks],
+              "temps": temps, "call": call, "batch_size": batch_size, "sort": sort,
+              "min_confidence": min_confidence, "preload": list(preload),
+              "pools": ROUTED_POOLS, "states": ROUTED_STATES}
+    try:
+        router = Router(hooks=[_routed_hook(n, b, log) for n, b in hooks])
+        for name, idx in ROUTED_LABELS.items():
+            if not preload or name in preload:
+                router.attach(name, Stub(idx))
+        def req(r):
+            out = {"state": ROUTED_STATES.get(r.get("s"), r.get("s")), "questions": ROUTED_POOLS[r["q"]]}
+            out.update({k: v for k, v in r.items() if k not in ("s", "q")})
+            return out
+        try:
+            if method == "batch":
+                res = router.predict_batch([req(r) for r in requests], batch_size=batch_size, sort_by_length=sort,
+                                           min_confidence=min_confidence)
+            else:
+                r = req(requests[0])
+                state, questions = r.pop("state"), r.pop("questions")
+                if min_confidence is not None:
+                    r["min_confidence"] = min_confidence
+                res = [getattr(router, "predict" if method == "predict" else "predict_long")(state, questions, **r, **call)]
+            record["results"] = [{"in": x["usage"]["input_tokens"], "out": x["usage"]["output_tokens"],
+                                  "model": x["routing"]["model"], "reason": x["routing"]["reason"]} for x in res]
+        except Exception as refused:  # noqa: BLE001 -- the text is the golden
+            record["error"] = str(refused)
+        record["loaded"] = list(router.loaded)
+    finally:
+        pyhooks.clear_default_hooks()
+    record["calls"], record["events"] = calls, log
+    return record
+
+
+def routed_family():
+    """Router.predict, predict_batch and predict_long from the real Router over stub agents."""
+    S = ROUTED_STATES
+    mix = [{"s": "en", "q": "A"}, {"s": "de", "q": "A"}, {"s": "en2", "q": "A"}, {"s": "zh", "q": "A"},
+           {"s": "en", "q": "B"}, {"s": "en", "q": "A", "max_len": 64}, {"s": "de", "q": "A", "lang": "de"},
+           {"s": "en2", "q": "C", "head_max_len": 32}, {"s": "ru", "q": "A", "model": "ml"},
+           {"s": "en", "q": "TD"}, {"s": "en2", "q": "A", "task": "typed_decisions"},
+           {"s": "de", "q": "A", "lang": "fr"}, {"s": "de", "q": "A", "lang": ""}]
+    cases = []
+    for key in ("en", "de", "zh", "ru"):
+        cases.append(_routed_case("predict-" + key, "predict", [{"s": key, "q": "A"}]))
+    for kw in ({"model": "ml"}, {"task": "typed_decisions"}, {"lang": "de"}, {"lang": "en"}, {"max_len": 96},
+               {"max_len": 96, "head_max_len": 40}, {"model": "nope"}, {"lang": "de", "model": "english"}):
+        for temps in (False, True):
+            cases.append(_routed_case("predict-%s-%s" % (sorted(kw)[0], temps), "predict",
+                                      [dict({"s": "de", "q": "A"}, **kw)], temps=temps))
+    cases.append(_routed_case("predict-none", "predict", [{"s": None, "q": "A"}]))
+    cases.append(_routed_case("predict-minconf", "predict", [{"s": "en", "q": "A"}], min_confidence=2.0))
+    cases.append(_routed_case("predict-minconf-ok", "predict", [{"s": "en", "q": "A"}], min_confidence=0.5))
+    for temps in (False, True):
+        for bs, sort in ((None, False), (2, False), (2, True)):
+            cases.append(_routed_case("batch-mix-%s-%s-%s" % (temps, bs, sort), "batch", mix, temps=temps,
+                                      batch_size=bs, sort=sort))
+    cases.append(_routed_case("batch-empty", "batch", []))
+    cases.append(_routed_case("batch-none", "batch", [{"s": "en", "q": "A"}, {"s": None, "q": "A"}]))
+    cases.append(_routed_case("batch-minconf", "batch", [{"s": "en", "q": "A"}], min_confidence=-1.5))
+    cases.append(_routed_case("batch-unknown", "batch", [{"s": "en", "q": "A"}, {"s": "en", "q": "A", "model": "zz"}]))
+    pair = [{"s": "en", "q": "A"}, {"s": "en2", "q": "A"}, {"s": "de", "q": "A"}, {"s": "ru", "q": "A"},
+            {"s": "en", "q": "B"}]
+    for hooks in ([("h1", "")], [("h1", ""), ("h2", "")], [("h1", "skip:parcel")], [("h1", "skip:refund"), ("h2", "")],
+                  [("h1", "raise:parcel")], [("h1", "raise:parcel"), ("h2", "raise_end:refund")],
+                  [("h1", "rewrite:parcel")], [("h1", "maxlen:50")], [("h1", "raise_end:Bestellung")],
+                  [("h1", "skip:refund;skip:parcel;skip:Geld;skip:деньги")]):
+        cases.append(_routed_case("batch-hooks-%d" % len(cases), "batch", pair, hooks=hooks, batch_size=2))
+        cases.append(_routed_case("predict-hooks-%d" % len(cases), "predict", [pair[1]], hooks=hooks))
+    long_call = {"window": 100, "stride": 50, "batch_size": 3}
+    for key, extra in (("en", {}), ("de", {}), ("zh", {"lang": "zh"}), ("de", {"model": "english"})):
+        for temps in (False, True):
+            cases.append(_routed_case("long-%s-%s" % (key, temps), "long", [dict({"s": key, "q": "A"}, **extra)],
+                                      temps=temps, call=long_call))
+    cases.append(_routed_case("long-plain", "long", [{"s": "en", "q": "A"}]))
+    cases.append(_routed_case("long-skip", "long", [{"s": "en", "q": "A"}], hooks=[("h1", "skip:refund")]))
+    cases.append(_routed_case("long-raise", "long", [{"s": "en", "q": "A"}], hooks=[("h1", "raise:refund")]))
+    cases.append(_routed_case("long-none", "long", [{"s": None, "q": "A"}]))
+    return cases
+
+
 def build():
     import tokenizers
 
@@ -2045,6 +2212,7 @@ def build():
         "email_fuzz": email_fuzz_family(rng),
         "lifecycle": lifecycle_family(),
         "router_digests": router_digests_family(),
+        "routed": routed_family(),
     }
 
 

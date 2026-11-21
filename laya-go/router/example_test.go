@@ -3,8 +3,11 @@ package router_test
 import (
 	"context"
 	"fmt"
+	"testing/fstest"
 
 	"github.com/NandhaKishorM/laya/laya-go/agent"
+	"github.com/NandhaKishorM/laya/laya-go/infer"
+	"github.com/NandhaKishorM/laya/laya-go/internal/fixtures"
 	"github.com/NandhaKishorM/laya/laya-go/router"
 	"github.com/NandhaKishorM/laya/laya-go/schema"
 )
@@ -121,4 +124,48 @@ func ExampleRouter_ExpectedSHA256() {
 	// multilingual map[model.safetensors:cccc tokenizer/tokenizer.json:dddd]
 	// typed-decisions map[model.safetensors:cccc tokenizer/tokenizer.json:dddd]
 	// true
+}
+
+// scoring is a session that stands in for the graph: it prefers the second option.
+type scoring struct{}
+
+func (scoring) Run(_ context.Context, b infer.Batch) (infer.Output, error) {
+	out := infer.Output{Logits: make([]float32, b.Rows*b.Markers), ActLogits: make([]float32, b.Rows*2)}
+	for i := 0; i < b.Rows; i++ {
+		out.Logits[i*b.Markers+1] = 2
+	}
+	return out, nil
+}
+
+func (scoring) Close() error { return nil }
+
+func ExampleRouter_PredictBatch() {
+	spec, cfg := fixtures.ToyTokenizer()
+	ck := fstest.MapFS{"rl_agent_config.json": {Data: []byte(`{}`)},
+		"tokenizer/tokenizer.json": {Data: spec}, "tokenizer/tokenizer_config.json": {Data: cfg}}
+	r, _ := router.New()
+	defer r.Close()
+	for _, name := range []string{"english", "multilingual"} {
+		a, _ := agent.Open(ck, scoring{})
+		defer a.Close()
+		_ = r.Attach(name, a)
+	}
+	qs, _ := schema.NewQuestions(schema.Ask("intent", schema.MustQuestion(schema.ChoiceOf("What?", "status", "refund"))))
+	reqs := []router.Request{
+		{State: "Please refund the duplicate charge.", Questions: qs},
+		{State: "请退款给我", Questions: qs},
+		{State: "Where is my parcel?", Questions: qs},
+	}
+	// Two checkpoints, two forward passes; results come back in request order.
+	out, err := r.PredictBatch(context.Background(), reqs, 0)
+	fmt.Println(err)
+	for _, o := range out {
+		a, _ := o.Prediction.Answers.Get("intent")
+		fmt.Println(o.Routing.Model, a.(*schema.ChoiceAnswer).Choice)
+	}
+	// Output:
+	// <nil>
+	// english refund
+	// multilingual refund
+	// english refund
 }

@@ -1,8 +1,8 @@
 // Package router decides which Laya checkpoint should read a request. It is the routing half of
 // laya/router.py: Route and RouteBatch look at the state, the questions and the caller's hints and
 // name a checkpoint and the reason, without loading or running anything. OnRoute hooks (see
-// hooks.go) may observe or replace the decision. Loading and routed inference are separate
-// changes.
+// hooks.go) may observe or replace the decision. Predict, PredictBatch and PredictLong route and then answer
+// (predict.go); loading is below.
 //
 // # Loading
 //

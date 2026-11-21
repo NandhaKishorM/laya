@@ -526,15 +526,44 @@ def sigma_at(epoch: int, epochs: int, start: float, end: float) -> float:
 # ------------------------------------------------------------------------------- checkpoint
 
 def resolve_device(device: Optional[str] = "auto") -> torch.device:
-    if device not in (None, "auto"):
-        return torch.device(device)
-    if torch.cuda.is_available():
-        return torch.device("cuda", 0)
-    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
-        return torch.device("mps")
-    if hasattr(torch, "xpu") and torch.xpu.is_available():
-        return torch.device("xpu")
-    return torch.device("cpu")
+    """The device a fine-tune runs on, from the `--device` spelling the caller gave.
+
+    `None`, a blank string and `auto` in any case or padding all mean "use the fastest device this
+    machine has", which is the rule `laya/agent.py::Agent.__init__` applies to a loaded checkpoint
+    and what `laya-train`'s own default of `auto` promises. Any other value goes through
+    `laya.router.check_device` first -- strip, lower-case the device type, refuse unless torch
+    builds the device the string names -- and the device returned is built from that normalised
+    spelling, which is what the run summary's `device %s` line prints.
+
+    Handing the argument to `torch.device` verbatim, as this function did, costs three things. A
+    value torch cannot parse raises a `RuntimeError`, and `laya/train_cli.py::main` routes
+    `ValueError` to the caller's own wording ("laya-train: error: …") and everything else to the
+    fault wording, so `--device gpu` and `--device CUDA:0` printed "laya-train: unexpected error:
+    Expected one of cpu, cuda, ipu, …" and `--device ""` printed "laya-train: unexpected error:
+    Device string must not be empty" -- three ways for a mistyped flag to read as a fault. A value
+    torch parses into *another* device is quieter and worse: on 2.6.0 the index survives only in its
+    low 8 bits, so `--device cuda:258` resolves to `torch.device('cuda:2')` -- measured at
+    `4ac226d5`, on a machine with no CUDA at all, where it then died in `.to()` -- and asks the
+    trainer to move a model onto a GPU nobody named. And `CUDA:0` or `" cuda:0 "` work through
+    `LAYA_DEVICE` and through `Router(device=...)`, both of which normalise, but failed here
+    because this resolver compared against the exact word `auto` and parsed the rest itself.
+
+    A value that is not a string at all -- a `torch.device` or an ordinal a caller built -- goes to
+    torch exactly as before: `check_device` leaves non-strings alone, and there is nothing here to
+    normalise.
+    """
+    from .router import check_device
+
+    value = check_device(device)
+    if value is None or (isinstance(value, str) and value.strip().lower() == "auto"):
+        if torch.cuda.is_available():
+            return torch.device("cuda", 0)
+        if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+            return torch.device("mps")
+        if hasattr(torch, "xpu") and torch.xpu.is_available():
+            return torch.device("xpu")
+        return torch.device("cpu")
+    return torch.device(value)
 
 
 def resolve_checkpoint_dir(model_id_or_path: str, token: Optional[str] = None) -> str:

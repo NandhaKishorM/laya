@@ -315,43 +315,20 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.5.0
+## What's new in 0.5.1
 
-* **The new engine is the default.** `laya.Agent()` and `laya.load()` with no checkpoint named load
-  it (a 0.8B reader with the decision engine on top, from vegaml): conformal sets, `abstain`, `unbound`, `route`, 73k tokens of context,
-  images, audio and video, fitting and calibration, under laya's method names. Name a checkpoint
-  (`laya.Agent("convaiinnovations/laya")`, `laya.load("multilingual")`), pass `vegaml=False`, or use
-  a classic-only option (ONNX, TileLang, `torch.compile`, a subfolder) for the classic encoder. If
-  vegaml cannot be imported, the default falls back to the classic encoder with one warning.
-* The README opens with how abstain and unbound work and the latest measured benchmarks, including
-  continuous learning.
+* **A signed policy can no longer carry an unhashed `questions.json`.** `questions.json` decides which
+  question the novelty check reads, so it now has to be in the manifest like `heads.npz` and
+  `calibration.json`, and `save_calibration` hashes it when it is in the folder. A malformed
+  `key_id`, deeply nested JSON or a non-object `provenance` now raise `PolicyError` instead of
+  crashing (#1510).
+* **laya-onnx (Rust) can skip the build-time ONNX Runtime download.** `download-binaries` is a
+  default feature; `--no-default-features --features load-dynamic` loads the library from
+  `ORT_DYLIB_PATH` instead, for offline build farms and Windows GNU (#1508).
+* The uvicorn log-level test passes on every uvicorn laya allows, 0.27 and later (#1515).
 
-## What's new in 0.4.38
-
-* **Continuous learning: `from laya import Learner`.** vegaml 0.17's open-source learner, re-exported:
-  it answers from day one, takes the right answer whenever you know it (`learner.feedback`), and learns
-  from it every 50 answers in the background, on your own machine. A batch that sharply disagrees with
-  what it learned is held for you to accept or discard, one step can be undone, and state is saved and
-  resumed. `python -m vegaml.learn serve` runs it as a REST API with JWT. It reads with vega, not with
-  laya's own encoder. Guide in [docs/vegaml.md](https://github.com/NandhaKishorM/laya/blob/main/docs/vegaml.md#continuous-learning).
-* vegaml 0.17 or newer is now required.
-
-## What's new in 0.4.37
-
-* **The Studio line at the top points to Studio's own page for pricing.** The Python package code is the
-  same as 0.4.32.
-
-## What's new in 0.4.36
-
-* **The README now opens with Studio, from Embedding Space**, and cites the paper for laya and vega.
-  The Python package code is the same as 0.4.32.
-
-## What's new in 0.4.35
-
-* **The TypeScript HTTP client can ask the server which model it would route to.**
-  `client.route(state, questions, { explain: true })` calls the server's existing `/v1/route`
-  endpoint with the client's auth, timeout and cancellation, and runs no prediction (#1503).
-  The Python package code is the same as 0.4.32.
+From 0.5.0: the new engine is the default. `laya.Agent()` and `laya.load()` with no checkpoint named
+load it; name a checkpoint or pass `vegaml=False` for the classic encoder.
 
 ## Where to go next
 

@@ -173,7 +173,9 @@ def test_a_manifest_key_id_that_is_not_a_string_is_refused_by_name():
 
 
 def test_deeply_nested_manifest_json_raises_policy_error():
-    nested = b"[" * 2000 + b"]" * 2000
+    # Deep enough to raise RecursionError on every supported Python: 3.12 and later parse
+    # 2,000 levels without complaint, 3.14 parses 100,000.
+    nested = b"[" * 1_000_000 + b"]" * 1_000_000
     with pytest.raises(policy.PolicyError, match="manifest.json is not valid JSON"):
         policy.verify({"heads.npz": b"heads-bytes", "manifest.json": nested})
 
@@ -183,7 +185,7 @@ def test_expected_engine_ignores_non_object_or_non_string_provenance():
         b"[]",
         b'{"provenance": []}',
         b'{"provenance": {"engine_sha256": ["not-a-digest"]}}',
-        b"[" * 2000 + b"]" * 2000,
+        b"[" * 1_000_000 + b"]" * 1_000_000,
     ):
         assert policy.expected_engine({"heads.npz": b"h", "calibration.json": bad_cal}, {}) is None
     assert policy.expected_engine(

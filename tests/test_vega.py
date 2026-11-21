@@ -359,6 +359,17 @@ def test_escalator_without_vegaml_says_what_to_install(monkeypatch):
         ll.Escalator(object(), teacher=lambda text, questions: {})
 
 
+def test_vllm_teacher_is_vegamls_self_hosted_teacher(monkeypatch):
+    import sys
+
+    import laya.learn as ll
+
+    assert "vllm_teacher" in laya.__all__ and laya.vllm_teacher is ll.vllm_teacher
+    monkeypatch.setitem(sys.modules, "vegaml.learn", None)
+    with pytest.raises(ImportError, match=r"vegaml 0.18"):
+        ll.vllm_teacher("http://localhost:8000/v1")
+
+
 def test_vega_agent_is_exported_and_is_an_agent_subclass():
     assert laya.VegaAgent is lv.VegaAgent
     assert issubclass(lv.VegaAgent, laya.Agent)

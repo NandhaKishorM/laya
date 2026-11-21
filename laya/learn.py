@@ -52,6 +52,20 @@ class Escalator:
         return _escalator()(*args, **kwargs)
 
 
+def vllm_teacher(*args, **kwargs):
+    """A teacher you run yourself: a model served with vLLM (or any OpenAI-compatible server) on your own
+    machines, for `Escalator(learner, teacher=vllm_teacher("http://localhost:8000/v1"))`. Nothing leaves
+    your network and there is no cost per call. See `help(vegaml.learn.vllm_teacher)`."""
+    try:
+        from vegaml.learn import vllm_teacher as make
+    except ImportError as e:
+        raise ImportError(
+            "laya.vllm_teacher is vegaml's and needs vegaml 0.18 or newer: pip install -U laya "
+            "(or pip install -U 'vegaml>=0.18')"
+        ) from e
+    return make(*args, **kwargs)
+
+
 class Learner:
     """vegaml's continuous learner. `Learner(questions, examples=rows, workdir=...)` returns a
     `vegaml.learn.Learner`; every argument is passed through. See `help(vegaml.learn.Learner)`."""
@@ -60,4 +74,4 @@ class Learner:
         return _learner()(*args, **kwargs)
 
 
-__all__ = ["Escalator", "Learner"]
+__all__ = ["Escalator", "Learner", "vllm_teacher"]

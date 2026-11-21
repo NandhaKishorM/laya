@@ -188,6 +188,10 @@ def teacher(text, questions):          # {question id: answer}; leave out what i
 
 learner = Learner(questions, workdir="./state")
 desk = Escalator(learner, teacher)
+
+# or a model you serve on your own machines with vLLM: nothing leaves your network
+from laya import vllm_teacher
+desk = Escalator(learner, vllm_teacher("http://localhost:8000/v1"))
 out = desk.decide("I was charged twice this month")
 out["answers"]["team"]["source"]       # "teacher" while it is still learning, "vega" once it is sure
 desk.report()["teacher_share_recent"]  # the share of the last 100 records the teacher still saw
@@ -202,6 +206,8 @@ desk.report()["teacher_share_recent"]  # the share of the last 100 records the t
 - A learned answer takes over only when it beats the engine on balanced accuracy, so on a question where
   one answer is rare (a jailbreak, a fraud), a learner that always gives the common answer never
   replaces one that catches the rare ones.
+- Pick a teacher clearly better than the learner on your question. It learns up to its teacher, not past
+  it, and audits measure agreement with the teacher, so they cannot catch a teacher that is wrong.
 - A teacher that fails or answers something unusable is skipped: the learner's own answer is served and
   nothing is learned from that record.
 

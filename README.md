@@ -19,7 +19,7 @@
 - **Physics, not text generation.** Each candidate answer is a valley; the input is a particle that rolls and settles in one. Deterministic, constant cost, nothing generated.
 - **Any LLM as the reader.** One small decision engine on top of a frozen reader, from 0.8B to 27B.
 - **Continuous learning.** `from laya import Learner`: it answers from day one and learns from every answer your team confirms, on your own machine, in seconds on a CPU with no fine-tuning.
-- **A teacher for what it is unsure of.** `laya.Escalator(learner, teacher)` sends only the records it abstains on, finds unbound or is not yet sure of to your teacher (a review queue, a rules engine, a model you run), serves that answer and learns from it, so the teacher is needed less and less. [Guide](https://github.com/NandhaKishorM/laya/blob/main/docs/vegaml.md#a-teacher-for-what-it-is-unsure-of).
+- **A teacher for what it is unsure of.** `laya.Escalator(learner, teacher)` sends only the records it abstains on, finds unbound or is not yet sure of to your teacher (a review queue, a rules engine, or a model you serve yourself with `laya.vllm_teacher`), serves that answer and learns from it, so the teacher is needed less and less. [Guide](https://github.com/NandhaKishorM/laya/blob/main/docs/vegaml.md#a-teacher-for-what-it-is-unsure-of).
 
 ### How abstain and unbound work
 
@@ -315,6 +315,18 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 ## Documentation
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
+
+## What's new in 0.5.2
+
+* **A teacher for what the learner is unsure of.** `laya.Escalator(learner, teacher)` sends only the
+  records it abstains on, finds unbound or is not yet sure of to your teacher, serves that answer and
+  learns from it, so the teacher is needed less and less. A 5% audit keeps a confident learner honest,
+  and a learned answer takes over only when it beats the engine on balanced accuracy (#1518).
+* **A teacher you run yourself.** `laya.vllm_teacher("http://localhost:8000/v1")` asks a model you serve
+  with vLLM (or any OpenAI-compatible server) on your own machines: no cost per call, nothing leaves your
+  network. Measured on 3,000 assistant requests with no labels from anyone, a 27B model served this way
+  took the learner from 35% to 79% right and cut the share sent to the teacher to 40%.
+* Needs vegaml 0.18 (now the minimum).
 
 ## What's new in 0.5.1
 

@@ -45,6 +45,13 @@ fn golden_questions_render_exactly_as_recorded() {
                     .get(id)
                     .unwrap_or_else(|| panic!("{checkpoint}/{case}: missing question '{id}'"));
 
+                let recorded_order = per_question.get("option_order").map(golden_data::ints);
+                assert_eq!(
+                    recorded_order.as_deref(),
+                    question.option_order(),
+                    "{checkpoint}/{case}: question '{id}' option_order"
+                );
+
                 let expected_options: Vec<&str> = per_question["options"]
                     .as_array()
                     .unwrap()

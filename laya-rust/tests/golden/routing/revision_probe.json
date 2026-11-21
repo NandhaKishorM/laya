@@ -1,0 +1,1556 @@
+{
+  "pinned_revisions": {
+    "convaiinnovations/laya": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+    "convaiinnovations/laya-multilingual": "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67",
+    "convaiinnovations/laya-typed-decisions": "1a793eb568e6718f15941d08f85432581df534e3"
+  },
+  "reviewed": "reviewed",
+  "resolve": [
+    {
+      "label": "unset",
+      "model": "convaiinnovations/laya",
+      "revision": null,
+      "env": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "argument_commit",
+      "model": "convaiinnovations/laya",
+      "revision": "abc123",
+      "env": null,
+      "result": {
+        "ok": "abc123"
+      }
+    },
+    {
+      "label": "argument_stripped",
+      "model": "convaiinnovations/laya",
+      "revision": "  abc123\t",
+      "env": null,
+      "result": {
+        "ok": "abc123"
+      }
+    },
+    {
+      "label": "env_commit",
+      "model": "convaiinnovations/laya",
+      "revision": null,
+      "env": "def456",
+      "result": {
+        "ok": "def456"
+      }
+    },
+    {
+      "label": "env_stripped",
+      "model": "convaiinnovations/laya",
+      "revision": null,
+      "env": "  def456\n",
+      "result": {
+        "ok": "def456"
+      }
+    },
+    {
+      "label": "env_empty",
+      "model": "convaiinnovations/laya",
+      "revision": null,
+      "env": "",
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "env_blank",
+      "model": "convaiinnovations/laya",
+      "revision": null,
+      "env": "   ",
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "argument_beats_env",
+      "model": "convaiinnovations/laya",
+      "revision": "abc123",
+      "env": "def456",
+      "result": {
+        "ok": "abc123"
+      }
+    },
+    {
+      "label": "empty_argument_uses_env",
+      "model": "convaiinnovations/laya",
+      "revision": "",
+      "env": "def456",
+      "result": {
+        "ok": "def456"
+      }
+    },
+    {
+      "label": "blank_argument_suppresses_env",
+      "model": "convaiinnovations/laya",
+      "revision": "   ",
+      "env": "def456",
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "blank_argument_no_env",
+      "model": "convaiinnovations/laya",
+      "revision": "  ",
+      "env": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "branch_name",
+      "model": "convaiinnovations/laya",
+      "revision": "refs/pr/1",
+      "env": null,
+      "result": {
+        "ok": "refs/pr/1"
+      }
+    },
+    {
+      "label": "tag_name",
+      "model": "convaiinnovations/laya",
+      "revision": "v0.4.16",
+      "env": null,
+      "result": {
+        "ok": "v0.4.16"
+      }
+    },
+    {
+      "label": "reviewed_argument_english",
+      "model": "convaiinnovations/laya",
+      "revision": "reviewed",
+      "env": null,
+      "result": {
+        "ok": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851"
+      }
+    },
+    {
+      "label": "reviewed_argument_multilingual",
+      "model": "convaiinnovations/laya-multilingual",
+      "revision": "reviewed",
+      "env": null,
+      "result": {
+        "ok": "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67"
+      }
+    },
+    {
+      "label": "reviewed_argument_typed",
+      "model": "convaiinnovations/laya-typed-decisions",
+      "revision": "reviewed",
+      "env": null,
+      "result": {
+        "ok": "1a793eb568e6718f15941d08f85432581df534e3"
+      }
+    },
+    {
+      "label": "reviewed_argument_padded",
+      "model": "convaiinnovations/laya",
+      "revision": "  reviewed  ",
+      "env": null,
+      "result": {
+        "ok": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851"
+      }
+    },
+    {
+      "label": "reviewed_env",
+      "model": "convaiinnovations/laya-multilingual",
+      "revision": null,
+      "env": "reviewed",
+      "result": {
+        "ok": "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67"
+      }
+    },
+    {
+      "label": "reviewed_env_padded",
+      "model": "convaiinnovations/laya",
+      "revision": null,
+      "env": " reviewed\n",
+      "result": {
+        "ok": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851"
+      }
+    },
+    {
+      "label": "reviewed_case_insensitive_repo",
+      "model": "ConvaiInnovations/Laya",
+      "revision": "reviewed",
+      "env": null,
+      "result": {
+        "ok": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851"
+      }
+    },
+    {
+      "label": "reviewed_upper_repo",
+      "model": "CONVAIINNOVATIONS/LAYA-MULTILINGUAL",
+      "revision": null,
+      "env": "reviewed",
+      "result": {
+        "ok": "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67"
+      }
+    },
+    {
+      "label": "reviewed_is_case_sensitive",
+      "model": "convaiinnovations/laya",
+      "revision": "Reviewed",
+      "env": null,
+      "result": {
+        "ok": "Reviewed"
+      }
+    },
+    {
+      "label": "reviewed_argument_beats_env",
+      "model": "convaiinnovations/laya",
+      "revision": "reviewed",
+      "env": "def456",
+      "result": {
+        "ok": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851"
+      }
+    },
+    {
+      "label": "commit_argument_beats_reviewed_env",
+      "model": "convaiinnovations/laya",
+      "revision": "abc123",
+      "env": "reviewed",
+      "result": {
+        "ok": "abc123"
+      }
+    },
+    {
+      "label": "blank_argument_beats_reviewed_env",
+      "model": "convaiinnovations/laya",
+      "revision": "  ",
+      "env": "reviewed",
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "reviewed_unknown_repo_argument",
+      "model": "someone/else",
+      "revision": "reviewed",
+      "env": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: revision= asked for 'reviewed', but 'someone/else' has no reviewed SHA in PINNED_REVISIONS; pass a commit, branch or tag in revision= instead"
+      }
+    },
+    {
+      "label": "reviewed_unknown_repo_env",
+      "model": "someone/else",
+      "revision": null,
+      "env": "reviewed",
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: LAYA_REVISION=reviewed, but 'someone/else' has no reviewed SHA in PINNED_REVISIONS; set LAYA_REVISION to a commit or unset it"
+      }
+    },
+    {
+      "label": "reviewed_unknown_repo_both",
+      "model": "someone/else",
+      "revision": "reviewed",
+      "env": "reviewed",
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: revision= asked for 'reviewed', but 'someone/else' has no reviewed SHA in PINNED_REVISIONS; pass a commit, branch or tag in revision= instead"
+      }
+    },
+    {
+      "label": "reviewed_local_path_argument",
+      "model": "C:\\models\\laya",
+      "revision": "reviewed",
+      "env": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: revision= asked for 'reviewed', but 'C:\\\\models\\\\laya' has no reviewed SHA in PINNED_REVISIONS; pass a commit, branch or tag in revision= instead"
+      }
+    },
+    {
+      "label": "reviewed_quote_in_repo",
+      "model": "it's/repo",
+      "revision": null,
+      "env": "reviewed",
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: LAYA_REVISION=reviewed, but \"it's/repo\" has no reviewed SHA in PINNED_REVISIONS; set LAYA_REVISION to a commit or unset it"
+      }
+    },
+    {
+      "label": "reviewed_unicode_repo",
+      "model": "Ärger/laya",
+      "revision": "reviewed",
+      "env": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: revision= asked for 'reviewed', but 'Ärger/laya' has no reviewed SHA in PINNED_REVISIONS; pass a commit, branch or tag in revision= instead"
+      }
+    },
+    {
+      "label": "reviewed_dotted_capital_i",
+      "model": "CONVAİinnovations/LAYA",
+      "revision": "reviewed",
+      "env": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: revision= asked for 'reviewed', but 'CONVAİinnovations/LAYA' has no reviewed SHA in PINNED_REVISIONS; pass a commit, branch or tag in revision= instead"
+      }
+    },
+    {
+      "label": "unknown_repo_commit_is_fine",
+      "model": "someone/else",
+      "revision": "abc123",
+      "env": null,
+      "result": {
+        "ok": "abc123"
+      }
+    }
+  ],
+  "verify": [
+    {
+      "label": "none_no_env",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "none_blank_env",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "   ",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "empty_map",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {},
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "empty_map_masks_bad_env",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {},
+      "env": "{\"model.onnx\": \"0000\"}",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "empty_map_masks_malformed_env",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {},
+      "env": "{",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "single_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "several_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b",
+        "model.onnx.data": "f3a25aa93aa2fbba28d79260535bbd6a5eb0fc1c24a8b0f04e12b484c1dfe363",
+        "tokenizer/tokenizer.json": "96ec3b7c37256c62f97f1aa645cd80cdcad3af97e230909bd7808cd546f4674f",
+        "weights/data.bin": "c910421d4fb02168da7e6504ec9576cb6ba06dec86686c5b024acc8e5e69d050"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "uppercase_digest_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "FFD5F70EF9B458B9AC388CA56A3A15197BD6AE1FCE1AF289ECD63FC20233938B"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "padded_digest_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "  FFD5F70EF9B458B9AC388CA56A3A15197BD6AE1FCE1AF289ECD63FC20233938B\t "
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "unicode_name_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "Ünï.bin": "8898cd6a1c9777bbb832388868a66967c501a8ab02291e595816b7b23470c838"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "backslash_path_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "tokenizer\\tokenizer.json": "96ec3b7c37256c62f97f1aa645cd80cdcad3af97e230909bd7808cd546f4674f"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "dot_segment_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "./model.onnx": "ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "double_slash_inside_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "tokenizer//tokenizer.json": "96ec3b7c37256c62f97f1aa645cd80cdcad3af97e230909bd7808cd546f4674f"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "mismatch",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected 0000000000000000000000000000000000000000000000000000000000000000, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "mismatch_second_file",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b",
+        "encoder.onnx": "abababababababababababababababababababababababababababababababab"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for encoder.onnx: expected abababababababababababababababababababababababababababababababab, got 199cbbd08aa133f04b37978eb225bc20def3d8acd6a0410a10525ce2d6ea7c7d. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "mismatch_blank_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": ""
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected , got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "mismatch_prefix_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "sha256:ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected sha256:ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "missing_file",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "nope.bin": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "FileNotFoundError",
+        "error_message": "laya: cannot verify 'nope.bin': no such file under {dir}"
+      }
+    },
+    {
+      "label": "missing_after_ok_file",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b",
+        "nope.bin": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "FileNotFoundError",
+        "error_message": "laya: cannot verify 'nope.bin': no such file under {dir}"
+      }
+    },
+    {
+      "label": "directory_is_not_a_file",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "tokenizer": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "FileNotFoundError",
+        "error_message": "laya: cannot verify 'tokenizer': no such file under {dir}"
+      }
+    },
+    {
+      "label": "trailing_dotdot_is_missing",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "tokenizer/..": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "FileNotFoundError",
+        "error_message": "laya: cannot verify 'tokenizer/..': no such file under {dir}"
+      }
+    },
+    {
+      "label": "single_dot_is_missing",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        ".": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "FileNotFoundError",
+        "error_message": "laya: cannot verify '.': no such file under {dir}"
+      }
+    },
+    {
+      "label": "absolute_slash",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "/model.onnx": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe absolute path in expected digests: '/model.onnx'"
+      }
+    },
+    {
+      "label": "absolute_double_slash",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "//server/share/x": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe absolute path in expected digests: '//server/share/x'"
+      }
+    },
+    {
+      "label": "absolute_drive_slash",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "C:/windows/x": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe absolute path in expected digests: 'C:/windows/x'"
+      }
+    },
+    {
+      "label": "absolute_drive_backslash",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "C:\\windows\\x": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe absolute path in expected digests: 'C:\\\\windows\\\\x'"
+      }
+    },
+    {
+      "label": "absolute_unc_backslash",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "\\\\server\\share": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe absolute path in expected digests: '\\\\\\\\server\\\\share'"
+      }
+    },
+    {
+      "label": "absolute_any_char_drive",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "1:/x": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe absolute path in expected digests: '1:/x'"
+      }
+    },
+    {
+      "label": "escape_dotdot",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "..": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe path in expected digests: '..'"
+      }
+    },
+    {
+      "label": "escape_dotdot_slash",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "../x": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe path in expected digests: '../x'"
+      }
+    },
+    {
+      "label": "escape_dotdot_backslash",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "..\\x": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe path in expected digests: '..\\\\x'"
+      }
+    },
+    {
+      "label": "escape_inner_dotdot",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "a/../b": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe path in expected digests: 'a/../b'"
+      }
+    },
+    {
+      "label": "empty_key",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe path in expected digests: ''"
+      }
+    },
+    {
+      "label": "slash_key_is_absolute",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "/": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe absolute path in expected digests: '/'"
+      }
+    },
+    {
+      "label": "unsafe_after_ok_file",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "model.onnx": "ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b",
+        "../x": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe path in expected digests: '../x'"
+      }
+    },
+    {
+      "label": "onnx_key_with_onnx_path",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "onnx": "ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b"
+      },
+      "env": null,
+      "onnx_path": "model.onnx",
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "onnx_path_key_with_onnx_path",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "onnx_path": "199cbbd08aa133f04b37978eb225bc20def3d8acd6a0410a10525ce2d6ea7c7d"
+      },
+      "env": null,
+      "onnx_path": "encoder.onnx",
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "onnx_key_mismatch",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "onnx": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "env": null,
+      "onnx_path": "model.onnx",
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for onnx: expected 0000000000000000000000000000000000000000000000000000000000000000, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "onnx_key_without_onnx_path_is_a_file_name",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "onnx": "00"
+      },
+      "env": null,
+      "onnx_path": null,
+      "result": {
+        "error_type": "FileNotFoundError",
+        "error_message": "laya: cannot verify 'onnx': no such file under {dir}"
+      }
+    },
+    {
+      "label": "onnx_key_and_file",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": {
+        "onnx": "ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b",
+        "model.onnx.data": "f3a25aa93aa2fbba28d79260535bbd6a5eb0fc1c24a8b0f04e12b484c1dfe363"
+      },
+      "env": null,
+      "onnx_path": "model.onnx",
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "env_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": \"ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b\"}",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "env_uppercase_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": \"FFD5F70EF9B458B9AC388CA56A3A15197BD6AE1FCE1AF289ECD63FC20233938B\"}",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "env_padded_json_ok",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": " {\"model.onnx\": \"ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b\"}\n",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "env_mismatch",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": \"00\"}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected 00, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "env_missing_file",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"nope.bin\": \"00\"}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "FileNotFoundError",
+        "error_message": "laya: cannot verify 'nope.bin': no such file under {dir}"
+      }
+    },
+    {
+      "label": "env_unsafe_path",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"../x\": \"00\"}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: unsafe path in expected digests: '../x'"
+      }
+    },
+    {
+      "label": "env_onnx_key_with_onnx_path",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"onnx\": \"ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b\"}",
+      "onnx_path": "model.onnx",
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "env_malformed",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "LAYA_SHA256_DIGESTS must be a JSON object of artifact->sha256"
+      }
+    },
+    {
+      "label": "env_single_quotes",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{'model.onnx': 'x'}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "LAYA_SHA256_DIGESTS must be a JSON object of artifact->sha256"
+      }
+    },
+    {
+      "label": "env_list",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "[\"model.onnx\"]",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "expected_sha256 must be a mapping of artifact paths to digests"
+      }
+    },
+    {
+      "label": "env_string",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "\"model.onnx\"",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "expected_sha256 must be a mapping of artifact paths to digests"
+      }
+    },
+    {
+      "label": "env_number",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "5",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "expected_sha256 must be a mapping of artifact paths to digests"
+      }
+    },
+    {
+      "label": "env_null",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "null",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "expected_sha256 must be a mapping of artifact paths to digests"
+      }
+    },
+    {
+      "label": "env_empty_object",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{}",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "env_number_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": 5}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected 5, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "env_float_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": 1.5}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected 1.5, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "env_null_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": null}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected None, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "env_true_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": true}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected True, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "env_nan_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": NaN}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected nan, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "env_list_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": [\"a\", 1]}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected ['a', 1], got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "env_object_digest",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": {\"a\": null}}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "laya: SHA-256 mismatch for model.onnx: expected {'a': None}, got ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b. The artifact does not match the reviewed digest; refusing to load it."
+      }
+    },
+    {
+      "label": "env_nested_shape_names_a_file",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"english\": {\"model.onnx\": \"00\"}}",
+      "onnx_path": null,
+      "result": {
+        "error_type": "FileNotFoundError",
+        "error_message": "laya: cannot verify 'english': no such file under {dir}"
+      }
+    },
+    {
+      "label": "env_duplicate_key_last_wins",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"model.onnx\": \"00\", \"model.onnx\": \"ffd5f70ef9b458b9ac388ca56a3a15197bd6ae1fce1af289ecd63fc20233938b\"}",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "env_unicode_escape_key",
+      "dir": "revision_fixtures/checkpoint",
+      "expected": null,
+      "env": "{\"\\u00dcn\\u00ef.bin\": \"8898cd6a1c9777bbb832388868a66967c501a8ab02291e595816b7b23470c838\"}",
+      "onnx_path": null,
+      "result": {
+        "ok": null
+      }
+    }
+  ],
+  "digests_from_env": [
+    {
+      "label": "unset",
+      "env": null,
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "empty",
+      "env": "",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "blank",
+      "env": "   ",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "malformed",
+      "env": "{",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "not_an_object",
+      "env": "[\"a\"]",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "empty_object",
+      "env": "{}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "flat",
+      "env": "{\"model.onnx\": \"aa\"}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "flat_two",
+      "env": "{\"model.onnx\": \"aa\", \"weights/data.bin\": \"bb\"}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "nested",
+      "env": "{\"english\": {\"model.onnx\": \"aa\"}, \"multilingual\": {\"model.onnx\": \"bb\", \"weights/data.bin\": \"cc\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {
+          "english": {
+            "model.onnx": "aa"
+          },
+          "multilingual": {
+            "model.onnx": "bb",
+            "weights/data.bin": "cc"
+          },
+          "typed-decisions": {}
+        }
+      }
+    },
+    {
+      "label": "nested_one_model",
+      "env": "{\"english\": {\"model.onnx\": \"aa\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {
+          "english": {
+            "model.onnx": "aa"
+          },
+          "multilingual": {},
+          "typed-decisions": {}
+        }
+      }
+    },
+    {
+      "label": "nested_aliases",
+      "env": "{\"en\": {\"a\": \"1\"}, \"ml\": {\"b\": \"2\"}, \"typed\": {\"c\": \"3\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {
+          "english": {
+            "a": "1"
+          },
+          "multilingual": {
+            "b": "2"
+          },
+          "typed-decisions": {
+            "c": "3"
+          }
+        }
+      }
+    },
+    {
+      "label": "nested_laya_alias_is_english",
+      "env": "{\"laya\": {\"a\": \"1\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {
+          "english": {
+            "a": "1"
+          },
+          "multilingual": {},
+          "typed-decisions": {}
+        }
+      }
+    },
+    {
+      "label": "nested_padded_upper_name",
+      "env": "{\" ENGLISH \": {\"a\": \"1\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {
+          "english": {
+            "a": "1"
+          },
+          "multilingual": {},
+          "typed-decisions": {}
+        }
+      }
+    },
+    {
+      "label": "nested_alias_and_name_last_wins",
+      "env": "{\"en\": {\"a\": \"1\"}, \"english\": {\"b\": \"2\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {
+          "english": {
+            "b": "2"
+          },
+          "multilingual": {},
+          "typed-decisions": {}
+        }
+      }
+    },
+    {
+      "label": "nested_empty_inner",
+      "env": "{\"english\": {}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {
+          "english": {},
+          "multilingual": {},
+          "typed-decisions": {}
+        }
+      }
+    },
+    {
+      "label": "nested_all_empty",
+      "env": "{\"english\": {}, \"multilingual\": {}, \"typed-decisions\": {}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "ok": {
+          "english": {},
+          "multilingual": {},
+          "typed-decisions": {}
+        }
+      }
+    },
+    {
+      "label": "mixed_flat_and_nested",
+      "env": "{\"model.onnx\": \"aa\", \"english\": {\"model.onnx\": \"bb\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "LAYA_SHA256_DIGESTS must be either {artifact: digest} for every checkpoint or {model: {artifact: digest}} per checkpoint; ['english', 'model.onnx'] mixes the two or holds a value that is neither"
+      }
+    },
+    {
+      "label": "mixed_with_number",
+      "env": "{\"english\": {\"a\": \"1\"}, \"n\": 5}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "LAYA_SHA256_DIGESTS must be either {artifact: digest} for every checkpoint or {model: {artifact: digest}} per checkpoint; ['english', 'n'] mixes the two or holds a value that is neither"
+      }
+    },
+    {
+      "label": "mixed_with_list",
+      "env": "{\"english\": {\"a\": \"1\"}, \"l\": [\"x\"]}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "LAYA_SHA256_DIGESTS must be either {artifact: digest} for every checkpoint or {model: {artifact: digest}} per checkpoint; ['english', 'l'] mixes the two or holds a value that is neither"
+      }
+    },
+    {
+      "label": "mixed_with_null",
+      "env": "{\"english\": {\"a\": \"1\"}, \"z\": null}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "LAYA_SHA256_DIGESTS must be either {artifact: digest} for every checkpoint or {model: {artifact: digest}} per checkpoint; ['english', 'z'] mixes the two or holds a value that is neither"
+      }
+    },
+    {
+      "label": "all_numbers",
+      "env": "{\"a\": 1, \"b\": 2}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "LAYA_SHA256_DIGESTS must be either {artifact: digest} for every checkpoint or {model: {artifact: digest}} per checkpoint; ['a', 'b'] mixes the two or holds a value that is neither"
+      }
+    },
+    {
+      "label": "mixed_sorted_keys_repr",
+      "env": "{\"zeta\": \"x\", \"it's\": {\"a\": \"1\"}, \"alpha\": 1}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "LAYA_SHA256_DIGESTS must be either {artifact: digest} for every checkpoint or {model: {artifact: digest}} per checkpoint; ['alpha', \"it's\", 'zeta'] mixes the two or holds a value that is neither"
+      }
+    },
+    {
+      "label": "nested_unknown_model",
+      "env": "{\"gpt\": {\"a\": \"1\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "unknown model 'gpt'; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+      }
+    },
+    {
+      "label": "nested_unknown_model_after_known",
+      "env": "{\"english\": {\"a\": \"1\"}, \"gpt\": {\"a\": \"1\"}}",
+      "models": [
+        "english",
+        "multilingual",
+        "typed-decisions"
+      ],
+      "result": {
+        "error_type": "ValueError",
+        "error_message": "unknown model 'gpt'; choose one of ['english', 'multilingual', 'typed-decisions'] (or an alias: ['decisions', 'default', 'en', 'laya', 'laya-multilingual', 'laya-typed-decisions', 'ml', 'multi', 'typed', 'typed_decisions'])"
+      }
+    }
+  ],
+  "merge": [
+    {
+      "label": "both_silent",
+      "shared": null,
+      "per_model": null,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "label": "shared_empty",
+      "shared": {},
+      "per_model": null,
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "per_model_empty",
+      "shared": null,
+      "per_model": {},
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "both_empty",
+      "shared": {},
+      "per_model": {},
+      "result": {
+        "ok": {}
+      }
+    },
+    {
+      "label": "shared_only",
+      "shared": {
+        "a": "1"
+      },
+      "per_model": null,
+      "result": {
+        "ok": {
+          "a": "1"
+        }
+      }
+    },
+    {
+      "label": "per_model_only",
+      "shared": null,
+      "per_model": {
+        "a": "1"
+      },
+      "result": {
+        "ok": {
+          "a": "1"
+        }
+      }
+    },
+    {
+      "label": "shared_with_empty_placeholder",
+      "shared": {
+        "a": "1"
+      },
+      "per_model": {},
+      "result": {
+        "ok": {
+          "a": "1"
+        }
+      }
+    },
+    {
+      "label": "disjoint_files_merge",
+      "shared": {
+        "a": "1"
+      },
+      "per_model": {
+        "b": "2"
+      },
+      "result": {
+        "ok": {
+          "a": "1",
+          "b": "2"
+        }
+      }
+    },
+    {
+      "label": "per_model_wins_overlap",
+      "shared": {
+        "model.safetensors": "shared",
+        "x": "1"
+      },
+      "per_model": {
+        "model.safetensors": "own"
+      },
+      "result": {
+        "ok": {
+          "model.safetensors": "own",
+          "x": "1"
+        }
+      }
+    },
+    {
+      "label": "overlap_only",
+      "shared": {
+        "a": "1"
+      },
+      "per_model": {
+        "a": "2"
+      },
+      "result": {
+        "ok": {
+          "a": "2"
+        }
+      }
+    },
+    {
+      "label": "order_shared_then_per_model",
+      "shared": {
+        "b": "1",
+        "a": "2"
+      },
+      "per_model": {
+        "c": "3",
+        "a": "4"
+      },
+      "result": {
+        "ok": {
+          "b": "1",
+          "a": "4",
+          "c": "3"
+        }
+      }
+    }
+  ]
+}

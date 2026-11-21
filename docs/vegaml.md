@@ -195,8 +195,10 @@ desk.report()["teacher_share_recent"]  # the share of the last 100 records the t
 
 - Sent to the teacher: an answer that abstains or is unbound, a learned answer below its confidence
   line (`line=0.8`), and a small random share of the rest as an audit (`audit=0.05`).
-- Audits are how trust is earned. While the learner's answers agree with the teacher's less often than
-  `trust` (0.95), the line rises and more goes to the teacher; once they agree, it falls back.
+- Where the line sits is measured: it is the lowest confidence above which the learner's answers agreed
+  with the teacher's at least `trust` (0.95) of the time, over every answer the teacher also checked.
+  As the learner improves the line comes down by itself; if the policy changes, audits catch it and the
+  line goes back up.
 - A learned answer takes over only when it beats the engine on balanced accuracy, so on a question where
   one answer is rare (a jailbreak, a fraud), a learner that always gives the common answer never
   replaces one that catches the rare ones.

@@ -5,6 +5,7 @@ in a temp directory, so nothing is downloaded.
 
 Run: python tests/test_train.py
 """
+import copy
 import json
 import math
 import os
@@ -13,6 +14,7 @@ import random
 import re
 import sys
 import tempfile
+import threading
 import unittest
 import warnings
 from unittest.mock import patch
@@ -1218,6 +1220,132 @@ class OptimizerBudgetTests(unittest.TestCase):
                              optimizer_updates(summary["train_items"], 4, 2, 3))
             self.assertIn("optimizer budget", buf.getvalue())
             self.assertIn("%d optimizer updates" % summary["optimizer_updates"], buf.getvalue())
+
+
+class CountingTokenizer:
+    mask_token = "[MASK]"
+    mask_token_id = 1
+    cls_token_id = 2
+    sep_token_id = 3
+    pad_token_id = 0
+
+    def __init__(self, offset=0):
+        self.calls = []
+        self.offset = offset
+
+    def __call__(self, text, **kwargs):
+        self.calls.append((threading.get_ident(), text, kwargs))
+        ids = [ord(c) + 4 + self.offset for c in text]
+        if kwargs.get("truncation"):
+            ids = ids[:kwargs["max_length"]]
+        return {"input_ids": ids}
+
+    def decode(self, ids, **kwargs):
+        return "".join(chr(i - 4 - self.offset) for i in ids)
+
+
+class TokenReuseAndSequenceCacheTests(unittest.TestCase):
+    def test_items_from_rows_reuses_question_tokens(self):
+        from laya.train import items_from_rows
+        tok = CountingTokenizer()
+        test_rows = rows(6)  # 48 rows, 3 questions each
+        items, skipped = items_from_rows(tok, test_rows, 64, 40)
+        self.assertEqual(skipped, {})
+        self.assertEqual(len(items), 48 * 3)
+        # 48 rows each tokenize state once (48 calls). With question token reuse,
+        # the 3 questions and their 7 option texts are encoded only once (10 calls),
+        # totalling exactly 58 tokenizer calls. Without reuse, it would be 48 * (1 + 3 * (1 + opts)) = 528 calls.
+        self.assertEqual(len(tok.calls), 58)
+
+    def test_train_model_does_not_mutate_caller_items(self):
+        from laya.train import items_from_rows, train_model, TrainConfig
+        tok = CountingTokenizer()
+        items, _ = items_from_rows(tok, rows(2), 64, 40)
+        items_copy = copy.deepcopy(items)
+
+        config = TrainConfig(epochs=2, micro_batch=4, grad_accum=1, loss="soft-ce", log_every=0)
+
+        class DummyModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.encoder = torch.nn.Identity()
+                self.value = torch.nn.Parameter(torch.tensor(0.0))
+
+        model = DummyModel()
+        batch = {
+            "marker_mask": torch.ones((4, 2), dtype=torch.bool),
+            "target": torch.ones((4, 2), dtype=torch.float32),
+        }
+        with patch("laya.train.collate_items", return_value=batch), \
+             patch("laya.train._forward", side_effect=lambda current, *_args, **_kwargs: current.value), \
+             patch("laya.train.soft_ce_loss", side_effect=lambda logits, *_args, **_kwargs: logits):
+            train_model(model, tok, items, config, torch.device("cpu"), 64, 40)
+
+        self.assertEqual(items, items_copy)
+        for it in items:
+            self.assertEqual(set(it.keys()), {"q", "state_ids", "target", "qtype", "k"})
+
+    def test_train_model_sequence_cache_scoped_per_call(self):
+        import laya.train
+        from laya.train import items_from_rows, train_model, TrainConfig
+        tok = CountingTokenizer()
+        items, _ = items_from_rows(tok, rows(2), 64, 40)
+
+        lengths_seen = []
+        real_encode_item = laya.train.encode_item
+
+        def tracking_encode_item(t, it, max_len, head_max_len, option_order=None, parallel=False):
+            lengths_seen.append(max_len)
+            return real_encode_item(t, it, max_len, head_max_len, option_order, parallel)
+
+        config = TrainConfig(epochs=3, micro_batch=8, grad_accum=1, loss="soft-ce", log_every=0)
+
+        class DummyModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.encoder = torch.nn.Identity()
+                self.value = torch.nn.Parameter(torch.tensor(0.0))
+
+        model = DummyModel()
+        batch = {
+            "marker_mask": torch.ones((8, 2), dtype=torch.bool),
+            "target": torch.ones((8, 2), dtype=torch.float32),
+        }
+        with patch("laya.train.collate_items", return_value=batch), \
+             patch("laya.train._forward", side_effect=lambda current, *_args, **_kwargs: current.value), \
+             patch("laya.train.soft_ce_loss", side_effect=lambda logits, *_args, **_kwargs: logits), \
+             patch("laya.train.encode_item", side_effect=tracking_encode_item):
+            # Run 1: max_len=64 over 3 epochs
+            train_model(model, tok, items, config, torch.device("cpu"), 64, 40)
+            self.assertTrue(all(l == 64 for l in lengths_seen))
+            # Across 3 epochs, items are encoded only once in epoch 1 thanks to seq_cache!
+            self.assertEqual(len(lengths_seen), len(items))
+
+            lengths_seen.clear()
+            # Run 2: same items, different max_len=48 over 3 epochs
+            train_model(model, tok, items, config, torch.device("cpu"), 48, 40)
+            self.assertTrue(all(l == 48 for l in lengths_seen))
+            self.assertEqual(len(lengths_seen), len(items))
+
+    def test_calibration_records_reuses_question_tokens(self):
+        from laya.train import items_from_rows, calibration_records
+        tok = CountingTokenizer()
+        items, _ = items_from_rows(tok, rows(6), 64, 40)
+
+        tok_calib = CountingTokenizer()
+        model = torch.nn.Module()
+        batch = {
+            "marker_mask": torch.ones((16, 2), dtype=torch.bool),
+            "target": torch.ones((16, 2), dtype=torch.float32),
+        }
+        with patch("laya.train.collate_items", return_value=batch), \
+             patch("laya.train._forward", return_value=torch.zeros((16, 2))):
+            recs = calibration_records(model, tok_calib, items, torch.device("cpu"), 64, 40, batch_size=16)
+            self.assertEqual(len(recs), len(items))
+
+        # 144 items across 3 distinct questions.
+        # Tokens for the 3 questions are encoded only once (10 calls total), not 144 times!
+        self.assertEqual(len(tok_calib.calls), 10)
 
 
 if __name__ == "__main__":

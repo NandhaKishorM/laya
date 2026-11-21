@@ -36,11 +36,12 @@ public enum QuestionType
 /// </remarks>
 public abstract class Question
 {
-    internal Question(QuestionType type, object instructions)
+    internal Question(QuestionType type, object instructions, IReadOnlyList<int>? optionOrder = null)
     {
         ArgumentNullException.ThrowIfNull(instructions);
         Type = type;
         Instructions = instructions;
+        OptionOrder = optionOrder is null ? null : Array.AsReadOnly(optionOrder.ToArray());
     }
 
     /// <summary>Which of the three question types this is.</summary>
@@ -51,6 +52,62 @@ public abstract class Question
     /// <see cref="PythonJson.Instructions"/>, matching Python's <c>_to_internal</c>.
     /// </summary>
     public object Instructions { get; }
+
+    /// <summary>
+    /// Which option each slot shows, or null for the canonical order. Slot <c>s</c> shows option
+    /// <c>OptionOrder[s]</c>; answers still come back in the caller's option order. Ports the
+    /// <c>option_order</c> key of a Python question definition. It is checked when the question is
+    /// answered, not when it is built, as Python checks it in <c>_check_question</c>: it must be a
+    /// permutation of <c>0..n-1</c>, with <c>n</c> the number of options (criteria, score levels, or 2
+    /// for a noul). Set it with <c>WithOptionOrder</c> on the concrete question.
+    /// </summary>
+    public IReadOnlyList<int>? OptionOrder { get; }
+
+    /// <summary>How many options this question renders to; Python's <c>_option_count</c>.</summary>
+    internal abstract int OptionCount { get; }
+
+    /// <summary>
+    /// Rejects an <see cref="OptionOrder"/> that is not a permutation of the option indices, with
+    /// Python's text from <c>Agent._check_question</c>. A no-op without an order.
+    /// </summary>
+    internal void CheckOptionOrder(string id)
+    {
+        if (OptionOrder is not { } order) return;
+        var n = OptionCount;
+        var ok = order.Count == n;
+        if (ok)
+        {
+            var seen = new bool[n];
+            foreach (var i in order)
+            {
+                if (i < 0 || i >= n || seen[i]) { ok = false; break; }
+                seen[i] = true;
+            }
+        }
+        if (!ok)
+            throw new ArgumentException(
+                $"question {PythonStr.Repr(id)}: 'option_order' must be a permutation of range({n}) -- one slot per "
+                + $"option, each option once -- got [{string.Join(", ", order)}]");
+    }
+
+    /// <summary>
+    /// The part of Python's <c>_check_question</c> that validates a noul's <c>labels</c>; a no-op for
+    /// every other question, which cannot carry any (the "only supported for noul questions" error is
+    /// unreachable in a typed API).
+    /// </summary>
+    internal virtual void CheckLabels(string id) { }
+
+    /// <summary>
+    /// Puts a slot-ordered probability row back into option order: Python's <c>unpermute_probs</c>.
+    /// A missing order, or one whose length differs from the row's, returns the row untouched.
+    /// </summary>
+    internal static double[] Unpermute(double[] p, IReadOnlyList<int>? order)
+    {
+        if (order is null || order.Count != p.Length) return p;
+        var canonical = new double[p.Length];
+        for (var s = 0; s < p.Length; s++) canonical[order[s]] = p[s];
+        return canonical;
+    }
 
     /// <summary>A choice question over ordered <c>(label, description)</c> options.</summary>
     /// <remarks>A null or empty description means "no description", exactly as in Python; note
@@ -85,8 +142,9 @@ public abstract class Question
 /// <summary>A <see cref="QuestionType.Choice"/> question: ordered, named options.</summary>
 public sealed class ChoiceQuestion : Question
 {
-    internal ChoiceQuestion(object instructions, IEnumerable<KeyValuePair<string, object?>> options)
-        : base(QuestionType.Choice, instructions)
+    internal ChoiceQuestion(object instructions, IEnumerable<KeyValuePair<string, object?>> options,
+                            IReadOnlyList<int>? optionOrder = null)
+        : base(QuestionType.Choice, instructions, optionOrder)
     {
         ArgumentNullException.ThrowIfNull(options);
         var list = new List<KeyValuePair<string, object?>>();
@@ -110,13 +168,24 @@ public sealed class ChoiceQuestion : Question
 
     /// <summary>The labels, in order.</summary>
     public IReadOnlyList<string> Labels => Options.Select(o => o.Key).ToList();
+
+    internal override int OptionCount => Options.Count;
+
+    /// <summary>
+    /// A copy of this question whose slot <c>s</c> shows option <paramref name="optionOrder"/><c>[s]</c>
+    /// (null clears it). See <see cref="Question.OptionOrder"/>; validated when the question is answered.
+    /// </summary>
+    public ChoiceQuestion WithOptionOrder(IEnumerable<int>? optionOrder) => new(Instructions, Options, optionOrder?.ToArray());
+
+    /// <summary>The params form of <see cref="WithOptionOrder(IEnumerable{int}?)"/>.</summary>
+    public ChoiceQuestion WithOptionOrder(params int[] optionOrder) => new(Instructions, Options, optionOrder);
 }
 
 /// <summary>A <see cref="QuestionType.Score"/> question: an ordered scale, lowest level first.</summary>
 public sealed class ScoreQuestion : Question
 {
-    internal ScoreQuestion(object instructions, IEnumerable<object?> levels)
-        : base(QuestionType.Score, instructions)
+    internal ScoreQuestion(object instructions, IEnumerable<object?> levels, IReadOnlyList<int>? optionOrder = null)
+        : base(QuestionType.Score, instructions, optionOrder)
     {
         ArgumentNullException.ThrowIfNull(levels);
         Levels = levels.ToList();
@@ -126,16 +195,40 @@ public sealed class ScoreQuestion : Question
 
     /// <summary>The levels, lowest first. The answer is an expectation over these indices.</summary>
     public IReadOnlyList<object?> Levels { get; }
+
+    internal override int OptionCount => Levels.Count;
+
+    /// <summary>
+    /// A copy of this question whose slot <c>s</c> shows level <paramref name="optionOrder"/><c>[s]</c>
+    /// (null clears it). See <see cref="Question.OptionOrder"/>; validated when the question is answered.
+    /// </summary>
+    public ScoreQuestion WithOptionOrder(IEnumerable<int>? optionOrder) => new(Instructions, Levels, optionOrder?.ToArray());
+
+    /// <summary>The params form of <see cref="WithOptionOrder(IEnumerable{int}?)"/>.</summary>
+    public ScoreQuestion WithOptionOrder(params int[] optionOrder) => new(Instructions, Levels, optionOrder);
 }
+
+/// <summary>
+/// The text a noul question shows for its false and true options, as Python's <c>labels</c> key:
+/// <c>{"false": ..., "true": ...}</c>. Held exactly as given (padding and all); they are stripped and
+/// checked when the question is answered, as <c>_resolve_noul_labels</c> does.
+/// </summary>
+/// <param name="False">The label of the false option. A null is Python's non-string value and is rejected when answered.</param>
+/// <param name="True">The label of the true option. A null is Python's non-string value and is rejected when answered.</param>
+public sealed record NoulLabels(string? False, string? True);
 
 /// <summary>A <see cref="QuestionType.Noul"/> question: does the statement hold?</summary>
 public sealed class NoulQuestion : Question
 {
-    internal NoulQuestion(object instructions, object? ifFalse, object? ifTrue)
-        : base(QuestionType.Noul, instructions)
+    internal const string LabelsError = "noul labels must map exactly 'false' and 'true' to distinct non-empty strings";
+
+    internal NoulQuestion(object instructions, object? ifFalse, object? ifTrue, IReadOnlyList<int>? optionOrder = null,
+                          NoulLabels? labels = null)
+        : base(QuestionType.Noul, instructions, optionOrder)
     {
         IfFalse = ifFalse;
         IfTrue = ifTrue;
+        Labels = labels;
     }
 
     /// <summary>Wording for the false option, or null for the default.</summary>
@@ -143,6 +236,62 @@ public sealed class NoulQuestion : Question
 
     /// <summary>Wording for the true option, or null for the default.</summary>
     public object? IfTrue { get; }
+
+    /// <summary>
+    /// The custom option labels, or null for Python's defaults (<c>false</c> / <c>true</c>). Ports the
+    /// <c>labels</c> key of a Python noul definition: they only change the text the model reads
+    /// (<c>"&lt;label&gt;: &lt;wording&gt;"</c>); the answer is still P(true). Validated when the question is
+    /// answered, not when it is built, as Python checks it in <c>_check_question</c>. Set it with
+    /// <see cref="WithLabels(string?, string?)"/>.
+    /// </summary>
+    public NoulLabels? Labels { get; }
+
+    internal override int OptionCount => 2;
+
+    /// <summary>
+    /// The labels as the model reads them: Python's <c>_resolve_noul_labels</c>, with its text. Both must
+    /// be strings that are distinct and non-empty once stripped.
+    /// </summary>
+    internal (string False, string True) ResolveLabels()
+    {
+        if (Labels is null) return ("false", "true");
+        if (Labels.False is null || Labels.True is null) throw new ArgumentException(LabelsError);
+        var f = PythonStr.Strip(Labels.False);
+        var t = PythonStr.Strip(Labels.True);
+        if (f.Length == 0 || t.Length == 0 || string.Equals(f, t, StringComparison.Ordinal))
+            throw new ArgumentException(LabelsError);
+        return (f, t);
+    }
+
+    internal override void CheckLabels(string id)
+    {
+        try { ResolveLabels(); }
+        catch (ArgumentException e)
+        {
+            // agent.py:1104-1106: re-raised with the question named.
+            throw new ArgumentException($"question {PythonStr.Repr(id)}: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// A copy of this question whose slot <c>s</c> shows option <paramref name="optionOrder"/><c>[s]</c>,
+    /// where 0 is the false option and 1 the true one (null clears it). See <see cref="Question.OptionOrder"/>;
+    /// validated when the question is answered.
+    /// </summary>
+    public NoulQuestion WithOptionOrder(IEnumerable<int>? optionOrder) => new(Instructions, IfFalse, IfTrue, optionOrder?.ToArray(), Labels);
+
+    /// <summary>The params form of <see cref="WithOptionOrder(IEnumerable{int}?)"/>.</summary>
+    public NoulQuestion WithOptionOrder(params int[] optionOrder) => new(Instructions, IfFalse, IfTrue, optionOrder, Labels);
+
+    /// <summary>
+    /// A copy of this question that shows <paramref name="falseLabel"/> and <paramref name="trueLabel"/>
+    /// in place of <c>false</c> and <c>true</c>. See <see cref="Labels"/>; validated when the question is answered.
+    /// </summary>
+    public NoulQuestion WithLabels(string? falseLabel, string? trueLabel)
+        => new(Instructions, IfFalse, IfTrue, OptionOrder, new NoulLabels(falseLabel, trueLabel));
+
+    /// <summary>A copy of this question without custom labels (the defaults <c>false</c> / <c>true</c>).</summary>
+    public NoulQuestion WithoutLabels() => new(Instructions, IfFalse, IfTrue, OptionOrder, null);
 }
 
 /// <summary>

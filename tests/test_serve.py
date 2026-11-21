@@ -2032,10 +2032,13 @@ def test_uvicorn_dies_on_the_values_the_resolver_refuses():
     async def app():
         return None
 
-    for value in ("", " ", "verbose", "notset", "INFO ", "INFO"):
+    # uvicorn 0.45 started lowercasing the name; 0.27 to 0.44 (which laya allows) refuse "INFO".
+    lowercases = tuple(int(x) for x in uvicorn.__version__.split(".")[:2]) >= (0, 45)
+    refused = ("", " ", "verbose", "notset", "INFO ") + (() if lowercases else ("INFO",))
+    for value in refused:
         with pytest.raises(KeyError):
             uvicorn.Config(app, host="127.0.0.1", port=0, log_level=value)
-    for accepted in ("info", "warning"):
+    for accepted in ("info", "warning") + (("INFO",) if lowercases else ()):
         uvicorn.Config(app, host="127.0.0.1", port=0, log_level=accepted)
 
 BATCH_REQ = {

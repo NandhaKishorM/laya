@@ -873,6 +873,40 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("delta_brier", report["comparison"])
         self.assertIn("delta_brier_top1", report["comparison"])
 
+    def test_laya_train_cli_with_mixed_overlap_eval_file(self):
+        train_path = self.root / "train_mixed.csv"
+        eval_path = self.root / "eval_mixed.csv"
+        train_lines = ["text,department"]
+        for s in BILLING_STATES:
+            train_lines.append(f"{s},billing")
+        for s in TECH_STATES:
+            train_lines.append(f"{s},technical")
+        train_path.write_text("\n".join(train_lines), encoding="utf-8")
+
+        eval_lines = ["text,department", f"{BILLING_STATES[0]},billing", "completely novel state,technical"]
+        eval_path.write_text("\n".join(eval_lines), encoding="utf-8")
+
+        out_dir = self.root / "out_cli_mixed_overlap"
+        code = train_cli_main([
+            "--data", str(train_path),
+            "--eval", str(eval_path),
+            "--base", str(self.root / "base"),
+            "--out", str(out_dir),
+            "--text-column", "text",
+            "--label-column", "department",
+            "--epochs", "1",
+            "--micro-batch", "4",
+            "--grad-accum", "1",
+            "--loss", "soft-ce",
+            "--device", "cpu",
+        ])
+        self.assertEqual(code, 0)
+        report = json.loads((out_dir / "train_report.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["eval_source"], str(eval_path))
+        self.assertEqual(report["eval_mode"], "overlapping_eval")
+        self.assertFalse(report["is_held_out"])
+        self.assertIn("1/2 items", report["note"])
+
     def test_laya_train_cli_with_empty_or_skipped_eval_file(self):
         train_path = self.root / "train_norm.csv"
         eval_path = self.root / "eval_empty.jsonl"
@@ -971,6 +1005,38 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(report["eval_mode"], "overlapping_eval")
         self.assertFalse(report["is_held_out"])
         self.assertIn("overlap calibration data", report["note"])
+
+    def test_overlap_detection_mixed_train_and_calibration(self):
+        # Training set has multiple items split into train and calib.
+        # Eval set contains an item from train_items, an item from calib_items, and a novel held-out item.
+        train_file = self.root / "train_mixed_split.jsonl"
+        eval_file = self.root / "eval_mixed_split.jsonl"
+        q_def = {"type": "choice", "instructions": "Classify", "criteria": ["billing", "technical"]}
+
+        states = ["refund please", "charged twice", "crash app", "screen error"]
+        rows = [
+            {"state": s, "questions": {"label": q_def}, "expected": {"label": "billing" if "refund" in s or "charged" in s else "technical"}}
+            for s in states
+        ]
+        train_file.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+        import random
+        order = list(range(len(rows)))
+        random.Random(42).shuffle(order)
+        calib_row = rows[order[0]]
+        train_row = rows[order[2]]
+        novel_row = {"state": "novel query", "questions": {"label": q_def}, "expected": {"label": "technical"}}
+
+        eval_rows = [calib_row, train_row, novel_row]
+        eval_file.write_text("\n".join(json.dumps(r) for r in eval_rows) + "\n", encoding="utf-8")
+
+        out_dir = self.root / "out_mixed_overlap"
+        cfg = TrainConfig(epochs=1, micro_batch=1, grad_accum=1, calib_frac=0.5, calib_max=2, calib_seed=42, eval_data=str(eval_file))
+        finetune(str(train_file), str(self.root / "base"), str(out_dir), cfg, device="cpu")
+        report = json.loads((out_dir / "train_report.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["eval_mode"], "overlapping_eval")
+        self.assertFalse(report["is_held_out"])
+        self.assertIn("overlap training data (1) and calibration data (1) (total 2/3 items)", report["note"])
 
     def test_laya_train_in_sample_calibration_mode(self):
         csv_path = self.root / "calib_tickets.csv"

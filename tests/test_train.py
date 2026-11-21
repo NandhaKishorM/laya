@@ -820,6 +820,36 @@ class EndToEndTests(unittest.TestCase):
         ])
         self.assertEqual(dry_code, 0)
 
+    def test_laya_train_cli_runs_on_tsv(self):
+        tsv_path = self.root / "tickets.tsv"
+        lines = ["text\tdepartment"]
+        for s in BILLING_STATES:
+            lines.append(f"{s}\tbilling")
+        for s in TECH_STATES:
+            lines.append(f"{s}\ttechnical")
+        tsv_path.write_text("\n".join(lines), encoding="utf-8")
+
+        out_dir = self.root / "out_cli_tsv"
+        code = train_cli_main([
+            "--data", str(tsv_path),
+            "--base", str(self.root / "base"),
+            "--out", str(out_dir),
+            "--text-column", "text",
+            "--label-column", "department",
+            "--epochs", "1",
+            "--micro-batch", "4",
+            "--grad-accum", "1",
+            "--loss", "soft-ce",
+            "--label-smoothing", "0.05",
+            "--device", "cpu",
+        ])
+        self.assertEqual(code, 0)
+        self.assertTrue((out_dir / "model.safetensors").exists())
+        self.assertTrue((out_dir / "questions.json").exists())
+        saved_q = json.loads((out_dir / "questions.json").read_text(encoding="utf-8"))
+        self.assertIn("label", saved_q)
+        self.assertEqual(saved_q["label"]["criteria"], ["billing", "technical"])
+
     def test_laya_train_cli_with_eval_file(self):
         train_path = self.root / "train_eval_test.csv"
         eval_path = self.root / "eval_eval_test.csv"

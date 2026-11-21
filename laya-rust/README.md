@@ -369,6 +369,8 @@ calibration.
 | Feature | Default | Effect |
 |---|---|---|
 | `download` | on | Enables `ModelArtifacts::resolve`'s opt-in HTTP download via `ureq` (TLS through `ureq`'s default `rustls` backend — no system OpenSSL needed). Without it, `allow_download = true` returns a descriptive `LayaError::Download` instead of failing to compile a download path. |
+| `download-binaries` | on | Fetches a prebuilt CPU ONNX Runtime at build time. Forwards `ort`'s `download-binaries`, `tls-native` and `copy-dylibs`. |
+| `load-dynamic` | off | Forwards `ort`'s `load-dynamic`. No build-time download and no link against ONNX Runtime; the shared library is loaded at runtime. Turn default features off when enabling it. |
 | `cuda` | off | Forwards to `ort`'s `cuda` feature. Requires `LayaOptions::execution_provider = LayaExecutionProvider::Cuda` and a working CUDA/cuDNN install at runtime. |
 | `directml` | off | Forwards to `ort`'s `directml` feature (Windows only). Requires `LayaOptions::execution_provider = LayaExecutionProvider::DirectMl`. |
 
@@ -376,11 +378,26 @@ calibration.
 laya = { path = "...", features = ["cuda"] }
 ```
 
-`ort`'s default `download-binaries` feature fetches a prebuilt CPU ONNX Runtime at build time, so
-CPU inference needs no system install. `LayaOptions::execution_provider` defaults to
-`LayaExecutionProvider::Cpu`; requesting `Cuda` or `DirectMl` without the matching cargo feature
-returns `LayaError::Onnx` naming the missing feature, rather than a `Session::builder` failure with
-no context.
+A default build fetches a prebuilt CPU ONNX Runtime, so CPU inference needs no system install.
+`LayaOptions::execution_provider` defaults to `LayaExecutionProvider::Cpu`; requesting `Cuda` or
+`DirectMl` without the matching cargo feature returns `LayaError::Onnx` naming the missing feature,
+rather than a `Session::builder` failure with no context.
+
+Offline builds, and Windows with the GNU toolchain (there is no prebuilt binary for it), skip that
+download and load the library at runtime:
+
+```bash
+cargo build --no-default-features --features load-dynamic
+```
+
+```toml
+laya-onnx = { version = "0.1.0", default-features = false, features = ["load-dynamic"] }
+```
+
+Set `ORT_DYLIB_PATH` to the ONNX Runtime shared library before the first session is created
+(`libonnxruntime.so` on Linux, `libonnxruntime.dylib` on macOS, `onnxruntime.dll` on Windows).
+If it is unset, `ort` loads that filename from the dynamic linker path. `--no-default-features`
+also turns off `download`; list it next to `load-dynamic` if artifact download should stay on.
 
 ---
 
@@ -742,7 +759,8 @@ cargo run --release -p laya-routing -- --model-root ../onnx
 
 ```bash
 cargo build
-cargo build --no-default-features    # download feature off
+cargo build --no-default-features    # `download` and `download-binaries` off
+cargo build --no-default-features --features load-dynamic  # runtime library via ORT_DYLIB_PATH
 cargo test
 cargo clippy --all-targets -- -D warnings
 cargo fmt --check

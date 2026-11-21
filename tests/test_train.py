@@ -873,6 +873,40 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("delta_brier", report["comparison"])
         self.assertIn("delta_brier_top1", report["comparison"])
 
+    def test_laya_train_cli_with_mixed_overlap_eval_file(self):
+        train_path = self.root / "train_mixed.csv"
+        eval_path = self.root / "eval_mixed.csv"
+        train_lines = ["text,department"]
+        for s in BILLING_STATES:
+            train_lines.append(f"{s},billing")
+        for s in TECH_STATES:
+            train_lines.append(f"{s},technical")
+        train_path.write_text("\n".join(train_lines), encoding="utf-8")
+
+        eval_lines = ["text,department", f"{BILLING_STATES[0]},billing", "completely novel state,technical"]
+        eval_path.write_text("\n".join(eval_lines), encoding="utf-8")
+
+        out_dir = self.root / "out_cli_mixed_overlap"
+        code = train_cli_main([
+            "--data", str(train_path),
+            "--eval", str(eval_path),
+            "--base", str(self.root / "base"),
+            "--out", str(out_dir),
+            "--text-column", "text",
+            "--label-column", "department",
+            "--epochs", "1",
+            "--micro-batch", "4",
+            "--grad-accum", "1",
+            "--loss", "soft-ce",
+            "--device", "cpu",
+        ])
+        self.assertEqual(code, 0)
+        report = json.loads((out_dir / "train_report.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["eval_source"], str(eval_path))
+        self.assertEqual(report["eval_mode"], "overlapping_eval")
+        self.assertFalse(report["is_held_out"])
+        self.assertIn("1/2 items", report["note"])
+
     def test_laya_train_cli_with_empty_or_skipped_eval_file(self):
         train_path = self.root / "train_norm.csv"
         eval_path = self.root / "eval_empty.jsonl"

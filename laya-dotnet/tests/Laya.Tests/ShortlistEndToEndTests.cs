@@ -69,4 +69,53 @@ public sealed class ShortlistEndToEndTests
             Assert.Equal(p.Value.GetDouble(), gotAnswer[p.Name], ProbTolerance);
         Assert.Equal(wantAnswer.GetProperty("confidence").GetDouble(), result["intent"].Confidence, ProbTolerance);
     }
+
+    // The narrowed choice loses its option_order (with a warning); the passthrough choice, the score and
+    // the noul keep theirs, so the recorded answers pin both halves.
+    [Theory]
+    [MemberData(nameof(Checkpoints))]
+    public void ShortlistOptionOrderMatchesTheRecordedResult(LayaCheckpoint checkpoint)
+    {
+        var golden = GoldenData.For(checkpoint);
+        if (!golden.Available)
+            Assert.Skip($"no golden data for '{checkpoint}'; run laya-dotnet/tools/dump_golden.py");
+        if (!TestArtifacts.For(checkpoint).HasModel || !TestArtifacts.For(checkpoint).HasTokenizer)
+            Assert.Skip($"no ONNX artifacts for '{checkpoint}'; set LAYA_ONNX_ROOT to the parent of all checkpoints");
+
+        using var doc = golden.Load("case_shortlist_option_order.json");
+        var root = doc.RootElement;
+        var state = GoldenData.ToClr(root.GetProperty("state"));
+        var questions = GoldenData.BuildQuestions(root.GetProperty("questions"));
+        var k = root.GetProperty("shortlist_k").GetInt32();
+
+        using var engine = LayaEngine.FromDirectory(TestArtifacts.For(checkpoint).Directory);
+        var result = LayaShortlist.Predict(engine, state, questions, HashingEmbedder.Embed, k);
+
+        var expected = root.GetProperty("result");
+        foreach (var entry in expected.GetProperty("shortlist").EnumerateObject())
+        {
+            var got = result.Shortlist![entry.Name];
+            Assert.Equal([.. entry.Value.GetProperty("labels").EnumerateArray().Select(e => e.GetString()!)], got.Labels);
+            Assert.Equal(entry.Value.GetProperty("n").GetInt32(), got.N);
+            Assert.Equal(entry.Value.GetProperty("passthrough").GetBoolean(), got.Passthrough);
+        }
+
+        var answers = expected.GetProperty("answers");
+        Assert.Equal([.. answers.EnumerateObject().Select(p => p.Name)], result.Ids);
+        foreach (var entry in answers.EnumerateObject())
+        {
+            var want = entry.Value;
+            var got = result[entry.Name];
+            var where = $"{checkpoint}/{entry.Name}";
+            switch (got.Type)
+            {
+                case QuestionType.Choice: PredictParityTests.AssertChoice(want, got.AsChoice(), where); break;
+                case QuestionType.Score: PredictParityTests.AssertScore(want, got.AsScore(), where); break;
+                default:
+                    PredictParityTests.AssertClose(want.GetProperty("noul").GetDouble(), got.AsNoul().Probability,
+                                                   PredictParityTests.ProbTolerance, where);
+                    break;
+            }
+        }
+    }
 }

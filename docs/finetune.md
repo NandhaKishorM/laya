@@ -22,12 +22,26 @@ The other worked example — a browser-agent decision head on a single 16 GB GPU
 temperatures on a slice held out before training, and saves a checkpoint `laya.load` opens. It
 runs on one device: CUDA, MPS or CPU.
 
-### From a CSV
+### From a CSV or TSV
 
 One row per decision, with the text in one column and the correct label in another:
 
 ```bash
 laya-train --data tickets.csv --text-column body --label-column department \
+           --base english --out ./tickets-checkpoint
+```
+
+Tab-separated files (`.tsv`) are detected automatically from the file extension:
+
+```bash
+laya-train --data tickets.tsv --text-column body --label-column department \
+           --base english --out ./tickets-checkpoint
+```
+
+A custom delimiter can also be specified explicitly with `--delimiter`:
+
+```bash
+laya-train --data tickets.txt --delimiter "|" --text-column body --label-column department \
            --base english --out ./tickets-checkpoint
 ```
 

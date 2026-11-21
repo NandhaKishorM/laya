@@ -247,6 +247,44 @@ class DataTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 rows_from_csv(str(p), text_column="text", label_column="dept")
 
+    def test_rows_from_tsv_and_custom_delimiter(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 1. Standard TSV file
+            tsv_path = Path(tmpdir) / "tickets.tsv"
+            tsv_path.write_text("body\tdepartment\nrefund my invoice\tbilling\napp crash on startup\ttechnical\n",
+                                encoding="utf-8")
+            data = read_data(str(tsv_path), text_column="body", label_column="department")
+            self.assertEqual(len(data), 2)
+            self.assertEqual(data[0]["state"], "refund my invoice")
+            self.assertEqual(data[0]["expected"]["label"], "billing")
+            q = data[0]["questions"]["label"]
+            self.assertEqual(q["type"], "choice")
+            self.assertEqual(q["criteria"], ["billing", "technical"])
+
+            # 2. TSV with Excel UTF-8 BOM
+            bom_tsv = Path(tmpdir) / "bom.tsv"
+            bom_tsv.write_bytes("\ufeffbody\tdepartment\nrefund invoice\tbilling\ncrash\ttechnical\n".encode("utf-8"))
+            bom_data = read_data(str(bom_tsv), text_column="body", label_column="department")
+            self.assertEqual(len(bom_data), 2)
+            self.assertEqual(bom_data[0]["state"], "refund invoice")
+
+            # 3. Custom delimiter (semicolon-separated values)
+            semi_path = Path(tmpdir) / "tickets.txt"
+            semi_path.write_text("body;department\nrefund my invoice;billing\napp crash on startup;technical\n",
+                                 encoding="utf-8")
+            semi_data = read_data(str(semi_path), text_column="body", label_column="department", delimiter=";")
+            self.assertEqual(len(semi_data), 2)
+            self.assertEqual(semi_data[1]["state"], "app crash on startup")
+            self.assertEqual(semi_data[1]["expected"]["label"], "technical")
+
+            # 4. TSV validation error messages reflect TSV format name
+            bad_tsv = Path(tmpdir) / "bad.tsv"
+            bad_tsv.write_text("text\tdept\nhi\tbilling\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as cm:
+                rows_from_csv(str(bad_tsv), text_column="missing", label_column="dept")
+            self.assertIn("TSV file", str(cm.exception))
+            self.assertIn("missing text column", str(cm.exception))
+
     def test_items_from_rows_supports_expected(self):
         exp_rows = [
             {"state": "please refund invoice", "questions": {"department": DEPARTMENT},
@@ -782,6 +820,36 @@ class EndToEndTests(unittest.TestCase):
         ])
         self.assertEqual(dry_code, 0)
 
+    def test_laya_train_cli_runs_on_tsv(self):
+        tsv_path = self.root / "tickets.tsv"
+        lines = ["text\tdepartment"]
+        for s in BILLING_STATES:
+            lines.append(f"{s}\tbilling")
+        for s in TECH_STATES:
+            lines.append(f"{s}\ttechnical")
+        tsv_path.write_text("\n".join(lines), encoding="utf-8")
+
+        out_dir = self.root / "out_cli_tsv"
+        code = train_cli_main([
+            "--data", str(tsv_path),
+            "--base", str(self.root / "base"),
+            "--out", str(out_dir),
+            "--text-column", "text",
+            "--label-column", "department",
+            "--epochs", "1",
+            "--micro-batch", "4",
+            "--grad-accum", "1",
+            "--loss", "soft-ce",
+            "--label-smoothing", "0.05",
+            "--device", "cpu",
+        ])
+        self.assertEqual(code, 0)
+        self.assertTrue((out_dir / "model.safetensors").exists())
+        self.assertTrue((out_dir / "questions.json").exists())
+        saved_q = json.loads((out_dir / "questions.json").read_text(encoding="utf-8"))
+        self.assertIn("label", saved_q)
+        self.assertEqual(saved_q["label"]["criteria"], ["billing", "technical"])
+
     def test_laya_train_cli_with_eval_file(self):
         train_path = self.root / "train_eval_test.csv"
         eval_path = self.root / "eval_eval_test.csv"
@@ -833,6 +901,44 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("brier_top1", report["after"])
         self.assertIn("delta_brier", report["comparison"])
         self.assertIn("delta_brier_top1", report["comparison"])
+
+    def test_laya_train_cli_with_eval_file_tsv(self):
+        train_path = self.root / "train_eval.tsv"
+        eval_path = self.root / "eval_eval.tsv"
+        train_lines = ["text\tdepartment"]
+        eval_lines = ["text\tdepartment"]
+        for s in BILLING_STATES:
+            train_lines.append(f"{s}\tbilling")
+        for s in TECH_STATES:
+            train_lines.append(f"{s}\ttechnical")
+        eval_lines.append("Need to pay monthly subscription\tbilling")
+        eval_lines.append("Server connection refused on port 8080\ttechnical")
+        train_path.write_text("\n".join(train_lines), encoding="utf-8")
+        eval_path.write_text("\n".join(eval_lines), encoding="utf-8")
+
+        out_dir = self.root / "out_cli_eval_tsv"
+        code = train_cli_main([
+            "--data", str(train_path),
+            "--eval", str(eval_path),
+            "--base", str(self.root / "base"),
+            "--out", str(out_dir),
+            "--text-column", "text",
+            "--label-column", "department",
+            "--epochs", "1",
+            "--micro-batch", "4",
+            "--grad-accum", "1",
+            "--loss", "soft-ce",
+            "--device", "cpu",
+        ])
+        self.assertEqual(code, 0)
+        report = json.loads((out_dir / "train_report.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["eval_source"], str(eval_path))
+        self.assertEqual(report["eval_mode"], "held_out")
+        self.assertTrue(report["is_held_out"])
+        self.assertEqual(report["eval_items"], 2)
+        self.assertIn("before", report)
+        self.assertIn("after", report)
+        self.assertIn("comparison", report)
 
     def test_laya_train_cli_with_overlapping_eval_file(self):
         train_path = self.root / "train_overlap.csv"

@@ -108,6 +108,15 @@ pub struct LayaOptions {
     /// [`crate::lang_temperatures::resolve_lang_temperatures`] for the rules and the errors. A
     /// router passes it to every engine it builds.
     pub lang_temperatures: crate::lang_temperatures::LangTemperatureTable,
+    /// Path of a calibration file, Python's `calibration=` constructor argument: the JSON map
+    /// `Agent.save_calibration` writes, read onto the engine after the checkpoint's own temperatures
+    /// and the `lang_temperatures` table. Its `temperature` and `temperature_by_options` replace the
+    /// checkpoint's (clamped, with a warning for what the clamp changed) and its `binning_map`, when it
+    /// has one, recalibrates `answer_confidence` (see [`crate::calibration_file`]). `None`, like an
+    /// empty path, loads nothing. Construction-time only: there is no per-call form. A router passes
+    /// it to every engine it builds. A version 2 file loads as Python loads it, but the warning for a
+    /// file fitted to another checkpoint is not ported (the engine has no `model_id_or_path`).
+    pub calibration: Option<PathBuf>,
 }
 
 impl std::fmt::Debug for LayaOptions {
@@ -128,6 +137,7 @@ impl std::fmt::Debug for LayaOptions {
             .field("cache_directory", &self.cache_directory)
             .field("download_progress", &self.download_progress.is_some())
             .field("lang_temperatures", &self.lang_temperatures)
+            .field("calibration", &self.calibration)
             .finish()
     }
 }
@@ -147,6 +157,7 @@ impl Default for LayaOptions {
             cache_directory: None,
             download_progress: None,
             lang_temperatures: Vec::new(),
+            calibration: None,
         }
     }
 }
@@ -168,6 +179,11 @@ impl LayaOptions {
         self.hugging_face_subfolder
             .clone()
             .unwrap_or_else(|| self.checkpoint.subdir().to_string())
+    }
+
+    /// Set [`Self::calibration`]: the calibration file the engine reads at construction.
+    pub fn set_calibration(&mut self, path: impl Into<PathBuf>) {
+        self.calibration = Some(path.into());
     }
 
     /// Override the HuggingFace subfolder. Prefer setting `checkpoint` instead unless loading a

@@ -445,3 +445,33 @@ describe("lang/all-caps routing", () => {
     expect(analyse("quero cancelar o pedido MON DES EST LA por favor").language).toBe("pt");
   });
 });
+
+describe("lang/short unaccented Spanish & Portuguese", () => {
+  it.each<[string, string]>([
+    ["es", "no puedo entrar a mi cuenta"],
+    ["es", "como hago para pedir un reembolso?"],
+    ["es", "como actualizo mis datos?"],
+    ["es", "estoy esperando desde ayer una respuesta"],
+    ["pt", "como faco para reembolsar?"],
+    ["pt", "qual o prazo de entrega amanha?"],
+    ["pt", "eles ainda nao fizeram o estorno"],
+  ])("names %s and keeps mixed English-template tickets off English: %s", (lang, text) => {
+    expect(guessLatinLanguage(text)).toBe(lang);
+    expect(isEnglish(text)).toBe(false);
+    const mixed = { header: "Customer support ticket received from web form", body: text };
+    expect(new Router().route(mixed, {}).model).toBe("multilingual");
+  });
+
+  it("keeps Italian elided qual as Italian", () => {
+    expect(guessLatinLanguage("qual è l'ultima notizia da rete quattro")).toBe("it");
+  });
+
+  it.each([
+    "Please send me the MIS report before tomorrow morning",
+    "I ate lunch and did not spend a dime on the trip",
+    "Do me a favor and check the solo plan settings",
+  ])("keeps English controls English: %s", (text) => {
+    expect(isEnglish(text)).toBe(true);
+    expect(new Router().route(text, {}).model).toBe("english");
+  });
+});

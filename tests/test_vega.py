@@ -339,6 +339,37 @@ def test_learner_without_vegaml_says_what_to_install(monkeypatch):
         ll.Learner({"q": {"type": "boolean", "instructions": "x"}})
 
 
+def test_escalator_is_vegamls_teacher_for_the_learner():
+    import laya.learn as ll
+
+    assert "Escalator" in laya.__all__ and laya.Escalator is ll.Escalator
+    learn = pytest.importorskip("vegaml.learn")
+    if not hasattr(learn, "Escalator"):
+        pytest.skip("vegaml here is older than 0.18")
+    assert ll._escalator() is learn.Escalator
+
+
+def test_escalator_without_vegaml_says_what_to_install(monkeypatch):
+    import sys
+
+    import laya.learn as ll
+
+    monkeypatch.setitem(sys.modules, "vegaml.learn", None)
+    with pytest.raises(ImportError, match=r"vegaml 0.18"):
+        ll.Escalator(object(), teacher=lambda text, questions: {})
+
+
+def test_vllm_teacher_is_vegamls_self_hosted_teacher(monkeypatch):
+    import sys
+
+    import laya.learn as ll
+
+    assert "vllm_teacher" in laya.__all__ and laya.vllm_teacher is ll.vllm_teacher
+    monkeypatch.setitem(sys.modules, "vegaml.learn", None)
+    with pytest.raises(ImportError, match=r"vegaml 0.18"):
+        ll.vllm_teacher("http://localhost:8000/v1")
+
+
 def test_vega_agent_is_exported_and_is_an_agent_subclass():
     assert laya.VegaAgent is lv.VegaAgent
     assert issubclass(lv.VegaAgent, laya.Agent)

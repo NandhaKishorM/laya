@@ -889,10 +889,16 @@ else:
 
 # ---------------------------------------------------------------- report
 # The sessions this file opened are dropped before the report, so a torn-down session cannot be
-# blamed for a failure printed after it.
-del session, loaded, pinned, _s3   # _s3 was leaking: it was the one session this file opened
-                                  # and never released, while the comment above claimed all of
-                                  # them were dropped before the report.
+# blamed for a failure printed after it. `_s3` was leaking: it was the one session this file
+# opened and never released, while the comment above claimed all of them were dropped before the
+# report. It is also the one name this cleanup cannot assume: the quantize block that binds it is
+# the documented skip on Windows, and it binds nothing when that block reports a failure instead
+# of reaching its session. `del ... _s3` therefore raised NameError there -- on Windows after
+# "92 passed, 0 failed", and on any platform whose quantize block failed, which is the one case
+# where the summary this file exists to print would never be printed.
+for _leaked in ("session", "loaded", "pinned", "_s3"):
+    globals().pop(_leaked, None)
+del _leaked
 
 shutil.rmtree(tmp, ignore_errors=True)
 _report()

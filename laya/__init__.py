@@ -35,7 +35,7 @@ from .presets import (
 from .router import DEFAULT_MODELS, RouteDecision, Router
 from .structured import DecisionResult, decide, decide_batch
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 # Routing, language detection and email cleaning are pure Python. The torch-backed names are
 # resolved lazily so that `import laya` -- and therefore `from laya import Router` or
@@ -46,6 +46,8 @@ _LAZY_ATTRS = {
     "Agent": (".agent", "Agent"),
     "VegaAgent": (".vega", "VegaAgent"),       # vegaml's engine behind laya's surface
     "Learner": (".learn", "Learner"),           # vegaml's continuous learner
+    "Escalator": (".learn", "Escalator"),       # and its teacher for what it is unsure of
+    "vllm_teacher": (".learn", "vllm_teacher"), # a teacher served on your own machines
     "RLAgent": (".agent", "RLAgent"),
     "load": (".agent", "load"),
     "fit_temperatures": (".calibrate", "fit_temperatures"),
@@ -104,6 +106,8 @@ __all__ = [
     "RLAgent",
     "VegaAgent",
     "Learner",
+    "Escalator",
+    "vllm_teacher",
     "load",
     "fit_temperatures",
     "fit_one_temperature",

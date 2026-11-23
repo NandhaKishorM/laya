@@ -5,6 +5,17 @@
   </picture>
 </p>
 
+> **New: vega Proxy. Cut your LLM bill in half.**
+>
+> Put vega in front of the LLM you already use (OpenAI or Anthropic SDK). It learns your decisions from your LLM, then makes the routine ones itself in about 50 ms and sends the rest through, unchanged. Two lines of code. 10,000 decisions a month free.
+>
+> ```python
+> client = OpenAI(base_url="https://…/proxy/v1", default_headers={"x-vega-key": "vg_…"})
+> ```
+>
+> **[Start free at platform.embedding.in →](https://platform.embedding.in)** · [Docs](https://platform.embedding.in/docs) · [embedding.in](https://embedding.in)
+
+
 <p align="center"><a href="https://github.com/sponsors/NandhaKishorM"><img src="https://img.shields.io/badge/Sponsor-laya-ea4aaa?logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub" /></a></p>
 
 <p align="center">laya is free and open source. If it helps you, <a href="https://github.com/sponsors/NandhaKishorM">sponsor the work on GitHub</a>.</p>
@@ -316,32 +327,21 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.5.2
+## What's new in 0.5.3
 
-* **A teacher for what the learner is unsure of.** `laya.Escalator(learner, teacher)` sends only the
-  records it abstains on, finds unbound or is not yet sure of to your teacher, serves that answer and
-  learns from it, so the teacher is needed less and less. A 5% audit keeps a confident learner honest,
-  and a learned answer takes over only when it beats the engine on balanced accuracy (#1518).
-* **A teacher you run yourself.** `laya.vllm_teacher("http://localhost:8000/v1")` asks a model you serve
-  with vLLM (or any OpenAI-compatible server) on your own machines: no cost per call, nothing leaves your
-  network. Measured on 3,000 assistant requests with no labels from anyone, a 27B model served this way
-  took the learner from 35% to 79% right and cut the share sent to the teacher to 40%.
-* Needs vegaml 0.18 (now the minimum).
+* **A choice label comes back exactly as you wrote it on the new engine.** An int, bool or float label
+  used to return as a string (`1` came back as `"1"`), in `choice`, `prediction_set` and the
+  `probabilities` keys, and `predict_tournament` raised `KeyError` on it (#1519).
+* **Short unaccented Spanish and Portuguese route to the multilingual checkpoint.** Words like `puedo`,
+  `hago`, `despues`, `faco` and `qual` now count, in every SDK's detector; English routing is unchanged
+  (#1526).
+* **laya-ts:** a null or blank per-model revision keeps `Router.revision`, as Python does (#1528).
+* **laya-onnx (Rust):** `ort` is pinned to exactly 2.0.0-rc.13, so a build without this repository's
+  lock file compiles again (#1527). The ONNX export verifier checks against the checkpoint it just
+  exported (#1524).
 
-## What's new in 0.5.1
-
-* **A signed policy can no longer carry an unhashed `questions.json`.** `questions.json` decides which
-  question the novelty check reads, so it now has to be in the manifest like `heads.npz` and
-  `calibration.json`, and `save_calibration` hashes it when it is in the folder. A malformed
-  `key_id`, deeply nested JSON or a non-object `provenance` now raise `PolicyError` instead of
-  crashing (#1510).
-* **laya-onnx (Rust) can skip the build-time ONNX Runtime download.** `download-binaries` is a
-  default feature; `--no-default-features --features load-dynamic` loads the library from
-  `ORT_DYLIB_PATH` instead, for offline build farms and Windows GNU (#1508).
-* The uvicorn log-level test passes on every uvicorn laya allows, 0.27 and later (#1515).
-
-From 0.5.0: the new engine is the default. `laya.Agent()` and `laya.load()` with no checkpoint named
-load it; name a checkpoint or pass `vegaml=False` for the classic encoder.
+From 0.5.2: `laya.Escalator` sends only what the learner is unsure of to a teacher, and
+`laya.vllm_teacher(...)` is a teacher you serve yourself.
 
 ## Where to go next
 

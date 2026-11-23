@@ -521,12 +521,13 @@ export interface AnalyseResult {
 // into an English request must not count as a foreign segment, so a line carrying code syntax --
 // `=`, `;`, braces, brackets or a call `name(` -- is skipped, and dotted or underscored identifiers
 // are dropped from the rest. Prose keeps "Deu erro (500)": the parenthesis follows a space.
-const CODE_LINE_RE = /[=;{}[\]]|\w\(/;
+const CODE_LINE_RE = /[=;{}[\]]|[\p{L}\p{N}_]\(/u;
 // Slash and backslash compounds are names, not sentences: `Nav/Com` and `OS/2` read as Portuguese
 // (`com`, `os`), `C:\DOS\mode` as Portuguese (`dos`), `ESA/UN` as Spanish (`un`). A whitespace token
 // holding a letter or digit, a joiner (`.`, `_`, `/`, `\`) and another letter or digit is an
-// identifier or a compound and is dropped whole.
-const JOINED_RE = /[^\W_][._/\\][^\W_]/;
+// identifier or a compound and is dropped whole. Both classes are Python's Unicode `\w` (see
+// email.ts), not JS's ASCII one: `café(s)` is a call and `für/über` a compound there too.
+const JOINED_RE = /[\p{L}\p{N}][._/\\][\p{L}\p{N}]/u;
 // An all-caps token inside mixed-case text is an acronym or a code: `MON`, `LA`, `EST`, `COM`, `DES`
 // are hockey teams, states, time zones and radio bands, not French or Portuguese. A segment written
 // entirely in capitals keeps its words -- a customer shouting in Portuguese is still Portuguese.

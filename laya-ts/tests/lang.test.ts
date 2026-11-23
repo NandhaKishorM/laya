@@ -241,6 +241,20 @@ describe("lang", () => {
     expect(analyse(state).mixedSegment).toBeNull();
   });
 
+  // Python's `\w` is Unicode, so an accented letter next to a joiner or a parenthesis still marks a
+  // compound or a call. The ASCII twin (`fur/uber`) was always English; the accent must not change that.
+  it.each([
+    ["accented slash compound", "hé/ou est le chat"],
+    ["umlaut slash compound", "why is the price für/über das Hotel und die Stadt"],
+    ["accented call", "why does the menu say café(s) est la carte du jour"],
+    ["ascii twin", "why is the price fur/uber das Hotel und die Stadt"],
+  ])("accented compounds and calls stay english, as Python does: %s", (_label, line) => {
+    const state = `Please help me with the following problem in my account\n${line}`;
+    expect(analyse(state).isEnglish).toBe(true);
+    expect(analyse(state).mixedSegment).toBeNull();
+    expect(new Router().route(state, {}).model).toBe("english");
+  });
+
   // The segment check reads at most 4000 chars, so a foreign line past that cap is not seen.
   it("mixed-segment: segment check reads at most the cap", () => {
     const state = {

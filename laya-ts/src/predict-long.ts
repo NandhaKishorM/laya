@@ -3,7 +3,7 @@ import type { OptionStats } from "./common.js";
 import { checkQuestion, toInternal } from "./agent.js";
 import type { Agent, QuestionDef, SystemAnswer, PredictOptions } from "./agent.js";
 import { defaultsAlreadyRan, markDefaultsRan, normaliseHooks } from "./hooks.js";
-import type { HookArg, PredictContext, PredictHook } from "./hooks.js";
+import type { HookArg, PredictContext, PredictHookArg } from "./hooks.js";
 
 export interface LongWindow {
   index: number;
@@ -42,8 +42,8 @@ export interface LongPredictOptions {
   batchSize?: number | null;
   lang?: string | null;
   hooks?: HookArg;
-  onPredictStart?: PredictHook;
-  onPredictEnd?: PredictHook;
+  onPredictStart?: PredictHookArg;
+  onPredictEnd?: PredictHookArg;
   hooksRaise?: boolean;
   hooksTimeout?: number | null;
 }

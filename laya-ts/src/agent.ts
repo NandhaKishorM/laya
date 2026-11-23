@@ -36,7 +36,7 @@ import {
   normaliseHooks,
   validateHooksTimeout,
   type HookArg,
-  type PredictHook,
+  type PredictHookArg,
 } from "./hooks.js";
 
 export const QTYPES: Record<string, number> = { choice: 0, score: 1, noul: 2 };
@@ -140,8 +140,8 @@ export interface AgentOptions {
     { temperature?: unknown; temperature_by_options?: Record<string, unknown> } | null
   >;
   hooks?: HookArg;
-  onPredictStart?: PredictHook;
-  onPredictEnd?: PredictHook;
+  onPredictStart?: PredictHookArg;
+  onPredictEnd?: PredictHookArg;
   hooksRaise?: boolean;
   /** Timeout for each hook call in seconds (null = no limit). */
   hooksTimeout?: number | null;
@@ -156,8 +156,8 @@ export interface PredictOptions {
    */
   lang?: string | null;
   hooks?: HookArg;
-  onPredictStart?: PredictHook;
-  onPredictEnd?: PredictHook;
+  onPredictStart?: PredictHookArg;
+  onPredictEnd?: PredictHookArg;
   hooksRaise?: boolean;
   /**
    * Timeout for each hook call in seconds (null = no limit). Applies on the paths that wait for

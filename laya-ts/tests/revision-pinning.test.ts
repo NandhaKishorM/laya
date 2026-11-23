@@ -214,6 +214,25 @@ describe("revision plumbing", () => {
     expect(new Router().revision).toBeNull();
     expect(new Router().revisions).toEqual({});
   });
+
+  it("a null or blank per-model revision inherits Router.revision, as Python does", async () => {
+    const captured: Array<Record<string, unknown> | undefined> = [];
+    const spy = vi.spyOn(Agent, "load").mockImplementation(async (_repo, opts) => {
+      captured.push(opts);
+      return new Agent({ provider: fakeProvider(), cfg: {} });
+    });
+    try {
+      for (const revisions of [{ english: null }, { english: "" }, { english: "   " }, {}, { english: "own-sha" }]) {
+        await new Router({ revision: "shared-sha", revisions }).load("english");
+      }
+      await new Router({ revision: "   " }).load("english");
+      expect(captured.map((opts) => opts?.revision)).toEqual(
+        ["shared-sha", "shared-sha", "shared-sha", "shared-sha", "own-sha", undefined],
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 describe("Router digest tests", () => {

@@ -281,6 +281,12 @@ export function digestsFromEnv(
 export const _digestsFromEnv = digestsFromEnv;
 export const _digests_from_env = digestsFromEnv;
 
+// Unset and blank are the same answer, as `_revision_pin` reads them in laya/router.py: neither is
+// a commit anything can be pinned to.
+function revisionPin(value: string | null | undefined): string | null {
+  return value != null && String(value).trim() ? value : null;
+}
+
 function toSpec(spec: string | ModelSpec | [string, string | null]): ModelSpec {
   if (typeof spec === "string") return { repo: spec, subfolder: null };
   if (Array.isArray(spec)) {
@@ -387,9 +393,9 @@ export class Router extends HookRegistry {
       } else {
         const { Agent } = await import("./agent.js");
         const spec = this.models[key];
-        const revision = Object.prototype.hasOwnProperty.call(this.revisions, key)
-          ? this.revisions[key]
-          : this.revision;
+        // A null or blank entry in `revisions` is no pin of its own, so the checkpoint inherits
+        // `revision` instead of dropping it.
+        const revision = revisionPin(this.revisions[key]) ?? revisionPin(this.revision);
         const opts: Record<string, unknown> = {
           subfolder: spec.subfolder,
           device: this.device ?? undefined,

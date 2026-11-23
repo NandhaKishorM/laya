@@ -184,13 +184,11 @@ describe("structured/rejections", () => {
         .toThrowError(/properties\.a: .*multiple non-null types/);
     }
   });
-  it("rejects arrays, nested objects and $ref", () => {
+  it("rejects arrays and nested objects", () => {
     expect(bad({ type: "object", properties: { a: { type: "array", items: { type: "string" } } } }))
       .toThrowError(SchemaError);
     expect(bad({ type: "object", properties: { a: { type: "object", properties: {} } } }))
       .toThrowError(/nested objects are not supported/);
-    expect(bad({ type: "object", properties: { a: { $ref: "#/$defs/X" } } }))
-      .toThrowError(/\$ref\/recursion is not supported/);
   });
   it("rejects an unbounded or too-wide number", () => {
     expect(bad({ type: "object", properties: { a: { type: "integer", minimum: 0 } } }))
@@ -731,5 +729,69 @@ describe("structured/decideBatch Router hook forwarding", () => {
     expect(calls).toHaveLength(1);
     expect("onPredictStart" in calls[0].requests[0]).toBe(false);
     expect(typeof calls[0].opts.onPredictStart).toBe("function");
+  });
+});
+
+// Pydantic renders every `Enum` field as `{"$ref": "#/$defs/<Name>"}` (v1 and draft-07 use
+// `#/definitions/`, and wrap a described ref in a one-item `allOf`), so a local ref to an enum
+// definition plans as the enum it points at, as tests/test_structured.py checks for Python.
+describe("local $ref, as Python does", () => {
+  const withDefs = (props: Record<string, unknown>, key = "$defs") => ({
+    type: "object", properties: props, [key]: {
+      Dept: { enum: ["billing", "support"], type: "string", title: "Dept", description: "The team that owns it." },
+      Prio: { enum: [0, 1, 2], type: "integer", title: "Prio" },
+      Alias: { $ref: `#/${key}/Prio` },
+      Node: { type: "object", properties: { next: { $ref: `#/${key}/Node` } } },
+      Loop: { $ref: `#/${key}/Loop` },
+      Maybe: { anyOf: [{ $ref: `#/${key}/Maybe` }, { type: "null" }] },
+    },
+  });
+  const refs = withDefs({
+    dept: { $ref: "#/$defs/Dept" },
+    described: { $ref: "#/$defs/Dept", description: "Which team?" },
+    optional: { anyOf: [{ $ref: "#/$defs/Dept" }, { type: "null" }], default: null, description: "Which team, if any?" },
+    wrapped: { allOf: [{ $ref: "#/$defs/Dept" }], description: "Which team (v1)?" },
+    prio: { $ref: "#/$defs/Prio", default: 0 },
+    alias: { $ref: "#/$defs/Alias" },
+  });
+  const refError = (prop: unknown, key = "$defs") => () => planFromJsonSchema(withDefs({ a: prop }, key));
+
+  it("resolves an enum definition, keeping the property's own keys on top", () => {
+    const before = JSON.stringify(refs);
+    const q = questionsFromJsonSchema(refs) as Record<string, Record<string, unknown>>;
+    expect(JSON.stringify(refs)).toBe(before); // planning does not mutate the schema
+    expect(q.dept.type).toBe("choice");
+    expect(Object.keys(q.dept.criteria as object)).toEqual(["billing", "support"]);
+    expect(q.dept.instructions).toBe("What is `dept`?"); // the definition's description is the type's
+    expect(q.described.instructions).toBe("Which team?");
+    expect([q.optional.type, q.optional.instructions]).toEqual(["choice", "Which team, if any?"]);
+    expect([q.wrapped.type, q.wrapped.instructions]).toEqual(["choice", "Which team (v1)?"]);
+    expect(Object.keys(q.prio.criteria as object)).toEqual(["0", "1", "2"]);
+    expect(Object.keys(q.alias.criteria as object)).toEqual(["0", "1", "2"]);
+    expect(answersToJson({ dept: { choice: "support" }, prio: { choice: "2" }, alias: { choice: "1" } } as never, refs))
+      .toEqual({ dept: "support", prio: 2, alias: 1 });
+  });
+
+  it("resolves draft-07 #/definitions/ and a one-item allOf around an inline schema", () => {
+    const d = questionsFromJsonSchema(withDefs({ a: { $ref: "#/definitions/Dept" } }, "definitions"));
+    expect(d.a.type).toBe("choice");
+    expect(questionsFromJsonSchema({ type: "object", properties: { a: { allOf: [{ type: "boolean" }] } } }).a.type)
+      .toBe("noul");
+  });
+
+  it("rejects what Python rejects, with the same message", () => {
+    const unresolved = (ref: string) =>
+      `properties.a: $ref '${ref}' does not resolve to an entry of this schema's '$defs' or 'definitions'`;
+    expect(refError({ $ref: "#/$defs/Nope" })).toThrowError(unresolved("#/$defs/Nope"));
+    expect(refError({ $ref: "#/definitions/Dept" })).toThrowError(unresolved("#/definitions/Dept"));
+    expect(refError({ $ref: "other.json#/$defs/Dept" })).toThrowError(unresolved("other.json#/$defs/Dept"));
+    expect(refError({ $ref: "#/$defs/X" }, "unused")).toThrowError(unresolved("#/$defs/X"));
+    expect(refError({ $ref: "#/$defs/constructor" })).toThrowError(unresolved("#/$defs/constructor"));
+    expect(refError({ $ref: "#/$defs/Loop" })).toThrowError("properties.a: $ref '#/$defs/Loop' is recursive; flatten the schema");
+    expect(refError({ $ref: "#/$defs/Maybe" })).toThrowError("properties.a: $ref '#/$defs/Maybe' is recursive; flatten the schema");
+    expect(refError({ $ref: "#/$defs/Node" })).toThrowError("properties.a: nested objects are not supported; flatten the schema");
+    // an unsupported definition is reported as resolved, not as the `$ref` that named it
+    const nullDef = { type: "object", properties: { a: { $ref: "#/$defs/X" } }, $defs: { X: { type: "null" } } };
+    expect(() => planFromJsonSchema(nullDef)).toThrowError('properties.a: unsupported schema {"type":"null"}');
   });
 });

@@ -279,8 +279,10 @@ Agent/Router prediction lifecycle.
 
 Turn a JSON schema into typed values in one call — the port of Python's `laya.structured`
 (#280). Enum properties become choice questions, booleans become noul, bounded integers
-become scores; anything the fixed-option model cannot answer (free strings, arrays, nested
-objects, `$ref`) is rejected with a `SchemaError` naming the path:
+become scores, and a local `$ref` (`#/$defs/...`, `#/definitions/...`) is planned as the
+definition it names, so a pydantic `Enum` field is a choice; anything the fixed-option model
+cannot answer (free strings, arrays, nested objects) is rejected with a `SchemaError` naming
+the path:
 
 ```ts
 import { Agent, decide } from "laya-ts";

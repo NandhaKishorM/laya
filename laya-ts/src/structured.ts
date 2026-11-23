@@ -3,8 +3,9 @@
  *
  * Port of `laya/structured.py` (#280). Provider-free. The mapping is a documented subset:
  * an object of properties, each an enum choice, a boolean, or a bounded integer scale.
+ * A local $ref (`#/$defs/...`, `#/definitions/...`) is planned as the definition it names.
  * Anything that cannot be answered from a fixed option set (free strings, arrays, nested
- * objects, $ref) is rejected with a SchemaError that names the path.
+ * objects) is rejected with a SchemaError that names the path.
  *
  *     const values = await agent.decide(state, {
  *       type: "object",
@@ -198,13 +199,60 @@ function scoreField(path: string, name: string, prop: Record<string, unknown>, d
 }
 
 
-function fieldFor(path: string, name: string, prop: unknown): PlannedField {
+const LOCAL_REFS: ReadonlyArray<readonly [string, string]> = [["#/$defs/", "$defs"], ["#/definitions/", "definitions"]];
+
+const isDict = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);
+
+const pyRepr = (v: unknown): string => (typeof v === "string" ? `'${v}'` : JSON.stringify(v));
+
+/** Replace a local `$ref` with the definition it names, the property's own keys on top.
+ *
+ * Pydantic renders every `Enum` field as `{"$ref": "#/$defs/<Name>"}` (draft-07 and pydantic v1
+ * spell it `#/definitions/`). The definition's own `description` is dropped: it describes the
+ * type, not this field. Only this schema's own definitions are looked up, and a ref met twice on
+ * one path is a cycle -- `_inline_ref` in laya/structured.py.
+ */
+function inlineRef(
+  path: string, p: Record<string, unknown>, root: Record<string, unknown>, seen: unknown[],
+): [Record<string, unknown>, unknown[]] {
+  const ref = p.$ref;
+  if (seen.includes(ref)) throw new SchemaError(`${path}: $ref ${pyRepr(ref)} is recursive; flatten the schema`);
+  let target: unknown;
+  for (const [prefix, key] of LOCAL_REFS) {
+    const defs = root[key];
+    if (typeof ref === "string" && ref.startsWith(prefix) && isDict(defs)
+        && Object.prototype.hasOwnProperty.call(defs, ref.slice(prefix.length))) {
+      target = defs[ref.slice(prefix.length)];
+    }
+  }
+  if (!isDict(target)) {
+    throw new SchemaError(
+      `${path}: $ref ${pyRepr(ref)} does not resolve to an entry of this schema's '$defs' or 'definitions'`,
+    );
+  }
+  // a `$ref` the definition carries is an alias, followed by the caller's loop
+  const { description: _ignored, ...merged } = target;
+  const { $ref: _ref, ...own } = p;
+  return [{ ...merged, ...own }, [...seen, ref]];
+}
+
+function fieldFor(
+  path: string, name: string, prop: unknown, root: Record<string, unknown> = {}, seen: unknown[] = [],
+): PlannedField {
   if (prop === null || typeof prop !== "object" || Array.isArray(prop)) {
     throw new SchemaError(`${path}: property must be an object, got ${pyType(prop)}`);
   }
-  const p = prop as Record<string, unknown>;
+  let p = prop as Record<string, unknown>;
+  while ("$ref" in p) [p, seen] = inlineRef(path, p, root, seen);
   const description = p.description;
   if (!("const" in p || "enum" in p || "type" in p)) {
+    // pydantic v1 wraps a described `$ref` as `{"allOf": [{"$ref": ...}], "description": ...}`;
+    // a one-item `allOf` is that schema, so it is unwrapped too, the outer keys on top.
+    const wrapped = p.allOf;
+    if (Array.isArray(wrapped) && wrapped.length === 1 && isDict(wrapped[0])) {
+      const { allOf: _allOf, ...outer } = p;
+      return fieldFor(path, name, { ...wrapped[0], ...outer }, root, seen);
+    }
     const union = (p.anyOf ?? p.oneOf) as unknown[] | undefined;
     if (union !== undefined && Array.isArray(union)) {
       const branches = union.filter(
@@ -219,7 +267,7 @@ function fieldFor(path: string, name: string, prop: unknown): PlannedField {
       if (branch.description === undefined && description !== undefined) {
         branch.description = description;
       }
-      return fieldFor(path, name, branch);
+      return fieldFor(path, name, branch, root, seen);
     }
   }
   if ("const" in p) return enumField(path, name, [p.const], description);
@@ -242,8 +290,7 @@ function fieldFor(path: string, name: string, prop: unknown): PlannedField {
   if (jtype === "integer" || jtype === "number") return scoreField(path, name, p, description);
   if (jtype === "array") throw new SchemaError(`${path}: arrays are not supported; ask one field per element`);
   if (jtype === "object") throw new SchemaError(`${path}: nested objects are not supported; flatten the schema`);
-  if ("$ref" in p) throw new SchemaError(`${path}: $ref/recursion is not supported; flatten the schema`);
-  throw new SchemaError(`${path}: unsupported schema ${JSON.stringify(prop)}`);
+  throw new SchemaError(`${path}: unsupported schema ${JSON.stringify(p)}`);
 }
 
 /** Validate a JSON schema and return one planned field per property. */
@@ -264,7 +311,7 @@ export function planFromJsonSchema(schema: unknown): PlannedField[] {
   if (entries.length > MAX_PROPERTIES) {
     throw new SchemaError(`${entries.length} properties exceeds MAX_PROPERTIES=${MAX_PROPERTIES}`);
   }
-  return entries.map(([name, prop]) => fieldFor(`properties.${name}`, name, prop));
+  return entries.map(([name, prop]) => fieldFor(`properties.${name}`, name, prop, s));
 }
 
 /** Turn a JSON schema into Laya questions (a documented subset; see the module docstring). */

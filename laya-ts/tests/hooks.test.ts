@@ -126,6 +126,32 @@ describe("agent hooks", () => {
     expect(r["stamped"]).toBe(true);
   });
 
+  // `skip()` replaces the whole call, so the count is part of its contract: one result per
+  // state, or one for the whole call. Anything else used to pass through: `systemOne` returned
+  // `undefined` and `predictBatch` returned fewer results than states. tests/test_hooks.py pins
+  // the same refusal for Python.
+  it("ctx.skip() refuses a result count that is neither one nor one per state, as Python does", async () => {
+    const cached = { model: "cache", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } };
+    const skipper = (...results: unknown[]) => ({ onPredictStart: (ctx: PredictContext) => ctx.skip(results as never) });
+
+    const seen: string[] = [];
+    expect(await makeAgent(seen, skipper(cached, cached, cached)).predictBatch(["s0", "s1", "s2"], QUESTIONS))
+      .toEqual([cached, cached, cached]);
+    expect(await makeAgent(seen, skipper(cached)).predictBatch(["s0", "s1"], QUESTIONS)).toHaveLength(1);
+    expect(seen).toEqual([]); // accepted skips never ran the model
+
+    await expect(makeAgent(seen, skipper(cached, cached)).predictBatch(["s0", "s1", "s2"], QUESTIONS))
+      .rejects.toThrow("one per state in ctx.states (3); got 2");
+    await expect(makeAgent(seen, skipper()).systemOne("s0", QUESTIONS))
+      .rejects.toThrow("one per state in ctx.states (1); got 0");
+    expect(seen).toEqual([]); // a refused skip throws before inference
+
+    // under hooksRaise: false the refusal is a hook failure like any other: the call still answers
+    const r = await makeAgent(seen, { ...skipper(), hooksRaise: false }).systemOne("s0", QUESTIONS);
+    expect(r).toBeDefined();
+    expect(seen).toContain("s0"); // inference ran instead
+  });
+
   it("an async start hook may skip inference after an await", async () => {
     const seen: string[] = [];
     const cached = { model: "cache", answers: {}, usage: { input_tokens: 0, output_tokens: 0 } };

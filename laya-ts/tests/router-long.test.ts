@@ -66,11 +66,24 @@ describe("Router.predictLong", () => {
     expect(warn).toHaveBeenCalled();
   });
 
-  it.each([{ results: [] }, { results: [result(), result()] }])("rejects ambiguous hook document results", async ({ results }) => {
-    const router = new Router({ loader: async () => ({}) });
-    await expect(router.predictLong("hello", questions, { hooksRaise: false,
-      onPredictStart: (ctx) => ctx.skip(results),
-    })).rejects.toThrow(/exactly one/);
+  // `ctx.skip()` refuses the count itself, as in Python: the refusal is a hook failure, so it
+  // raises under hooksRaise and, suppressed, warns and falls back to the scan.
+  it.each([{ results: [] }, { results: [result(), result()] }])("refuses ambiguous hook document results", async ({ results }) => {
+    const predictLong = vi.fn(async () => result());
+    const router = new Router({ loader: async () => ({ predictLong }) });
+    const skipping = { onPredictStart: (ctx: { skip(r: unknown[]): void }) => ctx.skip(results) };
+    await expect(router.predictLong("hello", questions, { hooksRaise: true, ...skipping }))
+      .rejects.toThrow("ctx.skip() takes one result for the whole call");
+    expect(predictLong).not.toHaveBeenCalled();
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await expect(router.predictLong("hello", questions, { hooksRaise: false, ...skipping }))
+        .resolves.toMatchObject({ usage: { windows: 3 } });
+      expect(predictLong).toHaveBeenCalledOnce();
+      expect(String(warning.mock.calls[0]?.[0])).toContain("ctx.skip() takes one result");
+    } finally {
+      warning.mockRestore();
+    }
   });
 
   it("propagates missing scan support and inference errors even when hooks are suppressed", async () => {

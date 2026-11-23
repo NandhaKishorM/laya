@@ -161,7 +161,7 @@ describe("Agent.predictLong", () => {
       expect(result).not.toBe(cached);
       expect(result.usage).not.toBe(cached.usage);
       expect(cached.usage).not.toHaveProperty("windows");
-      await expect(agent.predictLong(state, questions, { window: 20, onPredictStart: (ctx) => ctx.skip([cached as never, cached as never]) })).rejects.toThrow("one result for the document");
+      await expect(agent.predictLong(state, questions, { window: 20, onPredictStart: (ctx) => ctx.skip([cached as never, cached as never]) })).rejects.toThrow("ctx.skip() takes one result for the");
       await expect(agent.predictLong(state, questions, { window: 20, onPredictStart: (ctx) => ctx.skip([{ model: "cache", answers: {}, usage: { input_tokens: "wrong", output_tokens: 0 } }]) })).rejects.toThrow("input_tokens");
     }
     expect(warning).toHaveBeenCalled();

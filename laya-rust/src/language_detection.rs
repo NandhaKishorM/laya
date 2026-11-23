@@ -212,36 +212,41 @@ const DE_STOP: &[&str] = &[
 ];
 
 const ES_STOP: &[&str] = &[
-    "al", "algo", "aquí", "aunque", "como", "con", "cuando", "del", "donde", "dos", "el", "entre",
-    "es", "esa", "ese", "eso", "esta", "este", "esto", "está", "fue", "fueron", "gracias", "han",
-    "hay", "hemos", "hoy", "la", "las", "le", "les", "lo", "los", "mi", "muy", "más", "nada",
-    "necesito", "ni", "nos", "para", "pero", "por", "porque", "puede", "pueden", "que", "quiero",
-    "se", "ser", "sobre", "son", "su", "sus", "también", "tengo", "tiene", "tienen", "todo",
-    "tres", "tu", "un", "una", "y", "ya",
+    "ahora", "al", "algo", "alguien", "aquí", "aunque", "ayer", "buenas", "como", "con", "cual",
+    "cuales", "cuando", "cuál", "cuáles", "cuándo", "cómo", "del", "desde", "despues", "después",
+    "donde", "dos", "dónde", "el", "entonces", "entre", "es", "esa", "ese", "eso", "esta", "estan",
+    "este", "esto", "estoy", "está", "están", "fue", "fueron", "gracias", "hace", "hacer", "hago",
+    "han", "hasta", "hay", "hemos", "hola", "hoy", "la", "las", "le", "les", "lo", "los", "luego",
+    "mi", "mis", "muy", "más", "nada", "nadie", "necesito", "ni", "ninguna", "nos", "nosotros",
+    "nuestra", "nuestro", "otra", "para", "pero", "por", "porque", "pueda", "puede", "pueden",
+    "puedes", "puedo", "pues", "que", "quien", "quienes", "quiero", "quisiera", "quién", "sabes",
+    "se", "ser", "siempre", "sobre", "son", "su", "sus", "tambien", "también", "tardes", "tengo",
+    "tiene", "tienen", "tienes", "todavia", "todavía", "todo", "tres", "tu", "tus", "un", "una",
+    "usted", "ustedes", "y", "ya",
 ];
 
 const PT_STOP: &[&str] = &[
-    "agora", "ainda", "alguem", "alguém", "ali", "antes", "ao", "aos", "aqui", "as", "até", "boa",
-    "cadê", "com", "como", "consigo", "da", "das", "depois", "deu", "do", "dois", "dos", "e", "em",
-    "entao", "então", "era", "esta", "estamos", "estava", "este", "estou", "está", "eu", "ficou",
+    "agora", "ainda", "alguem", "alguém", "ali", "amanha", "amanhã", "antes", "ao", "aos", "aqui",
+    "as", "até", "boa", "cadê", "com", "como", "consigo", "da", "das", "depois", "deu", "do",
+    "dois", "dos", "e", "elas", "eles", "em", "entao", "então", "era", "esta", "estamos", "estao",
+    "estava", "este", "estou", "está", "estão", "eu", "faco", "faz", "fazer", "faço", "ficou",
     "fiz", "foi", "gostaria", "hoje", "isso", "isto", "ja", "já", "mais", "mas", "meu", "meus",
     "minha", "minhas", "muito", "na", "nada", "nao", "nas", "nenhum", "nenhuma", "ninguem",
-    "ninguém", "noite", "nos", "nossa", "nosso", "não", "o", "obrigada", "obrigado", "olá", "onde",
-    "ontem", "os", "para", "pela", "pelo", "pode", "podem", "por", "porque", "pra", "preciso",
-    "quando", "que", "quero", "sao", "se", "ser", "seu", "sou", "sua", "são", "tambem", "também",
-    "tarde", "tem", "tenho", "três", "tudo", "tá", "um", "uma", "vc", "vcs", "voce", "voces",
-    "você", "vocês", "é",
+    "ninguém", "noite", "nos", "nossa", "nosso", "não", "nós", "o", "obrigada", "obrigado", "olá",
+    "onde", "ontem", "os", "outra", "outras", "outros", "para", "pela", "pelo", "pode", "podem",
+    "por", "porque", "pra", "precisa", "preciso", "quais", "qual", "quando", "que", "quem", "quero",
+    "sao", "se", "ser", "seu", "sou", "sua", "são", "tambem", "também", "tarde", "tem", "tenho",
+    "três", "tudo", "tá", "um", "uma", "vc", "vcs", "voce", "voces", "você", "vocês", "é",
 ];
 
 const IT_STOP: &[&str] = &[
     "abbiamo", "adesso", "agli", "alla", "alle", "anche", "ancora", "avete", "che", "ci", "ciao",
     "col", "come", "con", "da", "dagli", "dal", "dalla", "dallo", "degli", "dei", "del", "della",
-    "delle", "dello", "deve", "devo", "devono", "di", "dove", "e", "ed", "era", "fra", "già",
-    "gli", "grazie", "ha", "hai", "hanno", "ho", "ieri", "il", "la", "le", "lo", "mai", "mi",
-    "mia", "mio", "molto", "ne", "negli", "nel", "nell", "nella", "non", "o", "oggi", "per",
-    "perche", "più", "poco", "quando", "questa", "questo", "scusa", "sempre", "si", "sono",
-    "stata", "stato", "su", "sua", "sul", "sulla", "sulle", "tra", "tuo", "un", "una", "uno",
-    "voglio", "vorrei", "è",
+    "delle", "dello", "deve", "devo", "devono", "di", "dove", "e", "ed", "era", "fra", "già", "gli",
+    "grazie", "ha", "hai", "hanno", "ho", "ieri", "il", "la", "le", "lo", "mai", "mi", "mia", "mio",
+    "molto", "ne", "negli", "nel", "nell", "nella", "non", "o", "oggi", "per", "perche", "più",
+    "poco", "qual", "quando", "questa", "questo", "scusa", "sempre", "si", "sono", "stata", "stato",
+    "su", "sua", "sul", "sulla", "sulle", "tra", "tuo", "un", "una", "uno", "voglio", "vorrei", "è",
 ];
 
 const NL_STOP: &[&str] = &[

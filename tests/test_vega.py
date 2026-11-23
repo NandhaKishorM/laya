@@ -166,6 +166,61 @@ def test_fold_choice_and_score_carry_laya_fields():
     assert s["expected_score"] == 1.0
 
 
+def test_fold_returns_a_choice_label_as_the_caller_wrote_it():
+    # `_to_vega_questions` hands vega a string-keyed criteria map, and the engine answers in that
+    # vocabulary. laya documents that a label comes back exactly as written
+    # (docs/questions-and-answers.md), so an int label must not return as "1": its probability
+    # key would name a label the question never offered, and predict_tournament feeds the winner
+    # back into the criteria map, where the string form raised KeyError on the next round.
+    ints = {"type": "choice", "instructions": "x", "criteria": {1: "one", 2: "two"}}
+    a = lv._fold(_engine_answer(probs={"1": 0.7, "2": 0.3}, choice="1",
+                                prediction_set=["1", "2"]), ints)
+    assert a["choice"] == 1
+    assert a["probabilities"] == {1: 0.7, 2: 0.3}
+    assert a["prediction_set"] == [1, 2]
+    # the fallback for an answer that named no choice picks the caller's label too
+    assert lv._fold(_engine_answer(probs={"1": 0.2, "2": 0.8}), ints)["choice"] == 2
+
+    # a label the question does not offer is left as the engine spelled it
+    assert lv._fold(_engine_answer(probs={"other": 1.0}, choice="other"), ints)["choice"] == "other"
+
+    # a string label that spells a number stays the caller's string, not the number
+    spelled = {"type": "choice", "instructions": "x", "criteria": {"1": None, "2": None}}
+    assert lv._fold(_engine_answer(probs={"1": 0.8, "2": 0.2}, choice="1"), spelled)["choice"] == "1"
+
+    # booleans and floats, the other scalar labels laya allows
+    flags = {"type": "choice", "instructions": "x", "criteria": {True: None, False: None}}
+    assert lv._fold(_engine_answer(probs={"True": 0.8, "False": 0.2}, choice="True"),
+                    flags)["choice"] is True
+    levels = {"type": "choice", "instructions": "x", "criteria": {1.5: None, 2.5: None}}
+    assert lv._fold(_engine_answer(probs={"1.5": 0.4, "2.5": 0.6}, choice="2.5"),
+                    levels)["choice"] == 2.5
+
+
+def test_tournament_elimination_keeps_a_non_string_label():
+    # The elimination round feeds the engine's winner back into the criteria map. Before the fold
+    # translated the engine's string-keyed vocabulary back to the caller's labels, an int label
+    # came back as "1" and the next round raised KeyError: '1'.
+    from laya.shortlist import predict_tournament
+
+    class Engine:
+        def predict(self, state, questions, **kw):
+            answers = {}
+            for qid, q in questions.items():
+                labels = list(q["criteria"])
+                answers[qid] = lv._fold(
+                    _engine_answer(probs={str(k): 1.0 / len(labels) for k in labels},
+                                   choice=str(labels[0])),
+                    q)
+            return {"answers": answers}
+
+    q = {"pick": {"type": "choice", "instructions": "Pick one",
+                  "criteria": {i: "option %d" % i for i in range(1, 6)}}}
+    out = predict_tournament(Engine(), "state", q, group_size=2)
+    assert out["tournament"]["pick"]["labels"] == [1, 2]
+    assert out["tournament"]["pick"]["rounds"] == 2
+
+
 def test_fold_confidence_is_entropy_and_answer_confidence_is_max_p():
     a = lv._fold(_engine_answer(probs={"a": 0.5, "b": 0.5}, choice="a"),
                  {"type": "choice", "instructions": "x", "criteria": {"a": None, "b": None}})

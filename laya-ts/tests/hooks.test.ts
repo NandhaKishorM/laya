@@ -362,6 +362,35 @@ describe("router hooks", () => {
     expect(events).toEqual(["load:english", "evict:english", "load:multilingual"]);
     expect(router.loaded).toEqual(["multilingual"]);
   });
+
+  it("unload fires onEvict once per checkpoint it frees, as Python does", async () => {
+    const events: string[] = [];
+    const { router } = makeRouter({
+      hooks: [{ onEvict: (ctx: PredictContext) => events.push(`evict:${String(ctx.model)}`) }],
+    });
+    await router.load("english");
+    await router.load("multilingual");
+    const pending = router.unload("english");
+    expect(router.loaded).toEqual(["multilingual"]); // freed before the promise settles
+    await pending;
+    await router.unload("english"); // not resident: nothing freed, no event
+    await router.load("english");
+    await router.unload(); // everything resident, in load order
+    expect(events).toEqual(["evict:english", "evict:multilingual", "evict:english"]);
+    expect(router.loaded).toEqual([]);
+    expect(() => router.unload("no-such-model")).toThrow(/unknown model/); // synchronously, as before
+  });
+
+  it("unload fires onEvict only for names still resident, once each", async () => {
+    const events: string[] = [];
+    const { router } = makeRouter({
+      hooks: [{ onEvict: (ctx: PredictContext) => events.push(String(ctx.model)) }],
+    });
+    await router.load("english");
+    (router as unknown as { _order: string[] })._order.push("english", "multilingual"); // a stale order entry
+    await router.unload();
+    expect(events).toEqual(["english"]);
+  });
 });
 
 describe("hook registry and normalisation", () => {

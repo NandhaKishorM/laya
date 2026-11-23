@@ -479,15 +479,33 @@ export class Router extends HookRegistry {
     return this;
   }
 
-  unload(name?: string | null): void {
+  /** Free one model, or all of them; `onEvict` fires once per checkpoint actually freed, as in
+   * Python. The models are gone before this returns its promise, so a caller that does not
+   * await it still sees `loaded` updated; await it to let the `onEvict` hooks finish. An
+   * unknown name still throws synchronously, before anything is freed. */
+  unload(name?: string | null): Promise<void> {
+    let freed: string[];
     if (name === null || name === undefined) {
+      freed = [...new Set(this._order)].filter((key) => this._agents.has(key));
       this._agents.clear();
       this._order = [];
     } else {
       const key = normaliseName(name);
-      this._agents.delete(key);
+      freed = this._agents.delete(key) ? [key] : [];
       const i = this._order.indexOf(key);
       if (i !== -1) this._order.splice(i, 1);
+    }
+    return this._fireEvict(freed);
+  }
+
+  private async _fireEvict(freed: string[]): Promise<void> {
+    for (const victim of freed) {
+      await dispatchAsync(
+        composeHooks(this.hooks),
+        "onEvict",
+        new PredictContext({ states: [], questions: {}, model: victim, router: this }),
+        { raiseErrors: this.hooksRaise, timeoutMs: this.hooksTimeoutMs },
+      );
     }
   }
 

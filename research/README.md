@@ -29,6 +29,7 @@ the numbers quoted in the main README — nothing here is imported by the `laya`
 | `scripts/make_plots.py` | renders `assets/laya_benchmark.png` from the result JSONs |
 | `scripts/bench_long_context.py` | `laya-multilingual` on long documents: 20 support requests in 8 languages, each placed after 0 to 7,000 tokens of unrelated text, scored at the default limit and at `max_len=8192` |
 | `scripts/bench_position_sensitivity.py` | the same 20 requests, filler and question, with the request swept *through* a fixed-length document instead of only appended to it, so the effect of evidence **position** is separable from document **length** |
+| `scripts/bench_vega_position.py` | the same 20 requests, filler and question, scored with the default Vega engine at 7k / 32k / 48k and start / middle / end, with the classic multilingual encoder at 7k as a paired construction control; every case reports `usage["input_tokens"]`, `usage["truncated"]`, and the engine's `abstain` / `route` |
 | `scripts/plot_long_context.py` | renders `assets/long_context_8192.png` from `results/long_context_multilingual.json` |
 
 Everything runs with `USE_TF=0` — `transformers` probes for TensorFlow at import, and when TF is
@@ -112,6 +113,7 @@ python research/scripts/bench_length_batching.py MODEL_DIR --count 64 --batch-si
 | `results/app_benchmark_results.json` | Applications run (400 cases per task, seed 13, 2026-09-19); source for the BENCHMARKS Themes / Jev-dataset tables and the README routed AG News / DAIR Emotion cells (a rerun of `research/scripts/bench_apps.py` writes the gitignored `research/app_benchmark_results.json` instead) |
 | `research/latency_benchmark_results.json` | **not committed** (gitignored) — generate with `research/scripts/bench_latency.py`; CPU routing-cost regimes behind the README preload table |
 | `results/position_sensitivity_multilingual.json` | accuracy against evidence position at fixed document length, n=20 per cell, every prediction kept |
+| `results/vega_position_sensitivity.json` | the same sweep on the default Vega engine at 7k / 32k / 48k, with the classic 7k control; n=20 per cell, every prediction kept, with `input_tokens`, `truncated`, `abstain`, and `route` per case |
 
 ## Headline findings
 
@@ -141,6 +143,39 @@ at 4,000 tokens is 0 wrong→right / 8 right→wrong (exact McNemar p=0.0078), a
 cells is not resolvable. The endpoint-versus-interior gap is well outside that, and the paired tests
 above are on the same items. Read this as "position is a large effect that the existing sweep does
 not sample", not as a per-cell ranking.*
+
+**On the #697 construction, the default Vega engine answers best at the end and routes most items
+to review.** `laya.Agent()` has loaded Vega since 0.5.0; its reader holds 73,728 tokens, but the
+public long-context evidence is an aggregate `longctx` source with no position or length curve.
+The same 20 requests, filler and question as `bench_position_sensitivity.py`, scored with
+`Agent(vegaml=True)` at 7k / 32k / 48k and positions 0.00 / 0.50 / 1.00, give:
+
+| engine | filler tokens | pos 0.00 | pos 0.50 | pos 1.00 | spread |
+|---|---:|---:|---:|---:|---:|
+| Vega 0.8B | 7,000 | 0.750 | 0.450 | 0.750 | 0.300 |
+| Vega 0.8B | 32,000 | 0.550 | 0.400 | 0.750 | 0.350 |
+| Vega 0.8B | 48,000 | 0.450 | 0.350 | 0.750 | 0.400 |
+| classic multilingual | 7,000 | **0.850** | **0.500** | **0.400** | 0.450 |
+
+The classic row reproduces #697's 0.00 / 0.50 / 1.00 cells exactly (0.850 / 0.500 / 0.400), so
+the construction is the same. The four pre-specified paired tests: at 48k, start vs middle is
+2 / 0 (p=0.50) and middle vs end is 0 / 8 (**p=0.0078**); at the end position, 7k vs 32k and
+32k vs 48k are both 0 / 0 (p=1). The end-position accuracy is 15/20 at every length; the length
+effect is flat there, while the interior falls.
+
+**Read the accuracy as forced-choice, not auto-route.** Vega abstains and routes to review on
+**17–20 of 20 items in every cell** (0.85–1.00); the classic encoder has no abstain/route, so its
+0.00 columns are not applicable, not confident. The modal prediction share is 0.90–1.00 at the
+32k middle, 48k start, and 48k middle cells, so those cells are close to a constant answer. The
+aggregate `longctx` 0.831 is a different construction and is not a like-for-like comparison; on
+this synthetic probe the engine's own route says review on most of it, which is the honest
+reading.
+
+*Caveat: n=20 per cell (±0.22 95 % interval), one filler and one question, one 8 GB machine. The
+72k nominal cell is not in the committed run: it OOMs on this card even with
+`flash-linear-attention` (6.78 GiB used, 276 MiB short); the committed top cell is 48k nominal
+(~47k prompt tokens). The JSON records that attempt in `run_note`. A null is underpowered, not
+equivalence.*
 
 **Routing takes Laya from 23 to 48 of 51 languages.** On MASSIVE intent (20 options, random =
 0.050) the English checkpoint macro-averages 0.227 and clears 3x random on 23 of 51 languages;

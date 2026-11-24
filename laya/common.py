@@ -4,7 +4,7 @@ import math
 import os
 import threading
 import warnings
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from functools import wraps
 from numbers import Integral
@@ -735,6 +735,26 @@ def _cpu_window_encoder(encoder, input_ids, attention_mask):
     return encoder.final_norm(h)
 
 
+def _mps_rng_replay():
+    """`context_fn` for checkpoint: replays the forward's MPS RNG state during recompute.
+
+    torch.utils.checkpoint skips devices without `_initialized`, which includes MPS
+    (https://github.com/pytorch/pytorch/issues/127676).
+    """
+    state = torch.mps.get_rng_state()
+
+    @contextmanager
+    def replay():
+        current = torch.mps.get_rng_state()
+        torch.mps.set_rng_state(state)
+        try:
+            yield
+        finally:
+            torch.mps.set_rng_state(current)
+
+    return nullcontext(), replay()
+
+
 class DecisionModel(nn.Module):
     """Bidirectional transformer encoder backbone + typed decision head."""
 
@@ -792,8 +812,9 @@ class DecisionModel(nn.Module):
             for i, layer in enumerate(self.head.layers):
                 if self.head_checkpointing and self.training and torch.is_grad_enabled():
                     # Non-reentrant checkpointing also trains the head when its input
-                    # is frozen. Default RNG preservation keeps dropout consistent.
-                    h = checkpoint(layer, h, src_key_padding_mask=pad, use_reentrant=False)
+                    # is frozen. Default RNG preservation skips MPS; _mps_rng_replay restores it there.
+                    rng = {"context_fn": _mps_rng_replay} if h.device.type == "mps" else {}
+                    h = checkpoint(layer, h, src_key_padding_mask=pad, use_reentrant=False, **rng)
                 elif not self.training and _can_use_cpu_head(layer, h):
                     # The scorer reads the markers; the action head also needs token zero.
                     positions = None

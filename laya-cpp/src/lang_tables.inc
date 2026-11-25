@@ -53,25 +53,31 @@ inline constexpr const char* k_stop_2[] = {
 };
 
 inline constexpr const char* k_stop_3[] = {
-    "al", "algo", "aquí", "aunque", "como", "con", "cuando", "del", "donde", "dos", "el", "entre",
-    "es", "esa", "ese", "eso", "esta", "este", "esto", "está", "fue", "fueron", "gracias", "han",
-    "hay", "hemos", "hoy", "la", "las", "le", "les", "lo", "los", "mi", "muy", "más", "nada",
-    "necesito", "ni", "nos", "para", "pero", "por", "porque", "puede", "pueden", "que", "quiero",
-    "se", "ser", "sobre", "son", "su", "sus", "también", "tengo", "tiene", "tienen", "todo",
-    "tres", "tu", "un", "una", "y", "ya",
+    "ahora", "al", "algo", "alguien", "aquí", "aunque", "ayer", "buenas", "como", "con", "cual",
+    "cuales", "cuando", "cuál", "cuáles", "cuándo", "cómo", "del", "desde", "despues", "después",
+    "donde", "dos", "dónde", "el", "entonces", "entre", "es", "esa", "ese", "eso", "esta", "estan",
+    "este", "esto", "estoy", "está", "están", "fue", "fueron", "gracias", "hace", "hacer", "hago",
+    "han", "hasta", "hay", "hemos", "hola", "hoy", "la", "las", "le", "les", "lo", "los", "luego",
+    "mi", "mis", "muy", "más", "nada", "nadie", "necesito", "ni", "ninguna", "nos", "nosotros",
+    "nuestra", "nuestro", "otra", "para", "pero", "por", "porque", "pueda", "puede", "pueden",
+    "puedes", "puedo", "pues", "que", "quien", "quienes", "quiero", "quisiera", "quién", "sabes",
+    "se", "ser", "siempre", "sobre", "son", "su", "sus", "tambien", "también", "tardes", "tengo",
+    "tiene", "tienen", "tienes", "todavia", "todavía", "todo", "tres", "tu", "tus", "un", "una",
+    "usted", "ustedes", "y", "ya",
 };
 
 inline constexpr const char* k_stop_4[] = {
-    "agora", "ainda", "alguem", "alguém", "ali", "antes", "ao", "aos", "aqui", "as", "até", "boa",
-    "cadê", "com", "como", "consigo", "da", "das", "depois", "deu", "do", "dois", "dos", "e", "em",
-    "entao", "então", "era", "esta", "estamos", "estava", "este", "estou", "está", "eu", "ficou",
+    "agora", "ainda", "alguem", "alguém", "ali", "amanha", "amanhã", "antes", "ao", "aos", "aqui",
+    "as", "até", "boa", "cadê", "com", "como", "consigo", "da", "das", "depois", "deu", "do",
+    "dois", "dos", "e", "elas", "eles", "em", "entao", "então", "era", "esta", "estamos", "estao",
+    "estava", "este", "estou", "está", "estão", "eu", "faco", "faz", "fazer", "faço", "ficou",
     "fiz", "foi", "gostaria", "hoje", "isso", "isto", "ja", "já", "mais", "mas", "meu", "meus",
     "minha", "minhas", "muito", "na", "nada", "nao", "nas", "nenhum", "nenhuma", "ninguem",
-    "ninguém", "noite", "nos", "nossa", "nosso", "não", "o", "obrigada", "obrigado", "olá", "onde",
-    "ontem", "os", "para", "pela", "pelo", "pode", "podem", "por", "porque", "pra", "preciso",
-    "quando", "que", "quero", "sao", "se", "ser", "seu", "sou", "sua", "são", "tambem", "também",
-    "tarde", "tem", "tenho", "três", "tudo", "tá", "um", "uma", "vc", "vcs", "voce", "voces",
-    "você", "vocês", "é",
+    "ninguém", "noite", "nos", "nossa", "nosso", "não", "nós", "o", "obrigada", "obrigado", "olá",
+    "onde", "ontem", "os", "outra", "outras", "outros", "para", "pela", "pelo", "pode", "podem",
+    "por", "porque", "pra", "precisa", "preciso", "quais", "qual", "quando", "que", "quem",
+    "quero", "sao", "se", "ser", "seu", "sou", "sua", "são", "tambem", "também", "tarde", "tem",
+    "tenho", "três", "tudo", "tá", "um", "uma", "vc", "vcs", "voce", "voces", "você", "vocês", "é",
 };
 
 inline constexpr const char* k_stop_5[] = {
@@ -80,7 +86,7 @@ inline constexpr const char* k_stop_5[] = {
     "delle", "dello", "deve", "devo", "devono", "di", "dove", "e", "ed", "era", "fra", "già",
     "gli", "grazie", "ha", "hai", "hanno", "ho", "ieri", "il", "la", "le", "lo", "mai", "mi",
     "mia", "mio", "molto", "ne", "negli", "nel", "nell", "nella", "non", "o", "oggi", "per",
-    "perche", "più", "poco", "quando", "questa", "questo", "scusa", "sempre", "si", "sono",
+    "perche", "più", "poco", "qual", "quando", "questa", "questo", "scusa", "sempre", "si", "sono",
     "stata", "stato", "su", "sua", "sul", "sulla", "sulle", "tra", "tuo", "un", "una", "uno",
     "voglio", "vorrei", "è",
 };
@@ -133,9 +139,9 @@ inline constexpr StopSpec k_stop_lists[] = {
     {"en", k_stop_0, 116},
     {"fr", k_stop_1, 67},
     {"de", k_stop_2, 63},
-    {"es", k_stop_3, 65},
-    {"pt", k_stop_4, 107},
-    {"it", k_stop_5, 85},
+    {"es", k_stop_3, 114},
+    {"pt", k_stop_4, 125},
+    {"it", k_stop_5, 86},
     {"nl", k_stop_6, 19},
     {"sv", k_stop_7, 66},
     {"ro", k_stop_8, 27},
@@ -152,8 +158,8 @@ inline constexpr const char* k_short_swedish[] = {
 inline constexpr const char* k_shared[] = {
     "as", "como", "con", "da", "das", "del", "dois", "dos", "e", "era", "esta", "este", "está",
     "får", "hej", "il", "in", "is", "ja", "jo", "kommer", "la", "le", "les", "lo", "mais", "mi",
-    "mig", "min", "nada", "nej", "nos", "o", "om", "para", "por", "porque", "quando", "que", "se",
-    "ser", "skulle", "su", "sua", "tack", "tu", "un", "una", "vi", "was",
+    "mig", "min", "nada", "nej", "nos", "o", "om", "para", "por", "porque", "qual", "quando",
+    "que", "se", "ser", "skulle", "su", "sua", "tack", "tu", "un", "una", "vi", "was",
 };
 
 inline constexpr const char* k_nordic_overlap[] = {

@@ -692,6 +692,42 @@ for text in [
     check("route/pt-br control " + text[:32], _r_lat.route(text).model, "english")
 
 
+# --------------------------------------------------------------------- short unaccented Spanish & Portuguese
+# ASCII-normalising ticket and telephony pipelines strip accents; without first-person modals,
+# possessives and unaccented function words (`puedo`, `hago`, `mis`, `estoy`, `despues`, `faco`,
+# `qual`), short Spanish and Portuguese messages stayed undecided -- and inside a structured state
+# with English boilerplate, `_non_english_segment` skipped them so the whole ticket routed english.
+for lang, text in [
+    ("es", "no puedo entrar a mi cuenta"),
+    ("es", "como hago para pedir un reembolso?"),
+    ("es", "como actualizo mis datos?"),
+    ("es", "estoy esperando desde ayer una respuesta"),
+    ("es", "con alguien por favor con quien sea"),
+    ("es", "vaya pues gracias hasta luego"),
+    ("pt", "como faco para reembolsar?"),
+    ("pt", "qual o prazo de entrega amanha?"),
+    ("pt", "eles ainda nao fizeram o estorno"),
+]:
+    check("latin_lang/short ascii " + lang + " " + text[:32], guess_latin_language(text), lang)
+    check("is_english/short ascii " + lang + " " + text[:32], is_english(text), False)
+    check("route/short ascii " + lang + " " + text[:32],
+          Router(default="english").route(text).model, "multilingual")
+    mixed = {"header": "Customer support ticket received from web form", "body": text}
+    check("route/short ascii mixed " + lang + " " + text[:32],
+          Router().route(mixed).model, "multilingual")
+# Italian elided `qual` must stay Italian, not flip to Portuguese
+check("latin_lang/italian qual stays italian",
+      guess_latin_language("qual è l'ultima notizia da rete quattro"), "it")
+# English controls must stay English
+for text in [
+    "Please send me the MIS report before tomorrow morning",
+    "I ate lunch and did not spend a dime on the trip",
+    "Do me a favor and check the solo plan settings",
+]:
+    check("is_english/short es-pt control " + text[:32], is_english(text), True)
+    check("route/short es-pt control " + text[:32], Router().route(text).model, "english")
+
+
 # --------------------------------------------------------------------- romanized Bangla
 # Bangla is often typed in Latin letters ("Banglish") when no Bengali keyboard is at hand. It has no
 # diacritics and matched no stopword list, so it was reported `is_english=True` and handed to the

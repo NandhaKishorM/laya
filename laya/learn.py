@@ -10,43 +10,45 @@ you confirm, on your own machine.
     desk = Escalator(learner, teacher=my_review_queue)   # what it is unsure of goes to your teacher
     desk.decide("I was charged twice")["answers"]["team"]["source"]   # "teacher" until it has learned
 
-This is vegaml's learner (`vegaml.learn`), re-exported so laya users get it with no other install: it reads
-with vega (the 0.8B reader by default), not with laya's own encoder. Full guide:
-https://github.com/NandhaKishorM/vegaml/blob/main/docs/learn.md
+This is vega's learner, from the vegaml-learn package: `pip install vegaml-learn`. It reads with vega (the 0.8B
+reader by default), not with laya's own encoder. vegaml-learn is free for noncommercial use (PolyForm
+Noncommercial 1.0.0); commercial use needs a licence from Embedding Space, https://embedding.in/licence. laya itself,
+including this file, stays Apache 2.0. Full guide: https://github.com/NandhaKishorM/vegaml/blob/main/docs/learn.md
 """
+
+NEEDS = (
+    "%s is vega's continuous learning, in the vegaml-learn package: pip install vegaml-learn. "
+    "It is free for noncommercial use (PolyForm Noncommercial 1.0.0); commercial use needs a licence from "
+    "Embedding Space: https://embedding.in/licence or nandakishor@embedding.in."
+)
+
+
+def _from_vegaml(name, what):
+    """`name` from vegaml-learn (through `vegaml.learn`, which vegaml 0.17 to 0.19 also ship), imported on first
+    use so `import laya` stays light and works without it."""
+    try:
+        import vegaml.learn as learn
+
+        return getattr(learn, name)
+    except (ImportError, AttributeError) as e:  # not installed, or a vegaml from before `name` shipped
+        raise ImportError(NEEDS % what) from e
 
 
 def _learner():
-    """vegaml's Learner class, imported on first use so `import laya` stays light and works without vegaml."""
-    try:
-        from vegaml.learn import Learner as VegamlLearner
-    except ImportError as e:  # vegaml missing, or from before continuous learning shipped
-        raise ImportError(
-            "laya.Learner is vegaml's continuous learner and needs vegaml 0.17 or newer: "
-            "pip install -U laya (or pip install -U 'vegaml>=0.17')"
-        ) from e
-    return VegamlLearner
+    return _from_vegaml("Learner", "laya.Learner")
 
 
 def _escalator():
-    """vegaml's Escalator class, imported on first use, like the Learner."""
-    try:
-        from vegaml.learn import Escalator as VegamlEscalator
-    except ImportError as e:  # vegaml missing, or from before the teacher shipped
-        raise ImportError(
-            "laya.Escalator is vegaml's teacher for the learner and needs vegaml 0.18 or newer: "
-            "pip install -U laya (or pip install -U 'vegaml>=0.18')"
-        ) from e
-    return VegamlEscalator
+    return _from_vegaml("Escalator", "laya.Escalator")
 
 
 class Escalator:
     """A teacher for what the learner is unsure of. `Escalator(learner, teacher=fn)` returns a
-    `vegaml.learn.Escalator`: answers the learner is unsure of (abstain, unbound, or a learned answer
+    `vegaml_learn.Escalator`: answers the learner is unsure of (abstain, unbound, or a learned answer
     below its confidence line, plus a small audit share) go to `fn(text, questions) -> {question: answer}`,
     whose answer is served and learned from, so the share that needs the teacher falls as it learns.
     The teacher is yours: a person's review queue, a rules engine, or any model you run.
-    See `help(vegaml.learn.Escalator)`."""
+    See `help(vegaml_learn.Escalator)`."""
 
     def __new__(cls, *args, **kwargs):
         return _escalator()(*args, **kwargs)
@@ -55,20 +57,15 @@ class Escalator:
 def vllm_teacher(*args, **kwargs):
     """A teacher you run yourself: a model served with vLLM (or any OpenAI-compatible server) on your own
     machines, for `Escalator(learner, teacher=vllm_teacher("http://localhost:8000/v1"))`. Nothing leaves
-    your network and there is no cost per call. See `help(vegaml.learn.vllm_teacher)`."""
-    try:
-        from vegaml.learn import vllm_teacher as make
-    except ImportError as e:
-        raise ImportError(
-            "laya.vllm_teacher is vegaml's and needs vegaml 0.18 or newer: pip install -U laya "
-            "(or pip install -U 'vegaml>=0.18')"
-        ) from e
+    your network and there is no cost per call. See `help(vegaml_learn.vllm_teacher)`."""
+    make = _from_vegaml("vllm_teacher", "laya.vllm_teacher")
     return make(*args, **kwargs)
 
 
 class Learner:
-    """vegaml's continuous learner. `Learner(questions, examples=rows, workdir=...)` returns a
-    `vegaml.learn.Learner`; every argument is passed through. See `help(vegaml.learn.Learner)`."""
+    """vega's continuous learner (pip install vegaml-learn; free for noncommercial use). `Learner(questions,
+    examples=rows, workdir=...)` returns a `vegaml_learn.Learner`; every argument is passed through.
+    See `help(vegaml_learn.Learner)`."""
 
     def __new__(cls, *args, **kwargs):
         return _learner()(*args, **kwargs)
